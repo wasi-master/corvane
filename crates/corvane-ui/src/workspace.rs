@@ -147,7 +147,8 @@ impl Workspace {
                         id: "suggested-editor",
                         title: "Open the repository in your external editor".into(),
                         description: Some("Select your editor in Settings".into()),
-                        hint: "Repository menu or ⌘⇧A".into(),
+                        hint: "Repository menu or".into(),
+                        keys: &["⌘", "⇧", "A"],
                         button_label: "Open in Editor".into(),
                         primary: false,
                     },
@@ -155,7 +156,8 @@ impl Workspace {
                         id: "suggested-finder",
                         title: "View the files of your repository in Finder".into(),
                         description: None,
-                        hint: "Repository menu or ⌘⇧F".into(),
+                        hint: "Repository menu or".into(),
+                        keys: &["⌘", "⇧", "F"],
                         button_label: "Show in Finder".into(),
                         primary: false,
                     },
@@ -163,7 +165,8 @@ impl Workspace {
                         id: "suggested-github",
                         title: "Open the repository page on GitHub in your browser".into(),
                         description: None,
-                        hint: "Repository menu or ⌘⇧G".into(),
+                        hint: "Repository menu or".into(),
+                        keys: &["⌘", "⇧", "G"],
                         button_label: "View on GitHub".into(),
                         primary: false,
                     },
@@ -219,6 +222,10 @@ impl Render for Workspace {
                     .child(
                         h_resizable("repository")
                             .with_state(&self.resizable)
+                            // GHD's 6 px handle is invisible; the sidebar's own border is the seam.
+                            .with_handle_appearance(std::rc::Rc::new(|_, _, _| {
+                                Some(div().into_any_element())
+                            }))
                             .child(
                                 resizable_panel()
                                     .size(self.sidebar_width)
