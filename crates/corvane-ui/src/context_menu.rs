@@ -23,6 +23,8 @@ pub struct MenuItem {
     pub label: SharedString,
     pub enabled: bool,
     pub kind: MenuItemKind,
+    /// `type: 'checkbox'` items show a check mark column.
+    pub checked: Option<bool>,
 }
 
 impl MenuItem {
@@ -34,6 +36,18 @@ impl MenuItem {
             label: label.into(),
             enabled: true,
             kind: MenuItemKind::Action(Rc::new(action)),
+            checked: None,
+        }
+    }
+
+    pub fn checkbox(
+        label: impl Into<SharedString>,
+        checked: bool,
+        action: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        Self {
+            checked: Some(checked),
+            ..Self::new(label, action)
         }
     }
 
@@ -42,6 +56,7 @@ impl MenuItem {
             label: label.into(),
             enabled: true,
             kind: MenuItemKind::Submenu(items),
+            checked: None,
         }
     }
 
@@ -50,6 +65,7 @@ impl MenuItem {
             label: SharedString::default(),
             enabled: false,
             kind: MenuItemKind::Separator,
+            checked: None,
         }
     }
 
@@ -107,7 +123,12 @@ impl ContextMenu {
             .map(|i| i.label.chars().count())
             .max()
             .unwrap_or(0) as f32;
-        px((longest * 6.8 + 48.).clamp(160., 440.))
+        let check_column = if items.iter().any(|i| i.checked.is_some()) {
+            16.
+        } else {
+            0.
+        };
+        px((longest * 6.8 + 48. + check_column).clamp(160., 440.))
     }
 
     fn height(items: &[MenuItem]) -> Pixels {
@@ -145,12 +166,13 @@ impl ContextMenu {
             }])
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-            .children(
+            .children({
+                let has_checks = items.iter().any(|i| i.checked.is_some());
                 items
                     .iter()
                     .enumerate()
-                    .map(|(idx, item)| self.item(idx, item, root, width, cx)),
-            )
+                    .map(move |(idx, item)| self.item(idx, item, root, width, has_checks, cx))
+            })
     }
 
     fn item(
@@ -159,6 +181,7 @@ impl ContextMenu {
         item: &MenuItem,
         root: bool,
         width: Pixels,
+        has_checks: bool,
         cx: &Context<Self>,
     ) -> AnyElement {
         let t = cx.ghd();
@@ -196,6 +219,22 @@ impl ContextMenu {
             .when(open, |d| d.bg(accent_bg).text_color(accent_text))
             .when(enabled, |d| {
                 d.hover(move |s| s.bg(accent_bg).text_color(accent_text))
+            })
+            .when(has_checks, |d| {
+                // native menus reserve a check-mark column left of every label
+                d.child(
+                    div()
+                        .w(px(14.))
+                        .flex_none()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(if item.checked == Some(true) {
+                            "✓"
+                        } else {
+                            ""
+                        }),
+                )
             })
             .child(
                 div()
@@ -252,7 +291,8 @@ impl Render for ContextMenu {
             x = viewport.width - width - px(4.);
         }
         if y + height > viewport.height {
-            y = viewport.height - height - px(4.);
+            // native menus open upward when there is no room below the pointer
+            y = self.position.y - height;
         }
         if x < px(0.) {
             x = px(0.);

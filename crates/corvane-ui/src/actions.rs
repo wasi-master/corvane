@@ -3,6 +3,9 @@
 gpui_kit::actions!(
     corvane,
     [
+        // Lists (arrow keys while the changes list has focus)
+        SelectNextFile,
+        SelectPreviousFile,
         // App menu
         About,
         OpenSettings,

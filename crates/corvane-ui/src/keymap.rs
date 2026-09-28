@@ -6,6 +6,8 @@ use crate::actions::*;
 
 pub fn install(cx: &mut App) {
     cx.bind_keys([
+        KeyBinding::new("down", SelectNextFile, Some("ChangesList")),
+        KeyBinding::new("up", SelectPreviousFile, Some("ChangesList")),
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-h", Hide, None),
         KeyBinding::new("alt-cmd-h", HideOthers, None),

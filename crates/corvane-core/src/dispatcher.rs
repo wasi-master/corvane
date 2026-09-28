@@ -810,7 +810,12 @@ impl Dispatcher {
                     .collect()
             })
             .unwrap_or_default();
-        if summary.trim().is_empty() || files.is_empty() {
+        let options = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .map(|r| r.commit_options)
+            .unwrap_or_default();
+        if summary.trim().is_empty() || (files.is_empty() && !options.allow_empty_commit) {
             return;
         }
         Self::state(cx).update(cx, |s, cx| {
@@ -827,7 +832,12 @@ impl Dispatcher {
                 git,
                 &workdir,
                 &message,
-                &corvane_git::CommitOptions::default(),
+                &corvane_git::CommitOptions {
+                    amend: false,
+                    no_verify: options.skip_commit_hooks,
+                    signoff: options.sign_off_commits,
+                    allow_empty: options.allow_empty_commit,
+                },
             )
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
@@ -853,6 +863,21 @@ impl Dispatcher {
             });
         })
         .detach();
+    }
+
+    /// Commit form gear menu (`onUpdateCommitOptions`), persisted with the repository.
+    pub fn update_commit_options(
+        id: u64,
+        edit: impl FnOnce(&mut corvane_models::RepoCommitOptions),
+        cx: &mut App,
+    ) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                edit(&mut repo.commit_options);
+                persist_repositories(s);
+                cx.notify();
+            }
+        });
     }
 
     pub fn undo_commit(id: u64, cx: &mut App) {
