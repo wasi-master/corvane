@@ -118,6 +118,23 @@ pub struct RepositoryState {
     pub refresh_pending: bool,
     /// Filter Options popover state (`IFileListFilterState` minus the text).
     pub file_list_filter: FileListFilter,
+
+    // ---- history (`ICompareState` / `ICommitSelection`) ----
+    /// Commits of HEAD, newest first, loaded in `COMMIT_BATCH_SIZE` pages.
+    pub commits: Vec<corvane_models::Commit>,
+    pub commits_loading: bool,
+    /// The last page was shorter than a batch: nothing more to load.
+    pub commits_exhausted: bool,
+    /// `commitSelection.shas[0]`
+    pub selected_commit: Option<String>,
+    /// Files + line counts of the selected commit (`changesetData`).
+    pub changeset: Option<corvane_models::ChangesetData>,
+    /// Path selected in the commit's file list.
+    pub commit_selected_file: Option<String>,
+    pub commit_diff: Option<Diff>,
+    pub commit_diff_generation: u64,
+    /// `isExpanded` of the expandable commit summary.
+    pub commit_summary_expanded: bool,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

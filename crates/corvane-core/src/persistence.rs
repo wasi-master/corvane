@@ -13,6 +13,8 @@ use corvane_models::{Account, Repository, ThemeSetting};
 pub struct Settings {
     pub theme: ThemeSetting,
     pub sidebar_width: f32,
+    /// History file-list width (`commitSummaryWidth`, default 250).
+    pub commit_summary_width: f32,
     pub clone_dir: Option<PathBuf>,
     /// GHD `hasShownWelcomeFlow`.
     pub welcome_completed: bool,
@@ -25,6 +27,7 @@ impl Default for Settings {
         Self {
             theme: ThemeSetting::System,
             sidebar_width: 250.0,
+            commit_summary_width: 250.0,
             clone_dir: None,
             welcome_completed: false,
             confirm_discard_changes: true,
@@ -114,6 +117,7 @@ mod tests {
             sidebar_width: 300.0,
             clone_dir: None,
             welcome_completed: true,
+            commit_summary_width: 250.0,
             confirm_discard_changes: false,
         };
         store.save_settings(&s).unwrap();
