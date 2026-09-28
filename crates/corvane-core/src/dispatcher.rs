@@ -477,6 +477,7 @@ impl Dispatcher {
                     Self::sync_conflicts(id, rebase_snapshot, cherry_pick_snapshot, cx);
                 }
                 Self::load_commits(id, false, cx);
+                Self::refresh_compare(id, cx);
                 let rerun = Self::state(cx).update(cx, |s, _| {
                     let rs = s.repo_state_mut(id);
                     std::mem::take(&mut rs.refresh_pending)
@@ -625,10 +626,11 @@ impl Dispatcher {
                             } else {
                                 rs.commits = batch;
                             }
-                            let missing = rs
-                                .selected_commits
-                                .iter()
-                                .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
+                            let missing = !rs.compare.is_comparing()
+                                && rs
+                                    .selected_commits
+                                    .iter()
+                                    .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
                             if missing {
                                 rs.selected_commit = None;
                                 rs.selected_commits.clear();
@@ -641,7 +643,7 @@ impl Dispatcher {
                         Err(err) => warn!(id, %err, "history failed"),
                     }
                     cx.notify();
-                    !more && !rs.selected_commits.is_empty()
+                    !more && !rs.selected_commits.is_empty() && !rs.compare.is_comparing()
                 });
                 if reselect {
                     Self::load_changeset(id, cx);
@@ -664,7 +666,7 @@ impl Dispatcher {
             }
             let indexes: Vec<usize> = shas
                 .iter()
-                .filter_map(|sha| rs.commits.iter().position(|c| &c.sha == sha))
+                .filter_map(|sha| rs.visible_commits().iter().position(|c| &c.sha == sha))
                 .collect();
             let mut sorted = indexes.clone();
             sorted.sort_unstable();
@@ -710,15 +712,16 @@ impl Dispatcher {
                 return;
             };
             let anchor = rs.selected_commit.clone().unwrap_or_else(|| sha.clone());
-            let a = rs.commits.iter().position(|c| c.sha == anchor);
-            let b = rs.commits.iter().position(|c| c.sha == sha);
+            let commits = rs.visible_commits();
+            let a = commits.iter().position(|c| c.sha == anchor);
+            let b = commits.iter().position(|c| c.sha == sha);
             let (Some(a), Some(b)) = (a, b) else {
                 return;
             };
             let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
             let mut shas = vec![anchor.clone()];
             shas.extend(
-                rs.commits[lo..=hi]
+                commits[lo..=hi]
                     .iter()
                     .map(|c| c.sha.clone())
                     .filter(|s| s != &anchor),
@@ -743,7 +746,7 @@ impl Dispatcher {
                 continue;
             }
             in_diff.push(sha.clone());
-            if let Some(commit) = rs.commits.iter().find(|c| c.sha == sha) {
+            if let Some(commit) = rs.visible_commits().iter().find(|c| c.sha == sha) {
                 for parent in &commit.parents {
                     if selected.contains(parent.as_str()) && !in_diff.contains(parent) {
                         stack.push(parent.clone());

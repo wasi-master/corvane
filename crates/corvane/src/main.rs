@@ -169,6 +169,17 @@ fn main() {
                     .ok();
             }
         });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &CompareToBranch, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.show_compare(window, cx))
+                    })
+                    .ok();
+            }
+        });
         // Branch menu
         let selected = |cx: &App| corvane_core::AppState::global(cx).read(cx).selected;
         cx.on_action(move |_: &NewBranch, cx| {

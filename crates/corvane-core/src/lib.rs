@@ -1,6 +1,7 @@
 //! Application state and the dispatcher that drives backends.
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
+pub mod compare;
 pub mod dispatcher;
 pub mod filter;
 pub mod mco;
@@ -8,6 +9,7 @@ pub mod persistence;
 pub mod state;
 pub mod watcher;
 
+pub use compare::{CompareForm, CompareState, ComparisonMode};
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
 pub use mco::{

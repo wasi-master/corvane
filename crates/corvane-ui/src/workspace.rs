@@ -136,6 +136,13 @@ impl Workspace {
         }
     }
 
+    /// Branch › Compare to Branch (⇧⌘B): History tab with the compare box focused.
+    pub fn show_compare(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_section(Section::History, cx);
+        Dispatcher::close_foldout(cx);
+        self.history.update(cx, |h, cx| h.focus_compare(window, cx));
+    }
+
     pub fn set_section(&mut self, section: Section, cx: &mut Context<Self>) {
         if self.section != section {
             self.section = section;

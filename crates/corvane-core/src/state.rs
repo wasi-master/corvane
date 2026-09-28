@@ -268,6 +268,9 @@ pub struct RepositoryState {
     /// Rebase dialog preview.
     pub rebase_preview: Option<crate::mco::RebasePreview>,
 
+    /// `compareState`
+    pub compare: crate::compare::CompareState,
+
     // ---- multi-commit operations ----
     pub mco: Option<crate::mco::MultiCommitOperation>,
     pub mco_undo: Option<crate::mco::McoUndo>,
@@ -347,6 +350,16 @@ pub struct LastCommit {
 }
 
 impl RepositoryState {
+    /// The commit list the History tab shows: the comparison while comparing
+    /// to a branch, else the branch's own history.
+    pub fn visible_commits(&self) -> &Vec<corvane_models::Commit> {
+        if self.compare.is_comparing() {
+            &self.compare.commits
+        } else {
+            &self.commits
+        }
+    }
+
     pub fn changed_files(&self) -> usize {
         self.status.as_ref().map(|s| s.files.len()).unwrap_or(0)
     }
