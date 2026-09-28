@@ -52,8 +52,75 @@ impl SelectedCommitView {
         }
     }
 
+    /// `ExpandableCommitSummary` for a contiguous multi-commit selection:
+    /// "Showing changes from N commits" (+ how many are unreachable).
+    fn multi_summary(&self, id: u64, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let rs = s.repo_states.get(&id)?;
+        let selected = rs.selected_commits.len();
+        if selected <= 1 {
+            return None;
+        }
+        let not_in_diff = rs
+            .selected_commits
+            .iter()
+            .filter(|sha| !rs.shas_in_diff.contains(sha))
+            .count();
+        let in_diff = selected - not_in_diff;
+        Some(
+            div()
+                .id("expandable-commit-summary")
+                .flex_none()
+                .flex()
+                .flex_col()
+                .border_b_1()
+                .border_color(t.box_border)
+                .child(
+                    div()
+                        .pt(SPACING)
+                        .px(SPACING)
+                        .pb(SPACING_HALF)
+                        .text_size(FONT_SIZE_MD)
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .line_height(px(16.))
+                        .child(format!(
+                            "Showing changes from {in_diff} {}",
+                            if in_diff == 1 { "commit" } else { "commits" }
+                        )),
+                )
+                .when(not_in_diff > 0, |d| {
+                    // `renderCommitsNotReachable` (the reachability dialog is not built yet)
+                    d.child(
+                        div()
+                            .px(SPACING)
+                            .pb(SPACING_HALF)
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(SPACING_HALF)
+                            .text_size(FONT_SIZE_SM)
+                            .text_color(t.text_secondary)
+                            .child(octicon(Octicon::Info, t.text_secondary))
+                            .child(format!(
+                                "{not_in_diff} unreachable {} not included.",
+                                if not_in_diff == 1 {
+                                    "commit"
+                                } else {
+                                    "commits"
+                                }
+                            )),
+                    )
+                })
+                .into_any_element(),
+        )
+    }
+
     /// `ExpandableCommitSummary`
     fn summary(&self, id: u64, cx: &Context<Self>) -> Option<AnyElement> {
+        if let Some(multi) = self.multi_summary(id, cx) {
+            return Some(multi);
+        }
         let t = cx.ghd();
         let s = self.state.read(cx);
         let rs = s.repo_states.get(&id)?;
@@ -339,7 +406,7 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
 impl Render for SelectedCommitView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
-        let (id, has_commit, selected_file) = {
+        let (id, has_commit, selected_file, non_contiguous) = {
             let s = self.state.read(cx);
             let id = s.selected;
             let rs = id.and_then(|id| s.repo_states.get(&id));
@@ -355,8 +422,41 @@ impl Render for SelectedCommitView {
                         .find(|f| &f.path == path)
                         .map(|f| (f.path.clone(), f.status.kind))
                 }),
+                rs.is_some_and(|r| r.selected_commits.len() > 1 && !r.commits_contiguous),
             )
         };
+        if non_contiguous {
+            // `renderMultipleCommitsBlankSlate`
+            let bullet = |text: &'static str| {
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap(SPACING_HALF)
+                    .child("•")
+                    .child(text)
+            };
+            return div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .items_start()
+                .p(SPACING_DOUBLE)
+                .gap(SPACING_HALF)
+                .bg(t.background)
+                .text_color(t.text_secondary)
+                .text_size(FONT_SIZE)
+                .child("Unable to display diff when multiple non-consecutive selected.")
+                .child("You can:")
+                .child(bullet(
+                    "Select a single commit or a range of consecutive commits to view a diff.",
+                ))
+                .child(bullet(
+                    "Drag the commits to the branch menu to cherry-pick them.",
+                ))
+                .child(bullet("Drag the commits to squash or reorder them."))
+                .child(bullet("Right click on multiple commits to see options."))
+                .into_any_element();
+        }
         let Some(id) = id.filter(|_| has_commit) else {
             // GHD `NoCommitSelected`
             return div()

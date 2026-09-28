@@ -8,6 +8,10 @@ pub fn install(cx: &mut App) {
     cx.bind_keys([
         KeyBinding::new("down", SelectNextFile, Some("ChangesList")),
         KeyBinding::new("up", SelectPreviousFile, Some("ChangesList")),
+        KeyBinding::new("down", SelectNextFile, Some("HistoryList")),
+        KeyBinding::new("up", SelectPreviousFile, Some("HistoryList")),
+        KeyBinding::new("enter", ReorderConfirm, Some("HistoryList")),
+        KeyBinding::new("escape", ReorderCancel, Some("HistoryList")),
         KeyBinding::new("cmd-,", OpenSettings, None),
         KeyBinding::new("cmd-h", Hide, None),
         KeyBinding::new("alt-cmd-h", HideOthers, None),

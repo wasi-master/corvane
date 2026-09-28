@@ -228,6 +228,11 @@ fn main() {
                 );
             }
         });
+        cx.on_action(move |_: &RebaseCurrentBranch, cx| {
+            if let Some((id, _)) = current_branch(cx) {
+                Dispatcher::start_rebase_flow(id, cx);
+            }
+        });
         cx.on_action(move |_: &UpdateFromDefaultBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::update_from_default_branch(id, cx);

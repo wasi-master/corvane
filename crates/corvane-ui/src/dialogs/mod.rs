@@ -2,11 +2,12 @@
 //! it only when the popup value changes.
 
 mod add_existing;
-mod branch_dialogs;
+pub(crate) mod branch_dialogs;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
 mod history_dialogs;
+mod mco_dialogs;
 mod sign_in;
 mod simple;
 
@@ -26,6 +27,7 @@ pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
     WarnLocalChangesBeforeUndoDialog,
 };
+pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
@@ -110,6 +112,35 @@ impl DialogHost {
             Popup::ConfirmDiscardStash { repo } => {
                 cx.new(|_| ConfirmDiscardStashDialog::new(*repo)).into()
             }
+            Popup::MultiCommitOperation { repo } => {
+                cx.new(|cx| McoDialog::new(state, *repo, window, cx)).into()
+            }
+            Popup::LocalChangesOverwritten { repo, retry, files } => cx
+                .new(|_| {
+                    LocalChangesOverwrittenDialog::new(state, *repo, retry.clone(), files.clone())
+                })
+                .into(),
+            Popup::SquashCommitMessage {
+                repo,
+                to_squash,
+                onto,
+                summary,
+                description,
+                count,
+            } => cx
+                .new(|cx| {
+                    SquashCommitMessageDialog::new(
+                        *repo,
+                        to_squash.clone(),
+                        onto.clone(),
+                        summary.clone(),
+                        description.clone(),
+                        *count,
+                        window,
+                        cx,
+                    )
+                })
+                .into(),
         }
     }
 }

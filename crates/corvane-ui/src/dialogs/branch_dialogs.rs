@@ -3,7 +3,9 @@
 //! `ui/stash-changes/{stash-and-switch-branch,overwrite-stashed-changes}-dialog.tsx`
 //! and the merge `ChooseBranch` step (`merge-choose-branch-dialog.tsx`).
 
-use corvane_core::{AppState, BranchKind, Dispatcher, Tip, UncommittedChangesStrategy};
+use corvane_core::{
+    AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
+};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -63,6 +65,8 @@ pub struct CreateBranchDialog {
     target_sha: Option<String>,
     name: Entity<InputState>,
     start_point: StartPoint,
+    /// Cherry-pick › New Branch: "Cherry-pick to New Branch" / "Create Branch and Cherry-pick".
+    cherry_pick: bool,
 }
 
 impl CreateBranchDialog {
@@ -86,13 +90,35 @@ impl CreateBranchDialog {
             target_sha,
             name,
             start_point: StartPoint::DefaultBranch,
+            cherry_pick: false,
         }
+    }
+
+    /// The `CreateBranch` step of a cherry-pick (`renderCreateBranch`).
+    pub fn new_for_cherry_pick(
+        state: Entity<AppState>,
+        repo: u64,
+        initial_name: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let mut this = Self::new(state, repo, None, initial_name, window, cx);
+        this.cherry_pick = true;
+        this
     }
 }
 
 impl Render for CreateBranchDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let cherry_pick = self.cherry_pick;
+        let repo_for_close = self.repo;
+        let close = move |_: &mut Window, cx: &mut App| {
+            if cherry_pick {
+                Dispatcher::end_mco(repo_for_close, cx);
+            } else {
+                Dispatcher::close_popup(cx);
+            }
+        };
         let t = cx.ghd();
         let raw = self.name.read(cx).value().to_string();
         let name = sanitize_ref_name(&raw);
@@ -260,7 +286,11 @@ impl Render for CreateBranchDialog {
         let name_for_ok = name.clone();
         dialog(
             "dialog-create-branch",
-            "Create a Branch",
+            if cherry_pick {
+                "Cherry-pick to New Branch"
+            } else {
+                "Create a Branch"
+            },
             content,
             vec![
                 DialogButton {
@@ -271,10 +301,23 @@ impl Render for CreateBranchDialog {
                 },
                 DialogButton {
                     id: "create-branch-ok",
-                    label: "Create Branch".into(),
+                    label: if cherry_pick {
+                        "Create Branch and Cherry-pick".into()
+                    } else {
+                        "Create Branch".into()
+                    },
                     primary: true,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
+                            return;
+                        }
+                        if cherry_pick {
+                            Dispatcher::cherry_pick_to_new_branch(
+                                repo,
+                                name_for_ok.clone(),
+                                start_point.clone(),
+                                cx,
+                            );
                             return;
                         }
                         Dispatcher::close_popup(cx);
@@ -768,147 +811,92 @@ impl Render for MergeBranchDialog {
         };
         let repo = self.repo;
         let selected = self.selected.clone();
-        let count = preview
-            .as_ref()
-            .filter(|(b, _)| Some(b) == selected.as_ref())
-            .map(|(_, c)| *c);
+        let preview = preview.filter(|p| Some(&p.branch) == selected.as_ref());
         let title = if self.squash {
             format!("Squash and Merge into {current}")
         } else {
             format!("Merge into {current}")
         };
-        let hover_bg = t.box_selected_active_background;
-        let hover_text = t.box_selected_active_text;
-        let list = div()
-            .id("merge-branch-list")
-            .h(px(300.))
-            .overflow_y_scroll()
-            .flex()
-            .flex_col()
-            .children(groups.into_iter().map(|group| {
-                div()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .h(ROW_HEIGHT)
-                            .pt(SPACING)
-                            .px(SPACING_DOUBLE)
-                            .flex()
-                            .items_center()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_size(FONT_SIZE)
-                            .child(group.title),
-                    )
-                    .children(group.branches.into_iter().map(|b| {
-                        let is_current = b.name == current;
-                        let is_selected = selected.as_deref() == Some(b.name.as_str());
-                        let name = b.name.clone();
-                        div()
-                            .id(SharedString::from(format!("merge-branch-{}", b.full_name)))
-                            .h(ROW_HEIGHT)
-                            .w_full()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .px(SPACING_DOUBLE)
-                            .cursor_pointer()
-                            .when(is_selected, |d| {
-                                d.bg(t.box_selected_active_background)
-                                    .text_color(t.box_selected_active_text)
-                            })
-                            .when(!is_selected, move |d| {
-                                d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if is_current {
-                                    return;
-                                }
-                                this.selected = Some(name.clone());
-                                Dispatcher::preview_merge(repo, name.clone(), cx);
-                                cx.notify();
-                            }))
-                            .child(
-                                octicon(
-                                    if is_current {
-                                        Octicon::Check
-                                    } else {
-                                        Octicon::GitBranch
-                                    },
-                                    t.text,
-                                )
-                                .mr(SPACING_HALF),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .truncate()
-                                    .text_size(FONT_SIZE)
-                                    .child(b.name.clone()),
-                            )
-                    }))
-            }));
-        // `.merge-status-component`
+        let on_select = cx.listener(move |this, name: &String, _, cx| {
+            this.selected = Some(name.clone());
+            Dispatcher::preview_merge(repo, name.clone(), cx);
+            cx.notify();
+        });
+        let list = branch_picker(
+            "merge",
+            &self.filter,
+            groups,
+            &current,
+            selected.as_deref(),
+            std::rc::Rc::new(on_select),
+            window,
+            cx,
+        );
+        // `.merge-status-component` (`MergeStatusHeader`)
+        let bold = |text: String| div().font_weight(FontWeight::SEMIBOLD).child(text);
         let status: Option<AnyElement> = selected.as_ref().map(|branch| {
-            let (icon, color, message): (Octicon, Hsla, AnyElement) =
-                match count {
-                    None => (
-                        Octicon::DotFill,
-                        t.color_modified,
-                        div()
-                            .child("Checking for ability to merge automatically...")
-                            .into_any_element(),
-                    ),
-                    Some(0) => (
-                        Octicon::Check,
-                        t.color_new,
-                        div()
-                            .flex()
-                            .flex_row()
-                            .flex_wrap()
-                            .justify_center()
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(current.clone()),
-                            )
-                            .child("\u{a0}is already up to date with\u{a0}")
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(branch.clone()),
-                            )
-                            .into_any_element(),
-                    ),
-                    Some(n) => (
-                        Octicon::Check,
-                        t.color_new,
-                        div()
-                            .flex()
-                            .flex_row()
-                            .flex_wrap()
-                            .justify_center()
-                            .child("This will merge\u{a0}")
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(format!(
-                                "{n} {}",
-                                if n == 1 { "commit" } else { "commits" }
-                            )))
-                            .child("\u{a0}from\u{a0}")
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(branch.clone()),
-                            )
-                            .child("\u{a0}into\u{a0}")
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(current.clone()),
-                            )
-                            .into_any_element(),
-                    ),
-                };
+            let row = || div().flex().flex_row().flex_wrap().justify_center();
+            let (icon, color, message): (Octicon, Hsla, AnyElement) = match &preview {
+                None => (
+                    Octicon::DotFill,
+                    t.color_modified,
+                    div()
+                        .child("Checking for ability to merge automatically...")
+                        .into_any_element(),
+                ),
+                Some(p) if p.mergeability == Some(Mergeability::Invalid) => (
+                    Octicon::X,
+                    t.color_deleted,
+                    div()
+                        .child("Unable to merge unrelated histories in this repository")
+                        .into_any_element(),
+                ),
+                Some(p) if p.commits == 0 => (
+                    Octicon::Check,
+                    t.color_new,
+                    row()
+                        .child(bold(current.clone()))
+                        .child("\u{a0}is already up to date with\u{a0}")
+                        .child(bold(branch.clone()))
+                        .into_any_element(),
+                ),
+                Some(p) => {
+                    let commits = format!(
+                        "{} {}",
+                        p.commits,
+                        if p.commits == 1 { "commit" } else { "commits" }
+                    );
+                    match p.mergeability {
+                        Some(Mergeability::Conflicts(n)) => (
+                            Octicon::Alert,
+                            t.color_modified,
+                            row()
+                                .child("There will be\u{a0}")
+                                .child(bold(format!(
+                                    "{n} conflicted {}",
+                                    if n == 1 { "file" } else { "files" }
+                                )))
+                                .child("\u{a0}when merging\u{a0}")
+                                .child(bold(branch.clone()))
+                                .child("\u{a0}into\u{a0}")
+                                .child(bold(current.clone()))
+                                .into_any_element(),
+                        ),
+                        _ => (
+                            Octicon::Check,
+                            t.color_new,
+                            row()
+                                .child("This will merge\u{a0}")
+                                .child(bold(commits))
+                                .child("\u{a0}from\u{a0}")
+                                .child(bold(branch.clone()))
+                                .child("\u{a0}into\u{a0}")
+                                .child(bold(current.clone()))
+                                .into_any_element(),
+                        ),
+                    }
+                }
+            };
             div()
                 .flex()
                 .flex_col()
@@ -948,7 +936,11 @@ impl Render for MergeBranchDialog {
                 )
                 .into_any_element()
         });
-        let can_start = matches!(count, Some(n) if n > 0);
+        // `canStartOperation`: conflicts are fine (resolved afterwards), nothing to merge is not
+        let can_start = preview
+            .as_ref()
+            .is_some_and(|p| p.commits > 0 && p.mergeability != Some(Mergeability::Invalid))
+            && selected.as_deref() != Some(current.as_str());
         let selected_for_ok = selected.clone();
         let squash = self.squash;
         let content = div()
@@ -957,20 +949,6 @@ impl Render for MergeBranchDialog {
             .mt(px(-20.))
             .flex()
             .flex_col()
-            .child(
-                div()
-                    .px(SPACING_DOUBLE)
-                    .pb(SPACING)
-                    .border_b_1()
-                    .border_color(t.box_border)
-                    .child(text_box(
-                        "merge-filter",
-                        &self.filter,
-                        Some(octicon(Octicon::Search, t.text_secondary)),
-                        window,
-                        cx,
-                    )),
-            )
             .child(list)
             .children(status);
         dialog(
@@ -1001,4 +979,119 @@ impl Render for MergeBranchDialog {
             cx,
         )
     }
+}
+
+/// Callback for a branch chosen in `branch_picker`.
+pub type BranchSelect = std::rc::Rc<dyn Fn(&String, &mut Window, &mut App)>;
+
+/// The filter box + grouped branch list shared by the merge, rebase and
+/// cherry-pick choose-branch dialogs (`BranchList` inside `ChooseBranchDialog`).
+#[allow(clippy::too_many_arguments)]
+pub fn branch_picker(
+    id_prefix: &'static str,
+    filter: &Entity<InputState>,
+    groups: Vec<crate::branch_list::BranchGroup>,
+    current: &str,
+    selected: Option<&str>,
+    on_select: BranchSelect,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = cx.ghd();
+    let hover_bg = t.box_selected_active_background;
+    let hover_text = t.box_selected_active_text;
+    let current = current.to_string();
+    let selected = selected.map(str::to_string);
+    let list = div()
+        .id(SharedString::from(format!("{id_prefix}-branch-list")))
+        .h(px(300.))
+        .overflow_y_scroll()
+        .flex()
+        .flex_col()
+        .children(groups.into_iter().map(|group| {
+            let current = current.clone();
+            let selected = selected.clone();
+            let on_select = on_select.clone();
+            div()
+                .flex()
+                .flex_col()
+                .child(
+                    div()
+                        .h(ROW_HEIGHT)
+                        .pt(SPACING)
+                        .px(SPACING_DOUBLE)
+                        .flex()
+                        .items_center()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_size(FONT_SIZE)
+                        .child(group.title),
+                )
+                .children(group.branches.into_iter().map(move |b| {
+                    let is_current = b.name == current;
+                    let is_selected = selected.as_deref() == Some(b.name.as_str());
+                    let name = b.name.clone();
+                    let on_select = on_select.clone();
+                    div()
+                        .id(SharedString::from(format!(
+                            "{id_prefix}-branch-{}",
+                            b.full_name
+                        )))
+                        .h(ROW_HEIGHT)
+                        .w_full()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .px(SPACING_DOUBLE)
+                        .cursor_pointer()
+                        .when(is_selected, |d| {
+                            d.bg(t.box_selected_active_background)
+                                .text_color(t.box_selected_active_text)
+                        })
+                        .when(!is_selected, move |d| {
+                            d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                        })
+                        .on_click(move |_, window, cx| {
+                            if !is_current {
+                                on_select(&name, window, cx);
+                            }
+                        })
+                        .child(
+                            octicon(
+                                if is_current {
+                                    Octicon::Check
+                                } else {
+                                    Octicon::GitBranch
+                                },
+                                t.text,
+                            )
+                            .mr(SPACING_HALF),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_size(FONT_SIZE)
+                                .child(b.name.clone()),
+                        )
+                }))
+        }));
+    div()
+        .flex()
+        .flex_col()
+        .child(
+            div()
+                .px(SPACING_DOUBLE)
+                .pb(SPACING)
+                .border_b_1()
+                .border_color(t.box_border)
+                .child(text_box(
+                    SharedString::from(format!("{id_prefix}-filter")),
+                    filter,
+                    Some(octicon(Octicon::Search, t.text_secondary)),
+                    window,
+                    cx,
+                )),
+        )
+        .child(list)
 }

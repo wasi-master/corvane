@@ -1,10 +1,15 @@
 //! History sidebar - GHD `ui/history/compare.tsx` + `commit-list.tsx` +
 //! `commit-list-item.tsx` (`styles/ui/history/_history.scss`,
-//! `_commit-list.scss`): "Select Branch to Compare…" box, then 50 px commit
-//! rows (bold summary; avatar + "author • time" byline; tag badges). The list
-//! is virtualized and pages in `COMMIT_BATCH_SIZE` commits as it scrolls.
-//! Compare-to-branch, multi-select and the unpushed indicator come with the
-//! branch/remote milestones.
+//! `_commit-list.scss`, `drag-elements/_commit-drag-element.scss`):
+//! "Select Branch to Compare…" box, then 50 px commit rows (bold summary;
+//! avatar + "author • time" byline; tag badges). The list is virtualized and
+//! pages in `COMMIT_BATCH_SIZE` commits as it scrolls. Commits multi-select
+//! with ⌘/⇧-click, drag to squash onto another commit, to reorder (drop
+//! between rows) or to cherry-pick onto a branch in the branch foldout, and
+//! "Reorder Commit" starts the keyboard insertion mode (↑/↓, ⏎, Esc).
+//! Compare-to-branch and the unpushed indicator come with the remote
+//! milestone. Drop tooltips ("Copy to …", "Squash N commits")
+//! are not shown; the drop targets highlight instead.
 
 use std::rc::Rc;
 
@@ -13,21 +18,108 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::actions::{
+    ReorderCancel, ReorderConfirm, ReorderMoveDown, ReorderMoveUp, SelectNextFile,
+    SelectPreviousFile,
+};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{avatar_placeholder, text_box};
+use crate::widgets::{avatar_placeholder, kbd, text_box};
 
 /// `RowHeight` in `commit-list.tsx`
 pub const COMMIT_ROW_HEIGHT: Pixels = px(50.);
+
+/// GHD `CommitDragData`: what a commit drag carries (drop targets in the
+/// branch foldout and toolbar read it too).
+#[derive(Clone, Debug)]
+pub struct CommitDrag {
+    pub repo: u64,
+    /// The dragged selection, click order.
+    pub shas: Vec<String>,
+    /// The commit the drag started on, rendered in the drag element.
+    pub commit: Commit,
+}
+
+/// `CommitDragElement`: the row that follows the cursor, with a red count
+/// badge for multi-commit drags.
+pub struct CommitDragElement {
+    drag: CommitDrag,
+}
+
+impl Render for CommitDragElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        let count = self.drag.shas.len();
+        div()
+            .relative()
+            .w(px(300.))
+            .h(COMMIT_ROW_HEIGHT)
+            .mt(px(22.))
+            .child(
+                div()
+                    .size_full()
+                    .bg(t.background)
+                    .text_color(t.text)
+                    .border_t_1()
+                    .border_l_1()
+                    .border_color(t.box_border)
+                    .shadow(vec![BoxShadow {
+                        color: t.box_border,
+                        offset: point(px(2.), px(1.)),
+                        blur_radius: px(1.),
+                        spread_radius: px(0.),
+                        inset: false,
+                    }])
+                    .overflow_hidden()
+                    .child(commit_row_contents(
+                        &self.drag.commit,
+                        t.text,
+                        t.text_secondary,
+                        cx,
+                    )),
+            )
+            .when(count > 1, |d| {
+                d.child(
+                    div()
+                        .absolute()
+                        .top(px(-22.))
+                        .left(px(20.))
+                        .size(px(18.))
+                        .rounded_full()
+                        .bg(rgb(0xd73a49))
+                        .text_color(white())
+                        .text_size(FONT_SIZE_SM)
+                        .font_weight(FontWeight::MEDIUM)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(count.to_string()),
+                )
+            })
+    }
+}
+
+/// Where a dragged commit would land on a row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DropHint {
+    /// Squash the dragged commits onto this row's commit.
+    Squash(usize),
+    /// Insert the dragged commits before row `n` (`n == count` = after the last).
+    InsertAt(usize),
+}
 
 pub struct HistorySidebar {
     state: Entity<AppState>,
     compare: Entity<InputState>,
     list_focus: FocusHandle,
     context_menu: Option<Entity<ContextMenu>>,
+    /// Live drop target while a commit drag is over the list.
+    drop_hint: Option<DropHint>,
+    /// Keyboard reorder mode (`keyboardReorderData`): shas + insertion row.
+    reorder: Option<(Vec<String>, usize)>,
 }
 
 impl HistorySidebar {
@@ -40,6 +132,8 @@ impl HistorySidebar {
             compare,
             list_focus: cx.focus_handle(),
             context_menu: None,
+            drop_hint: None,
+            reorder: None,
         }
     }
 
@@ -68,32 +162,105 @@ impl HistorySidebar {
         }
     }
 
-    /// GHD `onCommitsSelectedContextMenu` (single commit). Items whose
-    /// operations are not implemented yet are shown disabled.
-    fn open_commit_menu(
+    fn selection(&self, id: u64, cx: &App) -> Vec<String> {
+        self.state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.selected_commits.clone())
+            .unwrap_or_default()
+    }
+
+    fn mco_in_progress(&self, id: u64, cx: &App) -> bool {
+        self.state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .is_some_and(|r| r.mco.is_some())
+    }
+
+    /// `onRowContextMenu`
+    fn open_row_menu(
         &mut self,
         commit: Commit,
         position: Point<Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, html_url, is_head) = {
+        if self.reorder.is_some() {
+            return;
+        }
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let selection = self.selection(id, cx);
+        if selection.len() > 1 && selection.contains(&commit.sha) {
+            self.open_multi_commit_menu(id, commit, selection, position, window, cx);
+        } else {
+            self.open_commit_menu(id, commit, position, window, cx);
+        }
+    }
+
+    /// `getContextMenuMultipleCommits`
+    fn open_multi_commit_menu(
+        &mut self,
+        id: u64,
+        commit: Commit,
+        selection: Vec<String>,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let count = selection.len();
+        let busy = self.mco_in_progress(id, cx);
+        let weak = cx.weak_entity();
+        let (s1, s2, s3) = (selection.clone(), selection.clone(), selection);
+        let onto = commit.sha.clone();
+        let items = vec![
+            MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
+                Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx)
+            })
+            .enabled(!busy),
+            MenuItem::new(format!("Squash {count} Commits…"), move |_, cx| {
+                Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx)
+            })
+            .enabled(!busy),
+            MenuItem::new(format!("Reorder {count} Commits…"), move |_, cx| {
+                weak.update(cx, |this, cx| {
+                    this.start_keyboard_reorder(id, s3.clone(), cx)
+                })
+                .ok();
+            })
+            .enabled(!busy),
+        ];
+        self.open_menu(items, position, window, cx);
+    }
+
+    /// GHD `getContextMenuForSingleCommit`.
+    fn open_commit_menu(
+        &mut self,
+        id: u64,
+        commit: Commit,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (html_url, is_head, busy) = {
             let s = self.state.read(cx);
-            let Some(id) = s.selected else { return };
             let html_url = s
                 .repository(id)
                 .and_then(|r| r.github.as_ref())
                 .map(|g| g.html_url.clone());
-            let is_head = s
-                .repo_states
-                .get(&id)
+            let rs = s.repo_states.get(&id);
+            let is_head = rs
                 .and_then(|rs| rs.commits.first())
                 .map(|c| c.sha == commit.sha)
                 .unwrap_or(false);
-            (id, html_url, is_head)
+            (html_url, is_head, rs.is_some_and(|r| r.mco.is_some()))
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
         let sha = commit.sha.clone();
+        let weak = cx.weak_entity();
         let mut items = Vec::new();
         if is_head {
             items.push(MenuItem::new("Amend Commit…", {
@@ -115,8 +282,16 @@ impl HistorySidebar {
                 move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
             })
             .enabled(!is_head),
-            // TODO(M4): reorder / cherry-pick / create branch need the branch layer
-            MenuItem::new("Reorder Commit", |_, _| {}).enabled(false),
+            MenuItem::new("Reorder Commit", {
+                let sha = sha.clone();
+                move |_, cx| {
+                    weak.update(cx, |this, cx| {
+                        this.start_keyboard_reorder(id, vec![sha.clone()], cx)
+                    })
+                    .ok();
+                }
+            })
+            .enabled(!busy),
             MenuItem::new("Revert Changes in Commit", {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
@@ -170,7 +345,11 @@ impl HistorySidebar {
             }
         }
         items.extend([
-            MenuItem::new("Cherry-pick Commit…", |_, _| {}).enabled(false),
+            MenuItem::new("Cherry-pick Commit…", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::start_cherry_pick_flow(id, vec![sha.clone()], cx)
+            })
+            .enabled(!busy),
             MenuItem::separator(),
             MenuItem::new("Copy SHA", {
                 let sha = sha.clone();
@@ -203,7 +382,141 @@ impl HistorySidebar {
         self.open_menu(items, position, window, cx);
     }
 
-    fn commit_list(&self, cx: &Context<Self>) -> impl IntoElement {
+    // ---- keyboard reorder (`onKeyboardReorder`, list keyboard insertion) ----
+
+    fn start_keyboard_reorder(&mut self, id: u64, shas: Vec<String>, cx: &mut Context<Self>) {
+        let first = {
+            let s = self.state.read(cx);
+            s.repo_states
+                .get(&id)
+                .and_then(|r| {
+                    shas.iter()
+                        .filter_map(|sha| r.commits.iter().position(|c| &c.sha == sha))
+                        .min()
+                })
+                .unwrap_or(0)
+        };
+        Dispatcher::select_commits(id, shas.clone(), cx);
+        self.reorder = Some((shas, first));
+        cx.notify();
+    }
+
+    fn cancel_keyboard_reorder(&mut self, cx: &mut Context<Self>) {
+        if self.reorder.take().is_some() {
+            cx.notify();
+        }
+    }
+
+    fn move_insertion(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let count = self
+            .state
+            .read(cx)
+            .selected_state()
+            .map(|r| r.commits.len())
+            .unwrap_or(0);
+        if let Some((_, insertion)) = self.reorder.as_mut() {
+            let next = (*insertion as isize + delta).clamp(0, count as isize) as usize;
+            *insertion = next;
+            cx.notify();
+        }
+    }
+
+    fn confirm_keyboard_reorder(&mut self, cx: &mut Context<Self>) {
+        let Some((shas, insertion)) = self.reorder.take() else {
+            return;
+        };
+        cx.notify();
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        self.drop_insertion(id, shas, insertion, cx);
+    }
+
+    /// `onDropDataInsertion`: the dragged commits go right before row
+    /// `insertion` (the commit above becomes `beforeCommit`).
+    fn drop_insertion(&self, id: u64, shas: Vec<String>, insertion: usize, cx: &mut App) {
+        let commits: Vec<String> = self
+            .state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.commits.iter().map(|c| c.sha.clone()).collect())
+            .unwrap_or_default();
+        if commits.is_empty() || insertion > commits.len() {
+            return;
+        }
+        let mut indexes: Vec<usize> = shas
+            .iter()
+            .filter_map(|sha| commits.iter().position(|c| c == sha))
+            .collect();
+        indexes.sort_unstable();
+        let contiguous = indexes.windows(2).all(|w| w[1] == w[0] + 1);
+        if contiguous && let Some(&first) = indexes.first() {
+            let base = insertion.checked_sub(1);
+            let above_themselves =
+                (base.is_none() && first == 0) || base == Some(first.wrapping_sub(1));
+            let within_themselves = base.is_some_and(|b| indexes.contains(&b));
+            if above_themselves || within_themselves {
+                return;
+            }
+        }
+        let before = insertion.checked_sub(1).map(|i| commits[i].clone());
+        Dispatcher::reorder_commits(id, shas, before, false, cx);
+    }
+
+    /// `.reorder-commits-hint-popover`
+    fn reorder_hint(&self, cx: &Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        div()
+            .absolute()
+            .top(SPACING_HALF)
+            .left(SPACING_HALF)
+            .right(SPACING_HALF)
+            .p(SPACING)
+            .rounded(BORDER_RADIUS)
+            .bg(t.background)
+            .border_1()
+            .border_color(t.box_border)
+            .shadow(vec![BoxShadow {
+                color: t.shadow,
+                offset: point(px(0.), px(2.)),
+                blur_radius: px(7.),
+                spread_radius: px(0.),
+                inset: false,
+            }])
+            .text_size(FONT_SIZE)
+            .flex()
+            .flex_col()
+            .gap(SPACING_HALF)
+            .child(
+                div()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child("Reorder Commits"),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(3.))
+                    .child("Use")
+                    .child(kbd("↑", cx))
+                    .child(kbd("↓", cx))
+                    .child("to choose a new location."),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(px(3.))
+                    .child("Press")
+                    .child(kbd("⏎", cx))
+                    .child("to confirm."),
+            )
+    }
+
+    fn commit_list(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let s = self.state.read(cx);
         let Some(id) = s.selected else {
@@ -211,9 +524,11 @@ impl HistorySidebar {
         };
         let rs = s.repo_states.get(&id);
         let commits: Rc<Vec<Commit>> = Rc::new(rs.map(|r| r.commits.clone()).unwrap_or_default());
-        let selected = rs.and_then(|r| r.selected_commit.clone());
+        let selected: Rc<Vec<String>> =
+            Rc::new(rs.map(|r| r.selected_commits.clone()).unwrap_or_default());
         let exhausted = rs.map(|r| r.commits_exhausted).unwrap_or(true);
         let loaded = rs.map(|r| r.info.is_some()).unwrap_or(false);
+        let draggable = rs.is_some_and(|r| r.mco.is_none()) && self.reorder.is_none();
         if commits.is_empty() {
             let message = if loaded && exhausted {
                 "No history"
@@ -235,9 +550,36 @@ impl HistorySidebar {
         let count = commits.len();
         // GHD keeps the active (blue) selection while the row's context menu is open
         let menu_open = self.context_menu.is_some();
+        let drop_hint = self.drop_hint;
+        let reorder = self.reorder.clone();
+        let in_reorder = reorder.is_some();
         div()
             .id("commit-list")
+            .key_context("HistoryList")
             .track_focus(&self.list_focus)
+            .on_action(cx.listener(|this, _: &ReorderMoveUp, _, cx| this.move_insertion(-1, cx)))
+            .on_action(cx.listener(|this, _: &ReorderMoveDown, _, cx| this.move_insertion(1, cx)))
+            .on_action(
+                cx.listener(|this, _: &ReorderConfirm, _, cx| this.confirm_keyboard_reorder(cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &ReorderCancel, _, cx| this.cancel_keyboard_reorder(cx)),
+            )
+            .on_action(cx.listener(move |this, _: &SelectNextFile, _, cx| {
+                if this.reorder.is_some() {
+                    this.move_insertion(1, cx);
+                } else {
+                    this.step_selection(id, 1, cx);
+                }
+            }))
+            .on_action(cx.listener(move |this, _: &SelectPreviousFile, _, cx| {
+                if this.reorder.is_some() {
+                    this.move_insertion(-1, cx);
+                } else {
+                    this.step_selection(id, -1, cx);
+                }
+            }))
+            .relative()
             .flex_1()
             .min_h_0()
             .flex()
@@ -252,12 +594,27 @@ impl HistorySidebar {
                     range
                         .map(|ix| {
                             let commit = &commits[ix];
-                            let is_selected = selected.as_deref() == Some(commit.sha.as_str());
+                            let is_selected = selected.contains(&commit.sha);
+                            let insertion_here = match (&reorder, drop_hint) {
+                                (Some((_, at)), _) => Some(*at),
+                                (None, Some(DropHint::InsertAt(at))) => Some(at),
+                                _ => None,
+                            };
+                            let row_hint = RowHint {
+                                squash_target: drop_hint == Some(DropHint::Squash(ix)),
+                                line_above: insertion_here == Some(ix),
+                                line_below: insertion_here == Some(ix + 1) && ix + 1 == count,
+                                keyboard_selected: in_reorder && is_selected,
+                            };
                             commit_row(
                                 id,
+                                ix,
                                 commit,
                                 is_selected,
-                                focused,
+                                focused && !in_reorder,
+                                draggable,
+                                selected.clone(),
+                                row_hint,
                                 weak.clone(),
                                 list_focus.clone(),
                                 cx,
@@ -268,22 +625,79 @@ impl HistorySidebar {
                 .flex_1()
                 .min_h_0(),
             )
+            .when(in_reorder, |d| d.child(self.reorder_hint(cx)))
             .into_any_element()
+    }
+
+    /// ↑/↓ moves a single-row selection (`onSelectedRowChanged`).
+    fn step_selection(&self, id: u64, delta: isize, cx: &mut App) {
+        let next = {
+            let s = self.state.read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let current = rs
+                .selected_commit
+                .as_ref()
+                .and_then(|sha| rs.commits.iter().position(|c| &c.sha == sha));
+            let ix = match current {
+                Some(ix) => (ix as isize + delta).clamp(0, rs.commits.len() as isize - 1) as usize,
+                None => 0,
+            };
+            rs.commits.get(ix).map(|c| c.sha.clone())
+        };
+        if let Some(sha) = next {
+            Dispatcher::select_commit(id, sha, cx);
+        }
+    }
+
+    /// Drag-move over a row: pick squash (middle) or insertion (edges).
+    fn update_drop_hint(&mut self, hint: Option<DropHint>, cx: &mut Context<Self>) {
+        if self.drop_hint != hint {
+            self.drop_hint = hint;
+            cx.notify();
+        }
+    }
+
+    /// Drop on a row: squash or reorder, per the last hint.
+    fn drop_on_row(&mut self, id: u64, row: usize, drag: &CommitDrag, cx: &mut Context<Self>) {
+        let hint = self.drop_hint.take();
+        cx.notify();
+        if drag.repo != id {
+            return;
+        }
+        let commits: Vec<String> = self
+            .state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.commits.iter().map(|c| c.sha.clone()).collect())
+            .unwrap_or_default();
+        match hint {
+            Some(DropHint::Squash(target)) if target == row => {
+                let Some(onto) = commits.get(row) else { return };
+                if drag.shas.iter().all(|s| s == onto) {
+                    return;
+                }
+                Dispatcher::request_squash(id, drag.shas.clone(), onto.clone(), cx);
+            }
+            Some(DropHint::InsertAt(at)) => self.drop_insertion(id, drag.shas.clone(), at, cx),
+            _ => {}
+        }
     }
 }
 
-/// `CommitListItem`
-fn commit_row(
-    id: u64,
-    commit: &Commit,
-    is_selected: bool,
-    list_focused: bool,
-    weak: WeakEntity<HistorySidebar>,
-    list_focus: FocusHandle,
-    cx: &App,
-) -> AnyElement {
+#[derive(Clone, Copy, Default)]
+struct RowHint {
+    squash_target: bool,
+    line_above: bool,
+    line_below: bool,
+    keyboard_selected: bool,
+}
+
+/// `.commit .info` + tag indicators, shared with the drag element.
+fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, cx: &App) -> Div {
     let t = cx.ghd();
-    let sha = commit.sha.clone();
     let summary = if commit.summary.is_empty() {
         "Empty commit message".to_string()
     } else {
@@ -295,74 +709,15 @@ fn commit_row(
         commit.author.name,
         relative(commit.author.date())
     );
-    let (bg, text, secondary, badge_bg, badge_text) = if is_selected && list_focused {
-        (
-            t.box_selected_active_background,
-            t.box_selected_active_text,
-            t.box_selected_active_text,
-            t.list_item_selected_active_badge_background,
-            t.list_item_selected_active_badge_text,
-        )
-    } else if is_selected {
-        (
-            t.box_selected_background,
-            t.box_selected_text,
-            t.box_selected_text,
-            t.list_item_selected_badge_background,
-            t.list_item_selected_badge_text,
-        )
-    } else {
-        (
-            t.background,
-            t.text,
-            t.text_secondary,
-            t.list_item_badge_background,
-            t.list_item_badge_text,
-        )
-    };
-    let commit_for_menu = commit.clone();
     div()
-        .id(SharedString::from(format!("commit-{}", commit.sha)))
-        .w_full()
-        .h(COMMIT_ROW_HEIGHT)
-        .flex_none()
+        .size_full()
         .flex()
         .flex_row()
         .items_center()
         .pl(SPACING)
         .pr(SPACING + SPACING_HALF)
-        .bg(bg)
         .text_color(text)
-        .border_b_1()
-        .border_color(t.box_border)
-        .cursor_pointer()
-        .when(!is_selected, |d| {
-            let hover = t.list_item_hover_background;
-            d.hover(move |s| s.bg(hover))
-        })
-        .on_click({
-            let sha = sha.clone();
-            let list_focus = list_focus.clone();
-            move |_, window, cx| {
-                window.focus(&list_focus, cx);
-                Dispatcher::select_commit(id, sha.clone(), cx)
-            }
-        })
-        .on_mouse_down(
-            MouseButton::Right,
-            move |ev: &MouseDownEvent, window, cx| {
-                cx.stop_propagation();
-                let position = ev.position;
-                let commit = commit_for_menu.clone();
-                window.focus(&list_focus, cx);
-                weak.update(cx, |this, cx| {
-                    this.open_commit_menu(commit, position, window, cx)
-                })
-                .ok();
-            },
-        )
         .child(
-            // `.info`
             div()
                 .flex_1()
                 .min_w(px(50.))
@@ -377,7 +732,6 @@ fn commit_row(
                         .child(summary),
                 )
                 .child(
-                    // `.description`: avatar stack + byline
                     div()
                         .mt(px(3.))
                         .flex()
@@ -397,7 +751,6 @@ fn commit_row(
                 ),
         )
         .when(!commit.tags.is_empty(), |d| {
-            // `.commit-indicators .tag-indicator`
             d.child(
                 div()
                     .ml(SPACING)
@@ -407,14 +760,14 @@ fn commit_row(
                     .flex_row()
                     .items_center()
                     .gap(px(4.))
-                    .child(octicon(Octicon::Tag, badge_text).size(px(12.)))
+                    .child(octicon(Octicon::Tag, t.list_item_badge_text).size(px(12.)))
                     .child(
                         div()
                             .px(px(6.))
                             .h(px(16.))
                             .rounded(px(8.))
-                            .bg(badge_bg)
-                            .text_color(badge_text)
+                            .bg(t.list_item_badge_background)
+                            .text_color(t.list_item_badge_text)
                             .text_size(FONT_SIZE_SM)
                             .line_height(px(16.))
                             .truncate()
@@ -426,13 +779,169 @@ fn commit_row(
                                 .px(px(6.))
                                 .h(px(16.))
                                 .rounded(px(8.))
-                                .bg(badge_bg)
-                                .text_color(badge_text)
+                                .bg(t.list_item_badge_background)
+                                .text_color(t.list_item_badge_text)
                                 .text_size(FONT_SIZE_SM)
                                 .line_height(px(16.))
                                 .child(format!("+{}", commit.tags.len() - 1)),
                         )
                     }),
+            )
+        })
+}
+
+/// `CommitListItem`
+#[allow(clippy::too_many_arguments)]
+fn commit_row(
+    id: u64,
+    ix: usize,
+    commit: &Commit,
+    is_selected: bool,
+    list_focused: bool,
+    draggable: bool,
+    selection: Rc<Vec<String>>,
+    hint: RowHint,
+    weak: WeakEntity<HistorySidebar>,
+    list_focus: FocusHandle,
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let sha = commit.sha.clone();
+    let (bg, text, secondary) = if hint.keyboard_selected {
+        (
+            t.box_selected_background,
+            t.box_selected_text,
+            t.box_selected_text,
+        )
+    } else if is_selected && list_focused {
+        (
+            t.box_selected_active_background,
+            t.box_selected_active_text,
+            t.box_selected_active_text,
+        )
+    } else if is_selected {
+        (
+            t.box_selected_background,
+            t.box_selected_text,
+            t.box_selected_text,
+        )
+    } else if hint.squash_target {
+        (t.list_item_hover_background, t.text, t.text_secondary)
+    } else {
+        (t.background, t.text, t.text_secondary)
+    };
+    let commit_for_menu = commit.clone();
+    let commit_for_drag = commit.clone();
+    let drag_shas: Vec<String> = if selection.contains(&commit.sha) && !selection.is_empty() {
+        selection.as_ref().clone()
+    } else {
+        vec![commit.sha.clone()]
+    };
+    let weak_for_move = weak.clone();
+    let weak_for_drop = weak.clone();
+    let line = t.box_selected_active_background;
+    div()
+        .id(SharedString::from(format!("commit-{}", commit.sha)))
+        .relative()
+        .w_full()
+        .h(COMMIT_ROW_HEIGHT)
+        .flex_none()
+        .bg(bg)
+        .border_b_1()
+        .border_color(t.box_border)
+        .cursor_pointer()
+        .when(!is_selected && !hint.squash_target, |d| {
+            let hover = t.list_item_hover_background;
+            d.hover(move |s| s.bg(hover))
+        })
+        .on_click({
+            let sha = sha.clone();
+            let list_focus = list_focus.clone();
+            move |ev: &ClickEvent, window, cx| {
+                window.focus(&list_focus, cx);
+                let modifiers = ev.modifiers();
+                if modifiers.secondary() {
+                    Dispatcher::toggle_commit_selection(id, sha.clone(), cx);
+                } else if modifiers.shift {
+                    Dispatcher::extend_commit_selection(id, sha.clone(), cx);
+                } else {
+                    Dispatcher::select_commit(id, sha.clone(), cx);
+                }
+            }
+        })
+        .on_mouse_down(MouseButton::Right, {
+            let weak = weak.clone();
+            move |ev: &MouseDownEvent, window, cx| {
+                cx.stop_propagation();
+                let position = ev.position;
+                let commit = commit_for_menu.clone();
+                window.focus(&list_focus, cx);
+                weak.update(cx, |this, cx| {
+                    this.open_row_menu(commit, position, window, cx)
+                })
+                .ok();
+            }
+        })
+        .when(draggable, |d| {
+            d.on_drag(
+                CommitDrag {
+                    repo: id,
+                    shas: drag_shas,
+                    commit: commit_for_drag,
+                },
+                |drag, _, _, cx| {
+                    let drag = drag.clone();
+                    cx.new(|_| CommitDragElement { drag })
+                },
+            )
+        })
+        .on_drag_move::<CommitDrag>(move |ev, _, cx| {
+            let bounds = ev.bounds;
+            let pos = ev.event.position;
+            let hint = if bounds.contains(&pos) {
+                let rel = (pos.y - bounds.origin.y) / bounds.size.height;
+                if rel < 0.25 {
+                    Some(DropHint::InsertAt(ix))
+                } else if rel > 0.75 {
+                    Some(DropHint::InsertAt(ix + 1))
+                } else {
+                    Some(DropHint::Squash(ix))
+                }
+            } else {
+                None
+            };
+            if hint.is_some() {
+                weak_for_move
+                    .update(cx, |this, cx| this.update_drop_hint(hint, cx))
+                    .ok();
+            }
+        })
+        .on_drop(move |drag: &CommitDrag, _, cx| {
+            weak_for_drop
+                .update(cx, |this, cx| this.drop_on_row(id, ix, drag, cx))
+                .ok();
+        })
+        .child(commit_row_contents(commit, text, secondary, cx))
+        .when(hint.line_above, |d| {
+            d.child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(2.))
+                    .bg(line),
+            )
+        })
+        .when(hint.line_below, |d| {
+            d.child(
+                div()
+                    .absolute()
+                    .bottom_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(2.))
+                    .bg(line),
             )
         })
         .into_any_element()
@@ -441,6 +950,10 @@ fn commit_row(
 impl Render for HistorySidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        // drop hints only live while a drag is in flight
+        if self.drop_hint.is_some() && !cx.has_active_drag() {
+            self.drop_hint = None;
+        }
         div()
             .size_full()
             .flex()

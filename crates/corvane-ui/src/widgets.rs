@@ -54,6 +54,24 @@ fn base_button(id: impl Into<ElementId>, _t: &GhdTheme) -> Stateful<Div> {
         .cursor_pointer()
 }
 
+/// GHD `LinkButton`: link-coloured inline text, underlined on hover.
+pub fn link_button(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let hover = t.link_hover;
+    div()
+        .id(id)
+        .flex_none()
+        .text_size(FONT_SIZE)
+        .text_color(t.link)
+        .cursor_pointer()
+        .hover(move |s| s.text_color(hover).underline())
+        .child(label.into())
+}
+
 /// 13 px checkbox. GHD renders a bare `<input type="checkbox">`, so this is
 /// Chromium's native control (`ui/native_theme/native_theme_base.cc`
 /// `PaintCheckbox`) with GHD's `accent-color` (`_globals.scss` `body`):

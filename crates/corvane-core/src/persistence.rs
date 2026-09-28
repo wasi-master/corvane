@@ -28,6 +28,13 @@ pub struct Settings {
     pub uncommitted_changes_strategy: UncommittedChangesStrategy,
     /// GHD `askForConfirmationOnDiscardStash`.
     pub confirm_discard_stash: bool,
+    /// GHD `askForConfirmationOnForcePush`.
+    #[serde(default = "default_true")]
+    pub confirm_force_push: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// GHD `UncommittedChangesStrategy`
@@ -52,6 +59,7 @@ impl Default for Settings {
             confirm_undo_commit: true,
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
+            confirm_force_push: true,
         }
     }
 }
@@ -144,6 +152,7 @@ mod tests {
             confirm_undo_commit: true,
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
+            confirm_force_push: false,
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();

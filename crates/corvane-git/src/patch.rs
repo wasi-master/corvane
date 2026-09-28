@@ -223,6 +223,7 @@ mod tests {
                 working_tree: GitStatusEntry::Modified,
                 score: None,
                 code: String::new(),
+                conflict_markers: None,
             },
             selection,
         }

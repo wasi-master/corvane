@@ -411,6 +411,124 @@ pub struct FileStatus {
     /// Two-letter porcelain code (`.M`, `UU`, `??`), kept for conflict handling.
     pub code: String,
     pub submodule: bool,
+    /// Conflicted text files: number of leftover `<<<<<<<`/`=======`/`>>>>>>>`
+    /// markers (0 once resolved in an editor). `None` for binary / delete
+    /// conflicts that need a manual "use ours / theirs" choice
+    /// (GHD `ConflictsWithMarkers` vs `ManualConflict`).
+    #[serde(default)]
+    pub conflict_markers: Option<u32>,
+}
+
+impl FileStatus {
+    /// GHD `isConflictWithMarkers`
+    pub fn is_text_conflict(&self) -> bool {
+        self.kind == FileStatusKind::Conflicted && self.conflict_markers.is_some()
+    }
+
+    /// GHD `isManualConflict`
+    pub fn is_manual_conflict(&self) -> bool {
+        self.kind == FileStatusKind::Conflicted && self.conflict_markers.is_none()
+    }
+
+    /// GHD `hasUnresolvedConflicts`: a manual choice resolves anything; text
+    /// conflicts are resolved once no markers remain; binary conflicts never
+    /// resolve on their own.
+    pub fn has_unresolved_conflicts(&self, resolution: Option<ManualConflictResolution>) -> bool {
+        if resolution.is_some() {
+            return false;
+        }
+        match self.conflict_markers {
+            Some(count) => count > 0,
+            None => true,
+        }
+    }
+
+    /// GHD `status.entry.us` for unmerged entries (`u XY`: X is our side).
+    pub fn us(&self) -> GitStatusEntry {
+        self.index
+    }
+
+    /// GHD `status.entry.them` (Y is their side).
+    pub fn them(&self) -> GitStatusEntry {
+        self.working_tree
+    }
+}
+
+/// GHD `ManualConflictResolution`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ManualConflictResolution {
+    Ours,
+    Theirs,
+}
+
+/// GHD `CommitOneLine`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommitOneLine {
+    pub sha: String,
+    pub summary: String,
+}
+
+/// GHD `MultiCommitOperationKind`; `label()` is the capitalised user-facing name.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MultiCommitOperationKind {
+    Rebase,
+    CherryPick,
+    Squash,
+    Merge,
+    Reorder,
+}
+
+impl MultiCommitOperationKind {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Rebase => "Rebase",
+            Self::CherryPick => "Cherry-pick",
+            Self::Squash => "Squash",
+            Self::Merge => "Merge",
+            Self::Reorder => "Reorder",
+        }
+    }
+
+    pub fn lower(self) -> &'static str {
+        match self {
+            Self::Rebase => "rebase",
+            Self::CherryPick => "cherry-pick",
+            Self::Squash => "squash",
+            Self::Merge => "merge",
+            Self::Reorder => "reorder",
+        }
+    }
+}
+
+/// GHD `IMultiCommitOperationProgress`
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+pub struct McoProgress {
+    /// 0..=1
+    pub value: f32,
+    /// 1-based index of the commit being applied.
+    pub position: usize,
+    pub total: usize,
+    pub current_summary: String,
+}
+
+/// GHD `RebaseInternalState` (`.git/rebase-merge/{head-name,onto,orig-head}`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RebaseInternalState {
+    /// The branch being rebased (`head-name` without `refs/heads/`).
+    pub target_branch: String,
+    /// `onto`: the commit the branch is replayed on top of.
+    pub base_branch_tip: String,
+    /// `orig-head`: the branch tip before the rebase started.
+    pub original_branch_tip: String,
+}
+
+/// GHD `MergeTreeResult` / `ComputedAction` for a would-be merge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Mergeability {
+    Clean,
+    Conflicts(u32),
+    /// Unrelated histories.
+    Invalid,
 }
 
 /// How much of a file is included in the next commit (`DiffSelectionType`).
@@ -634,6 +752,17 @@ pub struct WorkingDirectoryStatus {
     pub ahead_behind: Option<AheadBehind>,
     pub merge_head_found: bool,
     pub rebase_in_progress: bool,
+    /// `# branch.oid`
+    #[serde(default)]
+    pub current_tip: Option<String>,
+    /// `.git/CHERRY_PICK_HEAD` exists (`isCherryPickingHeadFound`).
+    #[serde(default)]
+    pub cherry_pick_head_found: bool,
+    /// `.git/SQUASH_MSG` exists (a `merge --squash` that has not been committed).
+    #[serde(default)]
+    pub squash_msg_found: bool,
+    #[serde(default)]
+    pub rebase_internal_state: Option<RebaseInternalState>,
 }
 
 impl WorkingDirectoryStatus {

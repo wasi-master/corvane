@@ -104,6 +104,59 @@ pub enum Popup {
     ConfirmDiscardStash {
         repo: u64,
     },
+    /// `MultiCommitOperation`: the dialog for the current `RepositoryState::mco` step.
+    MultiCommitOperation {
+        repo: u64,
+    },
+    /// `LocalChangesOverwritten`: the operation needs a clean working directory.
+    LocalChangesOverwritten {
+        repo: u64,
+        retry: RetryAction,
+        files: Vec<String>,
+    },
+    /// `CommitMessage` popup used for the squashed commit's message.
+    SquashCommitMessage {
+        repo: u64,
+        to_squash: Vec<String>,
+        onto: String,
+        summary: String,
+        description: String,
+        count: usize,
+    },
+}
+
+/// GHD `RetryAction` (the subset behind `LocalChangesOverwritten`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RetryAction {
+    CherryPick {
+        target: String,
+    },
+    CherryPickNewBranch {
+        name: String,
+        start_point: Option<String>,
+    },
+    Squash {
+        to_squash: Vec<String>,
+        onto: String,
+        message: String,
+    },
+    Reorder {
+        to_move: Vec<String>,
+        before: Option<String>,
+    },
+}
+
+impl RetryAction {
+    /// `getRetryActionName`
+    pub fn name(&self) -> &'static str {
+        match self {
+            RetryAction::CherryPick { .. } | RetryAction::CherryPickNewBranch { .. } => {
+                "cherry-pick"
+            }
+            RetryAction::Squash { .. } => "squash",
+            RetryAction::Reorder { .. } => "reorder",
+        }
+    }
 }
 
 /// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.
@@ -178,8 +231,14 @@ pub struct RepositoryState {
     pub commits_loading: bool,
     /// The last page was shorter than a batch: nothing more to load.
     pub commits_exhausted: bool,
-    /// `commitSelection.shas[0]`
+    /// `commitSelection.shas[0]`: the anchor of the selection.
     pub selected_commit: Option<String>,
+    /// `commitSelection.shas` in click order (⌘/⇧-click multi-select).
+    pub selected_commits: Vec<String>,
+    /// `commitSelection.isContiguous`
+    pub commits_contiguous: bool,
+    /// `commitSelection.shasInDiff`: the selected commits reachable from the newest one.
+    pub shas_in_diff: Vec<String>,
     /// Files + line counts of the selected commit (`changesetData`).
     pub changeset: Option<corvane_models::ChangesetData>,
     /// Path selected in the commit's file list.
@@ -204,8 +263,18 @@ pub struct RepositoryState {
     pub stash: Option<corvane_models::StashEntry>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
-    /// Merge dialog preview: (branch, commits that would be merged).
-    pub merge_preview: Option<(String, u32)>,
+    /// Merge dialog preview.
+    pub merge_preview: Option<crate::mco::MergePreview>,
+    /// Rebase dialog preview.
+    pub rebase_preview: Option<crate::mco::RebasePreview>,
+
+    // ---- multi-commit operations ----
+    pub mco: Option<crate::mco::MultiCommitOperation>,
+    pub mco_undo: Option<crate::mco::McoUndo>,
+    /// `changesState.conflictState`
+    pub conflict_state: Option<crate::mco::ConflictState>,
+    /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.
+    pub force_push_branches: HashMap<String, String>,
 
     // ---- stash viewer (`isShowingStashEntry`, `selectedStashedFile`) ----
     pub showing_stash: bool,
@@ -301,6 +370,9 @@ pub struct AppState {
     /// Watcher for the selected repository's worktree.
     pub watcher: Option<crate::watcher::RepoWatcher>,
     pub watched_repo: Option<u64>,
+    /// `currentBanner`
+    pub banner: Option<crate::mco::Banner>,
+    pub banner_nonce: u64,
 }
 
 struct AppStateHandle(Entity<AppState>);

@@ -71,6 +71,8 @@ impl Dispatcher {
             sign_in: None,
             watcher: None,
             watched_repo: None,
+            banner: None,
+            banner_nonce: 0,
         });
         AppState::install(state.clone(), cx);
 
@@ -123,7 +125,7 @@ impl Dispatcher {
         }
     }
 
-    fn state(cx: &App) -> Entity<AppState> {
+    pub(crate) fn state(cx: &App) -> Entity<AppState> {
         AppState::global(cx)
     }
 
@@ -383,11 +385,21 @@ impl Dispatcher {
                 let stash = stashes
                     .into_iter()
                     .find(|s| s.branch.is_some() && s.branch == current);
+                let rebase_snapshot = status
+                    .as_ref()
+                    .filter(|st| st.rebase_internal_state.is_some())
+                    .and_then(|_| corvane_git::rebase_snapshot(git.clone(), &info.workdir));
+                let cherry_pick_snapshot = status
+                    .as_ref()
+                    .filter(|st| st.cherry_pick_head_found)
+                    .and_then(|_| corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir));
                 RefreshExtras {
                     recent_branches: recent,
                     default_branch,
                     stash,
                     stash_count,
+                    rebase_snapshot,
+                    cherry_pick_snapshot,
                 }
             });
             Ok::<_, GitError>((info, ahead_behind, status, extras))
@@ -395,6 +407,11 @@ impl Dispatcher {
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = work.await;
             cx.update(|cx| {
+                let snapshots = result
+                    .as_ref()
+                    .ok()
+                    .and_then(|(_, _, _, extras)| extras.as_ref())
+                    .map(|e| (e.rebase_snapshot.clone(), e.cherry_pick_snapshot.clone()));
                 let selected_file = Self::state(cx).update(cx, |s, cx| {
                     let repo_state: &mut RepositoryState = s.repo_state_mut(id);
                     repo_state.loading = false;
@@ -429,6 +446,10 @@ impl Dispatcher {
                                     repo_state.diff = None;
                                 }
                                 selected = repo_state.selected_file.clone();
+                                repo_state.conflict_state = crate::mco::derive_conflict_state(
+                                    &status,
+                                    repo_state.conflict_state.as_ref(),
+                                );
                                 repo_state.status = Some(status);
                             }
                             if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
@@ -451,6 +472,9 @@ impl Dispatcher {
                 });
                 if selected_file.is_some() {
                     Self::load_diff(id, cx);
+                }
+                if let Some((rebase_snapshot, cherry_pick_snapshot)) = snapshots {
+                    Self::sync_conflicts(id, rebase_snapshot, cherry_pick_snapshot, cx);
                 }
                 Self::load_commits(id, false, cx);
                 let rerun = Self::state(cx).update(cx, |s, _| {
@@ -601,10 +625,14 @@ impl Dispatcher {
                             } else {
                                 rs.commits = batch;
                             }
-                            if let Some(sha) = rs.selected_commit.clone()
-                                && !rs.commits.iter().any(|c| c.sha == sha)
-                            {
+                            let missing = rs
+                                .selected_commits
+                                .iter()
+                                .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
+                            if missing {
                                 rs.selected_commit = None;
+                                rs.selected_commits.clear();
+                                rs.shas_in_diff.clear();
                                 rs.changeset = None;
                                 rs.commit_selected_file = None;
                                 rs.commit_diff = None;
@@ -613,14 +641,10 @@ impl Dispatcher {
                         Err(err) => warn!(id, %err, "history failed"),
                     }
                     cx.notify();
-                    if more {
-                        None
-                    } else {
-                        rs.selected_commit.clone()
-                    }
+                    !more && !rs.selected_commits.is_empty()
                 });
-                if let Some(sha) = reselect {
-                    Self::load_changeset(id, sha, cx);
+                if reselect {
+                    Self::load_changeset(id, cx);
                 }
             });
         })
@@ -628,12 +652,27 @@ impl Dispatcher {
     }
 
     pub fn select_commit(id: u64, sha: String, cx: &mut App) {
+        Self::select_commits(id, vec![sha], cx);
+    }
+
+    /// GHD `_changeCommitSelection`: `shas` in click order.
+    pub fn select_commits(id: u64, shas: Vec<String>, cx: &mut App) {
         let changed = Self::state(cx).update(cx, |s, cx| {
             let rs = s.repo_state_mut(id);
-            if rs.selected_commit.as_deref() == Some(sha.as_str()) {
+            if rs.selected_commits == shas {
                 return false;
             }
-            rs.selected_commit = Some(sha.clone());
+            let indexes: Vec<usize> = shas
+                .iter()
+                .filter_map(|sha| rs.commits.iter().position(|c| &c.sha == sha))
+                .collect();
+            let mut sorted = indexes.clone();
+            sorted.sort_unstable();
+            let contiguous = sorted.windows(2).all(|w| w[1] == w[0] + 1);
+            rs.commits_contiguous = contiguous;
+            rs.selected_commit = shas.first().cloned();
+            rs.selected_commits = shas.clone();
+            rs.shas_in_diff = Self::shas_in_diff(rs, contiguous);
             rs.changeset = None;
             rs.commit_selected_file = None;
             rs.commit_diff = None;
@@ -641,24 +680,125 @@ impl Dispatcher {
             true
         });
         if changed {
-            Self::load_changeset(id, sha, cx);
+            Self::load_changeset(id, cx);
         }
     }
 
-    fn load_changeset(id: u64, sha: String, cx: &mut App) {
+    /// ⌘-click: add or remove one commit from the selection.
+    pub fn toggle_commit_selection(id: u64, sha: String, cx: &mut App) {
+        let mut shas = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.selected_commits.clone())
+            .unwrap_or_default();
+        if let Some(pos) = shas.iter().position(|s| s == &sha) {
+            if shas.len() > 1 {
+                shas.remove(pos);
+            }
+        } else {
+            shas.push(sha);
+        }
+        Self::select_commits(id, shas, cx);
+    }
+
+    /// ⇧-click: select everything between the anchor and `sha`.
+    pub fn extend_commit_selection(id: u64, sha: String, cx: &mut App) {
+        let shas = {
+            let s = Self::state(cx).read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let anchor = rs.selected_commit.clone().unwrap_or_else(|| sha.clone());
+            let a = rs.commits.iter().position(|c| c.sha == anchor);
+            let b = rs.commits.iter().position(|c| c.sha == sha);
+            let (Some(a), Some(b)) = (a, b) else {
+                return;
+            };
+            let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+            let mut shas = vec![anchor.clone()];
+            shas.extend(
+                rs.commits[lo..=hi]
+                    .iter()
+                    .map(|c| c.sha.clone())
+                    .filter(|s| s != &anchor),
+            );
+            shas
+        };
+        Self::select_commits(id, shas, cx);
+    }
+
+    /// GHD `getShasInDiff`: walk parents from the newest selected commit.
+    fn shas_in_diff(rs: &RepositoryState, contiguous: bool) -> Vec<String> {
+        if rs.selected_commits.len() <= 1 || !contiguous {
+            return rs.selected_commits.clone();
+        }
+        let ordered = Self::ordered_selection(rs);
+        let selected: std::collections::HashSet<&str> =
+            ordered.iter().map(String::as_str).collect();
+        let mut in_diff: Vec<String> = Vec::new();
+        let mut stack: Vec<String> = ordered.last().cloned().into_iter().collect();
+        while let Some(sha) = stack.pop() {
+            if in_diff.contains(&sha) {
+                continue;
+            }
+            in_diff.push(sha.clone());
+            if let Some(commit) = rs.commits.iter().find(|c| c.sha == sha) {
+                for parent in &commit.parents {
+                    if selected.contains(parent.as_str()) && !in_diff.contains(parent) {
+                        stack.push(parent.clone());
+                    }
+                }
+            }
+        }
+        in_diff
+    }
+
+    /// `orderShasByHistory`: the selection oldest first.
+    pub fn ordered_selection(rs: &RepositoryState) -> Vec<String> {
+        let mut with_index: Vec<(usize, &String)> = rs
+            .selected_commits
+            .iter()
+            .filter_map(|sha| {
+                rs.commits
+                    .iter()
+                    .position(|c| &c.sha == sha)
+                    .map(|i| (i, sha))
+            })
+            .collect();
+        with_index.sort_by_key(|b| std::cmp::Reverse(b.0));
+        with_index.into_iter().map(|(_, sha)| sha.clone()).collect()
+    }
+
+    /// `_loadChangedFilesForCurrentSelection`
+    fn load_changeset(id: u64, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        let sha_for_task = sha.clone();
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::get_changed_files(git, &workdir, &sha_for_task) });
+        let (ordered, contiguous) = {
+            let s = Self::state(cx).read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            (Self::ordered_selection(rs), rs.commits_contiguous)
+        };
+        if ordered.is_empty() || (ordered.len() > 1 && !contiguous) {
+            return;
+        }
+        let key = ordered.clone();
+        let task = cx.background_executor().spawn(async move {
+            if ordered.len() > 1 {
+                corvane_git::get_commit_range_changed_files(git, &workdir, &ordered)
+            } else {
+                corvane_git::get_changed_files(git, &workdir, &ordered[0])
+            }
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
                 let load = Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
-                    if rs.selected_commit.as_deref() != Some(sha.as_str()) {
+                    if Self::ordered_selection(rs) != key {
                         return false;
                     }
                     match result {
@@ -714,16 +854,27 @@ impl Dispatcher {
         else {
             return;
         };
-        let key = (file.commitish.clone(), file.path.clone());
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::commit_file_diff(git, &workdir, &file) });
+        let ordered = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(Self::ordered_selection)
+            .unwrap_or_default();
+        let key = (ordered.clone(), file.path.clone());
+        let task = cx.background_executor().spawn(async move {
+            match (ordered.first(), ordered.last()) {
+                (Some(oldest), Some(newest)) if ordered.len() > 1 => {
+                    corvane_git::commit_range_file_diff(git, &workdir, &file, oldest, newest)
+                }
+                _ => corvane_git::commit_file_diff(git, &workdir, &file),
+            }
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
-                    if rs.selected_commit.as_deref() != Some(key.0.as_str())
+                    if Self::ordered_selection(rs) != key.0
                         || rs.commit_selected_file.as_deref() != Some(key.1.as_str())
                     {
                         return;
@@ -745,7 +896,7 @@ impl Dispatcher {
 
     // ---- history operations (`_revertCommit`, `_resetToCommit`, `_checkoutCommit`, tags, amend) ----
 
-    fn run_history_op(
+    pub(crate) fn run_history_op(
         id: u64,
         error_title: &'static str,
         op: impl FnOnce(
@@ -774,7 +925,7 @@ impl Dispatcher {
         .detach();
     }
 
-    fn working_directory_dirty(id: u64, cx: &App) -> bool {
+    pub(crate) fn working_directory_dirty(id: u64, cx: &App) -> bool {
         Self::state(cx)
             .read(cx)
             .repo_states
@@ -783,7 +934,7 @@ impl Dispatcher {
             .is_some_and(|st| !st.files.is_empty())
     }
 
-    fn commit_by_sha(id: u64, sha: &str, cx: &App) -> Option<corvane_models::Commit> {
+    pub(crate) fn commit_by_sha(id: u64, sha: &str, cx: &App) -> Option<corvane_models::Commit> {
         Self::state(cx)
             .read(cx)
             .repo_states
@@ -906,7 +1057,7 @@ impl Dispatcher {
 
     // ---- branches (`_createBranch`, `_checkoutBranch`, rename/delete, merge, stash) ----
 
-    fn branch_by_name(id: u64, name: &str, cx: &App) -> Option<corvane_models::Branch> {
+    pub(crate) fn branch_by_name(id: u64, name: &str, cx: &App) -> Option<corvane_models::Branch> {
         let s = Self::state(cx).read(cx);
         let branches = &s.repo_states.get(&id)?.info.as_ref()?.branches;
         branches
@@ -1171,50 +1322,24 @@ impl Dispatcher {
             .map(|b| b.name.clone());
         let Some(current) = current else { return };
         let name = branch.clone();
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::commits_ahead(git, &workdir, &current, &branch) });
+        let task = cx.background_executor().spawn(async move {
+            let count =
+                corvane_git::commits_ahead(git.clone(), &workdir, &current, &branch).unwrap_or(0);
+            let mergeability =
+                corvane_git::determine_mergeability(git, &workdir, &current, &branch).ok();
+            (count, mergeability)
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let count = task.await.unwrap_or(0);
+            let (count, mergeability) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
-                    s.repo_state_mut(id).merge_preview = Some((name, count));
+                    s.repo_state_mut(id).merge_preview = Some(crate::mco::MergePreview {
+                        branch: name,
+                        commits: count,
+                        mergeability,
+                    });
                     cx.notify();
                 });
-            });
-        })
-        .detach();
-    }
-
-    /// `_mergeBranch`
-    pub fn merge_branch(id: u64, branch: String, squash: bool, cx: &mut App) {
-        let Some((git, workdir)) = Self::repo_context(id, cx) else {
-            return;
-        };
-        let name = branch.clone();
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::merge_branch(git, &workdir, &branch, squash) });
-        cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = task.await;
-            cx.update(|cx| {
-                match result {
-                    Ok(corvane_git::MergeOutcome::Success)
-                    | Ok(corvane_git::MergeOutcome::AlreadyUpToDate) => {}
-                    Ok(corvane_git::MergeOutcome::Conflicts) => Self::show_error(
-                        "Merge conflicts",
-                        format!(
-                            "Merging {name} produced conflicts. Resolve them in your editor, then commit."
-                        ),
-                        cx,
-                    ),
-                    Ok(corvane_git::MergeOutcome::Failed(msg)) => {
-                        Self::show_error("Could not merge", msg, cx)
-                    }
-                    Err(err) => Self::show_error("Could not merge", err.to_string(), cx),
-                }
-                Self::show_section(id, Section::Changes, cx);
-                Self::refresh_repository(id, cx);
             });
         })
         .detach();
@@ -1674,6 +1799,25 @@ impl Dispatcher {
         cx.open_url(url);
     }
 
+    /// Repository › Open in Terminal (`openShell` with the default shell).
+    pub fn open_in_shell(path: &Path, _cx: &mut App) {
+        #[cfg(target_os = "macos")]
+        {
+            if let Err(err) = std::process::Command::new("open")
+                .arg("-a")
+                .arg("Terminal")
+                .arg(path)
+                .spawn()
+            {
+                warn!(%err, "could not open Terminal");
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = path;
+        }
+    }
+
     /// Native folder picker → `Some(path)` on the foreground.
     pub fn pick_directory(
         prompt: &str,
@@ -1698,7 +1842,7 @@ impl Dispatcher {
 
     // ---- commit / undo / discard (GHD `_commitIncludedChanges`, `_undoCommit`, `_discardChanges`) ----
 
-    fn repo_context(
+    pub(crate) fn repo_context(
         id: u64,
         cx: &App,
     ) -> Option<(Arc<corvane_git::GitBinary>, std::path::PathBuf)> {
@@ -2183,4 +2327,6 @@ struct RefreshExtras {
     default_branch: Option<String>,
     stash: Option<corvane_models::StashEntry>,
     stash_count: usize,
+    rebase_snapshot: Option<corvane_git::RebaseSnapshot>,
+    cherry_pick_snapshot: Option<corvane_git::CherryPickSnapshot>,
 }
