@@ -134,7 +134,10 @@ impl BranchFoldout {
             .when(!current, move |d| {
                 d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
             })
-            .on_click(move |_, _, cx| Dispatcher::checkout_branch(id, name.clone(), None, cx))
+            .on_click(move |_, _, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::checkout_branch(id, name.clone(), None, cx)
+            })
             .child(
                 octicon(
                     if current {

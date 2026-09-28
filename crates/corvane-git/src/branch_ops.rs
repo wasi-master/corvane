@@ -395,6 +395,29 @@ pub fn get_stashes(git: Arc<GitBinary>, workdir: &Path) -> Result<(Vec<StashEntr
     Ok((entries, total))
 }
 
+/// `getStashedFiles`: `stash show <sha> --raw --numstat -z`.
+pub fn stashed_files(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    sha: &str,
+) -> Result<corvane_models::ChangesetData> {
+    let out = GitCommand::new(git)
+        .args([
+            "stash",
+            "show",
+            sha,
+            "--raw",
+            "--numstat",
+            "-z",
+            "--format=format:",
+            "--no-color",
+            "--",
+        ])
+        .current_dir(workdir)
+        .run()?;
+    Ok(crate::log::parse_raw_log_with_numstat(&out.stdout, sha))
+}
+
 /// `popStashEntry`: `git stash pop --quiet <name>`.
 pub fn pop_stash(git: Arc<GitBinary>, workdir: &Path, name: &str) -> Result<()> {
     GitCommand::new(git)
@@ -567,5 +590,27 @@ eeee commit: something\n";
             MergeOutcome::Conflicts
         );
         abort_merge(git, path).unwrap();
+    }
+
+    #[test]
+    fn stash_lists_files_and_pops() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        std::fs::write(path.join("a.txt"), "changed\n").unwrap();
+        std::fs::write(path.join("new.txt"), "untracked\n").unwrap();
+        create_desktop_stash(git.clone(), path, "main").unwrap();
+        let (stashes, count) = get_stashes(git.clone(), path).unwrap();
+        assert_eq!(count, 1);
+        let stash = stashes
+            .iter()
+            .find(|s| s.branch.as_deref() == Some("main"))
+            .unwrap();
+        let files = stashed_files(git.clone(), path, &stash.sha).unwrap().files;
+        let mut names: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        names.sort();
+        assert_eq!(names, ["a.txt", "new.txt"]);
+        pop_stash(git.clone(), path, &stash.name).unwrap();
+        assert_eq!(get_stashes(git, path).unwrap().1, 0);
+        assert!(path.join("new.txt").exists());
     }
 }

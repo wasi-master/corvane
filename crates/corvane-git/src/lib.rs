@@ -20,7 +20,7 @@ pub use branch_ops::{
     commits_ahead, configured_default_branch, create_branch, create_desktop_stash,
     delete_local_branch, delete_remote_branch, desktop_stash_message, drop_stash,
     find_default_branch, get_stashes, is_local_changes_overwritten, merge_branch,
-    parse_recent_branches, pop_stash, recent_branches, remote_head, rename_branch,
+    parse_recent_branches, pop_stash, recent_branches, remote_head, rename_branch, stashed_files,
 };
 pub use commit::{
     CommitOptions, commit, discard_changes, format_message, head_sha, stage_files,
