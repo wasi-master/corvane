@@ -121,24 +121,33 @@ fn main() {
         // CORVANE_POPUP=preferences|repository-settings|about opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
-            let selected = corvane_core::AppState::global(cx).read(cx).selected;
-            match (popup.as_str(), selected) {
-                ("preferences", _) => {
-                    Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
-                }
-                ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
-                    id,
-                    corvane_core::RepositorySettingsTab::Remote,
-                    cx,
-                ),
-                ("about", _) => Dispatcher::show_popup(
-                    Popup::About {
-                        version: env!("CARGO_PKG_VERSION").to_string(),
-                    },
-                    cx,
-                ),
-                _ => {}
-            }
+            // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
+            cx.spawn(async move |cx: &mut AsyncApp| {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(1500))
+                    .await;
+                cx.update(|cx| {
+                    let selected = corvane_core::AppState::global(cx).read(cx).selected;
+                    match (popup.as_str(), selected) {
+                        ("preferences", _) => {
+                            Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
+                        }
+                        ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
+                            id,
+                            corvane_core::RepositorySettingsTab::Remote,
+                            cx,
+                        ),
+                        ("about", _) => Dispatcher::show_popup(
+                            Popup::About {
+                                version: env!("CARGO_PKG_VERSION").to_string(),
+                            },
+                            cx,
+                        ),
+                        _ => {}
+                    }
+                });
+            })
+            .detach();
         }
         cx.on_action(|_: &RemoveRepository, cx| {
             if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
