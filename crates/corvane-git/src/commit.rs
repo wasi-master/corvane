@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use corvane_models::{DiffSelection, FileStatusKind, WorkingDirectoryFileChange};
+use corvane_models::{DiffSelectionType, FileStatusKind, WorkingDirectoryFileChange};
 use tracing::info;
 
 use crate::detect::GitBinary;
@@ -38,8 +38,8 @@ pub fn unstage_all(git: Arc<GitBinary>, workdir: &Path) -> Result<()> {
 }
 
 /// Stage every fully-included file with `update-index --add --remove --replace`
-/// (GHD `stageFiles`). Partially-selected files are handled by the patch path
-/// (`apply --cached`, later milestone); for now they are staged whole.
+/// (GHD `stageFiles`). Partially-selected files are staged separately by
+/// `stage_partial_files` (`apply --cached`).
 pub fn stage_files(
     git: Arc<GitBinary>,
     workdir: &Path,
@@ -47,7 +47,7 @@ pub fn stage_files(
 ) -> Result<()> {
     let mut paths: Vec<u8> = Vec::new();
     for file in files {
-        if file.selection == DiffSelection::None {
+        if file.selection.kind() != DiffSelectionType::All {
             continue;
         }
         if let Some(old) = &file.old_path {
@@ -230,7 +230,7 @@ mod tests {
         // exclude b.txt
         for f in &mut status.files {
             if f.path == "b.txt" {
-                f.selection = DiffSelection::None;
+                f.selection = corvane_models::DiffSelection::none();
             }
         }
         unstage_all(git.clone(), path).unwrap();

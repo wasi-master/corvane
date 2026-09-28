@@ -7,6 +7,7 @@ pub mod diff;
 pub mod error;
 pub mod ignore;
 pub mod ops;
+pub mod patch;
 pub mod process;
 pub mod repo;
 pub mod status;
@@ -24,6 +25,7 @@ pub use ops::{
     normalize_clone_url, parse_clone_progress, path_status, repository_name_from_url,
     set_global_identity,
 };
+pub use patch::{apply_patch_to_index, format_patch, stage_partial_files};
 pub use process::{GitCommand, GitOutput};
 pub use repo::{ahead_behind, open_repository};
 pub use status::{get_status, map_status, parse_porcelain_v2};

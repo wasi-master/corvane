@@ -1,6 +1,7 @@
 //! Domain models, named after GitHub Desktop's `app/src/models/*`.
 //! Leaf crate: no gpui, no git, no network.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
@@ -356,12 +357,191 @@ pub struct FileStatus {
 }
 
 /// How much of a file is included in the next commit (`DiffSelectionType`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum DiffSelection {
-    #[default]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DiffSelectionType {
     All,
     Partial,
     None,
+}
+
+/// GHD `DiffSelection`: a default state (all or none) plus the lines that
+/// diverge from it. `selectable` bounds what "all" means once a diff is
+/// loaded. Line indices are absolute positions in the unified diff (hunk
+/// header lines included), i.e. `hunk.unified_diff_start + index`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiffSelection {
+    default_all: bool,
+    diverging: BTreeSet<u32>,
+    selectable: Option<BTreeSet<u32>>,
+}
+
+impl Default for DiffSelection {
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
+impl DiffSelection {
+    pub fn all() -> Self {
+        Self {
+            default_all: true,
+            diverging: BTreeSet::new(),
+            selectable: None,
+        }
+    }
+
+    pub fn none() -> Self {
+        Self {
+            default_all: false,
+            diverging: BTreeSet::new(),
+            selectable: None,
+        }
+    }
+
+    fn default_kind(&self) -> DiffSelectionType {
+        if self.default_all {
+            DiffSelectionType::All
+        } else {
+            DiffSelectionType::None
+        }
+    }
+
+    fn inverse_kind(&self) -> DiffSelectionType {
+        if self.default_all {
+            DiffSelectionType::None
+        } else {
+            DiffSelectionType::All
+        }
+    }
+
+    /// `getSelectionType`
+    pub fn kind(&self) -> DiffSelectionType {
+        if self.diverging.is_empty() {
+            return self.default_kind();
+        }
+        match &self.selectable {
+            None => DiffSelectionType::Partial,
+            Some(selectable) => {
+                if selectable.len() == self.diverging.len()
+                    && selectable.iter().all(|l| self.diverging.contains(l))
+                {
+                    self.inverse_kind()
+                } else {
+                    DiffSelectionType::Partial
+                }
+            }
+        }
+    }
+
+    pub fn is_selected(&self, line: u32) -> bool {
+        let diverges = self.diverging.contains(&line);
+        if self.default_all {
+            !diverges
+        } else {
+            diverges
+        }
+    }
+
+    pub fn is_selectable(&self, line: u32) -> bool {
+        self.selectable.as_ref().is_none_or(|s| s.contains(&line))
+    }
+
+    /// `isRangeSelected`: All / None / Partial for `len` lines from `from`.
+    pub fn range_kind(&self, from: u32, len: u32) -> DiffSelectionType {
+        if len == 0 {
+            return DiffSelectionType::None;
+        }
+        let kind = self.kind();
+        if kind != DiffSelectionType::Partial {
+            return kind;
+        }
+        let first = self.is_selected(from);
+        for line in from + 1..from + len {
+            if self.is_selected(line) != first {
+                return DiffSelectionType::Partial;
+            }
+        }
+        if first {
+            DiffSelectionType::All
+        } else {
+            DiffSelectionType::None
+        }
+    }
+
+    pub fn with_line(&self, line: u32, selected: bool) -> Self {
+        self.with_range(line, 1, selected)
+    }
+
+    /// `withRangeSelection`: mark `len` lines from `from` (only selectable ones).
+    pub fn with_range(&self, from: u32, len: u32, selected: bool) -> Self {
+        let kind = self.kind();
+        let already = (kind == DiffSelectionType::All && selected)
+            || (kind == DiffSelectionType::None && !selected);
+        if already {
+            return self.clone();
+        }
+        if kind == DiffSelectionType::Partial {
+            let mut diverging = self.diverging.clone();
+            let matches_default = self.default_all == selected;
+            for line in from..from + len {
+                if matches_default {
+                    diverging.remove(&line);
+                } else if self.is_selectable(line) {
+                    diverging.insert(line);
+                }
+            }
+            Self {
+                default_all: self.default_all,
+                diverging,
+                selectable: self.selectable.clone(),
+            }
+        } else {
+            // Re-base on the computed state so "all lines flipped" collapses.
+            let diverging = (from..from + len)
+                .filter(|l| self.is_selectable(*l))
+                .collect();
+            Self {
+                default_all: kind == DiffSelectionType::All,
+                diverging,
+                selectable: self.selectable.clone(),
+            }
+        }
+    }
+
+    pub fn toggled(&self, line: u32) -> Self {
+        self.with_line(line, !self.is_selected(line))
+    }
+
+    pub fn select_all(&self) -> Self {
+        Self {
+            default_all: true,
+            diverging: BTreeSet::new(),
+            selectable: self.selectable.clone(),
+        }
+    }
+
+    pub fn select_none(&self) -> Self {
+        Self {
+            default_all: false,
+            diverging: BTreeSet::new(),
+            selectable: self.selectable.clone(),
+        }
+    }
+
+    /// `withSelectableLines`: drops diverging lines that no longer exist.
+    pub fn with_selectable_lines(&self, selectable: BTreeSet<u32>) -> Self {
+        let diverging = self
+            .diverging
+            .iter()
+            .copied()
+            .filter(|l| selectable.contains(l))
+            .collect();
+        Self {
+            default_all: self.default_all,
+            diverging,
+            selectable: Some(selectable),
+        }
+    }
 }
 
 /// `WorkingDirectoryFileChange`
@@ -405,11 +585,14 @@ impl WorkingDirectoryStatus {
         if self.files.is_empty() {
             return Some(true);
         }
-        let all = self.files.iter().all(|f| f.selection == DiffSelection::All);
+        let all = self
+            .files
+            .iter()
+            .all(|f| f.selection.kind() == DiffSelectionType::All);
         let none = self
             .files
             .iter()
-            .all(|f| f.selection == DiffSelection::None);
+            .all(|f| f.selection.kind() == DiffSelectionType::None);
         if all {
             Some(true)
         } else if none {
@@ -449,6 +632,9 @@ pub struct DiffLine {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiffHunk {
+    /// Absolute index of this hunk's header line in the unified diff.
+    #[serde(default)]
+    pub unified_diff_start: u32,
     pub header: String,
     pub old_start: u32,
     pub old_lines: u32,

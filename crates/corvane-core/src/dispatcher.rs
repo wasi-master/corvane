@@ -15,7 +15,7 @@ use crate::persistence::{Settings, StoreExt};
 use crate::state::{
     AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
 };
-use corvane_models::{Account, DiffSelection, Repository, github_from_remote};
+use corvane_models::{Account, DiffSelectionType, Repository, github_from_remote};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
@@ -485,6 +485,31 @@ impl Dispatcher {
                             rs.diff = Some(corvane_models::Diff::Empty);
                         }
                     }
+                    // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
+                    // selection to the lines that exist in this diff.
+                    let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {
+                        Some(corvane_models::Diff::Text { hunks, .. }) => hunks
+                            .iter()
+                            .flat_map(|h| {
+                                h.lines.iter().enumerate().filter_map(move |(i, l)| {
+                                    matches!(
+                                        l.kind,
+                                        corvane_models::DiffLineKind::Add
+                                            | corvane_models::DiffLineKind::Delete
+                                    )
+                                    .then_some(h.unified_diff_start + i as u32)
+                                })
+                            })
+                            .collect(),
+                        _ => Default::default(),
+                    };
+                    if let Some(f) = rs
+                        .status
+                        .as_mut()
+                        .and_then(|st| st.files.iter_mut().find(|f| f.path == path))
+                    {
+                        f.selection = f.selection.with_selectable_lines(selectable);
+                    }
                     cx.notify();
                 });
             });
@@ -497,11 +522,49 @@ impl Dispatcher {
         Self::state(cx).update(cx, |s, cx| {
             if let Some(status) = s.repo_state_mut(id).status.as_mut() {
                 if let Some(f) = status.files.iter_mut().find(|f| f.path == path) {
-                    f.selection = match f.selection {
-                        DiffSelection::None => DiffSelection::All,
-                        _ => DiffSelection::None,
+                    // GHD: an indeterminate checkbox click checks it (Partial -> All)
+                    f.selection = if f.selection.kind() == DiffSelectionType::All {
+                        f.selection.select_none()
+                    } else {
+                        f.selection.select_all()
                     };
                 }
+                cx.notify();
+            }
+        });
+    }
+
+    /// Gutter click: toggle one diff line (`withToggleLineSelection`).
+    pub fn toggle_diff_line(id: u64, path: String, line: u32, cx: &mut App) {
+        Self::update_selection(id, &path, cx, |sel| sel.toggled(line));
+    }
+
+    /// Hunk handle / drag selection: mark `len` lines from `from`.
+    pub fn set_diff_lines(
+        id: u64,
+        path: String,
+        from: u32,
+        len: u32,
+        selected: bool,
+        cx: &mut App,
+    ) {
+        Self::update_selection(id, &path, cx, |sel| sel.with_range(from, len, selected));
+    }
+
+    fn update_selection(
+        id: u64,
+        path: &str,
+        cx: &mut App,
+        edit: impl FnOnce(&corvane_models::DiffSelection) -> corvane_models::DiffSelection,
+    ) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(f) = s
+                .repo_state_mut(id)
+                .status
+                .as_mut()
+                .and_then(|st| st.files.iter_mut().find(|f| f.path == path))
+            {
+                f.selection = edit(&f.selection);
                 cx.notify();
             }
         });
@@ -511,12 +574,13 @@ impl Dispatcher {
     pub fn toggle_include_all(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             if let Some(status) = s.repo_state_mut(id).status.as_mut() {
-                let target = match status.include_all() {
-                    Some(true) => DiffSelection::None,
-                    _ => DiffSelection::All,
-                };
+                let select_all = status.include_all() != Some(true);
                 for f in &mut status.files {
-                    f.selection = target;
+                    f.selection = if select_all {
+                        f.selection.select_all()
+                    } else {
+                        f.selection.select_none()
+                    };
                 }
                 cx.notify();
             }
@@ -705,7 +769,7 @@ impl Dispatcher {
             .map(|st| {
                 st.files
                     .iter()
-                    .filter(|f| f.selection != DiffSelection::None)
+                    .filter(|f| f.selection.kind() != DiffSelectionType::None)
                     .cloned()
                     .collect()
             })
@@ -722,6 +786,7 @@ impl Dispatcher {
         let task = cx.background_executor().spawn(async move {
             corvane_git::unstage_all(git.clone(), &workdir)?;
             corvane_git::stage_files(git.clone(), &workdir, &files)?;
+            corvane_git::stage_partial_files(git.clone(), &workdir, &files)?;
             corvane_git::commit(
                 git,
                 &workdir,

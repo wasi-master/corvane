@@ -57,6 +57,9 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Diff viewer
 
+- [ ] Hunk expansion (fold up/down/whole, `DiffHunkExpansionType`) and the expansion handles in hunk header rows
+- [ ] Gutter/hunk right-click menu: `Discard Added Line…`, `Discard Hunk…`, `Discard Selected Lines…` (`formatPatchToDiscardChanges` + `git apply --unidiff-zero`)
+- [ ] Diff search (⌘F inside the diff), whitespace hint popover when `hideWhitespaceInDiff` is on
 - [ ] Submodule diff panel (`ui/diff/submodule-diff.tsx`)
 - [ ] Image diff modes beyond side-by-side: 2-up, swipe, onion skin, difference (`ui/diff/image-diffs/`)
 - [ ] Expand-all-context in hunk headers, "Open file in external editor" from diff gear menu

@@ -99,6 +99,7 @@ pub fn parse_unified(patch: &str) -> Diff {
             old_no = os;
             new_no = ns;
             current = Some(DiffHunk {
+                unified_diff_start: hunks.iter().map(|h| h.lines.len() as u32).sum(),
                 header: line.to_string(),
                 old_start: os,
                 old_lines: ol,

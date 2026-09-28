@@ -70,6 +70,9 @@ pub enum Octicon {
     FileSubmodule,
     FileBinary,
     Image,
+    /// GHD custom 12 px check/dash for the diff gutter (`ui/octicons/diff.ts`).
+    DiffCheck,
+    DiffDash,
 }
 
 impl Octicon {
@@ -124,6 +127,8 @@ impl Octicon {
             Octicon::Tag => "octicons/tag-16.svg",
             Octicon::History => "octicons/history-16.svg",
             Octicon::Alert => "octicons/alert-16.svg",
+            Octicon::DiffCheck => "octicons/diff-check-12.svg",
+            Octicon::DiffDash => "octicons/diff-dash-12.svg",
             Octicon::Info => "octicons/info-16.svg",
             Octicon::IssueOpened => "octicons/issue-opened-16.svg",
             Octicon::LinkExternal => "octicons/link-external-16.svg",

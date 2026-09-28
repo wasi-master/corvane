@@ -38,7 +38,7 @@ pub fn get_status(
     if let Some(prev) = previous {
         for file in &mut status.files {
             if let Some(old) = prev.files.iter().find(|f| f.path == file.path) {
-                file.selection = old.selection;
+                file.selection = old.selection.clone();
             }
         }
     }
@@ -130,7 +130,7 @@ fn push_file(
         path: path.to_string(),
         old_path,
         status: file_status,
-        selection: DiffSelection::All,
+        selection: DiffSelection::all(),
     });
 }
 

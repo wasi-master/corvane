@@ -4,7 +4,7 @@
 use std::path::Path;
 
 use corvane_core::{
-    AppState, DiffSelection, Dispatcher, FileStatusKind, Tip, WorkingDirectoryFileChange,
+    AppState, DiffSelectionType, Dispatcher, FileStatusKind, Tip, WorkingDirectoryFileChange,
 };
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
@@ -359,7 +359,7 @@ impl ChangesSidebar {
                 let (icon, color) = status_icon(file.status.kind, t);
                 let path_for_select = file.path.clone();
                 let path_for_toggle = file.path.clone();
-                let included = file.selection != DiffSelection::None;
+                let included = file.selection.kind() != DiffSelectionType::None;
                 let file_for_menu = file.clone();
                 div()
                     .id(SharedString::from(format!("file-{}", file.path)))
@@ -395,7 +395,9 @@ impl ChangesSidebar {
                             false,
                             cx,
                         )
-                        .when(file.selection == DiffSelection::Partial, |d| d.opacity(0.7))
+                        .when(file.selection.kind() == DiffSelectionType::Partial, |d| {
+                            d.opacity(0.7)
+                        })
                         .when_some(repo_id, move |d, id| {
                             d.on_click(move |_, _, cx| {
                                 cx.stop_propagation();
@@ -430,7 +432,11 @@ impl ChangesSidebar {
         let rs = s.selected_state();
         let any_included = rs
             .and_then(|r| r.status.as_ref())
-            .map(|st| st.files.iter().any(|f| f.selection != DiffSelection::None))
+            .map(|st| {
+                st.files
+                    .iter()
+                    .any(|f| f.selection.kind() != DiffSelectionType::None)
+            })
             .unwrap_or(false);
         let committing = rs.map(|r| r.committing).unwrap_or(false);
         self.summary.read(cx).value().trim().is_empty() || !any_included || committing
