@@ -1,4 +1,5 @@
 //! `.tab-bar.tabs` - the Changes | History switcher (29 px).
+//! Tabs and bar share `--background-color`; hover uses `--tab-bar-hover-background-color`.
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -28,7 +29,7 @@ pub fn tab_bar(
         .flex_none()
         .flex()
         .flex_row()
-        .bg(t.tab_bar_background)
+        .bg(t.background)
         .children(tabs.into_iter().enumerate().map(|(ix, tab)| {
             let is_selected = ix == selected;
             let is_last = ix + 1 == count;
@@ -36,11 +37,13 @@ pub fn tab_bar(
             let hover_bg = t.tab_bar_hover_background;
             div()
                 .id(tab.id)
+                .relative()
                 .flex_1()
                 .h_full()
                 .flex()
                 .items_center()
                 .justify_center()
+                .bg(t.background)
                 .border_b_1()
                 .border_color(t.box_border)
                 .when(!is_last, |d| d.border_r_1())
@@ -51,7 +54,6 @@ pub fn tab_bar(
                 .on_click(move |_, window, cx| on_select(ix, window, cx))
                 .child(
                     div()
-                        .relative()
                         .flex()
                         .items_center()
                         .child(tab.label)
@@ -68,7 +70,6 @@ pub fn tab_bar(
                             .h(px(3.))
                             .bg(t.tab_bar_active),
                     )
-                    .relative()
                 })
         }))
 }

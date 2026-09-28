@@ -16,6 +16,7 @@ fn main() {
     let started = Instant::now();
     let _log_guard = logging::init();
     info!(version = env!("CARGO_PKG_VERSION"), "starting corvane");
+    phase(started, "logging initialised");
 
     let store = match corvane_store::Store::open_default() {
         Ok(store) => Some(store),
@@ -99,5 +100,8 @@ fn main() {
 }
 
 fn phase(started: Instant, what: &str) {
-    debug!(elapsed_ms = started.elapsed().as_millis(), "startup: {what}");
+    debug!(
+        elapsed_ms = started.elapsed().as_millis(),
+        "startup: {what}"
+    );
 }

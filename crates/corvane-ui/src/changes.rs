@@ -91,7 +91,8 @@ impl ChangesSidebar {
                     .flex_row()
                     .items_center()
                     .gap(SPACING_HALF)
-                    .child(checkbox("check-all", self.changed_files > 0, cx))
+                    // GHD shows the include-all box checked but disabled when there is nothing to commit.
+                    .child(checkbox("check-all", true, self.changed_files == 0, cx))
                     .child(
                         div()
                             .text_size(FONT_SIZE)
@@ -174,6 +175,7 @@ impl ChangesSidebar {
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child(self.branch_name.clone()),
                         ),
+                    self.summary.read(cx).value().trim().is_empty(),
                     cx,
                 )
                 .w_full(),
