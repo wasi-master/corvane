@@ -8,6 +8,7 @@ description = "Corvane views, widgets and theme (GPUI)"
 [dependencies]
 gpui-kit.workspace = true
 corvane-core.workspace = true
+corvane-highlight.workspace = true
 corvane-git.workspace = true
 corvane-github.workspace = true
 corvane-platform.workspace = true

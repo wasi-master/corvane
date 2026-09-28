@@ -3,15 +3,17 @@
 //! only the visible rows.
 
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use corvane_core::{DiffHunk, DiffLineKind, DiffSelection, DiffSelectionType, Dispatcher};
+use corvane_highlight::{Span, TokenClass};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::diff_view::{DIFF_LINE_HEIGHT, DiffView};
 use crate::icons::{Octicon, octicon};
-use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::theme::{ActiveGhdTheme, GhdTheme};
 
 /// `--hunk-handle-width-with-check-all`
 pub const HANDLE_WIDTH: f32 = 16.;
@@ -50,6 +52,27 @@ pub struct RowContext {
     pub temp: Option<TempSelection>,
     pub hovered_group: Option<u32>,
     pub view: WeakEntity<DiffView>,
+    /// Syntax spans per row (same indexing as the rows), once highlighted.
+    pub tokens: Option<Rc<Vec<Vec<Span>>>>,
+}
+
+/// `.cm-s-default` colours; classes that inherit are not emitted by the highlighter.
+pub fn token_color(class: TokenClass, t: &GhdTheme) -> Hsla {
+    match class {
+        TokenClass::Variable => t.syntax_variable,
+        TokenClass::AltVariable => t.syntax_alt_variable,
+        TokenClass::Keyword => t.syntax_keyword,
+        TokenClass::Atom => t.syntax_atom,
+        TokenClass::String => t.syntax_string,
+        TokenClass::Qualifier => t.syntax_qualifier,
+        TokenClass::Type => t.syntax_type,
+        TokenClass::Comment => t.syntax_comment,
+        TokenClass::Tag => t.syntax_tag,
+        TokenClass::Attribute => t.syntax_attribute,
+        TokenClass::Link => t.syntax_link,
+        TokenClass::Header => t.syntax_header,
+        TokenClass::Quote => t.syntax_quote,
+    }
 }
 
 pub fn build_rows(hunks: &[DiffHunk]) -> Vec<Row> {
@@ -63,7 +86,7 @@ pub fn build_rows(hunks: &[DiffHunk]) -> Vec<Row> {
                 kind: line.kind,
                 old: line.old_line,
                 new: line.new_line,
-                text: line.text.clone(),
+                text: line.text.replace('\t', "    "),
                 no_newline: line.no_trailing_newline,
                 group: None,
             });
@@ -106,7 +129,7 @@ pub fn is_selected(sel: &DiffSelection, temp: Option<TempSelection>, line: u32) 
     }
 }
 
-pub fn render_row(ctx: &RowContext, row: &Row, cx: &App) -> AnyElement {
+pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElement {
     let t = cx.ghd();
     let abs = row.abs;
     let changed = matches!(row.kind, DiffLineKind::Add | DiffLineKind::Delete);
@@ -148,12 +171,24 @@ pub fn render_row(ctx: &RowContext, row: &Row, cx: &App) -> AnyElement {
         .flex()
         .flex_row()
         .child(div().flex_none().whitespace_nowrap().child(prefix))
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .child(row.text.replace('\t', "    ")),
-        )
+        .child(div().flex_1().min_w_0().child({
+            let spans = ctx.tokens.as_ref().and_then(|tk| tk.get(ix));
+            let text = SharedString::from(row.text.clone());
+            match spans {
+                Some(spans) if !spans.is_empty() => StyledText::new(text)
+                    .with_highlights(spans.iter().map(|s| {
+                        (
+                            s.range.clone(),
+                            HighlightStyle {
+                                color: Some(token_color(s.class, t)),
+                                ..Default::default()
+                            },
+                        )
+                    }))
+                    .into_any_element(),
+                _ => text.into_any_element(),
+            }
+        }))
         .when(row.no_newline, |d| {
             d.child(
                 div()

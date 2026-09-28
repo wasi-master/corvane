@@ -166,6 +166,21 @@ pub struct GhdTheme {
     pub tooltip_background: Hsla,
     pub tooltip_text: Hsla,
 
+    // Syntax highlighting (`--syntax-*-color`, `.cm-s-default` in `_diff.scss`)
+    pub syntax_variable: Hsla,
+    pub syntax_alt_variable: Hsla,
+    pub syntax_keyword: Hsla,
+    pub syntax_atom: Hsla,
+    pub syntax_string: Hsla,
+    pub syntax_qualifier: Hsla,
+    pub syntax_type: Hsla,
+    pub syntax_comment: Hsla,
+    pub syntax_tag: Hsla,
+    pub syntax_attribute: Hsla,
+    pub syntax_link: Hsla,
+    pub syntax_header: Hsla,
+    pub syntax_quote: Hsla,
+
     // Diff
     pub diff_text: Hsla,
     pub diff_alt_text: Hsla,
