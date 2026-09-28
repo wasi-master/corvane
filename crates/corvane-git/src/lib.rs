@@ -3,6 +3,7 @@
 
 pub mod branch_ops;
 pub mod commit;
+pub mod config;
 pub mod detect;
 pub mod diff;
 pub mod error;
@@ -29,13 +30,20 @@ pub use commit::{
     CommitOptions, commit, discard_changes, format_message, head_sha, stage_files,
     undo_last_commit, unstage_all,
 };
+pub use config::{
+    global_config_value, local_config_value, remove_local_config_value, set_default_branch,
+    set_global_config_value, set_local_config_value,
+};
 pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
 pub use error::GitError;
 pub use history_ops::{
     ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
 };
-pub use ignore::{append_ignore_files, append_ignore_rules, escape_gitignore_pattern};
+pub use ignore::{
+    append_ignore_files, append_ignore_rules, escape_gitignore_pattern, read_gitignore,
+    save_gitignore,
+};
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
     get_commit_range_changed_files, get_commits, get_commits_in_range, parse_raw_log_with_numstat,

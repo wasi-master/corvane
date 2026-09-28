@@ -31,7 +31,51 @@ pub struct Settings {
     /// GHD `askForConfirmationOnForcePush`.
     #[serde(default = "default_true")]
     pub confirm_force_push: bool,
+    /// GHD `externalEditor`: the friendly name of the selected editor, `None`
+    /// = first installed one.
+    #[serde(default)]
+    pub external_editor: Option<String>,
+    /// GHD `shell`: the label of the selected shell, `None` = Terminal.
+    #[serde(default)]
+    pub shell: Option<String>,
+    /// GHD `notificationsEnabled`.
+    #[serde(default = "default_true")]
+    pub notifications_enabled: bool,
+    /// GHD `confirmRepoRemoval`.
+    #[serde(default = "default_true")]
+    pub confirm_repository_removal: bool,
+    /// GHD `askForConfirmationOnDiscardChangesPermanently`.
+    #[serde(default = "default_true")]
+    pub confirm_discard_changes_permanently: bool,
+    /// GHD `askForConfirmationOnCommitFilteredChanges`.
+    #[serde(default = "default_true")]
+    pub confirm_commit_filtered_changes: bool,
+    /// GHD `showCommitLengthWarning`.
+    #[serde(default = "default_true")]
+    pub show_commit_length_warning: bool,
+    /// GHD `repositoryIndicatorsEnabled` (Advanced › Background updates).
+    #[serde(default = "default_true")]
+    pub repository_indicators_enabled: bool,
+    /// GHD `useExternalCredentialHelper` (Git Credential Manager).
+    #[serde(default)]
+    pub use_external_credential_helper: bool,
+    /// GHD `underlineLinks` (Accessibility).
+    #[serde(default)]
+    pub underline_links: bool,
+    /// GHD `showDiffCheckMarks` (Accessibility).
+    #[serde(default = "default_true")]
+    pub show_diff_check_marks: bool,
+    /// GHD `tabSize` for diffs (Appearance › Diff).
+    #[serde(default = "default_tab_size")]
+    pub tab_size: u32,
 }
+
+fn default_tab_size() -> u32 {
+    TAB_SIZE_DEFAULT
+}
+
+/// GHD `tabSizeDefault`.
+pub const TAB_SIZE_DEFAULT: u32 = 4;
 
 fn default_true() -> bool {
     true
@@ -60,6 +104,18 @@ impl Default for Settings {
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
             confirm_force_push: true,
+            external_editor: None,
+            shell: None,
+            notifications_enabled: true,
+            confirm_repository_removal: true,
+            confirm_discard_changes_permanently: true,
+            confirm_commit_filtered_changes: true,
+            show_commit_length_warning: true,
+            repository_indicators_enabled: true,
+            use_external_credential_helper: false,
+            underline_links: false,
+            show_diff_check_marks: true,
+            tab_size: TAB_SIZE_DEFAULT,
         }
     }
 }
@@ -159,20 +215,18 @@ mod tests {
         let s = Settings {
             theme: ThemeSetting::Dark,
             sidebar_width: 300.0,
-            clone_dir: None,
             welcome_completed: true,
-            commit_summary_width: 250.0,
             confirm_discard_changes: false,
-            confirm_checkout_commit: true,
-            confirm_undo_commit: true,
-            uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
-            confirm_discard_stash: true,
             confirm_force_push: false,
+            external_editor: Some("Zed".into()),
+            ..Settings::default()
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();
         assert_eq!(back.theme, ThemeSetting::Dark);
         assert_eq!(back.sidebar_width, 300.0);
+        assert_eq!(back.external_editor.as_deref(), Some("Zed"));
+        assert!(back.show_diff_check_marks && back.repository_indicators_enabled);
     }
 
     #[test]

@@ -62,14 +62,210 @@ pub fn link_button(
 ) -> Stateful<Div> {
     let t = cx.ghd();
     let hover = t.link_hover;
+    // Settings › Accessibility › Underline links (`body.underline-links`).
+    let underline =
+        corvane_core::AppState::try_global(cx).is_some_and(|s| s.read(cx).settings.underline_links);
     div()
         .id(id)
         .flex_none()
         .text_size(FONT_SIZE)
         .text_color(t.link)
         .cursor_pointer()
+        .when(underline, |d| d.underline())
         .hover(move |s| s.text_color(hover).underline())
         .child(label.into())
+}
+
+/// Shared handler for `select_button` choices (index of the picked option).
+pub type SelectHandler = std::rc::Rc<dyn Fn(usize, &mut Window, &mut App)>;
+/// Shared click handler.
+pub type ClickAction = std::rc::Rc<dyn Fn(&mut Window, &mut App)>;
+
+/// Dialog `h2` (`_dialog.scss`: 14 px semibold, 10 px below).
+pub fn section_heading(text: impl Into<SharedString>, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .text_size(FONT_SIZE_MD)
+        .font_weight(FontWeight::SEMIBOLD)
+        .text_color(t.text)
+        .mb(SPACING)
+        .child(text.into())
+}
+
+/// `.settings-description`: 11 px secondary text, 10 px above.
+pub fn settings_description(cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .mt(SPACING)
+        .text_size(FONT_SIZE_SM)
+        .line_height(px(16.))
+        .text_color(t.text_secondary)
+}
+
+/// `Checkbox` with its label (`.checkbox-component`): 13 px box, 5 px gap.
+pub fn checkbox_row(
+    id: &'static str,
+    checked: bool,
+    label: impl IntoElement,
+    on_toggle: impl Fn(bool, &mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(SPACING_HALF)
+        .cursor_pointer()
+        .on_click(move |_, window, cx| on_toggle(!checked, window, cx))
+        .child(checkbox(
+            ElementId::from(SharedString::from(format!("{id}-box"))),
+            checked,
+            false,
+            cx,
+        ))
+        .child(div().text_size(FONT_SIZE).child(label))
+}
+
+/// Chromium's native `<input type="radio">` with GHD's `accent-color`:
+/// 13 px circle, accent fill with a 5 px dot when selected.
+pub fn radio(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful<Div> {
+    let t = cx.ghd();
+    div()
+        .id(id)
+        .size(px(13.))
+        .flex_none()
+        .rounded_full()
+        .border_1()
+        .border_color(if selected { t.accent } else { t.control_border })
+        .bg(if selected {
+            t.accent
+        } else {
+            t.control_background
+        })
+        .flex()
+        .items_center()
+        .justify_center()
+        .when(selected, |d| {
+            d.child(div().size(px(5.)).rounded_full().bg(t.control_background))
+        })
+}
+
+/// `RadioButton` row: radio + label, 5 px apart; rows 5 px apart.
+pub fn radio_row(
+    id: &'static str,
+    selected: bool,
+    label: impl IntoElement,
+    on_select: impl Fn(&mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(SPACING_HALF)
+        .cursor_pointer()
+        .on_click(move |_, window, cx| on_select(window, cx))
+        .child(radio(
+            ElementId::from(SharedString::from(format!("{id}-radio"))),
+            selected,
+            cx,
+        ))
+        .child(div().text_size(FONT_SIZE).child(label))
+}
+
+/// Native `<select>` as macOS renders it in GHD: a textboxish 25 px popup
+/// button showing the current value with a ▾ caret; clicking opens a native
+/// menu of `options` and calls `on_select(index)`.
+pub fn select_button(
+    id: impl Into<ElementId>,
+    value: impl Into<SharedString>,
+    options: Vec<SharedString>,
+    selected: Option<usize>,
+    disabled: bool,
+    on_select: SelectHandler,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let hover_bg = t.secondary_button_hover_background;
+    div()
+        .id(id)
+        .h(TEXT_FIELD_HEIGHT)
+        .w_full()
+        .min_w_0()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap(SPACING_HALF)
+        .pl(SPACING_HALF)
+        .pr(px(4.))
+        .border_1()
+        .rounded(BORDER_RADIUS)
+        .bg(t.box_background)
+        .border_color(t.box_border_contrast)
+        .text_size(FONT_SIZE)
+        .text_color(t.text)
+        .when(disabled, |d| d.opacity(0.6))
+        .when(!disabled, |d| {
+            d.cursor_pointer().hover(move |s| s.bg(hover_bg)).on_click(
+                move |ev: &ClickEvent, window, cx| {
+                    let items: Vec<crate::context_menu::MenuItem> = options
+                        .iter()
+                        .enumerate()
+                        .map(|(ix, label)| {
+                            let on_select = on_select.clone();
+                            crate::context_menu::MenuItem::checkbox(
+                                label.clone(),
+                                selected == Some(ix),
+                                move |window, cx| on_select(ix, window, cx),
+                            )
+                        })
+                        .collect();
+                    let position = ev.mouse_position().unwrap_or_default();
+                    #[cfg(target_os = "macos")]
+                    crate::native_menu::show_context_menu(items, position, window, cx);
+                    #[cfg(not(target_os = "macos"))]
+                    let _ = (items, position, window, cx);
+                },
+            )
+        })
+        .child(div().flex_1().min_w_0().truncate().child(value.into()))
+        .child(
+            crate::icons::octicon(crate::icons::Octicon::TriangleDown, t.text_secondary)
+                .size(px(12.)),
+        )
+}
+
+/// GHD `CallToAction`: text on the left, a ≥120 px primary button on the right.
+pub fn call_to_action(
+    id: &'static str,
+    body: impl IntoElement,
+    action_title: impl Into<SharedString>,
+    on_action: impl Fn(&mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Div {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .justify_between()
+        .gap(SPACING)
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .text_size(FONT_SIZE)
+                .line_height(px(18.))
+                .child(body),
+        )
+        .child(
+            primary_button(id, action_title.into(), false, cx)
+                .min_w(px(120.))
+                .flex_none()
+                .on_click(move |_, window, cx| on_action(window, cx)),
+        )
 }
 
 /// 13 px checkbox. GHD renders a bare `<input type="checkbox">`, so this is

@@ -11,6 +11,7 @@ use rust_embed::RustEmbed;
 #[include = "octicons/*.svg"]
 #[include = "controls/*.svg"]
 #[include = "illustrations/*.svg"]
+#[include = "icon/Corvane-small.svg"]
 struct Embedded;
 
 pub struct Assets;

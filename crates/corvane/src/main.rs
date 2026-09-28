@@ -64,10 +64,36 @@ fn main() {
             },
         };
         corvane_ui::init(cx, theme);
-        menus::install(cx);
         let sidebar_width = px(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
+        {
+            let s = state.read(cx);
+            menus::install(cx, &s.editor_label(), &s.shell_label());
+        }
         phase(started, "theme, keymap, menus and state installed");
+
+        // Settings › Appearance and Integrations feed back into the theme and
+        // the "Open in …" menu labels; system appearance flips the System theme.
+        let mut last_theme = theme_setting;
+        let mut last_labels = {
+            let s = state.read(cx);
+            (s.editor_label(), s.shell_label())
+        };
+        cx.observe(&state, move |state, cx| {
+            let (theme, labels) = {
+                let s = state.read(cx);
+                (s.settings.theme, (s.editor_label(), s.shell_label()))
+            };
+            if labels != last_labels {
+                last_labels = labels;
+                menus::install(cx, &last_labels.0, &last_labels.1);
+            }
+            if theme != last_theme {
+                last_theme = theme;
+                apply_theme(theme, cx);
+            }
+        })
+        .detach();
 
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.on_action(|_: &Hide, cx| cx.hide());
@@ -94,9 +120,107 @@ fn main() {
         }
         cx.on_action(|_: &RemoveRepository, cx| {
             if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
-                Dispatcher::remove_repository(id, cx);
+                Dispatcher::request_remove_repository(id, cx);
             }
         });
+        cx.on_action(|_: &OpenSettings, cx| {
+            Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
+        });
+        cx.on_action(|_: &About, cx| {
+            Dispatcher::show_popup(
+                Popup::About {
+                    version: env!("CARGO_PKG_VERSION").to_string(),
+                },
+                cx,
+            )
+        });
+        let selected_path = |cx: &App| -> Option<(u64, std::path::PathBuf)> {
+            let s = corvane_core::AppState::global(cx).read(cx);
+            let repo = s.selected_repository()?;
+            Some((repo.id, repo.path.clone()))
+        };
+        cx.on_action(move |_: &RepositorySettings, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::open_repository_settings(
+                    id,
+                    corvane_core::RepositorySettingsTab::Remote,
+                    cx,
+                );
+            }
+        });
+        cx.on_action(move |_: &OpenInEditor, cx| {
+            if let Some((_, path)) = selected_path(cx) {
+                Dispatcher::open_in_editor(path, cx);
+            }
+        });
+        cx.on_action(move |_: &OpenInShell, cx| {
+            if let Some((_, path)) = selected_path(cx) {
+                Dispatcher::open_in_shell(&path, cx);
+            }
+        });
+        cx.on_action(move |_: &ShowInFinder, cx| {
+            if let Some((_, path)) = selected_path(cx) {
+                Dispatcher::show_in_finder(&path, cx);
+            }
+        });
+        cx.on_action(move |_: &OpenWith, cx| {
+            if let Some((_, path)) = selected_path(cx) {
+                Dispatcher::open_with(path, cx);
+            }
+        });
+        cx.on_action(move |_: &ViewOnGitHub, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::view_on_github(id, cx);
+            }
+        });
+        cx.on_action(move |_: &CreateIssue, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::create_issue(id, cx);
+            }
+        });
+        cx.on_action(move |_: &CompareOnGitHub, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::compare_on_github(id, cx);
+            }
+        });
+        cx.on_action(move |_: &ViewBranchOnGitHub, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::view_branch_on_github(id, cx);
+            }
+        });
+        cx.on_action(move |_: &CreatePullRequest, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::create_pull_request(id, cx);
+            }
+        });
+        // Help
+        cx.on_action(|_: &ReportIssue, cx| {
+            Dispatcher::open_url("https://github.com/wasi-master/corvane/issues/new", cx)
+        });
+        cx.on_action(|_: &ContactSupport, cx| {
+            Dispatcher::open_url("https://github.com/wasi-master/corvane/discussions", cx)
+        });
+        cx.on_action(|_: &ShowUserGuides, cx| {
+            Dispatcher::open_url("https://docs.github.com/en/desktop", cx)
+        });
+        cx.on_action(|_: &ShowKeyboardShortcuts, cx| {
+            Dispatcher::open_url(
+                "https://docs.github.com/en/desktop/overview/github-desktop-keyboard-shortcuts",
+                cx,
+            )
+        });
+        cx.on_action(|_: &ShowLogs, cx| {
+            let dir = corvane_platform::paths::logs_dir();
+            let _ = std::fs::create_dir_all(&dir);
+            cx.reveal_path(&dir);
+        });
+        // Window
+        cx.on_action(|_: &CloseWindow, cx| {
+            // GHD keeps running with the window closed; GPUI has no per-window
+            // hide, so the app hides (⌘H) and comes back from the Dock.
+            cx.hide();
+        });
+        cx.on_action(|_: &BringAllToFront, cx| cx.activate(true));
 
         // Same size as the GitHub Desktop reference captures in .docs.
         let window_size = size(px(1367.), px(814.));
@@ -132,6 +256,22 @@ fn main() {
                 return;
             }
         };
+
+        // System theme follows macOS light/dark switches (`supportsSystemThemeChanges`).
+        if let Some(window) = cx.active_window() {
+            window
+                .update(cx, |_, window, _cx| {
+                    window
+                        .observe_window_appearance(|_, cx| {
+                            let theme = corvane_core::AppState::global(cx).read(cx).settings.theme;
+                            if theme == ThemeSetting::System {
+                                apply_theme(theme, cx);
+                            }
+                        })
+                        .detach();
+                })
+                .ok();
+        }
 
         // View / Window actions are global so the menu items stay enabled whatever has focus.
         let ws = workspace.clone();
@@ -173,6 +313,32 @@ fn main() {
                     })
                     .ok();
             }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &GoToSummary, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.focus_commit_summary(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &Find, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.focus_filter(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ToggleChangesFilter, cx| {
+            ws.update(cx, |w, cx| w.toggle_changes_filter(cx))
         });
         let ws = workspace.clone();
         cx.on_action(move |_: &CompareToBranch, cx| {
@@ -317,6 +483,24 @@ fn main() {
         });
         cx.activate(true);
     });
+}
+
+/// Settings › Appearance › Theme: swap the palette live (`ApplicationTheme`).
+fn apply_theme(setting: ThemeSetting, cx: &mut App) {
+    let appearance = match setting {
+        ThemeSetting::Light => corvane_ui::theme::Appearance::Light,
+        ThemeSetting::Dark => corvane_ui::theme::Appearance::Dark,
+        ThemeSetting::System => match cx.window_appearance() {
+            WindowAppearance::Dark | WindowAppearance::VibrantDark => {
+                corvane_ui::theme::Appearance::Dark
+            }
+            _ => corvane_ui::theme::Appearance::Light,
+        },
+    };
+    corvane_ui::theme::apply(corvane_ui::theme::GhdTheme::for_appearance(appearance), cx);
+    for window in cx.windows() {
+        window.update(cx, |_, window, _| window.refresh()).ok();
+    }
 }
 
 fn phase(started: Instant, what: &str) {

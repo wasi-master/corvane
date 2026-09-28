@@ -11,6 +11,7 @@ use crate::widgets::{button, kbd_group, primary_button};
 
 pub struct SuggestedAction {
     pub id: &'static str,
+    pub on_click: crate::widgets::ClickAction,
     pub title: SharedString,
     pub description: Option<SharedString>,
     /// `p.discoverability` text before the key caps, e.g. "Repository menu or".
@@ -79,10 +80,17 @@ fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
                         .child(kbd_group(action.keys, cx)),
                 ),
         )
-        .child(if action.primary {
-            primary_button(action.id, action.button_label, false, cx).into_any_element()
-        } else {
-            button(action.id, action.button_label, cx).into_any_element()
+        .child({
+            let on_click = action.on_click.clone();
+            if action.primary {
+                primary_button(action.id, action.button_label, false, cx)
+                    .on_click(move |_, window, cx| on_click(window, cx))
+                    .into_any_element()
+            } else {
+                button(action.id, action.button_label, cx)
+                    .on_click(move |_, window, cx| on_click(window, cx))
+                    .into_any_element()
+            }
         })
 }
 

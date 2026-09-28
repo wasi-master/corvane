@@ -1,7 +1,11 @@
 //! OS integration. macOS first; every function here is the seam for
 //! Windows/Linux later.
 
+pub mod apps;
+pub mod editors;
 pub mod keychain;
+pub mod shells;
+pub mod trash;
 
 pub mod paths {
     use std::path::PathBuf;

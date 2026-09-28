@@ -53,7 +53,7 @@ const BACKGROUND_FETCH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const BACKGROUND_FETCH_MINIMUM: Duration = Duration::from_secs(5 * 60);
 const INDICATOR_REFRESH_INTERVAL: Duration = Duration::from_secs(15 * 60);
 
-fn spawn_bg<T: Send + 'static>(
+pub(crate) fn spawn_bg<T: Send + 'static>(
     cx: &mut App,
     work: impl FnOnce() -> T + Send + 'static,
     then: impl FnOnce(T, &mut App) + 'static,
@@ -870,6 +870,19 @@ impl Dispatcher {
     /// `refreshIndicatorForRepository` for every repository: changed files
     /// and ahead/behind, shown in the repository list.
     pub fn refresh_indicators(cx: &mut App) {
+        let enabled = Self::state(cx)
+            .read(cx)
+            .settings
+            .repository_indicators_enabled;
+        if !enabled {
+            Self::state(cx).update(cx, |s, cx| {
+                if !s.indicators.is_empty() {
+                    s.indicators.clear();
+                    cx.notify();
+                }
+            });
+            return;
+        }
         let (git, repos) = {
             let s = Self::state(cx).read(cx);
             let Some(git) = s.git.clone() else { return };

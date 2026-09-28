@@ -4,9 +4,69 @@
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::counter;
+
+/// `.tab-bar.vertical` item: 16 px icon + label.
+pub struct VerticalTab {
+    pub id: &'static str,
+    pub label: SharedString,
+    pub icon: Octicon,
+}
+
+/// Settings / Repository Settings side navigation (`.tab-bar.vertical`):
+/// column with 10 px vertical padding; items ≥150 px wide, 10 px padding,
+/// 3.33 px × 20 px margins, 6 px radius; selected = blue with white text,
+/// otherwise the icon is `$gray-500` and hover tints the row.
+pub fn vertical_tab_bar(
+    tabs: Vec<VerticalTab>,
+    selected: usize,
+    on_select: impl Fn(usize, &mut Window, &mut App) + Clone + 'static,
+    cx: &App,
+) -> impl IntoElement {
+    let t = cx.ghd();
+    let icon_muted = crate::theme::c(crate::theme::primer::GRAY_500);
+    div()
+        .id("vertical-tab-bar")
+        .flex_none()
+        .flex()
+        .flex_col()
+        .py(SPACING)
+        .children(tabs.into_iter().enumerate().map(|(ix, tab)| {
+            let is_selected = ix == selected;
+            let on_select = on_select.clone();
+            let hover_bg = t.tab_bar_hover_background;
+            let (bg, text, icon) = if is_selected {
+                (
+                    t.tab_bar_active,
+                    t.box_selected_active_text,
+                    t.box_selected_active_text,
+                )
+            } else {
+                (t.background, t.text, icon_muted)
+            };
+            div()
+                .id(tab.id)
+                .min_w(px(150.))
+                .my(SPACING_THIRD)
+                .mx(SPACING_DOUBLE)
+                .p(SPACING)
+                .rounded(BORDER_RADIUS)
+                .flex()
+                .flex_row()
+                .items_center()
+                .bg(bg)
+                .text_color(text)
+                .text_size(FONT_SIZE)
+                .cursor_pointer()
+                .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+                .on_click(move |_, window, cx| on_select(ix, window, cx))
+                .child(octicon(tab.icon, icon).mr(SPACING))
+                .child(tab.label)
+        }))
+}
 
 pub struct TabModel {
     pub id: &'static str,
