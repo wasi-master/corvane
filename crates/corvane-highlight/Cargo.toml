@@ -6,3 +6,5 @@ license.workspace = true
 description = "Corvane diff syntax highlighting (syntect)"
 
 [dependencies]
+syntect.workspace = true
+two-face.workspace = true

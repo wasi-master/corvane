@@ -83,6 +83,8 @@ pub struct DiffView {
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
     rows_key: Option<(u64, String, u64)>,
+    /// Syntax spans for `rows`, filled in by a background task.
+    tokens: Option<Rc<Vec<Vec<corvane_highlight::Span>>>>,
 }
 
 impl DiffView {
@@ -95,7 +97,37 @@ impl DiffView {
             list_state: ListState::new(0, ListAlignment::Top, px(200.)),
             rows: Rc::new(Vec::new()),
             rows_key: None,
+            tokens: None,
         }
+    }
+
+    /// Tokenize the rows off the main thread (GHD: highlighter web worker).
+    fn highlight(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
+        self.tokens = None;
+        let path = key.1.clone();
+        let lines: Vec<Option<String>> = self
+            .rows
+            .iter()
+            .map(|r| (r.kind != corvane_core::DiffLineKind::Hunk).then(|| r.text.clone()))
+            .collect();
+        let task = cx.background_executor().spawn(async move {
+            // hunk header rows are fed as empty lines so parser state and indices line up
+            let texts: Vec<&str> = lines.iter().map(|l| l.as_deref().unwrap_or("")).collect();
+            corvane_highlight::highlight_lines(&path, texts)
+        });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            this.update(cx, |this, cx| {
+                if this.rows_key.as_ref() == Some(&key)
+                    && let Some(tokens) = result
+                {
+                    this.tokens = Some(Rc::new(tokens));
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
     }
 
     pub fn set_hovered_group(&mut self, group: Option<u32>, cx: &mut Context<Self>) {
@@ -182,10 +214,11 @@ impl Render for DiffView {
         }
         if let Some((key, rows)) = rebuilt {
             self.rows = rows;
-            self.rows_key = Some(key);
+            self.rows_key = Some(key.clone());
             self.temp = None;
             self.hovered_group = None;
             self.list_state.reset(self.rows.len());
+            self.highlight(key, cx);
         }
 
         let t = cx.ghd();
@@ -208,6 +241,7 @@ impl Render for DiffView {
             temp: self.temp,
             hovered_group: self.hovered_group,
             view: cx.weak_entity(),
+            tokens: self.tokens.clone(),
         });
         let rows = self.rows.clone();
         div()
@@ -230,7 +264,7 @@ impl Render for DiffView {
             )
             .child(
                 list(self.list_state.clone(), move |ix, _window, cx| {
-                    render_row(&ctx, &rows[ix], cx)
+                    render_row(&ctx, ix, &rows[ix], cx)
                 })
                 .size_full(),
             )
