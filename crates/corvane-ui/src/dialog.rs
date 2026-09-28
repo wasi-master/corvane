@@ -8,11 +8,13 @@ use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 
+pub type ClickHandler = Box<dyn Fn(&mut Window, &mut App) + 'static>;
+
 pub struct DialogButton {
     pub id: &'static str,
     pub label: SharedString,
     pub primary: bool,
-    pub on_click: Box<dyn Fn(&mut Window, &mut App) + 'static>,
+    pub on_click: ClickHandler,
 }
 
 pub fn dialog(

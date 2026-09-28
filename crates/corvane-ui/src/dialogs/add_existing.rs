@@ -65,15 +65,15 @@ impl AddExistingRepositoryDialog {
             prompt: Some("Add Repository".into()),
         });
         cx.spawn_in(window, async move |this, cx| {
-            if let Ok(Ok(Some(paths))) = receiver.await {
-                if let Some(p) = paths.into_iter().next() {
-                    this.update_in(cx, |d, window, cx| {
-                        d.path
-                            .update(cx, |s, cx| s.set_value(p.display().to_string(), window, cx));
-                        cx.notify();
-                    })
-                    .ok();
-                }
+            if let Ok(Ok(Some(paths))) = receiver.await
+                && let Some(p) = paths.into_iter().next()
+            {
+                this.update_in(cx, |d, window, cx| {
+                    d.path
+                        .update(cx, |s, cx| s.set_value(p.display().to_string(), window, cx));
+                    cx.notify();
+                })
+                .ok();
             }
         })
         .detach();

@@ -69,13 +69,58 @@ impl Dispatcher {
             popup,
             cloning: None,
             sign_in: None,
+            watcher: None,
+            watched_repo: None,
         });
         AppState::install(state.clone(), cx);
 
         if let Some(id) = state.read(cx).selected {
             Self::refresh_repository(id, cx);
+            Self::start_watching(id, cx);
         }
         state
+    }
+
+    /// Watch the repository's worktree; each debounced change triggers a refresh.
+    pub fn start_watching(id: u64, cx: &mut App) {
+        let state = Self::state(cx);
+        let path = {
+            let s = state.read(cx);
+            if s.watched_repo == Some(id) {
+                return;
+            }
+            let Some(repo) = s.repository(id) else {
+                return;
+            };
+            repo.path.clone()
+        };
+        match crate::watcher::watch(path.clone()) {
+            Ok((watcher, rx)) => {
+                state.update(cx, |s, _| {
+                    s.watcher = Some(watcher);
+                    s.watched_repo = Some(id);
+                });
+                let state = state.clone();
+                cx.spawn(async move |cx: &mut AsyncApp| {
+                    while rx.recv().await.is_ok() {
+                        let still_watched = state.read_with(cx, |s, _| s.watched_repo == Some(id));
+                        if !still_watched {
+                            break;
+                        }
+                        cx.update(|cx| Self::refresh_repository(id, cx));
+                    }
+                })
+                .detach();
+            }
+            Err(err) => warn!(?err, path = %path.display(), "could not watch repository"),
+        }
+    }
+
+    /// GHD refreshes the selected repository when the window regains focus.
+    pub fn refresh_selected(cx: &mut App) {
+        if let Some(id) = Self::state(cx).read(cx).selected {
+            Self::refresh_repository(id, cx);
+        }
     }
 
     fn state(cx: &App) -> Entity<AppState> {
@@ -235,6 +280,7 @@ impl Dispatcher {
         });
         if changed {
             Self::refresh_repository(id, cx);
+            Self::start_watching(id, cx);
         }
     }
 
@@ -279,10 +325,19 @@ impl Dispatcher {
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
             )
         };
-        state.update(cx, |s, cx| {
-            s.repo_state_mut(id).loading = true;
+        let already_running = state.update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.loading {
+                rs.refresh_pending = true;
+                return true;
+            }
+            rs.loading = true;
             cx.notify();
+            false
         });
+        if already_running {
+            return;
+        }
         let work = cx.background_executor().spawn(async move {
             let info = open_repository(&path)?;
             let (ahead_behind, status) = match &git {
@@ -351,6 +406,13 @@ impl Dispatcher {
                 });
                 if selected_file.is_some() {
                     Self::load_diff(id, cx);
+                }
+                let rerun = Self::state(cx).update(cx, |s, _| {
+                    let rs = s.repo_state_mut(id);
+                    std::mem::take(&mut rs.refresh_pending)
+                });
+                if rerun {
+                    Self::refresh_repository(id, cx);
                 }
             });
         })

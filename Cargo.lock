@@ -1326,14 +1326,18 @@ dependencies = [
 name = "corvane-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-channel",
  "corvane-git",
  "corvane-github",
  "corvane-models",
  "corvane-platform",
  "corvane-store",
  "gpui-kit",
+ "notify",
  "serde",
  "serde_json",
+ "smol",
  "tempfile",
  "thiserror 2.0.21",
  "tracing",

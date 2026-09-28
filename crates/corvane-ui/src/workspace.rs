@@ -45,6 +45,13 @@ impl Workspace {
     ) -> Self {
         let focus_handle = cx.focus_handle();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        // GHD: `ipcRenderer.on('focus')` → refreshRepository.
+        cx.observe_window_activation(window, |_, window, cx| {
+            if window.is_window_active() {
+                Dispatcher::refresh_selected(cx);
+            }
+        })
+        .detach();
         // When a dialog or foldout closes, put keyboard focus back on the root so
         // menu actions stay available (GPUI disables items whose action has no handler
         // in the focus path).
@@ -59,12 +66,12 @@ impl Workspace {
 
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
-            if let Some(width) = state.read(cx).sizes().first().copied() {
-                if width != this.sidebar_width {
-                    this.sidebar_width = width;
-                    Dispatcher::update_settings(cx, |s| s.sidebar_width = f32::from(width));
-                    cx.notify();
-                }
+            if let Some(width) = state.read(cx).sizes().first().copied()
+                && width != this.sidebar_width
+            {
+                this.sidebar_width = width;
+                Dispatcher::update_settings(cx, |s| s.sidebar_width = f32::from(width));
+                cx.notify();
             }
         })
         .detach();
