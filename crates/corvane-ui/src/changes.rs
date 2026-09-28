@@ -1,6 +1,7 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
+use corvane_core::{AppState, Tip};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
@@ -15,12 +16,13 @@ pub struct ChangesSidebar {
     filter: Entity<InputState>,
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
-    branch_name: SharedString,
+    state: Entity<AppState>,
     changed_files: usize,
 }
 
 impl ChangesSidebar {
-    pub fn new(branch_name: SharedString, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         let summary = cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         let description = cx.new(|cx| {
@@ -32,7 +34,7 @@ impl ChangesSidebar {
             filter,
             summary,
             description,
-            branch_name,
+            state,
             changed_files: 0,
         }
     }
@@ -100,6 +102,20 @@ impl ChangesSidebar {
                             .child(format!("{} changed files", self.changed_files)),
                     ),
             )
+    }
+
+    fn branch_name(&self, cx: &App) -> SharedString {
+        self.state
+            .read(cx)
+            .selected_state()
+            .and_then(|s| s.info.as_ref())
+            .and_then(|i| match &i.tip {
+                Tip::Valid { branch } => Some(branch.name.clone()),
+                Tip::Unborn { name } => Some(name.clone()),
+                _ => None,
+            })
+            .unwrap_or_default()
+            .into()
     }
 
     fn list(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -173,7 +189,7 @@ impl ChangesSidebar {
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .child(self.branch_name.clone()),
+                                .child(self.branch_name(cx)),
                         ),
                     self.summary.read(cx).value().trim().is_empty(),
                     cx,

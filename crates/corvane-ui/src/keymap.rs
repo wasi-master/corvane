@@ -62,5 +62,6 @@ pub fn install(cx: &mut App) {
         KeyBinding::new("cmd-w", CloseWindow, None),
         // In-app
         KeyBinding::new("cmd-enter", Commit, Some("CommitMessage")),
+        KeyBinding::new("escape", CloseFoldout, None),
     ]);
 }

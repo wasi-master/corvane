@@ -20,10 +20,18 @@ corvane-core = { path = "crates/corvane-core" }
 corvane-git = { path = "crates/corvane-git" }
 corvane-github = { path = "crates/corvane-github" }
 corvane-highlight = { path = "crates/corvane-highlight" }
+corvane-models = { path = "crates/corvane-models" }
 corvane-packs = { path = "crates/corvane-packs" }
 corvane-platform = { path = "crates/corvane-platform" }
 corvane-store = { path = "crates/corvane-store" }
 corvane-ui = { path = "crates/corvane-ui" }
+
+# Git
+gix = "0.88"
+
+# Network + secrets
+ureq = { version = "3.4", features = ["json"] }
+keyring = "4.2"
 
 # Infra
 anyhow = "1"

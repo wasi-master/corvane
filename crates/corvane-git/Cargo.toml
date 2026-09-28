@@ -6,3 +6,10 @@ license.workspace = true
 description = "Corvane git engine: gitoxide reads, git CLI writes"
 
 [dependencies]
+corvane-models.workspace = true
+gix.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3"
