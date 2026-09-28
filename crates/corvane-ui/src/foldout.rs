@@ -16,10 +16,12 @@ pub fn foldout_layer(
     panel_x: Pixels,
     panel_width: Pixels,
     repository_foldout: &Entity<RepositoryFoldout>,
+    window: &Window,
     cx: &App,
 ) -> impl IntoElement {
     let t = cx.ghd();
     let top = TITLE_BAR_HEIGHT + TOOLBAR_HEIGHT;
+    let viewport = window.viewport_size();
     let panel: AnyElement = match foldout {
         Foldout::Repository => repository_foldout.clone().into_any_element(),
         Foldout::Branch | Foldout::PushPull => div()
@@ -29,40 +31,40 @@ pub fn foldout_layer(
             .into_any_element(),
     };
     deferred(
-        div()
-            .id("foldout-container")
-            .absolute()
-            .top(top)
-            .left_0()
-            .right_0()
-            .bottom_0()
-            .child(
-                // `.overlay`: click anywhere outside the panel closes it
-                div()
-                    .id("foldout-overlay")
-                    .absolute()
-                    .inset_0()
-                    .bg(t.overlay)
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| Dispatcher::close_foldout(cx)),
-            )
-            .child(
-                // `.foldout`
-                div()
-                    .id("foldout")
-                    .absolute()
-                    .top_0()
-                    .bottom_0()
-                    .left(panel_x)
-                    .w(panel_width)
-                    .flex()
-                    .flex_col()
-                    .bg(t.background)
-                    .text_color(t.text)
-                    .border_r_1()
-                    .border_color(t.box_border)
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                    .child(panel),
-            ),
+        anchored().position(point(px(0.), top)).child(
+            div()
+                .id("foldout-container")
+                .relative()
+                .w(viewport.width)
+                .h(viewport.height - top)
+                .child(
+                    // `.overlay`: click anywhere outside the panel closes it
+                    div()
+                        .id("foldout-overlay")
+                        .absolute()
+                        .inset_0()
+                        .bg(t.overlay)
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| Dispatcher::close_foldout(cx)),
+                )
+                .child(
+                    // `.foldout`
+                    div()
+                        .id("foldout")
+                        .absolute()
+                        .top_0()
+                        .bottom_0()
+                        .left(panel_x)
+                        .w(panel_width)
+                        .flex()
+                        .flex_col()
+                        .bg(t.background)
+                        .text_color(t.text)
+                        .border_r_1()
+                        .border_color(t.box_border)
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .child(panel),
+                ),
+        ),
     )
     .with_priority(10)
 }

@@ -1403,6 +1403,8 @@ name = "corvane-ui"
 version = "0.1.0"
 dependencies = [
  "corvane-core",
+ "corvane-git",
+ "corvane-platform",
  "gpui-kit",
  "tracing",
 ]

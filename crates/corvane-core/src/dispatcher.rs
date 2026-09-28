@@ -6,13 +6,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
 
-use corvane_git::{GitError, find_git, open_repository};
+use corvane_git::{GitError, InitOptions, find_git, open_repository};
 use corvane_store::Store;
 use gpui_kit::{App, AppContext, AsyncApp, Entity};
 use tracing::{error, info, warn};
 
 use crate::persistence::{Settings, StoreExt};
-use crate::state::{AppState, Foldout, Popup, RepositoryState};
+use crate::state::{AppState, CloneState, Foldout, Popup, RepositoryState};
 use corvane_models::{Repository, github_from_remote};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
@@ -37,22 +37,40 @@ impl Dispatcher {
             .or_else(|| repositories.first().map(|r| r.id));
         let accounts = store.accounts().unwrap_or_default();
 
+        // Synchronous: a few `git --version` probes (~10 ms). Avoids racing
+        // launch-time operations against an async detection.
+        let (git, git_error, popup) = match find_git() {
+            Ok(bin) => (Some(Arc::new(bin)), None, None),
+            Err(err) => {
+                warn!(%err, "git not usable");
+                (
+                    None,
+                    Some(err.to_string()),
+                    Some(Popup::InstallGit {
+                        reason: err.to_string(),
+                    }),
+                )
+            }
+        };
         let state = cx.new(|_| AppState {
             store,
             settings,
-            git: None,
-            git_error: None,
+            git,
+            git_error,
             repositories,
             recent,
             selected,
             repo_states: Default::default(),
             accounts,
             foldout: None,
-            popup: None,
+            popup,
+            cloning: None,
         });
         AppState::install(state.clone(), cx);
 
-        Self::detect_git(cx);
+        if let Some(id) = state.read(cx).selected {
+            Self::refresh_repository(id, cx);
+        }
         state
     }
 
@@ -317,6 +335,144 @@ impl Dispatcher {
             if let Some(path) = picked {
                 cx.update(|cx| Self::add_repository(path, cx));
             }
+        })
+        .detach();
+    }
+
+    // ---- create / clone ----
+
+    /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
+    pub fn create_repository(
+        path: PathBuf,
+        description: Option<String>,
+        readme: bool,
+        cx: &mut App,
+    ) {
+        let state = Self::state(cx);
+        let Some(git) = state.read(cx).git.clone() else {
+            Self::show_error("Git is not available", "Install git and retry.", cx);
+            return;
+        };
+        Self::close_popup(cx);
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::init_repository(
+                git,
+                InitOptions {
+                    path,
+                    default_branch: Some("main".into()),
+                    description,
+                    readme,
+                },
+            )
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(path) => Self::add_repository(path, cx),
+                Err(err) => Self::show_error("Could not create repository", err.to_string(), cx),
+            });
+        })
+        .detach();
+    }
+
+    /// GHD `cloneRepository`: streams progress into `AppState::cloning`,
+    /// adds the repository when done.
+    pub fn clone_repository(url: String, path: PathBuf, cx: &mut App) {
+        let state = Self::state(cx);
+        let Some(git) = state.read(cx).git.clone() else {
+            Self::show_error("Git is not available", "Install git and retry.", cx);
+            return;
+        };
+        Self::close_popup(cx);
+        state.update(cx, |s, cx| {
+            s.cloning = Some(CloneState {
+                url: url.clone(),
+                path: path.clone(),
+                description: "Cloning…".into(),
+                value: None,
+            });
+            cx.notify();
+        });
+
+        let (tx, rx) = std::sync::mpsc::channel::<corvane_git::CloneProgress>();
+        let clone_path = path.clone();
+        let clone_url = url.clone();
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::clone(git, &clone_url, &clone_path, |p| {
+                let _ = tx.send(p);
+            })
+        });
+        // Progress pump: poll the channel on the foreground at ~30 Hz while cloning.
+        let pump_state = state.clone();
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            loop {
+                let mut latest = None;
+                while let Ok(p) = rx.try_recv() {
+                    latest = Some(p);
+                }
+                if let Some(p) = latest {
+                    let done = pump_state.update(cx, |s, cx| {
+                        if let Some(c) = s.cloning.as_mut() {
+                            c.description = p.description;
+                            c.value = p.value;
+                            cx.notify();
+                            false
+                        } else {
+                            true
+                        }
+                    });
+                    if done {
+                        break;
+                    }
+                }
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(33))
+                    .await;
+                if pump_state.read_with(cx, |s, _| s.cloning.is_none()) {
+                    break;
+                }
+            }
+        })
+        .detach();
+
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.cloning = None;
+                    cx.notify();
+                });
+                match result {
+                    Ok(()) => Self::add_repository(path, cx),
+                    Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
+                }
+            });
+        })
+        .detach();
+    }
+
+    pub fn open_url(url: &str, cx: &mut App) {
+        cx.open_url(url);
+    }
+
+    /// Native folder picker → `Some(path)` on the foreground.
+    pub fn pick_directory(
+        prompt: &str,
+        cx: &mut App,
+        on_pick: impl FnOnce(Option<PathBuf>, &mut App) + 'static,
+    ) {
+        let receiver = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
+            files: false,
+            directories: true,
+            multiple: false,
+            prompt: Some(prompt.to_string().into()),
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let picked = match receiver.await {
+                Ok(Ok(Some(paths))) => paths.into_iter().next(),
+                _ => None,
+            };
+            cx.update(|cx| on_pick(picked, cx));
         })
         .detach();
     }

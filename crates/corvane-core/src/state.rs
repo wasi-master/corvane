@@ -2,6 +2,7 @@
 //! views observe; only the `Dispatcher` mutates it.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -25,6 +26,20 @@ pub enum Foldout {
 pub enum Popup {
     InstallGit { reason: String },
     Error { title: String, message: String },
+    AddExistingRepository { path: Option<PathBuf> },
+    CreateRepository { path: Option<PathBuf> },
+    CloneRepository { url: Option<String> },
+    SignIn,
+}
+
+/// An in-flight `git clone` shown in the content area (`CloningRepository`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CloneState {
+    pub url: String,
+    pub path: PathBuf,
+    pub description: String,
+    /// 0..1, `None` = indeterminate.
+    pub value: Option<f32>,
 }
 
 /// Per-repository cache (`IRepositoryState`, trimmed).
@@ -51,6 +66,7 @@ pub struct AppState {
     pub accounts: Vec<Account>,
     pub foldout: Option<Foldout>,
     pub popup: Option<Popup>,
+    pub cloning: Option<CloneState>,
 }
 
 struct AppStateHandle(Entity<AppState>);
