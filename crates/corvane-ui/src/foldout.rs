@@ -6,6 +6,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::branch_list::BranchFoldout;
+use crate::icons::{Octicon, octicon};
 use crate::repository_list::RepositoryFoldout;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -27,12 +28,9 @@ pub fn foldout_layer(
     let panel: AnyElement = match foldout {
         Foldout::Repository => repository_foldout.clone().into_any_element(),
         Foldout::Branch => branch_foldout.clone().into_any_element(),
-        Foldout::PushPull => div()
-            .p(SPACING)
-            .text_color(t.text_secondary)
-            .child("Coming soon")
-            .into_any_element(),
+        Foldout::PushPull => push_pull_dropdown(cx),
     };
+    let full_height = foldout != Foldout::PushPull;
     deferred(
         anchored().position(point(px(0.), top)).child(
             div()
@@ -55,7 +53,7 @@ pub fn foldout_layer(
                         .id("foldout")
                         .absolute()
                         .top_0()
-                        .bottom_0()
+                        .when(full_height, |d| d.bottom_0())
                         .left(panel_x)
                         .w(panel_width)
                         .flex()
@@ -70,4 +68,100 @@ pub fn foldout_layer(
         ),
     )
     .with_priority(10)
+}
+
+type ItemClick = Box<dyn Fn(&mut Window, &mut App)>;
+
+/// GHD `PushPullButtonDropDown`: Fetch, and Force push when the branch has
+/// diverged from its upstream (`styles/ui/toolbar/_push-pull-button.scss`).
+fn push_pull_dropdown(cx: &App) -> AnyElement {
+    let t = cx.ghd();
+    let state = corvane_core::AppState::global(cx).read(cx);
+    let Some(id) = state.selected else {
+        return div().into_any_element();
+    };
+    let remote = Dispatcher::current_remote(id, cx)
+        .map(|r| r.name)
+        .unwrap_or_else(|| "origin".to_string());
+    let force_push = Dispatcher::force_push_state(id, cx);
+    let confirm = state.settings.confirm_force_push;
+    let item = |id: &'static str,
+                icon: Octicon,
+                title: String,
+                detail: AnyElement,
+                last: bool,
+                on_click: ItemClick| {
+        let hover_bg = t.box_hover_background;
+        div()
+            .id(id)
+            .flex()
+            .flex_row()
+            .items_start()
+            .gap(SPACING)
+            .p(SPACING)
+            .bg(t.box_background)
+            .when(!last, |d| d.border_b_1().border_color(t.box_border))
+            .cursor_pointer()
+            .hover(move |s| s.bg(hover_bg))
+            .on_click(move |_, window, cx| on_click(window, cx))
+            .child(octicon(icon, t.text).flex_none().mt(px(1.)))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(3.))
+                    .text_size(FONT_SIZE)
+                    .child(div().font_weight(FontWeight::SEMIBOLD).child(title))
+                    .child(div().text_color(t.text_secondary).child(detail)),
+            )
+    };
+    let has_force = force_push != corvane_core::ForcePushState::NotAvailable;
+    div()
+        .flex()
+        .flex_col()
+        .child(item(
+            "push-pull-fetch",
+            Octicon::Sync,
+            format!("Fetch {remote}"),
+            div()
+                .child(format!("Fetch the latest changes from {remote}"))
+                .into_any_element(),
+            !has_force,
+            Box::new(move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::fetch(id, false, cx);
+            }),
+        ))
+        .when(has_force, |d| {
+            d.child(item(
+                "push-pull-force",
+                Octicon::ArrowUp,
+                format!("Force push {remote}"),
+                div()
+                    .flex()
+                    .flex_col()
+                    .child(format!(
+                        "Overwrite any changes on {remote} with your local changes"
+                    ))
+                    .when(!confirm, |d| {
+                        d.child(
+                            div()
+                                .mt(SPACING)
+                                .text_color(t.toolbar_dropdown_text_warning)
+                                .child(
+                                    "Warning: A force push will rewrite history on the remote. Any collaborators working on this branch will need to reset their own local branch to match the history of the remote.",
+                                ),
+                        )
+                    })
+                    .into_any_element(),
+                true,
+                Box::new(move |_, cx| {
+                    Dispatcher::close_foldout(cx);
+                    Dispatcher::confirm_or_force_push(id, cx);
+                }),
+            ))
+        })
+        .into_any_element()
 }

@@ -575,6 +575,12 @@ impl Dispatcher {
             RetryAction::Reorder { to_move, before } => {
                 Self::reorder_commits(id, to_move, before, false, cx)
             }
+            RetryAction::Push {
+                force_with_lease,
+                branch,
+            } => Self::push(id, force_with_lease, branch, cx),
+            RetryAction::Pull => Self::pull(id, cx),
+            RetryAction::Fetch => Self::fetch(id, false, cx),
         }
     }
 

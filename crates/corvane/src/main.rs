@@ -1,5 +1,6 @@
 //! Corvane entry point: logging, persisted settings, GPUI application, window.
 
+mod askpass;
 mod assets;
 mod logging;
 mod menus;
@@ -14,6 +15,10 @@ use gpui_kit::*;
 use tracing::{debug, error, info};
 
 fn main() {
+    // `GIT_ASKPASS` runs this same binary; answer git and exit before touching GPUI.
+    if std::env::var_os("CORVANE_ASKPASS").is_some() {
+        askpass::run();
+    }
     let started = Instant::now();
     let _log_guard = logging::init();
     info!(version = env!("CARGO_PKG_VERSION"), "starting corvane");
@@ -239,6 +244,22 @@ fn main() {
                 );
             }
         });
+        cx.on_action(move |_: &Push, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::push(id, false, None, cx);
+            }
+        });
+        cx.on_action(move |_: &Pull, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::pull(id, cx);
+            }
+        });
+        cx.on_action(move |_: &Fetch, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::fetch(id, false, cx);
+            }
+        });
+        Dispatcher::start_background_tasks(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::start_rebase_flow(id, cx);
