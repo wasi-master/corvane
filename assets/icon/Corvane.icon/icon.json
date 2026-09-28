@@ -1,0 +1,68 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.54118,0.36078,1.00000,1.00000",
+          "srgb:0.26275,0.09412,0.72157,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.29020,0.18039,0.61961,1.00000",
+          "srgb:0.09020,0.03529,0.24706,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "Arc.png",
+          "name": "Arc"
+        }
+      ],
+      "lighting": "individual",
+      "name": "Arc",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.4
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    },
+    {
+      "layers": [
+        {
+          "glass": true,
+          "image-name": "Nodes.png",
+          "name": "Nodes"
+        }
+      ],
+      "lighting": "individual",
+      "name": "Nodes",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.55
+      },
+      "specular": true,
+      "translucency": {
+        "enabled": true,
+        "value": 0.15
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}
