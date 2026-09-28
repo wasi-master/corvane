@@ -1,12 +1,13 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
-use corvane_core::{AppState, Tip};
+use corvane_core::{AppState, DiffSelection, Dispatcher, Tip};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -17,7 +18,6 @@ pub struct ChangesSidebar {
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
     state: Entity<AppState>,
-    changed_files: usize,
 }
 
 impl ChangesSidebar {
@@ -35,7 +35,6 @@ impl ChangesSidebar {
             summary,
             description,
             state,
-            changed_files: 0,
         }
     }
 
@@ -94,13 +93,22 @@ impl ChangesSidebar {
                     .items_center()
                     .gap(SPACING_HALF)
                     // GHD shows the include-all box checked but disabled when there is nothing to commit.
-                    .child(checkbox("check-all", true, self.changed_files == 0, cx))
-                    .child(
-                        div()
-                            .text_size(FONT_SIZE)
-                            .truncate()
-                            .child(format!("{} changed files", self.changed_files)),
-                    ),
+                    .child({
+                        let (count, include_all, repo_id) = self.header_state(cx);
+                        checkbox("check-all", include_all != Some(false), count == 0, cx)
+                            .when(include_all.is_none(), |d| d.opacity(0.7))
+                            .when_some(repo_id.filter(|_| count > 0), |d, id| {
+                                d.on_click(move |_, _, cx| Dispatcher::toggle_include_all(id, cx))
+                            })
+                    })
+                    .child({
+                        let (count, _, _) = self.header_state(cx);
+                        div().text_size(FONT_SIZE).truncate().child(if count == 1 {
+                            "1 changed file".to_string()
+                        } else {
+                            format!("{count} changed files")
+                        })
+                    }),
             )
     }
 
@@ -118,9 +126,98 @@ impl ChangesSidebar {
             .into()
     }
 
+    fn header_state(&self, cx: &App) -> (usize, Option<bool>, Option<u64>) {
+        let s = self.state.read(cx);
+        let id = s.selected;
+        let status = s.selected_state().and_then(|rs| rs.status.as_ref());
+        (
+            status.map(|st| st.files.len()).unwrap_or(0),
+            status.map(|st| st.include_all()).unwrap_or(Some(true)),
+            id,
+        )
+    }
+
+    /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name, status icon.
     fn list(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
-        div().flex_1().min_h(px(100.)).bg(t.background)
+        let s = self.state.read(cx);
+        let repo_id = s.selected;
+        let rs = s.selected_state();
+        let files: Vec<_> = rs
+            .and_then(|r| r.status.as_ref())
+            .map(|st| st.files.clone())
+            .unwrap_or_default();
+        let selected = rs.and_then(|r| r.selected_file.clone());
+        let hover_bg = t.list_item_hover_background;
+        div()
+            .id("changes-list")
+            .flex_1()
+            .min_h(px(100.))
+            .overflow_y_scroll()
+            .bg(t.background)
+            .flex()
+            .flex_col()
+            .children(files.into_iter().map(|file| {
+                let is_selected = selected.as_deref() == Some(file.path.as_str());
+                let (icon, color) = status_icon(file.status.kind, t);
+                let path_for_select = file.path.clone();
+                let path_for_toggle = file.path.clone();
+                let included = file.selection != DiffSelection::None;
+                div()
+                    .id(SharedString::from(format!("file-{}", file.path)))
+                    .h(ROW_HEIGHT)
+                    .flex_none()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(SPACING_HALF)
+                    .px(SPACING)
+                    .cursor_pointer()
+                    .when(is_selected, |d| {
+                        d.bg(t.box_selected_background)
+                            .text_color(t.box_selected_text)
+                    })
+                    .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+                    .when_some(repo_id, move |d, id| {
+                        d.on_click(move |_, _, cx| {
+                            Dispatcher::select_file(id, path_for_select.clone(), cx)
+                        })
+                    })
+                    .child(
+                        checkbox(
+                            SharedString::from(format!("include-{}", file.path)),
+                            included,
+                            false,
+                            cx,
+                        )
+                        .when(file.selection == DiffSelection::Partial, |d| d.opacity(0.7))
+                        .when_some(repo_id, move |d, id| {
+                            d.on_click(move |_, _, cx| {
+                                cx.stop_propagation();
+                                Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
+                            })
+                        }),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .text_size(FONT_SIZE)
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_row()
+                                    .child(
+                                        div()
+                                            .text_color(t.text_secondary)
+                                            .child(file.directory().to_string()),
+                                    )
+                                    .child(div().child(file.file_name().to_string())),
+                            ),
+                    )
+                    .child(octicon(icon, color))
+            }))
     }
 
     /// `.commit-message-component`

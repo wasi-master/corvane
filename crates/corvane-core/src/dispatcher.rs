@@ -15,7 +15,7 @@ use crate::persistence::{Settings, StoreExt};
 use crate::state::{
     AppState, CloneState, Foldout, Popup, RepositoryState, SignInState, SignInStep,
 };
-use corvane_models::{Account, Repository, github_from_remote};
+use corvane_models::{Account, DiffSelection, Repository, github_from_remote};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
@@ -264,15 +264,20 @@ impl Dispatcher {
         }
     }
 
-    /// GHD `_refreshRepository`: re-read tip/branches/remotes and ahead/behind.
+    /// GHD `_refreshRepository`: re-read tip/branches/remotes, ahead/behind
+    /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git) = {
+        let (path, git, previous_status) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
             };
-            (repo.path.clone(), s.git.clone())
+            (
+                repo.path.clone(),
+                s.git.clone(),
+                s.repo_states.get(&id).and_then(|r| r.status.clone()),
+            )
         };
         state.update(cx, |s, cx| {
             s.repo_state_mut(id).loading = true;
@@ -280,27 +285,52 @@ impl Dispatcher {
         });
         let work = cx.background_executor().spawn(async move {
             let info = open_repository(&path)?;
-            let ahead_behind = match (&git, info.current_branch()) {
-                (Some(git), Some(branch)) => {
-                    corvane_git::ahead_behind(git.clone(), &info.workdir, branch)
-                        .unwrap_or_default()
+            let (ahead_behind, status) = match &git {
+                Some(git) => {
+                    let ab = info.current_branch().and_then(|b| {
+                        corvane_git::ahead_behind(git.clone(), &info.workdir, b)
+                            .ok()
+                            .flatten()
+                    });
+                    let status = corvane_git::get_status(
+                        git.clone(),
+                        &info.workdir,
+                        previous_status.as_ref(),
+                    )?;
+                    (ab, Some(status))
                 }
-                _ => None,
+                None => (None, None),
             };
-            Ok::<_, GitError>((info, ahead_behind))
+            Ok::<_, GitError>((info, ahead_behind, status))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = work.await;
             cx.update(|cx| {
-                Self::state(cx).update(cx, |s, cx| {
+                let selected_file = Self::state(cx).update(cx, |s, cx| {
                     let repo_state: &mut RepositoryState = s.repo_state_mut(id);
                     repo_state.loading = false;
                     repo_state.last_refresh = Some(Instant::now());
+                    let mut selected = None;
                     match result {
-                        Ok((info, ahead_behind)) => {
+                        Ok((info, ahead_behind, status)) => {
                             repo_state.info = Some(info);
                             repo_state.ahead_behind = ahead_behind;
                             repo_state.error = None;
+                            if let Some(status) = status {
+                                // keep the selection if the file is still changed, else first file
+                                let keep = repo_state
+                                    .selected_file
+                                    .as_ref()
+                                    .filter(|p| status.files.iter().any(|f| &f.path == *p))
+                                    .cloned();
+                                repo_state.selected_file =
+                                    keep.or_else(|| status.files.first().map(|f| f.path.clone()));
+                                if repo_state.selected_file.is_none() {
+                                    repo_state.diff = None;
+                                }
+                                selected = repo_state.selected_file.clone();
+                                repo_state.status = Some(status);
+                            }
                             if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
                                 repo.missing = false;
                             }
@@ -317,10 +347,118 @@ impl Dispatcher {
                         }
                     }
                     cx.notify();
+                    selected
+                });
+                if selected_file.is_some() {
+                    Self::load_diff(id, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    // ---- changes list ----
+
+    /// GHD `_changeChangesSelection`: select a file and load its diff.
+    pub fn select_file(id: u64, path: String, cx: &mut App) {
+        let changed = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.selected_file.as_deref() == Some(path.as_str()) {
+                return false;
+            }
+            rs.selected_file = Some(path);
+            rs.diff = None;
+            cx.notify();
+            true
+        });
+        if changed {
+            Self::load_diff(id, cx);
+        }
+    }
+
+    pub fn load_diff(id: u64, cx: &mut App) {
+        let state = Self::state(cx);
+        let (git, workdir, file) = {
+            let s = state.read(cx);
+            let Some(git) = s.git.clone() else { return };
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let Some(info) = rs.info.as_ref() else { return };
+            let Some(path) = rs.selected_file.as_ref() else {
+                return;
+            };
+            let Some(file) = rs
+                .status
+                .as_ref()
+                .and_then(|st| st.files.iter().find(|f| &f.path == path))
+                .cloned()
+            else {
+                return;
+            };
+            (git, info.workdir.clone(), file)
+        };
+        let path = file.path.clone();
+        state.update(cx, |s, cx| {
+            s.repo_state_mut(id).diff_loading = true;
+            cx.notify();
+        });
+        let work = cx
+            .background_executor()
+            .spawn(async move { corvane_git::working_directory_diff(git, &workdir, &file) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = work.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    // ignore stale results
+                    if rs.selected_file.as_deref() != Some(path.as_str()) {
+                        return;
+                    }
+                    rs.diff_loading = false;
+                    match result {
+                        Ok(diff) => rs.diff = Some(diff),
+                        Err(err) => {
+                            warn!(%err, "diff failed");
+                            rs.diff = Some(corvane_models::Diff::Empty);
+                        }
+                    }
+                    cx.notify();
                 });
             });
         })
         .detach();
+    }
+
+    /// Toggle the include checkbox of one file (`_changeFileIncluded`).
+    pub fn toggle_file_included(id: u64, path: String, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(status) = s.repo_state_mut(id).status.as_mut() {
+                if let Some(f) = status.files.iter_mut().find(|f| f.path == path) {
+                    f.selection = match f.selection {
+                        DiffSelection::None => DiffSelection::All,
+                        _ => DiffSelection::None,
+                    };
+                }
+                cx.notify();
+            }
+        });
+    }
+
+    /// Header checkbox (`_changeIncludeAllFiles`).
+    pub fn toggle_include_all(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(status) = s.repo_state_mut(id).status.as_mut() {
+                let target = match status.include_all() {
+                    Some(true) => DiffSelection::None,
+                    _ => DiffSelection::All,
+                };
+                for f in &mut status.files {
+                    f.selection = target;
+                }
+                cx.notify();
+            }
+        });
     }
 
     /// Native folder picker → `add_repository` (GHD `AddRepository` shortcut).

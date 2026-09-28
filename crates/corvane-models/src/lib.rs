@@ -308,3 +308,174 @@ pub enum ThemeSetting {
     #[default]
     System,
 }
+
+// ---- working directory status (`models/status.ts`) ----
+
+/// `AppFileStatusKind`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FileStatusKind {
+    New,
+    Modified,
+    Deleted,
+    Copied,
+    Renamed,
+    Conflicted,
+    Untracked,
+}
+
+impl FileStatusKind {
+    /// GHD's status octicon per kind (`ui/octicons/status.ts`).
+    pub fn is_new_or_untracked(self) -> bool {
+        matches!(self, FileStatusKind::New | FileStatusKind::Untracked)
+    }
+}
+
+/// Which side of the index a change lives on (porcelain X / Y columns).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GitStatusEntry {
+    Unchanged,
+    Modified,
+    Added,
+    Deleted,
+    Renamed,
+    Copied,
+    Unmerged,
+    Untracked,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FileStatus {
+    pub kind: FileStatusKind,
+    pub index: GitStatusEntry,
+    pub working_tree: GitStatusEntry,
+    /// `R100`/`C90` similarity score for renames and copies.
+    pub score: Option<u8>,
+    /// Two-letter porcelain code (`.M`, `UU`, `??`), kept for conflict handling.
+    pub code: String,
+    pub submodule: bool,
+}
+
+/// How much of a file is included in the next commit (`DiffSelectionType`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum DiffSelection {
+    #[default]
+    All,
+    Partial,
+    None,
+}
+
+/// `WorkingDirectoryFileChange`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkingDirectoryFileChange {
+    /// Repository-relative path (new path for renames).
+    pub path: String,
+    pub old_path: Option<String>,
+    pub status: FileStatus,
+    pub selection: DiffSelection,
+}
+
+impl WorkingDirectoryFileChange {
+    pub fn file_name(&self) -> &str {
+        self.path.rsplit('/').next().unwrap_or(&self.path)
+    }
+
+    pub fn directory(&self) -> &str {
+        match self.path.rfind('/') {
+            Some(ix) => &self.path[..=ix],
+            None => "",
+        }
+    }
+}
+
+/// `WorkingDirectoryStatus`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct WorkingDirectoryStatus {
+    pub files: Vec<WorkingDirectoryFileChange>,
+    /// Branch header info from `# branch.*` (None when detached/unborn).
+    pub branch: Option<String>,
+    pub upstream: Option<String>,
+    pub ahead_behind: Option<AheadBehind>,
+    pub merge_head_found: bool,
+    pub rebase_in_progress: bool,
+}
+
+impl WorkingDirectoryStatus {
+    /// `includeAll` tri-state: Some(true) all, Some(false) none, None mixed.
+    pub fn include_all(&self) -> Option<bool> {
+        if self.files.is_empty() {
+            return Some(true);
+        }
+        let all = self.files.iter().all(|f| f.selection == DiffSelection::All);
+        let none = self
+            .files
+            .iter()
+            .all(|f| f.selection == DiffSelection::None);
+        if all {
+            Some(true)
+        } else if none {
+            Some(false)
+        } else {
+            None
+        }
+    }
+
+    pub fn has_conflicts(&self) -> bool {
+        self.files
+            .iter()
+            .any(|f| f.status.kind == FileStatusKind::Conflicted)
+    }
+}
+
+// ---- diffs (`models/diff/*`) ----
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DiffLineKind {
+    Context,
+    Add,
+    Delete,
+    Hunk,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiffLine {
+    pub kind: DiffLineKind,
+    /// Line text without the leading marker.
+    pub text: String,
+    pub old_line: Option<u32>,
+    pub new_line: Option<u32>,
+    /// `\ No newline at end of file` followed this line.
+    pub no_trailing_newline: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiffHunk {
+    pub header: String,
+    pub old_start: u32,
+    pub old_lines: u32,
+    pub new_start: u32,
+    pub new_lines: u32,
+    pub lines: Vec<DiffLine>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Diff {
+    Text {
+        hunks: Vec<DiffHunk>,
+        /// Diff was truncated because it exceeded the size limit.
+        truncated: bool,
+    },
+    Binary,
+    /// Nothing to show (e.g. empty file, mode-only change).
+    Empty,
+    TooLarge,
+    Submodule,
+}
+
+impl Diff {
+    pub fn line_count(&self) -> usize {
+        match self {
+            Diff::Text { hunks, .. } => hunks.iter().map(|h| h.lines.len() + 1).sum(),
+            _ => 0,
+        }
+    }
+}

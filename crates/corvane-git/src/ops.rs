@@ -107,10 +107,8 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
         let mut readme = format!("# {name}\n");
-        if let Some(desc) = &opts.description {
-            if !desc.trim().is_empty() {
-                readme.push_str(&format!("\n{desc}\n"));
-            }
+        if let Some(desc) = opts.description.as_deref().filter(|d| !d.trim().is_empty()) {
+            readme.push_str(&format!("\n{desc}\n"));
         }
         std::fs::write(opts.path.join("README.md"), readme)
             .map_err(crate::error::GitError::Spawn)?;

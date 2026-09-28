@@ -9,6 +9,7 @@ pub mod changes;
 pub mod cloning_view;
 pub mod dialog;
 pub mod dialogs;
+pub mod diff_view;
 pub mod foldout;
 pub mod history;
 pub mod icons;

@@ -10,6 +10,7 @@ use gpui_kit::*;
 use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
+use crate::diff_view::{diff_header, diff_view};
 use crate::foldout::foldout_layer;
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
@@ -131,7 +132,12 @@ impl Workspace {
                     TabModel {
                         id: "tab-changes",
                         label: "Changes".into(),
-                        count: None,
+                        count: self
+                            .state
+                            .read(cx)
+                            .selected_state()
+                            .map(|rs| rs.changed_files())
+                            .filter(|n| *n > 0),
                     },
                     TabModel {
                         id: "tab-history",
@@ -164,7 +170,32 @@ impl Workspace {
         let state = self.state.read(cx);
         let repo = state.selected_repository();
         let has_github = repo.and_then(|r| r.github.as_ref()).is_some();
+        let rs = state.selected_state();
+        let selected_change = rs.and_then(|r| {
+            let path = r.selected_file.as_ref()?;
+            r.status
+                .as_ref()?
+                .files
+                .iter()
+                .find(|f| &f.path == path)
+                .cloned()
+        });
         match self.section {
+            Section::Changes if selected_change.is_some() => {
+                let file = selected_change.unwrap();
+                let diff = rs.and_then(|r| r.diff.clone());
+                div()
+                    .size_full()
+                    .flex()
+                    .flex_col()
+                    .min_h_0()
+                    .child(diff_header(&file, cx))
+                    .child(match diff {
+                        Some(diff) => diff_view(&diff, cx).into_any_element(),
+                        None => div().flex_1().into_any_element(),
+                    })
+                    .into_any_element()
+            }
             Section::Changes => {
                 let mut actions = vec![
                     SuggestedAction {

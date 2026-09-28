@@ -2,12 +2,15 @@
 //! `git` CLI so behaviour matches GitHub Desktop exactly.
 
 pub mod detect;
+pub mod diff;
 pub mod error;
 pub mod ops;
 pub mod process;
 pub mod repo;
+pub mod status;
 
 pub use detect::{GitBinary, GitVersion, find_git};
+pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
 pub use error::GitError;
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
@@ -16,3 +19,4 @@ pub use ops::{
 };
 pub use process::{GitCommand, GitOutput};
 pub use repo::{ahead_behind, open_repository};
+pub use status::{get_status, map_status, parse_porcelain_v2};
