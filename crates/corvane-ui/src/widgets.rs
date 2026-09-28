@@ -5,7 +5,6 @@ use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::icons::{Octicon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, GhdTheme};
 
@@ -55,8 +54,12 @@ fn base_button(id: impl Into<ElementId>, _t: &GhdTheme) -> Stateful<Div> {
         .cursor_pointer()
 }
 
-/// macOS-style 13 px checkbox. Checked = blue fill + white check; disabled =
-/// grey fill + muted check (GHD's "0 changed files" state).
+/// 13 px checkbox. GHD renders a bare `<input type="checkbox">`, so this is
+/// Chromium's native control (`ui/native_theme/native_theme_base.cc`
+/// `PaintCheckbox`) with GHD's `accent-color` (`_globals.scss` `body`):
+/// 2 px radius, 1 px border; checked = `accent` fill with the check drawn in
+/// the control background colour; disabled = grey fill (GHD's "0 changed
+/// files" state).
 pub fn checkbox(
     id: impl Into<ElementId>,
     checked: bool,
@@ -66,8 +69,10 @@ pub fn checkbox(
     checkbox_tristate(id, Some(checked), disabled, cx)
 }
 
-/// `CheckboxValue::Mixed` (`None`) draws the blue fill with a white dash, like
+/// `CheckboxValue::Mixed` (`None`) draws the accent fill with a dash, like
 /// Chromium's indeterminate checkbox that GHD renders.
+///
+/// Hover/pressed tints of Chromium's native control are not reproduced.
 pub fn checkbox_tristate(
     id: impl Into<ElementId>,
     value: Option<bool>,
@@ -82,25 +87,33 @@ pub fn checkbox_tristate(
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(3.))
+        .rounded(px(2.))
         .border_1()
         .when(!disabled, |d| d.cursor_pointer());
     let (fill, glyph) = match (value, disabled) {
-        (Some(false), _) => {
-            return base.bg(t.background).border_color(t.box_border_contrast);
+        (Some(false), false) => {
+            return base.bg(t.control_background).border_color(t.control_border);
         }
-        (Some(true), false) => (t.button_background, t.button_text),
-        (None, false) => (t.button_background, t.button_text),
-        (_, true) => (t.box_selected_background, t.text_secondary),
+        (Some(false), true) => {
+            return base
+                .bg(t.control_disabled_background)
+                .border_color(t.control_disabled_border);
+        }
+        (_, false) => (t.accent, t.control_background),
+        (_, true) => (t.control_disabled_accent, t.control_disabled_glyph),
     };
-    let icon = if value.is_none() {
-        Octicon::DiffDash
+    let path = if value.is_none() {
+        "controls/checkbox-dash-13.svg"
     } else {
-        Octicon::Check
+        "controls/checkbox-check-13.svg"
     };
-    base.bg(fill)
-        .border_color(fill)
-        .child(octicon(icon, glyph).size(px(11.)))
+    base.bg(fill).border_color(fill).child(
+        svg()
+            .path(path)
+            .size(CHECKBOX_SIZE)
+            .flex_none()
+            .text_color(glyph),
+    )
 }
 
 /// `.counter` pill used in the Changes tab and list rows.

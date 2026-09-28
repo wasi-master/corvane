@@ -139,6 +139,20 @@ pub struct GhdTheme {
     pub primary_suggested_action_border: Hsla,
     pub suggested_action_icon: Hsla,
 
+    // Native form controls. GHD leaves `<input type="checkbox">` to Chromium
+    // (`native_theme_base.cc`, light/dark scheme) and only sets `accent-color`
+    // (`accent` above); these are Chromium's own control colours.
+    /// Unchecked box fill; also the check/dash colour on an `accent` fill.
+    pub control_background: Hsla,
+    /// Unchecked box 1 px border.
+    pub control_border: Hsla,
+    pub control_disabled_background: Hsla,
+    pub control_disabled_border: Hsla,
+    /// Checked/indeterminate fill while disabled.
+    pub control_disabled_accent: Hsla,
+    /// Check/dash colour on the disabled fill.
+    pub control_disabled_glyph: Hsla,
+
     // File status colours
     pub color_new: Hsla,
     pub color_deleted: Hsla,
