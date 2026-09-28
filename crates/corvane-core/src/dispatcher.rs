@@ -410,6 +410,11 @@ impl Dispatcher {
                                 repo_state.default_branch = extras.default_branch;
                                 repo_state.stash = extras.stash;
                                 repo_state.stash_count = extras.stash_count;
+                                if repo_state.stash.is_none() {
+                                    repo_state.showing_stash = false;
+                                    repo_state.stash_files = None;
+                                    repo_state.stash_diff = None;
+                                }
                             }
                             if let Some(status) = status {
                                 // keep the selection if the file is still changed, else first file
@@ -1252,6 +1257,171 @@ impl Dispatcher {
                 }
                 corvane_git::create_desktop_stash(git, &workdir, &current).map(|_| ())
             },
+            cx,
+        );
+    }
+
+    // ---- stash viewer (`_selectStashedFile`, `popStash`, `dropStash`) ----
+
+    /// The "Stashed Changes" row / View › Toggle Stashed Changes.
+    pub fn toggle_stash_view(id: u64, cx: &mut App) {
+        let show = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.stash.is_none() {
+                rs.showing_stash = false;
+                cx.notify();
+                return false;
+            }
+            rs.showing_stash = !rs.showing_stash;
+            cx.notify();
+            rs.showing_stash
+        });
+        if show {
+            Self::load_stash_files(id, cx);
+        }
+    }
+
+    fn load_stash_files(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let Some(sha) = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.stash.as_ref())
+            .map(|s| s.sha.clone())
+        else {
+            return;
+        };
+        let sha_for_task = sha.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::stashed_files(git, &workdir, &sha_for_task) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                let load = Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    if rs.stash.as_ref().map(|s| &s.sha) != Some(&sha) {
+                        return false;
+                    }
+                    match result {
+                        Ok(data) => {
+                            rs.stash_selected_file = data.files.first().map(|f| f.path.clone());
+                            rs.stash_files = Some(data.files);
+                        }
+                        Err(err) => warn!(id, %err, "stashed files failed"),
+                    }
+                    cx.notify();
+                    true
+                });
+                if load {
+                    Self::load_stash_diff(id, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    pub fn select_stash_file(id: u64, path: String, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).stash_selected_file = Some(path);
+            cx.notify();
+        });
+        Self::load_stash_diff(id, cx);
+    }
+
+    fn load_stash_diff(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let Some(file) = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| {
+                let path = rs.stash_selected_file.as_ref()?;
+                rs.stash_files
+                    .as_ref()?
+                    .iter()
+                    .find(|f| &f.path == path)
+                    .cloned()
+            })
+        else {
+            return;
+        };
+        let key = (file.commitish.clone(), file.path.clone());
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::commit_file_diff(git, &workdir, &file) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    if rs.stash.as_ref().map(|s| s.sha.as_str()) != Some(key.0.as_str())
+                        || rs.stash_selected_file.as_deref() != Some(key.1.as_str())
+                    {
+                        return;
+                    }
+                    rs.stash_diff = Some(match result {
+                        Ok(diff) => diff,
+                        Err(err) => {
+                            warn!(id, %err, "stash diff failed");
+                            corvane_models::Diff::Empty
+                        }
+                    });
+                    rs.stash_diff_generation += 1;
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// Restore: `git stash pop`, then the files show up in Changes.
+    pub fn pop_stash(id: u64, cx: &mut App) {
+        let Some(name) = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.stash.as_ref())
+            .map(|s| s.name.clone())
+        else {
+            return;
+        };
+        Self::run_history_op(
+            id,
+            "Could not restore stash",
+            move |git, workdir| corvane_git::pop_stash(git, &workdir, &name),
+            cx,
+        );
+    }
+
+    /// Discard: confirm unless the user opted out (`askForConfirmationOnDiscardStash`).
+    pub fn request_drop_stash(id: u64, cx: &mut App) {
+        if Self::state(cx).read(cx).settings.confirm_discard_stash {
+            Self::show_popup(Popup::ConfirmDiscardStash { repo: id }, cx);
+        } else {
+            Self::drop_stash(id, cx);
+        }
+    }
+
+    pub fn drop_stash(id: u64, cx: &mut App) {
+        let Some(name) = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.stash.as_ref())
+            .map(|s| s.name.clone())
+        else {
+            return;
+        };
+        Self::run_history_op(
+            id,
+            "Could not discard stash",
+            move |git, workdir| corvane_git::drop_stash(git, &workdir, &name),
             cx,
         );
     }

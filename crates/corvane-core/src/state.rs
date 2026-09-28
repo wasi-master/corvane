@@ -100,6 +100,10 @@ pub enum Popup {
         repo: u64,
         squash: bool,
     },
+    /// `ConfirmDiscardStash`
+    ConfirmDiscardStash {
+        repo: u64,
+    },
 }
 
 /// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.
@@ -202,6 +206,13 @@ pub struct RepositoryState {
     pub stash_count: usize,
     /// Merge dialog preview: (branch, commits that would be merged).
     pub merge_preview: Option<(String, u32)>,
+
+    // ---- stash viewer (`isShowingStashEntry`, `selectedStashedFile`) ----
+    pub showing_stash: bool,
+    pub stash_files: Option<Vec<corvane_models::CommittedFileChange>>,
+    pub stash_selected_file: Option<String>,
+    pub stash_diff: Option<Diff>,
+    pub stash_diff_generation: u64,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

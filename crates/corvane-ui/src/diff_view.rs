@@ -86,6 +86,8 @@ pub enum DiffSource {
     WorkingDirectory,
     /// History tab: the selected file of the selected commit (read-only).
     Commit,
+    /// Stash viewer: the selected stashed file (read-only).
+    Stash,
 }
 
 pub struct DiffView {
@@ -233,6 +235,23 @@ impl Render for DiffView {
                         DiffSelection::all(),
                         diff,
                         rs.commit_diff_generation,
+                    )
+                }
+                DiffSource::Stash => {
+                    let file = rs.stash_selected_file.as_ref().and_then(|p| {
+                        rs.stash_files
+                            .as_ref()
+                            .and_then(|files| files.iter().find(|f| &f.path == p))
+                    });
+                    let (Some(file), Some(diff)) = (file, rs.stash_diff.as_ref()) else {
+                        return div().flex_1().into_any_element();
+                    };
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        DiffSelection::all(),
+                        diff,
+                        rs.stash_diff_generation,
                     )
                 }
             };

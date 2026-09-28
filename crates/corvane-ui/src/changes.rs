@@ -757,6 +757,58 @@ impl ChangesSidebar {
             )
     }
 
+    /// `.stashed-changes-button`: shown when the current branch has a stash.
+    fn stash_button(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let rs = s.selected_state()?;
+        rs.stash.as_ref()?;
+        let showing = rs.showing_stash;
+        let hover_bg = t.box_selected_background;
+        let (bg, text, icon) = if showing {
+            (
+                t.box_selected_active_background,
+                t.box_selected_active_text,
+                t.box_selected_active_text,
+            )
+        } else {
+            (
+                t.secondary_button_background,
+                t.secondary_button_text,
+                t.color_modified,
+            )
+        };
+        Some(
+            div()
+                .id("stashed-changes-button")
+                .flex_none()
+                .w_full()
+                .min_h(ROW_HEIGHT)
+                .px(SPACING)
+                .flex()
+                .flex_row()
+                .items_center()
+                .border_t_1()
+                .border_color(t.box_border)
+                .bg(bg)
+                .text_color(text)
+                .text_size(FONT_SIZE)
+                .cursor_pointer()
+                .when(!showing, move |d| d.hover(move |s| s.bg(hover_bg)))
+                .on_click(move |_, _, cx| Dispatcher::toggle_stash_view(id, cx))
+                .child(octicon(Octicon::Stash, icon))
+                .child(
+                    div()
+                        .flex_1()
+                        .mx(SPACING_HALF)
+                        .truncate()
+                        .child("Stashed Changes"),
+                )
+                .child(octicon(Octicon::ChevronRight, text)),
+        )
+    }
+
     fn commit_disabled(&self, cx: &App) -> bool {
         let s = self.state.read(cx);
         let rs = s.selected_state();
@@ -1036,7 +1088,8 @@ impl Render for ChangesSidebar {
                         }),
                     )
                     .child(self.header(window, cx))
-                    .child(self.list(cx)),
+                    .child(self.list(cx))
+                    .children(self.stash_button(cx)),
             )
             .child(self.commit_form(window, cx))
             .children(self.context_menu.clone())

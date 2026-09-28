@@ -238,6 +238,11 @@ fn main() {
                 Dispatcher::stash_all_changes(id, cx);
             }
         });
+        cx.on_action(move |_: &ToggleStashedChanges, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::toggle_stash_view(id, cx);
+            }
+        });
         cx.on_action(move |_: &DiscardAllChanges, cx| {
             if let Some(id) = selected(cx) {
                 let paths: Vec<String> = corvane_core::AppState::global(cx)

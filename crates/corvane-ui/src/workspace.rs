@@ -18,6 +18,7 @@ use crate::no_changes::{SuggestedAction, no_changes};
 use crate::no_repositories::no_repositories;
 use crate::repository_list::RepositoryFoldout;
 use crate::selected_commit::SelectedCommitView;
+use crate::stash_view::StashDiffViewer;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -34,6 +35,7 @@ pub struct Workspace {
     changes: Entity<ChangesSidebar>,
     history: Entity<HistorySidebar>,
     selected_commit: Entity<SelectedCommitView>,
+    stash_view: Entity<StashDiffViewer>,
     repository_foldout: Entity<RepositoryFoldout>,
     branch_foldout: Entity<BranchFoldout>,
     dialogs: Entity<DialogHost>,
@@ -84,6 +86,7 @@ impl Workspace {
         let changes = cx.new(|cx| ChangesSidebar::new(state.clone(), window, cx));
         let history = cx.new(|cx| HistorySidebar::new(state.clone(), window, cx));
         let selected_commit = cx.new(|cx| SelectedCommitView::new(state.clone(), cx));
+        let stash_view = cx.new(|cx| StashDiffViewer::new(state.clone(), cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
         let branch_foldout = cx.new(|cx| BranchFoldout::new(state.clone(), window, cx));
         let diff_view = cx.new(|cx| DiffView::new(state.clone(), DiffSource::WorkingDirectory, cx));
@@ -101,6 +104,7 @@ impl Workspace {
             changes,
             history,
             selected_commit,
+            stash_view,
             repository_foldout,
             branch_foldout,
             dialogs,
@@ -207,7 +211,9 @@ impl Workspace {
                 .find(|f| &f.path == path)
                 .cloned()
         });
+        let showing_stash = rs.is_some_and(|r| r.showing_stash);
         match self.section {
+            Section::Changes if showing_stash => self.stash_view.clone().into_any_element(),
             Section::Changes if selected_change.is_some() => {
                 let file = selected_change.unwrap();
                 div()

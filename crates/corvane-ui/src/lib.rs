@@ -24,6 +24,7 @@ pub mod no_repositories;
 pub mod relative_time;
 pub mod repository_list;
 pub mod selected_commit;
+pub mod stash_view;
 pub mod tab_bar;
 pub mod theme;
 pub mod title_bar;

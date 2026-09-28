@@ -294,3 +294,82 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
         )
     }
 }
+
+/// `ConfirmDiscardStash`
+pub struct ConfirmDiscardStashDialog {
+    repo: u64,
+    dont_show_again: bool,
+}
+
+impl ConfirmDiscardStashDialog {
+    pub fn new(repo: u64) -> Self {
+        Self {
+            repo,
+            dont_show_again: false,
+        }
+    }
+}
+
+impl Render for ConfirmDiscardStashDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, dont_show_again) = (self.repo, self.dont_show_again);
+        let content = div()
+            .flex()
+            .flex_col()
+            .child(
+                div()
+                    .mb(SPACING)
+                    .child("Are you sure you want to discard these stashed changes?"),
+            )
+            .child(
+                div()
+                    .id("discard-stash-dont-show")
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(SPACING_HALF)
+                    .cursor_pointer()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.dont_show_again = !this.dont_show_again;
+                        cx.notify();
+                    }))
+                    .child(checkbox(
+                        "discard-stash-dont-show-box",
+                        self.dont_show_again,
+                        false,
+                        cx,
+                    ))
+                    .child("Do not show this message again"),
+            );
+        dialog_with_kind(
+            "dialog-discard-stash",
+            DialogKind::Warning,
+            "Discard Stash?",
+            content,
+            vec![
+                DialogButton {
+                    id: "discard-stash-cancel",
+                    label: "Cancel".into(),
+                    primary: true,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "discard-stash-ok",
+                    label: "Discard".into(),
+                    primary: false,
+                    on_click: Box::new(move |_, cx| {
+                        if dont_show_again {
+                            Dispatcher::update_settings(cx, |s| s.confirm_discard_stash = false);
+                        }
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::drop_stash(repo, cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}

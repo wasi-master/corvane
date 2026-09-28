@@ -23,7 +23,8 @@ pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
 pub use history_dialogs::{
-    CheckoutCommitDialog, CreateTagDialog, ResetToCommitDialog, WarnLocalChangesBeforeUndoDialog,
+    CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
+    WarnLocalChangesBeforeUndoDialog,
 };
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
@@ -106,6 +107,9 @@ impl DialogHost {
             Popup::MergeBranch { repo, squash } => cx
                 .new(|cx| MergeBranchDialog::new(state, *repo, *squash, window, cx))
                 .into(),
+            Popup::ConfirmDiscardStash { repo } => {
+                cx.new(|_| ConfirmDiscardStashDialog::new(*repo)).into()
+            }
         }
     }
 }
