@@ -114,6 +114,63 @@ pub struct RepositoryState {
     pub committing: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,
+    /// Filter Options popover state (`IFileListFilterState` minus the text).
+    pub file_list_filter: FileListFilter,
+}
+
+/// GHD `IFileListFilterState` option flags; the text lives in the text box.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FileListFilter {
+    pub included: bool,
+    pub excluded: bool,
+    pub new_files: bool,
+    pub modified: bool,
+    pub deleted: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FilterOption {
+    IncludedInCommit,
+    ExcludedFromCommit,
+    NewFiles,
+    ModifiedFiles,
+    DeletedFiles,
+}
+
+impl FileListFilter {
+    pub fn get(&self, option: FilterOption) -> bool {
+        match option {
+            FilterOption::IncludedInCommit => self.included,
+            FilterOption::ExcludedFromCommit => self.excluded,
+            FilterOption::NewFiles => self.new_files,
+            FilterOption::ModifiedFiles => self.modified,
+            FilterOption::DeletedFiles => self.deleted,
+        }
+    }
+
+    pub fn set(&mut self, option: FilterOption, on: bool) {
+        match option {
+            FilterOption::IncludedInCommit => self.included = on,
+            FilterOption::ExcludedFromCommit => self.excluded = on,
+            FilterOption::NewFiles => self.new_files = on,
+            FilterOption::ModifiedFiles => self.modified = on,
+            FilterOption::DeletedFiles => self.deleted = on,
+        }
+    }
+
+    /// `countActiveFilterOptions`
+    pub fn count_active(&self) -> usize {
+        [
+            self.included,
+            self.excluded,
+            self.new_files,
+            self.modified,
+            self.deleted,
+        ]
+        .iter()
+        .filter(|b| **b)
+        .count()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

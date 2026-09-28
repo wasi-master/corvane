@@ -570,6 +570,41 @@ impl Dispatcher {
         });
     }
 
+    /// GHD `onIncludeChanged(files, include)`: the header checkbox applies to
+    /// the files currently visible through the filter.
+    pub fn set_files_included(id: u64, paths: Vec<String>, include: bool, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(status) = s.repo_state_mut(id).status.as_mut() {
+                for f in status.files.iter_mut().filter(|f| paths.contains(&f.path)) {
+                    f.selection = if include {
+                        f.selection.select_all()
+                    } else {
+                        f.selection.select_none()
+                    };
+                }
+                cx.notify();
+            }
+        });
+    }
+
+    /// Filter Options popover checkbox.
+    pub fn toggle_filter_option(id: u64, option: crate::state::FilterOption, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let f = &mut s.repo_state_mut(id).file_list_filter;
+            let on = !f.get(option);
+            f.set(option, on);
+            cx.notify();
+        });
+    }
+
+    /// "Clear filters" (the text box is cleared by the view).
+    pub fn clear_filter_options(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).file_list_filter = Default::default();
+            cx.notify();
+        });
+    }
+
     /// Header checkbox (`_changeIncludeAllFiles`).
     pub fn toggle_include_all(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {

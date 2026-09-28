@@ -1,10 +1,14 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
+use std::cell::Cell;
 use std::path::Path;
+use std::rc::Rc;
 
+use corvane_core::filter::{filtered_files, no_results_message, option_count};
 use corvane_core::{
-    AppState, DiffSelectionType, Dispatcher, FileStatusKind, Tip, WorkingDirectoryFileChange,
+    AppState, DiffSelectionType, Dispatcher, FileListFilter, FileStatusKind, FilterOption, Tip,
+    WorkingDirectoryFileChange,
 };
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
@@ -27,6 +31,9 @@ pub struct ChangesSidebar {
     state: Entity<AppState>,
     seen_commit_nonce: u64,
     context_menu: Option<Entity<ContextMenu>>,
+    /// GHD `ChangesListFilterOptions` popover.
+    filter_popover_open: bool,
+    filter_button_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
 
 impl ChangesSidebar {
@@ -49,6 +56,7 @@ impl ChangesSidebar {
         })
         .detach();
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
         let summary = cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         let description = cx.new(|cx| {
             TextareaState::new(window, cx)
@@ -62,7 +70,186 @@ impl ChangesSidebar {
             state,
             seen_commit_nonce: 0,
             context_menu: None,
+            filter_popover_open: false,
+            filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
         }
+    }
+
+    /// Files that pass the text + option filters, plus the unfiltered total.
+    fn visible_files(&self, cx: &App) -> (Vec<WorkingDirectoryFileChange>, usize) {
+        let text = self.filter.read(cx).value().to_string();
+        let s = self.state.read(cx);
+        let Some(rs) = s.selected_state() else {
+            return (Vec::new(), 0);
+        };
+        let Some(status) = rs.status.as_ref() else {
+            return (Vec::new(), 0);
+        };
+        let visible = filtered_files(&status.files, &text, &rs.file_list_filter)
+            .into_iter()
+            .cloned()
+            .collect();
+        (visible, status.files.len())
+    }
+
+    fn filter_options(&self, cx: &App) -> FileListFilter {
+        self.state
+            .read(cx)
+            .selected_state()
+            .map(|rs| rs.file_list_filter)
+            .unwrap_or_default()
+    }
+
+    /// `ChangesListFilterOptions` popover: header, five option checkboxes,
+    /// "Clear filters" when anything is active. Anchored under the button.
+    fn filter_popover(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        if !self.filter_popover_open {
+            return None;
+        }
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let files = s
+            .selected_state()
+            .and_then(|rs| rs.status.as_ref())
+            .map(|st| st.files.clone())
+            .unwrap_or_default();
+        let filter = self.filter_options(cx);
+        let text_active = !self.filter.read(cx).value().trim().is_empty();
+        let active = filter.count_active() > 0 || text_active;
+        let bounds = self.filter_button_bounds.get();
+        let close =
+            |this: &mut Self, _: &MouseDownEvent, _: &mut Window, cx: &mut Context<Self>| {
+                this.filter_popover_open = false;
+                cx.notify();
+            };
+        let option_row = |option: FilterOption, label: &str| {
+            let checked = filter.get(option);
+            let count = option_count(option, &files);
+            div()
+                .id(SharedString::from(format!("filter-opt-{label}")))
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(SPACING_HALF)
+                .py(px(3.))
+                .cursor_pointer()
+                // GHD closes the popover after every option change
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.filter_popover_open = false;
+                    Dispatcher::toggle_filter_option(id, option, cx)
+                }))
+                .child(checkbox(
+                    SharedString::from(format!("filter-check-{label}")),
+                    checked,
+                    false,
+                    cx,
+                ))
+                .child(
+                    div()
+                        .text_size(FONT_SIZE)
+                        .child(format!("{label} ({count})")),
+                )
+        };
+        Some(
+            deferred(
+                anchored().position(point(px(0.), px(0.))).child(
+                    div()
+                        .id("filter-popover-overlay")
+                        .relative()
+                        .size_full()
+                        .on_mouse_down(MouseButton::Left, cx.listener(close))
+                        .on_mouse_down(MouseButton::Right, cx.listener(close))
+                        .child(
+                            div()
+                                .id("filter-popover")
+                                .absolute()
+                                .left(bounds.origin.x)
+                                .top(bounds.origin.y + bounds.size.height + px(8.))
+                                .min_w(px(200.))
+                                .flex()
+                                .flex_col()
+                                .px(SPACING)
+                                .pt(SPACING)
+                                .rounded(BORDER_RADIUS)
+                                .bg(t.background)
+                                .text_color(t.text)
+                                .border_1()
+                                .border_color(t.box_border)
+                                .shadow(vec![BoxShadow {
+                                    color: t.shadow,
+                                    offset: point(px(0.), px(2.)),
+                                    blur_radius: px(7.),
+                                    spread_radius: px(0.),
+                                    inset: false,
+                                }])
+                                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .items_center()
+                                        .justify_between()
+                                        .child(
+                                            div()
+                                                .text_size(FONT_SIZE_MD)
+                                                .font_weight(FontWeight::SEMIBOLD)
+                                                .child("Filter Options"),
+                                        )
+                                        .child(
+                                            div()
+                                                .id("filter-popover-close")
+                                                .size(px(16.))
+                                                .cursor_pointer()
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.filter_popover_open = false;
+                                                    cx.notify();
+                                                }))
+                                                .child(octicon(Octicon::X, t.text_secondary)),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .my(SPACING)
+                                        .flex()
+                                        .flex_col()
+                                        .child(option_row(
+                                            FilterOption::IncludedInCommit,
+                                            "Included in commit",
+                                        ))
+                                        .child(option_row(
+                                            FilterOption::ExcludedFromCommit,
+                                            "Excluded from commit",
+                                        ))
+                                        .child(option_row(FilterOption::NewFiles, "New files"))
+                                        .child(option_row(
+                                            FilterOption::ModifiedFiles,
+                                            "Modified files",
+                                        ))
+                                        .child(option_row(
+                                            FilterOption::DeletedFiles,
+                                            "Deleted files",
+                                        )),
+                                )
+                                .when(active, |d| {
+                                    d.child(div().pt(SPACING_HALF).pb(SPACING).child(
+                                        button("filter-clear", "Clear filters", cx).on_click(
+                                            cx.listener(move |this, _, window, cx| {
+                                                this.filter.update(cx, |s, cx| {
+                                                    s.set_value("", window, cx)
+                                                });
+                                                this.filter_popover_open = false;
+                                                Dispatcher::clear_filter_options(id, cx);
+                                            }),
+                                        ),
+                                    ))
+                                })
+                                .when(!active, |d| d.pb(SPACING_HALF)),
+                        ),
+                ),
+            )
+            .with_priority(25),
+        )
     }
 
     fn open_menu(
@@ -254,9 +441,12 @@ impl ChangesSidebar {
                     .flex_row()
                     .items_center()
                     .h(TEXT_FIELD_HEIGHT)
-                    .child(
+                    .child({
+                        let active = self.filter_options(cx).count_active() > 0;
+                        let bounds_cell = self.filter_button_bounds.clone();
                         div()
                             .id("filter-options")
+                            .relative()
                             .h(TEXT_FIELD_HEIGHT)
                             .w(px(48.))
                             .flex_none()
@@ -269,12 +459,47 @@ impl ChangesSidebar {
                             .rounded_l(BORDER_RADIUS)
                             .bg(t.secondary_button_background)
                             .cursor_pointer()
-                            .child(octicon(Octicon::Filter, t.secondary_button_text))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.filter_popover_open = !this.filter_popover_open;
+                                cx.notify();
+                            }))
+                            .child(
+                                canvas(move |b, _, _| bounds_cell.set(b), |_, _, _, _| {})
+                                    .absolute()
+                                    .size_full(),
+                            )
+                            // `.active span:first-child { color: box-selected-active-background }`
+                            .child(octicon(
+                                Octicon::Filter,
+                                if active {
+                                    t.box_selected_active_background
+                                } else {
+                                    t.secondary_button_text
+                                },
+                            ))
                             .child(
                                 octicon(Octicon::TriangleDown, t.secondary_button_text)
                                     .size(px(12.)),
-                            ),
-                    )
+                            )
+                            // `.active-badge`: 5 px dot with a 1 px ring, right 18 / top 4
+                            .when(active, |d| {
+                                d.child(
+                                    div()
+                                        .absolute()
+                                        .top(px(4.))
+                                        .right(px(18.))
+                                        .p(px(1.))
+                                        .rounded_full()
+                                        .bg(t.secondary_button_background)
+                                        .child(
+                                            div()
+                                                .size(px(5.))
+                                                .rounded_full()
+                                                .bg(t.box_selected_active_background),
+                                        ),
+                                )
+                            })
+                    })
                     .child(
                         text_box("changes-filter", &self.filter, None, window, cx)
                             .rounded_l(px(0.))
@@ -291,19 +516,30 @@ impl ChangesSidebar {
                     .gap(SPACING_HALF)
                     // GHD shows the include-all box checked but disabled when there is nothing to commit.
                     .child({
-                        let (count, include_all, repo_id) = self.header_state(cx);
-                        checkbox("check-all", include_all != Some(false), count == 0, cx)
+                        let (visible, total, include_all, repo_id) = self.header_state(cx);
+                        let paths: Vec<String> = visible.iter().map(|f| f.path.clone()).collect();
+                        let disabled = total == 0 || visible.is_empty();
+                        let include = include_all != Some(true);
+                        checkbox("check-all", include_all != Some(false), disabled, cx)
                             .when(include_all.is_none(), |d| d.opacity(0.7))
-                            .when_some(repo_id.filter(|_| count > 0), |d, id| {
-                                d.on_click(move |_, _, cx| Dispatcher::toggle_include_all(id, cx))
+                            .when_some(repo_id.filter(|_| !disabled), |d, id| {
+                                d.on_click(move |_, _, cx| {
+                                    Dispatcher::set_files_included(id, paths.clone(), include, cx)
+                                })
                             })
                     })
                     .child({
-                        let (count, _, _) = self.header_state(cx);
-                        div().text_size(FONT_SIZE).truncate().child(if count == 1 {
-                            "1 changed file".to_string()
+                        let (visible, total, _, _) = self.header_state(cx);
+                        // GHD: "3 of 10 changed files" while a filter hides some
+                        let prefix = if visible.len() != total {
+                            format!("{} of ", visible.len())
                         } else {
-                            format!("{count} changed files")
+                            String::new()
+                        };
+                        div().text_size(FONT_SIZE).truncate().child(if total == 1 {
+                            format!("{prefix}1 changed file")
+                        } else {
+                            format!("{prefix}{total} changed files")
                         })
                     }),
             )
@@ -323,15 +559,37 @@ impl ChangesSidebar {
             .into()
     }
 
-    fn header_state(&self, cx: &App) -> (usize, Option<bool>, Option<u64>) {
-        let s = self.state.read(cx);
-        let id = s.selected;
-        let status = s.selected_state().and_then(|rs| rs.status.as_ref());
-        (
-            status.map(|st| st.files.len()).unwrap_or(0),
-            status.map(|st| st.include_all()).unwrap_or(Some(true)),
-            id,
-        )
+    /// (visible files, total, include-all tri-state of the visible files, repo id)
+    fn header_state(
+        &self,
+        cx: &App,
+    ) -> (
+        Vec<WorkingDirectoryFileChange>,
+        usize,
+        Option<bool>,
+        Option<u64>,
+    ) {
+        let (visible, total) = self.visible_files(cx);
+        let id = self.state.read(cx).selected;
+        // `getCheckAllValue`: the box reflects only the files passing the filter
+        let include_all = if visible.is_empty() {
+            Some(true)
+        } else {
+            let all = visible
+                .iter()
+                .all(|f| f.selection.kind() == DiffSelectionType::All);
+            let none = visible
+                .iter()
+                .all(|f| f.selection.kind() == DiffSelectionType::None);
+            if all {
+                Some(true)
+            } else if none {
+                Some(false)
+            } else {
+                None
+            }
+        };
+        (visible, total, include_all, id)
     }
 
     /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name, status icon.
@@ -340,10 +598,12 @@ impl ChangesSidebar {
         let s = self.state.read(cx);
         let repo_id = s.selected;
         let rs = s.selected_state();
-        let files: Vec<_> = rs
-            .and_then(|r| r.status.as_ref())
-            .map(|st| st.files.clone())
-            .unwrap_or_default();
+        let (files, _) = self.visible_files(cx);
+        let empty_message = if files.is_empty() {
+            no_results_message(&self.filter.read(cx).value(), &self.filter_options(cx))
+        } else {
+            None
+        };
         let selected = rs.and_then(|r| r.selected_file.clone());
         let hover_bg = t.list_item_hover_background;
         div()
@@ -354,6 +614,15 @@ impl ChangesSidebar {
             .bg(t.background)
             .flex()
             .flex_col()
+            .when_some(empty_message, |d, message| {
+                d.child(
+                    div()
+                        .p(SPACING_DOUBLE)
+                        .text_size(FONT_SIZE)
+                        .text_color(t.text_secondary)
+                        .child(message),
+                )
+            })
             .children(files.into_iter().map(|file| {
                 let is_selected = selected.as_deref() == Some(file.path.as_str());
                 let (icon, color) = status_icon(file.status.kind, t);
@@ -600,5 +869,6 @@ impl Render for ChangesSidebar {
             )
             .child(self.commit_form(window, cx))
             .children(self.context_menu.clone())
+            .children(self.filter_popover(cx))
     }
 }
