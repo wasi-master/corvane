@@ -42,6 +42,13 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] Clone dialog GitHub.com / Enterprise tabs: repository list from the API with filter (`clone-github-repository.tsx`), needs avatar cache
 - [ ] Clone path validation messages (`.app` suffix, non-empty folder, file exists) before starting
 
+## Changes list
+
+- [ ] Multi-selection (⌘/⇧-click, ⌘A) and the "N selected" context-menu variants: `Discard N Selected Changes…`, `Ignore N Selected Files`, `Include/Exclude Selected Files`, `Copy Paths` / `Copy Relative Paths`
+- [ ] `Stash All Changes` context-menu item is shown disabled until stashes land (M4)
+- [ ] External editor detection (`lib/editors/darwin.ts`) so the item reads `Open in Visual Studio Code`; until then `Open in External Editor` opens with the default program
+- [ ] Rebase-conflict context menu variant (`getRebaseContextMenu`)
+
 ## Editor / commit form
 
 - [ ] Spellcheck in commit summary/description (Electron built-in in GHD; needs native `NSSpellChecker` via objc2 on macOS)
