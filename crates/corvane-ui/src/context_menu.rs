@@ -76,6 +76,8 @@ impl MenuItem {
 }
 
 const ITEM_HEIGHT: f32 = 22.;
+/// Native menus always reserve a check-mark column left of the labels.
+const CHECK_COLUMN: f32 = 14.;
 const SEPARATOR_HEIGHT: f32 = 11.;
 const INSET: f32 = 5.;
 const TEXT_SIZE: f32 = 13.;
@@ -153,26 +155,25 @@ impl ContextMenu {
             .p(px(INSET))
             .flex()
             .flex_col()
-            .rounded(px(8.))
-            .bg(t.background)
+            .rounded(px(10.))
+            .bg(t.menu_background)
             .border_1()
-            .border_color(t.box_border)
+            .border_color(t.menu_border)
             .shadow(vec![BoxShadow {
                 color: t.shadow,
-                offset: point(px(0.), px(4.)),
-                blur_radius: px(16.),
+                offset: point(px(0.), px(8.)),
+                blur_radius: px(24.),
                 spread_radius: px(0.),
                 inset: false,
             }])
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-            .children({
-                let has_checks = items.iter().any(|i| i.checked.is_some());
+            .children(
                 items
                     .iter()
                     .enumerate()
-                    .map(move |(idx, item)| self.item(idx, item, root, width, has_checks, cx))
-            })
+                    .map(move |(idx, item)| self.item(idx, item, root, width, cx)),
+            )
     }
 
     fn item(
@@ -181,7 +182,6 @@ impl ContextMenu {
         item: &MenuItem,
         root: bool,
         width: Pixels,
-        has_checks: bool,
         cx: &Context<Self>,
     ) -> AnyElement {
         let t = cx.ghd();
@@ -191,14 +191,14 @@ impl ContextMenu {
                 .my(px(5.))
                 .mx(px(10.))
                 .flex_none()
-                .bg(t.box_border)
+                .bg(t.menu_border)
                 .into_any_element();
         }
         let enabled = item.enabled;
         let is_submenu = matches!(item.kind, MenuItemKind::Submenu(_));
         let open = root && self.open_submenu == Some(idx);
-        let accent_bg = t.box_selected_active_background;
-        let accent_text = t.box_selected_active_text;
+        let accent_bg = t.menu_highlight;
+        let accent_text = t.menu_highlight_text;
         let id = if root {
             ("ctx-item", idx)
         } else {
@@ -212,30 +212,32 @@ impl ContextMenu {
             .flex()
             .flex_row()
             .items_center()
-            .px(px(10.))
-            .rounded(px(4.))
+            .pl(px(6.))
+            .pr(px(12.))
+            .rounded(px(5.))
             .text_size(px(TEXT_SIZE))
-            .text_color(if enabled { t.text } else { t.text_secondary })
+            .text_color(if enabled {
+                t.menu_text
+            } else {
+                t.menu_text_disabled
+            })
             .when(open, |d| d.bg(accent_bg).text_color(accent_text))
             .when(enabled, |d| {
                 d.hover(move |s| s.bg(accent_bg).text_color(accent_text))
             })
-            .when(has_checks, |d| {
-                // native menus reserve a check-mark column left of every label
-                d.child(
-                    div()
-                        .w(px(14.))
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(if item.checked == Some(true) {
-                            "✓"
-                        } else {
-                            ""
-                        }),
-                )
-            })
+            .child(
+                div()
+                    .w(px(CHECK_COLUMN))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(if item.checked == Some(true) {
+                        "✓"
+                    } else {
+                        ""
+                    }),
+            )
             .child(
                 div()
                     .flex_1()

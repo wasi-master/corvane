@@ -299,6 +299,7 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
     let path = file.path.clone();
     div()
         .id(SharedString::from(format!("commit-file-{}", file.path)))
+        .w_full()
         .h(ROW_HEIGHT)
         .flex_none()
         .flex()

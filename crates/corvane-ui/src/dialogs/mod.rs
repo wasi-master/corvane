@@ -5,6 +5,7 @@ mod add_existing;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
+mod history_dialogs;
 mod sign_in;
 mod simple;
 
@@ -16,6 +17,9 @@ pub use add_existing::AddExistingRepositoryDialog;
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
+pub use history_dialogs::{
+    CheckoutCommitDialog, CreateTagDialog, ResetToCommitDialog, WarnLocalChangesBeforeUndoDialog,
+};
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
@@ -53,6 +57,18 @@ impl DialogHost {
                 .into(),
             Popup::DiscardChanges { repo, paths, all } => cx
                 .new(|_| DiscardChangesDialog::new(*repo, paths.clone(), *all))
+                .into(),
+            Popup::ResetToCommit { repo, sha } => cx
+                .new(|_| ResetToCommitDialog::new(*repo, sha.clone()))
+                .into(),
+            Popup::CheckoutCommit { repo, sha } => cx
+                .new(|_| CheckoutCommitDialog::new(*repo, sha.clone()))
+                .into(),
+            Popup::CreateTag { repo, sha } => cx
+                .new(|cx| CreateTagDialog::new(*repo, sha.clone(), window, cx))
+                .into(),
+            Popup::WarnLocalChangesBeforeUndo { repo } => cx
+                .new(|_| WarnLocalChangesBeforeUndoDialog::new(*repo))
                 .into(),
         }
     }

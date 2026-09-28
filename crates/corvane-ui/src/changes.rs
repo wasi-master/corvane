@@ -32,6 +32,7 @@ pub struct ChangesSidebar {
     description: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
+    seen_amend_nonce: u64,
     context_menu: Option<Entity<ContextMenu>>,
     /// GHD `ChangesListFilterOptions` popover.
     filter_popover_open: bool,
@@ -57,6 +58,22 @@ impl ChangesSidebar {
                     .update(cx, |s, cx| s.set_value("", window, cx));
                 cx.notify();
             }
+            // GHD `prepareToAmendCommit`: load the commit's message into the form.
+            let (amend_nonce, to_amend) = state
+                .read(cx)
+                .selected_state()
+                .map(|rs| (rs.amend_nonce, rs.commit_to_amend.clone()))
+                .unwrap_or((0, None));
+            if amend_nonce != this.seen_amend_nonce {
+                this.seen_amend_nonce = amend_nonce;
+                if let Some(commit) = to_amend {
+                    this.summary
+                        .update(cx, |s, cx| s.set_value(commit.summary.clone(), window, cx));
+                    this.description
+                        .update(cx, |s, cx| s.set_value(commit.body.clone(), window, cx));
+                    cx.notify();
+                }
+            }
         })
         .detach();
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
@@ -73,6 +90,7 @@ impl ChangesSidebar {
             description,
             state,
             seen_commit_nonce: 0,
+            seen_amend_nonce: 0,
             context_menu: None,
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
@@ -748,9 +766,76 @@ impl ChangesSidebar {
             .and_then(|id| s.repository(id))
             .map(|r| r.commit_options.allow_empty_commit)
             .unwrap_or(false);
+        let amending = rs.is_some_and(|r| r.commit_to_amend.is_some());
         self.summary.read(cx).value().trim().is_empty()
-            || (!any_included && !allow_empty)
+            || (!any_included && !allow_empty && !amending)
             || committing
+    }
+
+    /// `CommitWarning` with the information icon: "Your changes will modify
+    /// your most recent commit. Stop amending to make these changes as a new commit."
+    fn amend_notice(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        s.selected_state()?.commit_to_amend.as_ref()?;
+        Some(
+            div()
+                .flex_none()
+                .flex()
+                .flex_col()
+                .mb(SPACING)
+                .bg(t.box_alt_background)
+                .child(
+                    // `.warning-icon-container`: icon centred on a rule
+                    div()
+                        .relative()
+                        .h(px(20.))
+                        .flex()
+                        .justify_center()
+                        .child(
+                            div()
+                                .absolute()
+                                .left_0()
+                                .right_0()
+                                .top(px(10.))
+                                .h(px(1.))
+                                .bg(t.box_border),
+                        )
+                        .child(
+                            div()
+                                .px(SPACING_HALF)
+                                .bg(t.box_alt_background)
+                                .child(octicon(Octicon::Info, t.dialog_information)),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .flex_wrap()
+                        .justify_center()
+                        .text_size(FONT_SIZE)
+                        .text_color(t.text_secondary)
+                        .child("Your changes will modify your\u{a0}")
+                        .child(
+                            div()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(t.text)
+                                .child("most recent commit"),
+                        )
+                        .child(".\u{a0}")
+                        .child(
+                            div()
+                                .id("stop-amending")
+                                .text_color(t.link)
+                                .cursor_pointer()
+                                .on_click(move |_, _, cx| Dispatcher::stop_amending(id, cx))
+                                .child("Stop amending"),
+                        )
+                        .child("\u{a0}to make these changes as a new commit."),
+                ),
+        )
     }
 
     /// `#undo-commit`: "Committed N ago / summary" + Undo, after a commit.
@@ -871,29 +956,44 @@ impl ChangesSidebar {
                             ),
                     ),
             )
-            .child(
-                primary_button(
-                    "commit",
+            .children(self.amend_notice(cx))
+            .child({
+                let (amending, committing) = self
+                    .state
+                    .read(cx)
+                    .selected_state()
+                    .map(|r| (r.commit_to_amend.is_some(), r.committing))
+                    .unwrap_or((false, false));
+                let label = if amending {
+                    div().flex().flex_row().child(if committing {
+                        "Amending last commit"
+                    } else {
+                        "Amend last commit"
+                    })
+                } else {
                     div()
                         .flex()
                         .flex_row()
                         .gap(px(4.))
-                        .child("Commit to")
+                        .child(if committing {
+                            "Committing to"
+                        } else {
+                            "Commit to"
+                        })
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child(self.branch_name(cx)),
-                        ),
-                    self.commit_disabled(cx),
-                    cx,
-                )
-                .w_full()
-                .on_click(cx.listener(|this, _, _, cx| {
-                    if !this.commit_disabled(cx) {
-                        this.do_commit(cx)
-                    }
-                })),
-            )
+                        )
+                };
+                primary_button("commit", label, self.commit_disabled(cx), cx)
+                    .w_full()
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if !this.commit_disabled(cx) {
+                            this.do_commit(cx)
+                        }
+                    }))
+            })
             .when_some(self.undo_bar(cx), |d, bar| d.child(bar))
     }
 }
@@ -957,6 +1057,7 @@ fn file_row(
     let file_for_menu = file.clone();
     div()
         .id(SharedString::from(format!("file-{}", file.path)))
+        .w_full()
         .h(ROW_HEIGHT)
         .flex_none()
         .flex()

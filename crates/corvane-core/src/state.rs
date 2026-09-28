@@ -51,6 +51,25 @@ pub enum Popup {
         paths: Vec<String>,
         all: bool,
     },
+    /// `WarningBeforeReset`: dirty working directory before `reset --mixed`.
+    ResetToCommit {
+        repo: u64,
+        sha: String,
+    },
+    /// `ConfirmCheckoutCommit`: detached HEAD warning.
+    CheckoutCommit {
+        repo: u64,
+        sha: String,
+    },
+    /// `CreateTag`
+    CreateTag {
+        repo: u64,
+        sha: String,
+    },
+    /// `WarnLocalChangesBeforeUndo`
+    WarnLocalChangesBeforeUndo {
+        repo: u64,
+    },
 }
 
 /// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.
@@ -135,6 +154,10 @@ pub struct RepositoryState {
     pub commit_diff_generation: u64,
     /// `isExpanded` of the expandable commit summary.
     pub commit_summary_expanded: bool,
+    /// `commitToAmend`: the commit form rewrites HEAD instead of adding a commit.
+    pub commit_to_amend: Option<corvane_models::Commit>,
+    /// Bumped when amending starts so the form loads the commit's message.
+    pub amend_nonce: u64,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

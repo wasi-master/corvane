@@ -170,6 +170,14 @@ pub struct GhdTheme {
     pub tooltip_background: Hsla,
     pub tooltip_text: Hsla,
 
+    // Native (NSMenu-like) context menus - Corvane addition, GHD uses real NSMenus
+    pub menu_background: Hsla,
+    pub menu_border: Hsla,
+    pub menu_text: Hsla,
+    pub menu_text_disabled: Hsla,
+    pub menu_highlight: Hsla,
+    pub menu_highlight_text: Hsla,
+
     // Syntax highlighting (`--syntax-*-color`, `.cm-s-default` in `_diff.scss`)
     pub syntax_variable: Hsla,
     pub syntax_alt_variable: Hsla,
