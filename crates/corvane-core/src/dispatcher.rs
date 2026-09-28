@@ -12,8 +12,11 @@ use gpui_kit::{App, AppContext, AsyncApp, Entity};
 use tracing::{error, info, warn};
 
 use crate::persistence::{Settings, StoreExt};
-use crate::state::{AppState, CloneState, Foldout, Popup, RepositoryState};
-use corvane_models::{Repository, github_from_remote};
+use crate::state::{
+    AppState, CloneState, Foldout, Popup, RepositoryState, SignInState, SignInStep,
+};
+use corvane_models::{Account, Repository, github_from_remote};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
 
@@ -65,6 +68,7 @@ impl Dispatcher {
             foldout: None,
             popup,
             cloning: None,
+            sign_in: None,
         });
         AppState::install(state.clone(), cx);
 
@@ -475,6 +479,236 @@ impl Dispatcher {
             cx.update(|cx| on_pick(picked, cx));
         })
         .detach();
+    }
+
+    // ---- sign-in (GHD `SignInStore`) ----
+
+    fn set_sign_in_step(step: SignInStep, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(si) = s.sign_in.as_mut() {
+                si.step = step;
+                cx.notify();
+            }
+        });
+    }
+
+    /// OAuth device flow against GitHub.com (or a GHES host with the same
+    /// OAuth App registered). Runs on its own thread; progress is pumped to
+    /// the foreground.
+    pub fn sign_in_device_flow(endpoint: corvane_github::Endpoint, cx: &mut App) {
+        let cancel = Arc::new(AtomicBool::new(false));
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(existing) = s.sign_in.as_ref() {
+                existing.cancel.store(true, Ordering::SeqCst);
+            }
+            s.sign_in = Some(SignInState {
+                endpoint: endpoint.api_base.clone(),
+                step: SignInStep::Requesting,
+                cancel: cancel.clone(),
+            });
+            cx.notify();
+        });
+
+        enum Msg {
+            Code(corvane_github::auth::DeviceCode),
+            Token { token: String, scopes: Vec<String> },
+            Failed(String),
+        }
+        let (tx, rx) = std::sync::mpsc::channel::<Msg>();
+        let worker_endpoint = endpoint.clone();
+        let worker_cancel = cancel.clone();
+        std::thread::Builder::new()
+            .name("device-flow".into())
+            .spawn(move || {
+                let code = match corvane_github::auth::request_device_code_default(&worker_endpoint)
+                {
+                    Ok(code) => code,
+                    Err(err) => {
+                        let _ = tx.send(Msg::Failed(err.to_string()));
+                        return;
+                    }
+                };
+                let mut interval = code.poll_interval();
+                let deadline = std::time::Instant::now()
+                    + std::time::Duration::from_secs(code.expires_in.max(60));
+                let device_code = code.device_code.clone();
+                let _ = tx.send(Msg::Code(code));
+                loop {
+                    if worker_cancel.load(Ordering::SeqCst) {
+                        return;
+                    }
+                    if std::time::Instant::now() > deadline {
+                        let _ =
+                            tx.send(Msg::Failed("the sign-in request expired; try again".into()));
+                        return;
+                    }
+                    std::thread::sleep(interval);
+                    if worker_cancel.load(Ordering::SeqCst) {
+                        return;
+                    }
+                    match corvane_github::auth::poll_token(
+                        &worker_endpoint,
+                        corvane_github::CLIENT_ID,
+                        &device_code,
+                    ) {
+                        Ok(corvane_github::auth::PollOutcome::Pending) => {}
+                        Ok(corvane_github::auth::PollOutcome::SlowDown) => {
+                            interval += std::time::Duration::from_secs(5);
+                        }
+                        Ok(corvane_github::auth::PollOutcome::Token { token, scopes }) => {
+                            let _ = tx.send(Msg::Token { token, scopes });
+                            return;
+                        }
+                        Err(err) => {
+                            let _ = tx.send(Msg::Failed(err.to_string()));
+                            return;
+                        }
+                    }
+                }
+            })
+            .ok();
+
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            loop {
+                if cancel.load(Ordering::SeqCst) {
+                    break;
+                }
+                let mut finished = false;
+                while let Ok(msg) = rx.try_recv() {
+                    match msg {
+                        Msg::Code(code) => {
+                            let uri = code.verification_uri.clone();
+                            cx.update(|cx| {
+                                Self::set_sign_in_step(
+                                    SignInStep::DeviceCode {
+                                        user_code: code.user_code.clone(),
+                                        verification_uri: uri.clone(),
+                                    },
+                                    cx,
+                                );
+                                cx.open_url(&uri);
+                            });
+                        }
+                        Msg::Token { token, scopes } => {
+                            let endpoint = endpoint.clone();
+                            cx.update(|cx| Self::finish_sign_in(endpoint, token, scopes, cx));
+                            finished = true;
+                        }
+                        Msg::Failed(err) => {
+                            cx.update(|cx| Self::set_sign_in_step(SignInStep::Error(err), cx));
+                            finished = true;
+                        }
+                    }
+                }
+                if finished {
+                    break;
+                }
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(250))
+                    .await;
+            }
+        })
+        .detach();
+    }
+
+    /// Personal access token (GHES, or the fallback link on GitHub.com).
+    pub fn sign_in_with_token(endpoint: corvane_github::Endpoint, token: String, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.sign_in = Some(SignInState {
+                endpoint: endpoint.api_base.clone(),
+                step: SignInStep::Verifying,
+                cancel: Arc::new(AtomicBool::new(false)),
+            });
+            cx.notify();
+        });
+        Self::finish_sign_in(endpoint, token, Vec::new(), cx);
+    }
+
+    /// Token → account (background), keychain + store, then close the dialog.
+    fn finish_sign_in(
+        endpoint: corvane_github::Endpoint,
+        token: String,
+        scopes: Vec<String>,
+        cx: &mut App,
+    ) {
+        Self::set_sign_in_step(SignInStep::Verifying, cx);
+        let task = cx.background_executor().spawn({
+            let endpoint = endpoint.clone();
+            let token = token.clone();
+            async move {
+                let client = corvane_github::Client::new(endpoint, token.clone());
+                let account = client.current_user(scopes)?;
+                corvane_platform::keychain::store_token(&account.host(), &account.login, &token)
+                    .map_err(|e| corvane_github::GitHubError::Auth(e.to_string()))?;
+                Ok::<Account, corvane_github::GitHubError>(account)
+            }
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(account) => {
+                    info!(login = %account.login, endpoint = %account.endpoint, "signed in");
+                    Self::state(cx).update(cx, |s, cx| {
+                        s.accounts.retain(|a| a.endpoint != account.endpoint);
+                        s.accounts.push(account);
+                        if let Err(err) = s.store.save_accounts(&s.accounts) {
+                            error!(?err, "could not save accounts");
+                        }
+                        s.sign_in = None;
+                        if matches!(s.popup, Some(Popup::SignIn { .. })) {
+                            s.popup = None;
+                        }
+                        cx.notify();
+                    });
+                }
+                Err(err) => Self::set_sign_in_step(SignInStep::Error(err.to_string()), cx),
+            });
+        })
+        .detach();
+    }
+
+    pub fn cancel_sign_in(cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(si) = s.sign_in.take() {
+                si.cancel.store(true, Ordering::SeqCst);
+                cx.notify();
+            }
+        });
+    }
+
+    pub fn sign_out(endpoint: String, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(account) = s.accounts.iter().find(|a| a.endpoint == endpoint).cloned() {
+                let _ = corvane_platform::keychain::delete_token(&account.host(), &account.login);
+            }
+            s.accounts.retain(|a| a.endpoint != endpoint);
+            let _ = s.store.save_accounts(&s.accounts);
+            cx.notify();
+        });
+    }
+
+    // ---- welcome / identity ----
+
+    /// `git config --global user.name/user.email` (GHD `ConfigureGitUser` save).
+    pub fn set_global_identity(name: String, email: String, cx: &mut App) {
+        let Some(git) = Self::state(cx).read(cx).git.clone() else {
+            return;
+        };
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::set_global_identity(git, &name, &email) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            if let Err(err) = task.await {
+                cx.update(|cx| {
+                    Self::show_error("Could not save Git identity", err.to_string(), cx)
+                });
+            }
+        })
+        .detach();
+    }
+
+    pub fn complete_welcome(cx: &mut App) {
+        Self::update_settings(cx, |s| s.welcome_completed = true);
     }
 
     // ---- settings ----

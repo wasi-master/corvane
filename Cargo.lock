@@ -1327,6 +1327,7 @@ name = "corvane-core"
 version = "0.1.0"
 dependencies = [
  "corvane-git",
+ "corvane-github",
  "corvane-models",
  "corvane-platform",
  "corvane-store",
@@ -1404,6 +1405,7 @@ version = "0.1.0"
 dependencies = [
  "corvane-core",
  "corvane-git",
+ "corvane-github",
  "corvane-platform",
  "gpui-kit",
  "tracing",

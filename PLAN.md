@@ -2,7 +2,7 @@
 
 Native Rust GitHub Desktop clone. Layout, buttons, workflows and positions match GitHub Desktop 3.6.6 one-to-one. Rendering quality, motion and typography target Zed. Fast cold start, near-zero idle CPU, low resident memory.
 
-Status: M0 (skeleton) landed 2026-09-28 — window chrome matches GHD in light + dark. M1 (repositories + sign-in) next. Perf numbers in `docs/perf.md`.
+Status (2026-09-28): M0 done; M1 mostly done — repositories foldout, add/create/clone dialogs with progress, device-flow sign-in, Welcome flow, git detection. Remaining M1: GitHub.com clone list (needs accounts), avatar cache. Perf numbers in `docs/perf.md`.
 
 ## 1. Context
 

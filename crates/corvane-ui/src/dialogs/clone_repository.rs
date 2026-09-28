@@ -211,6 +211,7 @@ impl CloneRepositoryDialog {
             .accounts
             .iter()
             .any(|a| a.is_dotcom() != enterprise);
+        let enterprise_flag = enterprise;
         let host = if enterprise {
             "GitHub Enterprise"
         } else {
@@ -238,8 +239,16 @@ impl CloneRepositoryDialog {
                         "Sign in to your {host} account to access your repositories."
                     ))
                     .child(
-                        primary_button("clone-sign-in", "Sign In", false, cx)
-                            .on_click(|_, _, cx| Dispatcher::show_popup(Popup::SignIn, cx)),
+                        primary_button("clone-sign-in", "Sign In", false, cx).on_click(
+                            move |_, _, cx| {
+                                Dispatcher::show_popup(
+                                    Popup::SignIn {
+                                        enterprise: enterprise_flag,
+                                    },
+                                    cx,
+                                )
+                            },
+                        ),
                     )
                     .into_any_element()
             })

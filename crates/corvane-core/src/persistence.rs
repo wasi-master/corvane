@@ -14,6 +14,8 @@ pub struct Settings {
     pub theme: ThemeSetting,
     pub sidebar_width: f32,
     pub clone_dir: Option<PathBuf>,
+    /// GHD `hasShownWelcomeFlow`.
+    pub welcome_completed: bool,
 }
 
 impl Default for Settings {
@@ -22,6 +24,7 @@ impl Default for Settings {
             theme: ThemeSetting::System,
             sidebar_width: 250.0,
             clone_dir: None,
+            welcome_completed: false,
         }
     }
 }
@@ -107,6 +110,7 @@ mod tests {
             theme: ThemeSetting::Dark,
             sidebar_width: 300.0,
             clone_dir: None,
+            welcome_completed: true,
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();
