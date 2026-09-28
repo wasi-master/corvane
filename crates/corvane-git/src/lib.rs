@@ -1,6 +1,7 @@
 //! Git engine. Reads via `gix`, writes and network via the
 //! `git` CLI so behaviour matches GitHub Desktop exactly.
 
+pub mod commit;
 pub mod detect;
 pub mod diff;
 pub mod error;
@@ -9,6 +10,10 @@ pub mod process;
 pub mod repo;
 pub mod status;
 
+pub use commit::{
+    CommitOptions, commit, discard_changes, format_message, head_sha, stage_files,
+    undo_last_commit, unstage_all,
+};
 pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
 pub use error::GitError;

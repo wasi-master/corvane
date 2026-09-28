@@ -13,7 +13,7 @@ use tracing::{error, info, warn};
 
 use crate::persistence::{Settings, StoreExt};
 use crate::state::{
-    AppState, CloneState, Foldout, Popup, RepositoryState, SignInState, SignInStep,
+    AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
 };
 use corvane_models::{Account, DiffSelection, Repository, github_from_remote};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -615,6 +615,138 @@ impl Dispatcher {
                 _ => None,
             };
             cx.update(|cx| on_pick(picked, cx));
+        })
+        .detach();
+    }
+
+    // ---- commit / undo / discard (GHD `_commitIncludedChanges`, `_undoCommit`, `_discardChanges`) ----
+
+    fn repo_context(
+        id: u64,
+        cx: &App,
+    ) -> Option<(Arc<corvane_git::GitBinary>, std::path::PathBuf)> {
+        let s = Self::state(cx).read(cx);
+        let git = s.git.clone()?;
+        let workdir = s.repo_states.get(&id)?.info.as_ref()?.workdir.clone();
+        Some((git, workdir))
+    }
+
+    pub fn commit(id: u64, summary: String, description: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let files: Vec<_> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .map(|st| {
+                st.files
+                    .iter()
+                    .filter(|f| f.selection != DiffSelection::None)
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        if summary.trim().is_empty() || files.is_empty() {
+            return;
+        }
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).committing = true;
+            cx.notify();
+        });
+        let message = corvane_git::format_message(&summary, &description);
+        let summary_for_bar = summary.trim().to_string();
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::unstage_all(git.clone(), &workdir)?;
+            corvane_git::stage_files(git.clone(), &workdir, &files)?;
+            corvane_git::commit(
+                git,
+                &workdir,
+                &message,
+                &corvane_git::CommitOptions::default(),
+            )
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    rs.committing = false;
+                    if let Ok(sha) = &result {
+                        rs.last_commit = Some(LastCommit {
+                            sha: sha.clone(),
+                            summary: summary_for_bar.clone(),
+                            at: std::time::SystemTime::now(),
+                        });
+                        rs.commit_nonce += 1;
+                    }
+                    cx.notify();
+                });
+                if let Err(err) = result {
+                    Self::show_error("Could not commit", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    pub fn undo_commit(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::undo_last_commit(git, &workdir) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).last_commit = None;
+                    cx.notify();
+                });
+                if let Err(err) = result {
+                    Self::show_error("Could not undo commit", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// Discard the given paths' changes (after the confirmation prompt).
+    pub fn discard_changes(id: u64, paths: Vec<String>, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let files: Vec<_> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .map(|st| {
+                st.files
+                    .iter()
+                    .filter(|f| paths.contains(&f.path))
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        if files.is_empty() {
+            return;
+        }
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::discard_changes(git, &workdir, &files) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not discard changes", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
         })
         .detach();
     }

@@ -35,6 +35,8 @@ pub struct GitCommand {
     env: Vec<(OsString, OsString)>,
     /// Exit codes that are not failures (e.g. `diff --exit-code` → 1).
     ok_codes: Vec<i32>,
+    /// Bytes written to git's stdin (`commit -F -`, `update-index --stdin`).
+    stdin: Option<Vec<u8>>,
 }
 
 impl GitCommand {
@@ -45,7 +47,13 @@ impl GitCommand {
             cwd: None,
             env: Vec::new(),
             ok_codes: vec![0],
+            stdin: None,
         }
+    }
+
+    pub fn stdin(mut self, bytes: impl Into<Vec<u8>>) -> Self {
+        self.stdin = Some(bytes.into());
+        self
     }
 
     pub fn arg(mut self, arg: impl AsRef<OsStr>) -> Self {
@@ -92,7 +100,11 @@ impl GitCommand {
         for (k, v) in &self.env {
             cmd.env(k, v);
         }
-        cmd.stdin(Stdio::null());
+        cmd.stdin(if self.stdin.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        });
         cmd
     }
 
@@ -109,7 +121,23 @@ impl GitCommand {
     pub fn run(&self) -> Result<GitOutput> {
         let started = Instant::now();
         let args = self.describe();
-        let output = self.command().output().map_err(GitError::Spawn)?;
+        let output = match &self.stdin {
+            None => self.command().output().map_err(GitError::Spawn)?,
+            Some(bytes) => {
+                let mut child = self
+                    .command()
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .map_err(GitError::Spawn)?;
+                if let Some(mut stdin) = child.stdin.take() {
+                    use std::io::Write;
+                    // git may exit early; a broken pipe is then reported via the exit code
+                    let _ = stdin.write_all(bytes);
+                }
+                child.wait_with_output().map_err(GitError::Spawn)?
+            }
+        };
         let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
         let code = output.status.code();
         debug!(
