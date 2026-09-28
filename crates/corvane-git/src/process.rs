@@ -163,7 +163,7 @@ impl GitCommand {
             loop {
                 chunk.clear();
                 // read until \r or \n
-                let n = read_until_any(&mut reader, &[b'\r', b'\n'], &mut chunk);
+                let n = read_until_any(&mut reader, b"\r\n", &mut chunk);
                 if n == 0 {
                     break;
                 }

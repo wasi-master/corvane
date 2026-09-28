@@ -11,7 +11,9 @@ use corvane_store::Store;
 use gpui_kit::{App, Entity, Global};
 
 use crate::persistence::Settings;
-use corvane_models::{Account, AheadBehind, Repository, RepositoryInfo, Section};
+use corvane_models::{
+    Account, AheadBehind, Diff, Repository, RepositoryInfo, Section, WorkingDirectoryStatus,
+};
 
 /// Which toolbar foldout is open (`FoldoutType`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,6 +82,18 @@ pub struct RepositoryState {
     pub error: Option<String>,
     pub last_refresh: Option<Instant>,
     pub section: Section,
+    /// `git status` result (`IChangesState.workingDirectory`).
+    pub status: Option<WorkingDirectoryStatus>,
+    /// Path of the file whose diff is shown (`selectedFileIDs[0]`).
+    pub selected_file: Option<String>,
+    pub diff: Option<Diff>,
+    pub diff_loading: bool,
+}
+
+impl RepositoryState {
+    pub fn changed_files(&self) -> usize {
+        self.status.as_ref().map(|s| s.files.len()).unwrap_or(0)
+    }
 }
 
 pub struct AppState {
