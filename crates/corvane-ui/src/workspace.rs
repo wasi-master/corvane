@@ -10,7 +10,7 @@ use gpui_kit::*;
 use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
-use crate::diff_view::{diff_header, diff_view};
+use crate::diff_view::{DiffView, diff_header};
 use crate::foldout::foldout_layer;
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
@@ -33,6 +33,7 @@ pub struct Workspace {
     history: Entity<HistorySidebar>,
     repository_foldout: Entity<RepositoryFoldout>,
     dialogs: Entity<DialogHost>,
+    diff_view: Entity<DiffView>,
     welcome: Option<Entity<WelcomeView>>,
 }
 
@@ -79,6 +80,7 @@ impl Workspace {
         let changes = cx.new(|cx| ChangesSidebar::new(state.clone(), window, cx));
         let history = cx.new(|cx| HistorySidebar::new(window, cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
+        let diff_view = cx.new(|cx| DiffView::new(state.clone(), cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
             .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
@@ -94,6 +96,7 @@ impl Workspace {
             history,
             repository_foldout,
             dialogs,
+            diff_view,
             welcome,
         }
     }
@@ -190,17 +193,13 @@ impl Workspace {
         match self.section {
             Section::Changes if selected_change.is_some() => {
                 let file = selected_change.unwrap();
-                let diff = rs.and_then(|r| r.diff.clone());
                 div()
                     .size_full()
                     .flex()
                     .flex_col()
                     .min_h_0()
                     .child(diff_header(&file, cx))
-                    .child(match diff {
-                        Some(diff) => diff_view(&diff, cx).into_any_element(),
-                        None => div().flex_1().into_any_element(),
-                    })
+                    .child(self.diff_view.clone())
                     .into_any_element()
             }
             Section::Changes => {

@@ -279,9 +279,9 @@ impl Render for ContextMenu {
                     )
                     // Escape is bound to CloseFoldout; bindings win over key
                     // listeners, so handle the action (and raw key as fallback).
-                    .on_action(cx.listener(|this, _: &CloseFoldout, window, cx| {
-                        this.dismiss(window, cx)
-                    }))
+                    .on_action(
+                        cx.listener(|this, _: &CloseFoldout, window, cx| this.dismiss(window, cx)),
+                    )
                     .on_key_down(cx.listener(|this, ev: &KeyDownEvent, window, cx| {
                         if ev.keystroke.key == "escape" {
                             this.dismiss(window, cx);
