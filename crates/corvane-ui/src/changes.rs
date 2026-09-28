@@ -359,14 +359,22 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let menu = cx.new(|cx| ContextMenu::new(position, items, window, cx));
-        cx.subscribe(&menu, |this, _, _: &DismissEvent, cx| {
-            this.context_menu = None;
+        // macOS: a real NSMenu (GHD's Electron `Menu.popup`); the GPUI menu is the fallback.
+        #[cfg(target_os = "macos")]
+        {
+            crate::native_menu::show_context_menu(items, position, window, cx);
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let menu = cx.new(|cx| ContextMenu::new(position, items, window, cx));
+            cx.subscribe(&menu, |this, _, _: &DismissEvent, cx| {
+                this.context_menu = None;
+                cx.notify();
+            })
+            .detach();
+            self.context_menu = Some(menu);
             cx.notify();
-        })
-        .detach();
-        self.context_menu = Some(menu);
-        cx.notify();
+        }
     }
 
     /// GHD `getDefaultContextMenu` for one file (multi-select variants come

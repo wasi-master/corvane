@@ -16,6 +16,8 @@ pub mod foldout;
 pub mod history;
 pub mod icons;
 pub mod keymap;
+#[cfg(target_os = "macos")]
+pub mod native_menu;
 pub mod no_changes;
 pub mod no_repositories;
 pub mod relative_time;
