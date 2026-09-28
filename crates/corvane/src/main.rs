@@ -82,10 +82,10 @@ fn main() {
             Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
         }
         // CORVANE_CLONE="<url>|<path>" clones at launch (dev/testing convenience).
-        if let Ok(spec) = std::env::var("CORVANE_CLONE") {
-            if let Some((url, path)) = spec.split_once('|') {
-                Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), cx);
-            }
+        if let Ok(spec) = std::env::var("CORVANE_CLONE")
+            && let Some((url, path)) = spec.split_once('|')
+        {
+            Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), cx);
         }
         cx.on_action(|_: &RemoveRepository, cx| {
             if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {

@@ -93,6 +93,8 @@ pub struct RepositoryState {
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
     pub committing: bool,
+    /// A refresh was requested while one was running; run again when done.
+    pub refresh_pending: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -123,6 +125,9 @@ pub struct AppState {
     pub popup: Option<Popup>,
     pub cloning: Option<CloneState>,
     pub sign_in: Option<SignInState>,
+    /// Watcher for the selected repository's worktree.
+    pub watcher: Option<crate::watcher::RepoWatcher>,
+    pub watched_repo: Option<u64>,
 }
 
 struct AppStateHandle(Entity<AppState>);

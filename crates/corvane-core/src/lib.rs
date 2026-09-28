@@ -4,6 +4,7 @@
 pub mod dispatcher;
 pub mod persistence;
 pub mod state;
+pub mod watcher;
 
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;

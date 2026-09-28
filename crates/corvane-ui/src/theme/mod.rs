@@ -246,6 +246,7 @@ impl ActiveGhdTheme for App {
 
 /// Call before `gpui_kit::init`: pre-create the kit theme with explicit font
 /// families so `Theme::change` skips its installed-font enumeration.
+#[allow(clippy::field_reassign_with_default)] // kit Theme has private fields
 pub fn preseed_kit_theme(cx: &mut App) {
     if cx.has_global::<KitTheme>() {
         return;
