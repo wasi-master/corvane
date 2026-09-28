@@ -10,6 +10,7 @@ corvane-models.workspace = true
 gix.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+trash = "5"
 
 [dev-dependencies]
 tempfile = "3"

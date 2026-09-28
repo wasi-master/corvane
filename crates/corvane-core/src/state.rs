@@ -26,12 +26,31 @@ pub enum Foldout {
 /// Modal dialogs (`PopupType`, the subset Corvane has so far).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Popup {
-    InstallGit { reason: String },
-    Error { title: String, message: String },
-    AddExistingRepository { path: Option<PathBuf> },
-    CreateRepository { path: Option<PathBuf> },
-    CloneRepository { url: Option<String> },
-    SignIn { enterprise: bool },
+    InstallGit {
+        reason: String,
+    },
+    Error {
+        title: String,
+        message: String,
+    },
+    AddExistingRepository {
+        path: Option<PathBuf>,
+    },
+    CreateRepository {
+        path: Option<PathBuf>,
+    },
+    CloneRepository {
+        url: Option<String>,
+    },
+    SignIn {
+        enterprise: bool,
+    },
+    /// `all` selects the "Discard All Changes" wording.
+    DiscardChanges {
+        repo: u64,
+        paths: Vec<String>,
+        all: bool,
+    },
 }
 
 /// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.

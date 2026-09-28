@@ -207,6 +207,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path();
         git(path, &["init", "-q", "-b", "main"]);
+        git(path, &["config", "commit.gpgsign", "false"]);
         git(path, &["config", "user.name", "Test"]);
         git(path, &["config", "user.email", "test@example.com"]);
 
@@ -260,6 +261,7 @@ mod tests {
         let work = dir.path().join("work");
         std::fs::create_dir(&work).unwrap();
         git(&work, &["init", "-q", "-b", "main"]);
+        git(&work, &["config", "commit.gpgsign", "false"]);
         std::fs::write(work.join("a.txt"), "1").unwrap();
         git(&work, &["add", "."]);
         git(&work, &["commit", "-q", "-m", "one"]);

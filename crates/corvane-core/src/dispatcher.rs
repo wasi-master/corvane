@@ -800,12 +800,71 @@ impl Dispatcher {
         }
         let task = cx
             .background_executor()
-            .spawn(async move { corvane_git::discard_changes(git, &workdir, &files) });
+            .spawn(async move { corvane_git::discard_changes(git, &workdir, &files, true) });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
                 if let Err(err) = result {
                     Self::show_error("Could not discard changes", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// GHD `onDiscardChangesFromFiles`: confirm first unless the user opted out.
+    pub fn request_discard_changes(id: u64, paths: Vec<String>, cx: &mut App) {
+        if paths.is_empty() {
+            return;
+        }
+        let (confirm, total) = {
+            let s = Self::state(cx).read(cx);
+            let total = s
+                .repo_states
+                .get(&id)
+                .and_then(|r| r.status.as_ref())
+                .map(|st| st.files.len())
+                .unwrap_or(0);
+            (s.settings.confirm_discard_changes, total)
+        };
+        if confirm {
+            let all = paths.len() == total;
+            Self::show_popup(
+                Popup::DiscardChanges {
+                    repo: id,
+                    paths,
+                    all,
+                },
+                cx,
+            );
+        } else {
+            Self::discard_changes(id, paths, cx);
+        }
+    }
+
+    /// "Ignore File / Folder" menu items: paths are escaped before writing.
+    pub fn ignore_files(id: u64, paths: Vec<String>, cx: &mut App) {
+        let patterns = paths
+            .iter()
+            .map(|p| corvane_git::escape_gitignore_pattern(p))
+            .collect();
+        Self::ignore_patterns(id, patterns, cx);
+    }
+
+    /// Append raw patterns (e.g. `*.log`) to the root `.gitignore`, then refresh.
+    pub fn ignore_patterns(id: u64, patterns: Vec<String>, cx: &mut App) {
+        let Some((_git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::append_ignore_rules(&workdir, &patterns) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not update .gitignore", err.to_string(), cx);
                 }
                 Self::refresh_repository(id, cx);
             });

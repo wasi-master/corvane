@@ -151,18 +151,22 @@ pub fn undo_last_commit(git: Arc<GitBinary>, workdir: &Path) -> Result<()> {
 }
 
 /// Discard working-directory changes (GHD `discardChanges`): tracked files are
-/// reset and checked out from HEAD; new/untracked files are removed.
+/// reset and checked out from HEAD; new/untracked files go to the Trash
+/// (`moveToTrash`, so a discard is recoverable) or are deleted.
 pub fn discard_changes(
     git: Arc<GitBinary>,
     workdir: &Path,
     files: &[WorkingDirectoryFileChange],
+    move_to_trash: bool,
 ) -> Result<()> {
     let mut tracked: Vec<&str> = Vec::new();
     for file in files {
         match file.status.kind {
             FileStatusKind::New | FileStatusKind::Untracked => {
                 let full = workdir.join(&file.path);
-                let _ = std::fs::remove_file(&full).or_else(|_| std::fs::remove_dir_all(&full));
+                if !move_to_trash || trash::delete(&full).is_err() {
+                    let _ = std::fs::remove_file(&full).or_else(|_| std::fs::remove_dir_all(&full));
+                }
             }
             _ => {
                 tracked.push(&file.path);
@@ -210,6 +214,7 @@ mod tests {
             )
         };
         run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
         run(&["config", "user.name", "T"]);
         run(&["config", "user.email", "t@example.com"]);
         (dir, Arc::new(crate::find_git().unwrap()))
@@ -281,7 +286,7 @@ mod tests {
         std::fs::write(path.join("a.txt"), "dirty\n").unwrap();
         std::fs::write(path.join("new.txt"), "x\n").unwrap();
         let status = crate::get_status(git.clone(), path, None).unwrap();
-        discard_changes(git.clone(), path, &status.files).unwrap();
+        discard_changes(git.clone(), path, &status.files, false).unwrap();
         assert_eq!(
             std::fs::read_to_string(path.join("a.txt")).unwrap(),
             "one\n"
