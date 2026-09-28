@@ -50,7 +50,7 @@ corvane/
 │  ├─ corvane-highlight/       # syntect wrapper, per-line state cache, grammar pack loading
 │  ├─ corvane-packs/           # on-demand component manifest, download, verify, install
 │  └─ corvane-platform/        # keychain, trash, open-in-editor/shell, notifications, app paths, git detection
-├─ assets/                     # octicons SVG subset, app icon .icns, default theme JSONs
+├─ assets/                     # octicons SVG subset, app icon (.icns + icon/Corvane.icon for macOS 26), default theme JSONs
 ├─ packaging/                  # velopack config, Info.plist template, Homebrew cask template, release scripts
 ├─ docs/reference/             # GHD inventory + tokens (see §1)
 ├─ PLAN.md  TODO.md  CLAUDE.md  NOTICE  LICENSE
