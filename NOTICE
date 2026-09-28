@@ -1,0 +1,17 @@
+Corvane — third-party notices
+
+Corvane's user interface is a re-implementation of GitHub Desktop's UI.
+Layout constants, colour tokens, menu structure, dialog flows and some
+algorithms (e.g. the partial-staging patch formatter) are ported from
+GitHub Desktop (https://github.com/desktop/desktop), which is
+Copyright (c) GitHub, Inc. and licensed under the MIT License.
+
+Icons in assets/octicons/ are Primer Octicons
+(https://github.com/primer/octicons), Copyright (c) GitHub, Inc.,
+licensed under the MIT License.
+
+Colour scale values are from GitHub's Primer design system
+(https://primer.style), Copyright (c) GitHub, Inc., MIT License.
+
+GPUI and gpui-kit are Copyright (c) Zed Industries and Longbridge,
+licensed under the Apache License 2.0.
