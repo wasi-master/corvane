@@ -1,0 +1,8 @@
+[package]
+name = "corvane-github"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane GitHub API client and device-flow auth"
+
+[dependencies]

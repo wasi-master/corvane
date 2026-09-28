@@ -1,0 +1,8 @@
+[package]
+name = "corvane-git"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane git engine: gitoxide reads, git CLI writes"
+
+[dependencies]

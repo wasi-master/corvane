@@ -1,0 +1,26 @@
+//! Corvane UI: a GPUI recreation of GitHub Desktop's chrome.
+//!
+//! Geometry and colours come from `.docs/ghd-ui-inventory.md` and
+//! `.docs/ghd-theme-tokens.md`. Views never touch git, network or disk;
+//! they dispatch actions that `corvane-core` handles.
+
+pub mod actions;
+pub mod changes;
+pub mod history;
+pub mod icons;
+pub mod keymap;
+pub mod no_changes;
+pub mod tab_bar;
+pub mod theme;
+pub mod title_bar;
+pub mod toolbar;
+pub mod widgets;
+pub mod workspace;
+
+use gpui_kit::App;
+
+/// Install the theme global and keymap. Call once after `gpui_kit::init`.
+pub fn init(cx: &mut App, appearance: theme::Appearance) {
+    theme::init(cx, appearance);
+    keymap::install(cx);
+}

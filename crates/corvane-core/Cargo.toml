@@ -1,0 +1,9 @@
+[package]
+name = "corvane-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane application state, models and dispatcher"
+
+[dependencies]
+serde.workspace = true
