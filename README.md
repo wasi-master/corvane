@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon/Corvane-1024.png" width="128" alt="Corvane app icon"></p>
+
 # Corvane
 
 A native, fast, low-memory GitHub Desktop clone written in Rust.

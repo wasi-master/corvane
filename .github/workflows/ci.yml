@@ -27,3 +27,14 @@ jobs:
         run: cargo test --workspace
       - name: build (release, precompiled Metal shaders)
         run: cargo build --release --no-default-features -p corvane
+      - name: bundle (Liquid Glass icon needs Xcode 26 actool)
+        run: |
+          export DEVELOPER_DIR="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)/Contents/Developer"
+          packaging/bundle.sh release
+          test -f target/bundle/Corvane.app/Contents/Resources/Assets.car
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' target/bundle/Corvane.app/Contents/Info.plist
+          ditto -c -k --keepParent target/bundle/Corvane.app target/bundle/Corvane.app.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Corvane.app
+          path: target/bundle/Corvane.app.zip

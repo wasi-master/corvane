@@ -24,6 +24,27 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 sed -e "s/__VERSION__/$VERSION/" -e "s/__BUILD__/$BUILD/" \
   "$ROOT/packaging/Info.plist" > "$APP/Contents/Info.plist"
 cp "$BIN" "$APP/Contents/MacOS/corvane"
+
+# macOS 26 Liquid Glass icon: compile the Icon Composer package (assets/icon/Corvane.icon)
+# into Assets.car. Needs actool from Xcode 26+; the Command Line Tools alone do not ship it.
+# Without it the bundle falls back to the legacy .icns below (Finder ignores
+# CFBundleIconName when Assets.car is absent, so the key is only added on success).
+if ACTOOL="$(xcrun --find actool 2>/dev/null)"; then
+  "$ACTOOL" "$ROOT/assets/icon/Corvane.icon" \
+    --compile "$APP/Contents/Resources" \
+    --platform macosx --minimum-deployment-target 26.0 \
+    --app-icon Corvane \
+    --output-format human-readable-text --errors --warnings \
+    --output-partial-info-plist "$OUT/Corvane-icon.plist" >/dev/null
+  if [[ ! -f "$APP/Contents/Resources/Assets.car" ]]; then
+    echo "actool did not produce Assets.car" >&2
+    exit 1
+  fi
+  /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string Corvane" "$APP/Contents/Info.plist"
+else
+  echo "actool not found (Xcode 26+); skipping Liquid Glass icon, using Corvane.icns only" >&2
+fi
+# Hand-tuned legacy icon (16/32 px variants) wins over the flattened one actool emits.
 if [[ -f "$ROOT/assets/Corvane.icns" ]]; then
   cp "$ROOT/assets/Corvane.icns" "$APP/Contents/Resources/Corvane.icns"
 fi

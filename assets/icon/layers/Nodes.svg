@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+<g transform="translate(512 512) scale(1.24272) translate(-512 -512) translate(18 0)" fill="#fff">
+  <path fill-rule="evenodd" d="M 597 343 a 68 68 0 1 0 136 0 a 68 68 0 1 0 -136 0 Z M 634 343 a 31 31 0 1 0 62 0 a 31 31 0 1 0 -62 0 Z"/>
+  <path fill-rule="evenodd" d="M 597 681 a 68 68 0 1 0 136 0 a 68 68 0 1 0 -136 0 Z M 634 681 a 31 31 0 1 0 62 0 a 31 31 0 1 0 -62 0 Z"/>
+  <path fill-rule="evenodd" d="M 460 502 a 68 68 0 1 0 136 0 a 68 68 0 1 0 -136 0 Z M 497 502 a 31 31 0 1 0 62 0 a 31 31 0 1 0 -62 0 Z"/>
+</g>
+</svg>
