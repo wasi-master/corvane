@@ -127,6 +127,39 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
     Ok(opts.path)
 }
 
+/// `git config --global --get user.name/email`.
+pub fn global_identity(git: Arc<GitBinary>) -> corvane_models::Identity {
+    let get = |key: &str| {
+        GitCommand::new(git.clone())
+            .args(["config", "--global", "--get", key])
+            .allow_exit_code(1)
+            .run()
+            .ok()
+            .and_then(|o| o.stdout_string().ok())
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+    };
+    corvane_models::Identity {
+        name: get("user.name"),
+        email: get("user.email"),
+    }
+}
+
+/// `git config --global user.name <name>` / `user.email <email>` (skips empty values).
+pub fn set_global_identity(git: Arc<GitBinary>, name: &str, email: &str) -> Result<()> {
+    if !name.trim().is_empty() {
+        GitCommand::new(git.clone())
+            .args(["config", "--global", "user.name", name.trim()])
+            .run()?;
+    }
+    if !email.trim().is_empty() {
+        GitCommand::new(git)
+            .args(["config", "--global", "user.email", email.trim()])
+            .run()?;
+    }
+    Ok(())
+}
+
 /// Progress reported while cloning: phase text + overall fraction (0..1).
 #[derive(Clone, Debug, PartialEq)]
 pub struct CloneProgress {

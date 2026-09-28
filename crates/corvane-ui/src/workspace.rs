@@ -20,6 +20,7 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::title_bar::title_bar;
 use crate::toolbar::{toolbar, toolbar_models};
+use crate::welcome::WelcomeView;
 
 pub struct Workspace {
     focus_handle: FocusHandle,
@@ -31,6 +32,7 @@ pub struct Workspace {
     history: Entity<HistorySidebar>,
     repository_foldout: Entity<RepositoryFoldout>,
     dialogs: Entity<DialogHost>,
+    welcome: Option<Entity<WelcomeView>>,
 }
 
 impl Workspace {
@@ -70,6 +72,8 @@ impl Workspace {
         let history = cx.new(|cx| HistorySidebar::new(window, cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
+        let welcome = (!state.read(cx).settings.welcome_completed)
+            .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
         window.focus(&focus_handle, cx);
 
         Self {
@@ -82,6 +86,7 @@ impl Workspace {
             history,
             repository_foldout,
             dialogs,
+            welcome,
         }
     }
 
@@ -227,6 +232,10 @@ impl Workspace {
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        let welcome_done = self.state.read(cx).settings.welcome_completed;
+        if welcome_done {
+            self.welcome = None;
+        }
         let (buttons, foldout, popup, has_repos, cloning) = {
             let state = self.state.read(cx);
             (
@@ -251,27 +260,32 @@ impl Render for Workspace {
             .text_size(FONT_SIZE)
             .font_family(crate::theme::UI_FONT)
             .child(title_bar(cx))
-            .child(toolbar(buttons, cx))
-            .child(if let Some(clone) = cloning.as_ref() {
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .border_t_1()
-                    .border_color(t.box_border)
-                    .child(cloning_view(clone, cx))
-                    .into_any_element()
-            } else if has_repos {
-                self.repository_view(cx).into_any_element()
-            } else {
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .border_t_1()
-                    .border_color(t.box_border)
-                    .child(no_repositories(cx))
-                    .into_any_element()
+            .when_some(self.welcome.clone(), |d, welcome| {
+                d.child(div().flex_1().min_h_0().w_full().child(welcome))
+            })
+            .when(self.welcome.is_none(), |d| d.child(toolbar(buttons, cx)))
+            .when(self.welcome.is_none(), |d| {
+                d.child(if let Some(clone) = cloning.as_ref() {
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .w_full()
+                        .border_t_1()
+                        .border_color(t.box_border)
+                        .child(cloning_view(clone, cx))
+                        .into_any_element()
+                } else if has_repos {
+                    self.repository_view(cx).into_any_element()
+                } else {
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .w_full()
+                        .border_t_1()
+                        .border_color(t.box_border)
+                        .child(no_repositories(cx))
+                        .into_any_element()
+                })
             })
             .when_some(foldout, |d, foldout| {
                 let (x, width) = match foldout {

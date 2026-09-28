@@ -4,6 +4,7 @@
 mod add_existing;
 mod clone_repository;
 mod create_repository;
+mod sign_in;
 mod simple;
 
 use corvane_core::{AppState, Popup};
@@ -13,6 +14,7 @@ use gpui_kit::*;
 pub use add_existing::AddExistingRepositoryDialog;
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
+pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
 pub struct DialogHost {
@@ -44,13 +46,8 @@ impl DialogHost {
             Popup::CloneRepository { url } => cx
                 .new(|cx| CloneRepositoryDialog::new(state, url.clone(), window, cx))
                 .into(),
-            Popup::SignIn => cx
-                .new(|_| {
-                    SimpleDialog::new(Popup::Error {
-                        title: "Sign in".into(),
-                        message: "Sign-in arrives in the next step.".into(),
-                    })
-                })
+            Popup::SignIn { enterprise } => cx
+                .new(|cx| SignInDialog::new(state, *enterprise, window, cx))
                 .into(),
         }
     }

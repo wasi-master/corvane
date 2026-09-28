@@ -29,7 +29,36 @@ pub enum Popup {
     AddExistingRepository { path: Option<PathBuf> },
     CreateRepository { path: Option<PathBuf> },
     CloneRepository { url: Option<String> },
-    SignIn,
+    SignIn { enterprise: bool },
+}
+
+/// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.
+#[derive(Clone, Debug, PartialEq)]
+pub enum SignInStep {
+    /// Asking GitHub for a device code.
+    Requesting,
+    /// Show the code; poll until the user authorises in the browser.
+    DeviceCode {
+        user_code: String,
+        verification_uri: String,
+    },
+    /// Token in hand; fetching the account.
+    Verifying,
+    Error(String),
+}
+
+#[derive(Clone, Debug)]
+pub struct SignInState {
+    /// API base, e.g. `https://api.github.com`.
+    pub endpoint: String,
+    pub step: SignInStep,
+    pub cancel: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl PartialEq for SignInState {
+    fn eq(&self, other: &Self) -> bool {
+        self.endpoint == other.endpoint && self.step == other.step
+    }
 }
 
 /// An in-flight `git clone` shown in the content area (`CloningRepository`).
@@ -67,6 +96,7 @@ pub struct AppState {
     pub foldout: Option<Foldout>,
     pub popup: Option<Popup>,
     pub cloning: Option<CloneState>,
+    pub sign_in: Option<SignInState>,
 }
 
 struct AppStateHandle(Entity<AppState>);
@@ -80,6 +110,14 @@ impl AppState {
     /// The single app-state entity. Panics if `Dispatcher::init` has not run.
     pub fn global(cx: &App) -> Entity<AppState> {
         cx.global::<AppStateHandle>().0.clone()
+    }
+
+    pub fn account_for(&self, endpoint: &str) -> Option<&Account> {
+        self.accounts.iter().find(|a| a.endpoint == endpoint)
+    }
+
+    pub fn dotcom_account(&self) -> Option<&Account> {
+        self.accounts.iter().find(|a| a.is_dotcom())
     }
 
     pub fn repository(&self, id: u64) -> Option<&Repository> {
