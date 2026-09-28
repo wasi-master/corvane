@@ -74,6 +74,12 @@ pub fn theme() -> GhdTheme {
         primary_suggested_action_background: c(BLUE_900),
         primary_suggested_action_border: c(BLUE_700),
         suggested_action_icon: c(BLUE_400),
+        control_background: c(0x3b3b3b),
+        control_border: c(0x858585),
+        control_disabled_background: c(0x3b3b3b),
+        control_disabled_border: c(0x626262),
+        control_disabled_accent: c(0x757575),
+        control_disabled_glyph: c(0x3b3b3b),
 
         color_new: c(GREEN),
         color_deleted: c(RED),
