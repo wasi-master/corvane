@@ -124,6 +124,10 @@ pub struct GhdTheme {
     pub list_item_hover_background: Hsla,
     pub list_item_badge_text: Hsla,
     pub list_item_badge_background: Hsla,
+    pub list_item_selected_badge_text: Hsla,
+    pub list_item_selected_badge_background: Hsla,
+    pub list_item_selected_active_badge_text: Hsla,
+    pub list_item_selected_active_badge_background: Hsla,
     pub scroll_bar_thumb: Hsla,
     pub scroll_bar_thumb_active: Hsla,
 

@@ -407,6 +407,7 @@ impl Dispatcher {
                 if selected_file.is_some() {
                     Self::load_diff(id, cx);
                 }
+                Self::load_commits(id, false, cx);
                 let rerun = Self::state(cx).update(cx, |s, _| {
                     let rs = s.repo_state_mut(id);
                     std::mem::take(&mut rs.refresh_pending)
@@ -516,6 +517,192 @@ impl Dispatcher {
             });
         })
         .detach();
+    }
+
+    // ---- history (GHD `_loadHistory`, `_loadNextCommitBatch`, `_changeCommitSelection`) ----
+
+    /// Load the first page of HEAD's history, or the next one when `more`.
+    pub fn load_commits(id: u64, more: bool, cx: &mut App) {
+        let state = Self::state(cx);
+        let (workdir, skip) = {
+            let s = state.read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            if rs.commits_loading || (more && rs.commits_exhausted) {
+                return;
+            }
+            let Some(info) = rs.info.as_ref() else { return };
+            (
+                info.workdir.clone(),
+                if more { rs.commits.len() } else { 0 },
+            )
+        };
+        state.update(cx, |s, _| s.repo_state_mut(id).commits_loading = true);
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::get_commits(&workdir, "HEAD", skip, corvane_git::COMMIT_BATCH_SIZE)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                let reselect = Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    rs.commits_loading = false;
+                    match result {
+                        Ok(batch) => {
+                            rs.commits_exhausted = batch.len() < corvane_git::COMMIT_BATCH_SIZE;
+                            if more {
+                                rs.commits.extend(batch);
+                            } else {
+                                rs.commits = batch;
+                            }
+                            if let Some(sha) = rs.selected_commit.clone()
+                                && !rs.commits.iter().any(|c| c.sha == sha)
+                            {
+                                rs.selected_commit = None;
+                                rs.changeset = None;
+                                rs.commit_selected_file = None;
+                                rs.commit_diff = None;
+                            }
+                        }
+                        Err(err) => warn!(id, %err, "history failed"),
+                    }
+                    cx.notify();
+                    if more {
+                        None
+                    } else {
+                        rs.selected_commit.clone()
+                    }
+                });
+                if let Some(sha) = reselect {
+                    Self::load_changeset(id, sha, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    pub fn select_commit(id: u64, sha: String, cx: &mut App) {
+        let changed = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.selected_commit.as_deref() == Some(sha.as_str()) {
+                return false;
+            }
+            rs.selected_commit = Some(sha.clone());
+            rs.changeset = None;
+            rs.commit_selected_file = None;
+            rs.commit_diff = None;
+            cx.notify();
+            true
+        });
+        if changed {
+            Self::load_changeset(id, sha, cx);
+        }
+    }
+
+    fn load_changeset(id: u64, sha: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let sha_for_task = sha.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::get_changed_files(git, &workdir, &sha_for_task) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                let load = Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    if rs.selected_commit.as_deref() != Some(sha.as_str()) {
+                        return false;
+                    }
+                    match result {
+                        Ok(data) => {
+                            // keep the file selection when the same path is still there
+                            let keep = rs
+                                .commit_selected_file
+                                .as_ref()
+                                .filter(|p| data.files.iter().any(|f| &f.path == *p))
+                                .cloned();
+                            rs.commit_selected_file =
+                                keep.or_else(|| data.files.first().map(|f| f.path.clone()));
+                            rs.changeset = Some(data);
+                        }
+                        Err(err) => warn!(id, %err, "changed files failed"),
+                    }
+                    cx.notify();
+                    true
+                });
+                if load {
+                    Self::load_commit_diff(id, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
+    pub fn select_commit_file(id: u64, path: String, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).commit_selected_file = Some(path);
+            cx.notify();
+        });
+        Self::load_commit_diff(id, cx);
+    }
+
+    fn load_commit_diff(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let Some(file) = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| {
+                let path = rs.commit_selected_file.as_ref()?;
+                rs.changeset
+                    .as_ref()?
+                    .files
+                    .iter()
+                    .find(|f| &f.path == path)
+                    .cloned()
+            })
+        else {
+            return;
+        };
+        let key = (file.commitish.clone(), file.path.clone());
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::commit_file_diff(git, &workdir, &file) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    if rs.selected_commit.as_deref() != Some(key.0.as_str())
+                        || rs.commit_selected_file.as_deref() != Some(key.1.as_str())
+                    {
+                        return;
+                    }
+                    rs.commit_diff = Some(match result {
+                        Ok(diff) => diff,
+                        Err(err) => {
+                            warn!(id, %err, "commit diff failed");
+                            corvane_models::Diff::Empty
+                        }
+                    });
+                    rs.commit_diff_generation += 1;
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
+    pub fn set_commit_summary_expanded(id: u64, expanded: bool, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).commit_summary_expanded = expanded;
+            cx.notify();
+        });
     }
 
     /// Toggle the include checkbox of one file (`_changeFileIncluded`).

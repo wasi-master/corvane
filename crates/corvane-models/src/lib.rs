@@ -621,6 +621,81 @@ impl WorkingDirectoryStatus {
     }
 }
 
+// ---- history (`models/commit.ts`, `IChangesetData`) ----
+
+/// `CommitIdentity`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommitIdentity {
+    pub name: String,
+    pub email: String,
+    /// Seconds since the Unix epoch (author/committer time).
+    pub seconds: i64,
+    /// Time zone offset in seconds east of UTC.
+    pub offset: i32,
+}
+
+impl CommitIdentity {
+    pub fn date(&self) -> std::time::SystemTime {
+        if self.seconds >= 0 {
+            std::time::UNIX_EPOCH + std::time::Duration::from_secs(self.seconds as u64)
+        } else {
+            std::time::UNIX_EPOCH
+        }
+    }
+}
+
+/// `Commit` (trimmed to what the history views need).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Commit {
+    pub sha: String,
+    pub summary: String,
+    pub body: String,
+    pub author: CommitIdentity,
+    pub committer: CommitIdentity,
+    pub parents: Vec<String>,
+    pub tags: Vec<String>,
+}
+
+impl Commit {
+    pub fn short_sha(&self) -> &str {
+        &self.sha[..self.sha.len().min(7)]
+    }
+
+    pub fn is_merge(&self) -> bool {
+        self.parents.len() > 1
+    }
+}
+
+/// `CommittedFileChange`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommittedFileChange {
+    pub path: String,
+    pub old_path: Option<String>,
+    pub status: FileStatus,
+    pub commitish: String,
+}
+
+/// `IChangesetData`: files plus line counts for one commit.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChangesetData {
+    pub files: Vec<CommittedFileChange>,
+    pub lines_added: u64,
+    pub lines_deleted: u64,
+}
+
+impl CommittedFileChange {
+    pub fn file_name(&self) -> &str {
+        self.path.rsplit('/').next().unwrap_or(&self.path)
+    }
+
+    pub fn directory(&self) -> &str {
+        match self.path.rfind('/') {
+            Some(i) => &self.path[..=i],
+            None => "",
+        }
+    }
+}
+
 // ---- diffs (`models/diff/*`) ----
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

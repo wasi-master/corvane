@@ -10,7 +10,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use corvane_core::{AppState, Diff, DiffSelectionType, FileStatusKind, WorkingDirectoryFileChange};
+use corvane_core::{AppState, Diff, DiffSelection, DiffSelectionType, FileStatusKind};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -35,9 +35,13 @@ pub fn status_icon(kind: FileStatusKind, t: &GhdTheme) -> (Octicon, Hsla) {
 }
 
 /// `.diff-header`: path (directory dimmed) + status icon, 29 px.
-pub fn diff_header(file: &WorkingDirectoryFileChange, cx: &App) -> impl IntoElement {
+pub fn diff_header(path: &str, kind: FileStatusKind, cx: &App) -> impl IntoElement {
     let t = cx.ghd();
-    let (icon, color) = status_icon(file.status.kind, t);
+    let (icon, color) = status_icon(kind, t);
+    let (directory, file_name) = match path.rfind('/') {
+        Some(i) => (&path[..=i], &path[i + 1..]),
+        None => ("", path),
+    };
     div()
         .h(ROW_HEIGHT)
         .flex_none()
@@ -62,12 +66,12 @@ pub fn diff_header(file: &WorkingDirectoryFileChange, cx: &App) -> impl IntoElem
                         .child(
                             div()
                                 .text_color(t.text_secondary)
-                                .child(file.directory().to_string()),
+                                .child(directory.to_string()),
                         )
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .child(file.file_name().to_string()),
+                                .child(file_name.to_string()),
                         ),
                 ),
         )
@@ -75,8 +79,18 @@ pub fn diff_header(file: &WorkingDirectoryFileChange, cx: &App) -> impl IntoElem
         .child(octicon(icon, color))
 }
 
+/// Which diff of the repository state the view shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DiffSource {
+    /// Changes tab: the selected working-directory file (selectable lines).
+    WorkingDirectory,
+    /// History tab: the selected file of the selected commit (read-only).
+    Commit,
+}
+
 pub struct DiffView {
     state: Entity<AppState>,
+    source: DiffSource,
     temp: Option<TempSelection>,
     hovered_group: Option<u32>,
     list_state: ListState,
@@ -88,10 +102,11 @@ pub struct DiffView {
 }
 
 impl DiffView {
-    pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
+    pub fn new(state: Entity<AppState>, source: DiffSource, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         Self {
             state,
+            source,
             temp: None,
             hovered_group: None,
             list_state: ListState::new(0, ListAlignment::Top, px(200.)),
@@ -177,7 +192,7 @@ impl DiffView {
 impl Render for DiffView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Snapshot what the rows need, rebuilding the row cache when the diff changed.
-        let (repo, file, other, rebuilt) = {
+        let (repo, path, kind, selection, other, rebuilt) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else {
                 return div().flex_1().into_any_element();
@@ -185,15 +200,43 @@ impl Render for DiffView {
             let Some(rs) = s.repo_states.get(&id) else {
                 return div().flex_1().into_any_element();
             };
-            let file = rs.selected_file.as_ref().and_then(|p| {
-                rs.status
-                    .as_ref()
-                    .and_then(|st| st.files.iter().find(|f| &f.path == p))
-            });
-            let (Some(file), Some(diff)) = (file, rs.diff.as_ref()) else {
-                return div().flex_1().into_any_element();
+            let (path, kind, selection, diff, generation) = match self.source {
+                DiffSource::WorkingDirectory => {
+                    let file = rs.selected_file.as_ref().and_then(|p| {
+                        rs.status
+                            .as_ref()
+                            .and_then(|st| st.files.iter().find(|f| &f.path == p))
+                    });
+                    let (Some(file), Some(diff)) = (file, rs.diff.as_ref()) else {
+                        return div().flex_1().into_any_element();
+                    };
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        file.selection.clone(),
+                        diff,
+                        rs.diff_generation,
+                    )
+                }
+                DiffSource::Commit => {
+                    let file = rs.commit_selected_file.as_ref().and_then(|p| {
+                        rs.changeset
+                            .as_ref()
+                            .and_then(|c| c.files.iter().find(|f| &f.path == p))
+                    });
+                    let (Some(file), Some(diff)) = (file, rs.commit_diff.as_ref()) else {
+                        return div().flex_1().into_any_element();
+                    };
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        DiffSelection::all(),
+                        diff,
+                        rs.commit_diff_generation,
+                    )
+                }
             };
-            let key = (id, file.path.clone(), rs.diff_generation);
+            let key = (id, path.clone(), generation);
             let mut rebuilt = None;
             let mut other = None;
             match diff {
@@ -207,7 +250,7 @@ impl Render for DiffView {
                 Diff::TooLarge => other = Some("The diff is too large to be displayed by default."),
                 Diff::Submodule => other = Some("Submodule changes are not shown yet."),
             }
-            (id, file.clone(), other, rebuilt)
+            (id, path, kind, selection, other, rebuilt)
         };
         if let Some(message) = other {
             return blankslate(message, cx).into_any_element();
@@ -223,19 +266,20 @@ impl Render for DiffView {
 
         let t = cx.ghd();
         // `canSelect`: working-directory files that are not conflicted.
-        let selectable = file.status.kind != FileStatusKind::Conflicted;
+        let selectable =
+            self.source == DiffSource::WorkingDirectory && kind != FileStatusKind::Conflicted;
         let mut groups: BTreeMap<u32, DiffSelectionType> = BTreeMap::new();
         for row in self.rows.iter() {
             if let Some((start, len)) = row.group {
                 groups
                     .entry(start)
-                    .or_insert_with(|| file.selection.range_kind(start, len));
+                    .or_insert_with(|| selection.range_kind(start, len));
             }
         }
         let ctx = Rc::new(RowContext {
             repo,
-            path: file.path.clone(),
-            selection: file.selection.clone(),
+            path: path.clone(),
+            selection: selection.clone(),
             groups,
             selectable,
             temp: self.temp,

@@ -10,12 +10,13 @@ use gpui_kit::*;
 use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
-use crate::diff_view::{DiffView, diff_header};
+use crate::diff_view::{DiffSource, DiffView, diff_header};
 use crate::foldout::foldout_layer;
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
 use crate::no_repositories::no_repositories;
 use crate::repository_list::RepositoryFoldout;
+use crate::selected_commit::SelectedCommitView;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -31,6 +32,7 @@ pub struct Workspace {
     resizable: Entity<ResizableState>,
     changes: Entity<ChangesSidebar>,
     history: Entity<HistorySidebar>,
+    selected_commit: Entity<SelectedCommitView>,
     repository_foldout: Entity<RepositoryFoldout>,
     dialogs: Entity<DialogHost>,
     diff_view: Entity<DiffView>,
@@ -78,9 +80,10 @@ impl Workspace {
         .detach();
 
         let changes = cx.new(|cx| ChangesSidebar::new(state.clone(), window, cx));
-        let history = cx.new(|cx| HistorySidebar::new(window, cx));
+        let history = cx.new(|cx| HistorySidebar::new(state.clone(), window, cx));
+        let selected_commit = cx.new(|cx| SelectedCommitView::new(state.clone(), cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
-        let diff_view = cx.new(|cx| DiffView::new(state.clone(), cx));
+        let diff_view = cx.new(|cx| DiffView::new(state.clone(), DiffSource::WorkingDirectory, cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
             .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
@@ -94,6 +97,7 @@ impl Workspace {
             resizable,
             changes,
             history,
+            selected_commit,
             repository_foldout,
             dialogs,
             diff_view,
@@ -198,7 +202,7 @@ impl Workspace {
                     .flex()
                     .flex_col()
                     .min_h_0()
-                    .child(diff_header(&file, cx))
+                    .child(diff_header(&file.path, file.status.kind, cx))
                     .child(self.diff_view.clone())
                     .into_any_element()
             }
@@ -236,7 +240,7 @@ impl Workspace {
                 }
                 no_changes(actions, cx).into_any_element()
             }
-            Section::History => div().size_full().bg(cx.ghd().background).into_any_element(),
+            Section::History => self.selected_commit.clone().into_any_element(),
         }
     }
 

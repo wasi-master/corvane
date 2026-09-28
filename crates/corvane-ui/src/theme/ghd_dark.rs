@@ -61,6 +61,10 @@ pub fn theme() -> GhdTheme {
         list_item_hover_background: c(GRAY_800),
         list_item_badge_text: c(GRAY_100),
         list_item_badge_background: c(GRAY_600),
+        list_item_selected_badge_text: c(WHITE),
+        list_item_selected_badge_background: c(GRAY_500),
+        list_item_selected_active_badge_text: c(GRAY_900),
+        list_item_selected_active_badge_background: c(WHITE),
         scroll_bar_thumb: ca(0xffffff, 0.2),
         scroll_bar_thumb_active: ca(0xffffff, 0.5),
 
