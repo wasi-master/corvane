@@ -485,6 +485,7 @@ impl Dispatcher {
                             rs.diff = Some(corvane_models::Diff::Empty);
                         }
                     }
+                    rs.diff_generation += 1;
                     // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
                     // selection to the lines that exist in this diff.
                     let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {

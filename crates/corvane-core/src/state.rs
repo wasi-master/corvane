@@ -107,6 +107,8 @@ pub struct RepositoryState {
     pub selected_file: Option<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
+    /// Bumped whenever `diff` is replaced, so views can cache derived rows.
+    pub diff_generation: u64,
     /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
     pub last_commit: Option<LastCommit>,
     /// Incremented after every successful commit so the form can clear itself.

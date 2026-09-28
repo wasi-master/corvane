@@ -22,7 +22,9 @@ use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{avatar_placeholder, button, checkbox, primary_button, text_box};
+use crate::widgets::{
+    avatar_placeholder, button, checkbox, checkbox_tristate, primary_button, text_box,
+};
 
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
@@ -520,13 +522,14 @@ impl ChangesSidebar {
                         let paths: Vec<String> = visible.iter().map(|f| f.path.clone()).collect();
                         let disabled = total == 0 || visible.is_empty();
                         let include = include_all != Some(true);
-                        checkbox("check-all", include_all != Some(false), disabled, cx)
-                            .when(include_all.is_none(), |d| d.opacity(0.7))
-                            .when_some(repo_id.filter(|_| !disabled), |d, id| {
+                        checkbox_tristate("check-all", include_all, disabled, cx).when_some(
+                            repo_id.filter(|_| !disabled),
+                            |d, id| {
                                 d.on_click(move |_, _, cx| {
                                     Dispatcher::set_files_included(id, paths.clone(), include, cx)
                                 })
-                            })
+                            },
+                        )
                     })
                     .child({
                         let (visible, total, _, _) = self.header_state(cx);
@@ -593,6 +596,8 @@ impl ChangesSidebar {
     }
 
     /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name, status icon.
+    /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name,
+    /// status icon. Virtualized with `uniform_list` (GHD uses react-virtualized).
     fn list(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let s = self.state.read(cx);
@@ -605,12 +610,12 @@ impl ChangesSidebar {
             None
         };
         let selected = rs.and_then(|r| r.selected_file.clone());
-        let hover_bg = t.list_item_hover_background;
+        let files = Rc::new(files);
+        let weak = cx.weak_entity();
         div()
             .id("changes-list")
             .flex_1()
             .min_h(px(100.))
-            .overflow_y_scroll()
             .bg(t.background)
             .flex()
             .flex_col()
@@ -623,77 +628,19 @@ impl ChangesSidebar {
                         .child(message),
                 )
             })
-            .children(files.into_iter().map(|file| {
-                let is_selected = selected.as_deref() == Some(file.path.as_str());
-                let (icon, color) = status_icon(file.status.kind, t);
-                let path_for_select = file.path.clone();
-                let path_for_toggle = file.path.clone();
-                let included = file.selection.kind() != DiffSelectionType::None;
-                let file_for_menu = file.clone();
-                div()
-                    .id(SharedString::from(format!("file-{}", file.path)))
-                    .h(ROW_HEIGHT)
-                    .flex_none()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(SPACING_HALF)
-                    .px(SPACING)
-                    .cursor_pointer()
-                    .on_mouse_down(
-                        MouseButton::Right,
-                        cx.listener(move |this, ev: &MouseDownEvent, window, cx| {
-                            cx.stop_propagation();
-                            this.open_file_menu(file_for_menu.clone(), ev.position, window, cx);
-                        }),
-                    )
-                    .when(is_selected, |d| {
-                        d.bg(t.box_selected_background)
-                            .text_color(t.box_selected_text)
-                    })
-                    .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
-                    .when_some(repo_id, move |d, id| {
-                        d.on_click(move |_, _, cx| {
-                            Dispatcher::select_file(id, path_for_select.clone(), cx)
+            .child(
+                uniform_list("changes-list-rows", files.len(), move |range, _, cx| {
+                    range
+                        .map(|ix| {
+                            let file = &files[ix];
+                            let is_selected = selected.as_deref() == Some(file.path.as_str());
+                            file_row(file, is_selected, repo_id, weak.clone(), cx)
                         })
-                    })
-                    .child(
-                        checkbox(
-                            SharedString::from(format!("include-{}", file.path)),
-                            included,
-                            false,
-                            cx,
-                        )
-                        .when(file.selection.kind() == DiffSelectionType::Partial, |d| {
-                            d.opacity(0.7)
-                        })
-                        .when_some(repo_id, move |d, id| {
-                            d.on_click(move |_, _, cx| {
-                                cx.stop_propagation();
-                                Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
-                            })
-                        }),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .truncate()
-                            .text_size(FONT_SIZE)
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .child(
-                                        div()
-                                            .text_color(t.text_secondary)
-                                            .child(file.directory().to_string()),
-                                    )
-                                    .child(div().child(file.file_name().to_string())),
-                            ),
-                    )
-                    .child(octicon(icon, color))
-            }))
+                        .collect()
+                })
+                .flex_1()
+                .min_h_0(),
+            )
     }
 
     fn commit_disabled(&self, cx: &App) -> bool {
@@ -871,4 +818,89 @@ impl Render for ChangesSidebar {
             .children(self.context_menu.clone())
             .children(self.filter_popover(cx))
     }
+}
+
+/// One changes-list row (`ChangedFile`).
+fn file_row(
+    file: &WorkingDirectoryFileChange,
+    is_selected: bool,
+    repo_id: Option<u64>,
+    weak: WeakEntity<ChangesSidebar>,
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let hover_bg = t.list_item_hover_background;
+    let (icon, color) = status_icon(file.status.kind, t);
+    let path_for_select = file.path.clone();
+    let path_for_toggle = file.path.clone();
+    let include_value = match file.selection.kind() {
+        DiffSelectionType::All => Some(true),
+        DiffSelectionType::None => Some(false),
+        DiffSelectionType::Partial => None,
+    };
+    let file_for_menu = file.clone();
+    div()
+        .id(SharedString::from(format!("file-{}", file.path)))
+        .h(ROW_HEIGHT)
+        .flex_none()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(SPACING_HALF)
+        .px(SPACING)
+        .cursor_pointer()
+        .on_mouse_down(
+            MouseButton::Right,
+            move |ev: &MouseDownEvent, window, cx| {
+                cx.stop_propagation();
+                let position = ev.position;
+                let file = file_for_menu.clone();
+                weak.update(cx, |this, cx| {
+                    this.open_file_menu(file, position, window, cx)
+                })
+                .ok();
+            },
+        )
+        .when(is_selected, |d| {
+            d.bg(t.box_selected_background)
+                .text_color(t.box_selected_text)
+        })
+        .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+        .when_some(repo_id, move |d, id| {
+            d.on_click(move |_, _, cx| Dispatcher::select_file(id, path_for_select.clone(), cx))
+        })
+        .child(
+            checkbox_tristate(
+                SharedString::from(format!("include-{}", file.path)),
+                include_value,
+                false,
+                cx,
+            )
+            .when_some(repo_id, move |d, id| {
+                d.on_click(move |_, _, cx| {
+                    cx.stop_propagation();
+                    Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
+                })
+            }),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .truncate()
+                .text_size(FONT_SIZE)
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .child(
+                            div()
+                                .text_color(t.text_secondary)
+                                .child(file.directory().to_string()),
+                        )
+                        .child(div().child(file.file_name().to_string())),
+                ),
+        )
+        .child(octicon(icon, color))
+        .into_any_element()
 }
