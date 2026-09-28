@@ -88,6 +88,18 @@ pub struct RepositoryState {
     pub selected_file: Option<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
+    /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
+    pub last_commit: Option<LastCommit>,
+    /// Incremented after every successful commit so the form can clear itself.
+    pub commit_nonce: u64,
+    pub committing: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LastCommit {
+    pub sha: String,
+    pub summary: String,
+    pub at: std::time::SystemTime,
 }
 
 impl RepositoryState {

@@ -8,4 +8,6 @@ pub mod state;
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
 pub use persistence::{Settings, StoreExt};
-pub use state::{AppState, CloneState, Foldout, Popup, RepositoryState, SignInState, SignInStep};
+pub use state::{
+    AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
+};

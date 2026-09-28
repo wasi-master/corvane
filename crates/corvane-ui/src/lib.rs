@@ -16,6 +16,7 @@ pub mod icons;
 pub mod keymap;
 pub mod no_changes;
 pub mod no_repositories;
+pub mod relative_time;
 pub mod repository_list;
 pub mod tab_bar;
 pub mod theme;
