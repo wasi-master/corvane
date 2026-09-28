@@ -4,6 +4,7 @@
 mod add_existing;
 mod clone_repository;
 mod create_repository;
+mod discard_changes;
 mod sign_in;
 mod simple;
 
@@ -14,6 +15,7 @@ use gpui_kit::*;
 pub use add_existing::AddExistingRepositoryDialog;
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
+pub use discard_changes::DiscardChangesDialog;
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
@@ -48,6 +50,9 @@ impl DialogHost {
                 .into(),
             Popup::SignIn { enterprise } => cx
                 .new(|cx| SignInDialog::new(state, *enterprise, window, cx))
+                .into(),
+            Popup::DiscardChanges { repo, paths, all } => cx
+                .new(|_| DiscardChangesDialog::new(*repo, paths.clone(), *all))
                 .into(),
         }
     }

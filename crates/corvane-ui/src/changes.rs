@@ -1,13 +1,18 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
-use corvane_core::{AppState, DiffSelection, Dispatcher, Tip};
+use std::path::Path;
+
+use corvane_core::{
+    AppState, DiffSelection, Dispatcher, FileStatusKind, Tip, WorkingDirectoryFileChange,
+};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::Commit;
+use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
@@ -21,6 +26,7 @@ pub struct ChangesSidebar {
     description: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
+    context_menu: Option<Entity<ContextMenu>>,
 }
 
 impl ChangesSidebar {
@@ -55,7 +61,169 @@ impl ChangesSidebar {
             description,
             state,
             seen_commit_nonce: 0,
+            context_menu: None,
         }
+    }
+
+    fn open_menu(
+        &mut self,
+        items: Vec<MenuItem>,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let menu = cx.new(|cx| ContextMenu::new(position, items, window, cx));
+        cx.subscribe(&menu, |this, _, _: &DismissEvent, cx| {
+            this.context_menu = None;
+            cx.notify();
+        })
+        .detach();
+        self.context_menu = Some(menu);
+        cx.notify();
+    }
+
+    /// GHD `getDefaultContextMenu` for one file (multi-select variants come
+    /// with multi-selection).
+    fn open_file_menu(
+        &mut self,
+        file: WorkingDirectoryFileChange,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (id, confirm, repo_path) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            if s.selected_state().map(|r| r.committing).unwrap_or(false) {
+                return;
+            }
+            let Some(repo) = s.repository(id) else { return };
+            (id, s.settings.confirm_discard_changes, repo.path.clone())
+        };
+        let path = file.path.clone();
+        let full = repo_path.join(&path);
+        let deleted = file.status.kind == FileStatusKind::Deleted;
+        let is_gitignore = file.file_name() == ".gitignore";
+        let extension = Path::new(&path)
+            .extension()
+            .map(|e| format!(".{}", e.to_string_lossy()));
+        let parents: Vec<&str> = {
+            let mut components: Vec<&str> = path.split('/').collect();
+            components.pop();
+            components
+        };
+        let mut items = vec![
+            MenuItem::new(
+                if confirm {
+                    "Discard Changes…"
+                } else {
+                    "Discard Changes"
+                },
+                {
+                    let p = path.clone();
+                    move |_, cx| Dispatcher::request_discard_changes(id, vec![p.clone()], cx)
+                },
+            ),
+            MenuItem::separator(),
+            MenuItem::new("Ignore File (Add to .gitignore)", {
+                let p = path.clone();
+                move |_, cx| Dispatcher::ignore_files(id, vec![p.clone()], cx)
+            })
+            .enabled(!is_gitignore),
+        ];
+        if !parents.is_empty() {
+            let folders: Vec<MenuItem> = (0..parents.len())
+                .map(|index| {
+                    let label = format!("/{}", parents[..parents.len() - index].join("/"));
+                    let pattern = label.clone();
+                    MenuItem::new(label, move |_, cx| {
+                        Dispatcher::ignore_files(id, vec![pattern.clone()], cx)
+                    })
+                })
+                .collect();
+            items.push(
+                MenuItem::submenu("Ignore Folder (Add to .gitignore)", folders)
+                    .enabled(!is_gitignore),
+            );
+        }
+        if let Some(ext) = extension {
+            let pattern = format!("*{ext}");
+            items.push(MenuItem::new(
+                format!("Ignore All {ext} Files (Add to .gitignore)"),
+                move |_, cx| Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx),
+            ));
+        }
+        items.push(MenuItem::separator());
+        items.push(MenuItem::new("Copy File Path", {
+            let text = full.to_string_lossy().into_owned();
+            move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(text.clone()))
+        }));
+        items.push(MenuItem::new("Copy Relative File Path", {
+            let p = path.clone();
+            move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(p.clone()))
+        }));
+        items.push(MenuItem::separator());
+        items.push(
+            MenuItem::new("Reveal in Finder", {
+                let f = full.clone();
+                move |_, cx| cx.reveal_path(&f)
+            })
+            .enabled(!deleted),
+        );
+        // TODO(M6): external editor detection; opens with the default program until then.
+        items.push(
+            MenuItem::new("Open in External Editor", {
+                let f = full.clone();
+                move |_, cx| cx.open_with_system(&f)
+            })
+            .enabled(!deleted),
+        );
+        items.push(
+            MenuItem::new("Open with Default Program", {
+                let f = full.clone();
+                move |_, cx| cx.open_with_system(&f)
+            })
+            .enabled(!deleted),
+        );
+        self.open_menu(items, position, window, cx);
+    }
+
+    /// GHD `onContextMenu` on the list itself: Discard All / Stash All.
+    fn open_list_menu(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (id, confirm, paths) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            let Some(rs) = s.selected_state() else { return };
+            if rs.committing {
+                return;
+            }
+            let paths: Vec<String> = rs
+                .status
+                .as_ref()
+                .map(|st| st.files.iter().map(|f| f.path.clone()).collect())
+                .unwrap_or_default();
+            (id, s.settings.confirm_discard_changes, paths)
+        };
+        let has_changes = !paths.is_empty();
+        let items = vec![
+            MenuItem::new(
+                if confirm {
+                    "Discard All Changes…"
+                } else {
+                    "Discard All Changes"
+                },
+                move |_, cx| Dispatcher::request_discard_changes(id, paths.clone(), cx),
+            )
+            .enabled(has_changes),
+            // TODO(M4): stashes; disabled until then.
+            MenuItem::new("Stash All Changes", |_, _| {}).enabled(false),
+        ];
+        self.open_menu(items, position, window, cx);
     }
 
     fn do_commit(&mut self, cx: &mut Context<Self>) {
@@ -192,6 +360,7 @@ impl ChangesSidebar {
                 let path_for_select = file.path.clone();
                 let path_for_toggle = file.path.clone();
                 let included = file.selection != DiffSelection::None;
+                let file_for_menu = file.clone();
                 div()
                     .id(SharedString::from(format!("file-{}", file.path)))
                     .h(ROW_HEIGHT)
@@ -202,6 +371,13 @@ impl ChangesSidebar {
                     .gap(SPACING_HALF)
                     .px(SPACING)
                     .cursor_pointer()
+                    .on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(move |this, ev: &MouseDownEvent, window, cx| {
+                            cx.stop_propagation();
+                            this.open_file_menu(file_for_menu.clone(), ev.position, window, cx);
+                        }),
+                    )
                     .when(is_selected, |d| {
                         d.bg(t.box_selected_background)
                             .text_color(t.box_selected_text)
@@ -400,8 +576,23 @@ impl Render for ChangesSidebar {
             .flex()
             .flex_col()
             .min_h_0()
-            .child(self.header(window, cx))
-            .child(self.list(cx))
+            .child(
+                div()
+                    .id("changes-list-container")
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(|this, ev: &MouseDownEvent, window, cx| {
+                            this.open_list_menu(ev.position, window, cx)
+                        }),
+                    )
+                    .child(self.header(window, cx))
+                    .child(self.list(cx)),
+            )
             .child(self.commit_form(window, cx))
+            .children(self.context_menu.clone())
     }
 }

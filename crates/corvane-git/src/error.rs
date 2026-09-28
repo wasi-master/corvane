@@ -16,6 +16,8 @@ pub enum GitError {
     },
     #[error("git output was not valid UTF-8")]
     Utf8(#[from] std::string::FromUtf8Error),
+    #[error("i/o error: {0}")]
+    Io(#[from] std::io::Error),
     #[error("{0} is not a git repository")]
     NotARepository(PathBuf),
     #[error("could not open repository: {0}")]

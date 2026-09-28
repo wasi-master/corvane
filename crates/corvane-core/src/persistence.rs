@@ -16,6 +16,8 @@ pub struct Settings {
     pub clone_dir: Option<PathBuf>,
     /// GHD `hasShownWelcomeFlow`.
     pub welcome_completed: bool,
+    /// GHD `askForConfirmationOnDiscardChanges`.
+    pub confirm_discard_changes: bool,
 }
 
 impl Default for Settings {
@@ -25,6 +27,7 @@ impl Default for Settings {
             sidebar_width: 250.0,
             clone_dir: None,
             welcome_completed: false,
+            confirm_discard_changes: true,
         }
     }
 }
@@ -111,6 +114,7 @@ mod tests {
             sidebar_width: 300.0,
             clone_dir: None,
             welcome_completed: true,
+            confirm_discard_changes: false,
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();

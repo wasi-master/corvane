@@ -281,6 +281,8 @@ mod tests {
 
     #[test]
     fn init_with_readme_commits() {
+        // the user's global commit.gpgsign must not reach the test repo
+        unsafe { std::env::set_var("GIT_CONFIG_PARAMETERS", "'commit.gpgsign=false'") };
         let dir = tempfile::tempdir().unwrap();
         let git = Arc::new(crate::find_git().unwrap());
         let path = dir.path().join("new-repo");

@@ -263,6 +263,7 @@ mod tests {
             )
         };
         run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
         std::fs::write(path.join("a.txt"), "one\n").unwrap();
         run(&["add", "."]);
         run(&["commit", "-q", "-m", "init"]);

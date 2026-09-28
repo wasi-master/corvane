@@ -7,6 +7,7 @@
 pub mod actions;
 pub mod changes;
 pub mod cloning_view;
+pub mod context_menu;
 pub mod dialog;
 pub mod dialogs;
 pub mod diff_view;

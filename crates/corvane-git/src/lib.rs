@@ -5,6 +5,7 @@ pub mod commit;
 pub mod detect;
 pub mod diff;
 pub mod error;
+pub mod ignore;
 pub mod ops;
 pub mod process;
 pub mod repo;
@@ -17,6 +18,7 @@ pub use commit::{
 pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
 pub use error::GitError;
+pub use ignore::{append_ignore_files, append_ignore_rules, escape_gitignore_pattern};
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
     normalize_clone_url, parse_clone_progress, path_status, repository_name_from_url,

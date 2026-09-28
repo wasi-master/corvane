@@ -5,10 +5,18 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::icons::{Octicon, octicon};
-use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::theme::{ActiveGhdTheme, GhdTheme};
 
 pub type ClickHandler = Box<dyn Fn(&mut Window, &mut App) + 'static>;
+
+/// GHD `Dialog type`: warning/error dialogs show a 24 px icon left of the content.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DialogKind {
+    Normal,
+    Warning,
+    Error,
+}
 
 pub struct DialogButton {
     pub id: &'static str,
@@ -19,6 +27,59 @@ pub struct DialogButton {
 
 pub fn dialog(
     id: &'static str,
+    title: impl Into<SharedString>,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    dialog_with_kind(
+        id,
+        DialogKind::Normal,
+        title,
+        content,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// `.dialog.warning` / `.dialog.error`: content gets `margin-left: 20px` and
+/// `padding-left: 20px + 24px icon`, so the text starts 64 px from the edge.
+fn dialog_content(kind: DialogKind, content: impl IntoElement, t: &GhdTheme) -> Div {
+    let base = div()
+        .p(SPACING_DOUBLE)
+        .text_size(FONT_SIZE)
+        .line_height(px(18.));
+    match kind {
+        DialogKind::Normal => base.child(content),
+        DialogKind::Warning | DialogKind::Error => {
+            let color = if kind == DialogKind::Warning {
+                t.dialog_warning
+            } else {
+                t.dialog_error
+            };
+            base.flex()
+                .flex_row()
+                .items_start()
+                .gap(SPACING_DOUBLE)
+                .child(
+                    octicon(Octicon::Alert, color)
+                        .size(px(24.))
+                        .flex_none()
+                        .mt(px(5.)),
+                )
+                .child(div().flex_1().min_w_0().child(content))
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_kind(
+    id: &'static str,
+    kind: DialogKind,
     title: impl Into<SharedString>,
     content: impl IntoElement,
     buttons: Vec<DialogButton>,
@@ -90,13 +151,7 @@ pub fn dialog(
                                         .child(octicon(Octicon::X, t.text_secondary))
                                 }),
                         )
-                        .child(
-                            div()
-                                .p(SPACING_DOUBLE)
-                                .text_size(FONT_SIZE)
-                                .line_height(px(18.))
-                                .child(content),
-                        )
+                        .child(dialog_content(kind, content, t))
                         .child(
                             // footer
                             div()
