@@ -8,9 +8,9 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] **[GH]** Pull Requests tab in Branch foldout (`app/src/ui/branches/pull-request-list.tsx`, `BranchesTab.PullRequests`), PR updater every 30 min (`lib/stores/pull-request-store.ts`, `pull-request-updater.ts`)
 - [ ] **[GH]** CI check-run status in branch button + PR list + popover (`ui/branches/ci-status.tsx`, `ui/check-runs/`), `CICheckRunRerun` popup
-- [ ] **[GH]** Preview Pull Request dialog (`ui/open-pull-request/`, `PopupType.StartPullRequest`); v1 only opens the compare URL for "Create Pull Request"
+- [ ] **[GH]** Preview Pull Request dialog (`ui/open-pull-request/`, `PopupType.StartPullRequest`); the `Branch › Preview Pull Request` item stays disabled. "Create Pull Request" pushes an unpublished branch and opens `/pull/new/<branch>`
 - [ ] **[GH]** PR quick view / review / comment popups (`PullRequestReview`, `PullRequestComment`, `PullRequestChecksFailed`)
-- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`), Settings › Notifications becomes functional (v1 shows the tab with the toggle disabled + note)
+- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications › "Enable notifications" is persisted but nothing emits notifications yet (no permission hint either)
 - [ ] **[GH]** Forks: `CreateFork`, `ChooseForkSettings`, Repository Settings › Fork Behavior tab, upstream remote handling (`lib/stores/app-store.ts` `_updateRepositoryFork…`)
 - [ ] **[GH]** Repo rules / protected-branch warnings in commit form (`ui/changes/commit-warning.tsx`, `lib/api.ts fetchRepoRulesForBranch`)
 - [ ] **[GH]** Secret-scanning push protection (`PushProtectionError`, `BypassPushProtection`)
@@ -52,7 +52,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 ## Changes list
 
 - [ ] Multi-selection (⌘/⇧-click, ⌘A) and the "N selected" context-menu variants: `Discard N Selected Changes…`, `Ignore N Selected Files`, `Include/Exclude Selected Files`, `Copy Paths` / `Copy Relative Paths`
-- [ ] External editor detection (`lib/editors/darwin.ts`) so the item reads `Open in Visual Studio Code`; until then `Open in External Editor` opens with the default program
 - [ ] Rebase-conflict context menu variant (`getRebaseContextMenu`)
 
 ## Editor / commit form
@@ -70,6 +69,24 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] Image diff modes beyond side-by-side: 2-up, swipe, onion skin, difference (`ui/diff/image-diffs/`)
 - [ ] Expand-all-context in hunk headers, "Open file in external editor" from diff gear menu
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
+
+## Settings (`ui/preferences/`)
+
+- [ ] Git › Hooks sub-tab (`enableGitHookEnv`, `cacheGitHookEnv`: load the user's shell environment before running hooks, `lib/shell.ts` `getShellEnv`)
+- [ ] Advanced › "Use Git Credential Manager" (`useExternalCredentialHelper`: `-c credential.helper=manager` for non-GitHub remotes); Corvane answers generic prompts through its askpass helper instead
+- [ ] Appearance › Formatting (date / time / number format selects, "Prefer absolute dates") — behind `enableFormattingPreferences()` in GHD 3.6.6
+- [ ] Prompts › "Overriding commit message with generated message" (Copilot) and "Removing worktrees" (worktree flag)
+- [ ] Integrations › custom editor / shell (`enableCustomIntegration()`: path + arguments form)
+- [ ] Accounts: avatar images (needs the avatar cache), `lookupPreferredEmail`
+- [ ] Notifications tab permission hint (`getNotificationsPermission`, macOS `UNUserNotificationCenter`)
+- [ ] Settings dialog `DialogError` banner for an invalid author name (`gitAuthorNameIsValid`); the Save button just writes what was typed
+- [ ] Editor detection on Windows/Linux (`lib/editors/win32.ts`, `linux.ts`); macOS uses LaunchServices (`NSWorkspace URLForApplicationWithBundleIdentifier`)
+
+## View menu
+
+- [ ] Zoom levels (`Reset Zoom` ⌘0, `Zoom In` ⌘=, `Zoom Out` ⌘-, `#window-zoom-info` overlay, 0.67…2.0 steps): GPUI has no page-zoom; Corvane's layout is in absolute pixels, so this needs a rem-based size pass first. Items stay disabled
+- [ ] `Expand Active Resizable` ⌘9 / `Contract Active Resizable` ⌘8 (GHD nudges the focused resizable sidebar); items stay disabled
+- [ ] `Window › Close Window` ⌘W hides the app (GPUI has no per-window hide with a Dock relaunch); GHD hides just the window
 
 ## Platform
 
