@@ -80,6 +80,10 @@ pub trait StoreExt {
 
     fn accounts(&self) -> Result<Vec<Account>>;
     fn save_accounts(&self, accounts: &[Account]) -> Result<()>;
+    /// Generic git server logins (host → username); passwords live in the keychain.
+    fn generic_logins(&self) -> Result<std::collections::HashMap<String, String>>;
+    fn save_generic_logins(&self, logins: &std::collections::HashMap<String, String>)
+    -> Result<()>;
 }
 
 impl StoreExt for Store {
@@ -125,6 +129,17 @@ impl StoreExt for Store {
 
     fn accounts(&self) -> Result<Vec<Account>> {
         Ok(self.get("accounts")?.unwrap_or_default())
+    }
+
+    fn generic_logins(&self) -> Result<std::collections::HashMap<String, String>> {
+        Ok(self.get("generic_git_logins")?.unwrap_or_default())
+    }
+
+    fn save_generic_logins(
+        &self,
+        logins: &std::collections::HashMap<String, String>,
+    ) -> Result<()> {
+        self.set("generic_git_logins", logins)
     }
 
     fn save_accounts(&self, accounts: &[Account]) -> Result<()> {

@@ -6,6 +6,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::icons::{Octicon, octicon};
+use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 
@@ -23,6 +24,12 @@ pub struct ToolbarButtonModel {
     pub open: bool,
     pub disabled: bool,
     pub badge: Option<AheadBehind>,
+    /// Push/pull button: the main click runs the network action instead of a foldout.
+    pub push_pull: bool,
+    /// Show the 39 px ▾ button that opens `Foldout::PushPull`.
+    pub arrow: bool,
+    /// `progressValue`: fill the button background up to this fraction.
+    pub progress: Option<f32>,
 }
 
 /// GHD `Toolbar` render: repository, branch, push/pull - from the app state.
@@ -49,6 +56,9 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         open: state.foldout == Some(Foldout::Repository),
         disabled: false,
         badge: None,
+        push_pull: false,
+        arrow: false,
+        progress: None,
     };
 
     let (branch_icon, branch_desc, branch_title): (Octicon, &str, SharedString) = match info
@@ -87,73 +97,152 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         open: state.foldout == Some(Foldout::Branch),
         disabled: repo.is_none(),
         badge: None,
+        push_pull: false,
+        arrow: false,
+        progress: None,
     };
 
-    // Push/Pull (`PushPullButton`): publish repository → publish branch → pull/push/fetch.
+    // Push/Pull (`PushPullButton.renderButton`)
     let has_remote = info.map(|i| !i.remotes.is_empty()).unwrap_or(false);
+    let remote_name = repo
+        .and_then(|r| Dispatcher::current_remote_in(state, r.id))
+        .map(|r| r.name)
+        .unwrap_or_else(|| "origin".to_string());
     let upstream = info
         .and_then(|i| i.current_branch())
         .and_then(|b| b.upstream.clone());
     let ab = repo_state.and_then(|s| s.ahead_behind);
+    let last_fetched: SharedString = match repo_state.and_then(|s| s.last_fetched) {
+        Some(at) => format!("Last fetched {}", relative(at)).into(),
+        None => "Never fetched".into(),
+    };
+    let progress = repo_state.and_then(|s| s.push_pull_progress.clone());
+    let is_github = repo.is_some_and(|r| r.github.is_some());
+    let force_push = repo
+        .map(|r| Dispatcher::force_push_state_in(state, r.id))
+        .unwrap_or(corvane_core::ForcePushState::NotAvailable);
+    let pull_with_rebase = repo_state.is_some_and(|s| s.pull_with_rebase);
+    let rebase_in_progress = repo_state
+        .and_then(|s| s.status.as_ref())
+        .is_some_and(|st| st.rebase_in_progress);
+    let base = ToolbarButtonModel {
+        id: "toolbar-push-pull",
+        icon: Octicon::Sync,
+        description: "".into(),
+        title: "".into(),
+        width: Some(TOOLBAR_BUTTON_WIDTH),
+        foldout: None,
+        open: state.foldout == Some(Foldout::PushPull),
+        disabled: false,
+        badge: None,
+        push_pull: true,
+        arrow: false,
+        progress: None,
+    };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
-            id: "toolbar-push-pull",
-            icon: Octicon::Sync,
-            description: "".into(),
-            title: "".into(),
-            width: Some(TOOLBAR_BUTTON_WIDTH),
-            foldout: None,
-            open: false,
             disabled: true,
-            badge: None,
+            ..base
+        }
+    } else if let Some(p) = progress {
+        ToolbarButtonModel {
+            icon: Octicon::Sync,
+            description: p
+                .description
+                .clone()
+                .unwrap_or_else(|| "Hang on…".to_string())
+                .into(),
+            title: p.title.clone().into(),
+            disabled: true,
+            progress: Some(p.value),
+            ..base
         }
     } else if !has_remote {
         ToolbarButtonModel {
-            id: "toolbar-push-pull",
             icon: Octicon::Upload,
             description: "Publish this repository to GitHub".into(),
             title: "Publish repository".into(),
-            width: Some(TOOLBAR_BUTTON_WIDTH),
-            foldout: None,
-            open: false,
-            disabled: false,
-            badge: None,
-        }
-    } else if upstream.is_none() {
-        ToolbarButtonModel {
-            id: "toolbar-push-pull",
-            icon: Octicon::Upload,
-            description: "Cannot publish unborn HEAD".into(),
-            title: "Publish branch".into(),
-            width: Some(TOOLBAR_BUTTON_WIDTH),
-            foldout: None,
-            open: false,
-            disabled: !matches!(info.map(|i| &i.tip), Some(Tip::Valid { .. })),
-            badge: None,
+            ..base
         }
     } else {
-        let (icon, title) = match ab {
-            Some(ab) if ab.behind > 0 => (Octicon::ArrowDown, "Pull origin"),
-            Some(ab) if ab.ahead > 0 => (Octicon::ArrowUp, "Push origin"),
-            _ => (Octicon::Sync, "Fetch origin"),
-        };
-        ToolbarButtonModel {
-            id: "toolbar-push-pull",
-            icon,
-            description: "Never fetched".into(),
-            title: title.into(),
-            width: Some(TOOLBAR_BUTTON_WIDTH),
-            foldout: None,
-            open: false,
-            disabled: false,
-            badge: ab.filter(|ab| ab.ahead > 0 || ab.behind > 0),
+        match info.map(|i| &i.tip) {
+            Some(Tip::Unborn { .. }) => ToolbarButtonModel {
+                icon: Octicon::Sync,
+                description: last_fetched,
+                title: format!("Fetch {remote_name}").into(),
+                ..base
+            },
+            Some(Tip::Detached { .. }) | Some(Tip::Unknown) | None => ToolbarButtonModel {
+                icon: Octicon::Upload,
+                description: if rebase_in_progress {
+                    "Rebase in progress".into()
+                } else {
+                    "Cannot publish detached HEAD".into()
+                },
+                title: "Publish branch".into(),
+                disabled: true,
+                ..base
+            },
+            Some(Tip::Valid { .. }) if upstream.is_none() => ToolbarButtonModel {
+                icon: Octicon::Upload,
+                description: if is_github {
+                    "Publish this branch to GitHub".into()
+                } else {
+                    "Publish this branch to the remote".into()
+                },
+                title: "Publish branch".into(),
+                arrow: true,
+                ..base
+            },
+            Some(Tip::Valid { .. }) => {
+                let ab = ab.unwrap_or_default();
+                if ab.ahead == 0 && ab.behind == 0 {
+                    ToolbarButtonModel {
+                        icon: Octicon::Sync,
+                        description: last_fetched,
+                        title: format!("Fetch {remote_name}").into(),
+                        ..base
+                    }
+                } else if force_push == corvane_core::ForcePushState::Recommended {
+                    ToolbarButtonModel {
+                        icon: Octicon::ArrowUp,
+                        description: last_fetched,
+                        title: format!("Force push {remote_name}").into(),
+                        badge: Some(ab),
+                        arrow: true,
+                        ..base
+                    }
+                } else if ab.behind > 0 {
+                    ToolbarButtonModel {
+                        icon: Octicon::ArrowDown,
+                        description: last_fetched,
+                        title: if pull_with_rebase {
+                            format!("Pull {remote_name} with rebase").into()
+                        } else {
+                            format!("Pull {remote_name}").into()
+                        },
+                        badge: Some(ab),
+                        arrow: true,
+                        ..base
+                    }
+                } else {
+                    ToolbarButtonModel {
+                        icon: Octicon::ArrowUp,
+                        description: last_fetched,
+                        title: format!("Push {remote_name}").into(),
+                        badge: Some(ab),
+                        arrow: true,
+                        ..base
+                    }
+                }
+            }
         }
     };
 
     vec![repository, branch, push_pull]
 }
 
-pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> impl IntoElement {
+pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
     let t = cx.ghd();
     let hover_bg = t.toolbar_button_hover_background;
     let hover_text = t.toolbar_button_hover_text;
@@ -172,7 +261,26 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> impl IntoElement {
     };
     let foldout = model.foldout;
     let disabled = model.disabled;
-    div()
+    let push_pull = model.push_pull;
+    let arrow = model.arrow;
+    let progress = model.progress;
+    let arrow_open = model.open && push_pull;
+    let (arrow_bg, arrow_text) = if arrow_open {
+        (
+            t.toolbar_button_active_background,
+            t.toolbar_button_active_text,
+        )
+    } else {
+        (t.toolbar_background, t.toolbar_text)
+    };
+    let bg = if push_pull { t.toolbar_background } else { bg };
+    let text = if push_pull { t.toolbar_text } else { text };
+    let secondary = if push_pull {
+        t.toolbar_text_secondary
+    } else {
+        secondary
+    };
+    let button = div()
         .id(model.id)
         .h(TOOLBAR_BUTTON_HEIGHT)
         .flex_none()
@@ -186,16 +294,34 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> impl IntoElement {
         .text_color(text)
         .overflow_hidden()
         .when(disabled, |d| d.opacity(0.6))
-        .when(!disabled && !model.open, move |d| {
+        .relative()
+        .when(!disabled && (!model.open || push_pull), move |d| {
             d.cursor_pointer()
                 .hover(move |s| s.bg(hover_bg).text_color(hover_text))
         })
         .when(!disabled, move |d| {
             d.on_click(move |_, _, cx| {
-                if let Some(foldout) = foldout {
+                if push_pull {
+                    if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
+                        Dispatcher::close_foldout(cx);
+                        Dispatcher::push_pull_action(id, cx);
+                    }
+                } else if let Some(foldout) = foldout {
                     Dispatcher::toggle_foldout(foldout, cx);
                 }
             })
+        })
+        .when_some(progress, |d, value| {
+            // `.progress`: fills the button from the left while an operation runs
+            d.child(
+                div()
+                    .absolute()
+                    .left_0()
+                    .top_0()
+                    .bottom_0()
+                    .w(gpui_kit::relative(value.clamp(0., 1.)))
+                    .bg(t.toolbar_button_progress),
+            )
         })
         .when(foldout == Some(Foldout::Branch), |d| {
             // GHD `onDragEnter` on the branch dropdown: dragging commits over
@@ -265,7 +391,38 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> impl IntoElement {
             d.child(octicon(Octicon::TriangleDown, text).when(model.open, |s| {
                 s.with_transformation(Transformation::rotate(Radians(std::f32::consts::PI)))
             }))
-        })
+        });
+    if !arrow {
+        return button.into_any_element();
+    }
+    // `ToolbarDropdownStyle.MultiOption`: a 39 px ▾ button next to the main one
+    div()
+        .flex()
+        .flex_row()
+        .flex_none()
+        .w(TOOLBAR_BUTTON_WIDTH)
+        .child(button.w(TOOLBAR_BUTTON_WIDTH - TOOLBAR_ARROW_WIDTH))
+        .child(
+            div()
+                .id("toolbar-push-pull-arrow")
+                .h(TOOLBAR_BUTTON_HEIGHT)
+                .w(TOOLBAR_ARROW_WIDTH)
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_center()
+                .border_r_1()
+                .border_color(t.toolbar_button_border)
+                .bg(arrow_bg)
+                .text_color(arrow_text)
+                .cursor_pointer()
+                .when(!arrow_open, move |d| {
+                    d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                })
+                .on_click(|_, _, cx| Dispatcher::toggle_foldout(Foldout::PushPull, cx))
+                .child(octicon(Octicon::TriangleDown, arrow_text)),
+        )
+        .into_any_element()
 }
 
 /// The toolbar row: 50 px tall including its 1 px bottom border.

@@ -8,6 +8,7 @@ mod create_repository;
 mod discard_changes;
 mod history_dialogs;
 mod mco_dialogs;
+mod remote_dialogs;
 mod sign_in;
 mod simple;
 
@@ -28,6 +29,10 @@ pub use history_dialogs::{
     WarnLocalChangesBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
+pub use remote_dialogs::{
+    ConfirmForcePushDialog, GenericGitAuthDialog, InitializeLfsDialog, PublishRepositoryDialog,
+    PushNeedsPullDialog,
+};
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
@@ -112,6 +117,38 @@ impl DialogHost {
             Popup::ConfirmDiscardStash { repo } => {
                 cx.new(|_| ConfirmDiscardStashDialog::new(*repo)).into()
             }
+            Popup::PublishRepository { repo } => cx
+                .new(|cx| PublishRepositoryDialog::new(state, *repo, window, cx))
+                .into(),
+            Popup::PushNeedsPull { repo } => cx.new(|_| PushNeedsPullDialog::new(*repo)).into(),
+            Popup::ConfirmForcePush {
+                repo,
+                upstream_branch,
+            } => cx
+                .new(|_| ConfirmForcePushDialog::new(*repo, upstream_branch.clone()))
+                .into(),
+            Popup::GenericGitAuthentication {
+                repo,
+                remote_url,
+                host,
+                username,
+                retry,
+            } => cx
+                .new(|cx| {
+                    GenericGitAuthDialog::new(
+                        *repo,
+                        remote_url.clone(),
+                        host.clone(),
+                        username.clone(),
+                        retry.clone(),
+                        window,
+                        cx,
+                    )
+                })
+                .into(),
+            Popup::InitializeLFS { repos } => cx
+                .new(|_| InitializeLfsDialog::new(state, repos.clone()))
+                .into(),
             Popup::MultiCommitOperation { repo } => {
                 cx.new(|cx| McoDialog::new(state, *repo, window, cx)).into()
             }

@@ -14,6 +14,7 @@ pub mod patch;
 pub mod paths;
 pub mod process;
 pub mod rebase_ops;
+pub mod remote_ops;
 pub mod repo;
 pub mod status;
 
@@ -54,6 +55,13 @@ pub use rebase_ops::{
     continue_cherry_pick, continue_rebase, create_merge_commit, determine_mergeability,
     merge_commits_exist_after, merge_head_set, rebase, rebase_head_set, rebase_internal_state,
     rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
+};
+pub use remote_ops::{
+    AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, config_value,
+    fast_forward_branches, fetch, fetch_refspec, find_default_remote, get_remotes,
+    install_lfs_hooks, is_using_lfs, last_fetched, lfs_available, lfs_hooks_installed,
+    parse_progress_line, pull, pull_with_rebase, push, remote_failure, remove_remote,
+    set_remote_url, update_remote_head,
 };
 pub use repo::{ahead_behind, open_repository, symmetric_ahead_behind};
 pub use status::{get_status, map_status, parse_porcelain_v2};

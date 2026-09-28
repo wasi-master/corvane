@@ -6,6 +6,7 @@ pub mod dispatcher;
 pub mod filter;
 pub mod mco;
 pub mod persistence;
+pub mod remote;
 pub mod state;
 pub mod watcher;
 
@@ -17,6 +18,7 @@ pub use mco::{
     MultiCommitOperation, RebasePreview, conflicted_files, resolved_files, unmerged_files,
 };
 pub use persistence::{Settings, StoreExt, UncommittedChangesStrategy};
+pub use remote::{ForcePushState, PushPullKind, PushPullProgress, RepoIndicator, host_of};
 pub use state::{
     AppState, CloneState, FileListFilter, FilterOption, Foldout, LastCommit, Popup,
     RepositoryState, RetryAction, SignInState, SignInStep,

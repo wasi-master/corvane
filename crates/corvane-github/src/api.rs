@@ -127,6 +127,69 @@ impl Client {
         })
     }
 
+    fn post_json<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &serde_json::Value,
+    ) -> Result<T> {
+        let url = self.endpoint.api(path);
+        debug!(%url, "POST");
+        let mut response = self
+            .agent
+            .post(&url)
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send_json(body)?;
+        let status = response.status().as_u16();
+        if status == 401 {
+            return Err(GitHubError::Auth("token rejected".into()));
+        }
+        if !(200..300).contains(&status) {
+            let message = response
+                .body_mut()
+                .read_json::<ApiError>()
+                .ok()
+                .and_then(|e| e.message)
+                .unwrap_or_else(|| "request failed".into());
+            return Err(GitHubError::Api { status, message });
+        }
+        Ok(response.body_mut().read_json()?)
+    }
+
+    /// `GET /user/orgs`: organisations the user can publish to.
+    pub fn user_orgs(&self) -> Result<Vec<String>> {
+        #[derive(Deserialize)]
+        struct Org {
+            login: String,
+        }
+        let orgs: Vec<Org> = self.get_json("user/orgs?per_page=100")?;
+        let mut logins: Vec<String> = orgs.into_iter().map(|o| o.login).collect();
+        logins.sort_by_key(|l| l.to_lowercase());
+        Ok(logins)
+    }
+
+    /// `POST /user/repos` or `/orgs/{org}/repos` (GHD `createRepository`).
+    pub fn create_repository(
+        &self,
+        org: Option<&str>,
+        name: &str,
+        description: &str,
+        private: bool,
+    ) -> Result<GitHubRepository> {
+        let path = match org {
+            Some(org) => format!("orgs/{org}/repos"),
+            None => "user/repos".to_string(),
+        };
+        let body = serde_json::json!({
+            "name": name,
+            "description": description,
+            "private": private,
+        });
+        let repo: ApiRepository = self.post_json(&path, &body)?;
+        Ok(self.convert(repo))
+    }
+
     /// `GET /repos/{owner}/{name}`.
     pub fn repository(&self, owner: &str, name: &str) -> Result<GitHubRepository> {
         let repo: ApiRepository = self.get_json(&format!("repos/{owner}/{name}"))?;

@@ -100,13 +100,21 @@ impl RepositoryFoldout {
         };
         let id = repo.id;
         let hover_bg = t.list_item_hover_background;
-        let ahead_behind = self
-            .state
-            .read(cx)
-            .repo_states
-            .get(&id)
-            .and_then(|s| s.ahead_behind)
-            .filter(|ab| ab.ahead > 0 || ab.behind > 0);
+        let (ahead_behind, has_changes) = {
+            let s = self.state.read(cx);
+            let indicator = s.indicators.get(&id);
+            let rs = s.repo_states.get(&id);
+            let ab = rs
+                .and_then(|r| r.ahead_behind)
+                .or_else(|| indicator.and_then(|i| i.ahead_behind))
+                .filter(|ab| ab.ahead > 0 || ab.behind > 0);
+            let changes = rs
+                .and_then(|r| r.status.as_ref())
+                .map(|st| !st.files.is_empty())
+                .or_else(|| indicator.map(|i| i.changed_files > 0))
+                .unwrap_or(false);
+            (ab, changes)
+        };
         div()
             .id(("repo-row", id))
             .h(ROW_HEIGHT)
@@ -132,6 +140,14 @@ impl RepositoryFoldout {
                     .when(repo.alias.is_some(), |d| d.italic())
                     .child(repo.name()),
             )
+            .when(has_changes, |d| {
+                // `.change-indicator-wrapper`: a dot for uncommitted changes
+                d.child(
+                    octicon(Octicon::DotFill, t.text_secondary)
+                        .size(px(10.))
+                        .mr(px(4.)),
+                )
+            })
             .when_some(ahead_behind, |d, ab| {
                 d.child(
                     div()

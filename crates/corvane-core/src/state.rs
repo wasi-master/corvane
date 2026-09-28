@@ -114,6 +114,31 @@ pub enum Popup {
         retry: RetryAction,
         files: Vec<String>,
     },
+    /// `PublishRepository`
+    PublishRepository {
+        repo: u64,
+    },
+    /// `PushNeedsPull`
+    PushNeedsPull {
+        repo: u64,
+    },
+    /// `ConfirmForcePush`
+    ConfirmForcePush {
+        repo: u64,
+        upstream_branch: String,
+    },
+    /// `GenericGitAuthentication`
+    GenericGitAuthentication {
+        repo: u64,
+        remote_url: String,
+        host: String,
+        username: Option<String>,
+        retry: RetryAction,
+    },
+    /// `InitializeLFS`
+    InitializeLFS {
+        repos: Vec<u64>,
+    },
     /// `CommitMessage` popup used for the squashed commit's message.
     SquashCommitMessage {
         repo: u64,
@@ -144,6 +169,12 @@ pub enum RetryAction {
         to_move: Vec<String>,
         before: Option<String>,
     },
+    Push {
+        force_with_lease: bool,
+        branch: Option<String>,
+    },
+    Pull,
+    Fetch,
 }
 
 impl RetryAction {
@@ -155,6 +186,9 @@ impl RetryAction {
             }
             RetryAction::Squash { .. } => "squash",
             RetryAction::Reorder { .. } => "reorder",
+            RetryAction::Push { .. } => "push",
+            RetryAction::Pull => "pull",
+            RetryAction::Fetch => "fetch",
         }
     }
 }
@@ -279,6 +313,15 @@ pub struct RepositoryState {
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.
     pub force_push_branches: HashMap<String, String>,
 
+    // ---- remote (`isPushPullFetchInProgress`, `pushPullFetchProgress`, `lastFetched`) ----
+    pub push_pull_in_progress: bool,
+    pub push_pull_progress: Option<crate::remote::PushPullProgress>,
+    pub last_fetched: Option<std::time::SystemTime>,
+    pub pull_with_rebase: bool,
+    pub publishing: bool,
+    /// The LFS initialisation prompt was already considered for this repository.
+    pub lfs_checked: bool,
+
     // ---- stash viewer (`isShowingStashEntry`, `selectedStashedFile`) ----
     pub showing_stash: bool,
     pub stash_files: Option<Vec<corvane_models::CommittedFileChange>>,
@@ -386,6 +429,10 @@ pub struct AppState {
     /// `currentBanner`
     pub banner: Option<crate::mco::Banner>,
     pub banner_nonce: u64,
+    /// Sidebar indicators per repository (`localRepositoryStateLookup`).
+    pub indicators: HashMap<u64, crate::remote::RepoIndicator>,
+    /// Generic git server logins (host → username) for the askpass helper.
+    pub generic_logins: HashMap<String, String>,
 }
 
 struct AppStateHandle(Entity<AppState>);

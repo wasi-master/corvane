@@ -39,6 +39,7 @@ impl Dispatcher {
             .or_else(|| recent.first().copied())
             .or_else(|| repositories.first().map(|r| r.id));
         let accounts = store.accounts().unwrap_or_default();
+        let generic_logins = store.generic_logins().unwrap_or_default();
 
         // Synchronous: a few `git --version` probes (~10 ms). Avoids racing
         // launch-time operations against an async detection.
@@ -73,6 +74,8 @@ impl Dispatcher {
             watched_repo: None,
             banner: None,
             banner_nonce: 0,
+            indicators: std::collections::HashMap::new(),
+            generic_logins,
         });
         AppState::install(state.clone(), cx);
 
@@ -283,6 +286,7 @@ impl Dispatcher {
         if changed {
             Self::refresh_repository(id, cx);
             Self::start_watching(id, cx);
+            Self::check_lfs(id, cx);
         }
     }
 
@@ -400,6 +404,8 @@ impl Dispatcher {
                     stash_count,
                     rebase_snapshot,
                     cherry_pick_snapshot,
+                    last_fetched: corvane_git::last_fetched(&info.workdir),
+                    pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                 }
             });
             Ok::<_, GitError>((info, ahead_behind, status, extras))
@@ -427,6 +433,8 @@ impl Dispatcher {
                                 repo_state.default_branch = extras.default_branch;
                                 repo_state.stash = extras.stash;
                                 repo_state.stash_count = extras.stash_count;
+                                repo_state.last_fetched = extras.last_fetched;
+                                repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 if repo_state.stash.is_none() {
                                     repo_state.showing_stash = false;
                                     repo_state.stash_files = None;
@@ -2332,4 +2340,6 @@ struct RefreshExtras {
     stash_count: usize,
     rebase_snapshot: Option<corvane_git::RebaseSnapshot>,
     cherry_pick_snapshot: Option<corvane_git::CherryPickSnapshot>,
+    last_fetched: Option<std::time::SystemTime>,
+    pull_with_rebase: bool,
 }
