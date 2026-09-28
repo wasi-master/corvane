@@ -208,7 +208,14 @@ pub fn text_box(
             div()
                 .flex_1()
                 .min_w_0()
-                .child(Input::new(state).appearance(false).xsmall()),
+                // GHD inputs use the body font size (`--font-size`, 12 px);
+                // the kit's `xsmall` would shrink text + placeholder to `text_xs`.
+                .child(
+                    Input::new(state)
+                        .appearance(false)
+                        .xsmall()
+                        .text_size(FONT_SIZE),
+                ),
         )
 }
 

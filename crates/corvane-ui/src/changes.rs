@@ -936,6 +936,7 @@ impl ChangesSidebar {
                         Textarea::new(&self.description)
                             .appearance(false)
                             .small()
+                            .text_size(FONT_SIZE)
                             .h(px(80.)),
                     )
                     .child(
