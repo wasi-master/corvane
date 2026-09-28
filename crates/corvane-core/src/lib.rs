@@ -9,7 +9,7 @@ pub mod watcher;
 
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
-pub use persistence::{Settings, StoreExt};
+pub use persistence::{Settings, StoreExt, UncommittedChangesStrategy};
 pub use state::{
     AppState, CloneState, FileListFilter, FilterOption, Foldout, LastCommit, Popup,
     RepositoryState, SignInState, SignInStep,

@@ -2,6 +2,7 @@
 //! it only when the popup value changes.
 
 mod add_existing;
+mod branch_dialogs;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
@@ -14,6 +15,10 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 pub use add_existing::AddExistingRepositoryDialog;
+pub use branch_dialogs::{
+    ConfirmOverwriteStashDialog, CreateBranchDialog, DeleteBranchDialog, MergeBranchDialog,
+    RenameBranchDialog, StashAndSwitchBranchDialog,
+};
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
@@ -69,6 +74,37 @@ impl DialogHost {
                 .into(),
             Popup::WarnLocalChangesBeforeUndo { repo } => cx
                 .new(|_| WarnLocalChangesBeforeUndoDialog::new(*repo))
+                .into(),
+            Popup::CreateBranch {
+                repo,
+                target_sha,
+                initial_name,
+            } => cx
+                .new(|cx| {
+                    CreateBranchDialog::new(
+                        state,
+                        *repo,
+                        target_sha.clone(),
+                        initial_name.clone(),
+                        window,
+                        cx,
+                    )
+                })
+                .into(),
+            Popup::RenameBranch { repo, name } => cx
+                .new(|cx| RenameBranchDialog::new(state, *repo, name.clone(), window, cx))
+                .into(),
+            Popup::DeleteBranch { repo, name } => cx
+                .new(|_| DeleteBranchDialog::new(state, *repo, name.clone()))
+                .into(),
+            Popup::StashAndSwitchBranch { repo, branch } => cx
+                .new(|_| StashAndSwitchBranchDialog::new(state, *repo, branch.clone()))
+                .into(),
+            Popup::ConfirmOverwriteStash { repo, branch } => cx
+                .new(|_| ConfirmOverwriteStashDialog::new(*repo, branch.clone()))
+                .into(),
+            Popup::MergeBranch { repo, squash } => cx
+                .new(|cx| MergeBranchDialog::new(state, *repo, *squash, window, cx))
                 .into(),
         }
     }

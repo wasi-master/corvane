@@ -5,6 +5,7 @@ use corvane_core::{Dispatcher, Foldout};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::branch_list::BranchFoldout;
 use crate::repository_list::RepositoryFoldout;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -16,6 +17,7 @@ pub fn foldout_layer(
     panel_x: Pixels,
     panel_width: Pixels,
     repository_foldout: &Entity<RepositoryFoldout>,
+    branch_foldout: &Entity<BranchFoldout>,
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
@@ -24,7 +26,8 @@ pub fn foldout_layer(
     let viewport = window.viewport_size();
     let panel: AnyElement = match foldout {
         Foldout::Repository => repository_foldout.clone().into_any_element(),
-        Foldout::Branch | Foldout::PushPull => div()
+        Foldout::Branch => branch_foldout.clone().into_any_element(),
+        Foldout::PushPull => div()
             .p(SPACING)
             .text_color(t.text_secondary)
             .child("Coming soon")

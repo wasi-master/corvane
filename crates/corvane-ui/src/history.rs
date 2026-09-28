@@ -122,7 +122,19 @@ impl HistorySidebar {
                 move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
             }),
             MenuItem::separator(),
-            MenuItem::new("Create Branch from Commit", |_, _| {}).enabled(false),
+            MenuItem::new("Create Branch from Commit", {
+                let sha = sha.clone();
+                move |_, cx| {
+                    Dispatcher::show_popup(
+                        Popup::CreateBranch {
+                            repo: id,
+                            target_sha: Some(sha.clone()),
+                            initial_name: String::new(),
+                        },
+                        cx,
+                    )
+                }
+            }),
             MenuItem::new("Create Tag…", {
                 let sha = sha.clone();
                 move |_, cx| {

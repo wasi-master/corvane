@@ -83,7 +83,12 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
         };
         let full_name = reference.name().as_bstr().to_string();
         let name = reference.name().shorten().to_string();
-        let tip = reference.peel_to_id().ok().map(|id| id.to_string());
+        let tip_id = reference.peel_to_id().ok();
+        let tip = tip_id.map(|id| id.to_string());
+        let tip_time = tip_id
+            .and_then(|id| repo.find_commit(id).ok())
+            .and_then(|c| c.time().ok())
+            .map(|t| t.seconds);
         let upstream = repo
             .branch_remote_tracking_ref_name(reference.name(), gix::remote::Direction::Fetch)
             .and_then(|r| r.ok())
@@ -94,6 +99,7 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
             full_name,
             tip,
             upstream,
+            tip_time,
         });
     }
 
@@ -110,13 +116,19 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
         if name.ends_with("/HEAD") {
             continue;
         }
-        let tip = reference.peel_to_id().ok().map(|id| id.to_string());
+        let tip_id = reference.peel_to_id().ok();
+        let tip = tip_id.map(|id| id.to_string());
+        let tip_time = tip_id
+            .and_then(|id| repo.find_commit(id).ok())
+            .and_then(|c| c.time().ok())
+            .map(|t| t.seconds);
         out.push(Branch {
             name,
             kind: BranchKind::Remote,
             full_name,
             tip,
             upstream: None,
+            tip_time,
         });
     }
     Ok(out)
@@ -149,6 +161,7 @@ fn tip(repo: &gix::Repository, branches: &[Branch]) -> Result<Tip> {
             full_name: full.clone(),
             tip: head.id().map(|id| id.to_string()),
             upstream: None,
+            tip_time: None,
         });
     Ok(Tip::Valid { branch })
 }

@@ -67,6 +67,16 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         ),
         _ => (Octicon::GitBranch, "Current Branch", "".into()),
     };
+    // `checkoutProgress`: title = target branch, description = "Switching to Branch"
+    let switching = repo_state.and_then(|s| s.checkout_target.clone());
+    let (branch_icon, branch_desc, branch_title) = match switching {
+        Some(target) => (
+            Octicon::Sync,
+            "Switching to Branch",
+            SharedString::from(target),
+        ),
+        None => (branch_icon, branch_desc, branch_title),
+    };
     let branch = ToolbarButtonModel {
         id: "toolbar-branch",
         icon: branch_icon,

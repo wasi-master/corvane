@@ -106,6 +106,51 @@ pub struct Branch {
     pub tip: Option<String>,
     /// Upstream tracking branch full name (`refs/remotes/origin/main`), local branches only.
     pub upstream: Option<String>,
+    /// Committer time of the tip commit (seconds since the epoch), for the
+    /// relative dates in the branch list.
+    #[serde(default)]
+    pub tip_time: Option<i64>,
+}
+
+impl Branch {
+    /// `nameWithoutRemote`: `origin/feature` → `feature`.
+    pub fn name_without_remote(&self) -> &str {
+        match self.kind {
+            BranchKind::Local => &self.name,
+            BranchKind::Remote => self
+                .name
+                .split_once('/')
+                .map(|(_, n)| n)
+                .unwrap_or(&self.name),
+        }
+    }
+
+    /// `upstreamRemoteName`
+    pub fn upstream_remote_name(&self) -> Option<&str> {
+        let upstream = self.upstream.as_deref()?;
+        let rest = upstream.strip_prefix("refs/remotes/").unwrap_or(upstream);
+        rest.split_once('/').map(|(remote, _)| remote)
+    }
+
+    /// Short upstream name (`origin/main`).
+    pub fn upstream_short(&self) -> Option<&str> {
+        self.upstream
+            .as_deref()
+            .map(|u| u.strip_prefix("refs/remotes/").unwrap_or(u))
+    }
+}
+
+/// `IStashEntry`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StashEntry {
+    /// `stash@{0}`
+    pub name: String,
+    pub sha: String,
+    /// Branch recorded in a GitHub Desktop / Corvane stash message.
+    pub branch: Option<String>,
+    pub message: String,
+    pub tree: String,
+    pub parents: Vec<String>,
 }
 
 /// `models/tip.ts`

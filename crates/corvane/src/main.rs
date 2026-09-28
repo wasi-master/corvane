@@ -7,7 +7,7 @@ mod menus;
 use std::sync::Arc;
 use std::time::Instant;
 
-use corvane_core::{Dispatcher, Foldout, Popup, Section, StoreExt, ThemeSetting};
+use corvane_core::{Dispatcher, Popup, Section, StoreExt, ThemeSetting};
 use corvane_ui::actions::*;
 use corvane_ui::workspace::Workspace;
 use gpui_kit::*;
@@ -158,7 +158,98 @@ fn main() {
                     .ok();
             }
         });
-        cx.on_action(|_: &ShowBranchesList, cx| Dispatcher::toggle_foldout(Foldout::Branch, cx));
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ShowBranchesList, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.show_branches_list(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        // Branch menu
+        let selected = |cx: &App| corvane_core::AppState::global(cx).read(cx).selected;
+        cx.on_action(move |_: &NewBranch, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::show_popup(
+                    Popup::CreateBranch {
+                        repo: id,
+                        target_sha: None,
+                        initial_name: String::new(),
+                    },
+                    cx,
+                );
+            }
+        });
+        let current_branch = |cx: &App| -> Option<(u64, String)> {
+            let s = corvane_core::AppState::global(cx).read(cx);
+            let id = s.selected?;
+            let name = s
+                .repo_states
+                .get(&id)?
+                .info
+                .as_ref()?
+                .current_branch()?
+                .name
+                .clone();
+            Some((id, name))
+        };
+        cx.on_action(move |_: &RenameBranch, cx| {
+            if let Some((id, name)) = current_branch(cx) {
+                Dispatcher::show_popup(Popup::RenameBranch { repo: id, name }, cx);
+            }
+        });
+        cx.on_action(move |_: &DeleteBranch, cx| {
+            if let Some((id, name)) = current_branch(cx) {
+                Dispatcher::show_popup(Popup::DeleteBranch { repo: id, name }, cx);
+            }
+        });
+        cx.on_action(move |_: &MergeIntoCurrentBranch, cx| {
+            if let Some((id, _)) = current_branch(cx) {
+                Dispatcher::show_popup(
+                    Popup::MergeBranch {
+                        repo: id,
+                        squash: false,
+                    },
+                    cx,
+                );
+            }
+        });
+        cx.on_action(move |_: &SquashAndMergeIntoCurrentBranch, cx| {
+            if let Some((id, _)) = current_branch(cx) {
+                Dispatcher::show_popup(
+                    Popup::MergeBranch {
+                        repo: id,
+                        squash: true,
+                    },
+                    cx,
+                );
+            }
+        });
+        cx.on_action(move |_: &UpdateFromDefaultBranch, cx| {
+            if let Some((id, _)) = current_branch(cx) {
+                Dispatcher::update_from_default_branch(id, cx);
+            }
+        });
+        cx.on_action(move |_: &StashAllChanges, cx| {
+            if let Some((id, _)) = current_branch(cx) {
+                Dispatcher::stash_all_changes(id, cx);
+            }
+        });
+        cx.on_action(move |_: &DiscardAllChanges, cx| {
+            if let Some(id) = selected(cx) {
+                let paths: Vec<String> = corvane_core::AppState::global(cx)
+                    .read(cx)
+                    .repo_states
+                    .get(&id)
+                    .and_then(|r| r.status.as_ref())
+                    .map(|st| st.files.iter().map(|f| f.path.clone()).collect())
+                    .unwrap_or_default();
+                Dispatcher::request_discard_changes(id, paths, cx);
+            }
+        });
         cx.on_action(|_: &CloseFoldout, cx| {
             Dispatcher::close_foldout(cx);
             Dispatcher::close_popup(cx);
