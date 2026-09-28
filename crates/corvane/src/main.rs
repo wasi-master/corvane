@@ -4,10 +4,11 @@ mod assets;
 mod logging;
 mod menus;
 
+use std::sync::Arc;
 use std::time::Instant;
 
-use corvane_core::ThemeSetting;
-use corvane_ui::actions::{Hide, HideOthers, Quit, ShowAll};
+use corvane_core::{Dispatcher, StoreExt, ThemeSetting};
+use corvane_ui::actions::{AddLocalRepository, Hide, HideOthers, Quit, RemoveRepository, ShowAll};
 use corvane_ui::workspace::Workspace;
 use gpui_kit::*;
 use tracing::{debug, error, info};
@@ -18,17 +19,18 @@ fn main() {
     info!(version = env!("CARGO_PKG_VERSION"), "starting corvane");
     phase(started, "logging initialised");
 
-    let store = match corvane_store::Store::open_default() {
-        Ok(store) => Some(store),
+    let store = match corvane_store::Store::open_in(corvane_platform::paths::app_support_dir()) {
+        Ok(store) => Arc::new(store),
         Err(err) => {
-            error!(?err, "could not open settings store; running with defaults");
-            None
+            error!(
+                ?err,
+                "could not open settings store; falling back to a temporary one"
+            );
+            let tmp = std::env::temp_dir().join("corvane-fallback");
+            Arc::new(corvane_store::Store::open_in(tmp).expect("temporary store"))
         }
     };
-    let settings = store
-        .as_ref()
-        .and_then(|s| s.settings().ok())
-        .unwrap_or_default();
+    let settings = store.settings().unwrap_or_default();
     phase(started, "store opened");
 
     let app = gpui_kit::application().with_assets(assets::Assets);
@@ -57,12 +59,24 @@ fn main() {
         };
         corvane_ui::init(cx, theme);
         menus::install(cx);
-        phase(started, "theme, keymap and menus installed");
+        let sidebar_width = px(settings.sidebar_width);
+        let state = Dispatcher::init(store, settings, cx);
+        phase(started, "theme, keymap, menus and state installed");
 
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.on_action(|_: &Hide, cx| cx.hide());
         cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
         cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
+        cx.on_action(|_: &AddLocalRepository, cx| Dispatcher::prompt_add_repository(cx));
+        // CORVANE_ADD_REPO=/path adds a repository at launch (dev/testing convenience).
+        if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
+            Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
+        }
+        cx.on_action(|_: &RemoveRepository, cx| {
+            if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
+                Dispatcher::remove_repository(id, cx);
+            }
+        });
 
         // Same size as the GitHub Desktop reference captures in .docs.
         let window_size = size(px(1367.), px(814.));
@@ -82,9 +96,8 @@ fn main() {
             ..Default::default()
         };
 
-        let sidebar_width = px(settings.sidebar_width);
         match gpui_kit::open_window(options, cx, move |window, cx| {
-            cx.new(|cx| Workspace::new(sidebar_width, window, cx))
+            cx.new(|cx| Workspace::new(state, sidebar_width, window, cx))
         }) {
             Ok(_) => info!(
                 elapsed_ms = started.elapsed().as_millis(),

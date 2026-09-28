@@ -1,11 +1,11 @@
-//! Persistence: one redb file holding settings, repository list, UI state.
-//! Values are JSON blobs keyed by string; tables are added as features land.
+//! Persistence: one redb file holding JSON values keyed by string.
+//! Typed accessors live in `corvane_core::persistence` (this crate stays
+//! dependency-free so core can depend on it).
 
 use std::path::{Path, PathBuf};
 
-use corvane_core::ThemeSetting;
 use redb::{Database, ReadableDatabase, TableDefinition};
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Serialize, de::DeserializeOwned};
 
 const KV: TableDefinition<&str, &[u8]> = TableDefinition::new("kv");
 const SCHEMA_VERSION: u32 = 1;
@@ -32,33 +32,16 @@ pub enum StoreError {
 
 pub type Result<T> = std::result::Result<T, StoreError>;
 
-/// User settings persisted across launches (subset of GHD's preferences).
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Settings {
-    pub theme: ThemeSetting,
-    pub sidebar_width: f32,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            theme: ThemeSetting::System,
-            sidebar_width: 250.0,
-        }
-    }
-}
-
 pub struct Store {
     db: Database,
     path: PathBuf,
 }
 
 impl Store {
-    /// Open (or create) `~/Library/Application Support/Corvane/corvane.redb`.
-    pub fn open_default() -> Result<Self> {
-        let dir = corvane_platform::paths::app_support_dir();
-        std::fs::create_dir_all(&dir)?;
+    /// Open (or create) the database at `dir/corvane.redb`.
+    pub fn open_in(dir: impl AsRef<Path>) -> Result<Self> {
+        let dir = dir.as_ref();
+        std::fs::create_dir_all(dir)?;
         Self::open(dir.join("corvane.redb"))
     }
 
@@ -96,7 +79,7 @@ impl Store {
         }
     }
 
-    pub fn set<T: Serialize>(&self, key: &str, value: &T) -> Result<()> {
+    pub fn set<T: Serialize + ?Sized>(&self, key: &str, value: &T) -> Result<()> {
         let bytes = serde_json::to_vec(value)?;
         let txn = self.db.begin_write()?;
         {
@@ -107,12 +90,14 @@ impl Store {
         Ok(())
     }
 
-    pub fn settings(&self) -> Result<Settings> {
-        Ok(self.get("settings")?.unwrap_or_default())
-    }
-
-    pub fn save_settings(&self, settings: &Settings) -> Result<()> {
-        self.set("settings", settings)
+    pub fn remove(&self, key: &str) -> Result<()> {
+        let txn = self.db.begin_write()?;
+        {
+            let mut table = txn.open_table(KV)?;
+            table.remove(key)?;
+        }
+        txn.commit()?;
+        Ok(())
     }
 }
 
@@ -121,25 +106,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn settings_round_trip() {
+    fn json_round_trip_and_missing() {
         let dir = tempfile::tempdir().unwrap();
-        let store = Store::open(dir.path().join("t.redb")).unwrap();
-        assert_eq!(store.settings().unwrap().sidebar_width, 250.0);
-        let s = Settings {
-            theme: ThemeSetting::Dark,
-            sidebar_width: 300.0,
-        };
-        store.save_settings(&s).unwrap();
-        let back = store.settings().unwrap();
-        assert_eq!(back.theme, ThemeSetting::Dark);
-        assert_eq!(back.sidebar_width, 300.0);
-    }
-
-    #[test]
-    fn missing_key_is_none() {
-        let dir = tempfile::tempdir().unwrap();
-        let store = Store::open(dir.path().join("t.redb")).unwrap();
+        let store = Store::open_in(dir.path()).unwrap();
         let v: Option<String> = store.get("nope").unwrap();
         assert!(v.is_none());
+        store.set("k", &vec![1u32, 2, 3]).unwrap();
+        assert_eq!(store.get::<Vec<u32>>("k").unwrap(), Some(vec![1, 2, 3]));
+        store.remove("k").unwrap();
+        assert!(store.get::<Vec<u32>>("k").unwrap().is_none());
+        assert_eq!(store.get::<u32>("meta.schema_version").unwrap(), Some(1));
     }
 }

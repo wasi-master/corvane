@@ -6,10 +6,14 @@
 
 pub mod actions;
 pub mod changes;
+pub mod dialog;
+pub mod foldout;
 pub mod history;
 pub mod icons;
 pub mod keymap;
 pub mod no_changes;
+pub mod no_repositories;
+pub mod repository_list;
 pub mod tab_bar;
 pub mod theme;
 pub mod title_bar;

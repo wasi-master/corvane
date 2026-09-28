@@ -1,6 +1,8 @@
 //! OS integration. macOS first; every function here is the seam for
 //! Windows/Linux later.
 
+pub mod keychain;
+
 pub mod paths {
     use std::path::PathBuf;
 
@@ -33,5 +35,26 @@ pub mod paths {
         dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join(APP_NAME)
+    }
+
+    /// GitHub Desktop's default clone location: `~/Documents/GitHub`.
+    pub fn default_clone_dir() -> PathBuf {
+        dirs::document_dir()
+            .or_else(dirs::home_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("GitHub")
+    }
+
+    /// Candidate clone locations offered during onboarding, existing ones only
+    /// except the GHD default which is always offered.
+    pub fn clone_dir_candidates() -> Vec<PathBuf> {
+        let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let mut out = vec![default_clone_dir()];
+        for candidate in [home.join("Developer"), home.join("Work")] {
+            if candidate.is_dir() {
+                out.push(candidate);
+            }
+        }
+        out
     }
 }

@@ -1,6 +1,6 @@
-//! Root view: title bar, toolbar, resizable sidebar + content.
+//! Root view: title bar, toolbar, resizable sidebar + content, foldouts, dialogs.
 
-use corvane_core::Section;
+use corvane_core::{AppState, Dispatcher, Popup, Section, Tip};
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
 };
@@ -9,47 +9,65 @@ use gpui_kit::*;
 
 use crate::actions::*;
 use crate::changes::ChangesSidebar;
+use crate::dialog::{DialogButton, dialog};
+use crate::foldout::foldout_layer;
 use crate::history::HistorySidebar;
-use crate::icons::Octicon;
 use crate::no_changes::{SuggestedAction, no_changes};
+use crate::no_repositories::no_repositories;
+use crate::repository_list::RepositoryFoldout;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::title_bar::title_bar;
-use crate::toolbar::{ToolbarButtonModel, toolbar};
+use crate::toolbar::{toolbar, toolbar_models};
 
 pub struct Workspace {
     focus_handle: FocusHandle,
+    state: Entity<AppState>,
     section: Section,
     sidebar_width: Pixels,
     resizable: Entity<ResizableState>,
     changes: Entity<ChangesSidebar>,
     history: Entity<HistorySidebar>,
+    repository_foldout: Entity<RepositoryFoldout>,
 }
 
 impl Workspace {
-    pub fn new(sidebar_width: Pixels, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        state: Entity<AppState>,
+        sidebar_width: Pixels,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let focus_handle = cx.focus_handle();
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
             if let Some(width) = state.read(cx).sizes().first().copied() {
-                this.sidebar_width = width;
-                cx.notify();
+                if width != this.sidebar_width {
+                    this.sidebar_width = width;
+                    Dispatcher::update_settings(cx, |s| s.sidebar_width = f32::from(width));
+                    cx.notify();
+                }
             }
         })
         .detach();
 
-        let changes = cx.new(|cx| ChangesSidebar::new("main".into(), window, cx));
+        let changes = cx.new(|cx| ChangesSidebar::new(state.clone(), window, cx));
         let history = cx.new(|cx| HistorySidebar::new(window, cx));
+        let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
         window.focus(&focus_handle, cx);
 
         Self {
             focus_handle,
+            state,
             section: Section::Changes,
             sidebar_width: sidebar_width.max(SIDEBAR_MIN_WIDTH),
             resizable,
             changes,
             history,
+            repository_foldout,
         }
     }
 
@@ -58,35 +76,6 @@ impl Workspace {
             self.section = section;
             cx.notify();
         }
-    }
-
-    fn toolbar_buttons(&self) -> Vec<ToolbarButtonModel> {
-        vec![
-            ToolbarButtonModel {
-                id: "toolbar-repository",
-                icon: Octicon::Repo,
-                description: "Current Repository".into(),
-                title: "corvane".into(),
-                width: Some(self.sidebar_width),
-                dropdown: true,
-            },
-            ToolbarButtonModel {
-                id: "toolbar-branch",
-                icon: Octicon::GitBranch,
-                description: "Current Branch".into(),
-                title: "main".into(),
-                width: Some(TOOLBAR_BUTTON_WIDTH),
-                dropdown: true,
-            },
-            ToolbarButtonModel {
-                id: "toolbar-push-pull",
-                icon: Octicon::Sync,
-                description: "Never fetched".into(),
-                title: "Fetch origin".into(),
-                width: Some(TOOLBAR_BUTTON_WIDTH),
-                dropdown: false,
-            },
-        ]
     }
 
     fn sidebar(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -140,9 +129,12 @@ impl Workspace {
     }
 
     fn content(&self, cx: &Context<Self>) -> AnyElement {
+        let state = self.state.read(cx);
+        let repo = state.selected_repository();
+        let has_github = repo.and_then(|r| r.github.as_ref()).is_some();
         match self.section {
-            Section::Changes => no_changes(
-                vec![
+            Section::Changes => {
+                let mut actions = vec![
                     SuggestedAction {
                         id: "suggested-editor",
                         title: "Open the repository in your external editor".into(),
@@ -161,7 +153,9 @@ impl Workspace {
                         button_label: "Show in Finder".into(),
                         primary: false,
                     },
-                    SuggestedAction {
+                ];
+                if has_github {
+                    actions.push(SuggestedAction {
                         id: "suggested-github",
                         title: "Open the repository page on GitHub in your browser".into(),
                         description: None,
@@ -169,12 +163,91 @@ impl Workspace {
                         keys: &["⌘", "⇧", "G"],
                         button_label: "View on GitHub".into(),
                         primary: false,
-                    },
-                ],
+                    });
+                }
+                no_changes(actions, cx).into_any_element()
+            }
+            Section::History => div().size_full().bg(cx.ghd().background).into_any_element(),
+        }
+    }
+
+    fn repository_view(&self, cx: &Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        div()
+            .flex_1()
+            .min_h_0()
+            .w_full()
+            .border_t_1()
+            .border_color(t.box_border)
+            .child(
+                h_resizable("repository")
+                    .with_state(&self.resizable)
+                    // GHD's 6 px handle is invisible; the sidebar's own border is the seam.
+                    .with_handle_appearance(std::rc::Rc::new(|_, _, _| {
+                        Some(div().into_any_element())
+                    }))
+                    .child(
+                        resizable_panel()
+                            .size(self.sidebar_width)
+                            .size_range(SIDEBAR_MIN_WIDTH..px(900.))
+                            .child(self.sidebar(cx)),
+                    )
+                    .child(resizable_panel().child(self.content(cx))),
+            )
+    }
+
+    fn popup_layer(&self, popup: &Popup, cx: &Context<Self>) -> AnyElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        match popup {
+            Popup::Error { title, message } => dialog(
+                "dialog-error",
+                title.clone(),
+                div().child(message.clone()),
+                vec![DialogButton {
+                    id: "error-close",
+                    label: "Close".into(),
+                    primary: true,
+                    on_click: Box::new(close),
+                }],
+                close,
                 cx,
             )
             .into_any_element(),
-            Section::History => div().size_full().bg(cx.ghd().background).into_any_element(),
+            Popup::InstallGit { reason } => dialog(
+                "dialog-install-git",
+                "Unable to locate Git",
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(SPACING)
+                    .child(format!(
+                        "Corvane was unable to find a usable Git on your system ({reason})."
+                    ))
+                    .child(
+                        "Install the Xcode Command Line Tools (xcode-select --install) or run \
+                         `brew install git`, then click Retry.",
+                    ),
+                vec![
+                    DialogButton {
+                        id: "install-git-cancel",
+                        label: "Cancel".into(),
+                        primary: false,
+                        on_click: Box::new(close),
+                    },
+                    DialogButton {
+                        id: "install-git-retry",
+                        label: "Retry".into(),
+                        primary: true,
+                        on_click: Box::new(|_, cx| {
+                            Dispatcher::close_popup(cx);
+                            Dispatcher::detect_git(cx);
+                        }),
+                    },
+                ],
+                close,
+                cx,
+            )
+            .into_any_element(),
         }
     }
 }
@@ -182,6 +255,26 @@ impl Workspace {
 impl Render for Workspace {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        let (buttons, foldout, popup, has_repos, branch_label) = {
+            let state = self.state.read(cx);
+            let branch_label = state
+                .selected_state()
+                .and_then(|s| s.info.as_ref())
+                .and_then(|i| match &i.tip {
+                    Tip::Valid { branch } => Some(branch.name.clone()),
+                    Tip::Unborn { name } => Some(name.clone()),
+                    _ => None,
+                });
+            (
+                toolbar_models(state, self.sidebar_width),
+                state.foldout,
+                state.popup.clone(),
+                !state.repositories.is_empty(),
+                branch_label,
+            )
+        };
+        let _ = branch_label;
+
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -199,9 +292,24 @@ impl Render for Workspace {
                 };
                 this.set_section(next, cx)
             }))
+            .on_action(cx.listener(|this, _: &ShowRepositoryList, window, cx| {
+                Dispatcher::toggle_foldout(corvane_core::Foldout::Repository, cx);
+                if this.state.read(cx).foldout == Some(corvane_core::Foldout::Repository) {
+                    this.repository_foldout
+                        .update(cx, |f, cx| f.focus_filter(window, cx));
+                }
+            }))
+            .on_action(|_: &ShowBranchesList, _, cx| {
+                Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx)
+            })
+            .on_action(|_: &CloseFoldout, _, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::close_popup(cx);
+            })
             .on_action(|_: &Minimize, window, _| window.minimize_window())
             .on_action(|_: &Zoom, window, _| window.zoom_window())
             .on_action(|_: &ToggleFullScreen, window, _| window.toggle_fullscreen())
+            .relative()
             .size_full()
             .flex()
             .flex_col()
@@ -210,30 +318,38 @@ impl Render for Workspace {
             .text_size(FONT_SIZE)
             .font_family(crate::theme::UI_FONT)
             .child(title_bar(cx))
-            .child(toolbar(self.toolbar_buttons(), cx))
-            .child(
-                // `#repository`: border-top + sidebar | content
+            .child(toolbar(buttons, cx))
+            .child(if has_repos {
+                self.repository_view(cx).into_any_element()
+            } else {
                 div()
                     .flex_1()
                     .min_h_0()
                     .w_full()
                     .border_t_1()
                     .border_color(t.box_border)
-                    .child(
-                        h_resizable("repository")
-                            .with_state(&self.resizable)
-                            // GHD's 6 px handle is invisible; the sidebar's own border is the seam.
-                            .with_handle_appearance(std::rc::Rc::new(|_, _, _| {
-                                Some(div().into_any_element())
-                            }))
-                            .child(
-                                resizable_panel()
-                                    .size(self.sidebar_width)
-                                    .size_range(SIDEBAR_MIN_WIDTH..px(900.))
-                                    .child(self.sidebar(cx)),
-                            )
-                            .child(resizable_panel().child(self.content(cx))),
+                    .child(no_repositories(cx))
+                    .into_any_element()
+            })
+            .when_some(foldout, |d, foldout| {
+                let (x, width) = match foldout {
+                    corvane_core::Foldout::Repository => (px(0.), self.sidebar_width),
+                    corvane_core::Foldout::Branch => (self.sidebar_width, px(365.)),
+                    corvane_core::Foldout::PushPull => (
+                        self.sidebar_width + TOOLBAR_BUTTON_WIDTH,
+                        TOOLBAR_BUTTON_WIDTH,
                     ),
-            )
+                };
+                d.child(foldout_layer(
+                    foldout,
+                    x,
+                    width,
+                    &self.repository_foldout,
+                    cx,
+                ))
+            })
+            .when_some(popup.as_ref(), |d, popup| {
+                d.child(self.popup_layer(popup, cx))
+            })
     }
 }

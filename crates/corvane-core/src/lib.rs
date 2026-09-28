@@ -1,22 +1,11 @@
-//! Application state, models and actions shared by UI and backends.
-//! Mirrors GitHub Desktop's `AppStore` / `RepositoryStateCache` split.
+//! Application state and the dispatcher that drives backends.
+//! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
-use serde::{Deserialize, Serialize};
+pub mod dispatcher;
+pub mod persistence;
+pub mod state;
 
-/// Which sidebar section is shown (`RepositorySectionTab`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum Section {
-    #[default]
-    Changes,
-    History,
-}
-
-/// Settings › Appearance › Theme (`ApplicationTheme`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "kebab-case")]
-pub enum ThemeSetting {
-    Light,
-    Dark,
-    #[default]
-    System,
-}
+pub use corvane_models::*;
+pub use dispatcher::Dispatcher;
+pub use persistence::{Settings, StoreExt};
+pub use state::{AppState, Foldout, Popup, RepositoryState};

@@ -78,5 +78,6 @@ gpui_kit::actions!(
         // In-app
         Commit,
         ToggleSection,
+        CloseFoldout,
     ]
 );
