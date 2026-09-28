@@ -1,5 +1,7 @@
 //! Small GHD-styled primitives: buttons, checkbox, counter badge, avatar.
 
+use gpui_kit::component::Sizable;
+use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -91,6 +93,53 @@ pub fn counter(count: usize, cx: &App) -> Div {
         .font_weight(FontWeight::SEMIBOLD)
         .line_height(px(11.))
         .child(count.to_string())
+}
+
+/// GHD `textboxish` chrome around a gpui-kit `Input`: 25 px, contrast border,
+/// radius 6, `box_background`, 0/5 px padding, blue border + 1 px halo on focus.
+pub fn text_box(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    prefix: Option<Svg>,
+    window: &Window,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let focused = state.read(cx).focus_handle(cx).is_focused(window);
+    div()
+        .id(id)
+        .h(TEXT_FIELD_HEIGHT)
+        .w_full()
+        .min_w_0()
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(SPACING_HALF)
+        .px(SPACING_HALF)
+        .border_1()
+        .rounded(BORDER_RADIUS)
+        .bg(t.box_background)
+        .border_color(if focused {
+            t.focus
+        } else {
+            t.box_border_contrast
+        })
+        .when(focused, |d| {
+            d.shadow(vec![BoxShadow {
+                color: t.text_field_focus_shadow,
+                offset: point(px(0.), px(0.)),
+                blur_radius: px(0.),
+                spread_radius: px(1.),
+                inset: false,
+            }])
+        })
+        .when_some(prefix, |d, icon| d.child(icon))
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .child(Input::new(state).appearance(false).xsmall()),
+        )
 }
 
 /// Round avatar placeholder (`.avatar`), 25 px unless overridden.

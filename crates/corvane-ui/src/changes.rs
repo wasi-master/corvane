@@ -1,14 +1,15 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
-use gpui_kit::component::input::{Input, InputState, Textarea, TextareaState};
+use gpui_kit::component::Sizable;
+use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{avatar_placeholder, checkbox, primary_button};
+use crate::widgets::{avatar_placeholder, checkbox, primary_button, text_box};
 
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
@@ -36,7 +37,8 @@ impl ChangesSidebar {
         }
     }
 
-    fn header(&self, cx: &Context<Self>) -> impl IntoElement {
+    /// `.filtered-changes-list .header`: filter row + check-all row.
+    fn header(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         div()
             .flex_none()
@@ -48,7 +50,7 @@ impl ChangesSidebar {
             .border_b_1()
             .border_color(t.box_border)
             .child(
-                // Filter row: [Filter Options ▾] [Filter…]
+                // Filter row: [Filter Options ▾][Filter…] as a joined button group
                 div()
                     .flex()
                     .flex_row()
@@ -68,7 +70,6 @@ impl ChangesSidebar {
                             .border_color(t.secondary_button_border)
                             .rounded_l(BORDER_RADIUS)
                             .bg(t.secondary_button_background)
-                            .text_color(t.secondary_button_text)
                             .cursor_pointer()
                             .child(octicon(Octicon::Filter, t.secondary_button_text))
                             .child(
@@ -77,10 +78,9 @@ impl ChangesSidebar {
                             ),
                     )
                     .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(Input::new(&self.filter).h(TEXT_FIELD_HEIGHT)),
+                        text_box("changes-filter", &self.filter, None, window, cx)
+                            .rounded_l(px(0.))
+                            .border_l_0(),
                     ),
             )
             .child(
@@ -106,7 +106,8 @@ impl ChangesSidebar {
         div().flex_1().min_h(px(100.)).bg(t.background)
     }
 
-    fn commit_form(&self, cx: &Context<Self>) -> impl IntoElement {
+    /// `.commit-message-component`
+    fn commit_form(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         div()
             .id("commit-message")
@@ -119,6 +120,7 @@ impl ChangesSidebar {
             .border_t_1()
             .border_color(t.box_border)
             .child(
+                // `.summary`: avatar + summary field
                 div()
                     .flex()
                     .flex_row()
@@ -126,14 +128,10 @@ impl ChangesSidebar {
                     .gap(SPACING_HALF)
                     .mb(SPACING)
                     .child(avatar_placeholder(AVATAR_SIZE, cx))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(Input::new(&self.summary).h(TEXT_FIELD_HEIGHT)),
-                    ),
+                    .child(text_box("commit-summary", &self.summary, None, window, cx)),
             )
             .child(
+                // `.description-focus-container`: textarea + action bar
                 div()
                     .flex()
                     .flex_col()
@@ -141,11 +139,16 @@ impl ChangesSidebar {
                     .border_1()
                     .border_color(t.box_border_contrast)
                     .rounded(BORDER_RADIUS)
-                    .bg(t.background)
+                    .bg(t.box_background)
                     .overflow_hidden()
-                    .child(Textarea::new(&self.description).bordered(false).h(px(80.)))
                     .child(
-                        // action bar: add co-authors | gear
+                        Textarea::new(&self.description)
+                            .appearance(false)
+                            .small()
+                            .h(px(80.)),
+                    )
+                    .child(
+                        // `.action-bar`: add co-authors | commit options
                         div()
                             .flex()
                             .flex_row()
@@ -153,7 +156,6 @@ impl ChangesSidebar {
                             .gap(SPACING_HALF)
                             .px(SPACING)
                             .pb(px(8.))
-                            .text_color(t.text_secondary)
                             .child(octicon(Octicon::PersonAdd, t.text_secondary))
                             .child(div().w(px(1.)).h(px(16.)).bg(t.box_border_contrast))
                             .child(octicon(Octicon::Gear, t.text_secondary)),
@@ -180,14 +182,14 @@ impl ChangesSidebar {
 }
 
 impl Render for ChangesSidebar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         div()
             .size_full()
             .flex()
             .flex_col()
             .min_h_0()
-            .child(self.header(cx))
+            .child(self.header(window, cx))
             .child(self.list(cx))
-            .child(self.commit_form(cx))
+            .child(self.commit_form(window, cx))
     }
 }
