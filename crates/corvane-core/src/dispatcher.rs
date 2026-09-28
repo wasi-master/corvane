@@ -15,7 +15,7 @@ use crate::persistence::{Settings, StoreExt};
 use crate::state::{
     AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
 };
-use corvane_models::{Account, DiffSelectionType, Repository, github_from_remote};
+use corvane_models::{Account, DiffSelectionType, Repository, Section, github_from_remote};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
@@ -698,6 +698,167 @@ impl Dispatcher {
         .detach();
     }
 
+    // ---- history operations (`_revertCommit`, `_resetToCommit`, `_checkoutCommit`, tags, amend) ----
+
+    fn run_history_op(
+        id: u64,
+        error_title: &'static str,
+        op: impl FnOnce(
+            std::sync::Arc<corvane_git::GitBinary>,
+            PathBuf,
+        ) -> corvane_git::error::Result<()>
+        + Send
+        + 'static,
+        cx: &mut App,
+    ) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx
+            .background_executor()
+            .spawn(async move { op(git, workdir) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error(error_title, err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    fn working_directory_dirty(id: u64, cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| rs.status.as_ref())
+            .is_some_and(|st| !st.files.is_empty())
+    }
+
+    fn commit_by_sha(id: u64, sha: &str, cx: &App) -> Option<corvane_models::Commit> {
+        Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)?
+            .commits
+            .iter()
+            .find(|c| c.sha == sha)
+            .cloned()
+    }
+
+    /// `Revert Changes in Commit`
+    pub fn revert_commit(id: u64, sha: String, cx: &mut App) {
+        let is_merge = Self::commit_by_sha(id, &sha, cx).is_some_and(|c| c.is_merge());
+        Self::run_history_op(
+            id,
+            "Could not revert commit",
+            move |git, workdir| corvane_git::revert_commit(git, &workdir, &sha, is_merge),
+            cx,
+        );
+    }
+
+    /// `Reset to Commit…`: warn first when the working directory is dirty.
+    pub fn request_reset_to_commit(id: u64, sha: String, cx: &mut App) {
+        if Self::working_directory_dirty(id, cx) {
+            Self::show_popup(Popup::ResetToCommit { repo: id, sha }, cx);
+        } else {
+            Self::reset_to_commit(id, sha, cx);
+        }
+    }
+
+    pub fn reset_to_commit(id: u64, sha: String, cx: &mut App) {
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            "Could not reset to commit",
+            move |git, workdir| {
+                corvane_git::reset_to(git, &workdir, corvane_git::ResetMode::Mixed, &sha)
+            },
+            cx,
+        );
+    }
+
+    /// `Checkout Commit`: confirm unless the user opted out.
+    pub fn request_checkout_commit(id: u64, sha: String, cx: &mut App) {
+        if Self::state(cx).read(cx).settings.confirm_checkout_commit {
+            Self::show_popup(Popup::CheckoutCommit { repo: id, sha }, cx);
+        } else {
+            Self::checkout_commit(id, sha, cx);
+        }
+    }
+
+    pub fn checkout_commit(id: u64, sha: String, cx: &mut App) {
+        Self::run_history_op(
+            id,
+            "Could not checkout commit",
+            move |git, workdir| corvane_git::checkout_commit(git, &workdir, &sha),
+            cx,
+        );
+    }
+
+    pub fn create_tag(id: u64, name: String, sha: String, cx: &mut App) {
+        Self::run_history_op(
+            id,
+            "Could not create tag",
+            move |git, workdir| corvane_git::create_tag(git, &workdir, &name, &sha),
+            cx,
+        );
+    }
+
+    pub fn delete_tag(id: u64, name: String, cx: &mut App) {
+        Self::run_history_op(
+            id,
+            "Could not delete tag",
+            move |git, workdir| corvane_git::delete_tag(git, &workdir, &name),
+            cx,
+        );
+    }
+
+    /// `Undo Commit…` from history: warn about local changes first.
+    pub fn request_undo_commit(id: u64, cx: &mut App) {
+        let confirm = Self::state(cx).read(cx).settings.confirm_undo_commit;
+        if confirm && Self::working_directory_dirty(id, cx) {
+            Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
+        } else {
+            Self::undo_commit(id, cx);
+        }
+    }
+
+    /// `_startAmendingRepository`: switch to Changes and load the message.
+    pub fn start_amending(id: u64, sha: String, cx: &mut App) {
+        let Some(commit) = Self::commit_by_sha(id, &sha, cx) else {
+            return;
+        };
+        Self::show_section(id, Section::Changes, cx);
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            rs.commit_to_amend = Some(commit);
+            rs.amend_nonce += 1;
+            cx.notify();
+        });
+    }
+
+    /// `_stopAmendingRepository`
+    pub fn stop_amending(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).commit_to_amend = None;
+            cx.notify();
+        });
+    }
+
+    pub fn show_section(id: u64, section: Section, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.section != section {
+                rs.section = section;
+                cx.notify();
+            }
+        });
+    }
+
     pub fn set_commit_summary_expanded(id: u64, expanded: bool, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             s.repo_state_mut(id).commit_summary_expanded = expanded;
@@ -1002,7 +1163,13 @@ impl Dispatcher {
             .repository(id)
             .map(|r| r.commit_options)
             .unwrap_or_default();
-        if summary.trim().is_empty() || (files.is_empty() && !options.allow_empty_commit) {
+        let amend = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .is_some_and(|rs| rs.commit_to_amend.is_some());
+        if summary.trim().is_empty() || (files.is_empty() && !options.allow_empty_commit && !amend)
+        {
             return;
         }
         Self::state(cx).update(cx, |s, cx| {
@@ -1020,7 +1187,7 @@ impl Dispatcher {
                 &workdir,
                 &message,
                 &corvane_git::CommitOptions {
-                    amend: false,
+                    amend,
                     no_verify: options.skip_commit_hooks,
                     signoff: options.sign_off_commits,
                     allow_empty: options.allow_empty_commit,
@@ -1034,11 +1201,13 @@ impl Dispatcher {
                     let rs = s.repo_state_mut(id);
                     rs.committing = false;
                     if let Ok(sha) = &result {
-                        rs.last_commit = Some(LastCommit {
+                        // GHD: no undo bar after an amend
+                        rs.last_commit = (!amend).then(|| LastCommit {
                             sha: sha.clone(),
                             summary: summary_for_bar.clone(),
                             at: std::time::SystemTime::now(),
                         });
+                        rs.commit_to_amend = None;
                         rs.commit_nonce += 1;
                     }
                     cx.notify();

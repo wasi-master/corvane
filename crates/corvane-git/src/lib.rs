@@ -5,6 +5,7 @@ pub mod commit;
 pub mod detect;
 pub mod diff;
 pub mod error;
+pub mod history_ops;
 pub mod ignore;
 pub mod log;
 pub mod ops;
@@ -20,6 +21,9 @@ pub use commit::{
 pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
 pub use error::GitError;
+pub use history_ops::{
+    ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
+};
 pub use ignore::{append_ignore_files, append_ignore_rules, escape_gitignore_pattern};
 pub use log::{
     COMMIT_BATCH_SIZE, commit_file_diff, get_changed_files, get_commits, parse_raw_log_with_numstat,

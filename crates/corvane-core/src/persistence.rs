@@ -20,6 +20,10 @@ pub struct Settings {
     pub welcome_completed: bool,
     /// GHD `askForConfirmationOnDiscardChanges`.
     pub confirm_discard_changes: bool,
+    /// GHD `askForConfirmationOnCheckoutCommit`.
+    pub confirm_checkout_commit: bool,
+    /// GHD `askForConfirmationOnUndoCommit`.
+    pub confirm_undo_commit: bool,
 }
 
 impl Default for Settings {
@@ -31,6 +35,8 @@ impl Default for Settings {
             clone_dir: None,
             welcome_completed: false,
             confirm_discard_changes: true,
+            confirm_checkout_commit: true,
+            confirm_undo_commit: true,
         }
     }
 }
@@ -119,6 +125,8 @@ mod tests {
             welcome_completed: true,
             commit_summary_width: 250.0,
             confirm_discard_changes: false,
+            confirm_checkout_commit: true,
+            confirm_undo_commit: true,
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();

@@ -8,7 +8,7 @@
 
 use std::rc::Rc;
 
-use corvane_core::{AppState, Commit, Dispatcher};
+use corvane_core::{AppState, Commit, Dispatcher, Popup};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -84,23 +84,72 @@ impl HistorySidebar {
                 .unwrap_or(false);
             (id, html_url, is_head)
         };
-        let _ = id;
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
         let sha = commit.sha.clone();
         let mut items = Vec::new();
         if is_head {
-            items.push(MenuItem::new("Amend Commit…", |_, _| {}).enabled(false));
-            items.push(MenuItem::new("Undo Commit…", |_, _| {}).enabled(false));
+            items.push(MenuItem::new("Amend Commit…", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
+            }));
+            items.push(MenuItem::new("Undo Commit…", move |_, cx| {
+                Dispatcher::request_undo_commit(id, cx)
+            }));
         }
         items.extend([
-            MenuItem::new("Reset to Commit…", |_, _| {}).enabled(false),
-            MenuItem::new("Checkout Commit", |_, _| {}).enabled(false),
+            MenuItem::new("Reset to Commit…", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::request_reset_to_commit(id, sha.clone(), cx)
+            })
+            .enabled(!is_head),
+            MenuItem::new("Checkout Commit", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
+            })
+            .enabled(!is_head),
+            // TODO(M4): reorder / cherry-pick / create branch need the branch layer
             MenuItem::new("Reorder Commit", |_, _| {}).enabled(false),
-            MenuItem::new("Revert Changes in Commit", |_, _| {}).enabled(false),
+            MenuItem::new("Revert Changes in Commit", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
+            }),
             MenuItem::separator(),
             MenuItem::new("Create Branch from Commit", |_, _| {}).enabled(false),
-            MenuItem::new("Create Tag…", |_, _| {}).enabled(false),
-            MenuItem::separator(),
+            MenuItem::new("Create Tag…", {
+                let sha = sha.clone();
+                move |_, cx| {
+                    Dispatcher::show_popup(
+                        Popup::CreateTag {
+                            repo: id,
+                            sha: sha.clone(),
+                        },
+                        cx,
+                    )
+                }
+            }),
+        ]);
+        if !commit.tags.is_empty() {
+            items.push(MenuItem::separator());
+            if commit.tags.len() == 1 {
+                let tag = commit.tags[0].clone();
+                items.push(MenuItem::new(format!("Delete tag {tag}"), move |_, cx| {
+                    Dispatcher::delete_tag(id, tag.clone(), cx)
+                }));
+            } else {
+                let entries = commit
+                    .tags
+                    .iter()
+                    .map(|tag| {
+                        let tag = tag.clone();
+                        MenuItem::new(tag.clone(), move |_, cx| {
+                            Dispatcher::delete_tag(id, tag.clone(), cx)
+                        })
+                    })
+                    .collect();
+                items.push(MenuItem::submenu("Delete tag…", entries));
+            }
+        }
+        items.extend([
             MenuItem::new("Cherry-pick Commit…", |_, _| {}).enabled(false),
             MenuItem::separator(),
             MenuItem::new("Copy SHA", {
@@ -108,17 +157,18 @@ impl HistorySidebar {
                 move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
             }),
         ]);
-        if !commit.tags.is_empty() {
-            let tags = commit.tags.join(", ");
-            let label = if commit.tags.len() == 1 {
-                "Copy Tag".to_string()
-            } else {
-                "Copy Tags".to_string()
-            };
-            items.push(MenuItem::new(label, move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(tags.clone()))
-            }));
-        }
+        let tags = commit.tags.join(" ");
+        items.push(
+            MenuItem::new(
+                if commit.tags.len() > 1 {
+                    "Copy Tags"
+                } else {
+                    "Copy Tag"
+                },
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(tags.clone())),
+            )
+            .enabled(!commit.tags.is_empty()),
+        );
         items.push(
             MenuItem::new("View on GitHub", {
                 let url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
@@ -163,6 +213,8 @@ impl HistorySidebar {
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
         let count = commits.len();
+        // GHD keeps the active (blue) selection while the row's context menu is open
+        let menu_open = self.context_menu.is_some();
         div()
             .id("commit-list")
             .track_focus(&self.list_focus)
@@ -176,7 +228,7 @@ impl HistorySidebar {
                     if !exhausted && range.end + 20 >= count {
                         Dispatcher::load_commits(id, true, cx);
                     }
-                    let focused = list_focus.is_focused(window);
+                    let focused = list_focus.is_focused(window) || menu_open;
                     range
                         .map(|ix| {
                             let commit = &commits[ix];
@@ -251,6 +303,7 @@ fn commit_row(
     let commit_for_menu = commit.clone();
     div()
         .id(SharedString::from(format!("commit-{}", commit.sha)))
+        .w_full()
         .h(COMMIT_ROW_HEIGHT)
         .flex_none()
         .flex()
