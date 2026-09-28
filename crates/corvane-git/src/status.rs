@@ -21,7 +21,7 @@ pub fn get_status(
     workdir: &Path,
     previous: Option<&WorkingDirectoryStatus>,
 ) -> Result<WorkingDirectoryStatus> {
-    let out = GitCommand::new(git)
+    let out = GitCommand::new(git.clone())
         .args([
             "status",
             "--untracked-files=all",
@@ -32,9 +32,16 @@ pub fn get_status(
         .current_dir(workdir)
         .run()?;
     let mut status = parse_porcelain_v2(&out.stdout);
-    status.merge_head_found = workdir.join(".git/MERGE_HEAD").exists();
+    let git_dir = crate::paths::git_dir(workdir);
+    status.merge_head_found = git_dir.join("MERGE_HEAD").exists();
     status.rebase_in_progress =
-        workdir.join(".git/rebase-merge").exists() || workdir.join(".git/rebase-apply").exists();
+        git_dir.join("rebase-merge").exists() || git_dir.join("rebase-apply").exists();
+    status.cherry_pick_head_found = git_dir.join("CHERRY_PICK_HEAD").exists();
+    status.squash_msg_found = git_dir.join("SQUASH_MSG").exists();
+    status.rebase_internal_state = crate::rebase_ops::rebase_internal_state(workdir);
+    if status.has_conflicts() {
+        apply_conflict_details(git, workdir, &mut status);
+    }
     if let Some(prev) = previous {
         for file in &mut status.files {
             if let Some(old) = prev.files.iter().find(|f| f.path == file.path) {
@@ -92,11 +99,42 @@ pub fn parse_porcelain_v2(stdout: &[u8]) -> WorkingDirectoryStatus {
     status
 }
 
+/// GHD `getConflictDetails`: text conflicts carry their marker count, binary
+/// and add/delete conflicts stay "manual" (`conflict_markers: None`).
+fn apply_conflict_details(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    status: &mut WorkingDirectoryStatus,
+) {
+    let markers =
+        crate::rebase_ops::conflict_marker_counts(git.clone(), workdir).unwrap_or_default();
+    let conflicted: Vec<String> = status
+        .files
+        .iter()
+        .filter(|f| f.status.kind == FileStatusKind::Conflicted)
+        .map(|f| f.path.clone())
+        .collect();
+    let binary = crate::rebase_ops::binary_paths(git, workdir, &conflicted).unwrap_or_default();
+    for file in &mut status.files {
+        if file.status.kind != FileStatusKind::Conflicted {
+            continue;
+        }
+        // GHD `TextConflictDetails`: both added or both modified, and not binary
+        let text_codes = matches!(file.status.code.as_str(), "AA" | "UU");
+        file.status.conflict_markers = if text_codes && !binary.contains(&file.path) {
+            Some(markers.get(&file.path).copied().unwrap_or(0))
+        } else {
+            None
+        };
+    }
+}
+
 fn parse_header(rest: &str, status: &mut WorkingDirectoryStatus) {
     let mut parts = rest.splitn(2, ' ');
     let key = parts.next().unwrap_or("");
     let value = parts.next().unwrap_or("").trim();
     match key {
+        "branch.oid" if value != "(initial)" => status.current_tip = Some(value.to_string()),
         "branch.head" if value != "(detached)" => status.branch = Some(value.to_string()),
         "branch.upstream" => status.upstream = Some(value.to_string()),
         "branch.ab" => {
@@ -178,6 +216,7 @@ pub fn map_status(code: &str, sub: &str, score: Option<u8>) -> Option<FileStatus
         score,
         code: code.to_string(),
         submodule,
+        conflict_markers: None,
     })
 }
 

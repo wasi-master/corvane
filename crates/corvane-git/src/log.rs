@@ -162,6 +162,7 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
                     score,
                     code: letter.to_string(),
                     submodule: raw.starts_with("160000") || raw.split(' ').nth(1) == Some("160000"),
+                    conflict_markers: None,
                 },
                 commitish: sha.to_string(),
             });
@@ -181,6 +182,87 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
         }
     }
     data
+}
+
+/// The empty tree, used as the parent of a root commit (GHD `NullTreeSHA`).
+pub const NULL_TREE_SHA: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
+fn is_bad_revision(err: &crate::error::GitError) -> bool {
+    matches!(err, crate::error::GitError::Failed { stderr, .. }
+        if stderr.contains("bad revision") || stderr.contains("unknown revision"))
+}
+
+/// `getCommitRangeChangedFiles`: files changed between `shas[0]^` and the
+/// newest sha (`shas` oldest first). Falls back to the empty tree when the
+/// oldest commit is a root commit.
+pub fn get_commit_range_changed_files(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    shas: &[String],
+) -> Result<ChangesetData> {
+    let (Some(oldest), Some(newest)) = (shas.first(), shas.last()) else {
+        return Ok(ChangesetData::default());
+    };
+    let run = |base: &str| {
+        GitCommand::new(git.clone())
+            .args([
+                "diff",
+                base,
+                newest,
+                "-C",
+                "-M",
+                "-z",
+                "--raw",
+                "--numstat",
+                "--",
+            ])
+            .current_dir(workdir)
+            .run()
+    };
+    let out = match run(&format!("{oldest}^")) {
+        Ok(out) => out,
+        Err(err) if is_bad_revision(&err) => run(NULL_TREE_SHA)?,
+        Err(err) => return Err(err),
+    };
+    Ok(parse_raw_log_with_numstat(&out.stdout, newest))
+}
+
+/// `getCommitRangeDiff`: one file's patch across a range of commits.
+pub fn commit_range_file_diff(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    file: &CommittedFileChange,
+    oldest: &str,
+    newest: &str,
+) -> Result<Diff> {
+    if file.status.submodule {
+        return Ok(Diff::Submodule);
+    }
+    let run = |base: &str| {
+        let mut cmd = GitCommand::new(git.clone())
+            .args([
+                "diff",
+                base,
+                newest,
+                "--patch-with-raw",
+                "--format=",
+                "-z",
+                "--no-color",
+                "--",
+            ])
+            .current_dir(workdir)
+            .arg(&file.path);
+        if let Some(old) = &file.old_path {
+            cmd = cmd.arg(old);
+        }
+        cmd.run()
+    };
+    let out = match run(&format!("{oldest}^")) {
+        Ok(out) => out,
+        Err(err) if is_bad_revision(&err) => run(NULL_TREE_SHA)?,
+        Err(err) => return Err(err),
+    };
+    Ok(crate::diff::parse_raw_diff(&out.stdout))
 }
 
 /// `getCommitDiff`: the patch for one file of a commit.

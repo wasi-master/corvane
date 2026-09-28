@@ -251,8 +251,12 @@ pub fn merge_branch(
     }
     let out = cmd.arg(branch).allow_exit_code(1).run()?;
     if !out.status.success() {
-        if workdir.join(".git/MERGE_HEAD").exists()
-            || git_dir_has(git.clone(), workdir, "MERGE_HEAD")
+        let git_dir = crate::paths::git_dir(workdir);
+        let stdout = out.stdout_string().unwrap_or_default();
+        // a squash merge has no MERGE_HEAD: it leaves SQUASH_MSG and conflicted files
+        if git_dir.join("MERGE_HEAD").exists()
+            || (squash && git_dir.join("SQUASH_MSG").exists())
+            || stdout.contains("Automatic merge failed")
         {
             return Ok(MergeOutcome::Conflicts);
         }
@@ -270,17 +274,6 @@ pub fn merge_branch(
     } else {
         MergeOutcome::Success
     })
-}
-
-fn git_dir_has(git: Arc<GitBinary>, workdir: &Path, file: &str) -> bool {
-    GitCommand::new(git)
-        .args(["rev-parse", "--git-path", file])
-        .current_dir(workdir)
-        .run()
-        .ok()
-        .and_then(|o| o.stdout_string().ok())
-        .map(|p| workdir.join(p.trim()).exists())
-        .unwrap_or(false)
 }
 
 /// `git merge --abort`

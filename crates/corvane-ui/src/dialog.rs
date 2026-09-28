@@ -87,6 +87,53 @@ pub fn dialog_with_kind(
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
+    let title: SharedString = title.into();
+    dialog_impl(
+        id,
+        kind,
+        div().child(title).into_any_element(),
+        content,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// A dialog whose title is an element (bold branch names inside the title).
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_title_element(
+    id: &'static str,
+    title: impl IntoElement,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    dialog_impl(
+        id,
+        DialogKind::Normal,
+        title.into_any_element(),
+        content,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn dialog_impl(
+    id: &'static str,
+    kind: DialogKind,
+    title: AnyElement,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
     let t = cx.ghd();
     let close_for_overlay = on_close.clone();
     let viewport = window.viewport_size();
@@ -139,7 +186,7 @@ pub fn dialog_with_kind(
                                         .flex_1()
                                         .text_size(FONT_SIZE_MD)
                                         .font_weight(FontWeight::SEMIBOLD)
-                                        .child(title.into()),
+                                        .child(title),
                                 )
                                 .child({
                                     let on_close = on_close.clone();

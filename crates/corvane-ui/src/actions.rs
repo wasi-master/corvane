@@ -6,6 +6,11 @@ gpui_kit::actions!(
         // Lists (arrow keys while the changes list has focus)
         SelectNextFile,
         SelectPreviousFile,
+        // History keyboard reorder mode
+        ReorderMoveUp,
+        ReorderMoveDown,
+        ReorderConfirm,
+        ReorderCancel,
         // App menu
         About,
         OpenSettings,

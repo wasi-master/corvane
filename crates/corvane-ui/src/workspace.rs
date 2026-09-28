@@ -7,6 +7,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::banner::banner_bar;
 use crate::branch_list::BranchFoldout;
 use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
@@ -296,7 +297,7 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
-        let (buttons, foldout, popup, has_repos, cloning) = {
+        let (buttons, foldout, popup, has_repos, cloning, banner) = {
             let state = self.state.read(cx);
             (
                 toolbar_models(state, self.sidebar_width),
@@ -304,6 +305,7 @@ impl Render for Workspace {
                 state.popup.is_some(),
                 !state.repositories.is_empty(),
                 state.cloning.clone(),
+                state.banner.clone(),
             )
         };
 
@@ -324,6 +326,9 @@ impl Render for Workspace {
                 d.child(div().flex_1().min_h_0().w_full().child(welcome))
             })
             .when(self.welcome.is_none(), |d| d.child(toolbar(buttons, cx)))
+            .when(self.welcome.is_none(), |d| {
+                d.when_some(banner.as_ref(), |d, banner| d.child(banner_bar(banner, cx)))
+            })
             .when(self.welcome.is_none(), |d| {
                 d.child(if let Some(clone) = cloning.as_ref() {
                     div()

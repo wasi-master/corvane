@@ -11,7 +11,9 @@ pub mod ignore;
 pub mod log;
 pub mod ops;
 pub mod patch;
+pub mod paths;
 pub mod process;
+pub mod rebase_ops;
 pub mod repo;
 pub mod status;
 
@@ -34,7 +36,8 @@ pub use history_ops::{
 };
 pub use ignore::{append_ignore_files, append_ignore_rules, escape_gitignore_pattern};
 pub use log::{
-    COMMIT_BATCH_SIZE, commit_file_diff, get_changed_files, get_commits, parse_raw_log_with_numstat,
+    COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
+    get_commit_range_changed_files, get_commits, parse_raw_log_with_numstat,
 };
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
@@ -42,6 +45,15 @@ pub use ops::{
     set_global_identity,
 };
 pub use patch::{apply_patch_to_index, format_patch, stage_partial_files};
+pub use paths::git_dir;
 pub use process::{GitCommand, GitOutput};
+pub use rebase_ops::{
+    CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
+    abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,
+    cherry_pick_snapshot, commits_between, commits_in_range, conflict_marker_counts,
+    continue_cherry_pick, continue_rebase, create_merge_commit, determine_mergeability,
+    merge_commits_exist_after, merge_head_set, rebase, rebase_head_set, rebase_internal_state,
+    rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
+};
 pub use repo::{ahead_behind, open_repository};
 pub use status::{get_status, map_status, parse_porcelain_v2};

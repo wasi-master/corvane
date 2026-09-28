@@ -133,10 +133,25 @@ impl BranchFoldout {
             })
             .when(!current, move |d| {
                 d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                    .drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
+                        s.bg(hover_bg).text_color(hover_text)
+                    })
             })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
                 Dispatcher::checkout_branch(id, name.clone(), None, cx)
+            })
+            .on_drop({
+                // `startCherryPickWithBranch`: drop commits on a branch to copy them there
+                let target = branch.name.clone();
+                move |drag: &crate::history::CommitDrag, _, cx| {
+                    if current || drag.repo != id {
+                        return;
+                    }
+                    Dispatcher::close_foldout(cx);
+                    Dispatcher::start_cherry_pick_flow(id, drag.shas.clone(), cx);
+                    Dispatcher::cherry_pick_to_branch(id, target.clone(), cx);
+                }
             })
             .child(
                 octicon(

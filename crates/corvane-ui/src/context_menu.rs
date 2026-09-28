@@ -13,12 +13,14 @@ use crate::theme::ActiveGhdTheme;
 
 pub type MenuAction = Rc<dyn Fn(&mut Window, &mut App)>;
 
+#[derive(Clone)]
 pub enum MenuItemKind {
     Action(MenuAction),
     Submenu(Vec<MenuItem>),
     Separator,
 }
 
+#[derive(Clone)]
 pub struct MenuItem {
     pub label: SharedString,
     pub enabled: bool,

@@ -197,6 +197,17 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> impl IntoElement {
                 }
             })
         })
+        .when(foldout == Some(Foldout::Branch), |d| {
+            // GHD `onDragEnter` on the branch dropdown: dragging commits over
+            // it opens the list so they can be dropped on a branch.
+            d.on_drag_move::<crate::history::CommitDrag>(move |ev, _, cx| {
+                if ev.bounds.contains(&ev.event.position)
+                    && corvane_core::AppState::global(cx).read(cx).foldout != Some(Foldout::Branch)
+                {
+                    Dispatcher::toggle_foldout(Foldout::Branch, cx);
+                }
+            })
+        })
         .when_some(model.width, |d, w| d.w(w))
         .when(model.width.is_none(), |d| d.flex_1().min_w_0())
         .child(octicon(model.icon, text).mr(SPACING))
