@@ -36,6 +36,12 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] Welcome "Create a tutorial repository" card
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
 
+## Create / clone dialogs
+
+- [ ] Git-ignore and license templates in "Create a New Repository" (GHD bundles `gitignore` + `choosealicense` data; the selects currently show "None")
+- [ ] Clone dialog GitHub.com / Enterprise tabs: repository list from the API with filter (`clone-github-repository.tsx`), needs avatar cache
+- [ ] Clone path validation messages (`.app` suffix, non-empty folder, file exists) before starting
+
 ## Editor / commit form
 
 - [ ] Spellcheck in commit summary/description (Electron built-in in GHD; needs native `NSSpellChecker` via objc2 on macOS)
