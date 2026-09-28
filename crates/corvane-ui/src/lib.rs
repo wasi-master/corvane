@@ -11,6 +11,7 @@ pub mod context_menu;
 pub mod dialog;
 pub mod dialogs;
 pub mod diff_view;
+pub mod diff_view_rows;
 pub mod foldout;
 pub mod history;
 pub mod icons;

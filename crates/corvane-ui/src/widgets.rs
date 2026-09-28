@@ -63,6 +63,17 @@ pub fn checkbox(
     disabled: bool,
     cx: &App,
 ) -> Stateful<Div> {
+    checkbox_tristate(id, Some(checked), disabled, cx)
+}
+
+/// `CheckboxValue::Mixed` (`None`) draws the blue fill with a white dash, like
+/// Chromium's indeterminate checkbox that GHD renders.
+pub fn checkbox_tristate(
+    id: impl Into<ElementId>,
+    value: Option<bool>,
+    disabled: bool,
+    cx: &App,
+) -> Stateful<Div> {
     let t = cx.ghd();
     let base = div()
         .id(id)
@@ -74,17 +85,22 @@ pub fn checkbox(
         .rounded(px(3.))
         .border_1()
         .when(!disabled, |d| d.cursor_pointer());
-    match (checked, disabled) {
-        (true, false) => base
-            .bg(t.button_background)
-            .border_color(t.button_background)
-            .child(octicon(Octicon::Check, t.button_text).size(px(11.))),
-        (true, true) => base
-            .bg(t.box_selected_background)
-            .border_color(t.box_selected_background)
-            .child(octicon(Octicon::Check, t.text_secondary).size(px(11.))),
-        (false, _) => base.bg(t.background).border_color(t.box_border_contrast),
-    }
+    let (fill, glyph) = match (value, disabled) {
+        (Some(false), _) => {
+            return base.bg(t.background).border_color(t.box_border_contrast);
+        }
+        (Some(true), false) => (t.button_background, t.button_text),
+        (None, false) => (t.button_background, t.button_text),
+        (_, true) => (t.box_selected_background, t.text_secondary),
+    };
+    let icon = if value.is_none() {
+        Octicon::DiffDash
+    } else {
+        Octicon::Check
+    };
+    base.bg(fill)
+        .border_color(fill)
+        .child(octicon(icon, glyph).size(px(11.)))
 }
 
 /// `.counter` pill used in the Changes tab and list rows.
