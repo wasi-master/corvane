@@ -1,7 +1,7 @@
 //! `#no-repositories` - first-launch blankslate ("Let's get started!").
 //! `styles/ui/_no-repositories.scss`, `ui/no-repositories/no-repositories-view.tsx`.
 
-use corvane_core::Dispatcher;
+use corvane_core::{Dispatcher, Popup};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -115,11 +115,7 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                                     Octicon::RepoClone,
                                     "Clone a Repository from the Internet…",
                                     |_, cx| {
-                                        Dispatcher::show_error(
-                                            "Clone Repository",
-                                            "Cloning arrives in the next milestone step.",
-                                            cx,
-                                        )
+                                        Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
                                     },
                                     cx,
                                 ))
@@ -128,11 +124,7 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                                     Octicon::Plus,
                                     "Create a New Repository on your Local Drive…",
                                     |_, cx| {
-                                        Dispatcher::show_error(
-                                            "Create Repository",
-                                            "Creating repositories arrives in the next milestone step.",
-                                            cx,
-                                        )
+                                        Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
                                     },
                                     cx,
                                 ))
@@ -140,7 +132,7 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                                     "nr-add",
                                     Octicon::FileDirectory,
                                     "Add an Existing Repository from your Local Drive…",
-                                    |_, cx| Dispatcher::prompt_add_repository(cx),
+                                    |_, cx| Dispatcher::show_popup(Popup::AddExistingRepository { path: None }, cx),
                                     cx,
                                 ))
                                 .child(

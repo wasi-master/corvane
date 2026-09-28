@@ -1,15 +1,15 @@
 //! Root view: title bar, toolbar, resizable sidebar + content, foldouts, dialogs.
 
-use corvane_core::{AppState, Dispatcher, Popup, Section, Tip};
+use corvane_core::{AppState, Dispatcher, Section};
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
 };
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::actions::*;
 use crate::changes::ChangesSidebar;
-use crate::dialog::{DialogButton, dialog};
+use crate::cloning_view::cloning_view;
+use crate::dialogs::DialogHost;
 use crate::foldout::foldout_layer;
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
@@ -30,6 +30,7 @@ pub struct Workspace {
     changes: Entity<ChangesSidebar>,
     history: Entity<HistorySidebar>,
     repository_foldout: Entity<RepositoryFoldout>,
+    dialogs: Entity<DialogHost>,
 }
 
 impl Workspace {
@@ -41,6 +42,17 @@ impl Workspace {
     ) -> Self {
         let focus_handle = cx.focus_handle();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        // When a dialog or foldout closes, put keyboard focus back on the root so
+        // menu actions stay available (GPUI disables items whose action has no handler
+        // in the focus path).
+        cx.observe_in(&state, window, |this, state, window, cx| {
+            let s = state.read(cx);
+            let overlay_open = s.popup.is_some() || s.foldout.is_some();
+            if !overlay_open && !this.focus_handle.contains_focused(window, cx) {
+                window.focus(&this.focus_handle, cx);
+            }
+        })
+        .detach();
 
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
@@ -57,6 +69,7 @@ impl Workspace {
         let changes = cx.new(|cx| ChangesSidebar::new(state.clone(), window, cx));
         let history = cx.new(|cx| HistorySidebar::new(window, cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
+        let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
         window.focus(&focus_handle, cx);
 
         Self {
@@ -68,6 +81,20 @@ impl Workspace {
             changes,
             history,
             repository_foldout,
+            dialogs,
+        }
+    }
+
+    pub fn section(&self) -> Section {
+        self.section
+    }
+
+    /// `View › Show Repository List` (⌘T): open the foldout and focus its filter.
+    pub fn show_repository_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        Dispatcher::toggle_foldout(corvane_core::Foldout::Repository, cx);
+        if self.state.read(cx).foldout == Some(corvane_core::Foldout::Repository) {
+            self.repository_foldout
+                .update(cx, |f, cx| f.focus_filter(window, cx));
         }
     }
 
@@ -195,120 +222,26 @@ impl Workspace {
                     .child(resizable_panel().child(self.content(cx))),
             )
     }
-
-    fn popup_layer(&self, popup: &Popup, cx: &Context<Self>) -> AnyElement {
-        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
-        match popup {
-            Popup::Error { title, message } => dialog(
-                "dialog-error",
-                title.clone(),
-                div().child(message.clone()),
-                vec![DialogButton {
-                    id: "error-close",
-                    label: "Close".into(),
-                    primary: true,
-                    on_click: Box::new(close),
-                }],
-                close,
-                cx,
-            )
-            .into_any_element(),
-            Popup::InstallGit { reason } => dialog(
-                "dialog-install-git",
-                "Unable to locate Git",
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(SPACING)
-                    .child(format!(
-                        "Corvane was unable to find a usable Git on your system ({reason})."
-                    ))
-                    .child(
-                        "Install the Xcode Command Line Tools (xcode-select --install) or run \
-                         `brew install git`, then click Retry.",
-                    ),
-                vec![
-                    DialogButton {
-                        id: "install-git-cancel",
-                        label: "Cancel".into(),
-                        primary: false,
-                        on_click: Box::new(close),
-                    },
-                    DialogButton {
-                        id: "install-git-retry",
-                        label: "Retry".into(),
-                        primary: true,
-                        on_click: Box::new(|_, cx| {
-                            Dispatcher::close_popup(cx);
-                            Dispatcher::detect_git(cx);
-                        }),
-                    },
-                ],
-                close,
-                cx,
-            )
-            .into_any_element(),
-        }
-    }
 }
 
 impl Render for Workspace {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
-        let (buttons, foldout, popup, has_repos, branch_label) = {
+        let (buttons, foldout, popup, has_repos, cloning) = {
             let state = self.state.read(cx);
-            let branch_label = state
-                .selected_state()
-                .and_then(|s| s.info.as_ref())
-                .and_then(|i| match &i.tip {
-                    Tip::Valid { branch } => Some(branch.name.clone()),
-                    Tip::Unborn { name } => Some(name.clone()),
-                    _ => None,
-                });
             (
                 toolbar_models(state, self.sidebar_width),
                 state.foldout,
-                state.popup.clone(),
+                state.popup.is_some(),
                 !state.repositories.is_empty(),
-                branch_label,
+                state.cloning.clone(),
             )
         };
-        let _ = branch_label;
 
         div()
             .id("workspace")
             .key_context("Workspace")
             .track_focus(&self.focus_handle)
-            .on_action(
-                cx.listener(|this, _: &ShowChanges, _, cx| this.set_section(Section::Changes, cx)),
-            )
-            .on_action(
-                cx.listener(|this, _: &ShowHistory, _, cx| this.set_section(Section::History, cx)),
-            )
-            .on_action(cx.listener(|this, _: &ToggleSection, _, cx| {
-                let next = match this.section {
-                    Section::Changes => Section::History,
-                    Section::History => Section::Changes,
-                };
-                this.set_section(next, cx)
-            }))
-            .on_action(cx.listener(|this, _: &ShowRepositoryList, window, cx| {
-                Dispatcher::toggle_foldout(corvane_core::Foldout::Repository, cx);
-                if this.state.read(cx).foldout == Some(corvane_core::Foldout::Repository) {
-                    this.repository_foldout
-                        .update(cx, |f, cx| f.focus_filter(window, cx));
-                }
-            }))
-            .on_action(|_: &ShowBranchesList, _, cx| {
-                Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx)
-            })
-            .on_action(|_: &CloseFoldout, _, cx| {
-                Dispatcher::close_foldout(cx);
-                Dispatcher::close_popup(cx);
-            })
-            .on_action(|_: &Minimize, window, _| window.minimize_window())
-            .on_action(|_: &Zoom, window, _| window.zoom_window())
-            .on_action(|_: &ToggleFullScreen, window, _| window.toggle_fullscreen())
             .relative()
             .size_full()
             .flex()
@@ -319,7 +252,16 @@ impl Render for Workspace {
             .font_family(crate::theme::UI_FONT)
             .child(title_bar(cx))
             .child(toolbar(buttons, cx))
-            .child(if has_repos {
+            .child(if let Some(clone) = cloning.as_ref() {
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .border_t_1()
+                    .border_color(t.box_border)
+                    .child(cloning_view(clone, cx))
+                    .into_any_element()
+            } else if has_repos {
                 self.repository_view(cx).into_any_element()
             } else {
                 div()
@@ -345,11 +287,10 @@ impl Render for Workspace {
                     x,
                     width,
                     &self.repository_foldout,
+                    window,
                     cx,
                 ))
             })
-            .when_some(popup.as_ref(), |d, popup| {
-                d.child(self.popup_layer(popup, cx))
-            })
+            .when(popup, |d| d.child(self.dialogs.clone()))
     }
 }

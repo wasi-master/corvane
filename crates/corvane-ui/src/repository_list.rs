@@ -1,7 +1,7 @@
 //! Repository foldout: filter + "Add ▾", then grouped 29 px rows
 //! (`ui/repositories-list/*.tsx`, `styles/ui/_repository-list.scss`).
 
-use corvane_core::{AppState, Dispatcher, Repository};
+use corvane_core::{AppState, Dispatcher, Popup, Repository};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -192,18 +192,10 @@ impl RepositoryFoldout {
             .shadow_md()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .child(item("add-clone", "Clone Repository…", |_, cx| {
-                Dispatcher::show_error(
-                    "Clone Repository",
-                    "Cloning arrives in the next milestone step.",
-                    cx,
-                )
+                Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
             }))
             .child(item("add-create", "Create New Repository…", |_, cx| {
-                Dispatcher::show_error(
-                    "Create Repository",
-                    "Creating repositories arrives in the next milestone step.",
-                    cx,
-                )
+                Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
             }))
             .child(item(
                 "add-existing",

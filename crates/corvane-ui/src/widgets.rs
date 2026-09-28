@@ -183,6 +183,24 @@ pub fn text_box(
         )
 }
 
+/// `TextBox` label above a field (`.text-box-component > label`, 3.33 px gap).
+pub fn labeled(label: impl Into<SharedString>, field: impl IntoElement, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .flex_1()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(SPACING_THIRD)
+        .child(
+            div()
+                .text_size(FONT_SIZE)
+                .text_color(t.text)
+                .child(label.into()),
+        )
+        .child(field)
+}
+
 /// Round avatar placeholder (`.avatar`), 25 px unless overridden.
 pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
     let t = cx.ghd();
