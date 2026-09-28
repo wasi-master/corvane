@@ -118,6 +118,28 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), cx);
         }
+        // CORVANE_POPUP=preferences|repository-settings|about opens a dialog at
+        // launch (dev/testing convenience for headless smoke runs).
+        if let Ok(popup) = std::env::var("CORVANE_POPUP") {
+            let selected = corvane_core::AppState::global(cx).read(cx).selected;
+            match (popup.as_str(), selected) {
+                ("preferences", _) => {
+                    Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
+                }
+                ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
+                    id,
+                    corvane_core::RepositorySettingsTab::Remote,
+                    cx,
+                ),
+                ("about", _) => Dispatcher::show_popup(
+                    Popup::About {
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                    },
+                    cx,
+                ),
+                _ => {}
+            }
+        }
         cx.on_action(|_: &RemoveRepository, cx| {
             if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
                 Dispatcher::request_remove_repository(id, cx);
