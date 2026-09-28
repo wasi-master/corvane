@@ -266,7 +266,8 @@ pub fn apply(theme: GhdTheme, cx: &mut App) {
         c.background = theme.background;
         c.foreground = theme.text;
         c.border = theme.box_border_contrast;
-        c.input = theme.background;
+        // gpui-kit draws the Input border with `input`; GHD's textboxish uses the contrast border.
+        c.input = theme.box_border_contrast;
         c.muted = theme.box_alt_background;
         c.muted_foreground = theme.text_secondary;
         c.primary = theme.button_background;

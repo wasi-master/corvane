@@ -79,25 +79,40 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
         .pt(px(45.))
         .bg(t.background)
         .child(
+            // header: text left, paper-stack illustration right
             div()
                 .flex()
-                .flex_col()
+                .flex_row()
+                .items_start()
+                .justify_between()
                 .mb(SPACING)
                 .child(
                     div()
-                        .text_size(FONT_SIZE_LG)
-                        .line_height(px(34.))
-                        .font_weight(FontWeight::LIGHT)
-                        .child("No local changes"),
+                        .flex()
+                        .flex_col()
+                        .child(
+                            div()
+                                .text_size(FONT_SIZE_LG)
+                                .line_height(px(34.))
+                                .font_weight(FontWeight::LIGHT)
+                                .child("No local changes"),
+                        )
+                        .child(
+                            div()
+                                .text_size(FONT_SIZE)
+                                .text_color(t.text_secondary)
+                                .max_w(px(520.))
+                                .child(
+                                    "There are no uncommitted changes in this repository. Here are some friendly suggestions for what to do next.",
+                                ),
+                        ),
                 )
                 .child(
-                    div()
-                        .text_size(FONT_SIZE)
-                        .text_color(t.text_secondary)
-                        .max_w(px(520.))
-                        .child(
-                            "There are no uncommitted changes in this repository. Here are some friendly suggestions for what to do next.",
-                        ),
+                    img("illustrations/paper-stack.svg")
+                        .w(px(70.))
+                        .h(px(73.))
+                        .flex_none()
+                        .ml(SPACING_DOUBLE),
                 ),
         )
         .children(actions.into_iter().map(|a| card(a, cx)))
