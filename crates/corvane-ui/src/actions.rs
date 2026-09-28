@@ -1,0 +1,82 @@
+//! Every menu / keyboard action, named after GitHub Desktop's menu items.
+
+gpui_kit::actions!(
+    corvane,
+    [
+        // App menu
+        About,
+        OpenSettings,
+        InstallCli,
+        Hide,
+        HideOthers,
+        ShowAll,
+        Quit,
+        // File
+        NewRepository,
+        AddLocalRepository,
+        CloneRepository,
+        // Edit
+        Undo,
+        Redo,
+        Cut,
+        Copy,
+        Paste,
+        SelectAll,
+        Find,
+        // View
+        ShowChanges,
+        ShowHistory,
+        ShowRepositoryList,
+        ShowBranchesList,
+        GoToSummary,
+        ToggleStashedChanges,
+        ToggleChangesFilter,
+        ToggleFullScreen,
+        ResetZoom,
+        ZoomIn,
+        ZoomOut,
+        ExpandActiveResizable,
+        ContractActiveResizable,
+        // Repository
+        Push,
+        Pull,
+        Fetch,
+        RemoveRepository,
+        ViewOnGitHub,
+        OpenInShell,
+        ShowInFinder,
+        OpenInEditor,
+        OpenWith,
+        CreateIssue,
+        RepositorySettings,
+        // Branch
+        NewBranch,
+        RenameBranch,
+        DeleteBranch,
+        DiscardAllChanges,
+        StashAllChanges,
+        UpdateFromDefaultBranch,
+        CompareToBranch,
+        MergeIntoCurrentBranch,
+        SquashAndMergeIntoCurrentBranch,
+        RebaseCurrentBranch,
+        CompareOnGitHub,
+        ViewBranchOnGitHub,
+        PreviewPullRequest,
+        CreatePullRequest,
+        // Window
+        Minimize,
+        Zoom,
+        CloseWindow,
+        BringAllToFront,
+        // Help
+        ReportIssue,
+        ContactSupport,
+        ShowUserGuides,
+        ShowKeyboardShortcuts,
+        ShowLogs,
+        // In-app
+        Commit,
+        ToggleSection,
+    ]
+);

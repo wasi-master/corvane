@@ -1,0 +1,8 @@
+[package]
+name = "corvane-packs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane on-demand component packs"
+
+[dependencies]

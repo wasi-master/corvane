@@ -1,0 +1,32 @@
+[package]
+name = "corvane"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native GitHub Desktop clone"
+default-run = "corvane"
+
+[[bin]]
+name = "corvane"
+path = "src/main.rs"
+
+[features]
+# Compile Metal shaders at runtime so a full Xcode install is not required for
+# development builds. Release CI passes --no-default-features to precompile.
+default = ["runtime-shaders"]
+runtime-shaders = ["gpui-pre-apple/runtime_shaders"]
+
+[dependencies]
+gpui-kit.workspace = true
+corvane-core.workspace = true
+corvane-platform.workspace = true
+corvane-store.workspace = true
+corvane-ui.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-appender.workspace = true
+rust-embed.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+gpui-pre-apple = { workspace = true, optional = true }

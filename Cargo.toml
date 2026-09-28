@@ -1,0 +1,45 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/wasi-master/corvane"
+rust-version = "1.92"
+
+[workspace.dependencies]
+# UI: GPUI via gpui-kit. Pin exactly; upgrade only on a dedicated branch (PLAN.md R1).
+gpui-kit = { version = "=0.7.0", default-features = false, features = ["component", "assets"] }
+# Only referenced to toggle the `runtime_shaders` feature (no Xcode needed for dev builds).
+gpui-pre-apple = "=0.3.7"
+
+# Internal crates
+corvane-core = { path = "crates/corvane-core" }
+corvane-git = { path = "crates/corvane-git" }
+corvane-github = { path = "crates/corvane-github" }
+corvane-highlight = { path = "crates/corvane-highlight" }
+corvane-packs = { path = "crates/corvane-packs" }
+corvane-platform = { path = "crates/corvane-platform" }
+corvane-store = { path = "crates/corvane-store" }
+corvane-ui = { path = "crates/corvane-ui" }
+
+# Infra
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+redb = "4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
+rust-embed = "8"
+dirs = "6"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

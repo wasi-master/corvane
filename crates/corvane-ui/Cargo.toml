@@ -1,0 +1,11 @@
+[package]
+name = "corvane-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane views, widgets and theme (GPUI)"
+
+[dependencies]
+gpui-kit.workspace = true
+corvane-core.workspace = true
+tracing.workspace = true

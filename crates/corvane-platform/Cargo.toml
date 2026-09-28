@@ -1,0 +1,9 @@
+[package]
+name = "corvane-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Corvane OS integration: paths, keychain, trash, editors, shells"
+
+[dependencies]
+dirs.workspace = true
