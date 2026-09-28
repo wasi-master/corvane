@@ -87,6 +87,65 @@ pub fn get_commits(
     Ok(out)
 }
 
+/// Commits reachable from `to` but not from `from` (`from..to`), newest
+/// first, at most `limit` (GHD `getCommits(repository, revRange(from, to))`).
+pub fn get_commits_in_range(
+    workdir: &Path,
+    from: &str,
+    to: &str,
+    limit: usize,
+) -> Result<Vec<Commit>> {
+    let repo = gix::open(workdir)?;
+    let (Ok(from_id), Ok(to_id)) = (repo.rev_parse_single(from), repo.rev_parse_single(to)) else {
+        return Ok(Vec::new());
+    };
+    let mut tags: HashMap<gix::ObjectId, Vec<String>> = HashMap::new();
+    if let Ok(refs) = repo.references()
+        && let Ok(iter) = refs.tags()
+    {
+        for r in iter.flatten() {
+            let name = r.name().shorten().to_string();
+            if let Ok(id) = r.into_fully_peeled_id() {
+                tags.entry(id.detach()).or_default().push(name);
+            }
+        }
+    }
+    let walk = repo
+        .rev_walk([to_id.detach()])
+        .with_hidden([from_id.detach()])
+        .sorting(gix::revision::walk::Sorting::ByCommitTime(
+            gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
+        ))
+        .all()
+        .map_err(|e| GitError::Gix(e.to_string()))?;
+    let mut out = Vec::new();
+    for info in walk.take(limit) {
+        let info = info.map_err(|e| GitError::Gix(e.to_string()))?;
+        let commit = info.object().map_err(|e| GitError::Gix(e.to_string()))?;
+        let decoded = commit.decode().map_err(|e| GitError::Gix(e.to_string()))?;
+        let message = decoded.message();
+        let summary = message.summary().to_string();
+        let body = message
+            .body()
+            .map(|b| b.to_string().trim_end().to_string())
+            .unwrap_or_default();
+        out.push(Commit {
+            sha: info.id.to_string(),
+            summary,
+            body,
+            author: identity(commit.author().map_err(|e| GitError::Gix(e.to_string()))?),
+            committer: identity(
+                commit
+                    .committer()
+                    .map_err(|e| GitError::Gix(e.to_string()))?,
+            ),
+            parents: info.parent_ids.iter().map(|p| p.to_string()).collect(),
+            tags: tags.get(&info.id).cloned().unwrap_or_default(),
+        });
+    }
+    Ok(out)
+}
+
 /// `getChangedFiles`: `log <sha> -C -M -m -1 --first-parent --raw --numstat -z`.
 pub fn get_changed_files(git: Arc<GitBinary>, workdir: &Path, sha: &str) -> Result<ChangesetData> {
     let out = GitCommand::new(git)

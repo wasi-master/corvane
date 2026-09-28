@@ -166,6 +166,35 @@ fn tip(repo: &gix::Repository, branches: &[Branch]) -> Result<Tip> {
     Ok(Tip::Valid { branch })
 }
 
+/// `getAheadBehind(revSymmetricDifference(base, other))`: how many commits
+/// `base` is ahead of / behind `other`. `None` when a ref cannot be resolved.
+pub fn symmetric_ahead_behind(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    base: &str,
+    other: &str,
+) -> Result<Option<AheadBehind>> {
+    let out = GitCommand::new(git)
+        .args([
+            "rev-list",
+            "--left-right",
+            "--count",
+            &format!("{base}...{other}"),
+            "--",
+        ])
+        .current_dir(workdir)
+        .allow_exit_code(128)
+        .run()?;
+    if !out.status.success() {
+        return Ok(None);
+    }
+    let text = out.stdout_string()?;
+    let mut parts = text.split_whitespace();
+    let ahead = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let behind = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    Ok(Some(AheadBehind { ahead, behind }))
+}
+
 /// `git rev-list --left-right --count <branch>...<upstream>` → (ahead, behind).
 /// CLI for now; gix gains a revwalk-with-hidden helper later.
 pub fn ahead_behind(

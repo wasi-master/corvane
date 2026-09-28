@@ -6,6 +6,9 @@ gpui_kit::actions!(
         // Lists (arrow keys while the changes list has focus)
         SelectNextFile,
         SelectPreviousFile,
+        // Compare-to-branch filter box
+        CompareSelect,
+        CompareClear,
         // History keyboard reorder mode
         ReorderMoveUp,
         ReorderMoveDown,

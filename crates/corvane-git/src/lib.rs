@@ -37,7 +37,7 @@ pub use history_ops::{
 pub use ignore::{append_ignore_files, append_ignore_rules, escape_gitignore_pattern};
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
-    get_commit_range_changed_files, get_commits, parse_raw_log_with_numstat,
+    get_commit_range_changed_files, get_commits, get_commits_in_range, parse_raw_log_with_numstat,
 };
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
@@ -55,5 +55,5 @@ pub use rebase_ops::{
     merge_commits_exist_after, merge_head_set, rebase, rebase_head_set, rebase_internal_state,
     rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
 };
-pub use repo::{ahead_behind, open_repository};
+pub use repo::{ahead_behind, open_repository, symmetric_ahead_behind};
 pub use status::{get_status, map_status, parse_porcelain_v2};

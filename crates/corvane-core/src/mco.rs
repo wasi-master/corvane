@@ -468,6 +468,13 @@ impl Dispatcher {
         });
     }
 
+    pub(crate) fn current_branch_and_tip_pub(
+        id: u64,
+        cx: &App,
+    ) -> Option<(String, Option<String>)> {
+        Self::current_branch_and_tip(id, cx)
+    }
+
     fn current_branch_and_tip(id: u64, cx: &App) -> Option<(String, Option<String>)> {
         let s = Self::state(cx).read(cx);
         let branch = s.repo_states.get(&id)?.info.as_ref()?.current_branch()?;
@@ -1354,7 +1361,7 @@ impl Dispatcher {
             return Vec::new();
         };
         let wanted: HashSet<&str> = shas.iter().map(String::as_str).collect();
-        rs.commits
+        rs.visible_commits()
             .iter()
             .rev()
             .filter(|c| wanted.contains(c.sha.as_str()))

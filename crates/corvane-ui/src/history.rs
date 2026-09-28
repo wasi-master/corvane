@@ -13,21 +13,24 @@
 
 use std::rc::Rc;
 
-use corvane_core::{AppState, Commit, Dispatcher, Popup};
+use corvane_core::{
+    AppState, Commit, ComparisonMode, Dispatcher, Mergeability, MultiCommitOperationKind, Popup,
+};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{
-    ReorderCancel, ReorderConfirm, ReorderMoveDown, ReorderMoveUp, SelectNextFile,
-    SelectPreviousFile,
+    CompareClear, CompareSelect, ReorderCancel, ReorderConfirm, ReorderMoveDown, ReorderMoveUp,
+    SelectNextFile, SelectPreviousFile,
 };
+use crate::branch_list::group_branches;
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{avatar_placeholder, kbd, text_box};
+use crate::widgets::{avatar_placeholder, kbd, primary_button, text_box};
 
 /// `RowHeight` in `commit-list.tsx`
 pub const COMMIT_ROW_HEIGHT: Pixels = px(50.);
@@ -120,6 +123,12 @@ pub struct HistorySidebar {
     drop_hint: Option<DropHint>,
     /// Keyboard reorder mode (`keyboardReorderData`): shas + insertion row.
     reorder: Option<(Vec<String>, usize)>,
+    /// Focus edge detection for the compare box (`onTextBoxFocused`).
+    compare_was_focused: bool,
+    /// Keyboard-focused branch in the compare list (`focusedBranch`).
+    focused_branch: Option<String>,
+    /// Merge call to action dropdown choice (`selectedOperation`).
+    merge_option: MultiCommitOperationKind,
 }
 
 impl HistorySidebar {
@@ -134,7 +143,519 @@ impl HistorySidebar {
             context_menu: None,
             drop_hint: None,
             reorder: None,
+            compare_was_focused: false,
+            focused_branch: None,
+            merge_option: MultiCommitOperationKind::Merge,
         }
+    }
+
+    /// Branch › Compare to Branch: focus the compare box, which opens the list.
+    pub fn focus_compare(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let handle = self.compare.read(cx).focus_handle(cx);
+        window.focus(&handle, cx);
+        if let Some(id) = self.state.read(cx).selected {
+            Dispatcher::set_compare_branch_list_visible(id, true, cx);
+        }
+    }
+
+    fn compare_query(&self, cx: &App) -> String {
+        self.compare.read(cx).value().trim().to_string()
+    }
+
+    /// Branches offered for comparison: everything but the current branch
+    /// (`_initializeCompare`), grouped like the branch foldout.
+    fn compare_groups(&self, id: u64, cx: &App) -> Vec<crate::branch_list::BranchGroup> {
+        let query = self.compare_query(cx);
+        let s = self.state.read(cx);
+        let Some(rs) = s.repo_states.get(&id) else {
+            return Vec::new();
+        };
+        let Some(info) = rs.info.as_ref() else {
+            return Vec::new();
+        };
+        let current = info.current_branch().map(|b| b.name.clone());
+        let branches: Vec<corvane_core::Branch> = info
+            .branches
+            .iter()
+            .filter(|b| Some(&b.name) != current.as_ref())
+            .cloned()
+            .collect();
+        let default = rs
+            .default_branch
+            .as_deref()
+            .filter(|d| Some(*d) != current.as_deref());
+        let recent: Vec<String> = rs
+            .recent_branches
+            .iter()
+            .filter(|r| Some(*r) != current.as_ref())
+            .cloned()
+            .collect();
+        group_branches(&branches, default, &recent, &query)
+    }
+
+    fn compare_branch_names(&self, id: u64, cx: &App) -> Vec<String> {
+        self.compare_groups(id, cx)
+            .into_iter()
+            .flat_map(|g| g.branches.into_iter().map(|b| b.name))
+            .collect()
+    }
+
+    /// Enter in the compare box (`onBranchFilterKeyDown`).
+    fn compare_select(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let names = self.compare_branch_names(id, cx);
+        let pick = self
+            .focused_branch
+            .clone()
+            .filter(|b| names.contains(b))
+            .or_else(|| names.first().cloned());
+        match pick {
+            Some(branch) if !self.compare_query(cx).is_empty() || self.focused_branch.is_some() => {
+                self.choose_compare_branch(id, branch, window, cx);
+            }
+            _ => {
+                Dispatcher::exit_compare(id, cx);
+                Dispatcher::set_compare_branch_list_visible(id, false, cx);
+                window.blur(cx);
+            }
+        }
+    }
+
+    /// Escape / clear (`handleEscape`): back to the history.
+    fn compare_clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        self.focused_branch = None;
+        self.compare.update(cx, |s, cx| s.set_value("", window, cx));
+        Dispatcher::exit_compare(id, cx);
+        Dispatcher::set_compare_branch_list_visible(id, false, cx);
+        window.blur(cx);
+        cx.notify();
+    }
+
+    fn choose_compare_branch(
+        &mut self,
+        id: u64,
+        branch: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.focused_branch = None;
+        self.compare
+            .update(cx, |s, cx| s.set_value(branch.clone(), window, cx));
+        Dispatcher::compare_to_branch(id, branch, ComparisonMode::Behind, cx);
+        window.blur(cx);
+        cx.notify();
+    }
+
+    fn move_focused_branch(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let names = self.compare_branch_names(id, cx);
+        if names.is_empty() {
+            return;
+        }
+        let current = self
+            .focused_branch
+            .as_ref()
+            .and_then(|b| names.iter().position(|n| n == b));
+        let next = match current {
+            Some(ix) => (ix as isize + delta).clamp(0, names.len() as isize - 1) as usize,
+            None => 0,
+        };
+        self.focused_branch = Some(names[next].clone());
+        cx.notify();
+    }
+
+    /// `CompareBranchListItem` rows inside `BranchList`.
+    fn compare_branch_list(&self, id: u64, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let groups = self.compare_groups(id, cx);
+        let counts = self
+            .state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.compare.branch_counts.clone())
+            .unwrap_or_default();
+        if groups.is_empty() {
+            return div()
+                .flex_1()
+                .pt(SPACING_DOUBLE)
+                .flex()
+                .justify_center()
+                .text_size(FONT_SIZE)
+                .text_color(t.text_secondary)
+                .child("No branches to compare")
+                .into_any_element();
+        }
+        let focused = self.focused_branch.clone();
+        let weak = cx.weak_entity();
+        let hover_bg = t.box_selected_active_background;
+        let hover_text = t.box_selected_active_text;
+        div()
+            .id("compare-branch-list")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .flex()
+            .flex_col()
+            .children(groups.into_iter().map(|group| {
+                let counts = counts.clone();
+                let focused = focused.clone();
+                let weak = weak.clone();
+                div()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        div()
+                            .h(ROW_HEIGHT)
+                            .pt(SPACING)
+                            .px(SPACING)
+                            .flex()
+                            .items_center()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_size(FONT_SIZE)
+                            .child(group.title),
+                    )
+                    .children(group.branches.into_iter().map(move |b| {
+                        let is_focused = focused.as_deref() == Some(b.name.as_str());
+                        let name = b.name.clone();
+                        let weak = weak.clone();
+                        let ab = counts.get(&b.name).cloned();
+                        div()
+                            .id(SharedString::from(format!(
+                                "compare-branch-{}",
+                                b.full_name
+                            )))
+                            .h(ROW_HEIGHT)
+                            .w_full()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .px(SPACING)
+                            .cursor_pointer()
+                            .when(is_focused, |d| {
+                                d.bg(t.box_selected_active_background)
+                                    .text_color(t.box_selected_active_text)
+                            })
+                            .when(!is_focused, move |d| {
+                                d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                            })
+                            .on_click(move |_, window, cx| {
+                                let name = name.clone();
+                                weak.update(cx, |this, cx| {
+                                    this.choose_compare_branch(id, name, window, cx)
+                                })
+                                .ok();
+                            })
+                            .child(octicon(Octicon::GitBranch, t.text).mr(SPACING_HALF))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .truncate()
+                                    .text_size(FONT_SIZE)
+                                    .child(b.name.clone()),
+                            )
+                            .when_some(ab, |d, ab| {
+                                // `.branch-commit-counter`: behind ↓, ahead ↑
+                                let counter = |n: u32, icon: Octicon| {
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .items_center()
+                                        .child(n.to_string())
+                                        .child(octicon(icon, t.text_secondary).size(px(10.)))
+                                };
+                                d.child(
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .items_center()
+                                        .gap(SPACING_HALF)
+                                        .text_size(FONT_SIZE_SM)
+                                        .text_color(t.text_secondary)
+                                        .child(counter(ab.behind, Octicon::ArrowDown))
+                                        .child(counter(ab.ahead, Octicon::ArrowUp)),
+                                )
+                            })
+                    }))
+            }))
+            .into_any_element()
+    }
+
+    /// Behind (N) | Ahead (M) tabs (`#compare-view .tab-bar`).
+    fn compare_tabs(
+        &self,
+        id: u64,
+        mode: ComparisonMode,
+        ahead: u32,
+        behind: u32,
+        cx: &Context<Self>,
+    ) -> Div {
+        let t = cx.ghd();
+        let tab = |label: String, selected: bool, first: bool, target: ComparisonMode| {
+            let hover_bg = t.tab_bar_hover_background;
+            div()
+                .id(if first {
+                    "compare-tab-behind"
+                } else {
+                    "compare-tab-ahead"
+                })
+                .flex_1()
+                .h(px(25.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_size(FONT_SIZE)
+                .border_1()
+                .border_color(if selected {
+                    t.box_border_accent
+                } else {
+                    t.box_border
+                })
+                .when(first, |d| d.rounded_l(BORDER_RADIUS))
+                .when(!first, |d| d.rounded_r(BORDER_RADIUS).ml(px(-1.)))
+                .bg(if selected {
+                    t.box_selected_active_background
+                } else {
+                    t.tab_bar_background
+                })
+                .text_color(if selected {
+                    t.box_selected_active_text
+                } else {
+                    t.text
+                })
+                .cursor_pointer()
+                .when(!selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+                .on_click(move |_, _, cx| Dispatcher::set_comparison_mode(id, target, cx))
+                .child(label)
+        };
+        div()
+            .flex_none()
+            .flex()
+            .flex_row()
+            .p(SPACING_HALF)
+            .border_b_1()
+            .border_color(t.box_border)
+            .child(tab(
+                format!("Behind ({behind})"),
+                mode == ComparisonMode::Behind,
+                true,
+                ComparisonMode::Behind,
+            ))
+            .child(tab(
+                format!("Ahead ({ahead})"),
+                mode == ComparisonMode::Ahead,
+                false,
+                ComparisonMode::Ahead,
+            ))
+    }
+
+    /// `MergeCallToActionWithConflicts` (`.merge-cta`).
+    fn merge_cta(
+        &self,
+        id: u64,
+        branch: &str,
+        behind: u32,
+        merge_status: Option<Mergeability>,
+        cx: &Context<Self>,
+    ) -> Div {
+        let t = cx.ghd();
+        let current = self
+            .state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.info.as_ref())
+            .and_then(|i| i.current_branch())
+            .map(|b| b.name.clone())
+            .unwrap_or_default();
+        let op = self.merge_option;
+        let bold = |text: String| div().font_weight(FontWeight::SEMIBOLD).child(text);
+        let row = || div().flex().flex_row().flex_wrap().items_center();
+        let plural = if behind == 1 { "commit" } else { "commits" };
+        let rebase_message = || {
+            row()
+                .child("This will update\u{a0}")
+                .child(bold(current.clone()))
+                .child("\u{a0}by applying its commits on top of\u{a0}")
+                .child(bold(branch.to_string()))
+                .into_any_element()
+        };
+        let (icon, color, message): (Octicon, Hsla, Option<AnyElement>) = if behind == 0 {
+            (Octicon::Check, t.color_new, None)
+        } else if op == MultiCommitOperationKind::Rebase {
+            (Octicon::Check, t.color_new, Some(rebase_message()))
+        } else {
+            match merge_status {
+                None => (
+                    Octicon::DotFill,
+                    t.color_modified,
+                    Some(
+                        div()
+                            .child(format!(
+                                "Checking for ability to {} automatically…",
+                                op.lower()
+                            ))
+                            .into_any_element(),
+                    ),
+                ),
+                Some(Mergeability::Invalid) => (
+                    Octicon::X,
+                    t.color_deleted,
+                    Some(
+                        div()
+                            .child("Unable to merge unrelated histories in this repository")
+                            .into_any_element(),
+                    ),
+                ),
+                Some(Mergeability::Conflicts(n)) => (
+                    Octicon::Alert,
+                    t.color_modified,
+                    Some(
+                        row()
+                            .child("There will be\u{a0}")
+                            .child(bold(format!(
+                                "{n} conflicted {}",
+                                if n == 1 { "file" } else { "files" }
+                            )))
+                            .child("\u{a0}when merging\u{a0}")
+                            .child(bold(branch.to_string()))
+                            .child("\u{a0}into\u{a0}")
+                            .child(bold(current.clone()))
+                            .into_any_element(),
+                    ),
+                ),
+                Some(Mergeability::Clean) => (
+                    Octicon::Check,
+                    t.color_new,
+                    Some(
+                        row()
+                            .child("This will merge\u{a0}")
+                            .child(bold(format!("{behind} {plural}")))
+                            .child("\u{a0}from\u{a0}")
+                            .child(bold(branch.to_string()))
+                            .child("\u{a0}into\u{a0}")
+                            .child(bold(current.clone()))
+                            .into_any_element(),
+                    ),
+                ),
+            }
+        };
+        let disabled = behind == 0 || merge_status == Some(Mergeability::Invalid);
+        let label = match op {
+            MultiCommitOperationKind::Squash => "Squash and merge",
+            MultiCommitOperationKind::Rebase => "Rebase",
+            _ => "Create a merge commit",
+        };
+        let weak = cx.weak_entity();
+        div()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .p(SPACING)
+            .border_t_1()
+            .border_color(t.box_border)
+            .text_size(FONT_SIZE_SM)
+            .when_some(message, |d, message| {
+                d.child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .mb(SPACING)
+                        .child(
+                            div()
+                                .relative()
+                                .w_full()
+                                .h(px(20.))
+                                .flex()
+                                .justify_center()
+                                .child(
+                                    div()
+                                        .absolute()
+                                        .left_0()
+                                        .right_0()
+                                        .top(px(10.))
+                                        .h(px(1.))
+                                        .bg(t.box_border),
+                                )
+                                .child(
+                                    div()
+                                        .px(SPACING_HALF)
+                                        .bg(t.background)
+                                        .child(octicon(icon, color)),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .mt(SPACING_HALF)
+                                .text_center()
+                                .text_color(t.text_secondary)
+                                .child(message),
+                        ),
+                )
+            })
+            .child(
+                // `DropdownSelectButton`
+                div()
+                    .flex()
+                    .flex_row()
+                    .child(
+                        primary_button("compare-merge", label, disabled, cx)
+                            .flex_1()
+                            .rounded_tr(px(0.))
+                            .rounded_br(px(0.))
+                            .on_click(move |_, _, cx| {
+                                if !disabled {
+                                    Dispatcher::compare_merge_action(id, op, cx);
+                                }
+                            }),
+                    )
+                    .child(
+                        primary_button("compare-merge-options", "", disabled, cx)
+                            .px(SPACING_HALF)
+                            .rounded_tl(px(0.))
+                            .rounded_bl(px(0.))
+                            .ml(px(1.))
+                            .child(octicon(Octicon::TriangleDown, white()))
+                            .on_click(move |ev: &ClickEvent, window, cx| {
+                                if disabled {
+                                    return;
+                                }
+                                let position = ev.mouse_position().unwrap_or_default();
+                                let options = [
+                                    (MultiCommitOperationKind::Merge, "Create a merge commit"),
+                                    (MultiCommitOperationKind::Squash, "Squash and merge"),
+                                    (MultiCommitOperationKind::Rebase, "Rebase"),
+                                ];
+                                let items: Vec<MenuItem> = options
+                                    .iter()
+                                    .map(|(kind, label)| {
+                                        let kind = *kind;
+                                        let weak = weak.clone();
+                                        MenuItem::checkbox(*label, kind == op, move |_, cx| {
+                                            weak.update(cx, |this, cx| {
+                                                this.merge_option = kind;
+                                                cx.notify();
+                                            })
+                                            .ok();
+                                        })
+                                    })
+                                    .collect();
+                                #[cfg(target_os = "macos")]
+                                crate::native_menu::show_context_menu(items, position, window, cx);
+                                #[cfg(not(target_os = "macos"))]
+                                let _ = (items, position, window, cx);
+                            }),
+                    ),
+            )
     }
 
     fn open_menu(
@@ -213,6 +734,12 @@ impl HistorySidebar {
     ) {
         let count = selection.len();
         let busy = self.mco_in_progress(id, cx);
+        let comparing = self
+            .state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .is_some_and(|r| r.compare.is_comparing());
         let weak = cx.weak_entity();
         let (s1, s2, s3) = (selection.clone(), selection.clone(), selection);
         let onto = commit.sha.clone();
@@ -224,14 +751,14 @@ impl HistorySidebar {
             MenuItem::new(format!("Squash {count} Commits…"), move |_, cx| {
                 Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx)
             })
-            .enabled(!busy),
+            .enabled(!busy && !comparing),
             MenuItem::new(format!("Reorder {count} Commits…"), move |_, cx| {
                 weak.update(cx, |this, cx| {
                     this.start_keyboard_reorder(id, s3.clone(), cx)
                 })
                 .ok();
             })
-            .enabled(!busy),
+            .enabled(!busy && !comparing),
         ];
         self.open_menu(items, position, window, cx);
     }
@@ -252,11 +779,17 @@ impl HistorySidebar {
                 .and_then(|r| r.github.as_ref())
                 .map(|g| g.html_url.clone());
             let rs = s.repo_states.get(&id);
-            let is_head = rs
-                .and_then(|rs| rs.commits.first())
-                .map(|c| c.sha == commit.sha)
-                .unwrap_or(false);
-            (html_url, is_head, rs.is_some_and(|r| r.mco.is_some()))
+            let comparing = rs.is_some_and(|r| r.compare.is_comparing());
+            let is_head = !comparing
+                && rs
+                    .and_then(|rs| rs.commits.first())
+                    .map(|c| c.sha == commit.sha)
+                    .unwrap_or(false);
+            (
+                html_url,
+                is_head,
+                rs.is_some_and(|r| r.mco.is_some()) || comparing,
+            )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
         let sha = commit.sha.clone();
@@ -523,24 +1056,39 @@ impl HistorySidebar {
             return div().flex_1().into_any_element();
         };
         let rs = s.repo_states.get(&id);
-        let commits: Rc<Vec<Commit>> = Rc::new(rs.map(|r| r.commits.clone()).unwrap_or_default());
+        let comparing = rs.is_some_and(|r| r.compare.is_comparing());
+        let commits: Rc<Vec<Commit>> =
+            Rc::new(rs.map(|r| r.visible_commits().clone()).unwrap_or_default());
         let selected: Rc<Vec<String>> =
             Rc::new(rs.map(|r| r.selected_commits.clone()).unwrap_or_default());
-        let exhausted = rs.map(|r| r.commits_exhausted).unwrap_or(true);
+        let exhausted = comparing || rs.map(|r| r.commits_exhausted).unwrap_or(true);
         let loaded = rs.map(|r| r.info.is_some()).unwrap_or(false);
-        let draggable = rs.is_some_and(|r| r.mco.is_none()) && self.reorder.is_none();
+        let draggable = rs.is_some_and(|r| r.mco.is_none()) && self.reorder.is_none() && !comparing;
         if commits.is_empty() {
-            let message = if loaded && exhausted {
-                "No history"
-            } else {
-                ""
+            let compare_loading = rs.is_some_and(|r| r.compare.loading);
+            let message: String = match rs.map(|r| &r.compare.form) {
+                Some(corvane_core::CompareForm::Branch { branch, mode, .. })
+                    if !compare_loading =>
+                {
+                    match mode {
+                        ComparisonMode::Ahead => {
+                            format!("The compared branch ({branch}) is up to date with your branch")
+                        }
+                        ComparisonMode::Behind => {
+                            format!("Your branch is up to date with the compared branch ({branch})")
+                        }
+                    }
+                }
+                _ if loaded && exhausted && !compare_loading => "No history".to_string(),
+                _ => String::new(),
             };
             return div()
                 .flex_1()
                 .flex()
                 .items_start()
                 .justify_center()
-                .pt(SPACING_DOUBLE)
+                .p(SPACING_DOUBLE)
+                .text_center()
                 .text_color(t.text_secondary)
                 .child(message)
                 .into_any_element();
@@ -949,11 +1497,54 @@ fn commit_row(
 
 impl Render for HistorySidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.ghd();
         // drop hints only live while a drag is in flight
         if self.drop_hint.is_some() && !cx.has_active_drag() {
             self.drop_hint = None;
         }
+        let (id, show_list, form, merge_status) = {
+            let s = self.state.read(cx);
+            let id = s.selected;
+            let rs = id.and_then(|id| s.repo_states.get(&id));
+            (
+                id,
+                rs.is_some_and(|r| r.compare.show_branch_list),
+                rs.map(|r| r.compare.form.clone()),
+                rs.and_then(|r| r.compare.merge_status),
+            )
+        };
+        // `onTextBoxFocused` → show the branch list
+        let focused = self.compare.read(cx).focus_handle(cx).is_focused(window);
+        if focused
+            && !self.compare_was_focused
+            && let Some(id) = id
+        {
+            Dispatcher::set_compare_branch_list_visible(id, true, cx);
+        }
+        self.compare_was_focused = focused;
+        let body: AnyElement = match (id, show_list, form) {
+            (Some(id), true, _) => self.compare_branch_list(id, cx),
+            (
+                Some(id),
+                false,
+                Some(corvane_core::CompareForm::Branch {
+                    branch,
+                    mode,
+                    ahead_behind,
+                }),
+            ) => div()
+                .flex_1()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .child(self.compare_tabs(id, mode, ahead_behind.ahead, ahead_behind.behind, cx))
+                .child(self.commit_list(cx))
+                .when(mode == ComparisonMode::Behind, |d| {
+                    d.child(self.merge_cta(id, &branch, ahead_behind.behind, merge_status, cx))
+                })
+                .into_any_element(),
+            _ => self.commit_list(cx).into_any_element(),
+        };
+        let t = cx.ghd();
         div()
             .size_full()
             .flex()
@@ -962,6 +1553,20 @@ impl Render for HistorySidebar {
             .child(
                 // `#compare-view .compare-form`
                 div()
+                    .id("compare-form")
+                    .key_context("CompareFilter")
+                    .on_action(cx.listener(|this, _: &CompareSelect, window, cx| {
+                        this.compare_select(window, cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &CompareClear, window, cx| {
+                        this.compare_clear(window, cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &SelectNextFile, _, cx| {
+                        this.move_focused_branch(1, cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.move_focused_branch(-1, cx)
+                    }))
                     .flex_none()
                     .p(SPACING_HALF)
                     .bg(t.box_alt_background)
@@ -975,7 +1580,7 @@ impl Render for HistorySidebar {
                         cx,
                     )),
             )
-            .child(self.commit_list(cx))
+            .child(body)
             .children(self.context_menu.clone())
     }
 }
