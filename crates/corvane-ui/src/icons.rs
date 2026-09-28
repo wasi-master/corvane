@@ -75,6 +75,9 @@ pub enum Octicon {
     DiffDash,
     /// GHD custom stash icon (`filter-changes-list.tsx` `StashIcon`).
     Stash,
+    Server,
+    File,
+    Person,
 }
 
 impl Octicon {
@@ -132,6 +135,9 @@ impl Octicon {
             Octicon::DiffCheck => "octicons/diff-check-12.svg",
             Octicon::DiffDash => "octicons/diff-dash-12.svg",
             Octicon::Stash => "octicons/stash-16.svg",
+            Octicon::Server => "octicons/server-16.svg",
+            Octicon::File => "octicons/file-16.svg",
+            Octicon::Person => "octicons/person-16.svg",
             Octicon::Info => "octicons/info-16.svg",
             Octicon::IssueOpened => "octicons/issue-opened-16.svg",
             Octicon::LinkExternal => "octicons/link-external-16.svg",

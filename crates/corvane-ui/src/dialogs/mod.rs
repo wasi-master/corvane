@@ -2,13 +2,16 @@
 //! it only when the popup value changes.
 
 mod add_existing;
+mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
 mod history_dialogs;
 mod mco_dialogs;
+mod preferences;
 mod remote_dialogs;
+mod repository_settings;
 mod sign_in;
 mod simple;
 
@@ -17,6 +20,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 pub use add_existing::AddExistingRepositoryDialog;
+pub use app_dialogs::{AboutDialog, ConfirmRemoveRepositoryDialog, IntegrationErrorDialog};
 pub use branch_dialogs::{
     ConfirmOverwriteStashDialog, CreateBranchDialog, DeleteBranchDialog, MergeBranchDialog,
     RenameBranchDialog, StashAndSwitchBranchDialog,
@@ -29,10 +33,12 @@ pub use history_dialogs::{
     WarnLocalChangesBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
+pub use preferences::PreferencesDialog;
 pub use remote_dialogs::{
     ConfirmForcePushDialog, GenericGitAuthDialog, InitializeLfsDialog, PublishRepositoryDialog,
     PushNeedsPullDialog,
 };
+pub use repository_settings::RepositorySettingsDialog;
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
 
@@ -177,6 +183,19 @@ impl DialogHost {
                         cx,
                     )
                 })
+                .into(),
+            Popup::Preferences { tab } => cx
+                .new(|cx| PreferencesDialog::new(state, *tab, window, cx))
+                .into(),
+            Popup::RepositorySettings { repo, tab } => cx
+                .new(|cx| RepositorySettingsDialog::new(state, *repo, *tab, window, cx))
+                .into(),
+            Popup::ConfirmRemoveRepository { repo } => cx
+                .new(|_| ConfirmRemoveRepositoryDialog::new(state, *repo))
+                .into(),
+            Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
+            Popup::ExternalEditorError { .. } | Popup::ShellError { .. } => cx
+                .new(|_| IntegrationErrorDialog::new(popup.clone()))
                 .into(),
         }
     }

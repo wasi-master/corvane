@@ -76,8 +76,13 @@ impl Dispatcher {
             banner_nonce: 0,
             indicators: std::collections::HashMap::new(),
             generic_logins,
+            editors: Vec::new(),
+            shells: Vec::new(),
+            global_git: None,
+            repo_settings: None,
         });
         AppState::install(state.clone(), cx);
+        Self::detect_integrations(cx);
 
         if let Some(id) = state.read(cx).selected {
             Self::refresh_repository(id, cx);
@@ -1808,25 +1813,6 @@ impl Dispatcher {
 
     pub fn open_url(url: &str, cx: &mut App) {
         cx.open_url(url);
-    }
-
-    /// Repository › Open in Terminal (`openShell` with the default shell).
-    pub fn open_in_shell(path: &Path, _cx: &mut App) {
-        #[cfg(target_os = "macos")]
-        {
-            if let Err(err) = std::process::Command::new("open")
-                .arg("-a")
-                .arg("Terminal")
-                .arg(path)
-                .spawn()
-            {
-                warn!(%err, "could not open Terminal");
-            }
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let _ = path;
-        }
     }
 
     /// Native folder picker → `Some(path)` on the foreground.

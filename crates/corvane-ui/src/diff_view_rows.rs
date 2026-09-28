@@ -54,6 +54,8 @@ pub struct RowContext {
     pub view: WeakEntity<DiffView>,
     /// Syntax spans per row (same indexing as the rows), once highlighted.
     pub tokens: Option<Rc<Vec<Vec<Span>>>>,
+    /// Settings › Accessibility › Show check marks in the diff.
+    pub show_check_marks: bool,
 }
 
 /// `.cm-s-default` colours; classes that inherit are not emitted by the highlighter.
@@ -263,7 +265,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                         cx,
                     )
                 })
-                .when(abs == start && len > 1, |d| {
+                .when(abs == start && len > 1 && ctx.show_check_marks, |d| {
                     d.flex().justify_center().items_start().pt(px(3.)).children(
                         match kind {
                             DiffSelectionType::All => Some(Octicon::DiffCheck),
@@ -374,7 +376,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     .flex()
                     .justify_center()
                     .items_center()
-                    .when(selected, |d| {
+                    .when(selected && ctx.show_check_marks, |d| {
                         d.child(octicon(Octicon::DiffCheck, num_text).size(px(12.)))
                     }),
             )

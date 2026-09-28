@@ -6,7 +6,9 @@
 use corvane_ui::actions::*;
 use gpui_kit::*;
 
-pub fn install(cx: &mut App) {
+/// Build (or rebuild) the menu bar. `editor` / `shell` are the labels for
+/// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`).
+pub fn install(cx: &mut App, editor: &str, shell: &str) {
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
@@ -64,9 +66,9 @@ pub fn install(cx: &mut App) {
             MenuItem::action("Remove…", RemoveRepository),
             MenuItem::separator(),
             MenuItem::action("View on GitHub", ViewOnGitHub),
-            MenuItem::action("Open in Terminal", OpenInShell),
+            MenuItem::action(format!("Open in {shell}"), OpenInShell),
             MenuItem::action("Show in Finder", ShowInFinder),
-            MenuItem::action("Open in External Editor", OpenInEditor),
+            MenuItem::action(format!("Open in {editor}"), OpenInEditor),
             MenuItem::action("Open With…", OpenWith),
             MenuItem::separator(),
             MenuItem::action("Create Issue on GitHub", CreateIssue),

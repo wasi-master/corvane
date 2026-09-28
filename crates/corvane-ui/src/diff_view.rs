@@ -305,6 +305,8 @@ impl Render for DiffView {
             hovered_group: self.hovered_group,
             view: cx.weak_entity(),
             tokens: self.tokens.clone(),
+            show_check_marks: corvane_core::AppState::try_global(cx)
+                .is_none_or(|s| s.read(cx).settings.show_diff_check_marks),
         });
         let rows = self.rows.clone();
         div()

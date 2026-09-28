@@ -39,6 +39,8 @@ pub struct ChangesSidebar {
     filter_button_bounds: Rc<Cell<Bounds<Pixels>>>,
     /// Focus target for arrow-key navigation of the list.
     list_focus: FocusHandle,
+    /// View › Hide Changes Filter (`isChangesFilterVisible`).
+    filter_visible: bool,
 }
 
 impl ChangesSidebar {
@@ -95,7 +97,29 @@ impl ChangesSidebar {
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
             list_focus: cx.focus_handle(),
+            filter_visible: true,
         }
+    }
+
+    /// View › Go to Summary.
+    pub fn focus_summary(&self, window: &mut Window, cx: &mut Context<Self>) {
+        let handle = self.summary.read(cx).focus_handle(cx);
+        handle.focus(window, cx);
+        cx.notify();
+    }
+
+    /// Edit › Find.
+    pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.filter_visible = true;
+        let handle = self.filter.read(cx).focus_handle(cx);
+        handle.focus(window, cx);
+        cx.notify();
+    }
+
+    /// View › Show / Hide Changes Filter.
+    pub fn toggle_filter(&mut self, cx: &mut Context<Self>) {
+        self.filter_visible = !self.filter_visible;
+        cx.notify();
     }
 
     /// Arrow keys move the selection through the visible files.
@@ -465,11 +489,11 @@ impl ChangesSidebar {
             })
             .enabled(!deleted),
         );
-        // TODO(M6): external editor detection; opens with the default program until then.
+        let editor_label = self.state.read(cx).editor_label();
         items.push(
-            MenuItem::new("Open in External Editor", {
+            MenuItem::new(format!("Open in {editor_label}"), {
                 let f = full.clone();
-                move |_, cx| cx.open_with_system(&f)
+                move |_, cx| Dispatcher::open_in_editor(f.clone(), cx)
             })
             .enabled(!deleted),
         );
@@ -542,78 +566,80 @@ impl ChangesSidebar {
             .bg(t.box_alt_background)
             .border_b_1()
             .border_color(t.box_border)
-            .child(
-                // Filter row: [Filter Options ▾][Filter…] as a joined button group
-                div()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .h(TEXT_FIELD_HEIGHT)
-                    .child({
-                        let active = self.filter_options(cx).count_active() > 0;
-                        let bounds_cell = self.filter_button_bounds.clone();
-                        div()
-                            .id("filter-options")
-                            .relative()
-                            .h(TEXT_FIELD_HEIGHT)
-                            .w(px(48.))
-                            .flex_none()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap(px(2.))
-                            .border_1()
-                            .border_color(t.secondary_button_border)
-                            .rounded_l(BORDER_RADIUS)
-                            .bg(t.secondary_button_background)
-                            .cursor_pointer()
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.filter_popover_open = !this.filter_popover_open;
-                                cx.notify();
-                            }))
-                            .child(
-                                canvas(move |b, _, _| bounds_cell.set(b), |_, _, _, _| {})
-                                    .absolute()
-                                    .size_full(),
-                            )
-                            // `.active span:first-child { color: box-selected-active-background }`
-                            .child(octicon(
-                                Octicon::Filter,
-                                if active {
-                                    t.box_selected_active_background
-                                } else {
-                                    t.secondary_button_text
-                                },
-                            ))
-                            .child(
-                                octicon(Octicon::TriangleDown, t.secondary_button_text)
-                                    .size(px(12.)),
-                            )
-                            // `.active-badge`: 5 px dot with a 1 px ring, right 18 / top 4
-                            .when(active, |d| {
-                                d.child(
-                                    div()
+            .when(self.filter_visible, |d| {
+                d.child(
+                    // Filter row: [Filter Options ▾][Filter…] as a joined button group
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .h(TEXT_FIELD_HEIGHT)
+                        .child({
+                            let active = self.filter_options(cx).count_active() > 0;
+                            let bounds_cell = self.filter_button_bounds.clone();
+                            div()
+                                .id("filter-options")
+                                .relative()
+                                .h(TEXT_FIELD_HEIGHT)
+                                .w(px(48.))
+                                .flex_none()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .gap(px(2.))
+                                .border_1()
+                                .border_color(t.secondary_button_border)
+                                .rounded_l(BORDER_RADIUS)
+                                .bg(t.secondary_button_background)
+                                .cursor_pointer()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.filter_popover_open = !this.filter_popover_open;
+                                    cx.notify();
+                                }))
+                                .child(
+                                    canvas(move |b, _, _| bounds_cell.set(b), |_, _, _, _| {})
                                         .absolute()
-                                        .top(px(4.))
-                                        .right(px(18.))
-                                        .p(px(1.))
-                                        .rounded_full()
-                                        .bg(t.secondary_button_background)
-                                        .child(
-                                            div()
-                                                .size(px(5.))
-                                                .rounded_full()
-                                                .bg(t.box_selected_active_background),
-                                        ),
+                                        .size_full(),
                                 )
-                            })
-                    })
-                    .child(
-                        text_box("changes-filter", &self.filter, None, window, cx)
-                            .rounded_l(px(0.))
-                            .border_l_0(),
-                    ),
-            )
+                                // `.active span:first-child { color: box-selected-active-background }`
+                                .child(octicon(
+                                    Octicon::Filter,
+                                    if active {
+                                        t.box_selected_active_background
+                                    } else {
+                                        t.secondary_button_text
+                                    },
+                                ))
+                                .child(
+                                    octicon(Octicon::TriangleDown, t.secondary_button_text)
+                                        .size(px(12.)),
+                                )
+                                // `.active-badge`: 5 px dot with a 1 px ring, right 18 / top 4
+                                .when(active, |d| {
+                                    d.child(
+                                        div()
+                                            .absolute()
+                                            .top(px(4.))
+                                            .right(px(18.))
+                                            .p(px(1.))
+                                            .rounded_full()
+                                            .bg(t.secondary_button_background)
+                                            .child(
+                                                div()
+                                                    .size(px(5.))
+                                                    .rounded_full()
+                                                    .bg(t.box_selected_active_background),
+                                            ),
+                                    )
+                                })
+                        })
+                        .child(
+                            text_box("changes-filter", &self.filter, None, window, cx)
+                                .rounded_l(px(0.))
+                                .border_l_0(),
+                        ),
+                )
+            })
             .child(
                 // "☑ N changed files"
                 div()

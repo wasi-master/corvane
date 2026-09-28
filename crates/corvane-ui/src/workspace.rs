@@ -114,6 +114,27 @@ impl Workspace {
         }
     }
 
+    /// View › Go to Summary (`focusCommitSummary`).
+    pub fn focus_commit_summary(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_section(Section::Changes, cx);
+        self.changes
+            .update(cx, |changes, cx| changes.focus_summary(window, cx));
+    }
+
+    /// Edit › Find: focus the changes filter (`selectAllInput` in GHD).
+    pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.section() == Section::Changes {
+            self.changes
+                .update(cx, |changes, cx| changes.focus_filter(window, cx));
+        }
+    }
+
+    /// View › Show/Hide Changes Filter.
+    pub fn toggle_changes_filter(&mut self, cx: &mut Context<Self>) {
+        self.changes
+            .update(cx, |changes, cx| changes.toggle_filter(cx));
+    }
+
     pub fn section(&self) -> Section {
         self.section
     }
@@ -234,18 +255,36 @@ impl Workspace {
                     .into_any_element()
             }
             Section::Changes => {
+                let (repo_id, repo_path, editor_label) = {
+                    let s = self.state.read(cx);
+                    let repo = s.selected_repository();
+                    (
+                        repo.map(|r| r.id),
+                        repo.map(|r| r.path.clone()),
+                        s.editor_label(),
+                    )
+                };
+                let path = repo_path.clone().unwrap_or_default();
                 let mut actions = vec![
                     SuggestedAction {
                         id: "suggested-editor",
-                        title: "Open the repository in your external editor".into(),
+                        on_click: std::rc::Rc::new({
+                            let path = path.clone();
+                            move |_, cx| Dispatcher::open_in_editor(path.clone(), cx)
+                        }),
+                        title: format!("Open the repository in {editor_label}").into(),
                         description: Some("Select your editor in Settings".into()),
                         hint: "Repository menu or".into(),
                         keys: &["⌘", "⇧", "A"],
-                        button_label: "Open in Editor".into(),
+                        button_label: format!("Open in {editor_label}").into(),
                         primary: false,
                     },
                     SuggestedAction {
                         id: "suggested-finder",
+                        on_click: std::rc::Rc::new({
+                            let path = path.clone();
+                            move |_, cx| Dispatcher::show_in_finder(&path, cx)
+                        }),
                         title: "View the files of your repository in Finder".into(),
                         description: None,
                         hint: "Repository menu or".into(),
@@ -254,9 +293,10 @@ impl Workspace {
                         primary: false,
                     },
                 ];
-                if has_github {
+                if has_github && let Some(id) = repo_id {
                     actions.push(SuggestedAction {
                         id: "suggested-github",
+                        on_click: std::rc::Rc::new(move |_, cx| Dispatcher::view_on_github(id, cx)),
                         title: "Open the repository page on GitHub in your browser".into(),
                         description: None,
                         hint: "Repository menu or".into(),

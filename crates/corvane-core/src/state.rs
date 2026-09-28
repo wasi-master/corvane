@@ -12,8 +12,11 @@ use gpui_kit::{App, Entity, Global};
 
 use crate::persistence::Settings;
 use corvane_models::{
-    Account, AheadBehind, Diff, Repository, RepositoryInfo, Section, WorkingDirectoryStatus,
+    Account, AheadBehind, Diff, Identity, Remote, Repository, RepositoryInfo, Section,
+    WorkingDirectoryStatus,
 };
+use corvane_platform::editors::FoundEditor;
+use corvane_platform::shells::FoundShell;
 
 /// Which toolbar foldout is open (`FoldoutType`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -148,6 +151,89 @@ pub enum Popup {
         description: String,
         count: usize,
     },
+    /// `Preferences` (Settings…), opened on a tab.
+    Preferences {
+        tab: PreferencesTab,
+    },
+    /// `RepositorySettings`
+    RepositorySettings {
+        repo: u64,
+        tab: RepositorySettingsTab,
+    },
+    /// `RemoveRepository` confirmation.
+    ConfirmRemoveRepository {
+        repo: u64,
+    },
+    /// `About`
+    About {
+        version: String,
+    },
+    /// `ExternalEditorError`
+    ExternalEditorError {
+        message: String,
+        suggest_default_editor: bool,
+        open_preferences: bool,
+    },
+    /// `OpenShellFailed`
+    ShellError {
+        message: String,
+    },
+}
+
+/// GHD `PreferencesTab` (Copilot omitted).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum PreferencesTab {
+    #[default]
+    Accounts,
+    Integrations,
+    Git,
+    Appearance,
+    Notifications,
+    Prompts,
+    Advanced,
+    Accessibility,
+}
+
+/// GHD `RepositorySettingsTab` (Fork Behavior omitted).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum RepositorySettingsTab {
+    #[default]
+    Remote,
+    IgnoredFiles,
+    GitConfig,
+}
+
+/// GHD `GitConfigLocation`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum GitConfigLocation {
+    #[default]
+    Global,
+    Local,
+}
+
+/// What the Settings › Git tab edits: read from the global git config when
+/// the dialog opens (`isLoadingGitConfig` until then).
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct GlobalGitConfig {
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub default_branch: String,
+}
+
+/// Everything the Repository Settings dialog needs, loaded when it opens.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RepositorySettingsData {
+    pub repo: u64,
+    /// `defaultRemote` (origin, else the first remote).
+    pub remote: Option<Remote>,
+    /// Root `.gitignore` text, `None` when the file does not exist.
+    pub gitignore: Option<String>,
+    /// `--local` `user.name` / `user.email`.
+    pub local_name: Option<String>,
+    pub local_email: Option<String>,
+    pub global: Identity,
+    /// `core.autocrlf` (line endings written to `.gitignore`).
+    pub autocrlf: bool,
 }
 
 /// GHD `RetryAction` (the subset behind `LocalChangesOverwritten`).
@@ -433,6 +519,13 @@ pub struct AppState {
     pub indicators: HashMap<u64, crate::remote::RepoIndicator>,
     /// Generic git server logins (host → username) for the askpass helper.
     pub generic_logins: HashMap<String, String>,
+    /// Installed editors / shells (`getAvailableEditors` / `getAvailableShells`).
+    pub editors: Vec<FoundEditor>,
+    pub shells: Vec<FoundShell>,
+    /// Loaded when the Settings dialog opens (`None` while loading).
+    pub global_git: Option<GlobalGitConfig>,
+    /// Loaded when the Repository Settings dialog opens.
+    pub repo_settings: Option<RepositorySettingsData>,
 }
 
 struct AppStateHandle(Entity<AppState>);
@@ -446,6 +539,29 @@ impl AppState {
     /// The single app-state entity. Panics if `Dispatcher::init` has not run.
     pub fn global(cx: &App) -> Entity<AppState> {
         cx.global::<AppStateHandle>().0.clone()
+    }
+
+    /// `None` before `Dispatcher::init` (widgets rendered in isolation).
+    pub fn try_global(cx: &App) -> Option<Entity<AppState>> {
+        cx.try_global::<AppStateHandle>().map(|h| h.0.clone())
+    }
+
+    /// The editor "Open in …" menu items name: the selected editor, else the
+    /// first installed one, else GHD's generic "External Editor".
+    pub fn editor_label(&self) -> String {
+        self.settings
+            .external_editor
+            .clone()
+            .or_else(|| self.editors.first().map(|e| e.name.clone()))
+            .unwrap_or_else(|| "External Editor".to_string())
+    }
+
+    /// The shell "Open in …" menu items name (`Terminal` by default).
+    pub fn shell_label(&self) -> String {
+        self.settings
+            .shell
+            .clone()
+            .unwrap_or_else(|| corvane_platform::shells::DEFAULT_SHELL.label().to_string())
     }
 
     pub fn account_for(&self, endpoint: &str) -> Option<&Account> {
