@@ -110,5 +110,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 ## Accessibility
 
 - [ ] Full keyboard navigation audit vs GHD (`docs/technical/keyboard-navigation.md` in desktop/desktop)
+- [ ] VoiceOver pass over every dialog and list (GPUI exposes AccessKit roles; labels for icon-only buttons, dialog titles as `AXWindow` titles, live regions for banners)
 - [ ] High-contrast theme (GHD has none; nice-to-have)
 - [ ] Windows Narrator support once Windows lands (GPUI AccessKit gap on Windows)
