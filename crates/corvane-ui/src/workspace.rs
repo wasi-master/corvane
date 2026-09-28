@@ -7,6 +7,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::branch_list::BranchFoldout;
 use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
@@ -34,6 +35,7 @@ pub struct Workspace {
     history: Entity<HistorySidebar>,
     selected_commit: Entity<SelectedCommitView>,
     repository_foldout: Entity<RepositoryFoldout>,
+    branch_foldout: Entity<BranchFoldout>,
     dialogs: Entity<DialogHost>,
     diff_view: Entity<DiffView>,
     welcome: Option<Entity<WelcomeView>>,
@@ -83,6 +85,7 @@ impl Workspace {
         let history = cx.new(|cx| HistorySidebar::new(state.clone(), window, cx));
         let selected_commit = cx.new(|cx| SelectedCommitView::new(state.clone(), cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
+        let branch_foldout = cx.new(|cx| BranchFoldout::new(state.clone(), window, cx));
         let diff_view = cx.new(|cx| DiffView::new(state.clone(), DiffSource::WorkingDirectory, cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
@@ -99,6 +102,7 @@ impl Workspace {
             history,
             selected_commit,
             repository_foldout,
+            branch_foldout,
             dialogs,
             diff_view,
             welcome,
@@ -114,6 +118,15 @@ impl Workspace {
         Dispatcher::toggle_foldout(corvane_core::Foldout::Repository, cx);
         if self.state.read(cx).foldout == Some(corvane_core::Foldout::Repository) {
             self.repository_foldout
+                .update(cx, |f, cx| f.focus_filter(window, cx));
+        }
+    }
+
+    /// `View › Show Branches List` (⌘B): open the foldout and focus its filter.
+    pub fn show_branches_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
+        if self.state.read(cx).foldout == Some(corvane_core::Foldout::Branch) {
+            self.branch_foldout
                 .update(cx, |f, cx| f.focus_filter(window, cx));
         }
     }
@@ -342,6 +355,7 @@ impl Render for Workspace {
                     x,
                     width,
                     &self.repository_foldout,
+                    &self.branch_foldout,
                     window,
                     cx,
                 ))

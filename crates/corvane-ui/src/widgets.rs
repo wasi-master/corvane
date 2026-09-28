@@ -248,3 +248,74 @@ pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
         .border_1()
         .border_color(t.box_border)
 }
+
+/// One row of GHD's `VerticalSegmentedControl` (`_vertical-segmented-control.scss`):
+/// radio + bold title + secondary description, bordered, rounded at the ends.
+#[allow(clippy::too_many_arguments)]
+pub fn segmented_option(
+    id: impl Into<ElementId>,
+    title: impl Into<SharedString>,
+    description: impl Into<SharedString>,
+    selected: bool,
+    first: bool,
+    last: bool,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let hover_bg = t.box_hover_background;
+    let hover_text = t.box_hover_text;
+    div()
+        .id(id)
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_start()
+        .p(SPACING)
+        .border_1()
+        .border_color(t.box_border)
+        .when(!last, |d| d.border_b_0())
+        .when(first, |d| d.rounded_t(BORDER_RADIUS))
+        .when(last, |d| d.rounded_b(BORDER_RADIUS))
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover_bg).text_color(hover_text))
+        .child(
+            // radio
+            div()
+                .mx(SPACING_HALF)
+                .mt(px(4.))
+                .size(px(13.))
+                .flex_none()
+                .rounded_full()
+                .border_1()
+                .border_color(if selected {
+                    t.button_background
+                } else {
+                    t.box_border_contrast
+                })
+                .bg(if selected {
+                    t.button_background
+                } else {
+                    t.background
+                })
+                .flex()
+                .items_center()
+                .justify_center()
+                .when(selected, |d| {
+                    d.child(div().size(px(5.)).rounded_full().bg(t.button_text))
+                }),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .child(
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .truncate()
+                        .child(title.into()),
+                )
+                .child(div().text_color(t.text_secondary).child(description.into())),
+        )
+}

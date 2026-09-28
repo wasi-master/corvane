@@ -24,6 +24,19 @@ pub struct Settings {
     pub confirm_checkout_commit: bool,
     /// GHD `askForConfirmationOnUndoCommit`.
     pub confirm_undo_commit: bool,
+    /// GHD `uncommittedChangesStrategy` ("If I have changes and I switch branches…").
+    pub uncommitted_changes_strategy: UncommittedChangesStrategy,
+    /// GHD `askForConfirmationOnDiscardStash`.
+    pub confirm_discard_stash: bool,
+}
+
+/// GHD `UncommittedChangesStrategy`
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UncommittedChangesStrategy {
+    #[default]
+    AskForConfirmation,
+    StashOnCurrentBranch,
+    MoveToNewBranch,
 }
 
 impl Default for Settings {
@@ -37,6 +50,8 @@ impl Default for Settings {
             confirm_discard_changes: true,
             confirm_checkout_commit: true,
             confirm_undo_commit: true,
+            uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
+            confirm_discard_stash: true,
         }
     }
 }
@@ -127,6 +142,8 @@ mod tests {
             confirm_discard_changes: false,
             confirm_checkout_commit: true,
             confirm_undo_commit: true,
+            uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
+            confirm_discard_stash: true,
         };
         store.save_settings(&s).unwrap();
         let back = store.settings().unwrap();

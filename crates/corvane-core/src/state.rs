@@ -70,6 +70,36 @@ pub enum Popup {
     WarnLocalChangesBeforeUndo {
         repo: u64,
     },
+    /// `CreateBranch`; `target_sha` when created from a commit in History.
+    CreateBranch {
+        repo: u64,
+        target_sha: Option<String>,
+        /// The branch filter text, prefilled as the name (`onCreateNewBranch`).
+        initial_name: String,
+    },
+    RenameBranch {
+        repo: u64,
+        name: String,
+    },
+    DeleteBranch {
+        repo: u64,
+        name: String,
+    },
+    /// `StashAndSwitchBranch`: ask what to do with local changes.
+    StashAndSwitchBranch {
+        repo: u64,
+        branch: String,
+    },
+    /// `ConfirmOverwriteStash`
+    ConfirmOverwriteStash {
+        repo: u64,
+        branch: String,
+    },
+    /// `MultiCommitOperation` ChooseBranch step for merge (`squash` = Squash and Merge).
+    MergeBranch {
+        repo: u64,
+        squash: bool,
+    },
 }
 
 /// Where a sign-in is (GHD `SignInState`), driven by `Dispatcher::sign_in_*`.
@@ -158,6 +188,20 @@ pub struct RepositoryState {
     pub commit_to_amend: Option<corvane_models::Commit>,
     /// Bumped when amending starts so the form loads the commit's message.
     pub amend_nonce: u64,
+
+    // ---- branches (`IBranchesState`) ----
+    /// `recentBranches` (reflog checkouts, newest first).
+    pub recent_branches: Vec<String>,
+    /// `defaultBranch` name (`findDefaultBranch`).
+    pub default_branch: Option<String>,
+    /// Branch a checkout is switching to (`checkoutProgress.target`).
+    pub checkout_target: Option<String>,
+    /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`).
+    pub stash: Option<corvane_models::StashEntry>,
+    /// Total stash entries (`stashEntryCount`).
+    pub stash_count: usize,
+    /// Merge dialog preview: (branch, commits that would be merged).
+    pub merge_preview: Option<(String, u32)>,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

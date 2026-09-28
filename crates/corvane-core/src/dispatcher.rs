@@ -11,7 +11,7 @@ use corvane_store::Store;
 use gpui_kit::{App, AppContext, AsyncApp, Entity};
 use tracing::{error, info, warn};
 
-use crate::persistence::{Settings, StoreExt};
+use crate::persistence::{Settings, StoreExt, UncommittedChangesStrategy};
 use crate::state::{
     AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
 };
@@ -356,7 +356,41 @@ impl Dispatcher {
                 }
                 None => (None, None),
             };
-            Ok::<_, GitError>((info, ahead_behind, status))
+            let extras = git.as_ref().map(|git| {
+                let recent =
+                    corvane_git::recent_branches(git.clone(), &info.workdir, 5).unwrap_or_default();
+                let remote = info
+                    .remotes
+                    .iter()
+                    .find(|r| r.name == "origin")
+                    .or_else(|| info.remotes.first())
+                    .map(|r| r.name.clone());
+                let head = remote
+                    .as_deref()
+                    .and_then(|r| corvane_git::remote_head(git.clone(), &info.workdir, r).ok())
+                    .flatten();
+                let configured = corvane_git::configured_default_branch(git.clone());
+                let default_branch = corvane_git::find_default_branch(
+                    &info.branches,
+                    remote.as_deref(),
+                    head.as_deref(),
+                    &configured,
+                )
+                .map(|b| b.name.clone());
+                let (stashes, stash_count) =
+                    corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
+                let current = info.current_branch().map(|b| b.name.clone());
+                let stash = stashes
+                    .into_iter()
+                    .find(|s| s.branch.is_some() && s.branch == current);
+                RefreshExtras {
+                    recent_branches: recent,
+                    default_branch,
+                    stash,
+                    stash_count,
+                }
+            });
+            Ok::<_, GitError>((info, ahead_behind, status, extras))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = work.await;
@@ -367,10 +401,16 @@ impl Dispatcher {
                     repo_state.last_refresh = Some(Instant::now());
                     let mut selected = None;
                     match result {
-                        Ok((info, ahead_behind, status)) => {
+                        Ok((info, ahead_behind, status, extras)) => {
                             repo_state.info = Some(info);
                             repo_state.ahead_behind = ahead_behind;
                             repo_state.error = None;
+                            if let Some(extras) = extras {
+                                repo_state.recent_branches = extras.recent_branches;
+                                repo_state.default_branch = extras.default_branch;
+                                repo_state.stash = extras.stash;
+                                repo_state.stash_count = extras.stash_count;
+                            }
                             if let Some(status) = status {
                                 // keep the selection if the file is still changed, else first file
                                 let keep = repo_state
@@ -857,6 +897,363 @@ impl Dispatcher {
                 cx.notify();
             }
         });
+    }
+
+    // ---- branches (`_createBranch`, `_checkoutBranch`, rename/delete, merge, stash) ----
+
+    fn branch_by_name(id: u64, name: &str, cx: &App) -> Option<corvane_models::Branch> {
+        let s = Self::state(cx).read(cx);
+        let branches = &s.repo_states.get(&id)?.info.as_ref()?.branches;
+        branches
+            .iter()
+            .find(|b| b.name == name && b.kind == corvane_models::BranchKind::Local)
+            .or_else(|| branches.iter().find(|b| b.name == name))
+            .cloned()
+    }
+
+    /// `_createBranch` then checkout (GHD always checks the new branch out).
+    pub fn create_branch(
+        id: u64,
+        name: String,
+        start_point: Option<String>,
+        unborn: bool,
+        cx: &mut App,
+    ) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let branch_name = name.clone();
+        let task = cx.background_executor().spawn(async move {
+            if unborn {
+                return corvane_git::checkout_new_branch(git, &workdir, &name);
+            }
+            corvane_git::create_branch(
+                git.clone(),
+                &workdir,
+                &name,
+                start_point.as_deref(),
+                false,
+            )?;
+            let branch = corvane_models::Branch {
+                name: name.clone(),
+                kind: corvane_models::BranchKind::Local,
+                full_name: format!("refs/heads/{name}"),
+                tip: None,
+                upstream: None,
+                tip_time: None,
+            };
+            corvane_git::checkout_branch(git, &workdir, &branch)
+        });
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).checkout_target = Some(branch_name);
+            cx.notify();
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).checkout_target = None);
+                if let Err(err) = result {
+                    Self::show_error("Could not create branch", err.to_string(), cx);
+                }
+                Self::show_section(id, Section::Changes, cx);
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// `_checkoutBranch`: apply the uncommitted-changes strategy (asking via
+    /// `StashAndSwitchBranch` / `ConfirmOverwriteStash` when needed).
+    pub fn checkout_branch(
+        id: u64,
+        name: String,
+        explicit: Option<UncommittedChangesStrategy>,
+        cx: &mut App,
+    ) {
+        let Some(branch) = Self::branch_by_name(id, &name, cx) else {
+            return;
+        };
+        let (has_changes, has_stash, tip_valid, current, setting) = {
+            let s = Self::state(cx).read(cx);
+            let rs = s.repo_states.get(&id);
+            let info = rs.and_then(|r| r.info.as_ref());
+            (
+                rs.and_then(|r| r.status.as_ref())
+                    .is_some_and(|st| !st.files.is_empty()),
+                rs.is_some_and(|r| r.stash.is_some()),
+                info.is_some_and(|i| matches!(i.tip, corvane_models::Tip::Valid { .. })),
+                info.and_then(|i| i.current_branch())
+                    .map(|b| b.name.clone()),
+                s.settings.uncommitted_changes_strategy,
+            )
+        };
+        if tip_valid && current.as_deref() == Some(branch.name.as_str()) {
+            return;
+        }
+        let mut strategy = explicit.unwrap_or(setting);
+        if explicit.is_none()
+            && strategy == UncommittedChangesStrategy::StashOnCurrentBranch
+            && has_changes
+            && has_stash
+        {
+            Self::show_popup(
+                Popup::ConfirmOverwriteStash {
+                    repo: id,
+                    branch: name,
+                },
+                cx,
+            );
+            return;
+        }
+        if !tip_valid {
+            strategy = UncommittedChangesStrategy::MoveToNewBranch;
+        }
+        if strategy == UncommittedChangesStrategy::AskForConfirmation && has_changes {
+            Self::show_popup(
+                Popup::StashAndSwitchBranch {
+                    repo: id,
+                    branch: name,
+                },
+                cx,
+            );
+            return;
+        }
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let previous_stash = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.stash.as_ref())
+            .map(|s| s.name.clone());
+        let target = branch.name.clone();
+        let task = cx.background_executor().spawn(async move {
+            match strategy {
+                UncommittedChangesStrategy::StashOnCurrentBranch => {
+                    if let Some(current) = current.as_deref()
+                        && has_changes
+                    {
+                        // `createStashAndDropPreviousEntry`
+                        if let Some(old) = previous_stash {
+                            let _ = corvane_git::drop_stash(git.clone(), &workdir, &old);
+                        }
+                        corvane_git::create_desktop_stash(git.clone(), &workdir, current)?;
+                    }
+                    corvane_git::checkout_branch(git, &workdir, &branch)
+                }
+                _ => {
+                    // `checkoutAndBringChanges`: plain checkout, else stash → checkout → pop
+                    match corvane_git::checkout_branch(git.clone(), &workdir, &branch) {
+                        Ok(()) => Ok(()),
+                        Err(err) if corvane_git::is_local_changes_overwritten(&err) => {
+                            let target = branch.name_without_remote().to_string();
+                            if !corvane_git::create_desktop_stash(git.clone(), &workdir, &target)? {
+                                return Err(err);
+                            }
+                            corvane_git::checkout_branch(git.clone(), &workdir, &branch)?;
+                            let (stashes, _) = corvane_git::get_stashes(git.clone(), &workdir)?;
+                            if let Some(entry) = stashes
+                                .iter()
+                                .find(|s| s.branch.as_deref() == Some(target.as_str()))
+                            {
+                                corvane_git::pop_stash(git, &workdir, &entry.name)?;
+                            }
+                            Ok(())
+                        }
+                        Err(err) => Err(err),
+                    }
+                }
+            }
+        });
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).checkout_target = Some(target);
+            s.foldout = None;
+            cx.notify();
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).checkout_target = None);
+                if let Err(err) = result {
+                    Self::show_error("Could not switch branch", err.to_string(), cx);
+                }
+                Self::show_section(id, Section::Changes, cx);
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    pub fn rename_branch(id: u64, old: String, new: String, cx: &mut App) {
+        Self::run_history_op(
+            id,
+            "Could not rename branch",
+            move |git, workdir| corvane_git::rename_branch(git, &workdir, &old, &new),
+            cx,
+        );
+    }
+
+    /// `_deleteBranch`: checks out the default branch first when deleting the
+    /// current one, like GHD.
+    pub fn delete_branch(id: u64, name: String, include_remote: bool, cx: &mut App) {
+        let Some(branch) = Self::branch_by_name(id, &name, cx) else {
+            return;
+        };
+        let (is_current, default_branch) = {
+            let s = Self::state(cx).read(cx);
+            let rs = s.repo_states.get(&id);
+            (
+                rs.and_then(|r| r.info.as_ref())
+                    .and_then(|i| i.current_branch())
+                    .is_some_and(|b| b.name == name),
+                rs.and_then(|r| r.default_branch.clone()),
+            )
+        };
+        let default = if is_current {
+            default_branch.and_then(|d| Self::branch_by_name(id, &d, cx))
+        } else {
+            None
+        };
+        Self::run_history_op(
+            id,
+            "Could not delete branch",
+            move |git, workdir| {
+                if let Some(default) = default {
+                    corvane_git::checkout_branch(git.clone(), &workdir, &default)?;
+                }
+                match branch.kind {
+                    corvane_models::BranchKind::Local => {
+                        corvane_git::delete_local_branch(git.clone(), &workdir, &branch.name)?;
+                        if include_remote
+                            && let (Some(remote), Some(upstream)) =
+                                (branch.upstream_remote_name(), branch.upstream_short())
+                            && let Some((_, remote_branch)) = upstream.split_once('/')
+                        {
+                            corvane_git::delete_remote_branch(
+                                git,
+                                &workdir,
+                                remote,
+                                remote_branch,
+                            )?;
+                        }
+                        Ok(())
+                    }
+                    corvane_models::BranchKind::Remote => {
+                        let (remote, remote_branch) = branch
+                            .name
+                            .split_once('/')
+                            .unwrap_or(("origin", &branch.name));
+                        corvane_git::delete_remote_branch(git, &workdir, remote, remote_branch)
+                    }
+                }
+            },
+            cx,
+        );
+    }
+
+    /// Merge dialog preview: how many commits `branch` would bring in.
+    pub fn preview_merge(id: u64, branch: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let current = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.info.as_ref())
+            .and_then(|i| i.current_branch())
+            .map(|b| b.name.clone());
+        let Some(current) = current else { return };
+        let name = branch.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::commits_ahead(git, &workdir, &current, &branch) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let count = task.await.unwrap_or(0);
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).merge_preview = Some((name, count));
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
+    /// `_mergeBranch`
+    pub fn merge_branch(id: u64, branch: String, squash: bool, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let name = branch.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::merge_branch(git, &workdir, &branch, squash) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                match result {
+                    Ok(corvane_git::MergeOutcome::Success)
+                    | Ok(corvane_git::MergeOutcome::AlreadyUpToDate) => {}
+                    Ok(corvane_git::MergeOutcome::Conflicts) => Self::show_error(
+                        "Merge conflicts",
+                        format!(
+                            "Merging {name} produced conflicts. Resolve them in your editor, then commit."
+                        ),
+                        cx,
+                    ),
+                    Ok(corvane_git::MergeOutcome::Failed(msg)) => {
+                        Self::show_error("Could not merge", msg, cx)
+                    }
+                    Err(err) => Self::show_error("Could not merge", err.to_string(), cx),
+                }
+                Self::show_section(id, Section::Changes, cx);
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// Branch › Update from Default Branch: merge the default branch in.
+    pub fn update_from_default_branch(id: u64, cx: &mut App) {
+        let default = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.default_branch.clone());
+        if let Some(default) = default {
+            Self::merge_branch(id, default, false, cx);
+        }
+    }
+
+    /// Branch › Stash All Changes (`createStashForCurrentBranch`).
+    pub fn stash_all_changes(id: u64, cx: &mut App) {
+        let current = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.info.as_ref())
+            .and_then(|i| i.current_branch())
+            .map(|b| b.name.clone());
+        let Some(current) = current else { return };
+        let previous = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.stash.as_ref())
+            .map(|s| s.name.clone());
+        Self::run_history_op(
+            id,
+            "Could not stash changes",
+            move |git, workdir| {
+                if let Some(old) = previous {
+                    let _ = corvane_git::drop_stash(git.clone(), &workdir, &old);
+                }
+                corvane_git::create_desktop_stash(git, &workdir, &current).map(|_| ())
+            },
+            cx,
+        );
     }
 
     pub fn set_commit_summary_expanded(id: u64, expanded: bool, cx: &mut App) {
@@ -1608,4 +2005,12 @@ fn same_path(a: &Path, b: &Path) -> bool {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,
     }
+}
+
+/// Branch/stash facts gathered during `refresh_repository`.
+struct RefreshExtras {
+    recent_branches: Vec<String>,
+    default_branch: Option<String>,
+    stash: Option<corvane_models::StashEntry>,
+    stash_count: usize,
 }
