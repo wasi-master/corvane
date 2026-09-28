@@ -38,6 +38,7 @@ fn main() {
 
     app.run(move |cx| {
         phase(started, "platform ready");
+        corvane_ui::theme::preseed_kit_theme(cx);
         gpui_kit::init(cx);
         phase(started, "gpui-kit initialised");
 

@@ -8,6 +8,8 @@ Budgets from `PLAN.md` §5. Measured on a MacBook (Apple Silicon, macOS 26.4), d
 
 | 2026-09-28 | M1 release (fat LTO, runtime shaders) | 1.9–2.8 s (store 0.02, platform 0.22, **gpui-kit init 1.4–1.6**, window 0.15) | 0–3 % | 80–87 MB (top MEM) | Binary 13.7 MB. `gpui_kit::init` dominates; investigate theme registry / highlighter init |
 
+| 2026-09-28 | M2 debug, kit theme pre-seeded | 0.7–1.7 s under heavy load (gpui-kit init **24–47 ms**, was 1.5 s) | — | — | Root cause: gpui-component enumerated every installed font (CoreText) unless its theme fonts were set explicitly; fixed by `theme::preseed_kit_theme` |
+
 Cold-start numbers are the `main window opened elapsed_ms` log line from three launches.
 
 ## How to measure

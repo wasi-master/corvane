@@ -52,7 +52,14 @@ pub mod sizes {
 }
 
 pub const UI_FONT: &str = ".SystemUIFont";
-pub const MONO_FONT: &str = "Menlo";
+/// The macOS system font by its real family name. gpui-kit only enumerates
+/// every installed font (≈1.5 s) when its theme font is left at the
+/// `.SystemUIFont` sentinel, so the kit theme is seeded with this instead.
+pub const KIT_UI_FONT: &str = ".AppleSystemUIFont";
+/// GHD asks for SF Mono first, then Menlo. The system monospace family name
+/// also differs from gpui-base's default ("Menlo"), which keeps the kit from
+/// enumerating installed fonts at startup.
+pub const MONO_FONT: &str = ".AppleSystemUIFontMonospaced";
 
 /// GitHub Desktop colour tokens.
 #[derive(Clone, Debug)]
@@ -237,6 +244,18 @@ impl ActiveGhdTheme for App {
     }
 }
 
+/// Call before `gpui_kit::init`: pre-create the kit theme with explicit font
+/// families so `Theme::change` skips its installed-font enumeration.
+pub fn preseed_kit_theme(cx: &mut App) {
+    if cx.has_global::<KitTheme>() {
+        return;
+    }
+    let mut theme = KitTheme::default();
+    theme.font_family = KIT_UI_FONT.into();
+    theme.mono_font_family = MONO_FONT.into();
+    cx.set_global(theme);
+}
+
 /// Install the theme global and align gpui-kit's theme (used by Input,
 /// Textarea, Scrollbar, Popover…) with GHD's palette, fonts and radius.
 pub fn init(cx: &mut App, appearance: Appearance) {
@@ -253,7 +272,7 @@ pub fn apply(theme: GhdTheme, cx: &mut App) {
     KitTheme::change(mode, None, cx);
     {
         let kit = KitTheme::global_mut(cx);
-        kit.font_family = UI_FONT.into();
+        kit.font_family = KIT_UI_FONT.into();
         kit.font_size = sizes::FONT_SIZE;
         kit.mono_font_family = MONO_FONT.into();
         kit.mono_font_size = sizes::FONT_SIZE;
