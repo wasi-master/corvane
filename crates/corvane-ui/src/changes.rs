@@ -15,7 +15,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::actions::Commit;
+use crate::actions::{Commit, SelectNextFile, SelectPreviousFile};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
@@ -36,6 +36,8 @@ pub struct ChangesSidebar {
     /// GHD `ChangesListFilterOptions` popover.
     filter_popover_open: bool,
     filter_button_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// Focus target for arrow-key navigation of the list.
+    list_focus: FocusHandle,
 }
 
 impl ChangesSidebar {
@@ -74,7 +76,85 @@ impl ChangesSidebar {
             context_menu: None,
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
+            list_focus: cx.focus_handle(),
         }
+    }
+
+    /// Arrow keys move the selection through the visible files.
+    fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let (files, _) = self.visible_files(cx);
+        if files.is_empty() {
+            return;
+        }
+        let (id, current) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            (
+                id,
+                s.selected_state().and_then(|rs| rs.selected_file.clone()),
+            )
+        };
+        let index = current
+            .and_then(|p| files.iter().position(|f| f.path == p))
+            .map(|i| i as isize + delta)
+            .unwrap_or(0)
+            .clamp(0, files.len() as isize - 1) as usize;
+        Dispatcher::select_file(id, files[index].path.clone(), cx);
+    }
+
+    /// Commit form gear: GHD's native checkbox menu (`onCommitOptionsButtonClick`).
+    fn open_commit_options_menu(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let (id, options) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            (
+                id,
+                s.repository(id)
+                    .map(|r| r.commit_options)
+                    .unwrap_or_default(),
+            )
+        };
+        let items = vec![
+            MenuItem::checkbox(
+                "Bypass Commit Hooks",
+                options.skip_commit_hooks,
+                move |_, cx| {
+                    Dispatcher::update_commit_options(
+                        id,
+                        |o| o.skip_commit_hooks = !o.skip_commit_hooks,
+                        cx,
+                    )
+                },
+            ),
+            MenuItem::checkbox(
+                "Add Signed-off-by Trailer",
+                options.sign_off_commits,
+                move |_, cx| {
+                    Dispatcher::update_commit_options(
+                        id,
+                        |o| o.sign_off_commits = !o.sign_off_commits,
+                        cx,
+                    )
+                },
+            ),
+            MenuItem::checkbox(
+                "Allow Empty Commit",
+                options.allow_empty_commit,
+                move |_, cx| {
+                    Dispatcher::update_commit_options(
+                        id,
+                        |o| o.allow_empty_commit = !o.allow_empty_commit,
+                        cx,
+                    )
+                },
+            ),
+        ];
+        self.open_menu(items, position, window, cx);
     }
 
     /// Files that pass the text + option filters, plus the unfiltered total.
@@ -612,6 +692,7 @@ impl ChangesSidebar {
         let selected = rs.and_then(|r| r.selected_file.clone());
         let files = Rc::new(files);
         let weak = cx.weak_entity();
+        let list_focus = self.list_focus.clone();
         div()
             .id("changes-list")
             .flex_1()
@@ -634,7 +715,14 @@ impl ChangesSidebar {
                         .map(|ix| {
                             let file = &files[ix];
                             let is_selected = selected.as_deref() == Some(file.path.as_str());
-                            file_row(file, is_selected, repo_id, weak.clone(), cx)
+                            file_row(
+                                file,
+                                is_selected,
+                                repo_id,
+                                weak.clone(),
+                                list_focus.clone(),
+                                cx,
+                            )
                         })
                         .collect()
                 })
@@ -655,7 +743,14 @@ impl ChangesSidebar {
             })
             .unwrap_or(false);
         let committing = rs.map(|r| r.committing).unwrap_or(false);
-        self.summary.read(cx).value().trim().is_empty() || !any_included || committing
+        let allow_empty = s
+            .selected
+            .and_then(|id| s.repository(id))
+            .map(|r| r.commit_options.allow_empty_commit)
+            .unwrap_or(false);
+        self.summary.read(cx).value().trim().is_empty()
+            || (!any_included && !allow_empty)
+            || committing
     }
 
     /// `#undo-commit`: "Committed N ago / summary" + Undo, after a commit.
@@ -761,7 +856,19 @@ impl ChangesSidebar {
                             .pb(px(8.))
                             .child(octicon(Octicon::PersonAdd, t.text_secondary))
                             .child(div().w(px(1.)).h(px(16.)).bg(t.box_border_contrast))
-                            .child(octicon(Octicon::Gear, t.text_secondary)),
+                            .child(
+                                div()
+                                    .id("commit-options-button")
+                                    .size(px(18.))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .cursor_pointer()
+                                    .on_click(cx.listener(|this, ev: &ClickEvent, window, cx| {
+                                        this.open_commit_options_menu(ev.position(), window, cx)
+                                    }))
+                                    .child(octicon(Octicon::Gear, t.text_secondary)),
+                            ),
                     ),
             )
             .child(
@@ -801,6 +908,14 @@ impl Render for ChangesSidebar {
             .child(
                 div()
                     .id("changes-list-container")
+                    .track_focus(&self.list_focus)
+                    .key_context("ChangesList")
+                    .on_action(
+                        cx.listener(|this, _: &SelectNextFile, _, cx| this.select_relative(1, cx)),
+                    )
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.select_relative(-1, cx)
+                    }))
                     .flex_1()
                     .min_h_0()
                     .flex()
@@ -826,6 +941,7 @@ fn file_row(
     is_selected: bool,
     repo_id: Option<u64>,
     weak: WeakEntity<ChangesSidebar>,
+    list_focus: FocusHandle,
     cx: &App,
 ) -> AnyElement {
     let t = cx.ghd();
@@ -867,7 +983,10 @@ fn file_row(
         })
         .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
         .when_some(repo_id, move |d, id| {
-            d.on_click(move |_, _, cx| Dispatcher::select_file(id, path_for_select.clone(), cx))
+            d.on_click(move |_, window, cx| {
+                window.focus(&list_focus, cx);
+                Dispatcher::select_file(id, path_for_select.clone(), cx)
+            })
         })
         .child(
             checkbox_tristate(

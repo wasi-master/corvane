@@ -20,6 +20,17 @@ pub struct Repository {
     /// The directory disappeared; GHD shows "Can't find" and offers Locate/Remove.
     #[serde(default)]
     pub missing: bool,
+    /// Commit form gear menu (`CommitOptions`, persisted per repository).
+    #[serde(default)]
+    pub commit_options: RepoCommitOptions,
+}
+
+/// GHD `ICommitOptions`: `skipCommitHooks`, `signOffCommits`, `allowEmptyCommit`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoCommitOptions {
+    pub skip_commit_hooks: bool,
+    pub sign_off_commits: bool,
+    pub allow_empty_commit: bool,
 }
 
 impl Repository {
@@ -30,6 +41,7 @@ impl Repository {
             alias: None,
             github: None,
             missing: false,
+            commit_options: RepoCommitOptions::default(),
         }
     }
 
