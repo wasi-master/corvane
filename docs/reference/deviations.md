@@ -46,6 +46,10 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD.
 - Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move.
 
+## Accessibility
+
+- List rows (repositories, branches, pull requests, changes, history, stash and commit / pull request file lists, worktrees) are `Row` nodes (macOS `AXRow`) named with their visible text and status (`widgets::ListRowA11y`); GHD uses `role="option"` rows in a `listbox`. Banners are polite live regions announced when they appear.
+
 ## Scrolling
 
 - Scrollbars reproduce Chromium's macOS scrollers (`crates/corvane-ui/src/scrollbar.rs`), overlay or legacy as `NSScroller.preferredScrollerStyle` says. Mouse-wheel ticks are animated with Chromium's smooth-scroll curve; Electron on macOS only does that when `NSScrollAnimationEnabled` is set, so GHD usually jumps 40 px per tick.
