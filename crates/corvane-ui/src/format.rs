@@ -324,3 +324,30 @@ mod tests {
         assert_eq!(format_number_with(-42.0, ",", "."), "-42");
     }
 }
+
+/// GHD `formatBytes(bytes, decimals, fixed = true)`: `1.50 KiB`.
+pub fn format_bytes(bytes: i64, decimals: usize) -> String {
+    const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
+    let magnitude = bytes.unsigned_abs() as f64;
+    let unit = if magnitude < 1. {
+        0
+    } else {
+        (magnitude.log2() / 10.).floor().min(4.) as usize
+    };
+    let value = bytes as f64 / 1024f64.powi(unit as i32);
+    format!("{value:.decimals$} {}", UNITS[unit])
+}
+
+#[cfg(test)]
+mod byte_tests {
+    use super::format_bytes;
+
+    #[test]
+    fn formats_like_ghd() {
+        assert_eq!(format_bytes(0, 0), "0 B");
+        assert_eq!(format_bytes(1023, 0), "1023 B");
+        assert_eq!(format_bytes(1536, 2), "1.50 KiB");
+        assert_eq!(format_bytes(-2048, 1), "-2.0 KiB");
+        assert_eq!(format_bytes(5 * 1024 * 1024, 2), "5.00 MiB");
+    }
+}

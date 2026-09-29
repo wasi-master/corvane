@@ -609,7 +609,7 @@ impl Dispatcher {
 
     pub fn load_diff(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (git, workdir, file) = {
+        let (git, workdir, file, hide_whitespace) = {
             let s = state.read(cx);
             let Some(git) = s.git.clone() else { return };
             let Some(rs) = s.repo_states.get(&id) else {
@@ -627,18 +627,28 @@ impl Dispatcher {
             else {
                 return;
             };
-            (git, info.workdir.clone(), file)
+            (
+                git,
+                info.workdir.clone(),
+                file,
+                s.settings.hide_whitespace_in_changes_diff,
+            )
         };
         let path = file.path.clone();
         state.update(cx, |s, cx| {
             s.repo_state_mut(id).diff_loading = true;
             cx.notify();
         });
-        let work = cx
-            .background_executor()
-            .spawn(async move { corvane_git::working_directory_diff(git, &workdir, &file) });
+        let work = cx.background_executor().spawn(async move {
+            let diff = corvane_git::working_directory_diff(git, &workdir, &file, hide_whitespace);
+            // GHD `fileContents.newContents`: the working copy, for hunk expansion.
+            let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
+                .then(|| corvane_git::working_file_lines(&workdir, &file.path))
+                .flatten();
+            (diff, contents)
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = work.await;
+            let (result, contents) = work.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -647,6 +657,7 @@ impl Dispatcher {
                         return;
                     }
                     rs.diff_loading = false;
+                    rs.diff_contents = contents.map(Arc::new);
                     match result {
                         Ok(diff) => rs.diff = Some(diff),
                         Err(err) => {
@@ -658,7 +669,10 @@ impl Dispatcher {
                     // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
                     // selection to the lines that exist in this diff.
                     let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {
-                        Some(corvane_models::Diff::Text { hunks, .. }) => hunks
+                        Some(
+                            corvane_models::Diff::Text { hunks }
+                            | corvane_models::Diff::LargeText { hunks },
+                        ) => hunks
                             .iter()
                             .flat_map(|h| {
                                 h.lines.iter().enumerate().filter_map(move |(i, l)| {
@@ -962,16 +976,35 @@ impl Dispatcher {
             .map(Self::ordered_selection)
             .unwrap_or_default();
         let key = (ordered.clone(), file.path.clone());
+        let hide_whitespace = Self::state(cx)
+            .read(cx)
+            .settings
+            .hide_whitespace_in_history_diff;
         let task = cx.background_executor().spawn(async move {
-            match (ordered.first(), ordered.last()) {
-                (Some(oldest), Some(newest)) if ordered.len() > 1 => {
-                    corvane_git::commit_range_file_diff(git, &workdir, &file, oldest, newest)
-                }
-                _ => corvane_git::commit_file_diff(git, &workdir, &file),
-            }
+            let (newest, diff) = match (ordered.first(), ordered.last()) {
+                (Some(oldest), Some(newest)) if ordered.len() > 1 => (
+                    newest.clone(),
+                    corvane_git::commit_range_file_diff(
+                        git.clone(),
+                        &workdir,
+                        &file,
+                        oldest,
+                        newest,
+                        hide_whitespace,
+                    ),
+                ),
+                _ => (
+                    file.commitish.clone(),
+                    corvane_git::commit_file_diff(git.clone(), &workdir, &file, hide_whitespace),
+                ),
+            };
+            let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
+                .then(|| corvane_git::blob_lines(git, &workdir, &newest, &file.path))
+                .flatten();
+            (diff, contents)
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = task.await;
+            let (result, contents) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -980,6 +1013,7 @@ impl Dispatcher {
                     {
                         return;
                     }
+                    rs.commit_diff_contents = contents.map(Arc::new);
                     rs.commit_diff = Some(match result {
                         Ok(diff) => diff,
                         Err(err) => {
@@ -1578,11 +1612,19 @@ impl Dispatcher {
             return;
         };
         let key = (file.commitish.clone(), file.path.clone());
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::commit_file_diff(git, &workdir, &file) });
+        let hide_whitespace = Self::state(cx)
+            .read(cx)
+            .settings
+            .hide_whitespace_in_history_diff;
+        let task = cx.background_executor().spawn(async move {
+            let diff = corvane_git::commit_file_diff(git.clone(), &workdir, &file, hide_whitespace);
+            let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
+                .then(|| corvane_git::blob_lines(git, &workdir, &file.commitish, &file.path))
+                .flatten();
+            (diff, contents)
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = task.await;
+            let (result, contents) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -1591,6 +1633,7 @@ impl Dispatcher {
                     {
                         return;
                     }
+                    rs.stash_diff_contents = contents.map(Arc::new);
                     rs.stash_diff = Some(match result {
                         Ok(diff) => diff,
                         Err(err) => {
@@ -2162,6 +2205,103 @@ impl Dispatcher {
         } else {
             Self::discard_changes(id, paths, cx);
         }
+    }
+
+    /// GHD `onDiscardChangesFromSelection` (diff gutter menu): confirm first
+    /// unless the user opted out.
+    pub fn request_discard_selection(
+        id: u64,
+        path: String,
+        selection: corvane_models::DiffSelection,
+        cx: &mut App,
+    ) {
+        if Self::state(cx).read(cx).settings.confirm_discard_changes {
+            Self::show_popup(
+                Popup::ConfirmDiscardSelection {
+                    repo: id,
+                    path,
+                    selection,
+                },
+                cx,
+            );
+        } else {
+            Self::discard_selection(id, path, selection, cx);
+        }
+    }
+
+    /// `discardChangesFromSelection`: reverse-apply the selected lines of the
+    /// current (unexpanded) diff to the working copy.
+    pub fn discard_selection(
+        id: u64,
+        path: String,
+        selection: corvane_models::DiffSelection,
+        cx: &mut App,
+    ) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let patch = {
+            let s = Self::state(cx).read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            if rs.selected_file.as_deref() != Some(path.as_str()) {
+                return;
+            }
+            let Some(hunks) = rs.diff.as_ref().and_then(|d| d.hunks()) else {
+                return;
+            };
+            corvane_git::format_patch_to_discard_changes(&path, hunks, &selection)
+        };
+        let Some(patch) = patch else { return };
+        crate::remote::spawn_bg(
+            cx,
+            move || {
+                corvane_git::discard_changes_from_selection(git, &workdir, &patch)
+                    .map_err(|e| e.to_string())
+            },
+            move |result, cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not discard changes", err, cx);
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
+    /// Diff Settings › Hide Whitespace Changes, per tab
+    /// (`_setHideWhitespaceInChangesDiff` / `…HistoryDiff`); reloads the diff.
+    pub fn set_hide_whitespace_in_diff(history: bool, hide: bool, cx: &mut App) {
+        Self::update_settings(cx, |s| {
+            if history {
+                s.hide_whitespace_in_history_diff = hide;
+            } else {
+                s.hide_whitespace_in_changes_diff = hide;
+            }
+        });
+        if let Some(id) = Self::state(cx).read(cx).selected {
+            if history {
+                Self::load_commit_diff(id, cx);
+                Self::load_stash_diff(id, cx);
+            } else {
+                Self::load_diff(id, cx);
+            }
+        }
+    }
+
+    /// Diff Settings › Diff display (`_setShowSideBySideDiff`).
+    pub fn set_show_side_by_side_diff(show: bool, cx: &mut App) {
+        Self::update_settings(cx, |s| s.show_side_by_side_diff = show);
+    }
+
+    /// Modified-image diff tab (`_changeImageDiffType`).
+    pub fn set_image_diff_type(kind: corvane_models::ImageDiffType, cx: &mut App) {
+        Self::update_settings(cx, |s| s.image_diff_type = kind);
+    }
+
+    /// `onOpenSubmodule`: add the submodule as a repository of its own.
+    pub fn open_submodule(path: PathBuf, cx: &mut App) {
+        Self::add_repository(path, cx);
     }
 
     /// "Ignore File / Folder" menu items: paths are escaped before writing.

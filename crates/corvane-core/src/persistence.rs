@@ -67,6 +67,14 @@ pub struct Settings {
     /// GHD `showDiffCheckMarks` (Accessibility).
     #[serde(default = "default_true")]
     pub show_diff_check_marks: bool,
+    /// Diff Settings › Hide Whitespace Changes (`hideWhitespaceInChangesDiff`).
+    pub hide_whitespace_in_changes_diff: bool,
+    /// Same for the History tab (`hideWhitespaceInHistoryDiff`).
+    pub hide_whitespace_in_history_diff: bool,
+    /// Diff Settings › Diff display › Split (`showSideBySideDiff`).
+    pub show_side_by_side_diff: bool,
+    /// Last chosen tab of a modified-image diff (`imageDiffType`).
+    pub image_diff_type: corvane_models::ImageDiffType,
     /// GHD `tabSize` for diffs (Appearance › Diff).
     #[serde(default = "default_tab_size")]
     pub tab_size: u32,
@@ -171,6 +179,10 @@ impl Default for Settings {
             use_external_credential_helper: false,
             underline_links: false,
             show_diff_check_marks: true,
+            hide_whitespace_in_changes_diff: false,
+            hide_whitespace_in_history_diff: false,
+            show_side_by_side_diff: false,
+            image_diff_type: corvane_models::ImageDiffType::TwoUp,
             tab_size: TAB_SIZE_DEFAULT,
             date_format: default_date_format(),
             time_format: default_time_format(),

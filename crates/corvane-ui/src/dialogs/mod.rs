@@ -7,6 +7,7 @@ pub(crate) mod branch_dialogs;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
+mod discard_selection;
 mod history_dialogs;
 mod mco_dialogs;
 mod preferences;
@@ -28,6 +29,7 @@ pub use branch_dialogs::{
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
+pub use discard_selection::DiscardSelectionDialog;
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
     UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
@@ -76,6 +78,13 @@ impl DialogHost {
                 .into(),
             Popup::DiscardChanges { repo, paths, all } => cx
                 .new(|_| DiscardChangesDialog::new(*repo, paths.clone(), *all))
+                .into(),
+            Popup::ConfirmDiscardSelection {
+                repo,
+                path,
+                selection,
+            } => cx
+                .new(|_| DiscardSelectionDialog::new(*repo, path.clone(), selection.clone()))
                 .into(),
             Popup::ResetToCommit { repo, sha } => cx
                 .new(|_| ResetToCommitDialog::new(*repo, sha.clone()))

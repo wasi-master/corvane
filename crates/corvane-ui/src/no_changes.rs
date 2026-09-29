@@ -23,6 +23,10 @@ pub struct SuggestedAction {
 }
 
 /// `.suggested-action`: base border, 20 px padding, row; primary variant tinted.
+pub fn suggested_action_card(action: SuggestedAction, cx: &App) -> impl IntoElement {
+    card(action, cx)
+}
+
 fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
     let t = cx.ghd();
     let (bg, border) = if action.primary {
@@ -66,19 +70,21 @@ fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
                             .child(desc),
                     )
                 })
-                .child(
-                    // `p.discoverability`
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .gap(px(4.))
-                        .text_size(FONT_SIZE)
-                        .line_height(px(18.))
-                        .text_color(t.text_secondary)
-                        .child(action.hint)
-                        .child(kbd_group(action.keys, cx)),
-                ),
+                .when(!action.hint.is_empty() || !action.keys.is_empty(), |d| {
+                    d.child(
+                        // `p.discoverability`
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(px(4.))
+                            .text_size(FONT_SIZE)
+                            .line_height(px(18.))
+                            .text_color(t.text_secondary)
+                            .child(action.hint)
+                            .child(kbd_group(action.keys, cx)),
+                    )
+                }),
         )
         .child({
             let on_click = action.on_click.clone();

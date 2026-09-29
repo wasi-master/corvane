@@ -113,6 +113,90 @@ pub fn format_patch(file: &WorkingDirectoryFileChange, hunks: &[DiffHunk]) -> Op
     Some(header + &patch)
 }
 
+/// GHD `formatPatchToDiscardChanges`: a patch that undoes the selected lines
+/// in the working copy (selected additions become deletions and vice versa,
+/// everything else is context). `None` when nothing is selected.
+pub fn format_patch_to_discard_changes(
+    path: &str,
+    hunks: &[DiffHunk],
+    selection: &corvane_models::DiffSelection,
+) -> Option<String> {
+    let mut patch = String::new();
+    for hunk in hunks {
+        let mut buf = String::new();
+        let mut old_count = 0u32;
+        let mut new_count = 0u32;
+        let mut any_change = false;
+        for (index, line) in hunk.lines.iter().enumerate() {
+            let absolute = hunk.unified_diff_start + index as u32;
+            match line.kind {
+                DiffLineKind::Hunk => continue,
+                DiffLineKind::Context => {
+                    buf.push(' ');
+                    buf.push_str(&line.text);
+                    buf.push('\n');
+                    old_count += 1;
+                    new_count += 1;
+                }
+                DiffLineKind::Add | DiffLineKind::Delete if selection.is_selected(absolute) => {
+                    if line.kind == DiffLineKind::Add {
+                        buf.push('-');
+                        new_count += 1;
+                    } else {
+                        buf.push('+');
+                        old_count += 1;
+                    }
+                    buf.push_str(&line.text);
+                    buf.push('\n');
+                    any_change = true;
+                }
+                // An unselected addition is already in the working copy: context.
+                DiffLineKind::Add => {
+                    buf.push(' ');
+                    buf.push_str(&line.text);
+                    buf.push('\n');
+                    old_count += 1;
+                    new_count += 1;
+                }
+                // An unselected deletion is not in the working copy: skipped.
+                DiffLineKind::Delete => continue,
+            }
+            if line.no_trailing_newline {
+                buf.push_str("\\ No newline at end of file\n");
+            }
+        }
+        if !any_change {
+            continue;
+        }
+        // The working copy is the "old" side of this reverse patch.
+        patch.push_str(&format_hunk_header(
+            hunk.new_start,
+            new_count,
+            hunk.old_start,
+            old_count,
+        ));
+        patch.push_str(&buf);
+    }
+    if patch.is_empty() {
+        return None;
+    }
+    Some(format_patch_header(Some(path), Some(path)) + &patch)
+}
+
+/// GHD `discardChangesFromSelection`: `git apply --unidiff-zero --whitespace=nowarn -`.
+pub fn discard_changes_from_selection(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    patch: &str,
+) -> Result<()> {
+    GitCommand::new(git)
+        .args(["apply", "--unidiff-zero", "--whitespace=nowarn", "-"])
+        .current_dir(workdir)
+        .stdin(patch.as_bytes().to_vec())
+        .run()?;
+    Ok(())
+}
+
 /// `git apply --cached --unidiff-zero --whitespace=nowarn` with the partial patch.
 pub fn apply_patch_to_index(
     git: Arc<GitBinary>,
@@ -154,8 +238,8 @@ pub fn apply_patch_to_index(
             .run()?;
     }
     let hunks = match diff {
-        Diff::Text { hunks, .. } => hunks,
-        Diff::Binary | Diff::Submodule => {
+        Diff::Text { hunks } | Diff::LargeText { hunks } => hunks,
+        Diff::Binary | Diff::Image { .. } | Diff::Submodule(_) => {
             return Err(GitError::Gix(format!(
                 "Can't create partial commit in binary file: {}",
                 file.path
@@ -196,7 +280,7 @@ pub fn stage_partial_files(
         .iter()
         .filter(|f| f.selection.kind() == DiffSelectionType::Partial)
     {
-        let diff = crate::diff::working_directory_diff(git.clone(), workdir, file)?;
+        let diff = crate::diff::working_directory_diff(git.clone(), workdir, file, false)?;
         apply_patch_to_index(git.clone(), workdir, file, &diff)?;
     }
     Ok(())
@@ -219,6 +303,7 @@ mod tests {
             status: FileStatus {
                 kind,
                 submodule: false,
+                submodule_status: None,
                 index: GitStatusEntry::Unchanged,
                 working_tree: GitStatusEntry::Modified,
                 score: None,
@@ -295,7 +380,7 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let mut status = crate::get_status(git.clone(), path, None).unwrap();
         let file = &mut status.files[0];
-        let diff = crate::working_directory_diff(git.clone(), path, file).unwrap();
+        let diff = crate::working_directory_diff(git.clone(), path, file, false).unwrap();
         // select only the first change (lines: 0 hunk, 1 del ONE, 2 add ONE, 3 ctx, 4 del, 5 add)
         file.selection = DiffSelection::none().with_range(1, 2, true);
         assert_eq!(file.selection.kind(), DiffSelectionType::Partial);

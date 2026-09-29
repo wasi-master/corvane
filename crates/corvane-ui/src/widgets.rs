@@ -714,3 +714,36 @@ pub fn segmented_option(
                 .child(div().text_color(t.text_secondary).child(description.into())),
         )
 }
+
+/// GHD `.tool-tip-contents` (darwin): the small dark caption below a control.
+struct TextTooltip {
+    text: SharedString,
+}
+
+impl Render for TextTooltip {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        div()
+            .px(SPACING_THIRD)
+            .py(px(1.))
+            .rounded(px(1.))
+            .bg(t.tooltip_background)
+            .text_color(t.tooltip_text)
+            .text_size(FONT_SIZE_SM)
+            .whitespace_nowrap()
+            .shadow(vec![BoxShadow {
+                color: t.shadow,
+                offset: point(px(0.), px(1.)),
+                blur_radius: px(3.),
+                spread_radius: px(0.),
+                inset: false,
+            }])
+            .child(self.text.clone())
+    }
+}
+
+/// A `.tooltip(...)` builder with GHD's caption look.
+pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
+    let text: SharedString = text.into();
+    move |_, cx| cx.new(|_| TextTooltip { text: text.clone() }).into()
+}

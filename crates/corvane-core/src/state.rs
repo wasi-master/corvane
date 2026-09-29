@@ -54,6 +54,12 @@ pub enum Popup {
         paths: Vec<String>,
         all: bool,
     },
+    /// `ConfirmDiscardSelection`: lines picked from the diff gutter menu.
+    ConfirmDiscardSelection {
+        repo: u64,
+        path: String,
+        selection: corvane_models::DiffSelection,
+    },
     /// `WarningBeforeReset`: dirty working directory before `reset --mixed`.
     ResetToCommit {
         repo: u64,
@@ -365,6 +371,9 @@ pub struct RepositoryState {
     pub diff_loading: bool,
     /// Bumped whenever `diff` is replaced, so views can cache derived rows.
     pub diff_generation: u64,
+    /// The new side of the selected file as lines, for hunk expansion
+    /// (GHD `fileContents.newContents`); `None` when it cannot be expanded.
+    pub diff_contents: Option<Arc<Vec<String>>>,
     /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
     pub last_commit: Option<LastCommit>,
     /// Incremented after every successful commit so the form can clear itself.
@@ -395,6 +404,7 @@ pub struct RepositoryState {
     pub commit_selected_file: Option<String>,
     pub commit_diff: Option<Diff>,
     pub commit_diff_generation: u64,
+    pub commit_diff_contents: Option<Arc<Vec<String>>>,
     /// `isExpanded` of the expandable commit summary.
     pub commit_summary_expanded: bool,
     /// `commitToAmend`: the commit form rewrites HEAD instead of adding a commit.
@@ -449,6 +459,7 @@ pub struct RepositoryState {
     pub stash_selected_file: Option<String>,
     pub stash_diff: Option<Diff>,
     pub stash_diff_generation: u64,
+    pub stash_diff_contents: Option<Arc<Vec<String>>>,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

@@ -1,7 +1,7 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -43,6 +43,15 @@ enum CommitField {
     Description,
 }
 
+/// Window-space rectangles of a field's misspellings (see `summary_rects`).
+type RectCache = Rc<RefCell<Vec<Option<Bounds<Pixels>>>>>;
+
+/// One misspelled word of a commit-form field.
+struct Misspelling {
+    range: Range<usize>,
+    word: String,
+}
+
 /// The misspelled word under the last right-click and its suggestions; the
 /// context menu's items are index actions (`SpellSuggestionN`).
 struct PendingSpell {
@@ -70,8 +79,15 @@ pub struct ChangesSidebar {
     /// GHD `AutocompletingTextInput` state for whichever field has the popup.
     autocomplete: Option<(CommitField, Autocompletion)>,
     /// Misspelled words per field (`NSSpellChecker`), refreshed on change.
-    summary_misspelled: Vec<Range<usize>>,
-    description_misspelled: Vec<Range<usize>>,
+    summary_misspelled: Vec<Misspelling>,
+    description_misspelled: Vec<Misspelling>,
+    /// Window-space rectangles of those words, written by the overlay's
+    /// prepaint. The context-menu builder runs while the kit holds the input
+    /// entity, so it must read these instead of the input.
+    summary_rects: RectCache,
+    description_rects: RectCache,
+    summary_focus: FocusHandle,
+    description_focus: FocusHandle,
     pending_spell: Option<PendingSpell>,
 }
 
@@ -123,6 +139,8 @@ impl ChangesSidebar {
                 .rows(4)
                 .placeholder("Description")
         });
+        let summary_focus = summary.read(cx).focus_handle(cx);
+        let description_focus = description.read(cx).focus_handle(cx);
         cx.subscribe(&summary, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::Summary, ev, cx)
         })
@@ -146,6 +164,10 @@ impl ChangesSidebar {
             autocomplete: None,
             summary_misspelled: Vec::new(),
             description_misspelled: Vec::new(),
+            summary_rects: Rc::new(RefCell::new(Vec::new())),
+            description_rects: Rc::new(RefCell::new(Vec::new())),
+            summary_focus,
+            description_focus,
             pending_spell: None,
         }
     }
@@ -179,10 +201,10 @@ impl ChangesSidebar {
         }
     }
 
-    fn field_focus_handle(&self, field: CommitField, cx: &App) -> FocusHandle {
+    fn field_focus_handle(&self, field: CommitField) -> FocusHandle {
         match field {
-            CommitField::Summary => self.summary.read(cx).focus_handle(cx),
-            CommitField::Description => self.description.read(cx).focus_handle(cx),
+            CommitField::Summary => self.summary_focus.clone(),
+            CommitField::Description => self.description_focus.clone(),
         }
     }
 
@@ -205,7 +227,7 @@ impl ChangesSidebar {
                 s.replace(text, window, cx);
             }),
         }
-        let handle = self.field_focus_handle(field, cx);
+        let handle = self.field_focus_handle(field);
         window.focus(&handle, cx);
         self.refresh_spelling(field, cx);
         cx.notify();
@@ -264,15 +286,27 @@ impl ChangesSidebar {
 
     fn refresh_spelling(&mut self, field: CommitField, cx: &mut Context<Self>) {
         let enabled = self.state.read(cx).settings.commit_spellcheck_enabled;
-        let ranges = if enabled {
+        let items = if enabled {
             let (text, _) = self.field_text_and_caret(field, cx);
             corvane_platform::spell::misspelled_ranges(&text)
+                .into_iter()
+                .map(|range| Misspelling {
+                    word: text.get(range.clone()).unwrap_or("").to_string(),
+                    range,
+                })
+                .collect()
         } else {
             Vec::new()
         };
         match field {
-            CommitField::Summary => self.summary_misspelled = ranges,
-            CommitField::Description => self.description_misspelled = ranges,
+            CommitField::Summary => {
+                self.summary_misspelled = items;
+                self.summary_rects.borrow_mut().clear();
+            }
+            CommitField::Description => {
+                self.description_misspelled = items;
+                self.description_rects.borrow_mut().clear();
+            }
         }
         cx.notify();
     }
@@ -300,32 +334,44 @@ impl ChangesSidebar {
         })
     }
 
-    /// The misspelled word under `position`, for the context menu.
+    /// The misspelled word under `position`, from the last painted
+    /// rectangles (no input reads: see `summary_rects`).
     fn misspelled_at(
         &self,
         field: CommitField,
         position: Point<Pixels>,
-        cx: &App,
     ) -> Option<(Range<usize>, String)> {
-        let ranges = match field {
-            CommitField::Summary => &self.summary_misspelled,
-            CommitField::Description => &self.description_misspelled,
+        let (items, rects) = match field {
+            CommitField::Summary => (&self.summary_misspelled, self.summary_rects.borrow()),
+            CommitField::Description => (
+                &self.description_misspelled,
+                self.description_rects.borrow(),
+            ),
         };
-        let (text, _) = self.field_text_and_caret(field, cx);
-        ranges
+        items
             .iter()
-            .find(|r| {
-                self.range_rect(field, r, cx)
-                    .is_some_and(|rect| rect.contains(&position))
-            })
-            .and_then(|r| text.get(r.clone()).map(|w| (r.clone(), w.to_string())))
+            .zip(rects.iter())
+            .find(|(_, rect)| rect.is_some_and(|rect| rect.contains(&position)))
+            .map(|(m, _)| (m.range.clone(), m.word.clone()))
     }
 
     /// Red dotted underline beneath each misspelled word (Chromium's marker).
     fn spell_overlay(&self, field: CommitField, cx: &Context<Self>) -> Option<AnyElement> {
-        let ranges = match field {
-            CommitField::Summary => self.summary_misspelled.clone(),
-            CommitField::Description => self.description_misspelled.clone(),
+        let (ranges, rects_cell): (Vec<Range<usize>>, RectCache) = match field {
+            CommitField::Summary => (
+                self.summary_misspelled
+                    .iter()
+                    .map(|m| m.range.clone())
+                    .collect(),
+                self.summary_rects.clone(),
+            ),
+            CommitField::Description => (
+                self.description_misspelled
+                    .iter()
+                    .map(|m| m.range.clone())
+                    .collect(),
+                self.description_rects.clone(),
+            ),
         };
         if ranges.is_empty() {
             return None;
@@ -335,18 +381,22 @@ impl ChangesSidebar {
         Some(
             canvas(
                 move |_, _, cx| {
-                    weak.upgrade().map(|this| {
-                        let this = this.read(cx);
-                        ranges
-                            .iter()
-                            .filter_map(|r| this.range_rect(field, r, cx))
-                            .collect::<Vec<_>>()
-                    })
+                    let rects: Vec<Option<Bounds<Pixels>>> = weak
+                        .upgrade()
+                        .map(|this| {
+                            let this = this.read(cx);
+                            ranges
+                                .iter()
+                                .map(|r| this.range_rect(field, r, cx))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    *rects_cell.borrow_mut() = rects.clone();
+                    rects
                 },
                 move |bounds, rects, window, _| {
-                    let Some(rects) = rects else { return };
                     window.with_content_mask(Some(ContentMask { bounds }), |window| {
-                        for rect in rects {
+                        for rect in rects.into_iter().flatten() {
                             let y = rect.bottom() - px(3.);
                             let mut x = rect.left();
                             while x < rect.right() {
@@ -368,25 +418,22 @@ impl ChangesSidebar {
 
     /// GHD `onAutocompletingInputContextMenu` + Chromium's spelling items:
     /// suggestions, Add to Dictionary, the edit menu, the spellcheck toggle.
+    ///
+    /// The kit invokes the builder while it holds the input entity, so nothing
+    /// in here may read the `InputState` (that panics inside AppKit's event
+    /// handler and aborts the process).
     fn input_menu(&self, field: CommitField, cx: &Context<Self>) -> InputMenuBuilder {
         let weak = cx.weak_entity();
+        let focus = self.field_focus_handle(field);
         Rc::new(move |mut menu, window, cx| {
             let mut suggestions: Option<Vec<String>> = None;
             let mut enabled = true;
-            let mut has_selection = false;
+            // the menu's actions dispatch through the focused element
+            window.focus(&focus, cx);
             weak.update(cx, |this, cx| {
                 this.pending_spell = None;
-                let handle = this.field_focus_handle(field, cx);
-                window.focus(&handle, cx);
-                has_selection = match field {
-                    CommitField::Summary => !this.summary.read(cx).selected_range().is_empty(),
-                    CommitField::Description => {
-                        !this.description.read(cx).selected_range().is_empty()
-                    }
-                };
                 enabled = this.state.read(cx).settings.commit_spellcheck_enabled;
-                if let Some((range, word)) = this.misspelled_at(field, window.mouse_position(), cx)
-                {
+                if let Some((range, word)) = this.misspelled_at(field, window.mouse_position()) {
                     let guesses = corvane_platform::spell::guesses(&word);
                     this.pending_spell = Some(PendingSpell {
                         field,
@@ -423,8 +470,8 @@ impl ChangesSidebar {
             menu.menu("Undo", Box::new(Undo))
                 .menu("Redo", Box::new(Redo))
                 .separator()
-                .menu_with_disabled("Cut", !has_selection, Box::new(Cut))
-                .menu_with_disabled("Copy", !has_selection, Box::new(Copy))
+                .menu("Cut", Box::new(Cut))
+                .menu("Copy", Box::new(Copy))
                 .menu("Paste", Box::new(Paste))
                 .menu("Select All", Box::new(SelectAll))
                 .separator()

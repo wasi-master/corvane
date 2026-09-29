@@ -59,12 +59,10 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Diff viewer
 
-- [ ] Hunk expansion (fold up/down/whole, `DiffHunkExpansionType`) and the expansion handles in hunk header rows
-- [ ] Gutter/hunk right-click menu: `Discard Added Line…`, `Discard Hunk…`, `Discard Selected Lines…` (`formatPatchToDiscardChanges` + `git apply --unidiff-zero`)
-- [ ] Diff search (⌘F inside the diff), whitespace hint popover when `hideWhitespaceInDiff` is on
-- [ ] Submodule diff panel (`ui/diff/submodule-diff.tsx`)
-- [ ] Image diffs (`ui/diff/image-diffs/`: 2-up default, swipe, onion skin, difference); v1 shows "This binary file has changed." for images too
-- [ ] Expand-all-context in hunk headers, "Open file in external editor" from diff gear menu
+- [ ] Split (side-by-side) rendering (`showSideBySideDiff`); the Diff Settings radio shows "Split" disabled and the setting is persisted
+- [ ] Bidi-character / line-endings warnings above the diff (`DiffContentsWarning`)
+- [ ] Text selection + "Copy" in the diff context menu (GPUI rows are not selectable text)
+- [ ] Overlaid image modes letterbox both images with `ObjectFit::Contain` (GHD top-left aligns them); the "Difference" blend is computed on the CPU
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
 
 ## Settings (`ui/preferences/`)
