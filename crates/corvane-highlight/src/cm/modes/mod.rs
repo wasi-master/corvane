@@ -5,6 +5,9 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod css;
+pub mod python;
+pub mod ruby;
+pub mod shell;
 pub mod toml;
 pub mod yaml;
 
@@ -173,6 +176,14 @@ pub fn guess_mime(first_line: &str) -> Option<&'static str> {
     None
 }
 
+/// One shared instance of a mode per call site.
+macro_rules! cached {
+    ($mode:expr) => {{
+        static MODE: OnceLock<Arc<dyn Mode>> = OnceLock::new();
+        MODE.get_or_init(|| Arc::new($mode)).clone()
+    }};
+}
+
 /// The ported mode for a MIME type (`CodeMirror.getMode({}, mime)`).
 pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
     match mime {
@@ -180,6 +191,10 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/css" | "text/x-scss" | "text/x-less" | "text/x-gss" => css::css_for_mime(mime),
         "text/yaml" | "text/x-yaml" => Some(yaml::yaml()),
         "text/x-toml" => Some(toml::toml()),
+        "text/x-python" => Some(cached!(python::Python::new())),
+        "text/x-cython" => Some(cached!(python::Python::cython())),
+        "text/x-ruby" => Some(cached!(ruby::Ruby)),
+        "text/x-sh" | "application/x-sh" => Some(cached!(shell::Shell)),
         _ => None,
     }
 }
