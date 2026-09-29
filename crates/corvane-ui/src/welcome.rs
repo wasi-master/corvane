@@ -99,17 +99,17 @@ impl WelcomeView {
             .flex_col()
             .child(
                 div()
-                    .text_size(px(42. * SCALE))
-                    .line_height(px(42. * SCALE * 1.25))
+                    .text_size(zpx(42. * SCALE))
+                    .line_height(zpx(42. * SCALE * 1.25))
                     .font_weight(FontWeight::LIGHT)
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("Welcome to Corvane"),
             )
             .child(
                 div()
-                    .my(SPACING)
-                    .text_size(px(14. * SCALE))
-                    .line_height(px(14. * SCALE * 1.5))
+                    .my(SPACING())
+                    .text_size(zpx(14. * SCALE))
+                    .line_height(zpx(14. * SCALE * 1.5))
                     .child(
                         "Corvane is a seamless way to contribute to projects on GitHub and \
                          GitHub Enterprise. Sign in below to get started with your existing projects.",
@@ -118,7 +118,7 @@ impl WelcomeView {
             .child(
                 // `.welcome-main-buttons`
                 div()
-                    .mt(px(40.))
+                    .mt(zpx(40.))
                     .flex()
                     .flex_row()
                     .flex_wrap()
@@ -126,7 +126,7 @@ impl WelcomeView {
                     .child(
                         welcome_button("welcome-sign-in", true, cx)
                             .child("Sign in to GitHub.com")
-                            .child(octicon(Octicon::LinkExternal, t.button_text).ml(SPACING_HALF))
+                            .child(octicon(Octicon::LinkExternal, t.button_text).ml(SPACING_HALF()))
                             .on_click(|_, _, cx| {
                                 Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx);
                                 Dispatcher::sign_in_device_flow(Endpoint::github_com(), cx);
@@ -143,16 +143,16 @@ impl WelcomeView {
             .child(
                 // `.skip-action-container`
                 div()
-                    .mt(SPACING_DOUBLE)
+                    .mt(SPACING_DOUBLE())
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
-                    .text_size(px(14. * SCALE))
+                    .gap(SPACING())
+                    .text_size(zpx(14. * SCALE))
                     .child(
                         div()
                             .flex()
                             .flex_row()
-                            .gap(px(4.))
+                            .gap(zpx(4.))
                             .child("New to GitHub?")
                             .child(
                                 div()
@@ -187,17 +187,17 @@ impl WelcomeView {
             .flex_col()
             .child(
                 div()
-                    .text_size(px(42. * SCALE))
-                    .line_height(px(42. * SCALE * 1.25))
+                    .text_size(zpx(42. * SCALE))
+                    .line_height(zpx(42. * SCALE * 1.25))
                     .font_weight(FontWeight::LIGHT)
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("Configure Git"),
             )
             .child(
                 div()
-                    .my(SPACING)
-                    .text_size(px(14. * SCALE))
-                    .line_height(px(14. * SCALE * 1.5))
+                    .my(SPACING())
+                    .text_size(zpx(14. * SCALE))
+                    .line_height(zpx(14. * SCALE * 1.5))
                     .child(
                         "This is used to identify the commits you create. Anyone will be able to \
                          see this information if you publish commits.",
@@ -207,9 +207,9 @@ impl WelcomeView {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
-                    .my(SPACING)
-                    .text_size(px(14. * SCALE))
+                    .gap(SPACING())
+                    .my(SPACING())
+                    .text_size(zpx(14. * SCALE))
                     .child(labeled(
                         "Name",
                         text_box("welcome-name", &self.name, None, window, cx),
@@ -226,11 +226,11 @@ impl WelcomeView {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
-                    .my(SPACING)
+                    .gap(SPACING_HALF())
+                    .my(SPACING())
                     .child(
                         div()
-                            .text_size(px(11. * SCALE))
+                            .text_size(zpx(11. * SCALE))
                             .text_color(t.text_secondary)
                             .child("Example commit"),
                     )
@@ -239,26 +239,26 @@ impl WelcomeView {
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING)
-                            .p(SPACING)
+                            .gap(SPACING())
+                            .p(SPACING())
                             .border_1()
                             .border_color(t.box_border)
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .bg(t.box_background)
-                            .child(crate::widgets::avatar_placeholder(px(16. * SCALE), cx))
+                            .child(crate::widgets::avatar_placeholder(zpx(16. * SCALE), cx))
                             .child(
                                 div()
                                     .flex()
                                     .flex_col()
                                     .child(
                                         div()
-                                            .text_size(px(12. * SCALE))
+                                            .text_size(zpx(12. * SCALE))
                                             .font_weight(FontWeight::SEMIBOLD)
                                             .child("Fix all the things"),
                                     )
                                     .child(
                                         div()
-                                            .text_size(px(11. * SCALE))
+                                            .text_size(zpx(11. * SCALE))
                                             .text_color(t.text_secondary)
                                             .child(format!(
                                                 "{} <{}> · just now",
@@ -274,7 +274,7 @@ impl WelcomeView {
                     ),
             )
             .child(
-                div().mt(SPACING).flex().flex_row().gap(SPACING).child(
+                div().mt(SPACING()).flex().flex_row().gap(SPACING()).child(
                     welcome_button("welcome-finish", true, cx)
                         .child("Finish")
                         .on_click(move |_, _, cx| this.update(cx, |w, cx| w.finish(cx))),
@@ -302,20 +302,20 @@ fn welcome_button(id: &'static str, primary: bool, cx: &App) -> Stateful<Div> {
     };
     div()
         .id(id)
-        .h(px(30. * SCALE))
-        .px(SPACING_DOUBLE)
-        .mr(SPACING_DOUBLE)
-        .mb(SPACING)
+        .h(zpx(30. * SCALE))
+        .px(SPACING_DOUBLE())
+        .mr(SPACING_DOUBLE())
+        .mb(SPACING())
         .flex()
         .flex_row()
         .items_center()
         .justify_center()
         .border_1()
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .bg(bg)
         .border_color(border)
         .text_color(text)
-        .text_size(px(14. * SCALE))
+        .text_size(zpx(14. * SCALE))
         .cursor_pointer()
         .hover(move |s| s.bg(hover))
 }
@@ -342,30 +342,30 @@ impl Render for WelcomeView {
                     .h_full()
                     .flex()
                     .items_center()
-                    .p(px(40.))
+                    .p(zpx(40.))
                     .overflow_hidden()
                     .child(
                         img("illustrations/welcome-illustration-left-top.svg")
                             .absolute()
-                            .right(px(80.))
-                            .top(px(40.))
-                            .w(px(120.))
-                            .h(px(90.))
+                            .right(zpx(80.))
+                            .top(zpx(40.))
+                            .w(zpx(120.))
+                            .h(zpx(90.))
                             .object_fit(ObjectFit::Contain),
                     )
                     .child(
                         img("illustrations/welcome-illustration-left-bottom.svg")
                             .absolute()
-                            .right(SPACING)
-                            .bottom(SPACING)
+                            .right(SPACING())
+                            .bottom(SPACING())
                             .w_2_5()
-                            .h(px(180.))
+                            .h(zpx(180.))
                             .object_fit(ObjectFit::Contain),
                     )
                     .child(
                         div()
                             .w_full()
-                            .max_w(px(500. * SCALE))
+                            .max_w(zpx(500. * SCALE))
                             .flex()
                             .flex_col()
                             .child(content),

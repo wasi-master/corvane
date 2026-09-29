@@ -106,7 +106,7 @@ impl Render for AddExistingRepositoryDialog {
                     .flex()
                     .flex_row()
                     .flex_wrap()
-                    .gap(px(4.))
+                    .gap(zpx(4.))
                     .text_color(t.error)
                     .child("This directory does not appear to be a Git repository.")
                     .child({
@@ -142,15 +142,15 @@ impl Render for AddExistingRepositoryDialog {
             div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
-                .w(px(560.))
+                .gap(SPACING())
+                .w(zpx(560.))
                 .child(
                     // `Row`: [Local Path text box][Choose…]
                     div()
                         .flex()
                         .flex_row()
                         .items_end()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .child(labeled(
                             "Local Path",
                             text_box("add-existing-path", &self.path, None, window, cx),

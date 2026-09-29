@@ -87,7 +87,7 @@ impl Render for CheckoutCommitDialog {
         let content = div()
             .flex()
             .flex_col()
-            .child(div().mb(SPACING).child(
+            .child(div().mb(SPACING()).child(
                 "Checking out a commit will create a detached HEAD, and you will no longer be on \
                  any branch. Are you sure you want to checkout this commit?",
             ))
@@ -97,7 +97,7 @@ impl Render for CheckoutCommitDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;
@@ -180,11 +180,11 @@ impl Render for CreateTagDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING_HALF)
+            .gap(SPACING_HALF())
             .when_some(error, |d, message| {
                 d.child(
                     div()
-                        .mb(SPACING_HALF)
+                        .mb(SPACING_HALF())
                         .text_color(t.form_error_text)
                         .child(message),
                 )
@@ -246,7 +246,7 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
         let content = div()
             .flex()
             .flex_col()
-            .child(div().mb(SPACING).child(
+            .child(div().mb(SPACING()).child(
                 "You have changes in progress. Undoing the commit might result in some of these \
                  changes being lost. Do you want to continue anyway?",
             ))
@@ -256,7 +256,7 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;
@@ -328,7 +328,7 @@ impl Render for ConfirmDiscardStashDialog {
             .flex_col()
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("Are you sure you want to discard these stashed changes?"),
             )
             .child(
@@ -337,7 +337,7 @@ impl Render for ConfirmDiscardStashDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;
@@ -468,31 +468,31 @@ impl Render for UnreachableCommitsDialog {
         );
         // `.unreachable-commits { max-width: 400px }`, list ≥ 160 px
         let content = div()
-            .w(px(400.))
-            .mx(px(-20.))
-            .my(px(-20.))
+            .w(zpx(400.))
+            .mx(zpx(-20.))
+            .my(zpx(-20.))
             .flex()
             .flex_col()
             .child(tabs)
             .child(
                 div()
-                    .p(SPACING)
+                    .p(SPACING())
                     .border_b_1()
                     .border_color(t.box_border)
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .child(message),
             )
             .child(
                 div()
                     .id("unreachable-commit-list")
-                    .min_h(px(160.))
-                    .max_h(px(300.))
+                    .min_h(zpx(160.))
+                    .max_h(zpx(300.))
                     .overflow_y_scroll()
                     .flex()
                     .flex_col()
                     .children(commits.iter().map(|commit| {
                         div()
-                            .h(px(50.))
+                            .h(zpx(50.))
                             .flex_none()
                             .border_b_1()
                             .border_color(t.box_border)

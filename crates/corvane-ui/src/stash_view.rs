@@ -17,8 +17,14 @@ use crate::theme::sizes::*;
 use crate::widgets::ListRowA11y;
 use crate::widgets::{button, primary_button};
 
-const FILE_LIST_MIN: Pixels = px(100.);
-const FILE_LIST_MAX: Pixels = px(600.);
+#[allow(non_snake_case)]
+fn FILE_LIST_MIN() -> Pixels {
+    zpx(100.)
+}
+#[allow(non_snake_case)]
+fn FILE_LIST_MAX() -> Pixels {
+    zpx(600.)
+}
 
 pub struct StashDiffViewer {
     state: Entity<AppState>,
@@ -33,7 +39,7 @@ impl StashDiffViewer {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let diff = cx.new(|cx| DiffView::new(state.clone(), DiffSource::Stash, cx));
-        let file_list_width = px(state.read(cx).settings.commit_summary_width);
+        let file_list_width = zpx(state.read(cx).settings.commit_summary_width);
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
             if let Some(width) = state.read(cx).sizes().first().copied()
@@ -114,13 +120,13 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
             is_selected,
         )
         .w_full()
-        .h(ROW_HEIGHT)
+        .h(ROW_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
-        .px(SPACING)
+        .gap(SPACING_HALF())
+        .px(SPACING())
         .cursor_pointer()
         .when(is_selected, |d| {
             d.bg(t.box_selected_background)
@@ -133,7 +139,7 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
                 .flex_1()
                 .min_w_0()
                 .truncate()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .child(
                     div()
                         .flex()
@@ -185,42 +191,44 @@ impl Render for StashDiffViewer {
                     .flex_none()
                     .flex()
                     .flex_col()
-                    .px(SPACING_DOUBLE)
-                    .py(px(30.))
+                    .px(SPACING_DOUBLE())
+                    .py(zpx(30.))
                     .border_b_1()
                     .border_color(t.box_border)
                     .child(
                         div()
-                            .mb(SPACING)
-                            .text_size(px(32.))
-                            .line_height(px(32.))
+                            .mb(SPACING())
+                            .text_size(zpx(32.))
+                            .line_height(zpx(32.))
                             .font_weight(FontWeight::LIGHT)
                             .child("Stashed changes"),
                     )
                     .child(
                         div()
-                            .mt(SPACING)
+                            .mt(SPACING())
                             .flex()
                             .flex_row()
                             .items_center()
                             .child(
                                 primary_button("stash-restore", "Restore", false, cx)
-                                    .mr(SPACING)
+                                    .mr(SPACING())
                                     .on_click(move |_, _, cx| Dispatcher::pop_stash(id, cx)),
                             )
                             .child(
-                                button("stash-discard", "Discard", cx).mr(SPACING).on_click(
-                                    move |_, _, cx| Dispatcher::request_drop_stash(id, cx),
-                                ),
+                                button("stash-discard", "Discard", cx)
+                                    .mr(SPACING())
+                                    .on_click(move |_, _, cx| {
+                                        Dispatcher::request_drop_stash(id, cx)
+                                    }),
                             )
                             .child(
                                 div()
                                     .flex_1()
-                                    .ml(SPACING_HALF)
+                                    .ml(SPACING_HALF())
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .child(div().font_weight(FontWeight::SEMIBOLD).child("Restore"))
                                     .child(
                                         "\u{a0}will move your stashed files to the Changes list.",
@@ -237,14 +245,14 @@ impl Render for StashDiffViewer {
                     .child(
                         resizable_panel()
                             .size(self.file_list_width)
-                            .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
+                            .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
                             .child(crate::active_resizable::active_resizable(
                                 "stash-file-list-resizable",
                                 &self.resizable,
                                 Some(&self.file_list_focus),
                                 crate::active_resizable::ResizableDescription::new(
                                     "Stash file list",
-                                    FILE_LIST_MIN..FILE_LIST_MAX,
+                                    FILE_LIST_MIN()..FILE_LIST_MAX(),
                                 ),
                                 self.file_list(id, cx),
                             )),

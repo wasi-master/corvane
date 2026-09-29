@@ -22,8 +22,14 @@ use crate::theme::{ActiveGhdTheme, MONO_FONT};
 use crate::widgets::{avatar_image, avatar_lookup, link_button};
 
 /// `commitSummaryWidth` constraints (GHD `constrain(250, 100, 600)`).
-const FILE_LIST_MIN: Pixels = px(100.);
-const FILE_LIST_MAX: Pixels = px(600.);
+#[allow(non_snake_case)]
+fn FILE_LIST_MIN() -> Pixels {
+    zpx(100.)
+}
+#[allow(non_snake_case)]
+fn FILE_LIST_MAX() -> Pixels {
+    zpx(600.)
+}
 
 pub struct SelectedCommitView {
     state: Entity<AppState>,
@@ -38,14 +44,14 @@ impl SelectedCommitView {
     pub fn new(state: Entity<AppState>, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let diff = cx.new(|cx| DiffView::new(state.clone(), DiffSource::Commit, cx));
-        let file_list_width = px(state.read(cx).settings.commit_summary_width);
+        let file_list_width = zpx(state.read(cx).settings.commit_summary_width);
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
             if let Some(width) = state.read(cx).sizes().first().copied()
                 && width != this.file_list_width
             {
                 this.file_list_width = width;
-                Dispatcher::update_settings(cx, |s| s.commit_summary_width = f32::from(width));
+                Dispatcher::update_settings(cx, |s| s.commit_summary_width = unzoom(width));
                 cx.notify();
             }
         })
@@ -99,12 +105,12 @@ impl SelectedCommitView {
                 .child(
                     div()
                         .id("commits-in-diff")
-                        .pt(SPACING)
-                        .px(SPACING)
-                        .pb(SPACING_HALF)
-                        .text_size(FONT_SIZE_MD)
+                        .pt(SPACING())
+                        .px(SPACING())
+                        .pb(SPACING_HALF())
+                        .text_size(FONT_SIZE_MD())
                         .font_weight(FontWeight::SEMIBOLD)
-                        .line_height(px(16.))
+                        .line_height(zpx(16.))
                         .on_hover(highlight(shas_in_diff))
                         .child(format!(
                             "Showing changes from {in_diff} {}",
@@ -115,13 +121,13 @@ impl SelectedCommitView {
                     // `renderCommitsNotReachable` (`.commit-unreachable-info`)
                     d.child(
                         div()
-                            .px(SPACING)
-                            .pb(SPACING_HALF)
+                            .px(SPACING())
+                            .pb(SPACING_HALF())
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING_HALF)
-                            .text_size(FONT_SIZE_SM)
+                            .gap(SPACING_HALF())
+                            .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary)
                             .child(octicon(Octicon::Info, t.text_secondary))
                             .child(
@@ -137,7 +143,7 @@ impl SelectedCommitView {
                                     ),
                                     cx,
                                 )
-                                .text_size(FONT_SIZE_SM)
+                                .text_size(FONT_SIZE_SM())
                                 .on_hover(highlight(shas_not_in_diff))
                                 .on_click(move |_, _, cx| {
                                     Dispatcher::set_highlighted_shas(id, Vec::new(), cx);
@@ -189,8 +195,8 @@ impl SelectedCommitView {
             d.flex()
                 .flex_row()
                 .items_center()
-                .mr(SPACING)
-                .text_size(FONT_SIZE_SM)
+                .mr(SPACING())
+                .text_size(FONT_SIZE_SM())
         };
         Some(
             div()
@@ -207,12 +213,12 @@ impl SelectedCommitView {
                         .flex()
                         .flex_row()
                         .items_start()
-                        .pt(SPACING)
-                        .px(SPACING)
-                        .pb(SPACING_HALF)
-                        .text_size(FONT_SIZE_MD)
+                        .pt(SPACING())
+                        .px(SPACING())
+                        .pb(SPACING_HALF())
+                        .text_size(FONT_SIZE_MD())
                         .font_weight(FontWeight::SEMIBOLD)
-                        .line_height(px(16.))
+                        .line_height(zpx(16.))
                         .when(empty, |d| d.text_color(t.text_secondary))
                         .child(div().flex_1().min_w_0().child(title))
                         .child(
@@ -228,7 +234,7 @@ impl SelectedCommitView {
                                 } else {
                                     "Expand"
                                 }))
-                                .ml(SPACING)
+                                .ml(SPACING())
                                 .flex_none()
                                 .cursor_pointer()
                                 .on_click(move |_, _, cx| {
@@ -249,17 +255,17 @@ impl SelectedCommitView {
                     div()
                         .id("ecs-scroll")
                         .overflow_y_scroll()
-                        .px(SPACING)
-                        .pb(SPACING_HALF)
+                        .px(SPACING())
+                        .pb(SPACING_HALF())
                         .flex()
                         .flex_col()
-                        .when(expanded, |d| d.max_h(px(400.)))
+                        .when(expanded, |d| d.max_h(zpx(400.)))
                         .when(!commit.body.is_empty(), |d| {
                             d.child(
                                 div()
-                                    .pb(SPACING_HALF)
+                                    .pb(SPACING_HALF())
                                     .font_family(MONO_FONT)
-                                    .text_size(FONT_SIZE_SM)
+                                    .text_size(FONT_SIZE_SM())
                                     .child(description),
                             )
                         })
@@ -272,10 +278,10 @@ impl SelectedCommitView {
                                 .items_center()
                                 .child(
                                     meta_item(div())
-                                        .gap(px(4.))
+                                        .gap(zpx(4.))
                                         .child(avatar_image(
                                             avatar_lookup(&commit.author.email, cx),
-                                            px(16.),
+                                            zpx(16.),
                                             cx,
                                         ))
                                         .child(commit.author.name.clone()),
@@ -283,7 +289,7 @@ impl SelectedCommitView {
                                 .child(
                                     meta_item(div())
                                         .child(octicon(Octicon::GitCommit, t.text_secondary))
-                                        .child(div().pl(SPACING_HALF).child(if expanded {
+                                        .child(div().pl(SPACING_HALF()).child(if expanded {
                                             commit.sha.clone()
                                         } else {
                                             commit.short_sha().to_string()
@@ -293,7 +299,7 @@ impl SelectedCommitView {
                                             div()
                                                 .id("copy-sha")
                                                 .icon_button_label("Copy the full SHA")
-                                                .ml(SPACING_HALF)
+                                                .ml(SPACING_HALF())
                                                 .cursor_pointer()
                                                 .on_click(move |_, _, cx| {
                                                     cx.write_to_clipboard(
@@ -309,12 +315,12 @@ impl SelectedCommitView {
                                             .when(expanded, |d| {
                                                 d.child(
                                                     octicon(Octicon::FileDiff, t.text_secondary)
-                                                        .mr(SPACING_HALF),
+                                                        .mr(SPACING_HALF()),
                                                 )
                                             })
                                             .child(
                                                 div()
-                                                    .pr(SPACING_HALF)
+                                                    .pr(SPACING_HALF())
                                                     .text_color(t.color_new)
                                                     .child(if expanded {
                                                         format!(
@@ -330,7 +336,7 @@ impl SelectedCommitView {
                                             )
                                             .child(
                                                 div()
-                                                    .pr(SPACING_HALF)
+                                                    .pr(SPACING_HALF())
                                                     .text_color(t.color_deleted)
                                                     .child(if expanded {
                                                         format!("{deleted} removed lines")
@@ -346,7 +352,7 @@ impl SelectedCommitView {
                                             .min_w_0()
                                             .child(
                                                 octicon(Octicon::Tag, t.text_secondary)
-                                                    .mr(SPACING_HALF),
+                                                    .mr(SPACING_HALF()),
                                             )
                                             .child(div().truncate().child(commit.tags.join(", "))),
                                     )
@@ -388,16 +394,16 @@ impl SelectedCommitView {
             .border_color(t.box_border)
             .child(
                 div()
-                    .h(px(30.))
+                    .h(zpx(30.))
                     .flex_none()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .px(SPACING)
+                    .px(SPACING())
                     .bg(t.box_alt_background)
                     .border_b_1()
                     .border_color(t.box_border)
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .child(if count == 1 {
                         "1 changed file".to_string()
                     } else {
@@ -454,13 +460,13 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
             is_selected,
         )
         .w_full()
-        .h(ROW_HEIGHT)
+        .h(ROW_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
-        .px(SPACING)
+        .gap(SPACING_HALF())
+        .px(SPACING())
         .cursor_pointer()
         .when(is_selected, |d| {
             d.bg(t.box_selected_background)
@@ -476,7 +482,7 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
                 .min_w_0()
                 .flex()
                 .flex_row()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .child(
                     div()
                         .min_w_0()
@@ -534,7 +540,7 @@ impl Render for SelectedCommitView {
                 div()
                     .flex()
                     .flex_row()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child("•")
                     .child(text)
             };
@@ -543,11 +549,11 @@ impl Render for SelectedCommitView {
                 .flex()
                 .flex_col()
                 .items_start()
-                .p(SPACING_DOUBLE)
-                .gap(SPACING_HALF)
+                .p(SPACING_DOUBLE())
+                .gap(SPACING_HALF())
                 .bg(t.background)
                 .text_color(t.text_secondary)
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .child("Unable to display diff when multiple non-consecutive selected.")
                 .child("You can:")
                 .child(bullet(
@@ -588,14 +594,14 @@ impl Render for SelectedCommitView {
                     .child(
                         resizable_panel()
                             .size(self.file_list_width)
-                            .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
+                            .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
                             .child(crate::active_resizable::active_resizable(
                                 "commit-file-list-resizable",
                                 &self.resizable,
                                 Some(&self.file_list_focus),
                                 crate::active_resizable::ResizableDescription::new(
                                     "Selected commit file list",
-                                    FILE_LIST_MIN..FILE_LIST_MAX,
+                                    FILE_LIST_MIN()..FILE_LIST_MAX(),
                                 ),
                                 self.file_list(id, cx),
                             )),

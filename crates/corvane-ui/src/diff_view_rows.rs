@@ -94,9 +94,9 @@ pub struct Row {
 impl Row {
     pub fn height(&self) -> Pixels {
         if self.kind == DiffLineKind::Hunk && self.expansion == HunkExpansionType::Both {
-            DIFF_LINE_HEIGHT * 2.
+            DIFF_LINE_HEIGHT() * 2.
         } else {
-            DIFF_LINE_HEIGHT
+            DIFF_LINE_HEIGHT()
         }
     }
 }
@@ -451,7 +451,7 @@ fn expansion_handle(
         ),
         _ => {
             return div()
-                .w(px(width))
+                .w(zpx(width))
                 .h(height)
                 .flex_none()
                 .bg(t.diff_hunk_gutter_background)
@@ -464,7 +464,7 @@ fn expansion_handle(
     let hover_text = t.diff_hover_text;
     div()
         .id(("hunk-expansion", row.abs as usize * 2 + direction as usize))
-        .w(px(width))
+        .w(zpx(width))
         .h(height)
         .flex_none()
         .flex()
@@ -485,7 +485,7 @@ fn expansion_handle(
                 .update(cx, |this, cx| this.expand_menu(ev.position, window, cx))
                 .ok();
         })
-        .child(octicon(icon, t.diff_hunk_text).size(px(16.)))
+        .child(octicon(icon, t.diff_hunk_text).size(zpx(16.)))
         .into_any_element()
 }
 
@@ -564,7 +564,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                 div()
                     .flex_none()
                     .italic()
-                    .ml(px(4.))
+                    .ml(zpx(4.))
                     .text_color(t.diff_alt_text)
                     .child("No newline at end of file"),
             )
@@ -604,7 +604,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     row,
                     HunkExpansionType::Down,
                     width,
-                    DIFF_LINE_HEIGHT,
+                    DIFF_LINE_HEIGHT(),
                     cx,
                 ))
                 .child(expansion_handle(
@@ -612,7 +612,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     row,
                     HunkExpansionType::Up,
                     width,
-                    DIFF_LINE_HEIGHT,
+                    DIFF_LINE_HEIGHT(),
                     cx,
                 ))
                 .into_any_element(),
@@ -652,7 +652,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
             let hide_whitespace = ctx.hide_whitespace;
             div()
                 .id(("hunk-handle", abs as usize))
-                .w(px(handle_width))
+                .w(zpx(handle_width))
                 .flex_none()
                 .bg(bg)
                 .cursor_pointer()
@@ -687,21 +687,25 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                 .when(
                     row.original == Some(start) && len > 1 && ctx.show_check_marks,
                     |d| {
-                        d.flex().justify_center().items_start().pt(px(3.)).children(
-                            match kind {
-                                DiffSelectionType::All => Some(Octicon::DiffCheck),
-                                DiffSelectionType::Partial => Some(Octicon::DiffDash),
-                                DiffSelectionType::None => None,
-                            }
-                            .map(|icon| octicon(icon, white()).size(px(12.))),
-                        )
+                        d.flex()
+                            .justify_center()
+                            .items_start()
+                            .pt(zpx(3.))
+                            .children(
+                                match kind {
+                                    DiffSelectionType::All => Some(Octicon::DiffCheck),
+                                    DiffSelectionType::Partial => Some(Octicon::DiffDash),
+                                    DiffSelectionType::None => None,
+                                }
+                                .map(|icon| octicon(icon, white()).size(zpx(12.))),
+                            )
                     },
                 )
                 .into_any_element()
         } else {
             // `.editable .row.context { border-left: 16px solid diff-border }`
             div()
-                .w(px(handle_width))
+                .w(zpx(handle_width))
                 .flex_none()
                 .bg(t.diff_border)
                 .into_any_element()
@@ -758,7 +762,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
             .flex()
             .justify_end()
             .items_center()
-            .px(SPACING_HALF)
+            .px(SPACING_HALF())
             .child(n.map(|n| n.to_string()).unwrap_or_default())
     };
     let view_for_down = ctx.view.clone();
@@ -767,7 +771,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
     let group_type = row.group_type;
     let gutter = div()
         .id(("diff-gutter", abs as usize))
-        .w(px(gutter_width))
+        .w(zpx(gutter_width))
         .flex_none()
         .flex()
         .flex_row()
@@ -813,13 +817,13 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
         .when(check_marks, |d| {
             d.child(
                 div()
-                    .w(px(CHECK_WIDTH))
+                    .w(zpx(CHECK_WIDTH))
                     .flex_none()
                     .flex()
                     .justify_center()
                     .items_center()
                     .when(selected, |d| {
-                        d.child(octicon(Octicon::DiffCheck, num_text).size(px(12.)))
+                        d.child(octicon(Octicon::DiffCheck, num_text).size(zpx(12.)))
                     }),
             )
         })
@@ -1091,7 +1095,7 @@ fn split_line_number(
     let side = if column == Column::Before { 0 } else { 1 };
     div()
         .id(("split-gutter", row.abs as usize * 2 + side))
-        .w(px(ctx.line_number_width + check_width))
+        .w(zpx(ctx.line_number_width + check_width))
         .flex_none()
         .flex()
         .flex_row()
@@ -1138,13 +1142,13 @@ fn split_line_number(
         .when(check_width > 0., |d| {
             d.child(
                 div()
-                    .w(px(CHECK_WIDTH))
+                    .w(zpx(CHECK_WIDTH))
                     .flex_none()
                     .flex()
                     .justify_center()
                     .items_center()
                     .when(selected, |d| {
-                        d.child(octicon(Octicon::DiffCheck, fg).size(px(12.)))
+                        d.child(octicon(Octicon::DiffCheck, fg).size(zpx(12.)))
                     }),
             )
         })
@@ -1154,7 +1158,7 @@ fn split_line_number(
                 .flex()
                 .justify_end()
                 .items_center()
-                .px(SPACING_HALF)
+                .px(SPACING_HALF())
                 .child(number.map(|n| n.to_string()).unwrap_or_default()),
         )
         .into_any_element()
@@ -1212,7 +1216,7 @@ fn split_content(
                 div()
                     .flex_none()
                     .italic()
-                    .ml(px(4.))
+                    .ml(zpx(4.))
                     .text_color(t.diff_alt_text)
                     .child("No newline at end of file"),
             )
@@ -1252,8 +1256,8 @@ fn split_handle(ctx: &RowContext, row: &Row, width: f32, cx: &App) -> AnyElement
         .top_0()
         .bottom_0()
         .left(gpui_kit::relative(0.5))
-        .ml(px(-width / 2.))
-        .w(px(width))
+        .ml(zpx(-width / 2.))
+        .w(zpx(width))
         .bg(bg)
         .cursor_pointer()
         .on_hover(move |hovered: &bool, _, cx| {
@@ -1287,14 +1291,18 @@ fn split_handle(ctx: &RowContext, row: &Row, width: f32, cx: &App) -> AnyElement
         .when(
             row.original == Some(start) && len > 1 && ctx.show_check_marks,
             |d| {
-                d.flex().justify_center().items_start().pt(px(3.)).children(
-                    match kind {
-                        DiffSelectionType::All => Some(Octicon::DiffCheck),
-                        DiffSelectionType::Partial => Some(Octicon::DiffDash),
-                        DiffSelectionType::None => None,
-                    }
-                    .map(|icon| octicon(icon, white()).size(px(12.))),
-                )
+                d.flex()
+                    .justify_center()
+                    .items_start()
+                    .pt(zpx(3.))
+                    .children(
+                        match kind {
+                            DiffSelectionType::All => Some(Octicon::DiffCheck),
+                            DiffSelectionType::Partial => Some(Octicon::DiffDash),
+                            DiffSelectionType::None => None,
+                        }
+                        .map(|icon| octicon(icon, white()).size(zpx(12.))),
+                    )
             },
         )
         .into_any_element()
@@ -1319,7 +1327,7 @@ pub fn render_split_row(
     let base = div()
         .id(("split-row", ix))
         .relative()
-        .min_h(DIFF_LINE_HEIGHT)
+        .min_h(DIFF_LINE_HEIGHT())
         .w_full()
         .flex_none()
         .flex()
@@ -1346,7 +1354,7 @@ pub fn render_split_row(
                         r,
                         HunkExpansionType::Down,
                         width,
-                        DIFF_LINE_HEIGHT,
+                        DIFF_LINE_HEIGHT(),
                         cx,
                     ))
                     .child(expansion_handle(
@@ -1354,7 +1362,7 @@ pub fn render_split_row(
                         r,
                         HunkExpansionType::Up,
                         width,
-                        DIFF_LINE_HEIGHT,
+                        DIFF_LINE_HEIGHT(),
                         cx,
                     ))
                     .into_any_element(),
@@ -1395,7 +1403,7 @@ pub fn render_split_row(
                     // `.editable .row.context .before/.after`: half the
                     // handle width as a border on each side of the centre
                     .when(selectable, |d| {
-                        let half = px(handle_width / 2.);
+                        let half = zpx(handle_width / 2.);
                         let d = d.border_color(t.diff_border);
                         if column == Column::Before {
                             d.border_r(half)
@@ -1495,7 +1503,7 @@ pub fn render_split_row(
                     d.child(
                         div()
                             .flex_none()
-                            .w(px(handle_width))
+                            .w(zpx(handle_width))
                             .bg(t.diff_empty_hunk_handle),
                     )
                 })

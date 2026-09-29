@@ -30,7 +30,7 @@ pub fn foldout_layer(
     cx: &App,
 ) -> impl IntoElement {
     let t = cx.ghd();
-    let top = TITLE_BAR_HEIGHT + TOOLBAR_HEIGHT;
+    let top = TITLE_BAR_HEIGHT() + TOOLBAR_HEIGHT();
     let viewport = window.viewport_size();
     let panel: AnyElement = match foldout {
         Foldout::Repository => panels.repository.clone().into_any_element(),
@@ -40,7 +40,7 @@ pub fn foldout_layer(
     };
     let full_height = foldout != Foldout::PushPull;
     deferred(
-        anchored().position(point(px(0.), top)).child(
+        anchored().position(point(zpx(0.), top)).child(
             div()
                 .id("foldout-container")
                 .relative()
@@ -105,22 +105,22 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
             .flex()
             .flex_row()
             .items_start()
-            .gap(SPACING)
-            .p(SPACING)
+            .gap(SPACING())
+            .p(SPACING())
             .bg(t.box_background)
             .when(!last, |d| d.border_b_1().border_color(t.box_border))
             .cursor_pointer()
             .hover(move |s| s.bg(hover_bg))
             .on_click(move |_, window, cx| on_click(window, cx))
-            .child(octicon(icon, t.text).flex_none().mt(px(1.)))
+            .child(octicon(icon, t.text).flex_none().mt(zpx(1.)))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .flex()
                     .flex_col()
-                    .gap(px(3.))
-                    .text_size(FONT_SIZE)
+                    .gap(zpx(3.))
+                    .text_size(FONT_SIZE())
                     .child(div().font_weight(FontWeight::SEMIBOLD).child(title))
                     .child(div().text_color(t.text_secondary).child(detail)),
             )
@@ -156,7 +156,7 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
                     .when(!confirm, |d| {
                         d.child(
                             div()
-                                .mt(SPACING)
+                                .mt(SPACING())
                                 .text_color(t.toolbar_dropdown_text_warning)
                                 .child(
                                     "Warning: A force push will rewrite history on the remote. Any collaborators working on this branch will need to reset their own local branch to match the history of the remote.",

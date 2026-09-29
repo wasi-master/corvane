@@ -41,10 +41,10 @@ fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
         .flex()
         .flex_row()
         .items_center()
-        .p(SPACING_DOUBLE)
+        .p(SPACING_DOUBLE())
         .border_1()
         .border_color(border)
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .bg(bg)
         .child(
             // `.text-wrapper`
@@ -53,20 +53,20 @@ fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
                 .min_w_0()
                 .flex()
                 .flex_col()
-                .mr(SPACING_DOUBLE)
+                .mr(SPACING_DOUBLE())
                 .child(
                     div()
                         .font_weight(FontWeight::SEMIBOLD)
-                        .text_size(FONT_SIZE)
-                        .line_height(px(18.))
+                        .text_size(FONT_SIZE())
+                        .line_height(zpx(18.))
                         .child(action.title),
                 )
                 .when_some(action.description, |d, desc| {
                     d.child(
                         div()
-                            .text_size(FONT_SIZE)
-                            .line_height(px(18.))
-                            .mb(SPACING_HALF)
+                            .text_size(FONT_SIZE())
+                            .line_height(zpx(18.))
+                            .mb(SPACING_HALF())
                             .child(desc),
                     )
                 })
@@ -77,9 +77,9 @@ fn card(action: SuggestedAction, cx: &App) -> impl IntoElement {
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(px(4.))
-                            .text_size(FONT_SIZE)
-                            .line_height(px(18.))
+                            .gap(zpx(4.))
+                            .text_size(FONT_SIZE())
+                            .line_height(zpx(18.))
                             .text_color(t.text_secondary)
                             .child(action.hint)
                             .child(kbd_group(action.keys, cx)),
@@ -109,41 +109,41 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
         .flex()
         .flex_col()
         .items_center()
-        .p(px(40.))
+        .p(zpx(40.))
         .bg(t.background)
         .child(
             // `.content`: full width, max 600 px, centred
             div()
                 .w_full()
-                .max_w(px(600.))
+                .max_w(zpx(600.))
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(
                     // `.interstitial-header`: text left, image bottom-aligned right
                     div()
                         .flex()
                         .flex_row()
                         .items_end()
-                        .mb(SPACING)
+                        .mb(SPACING())
                         .child(
                             div()
                                 .flex_1()
                                 .min_w_0()
-                                .mr(SPACING_DOUBLE)
+                                .mr(SPACING_DOUBLE())
                                 .flex()
                                 .flex_col()
                                 .child(
                                     div()
-                                        .text_size(px(32.))
-                                        .line_height(px(38.))
+                                        .text_size(zpx(32.))
+                                        .line_height(zpx(38.))
                                         .font_weight(FontWeight::LIGHT)
                                         .child("No local changes"),
                                 )
                                 .child(
                                     div()
-                                        .text_size(FONT_SIZE)
-                                        .line_height(px(18.))
+                                        .text_size(FONT_SIZE())
+                                        .line_height(zpx(18.))
                                         .text_color(t.text)
                                         .child(
                                             "There are no uncommitted changes in this repository. Here are some friendly suggestions for what to do next.",
@@ -152,8 +152,8 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
                         )
                         .child(
                             img("illustrations/paper-stack.svg")
-                                .w(px(73.))
-                                .h(px(70.))
+                                .w(zpx(73.))
+                                .h(zpx(70.))
                                 .flex_none(),
                         ),
                 )
@@ -171,14 +171,14 @@ pub fn multiple_selection(count: usize, cx: &App) -> impl IntoElement {
         .flex_col()
         .items_center()
         .justify_center()
-        .gap(SPACING_DOUBLE)
+        .gap(SPACING_DOUBLE())
         .bg(t.background)
         .text_color(t.text_secondary)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .child(
             img("illustrations/multiple-files-selected.svg")
-                .w(px(200.))
-                .h(px(120.)),
+                .w(zpx(200.))
+                .h(zpx(120.)),
         )
         .child(format!("{count} files selected"))
 }

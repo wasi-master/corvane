@@ -41,10 +41,19 @@ enum Tab {
 }
 
 /// `RowHeight` of the cloneable repository list.
-const LIST_ROW_HEIGHT: Pixels = px(31.);
-const LIST_HEIGHT: Pixels = px(290.);
+#[allow(non_snake_case)]
+fn LIST_ROW_HEIGHT() -> Pixels {
+    zpx(31.)
+}
+#[allow(non_snake_case)]
+fn LIST_HEIGHT() -> Pixels {
+    zpx(290.)
+}
 /// `AccountPicker` `rowHeight`.
-const ACCOUNT_ROW_HEIGHT: Pixels = px(47.);
+#[allow(non_snake_case)]
+fn ACCOUNT_ROW_HEIGHT() -> Pixels {
+    zpx(47.)
+}
 
 /// One row of the flattened, filtered repository list.
 #[derive(Clone)]
@@ -410,12 +419,12 @@ impl CloneRepositoryDialog {
         div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_THIRD)
+                    .gap(SPACING_THIRD())
                     .child(
                         div()
                             .flex()
@@ -429,8 +438,8 @@ impl CloneRepositoryDialog {
                                     .child(
                                         div()
                                             .font_family(crate::theme::MONO_FONT)
-                                            .px(px(3.))
-                                            .rounded(px(3.))
+                                            .px(zpx(3.))
+                                            .rounded(zpx(3.))
                                             .bg(t.box_alt_background)
                                             .child("hubot/cool-repo"),
                                     )
@@ -448,7 +457,7 @@ impl CloneRepositoryDialog {
             .flex()
             .flex_row()
             .items_end()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(labeled(
                 "Local Path",
                 text_box("clone-path", &self.path, None, window, cx),
@@ -472,8 +481,8 @@ impl CloneRepositoryDialog {
             .w_full()
             .child(
                 div()
-                    .mb(SPACING_THIRD)
-                    .text_size(FONT_SIZE)
+                    .mb(SPACING_THIRD())
+                    .text_size(FONT_SIZE())
                     .child("Account"),
             )
             .child(
@@ -484,15 +493,15 @@ impl CloneRepositoryDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
-                    .h(px(25.))
-                    .px(SPACING_HALF)
-                    .rounded(BORDER_RADIUS)
+                    .gap(SPACING_HALF())
+                    .h(zpx(25.))
+                    .px(SPACING_HALF())
+                    .rounded(BORDER_RADIUS())
                     .border_1()
                     .border_color(t.secondary_button_border)
                     .bg(t.secondary_button_background)
                     .text_color(t.secondary_button_text)
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .cursor_pointer()
                     .hover(move |s| s.bg(hover_bg))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -528,13 +537,13 @@ impl CloneRepositoryDialog {
         let t = cx.ghd();
         let anchor = self.account_button_bounds.get();
         let viewport = window.viewport_size();
-        let width = px(365.);
+        let width = zpx(365.);
         let x = anchor
             .origin
             .x
-            .min(viewport.width - width - px(8.))
-            .max(px(8.));
-        let y = anchor.origin.y + anchor.size.height + px(4.);
+            .min(viewport.width - width - zpx(8.))
+            .max(zpx(8.));
+        let y = anchor.origin.y + anchor.size.height + zpx(4.);
         let query = self.account_filter.read(cx).value().trim().to_lowercase();
         let current = self.account(cx);
         let accounts: Vec<Account> = self
@@ -554,7 +563,7 @@ impl CloneRepositoryDialog {
             cx.notify();
         });
         deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("clone-account-layer")
                     .relative()
@@ -580,16 +589,16 @@ impl CloneRepositoryDialog {
                             .left(x)
                             .top(y)
                             .w(width)
-                            .min_h(px(200.))
-                            .max_h(px(500.))
+                            .min_h(zpx(200.))
+                            .max_h(zpx(500.))
                             .flex()
                             .flex_col()
                             .bg(t.box_background)
                             .text_color(t.text)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .border_1()
                             .border_color(t.box_border)
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .shadow_lg()
                             .overflow_hidden()
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -600,8 +609,8 @@ impl CloneRepositoryDialog {
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(SPACING)
-                                    .p(SPACING)
+                                    .gap(SPACING())
+                                    .p(SPACING())
                                     .border_b_1()
                                     .border_color(t.box_border)
                                     .child(
@@ -622,9 +631,9 @@ impl CloneRepositoryDialog {
                             .child(
                                 div()
                                     .flex_none()
-                                    .mt(SPACING)
-                                    .mx(SPACING)
-                                    .mb(SPACING_HALF)
+                                    .mt(SPACING())
+                                    .mx(SPACING())
+                                    .mb(SPACING_HALF())
                                     .child(text_box(
                                         "clone-account-filter",
                                         &self.account_filter,
@@ -661,12 +670,12 @@ impl CloneRepositoryDialog {
                                                 "clone-account-{}@{}",
                                                 account.login, account.endpoint
                                             )))
-                                            .h(ACCOUNT_ROW_HEIGHT)
+                                            .h(ACCOUNT_ROW_HEIGHT())
                                             .flex_none()
                                             .flex()
                                             .flex_row()
                                             .items_center()
-                                            .px(SPACING)
+                                            .px(SPACING())
                                             .cursor_pointer()
                                             .text_color(fg)
                                             .when(is_selected, |d| d.bg(selected_bg))
@@ -676,12 +685,12 @@ impl CloneRepositoryDialog {
                                             .on_click(cx.listener(move |this, _, _, cx| {
                                                 this.pick_account(&picked, cx)
                                             }))
-                                            .child(avatar_image(avatar, px(32.), cx))
+                                            .child(avatar_image(avatar, zpx(32.), cx))
                                             .child(
                                                 div()
                                                     .flex_1()
                                                     .min_w_0()
-                                                    .mx(SPACING)
+                                                    .mx(SPACING())
                                                     .flex()
                                                     .flex_col()
                                                     .child(
@@ -694,7 +703,7 @@ impl CloneRepositoryDialog {
                                                         div()
                                                             .truncate()
                                                             .font_weight(FontWeight::LIGHT)
-                                                            .text_size(FONT_SIZE_SM)
+                                                            .text_size(FONT_SIZE_SM())
                                                             .text_color(secondary)
                                                             .child(account.host()),
                                                     ),
@@ -722,8 +731,8 @@ impl CloneRepositoryDialog {
                 .flex()
                 .flex_col()
                 .items_start()
-                .gap(SPACING)
-                .py(SPACING)
+                .gap(SPACING())
+                .py(SPACING())
                 .child(format!(
                     "Sign in to your {host} account to access your repositories."
                 ))
@@ -772,8 +781,8 @@ impl CloneRepositoryDialog {
                     .child(
                         div()
                             .font_family(crate::theme::MONO_FONT)
-                            .px(px(3.))
-                            .rounded(px(3.))
+                            .px(zpx(3.))
+                            .rounded(zpx(3.))
                             .bg(t.box_alt_background)
                             .child(query.clone()),
                     )
@@ -784,8 +793,8 @@ impl CloneRepositoryDialog {
                     "Looks like there are no repositories for ".into(),
                     div()
                         .font_family(crate::theme::MONO_FONT)
-                        .px(px(3.))
-                        .rounded(px(3.))
+                        .px(zpx(3.))
+                        .rounded(zpx(3.))
                         .bg(t.box_alt_background)
                         .child(account.login.clone())
                         .into_any_element()
@@ -807,8 +816,8 @@ impl CloneRepositoryDialog {
                 .flex()
                 .items_center()
                 .justify_center()
-                .p(SPACING_DOUBLE)
-                .text_size(FONT_SIZE)
+                .p(SPACING_DOUBLE())
+                .text_size(FONT_SIZE())
                 .text_align(TextAlign::Center)
                 .child(message)
                 .into_any_element()
@@ -825,12 +834,12 @@ impl CloneRepositoryDialog {
                         .map(|ix| match &rows[ix] {
                             CloneRow::Header(title) => div()
                                 .id(ix)
-                                .h(LIST_ROW_HEIGHT)
-                                .px(SPACING)
+                                .h(LIST_ROW_HEIGHT())
+                                .px(SPACING())
                                 .flex()
                                 .items_center()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .text_size(FONT_SIZE_SM)
+                                .text_size(FONT_SIZE_SM())
                                 .text_color(t.text_secondary)
                                 .child(title.clone())
                                 .into_any_element(),
@@ -850,14 +859,14 @@ impl CloneRepositoryDialog {
                                 let text = repo.full_name();
                                 div()
                                     .id(ix)
-                                    .h(LIST_ROW_HEIGHT)
-                                    .px(SPACING)
+                                    .h(LIST_ROW_HEIGHT())
+                                    .px(SPACING())
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(SPACING_HALF)
+                                    .gap(SPACING_HALF())
                                     .cursor_pointer()
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .when(is_selected, |d| {
                                         d.bg(t.box_selected_active_background)
                                             .text_color(t.box_selected_active_text)
@@ -884,13 +893,13 @@ impl CloneRepositoryDialog {
                                         d.child(
                                             div()
                                                 .flex_none()
-                                                .ml(SPACING_HALF)
-                                                .px(px(3.))
-                                                .py(px(1.))
-                                                .rounded(BORDER_RADIUS)
+                                                .ml(SPACING_HALF())
+                                                .px(zpx(3.))
+                                                .py(zpx(1.))
+                                                .rounded(BORDER_RADIUS())
                                                 .border_1()
                                                 .border_color(t.box_border_contrast)
-                                                .text_size(FONT_SIZE_XS)
+                                                .text_size(FONT_SIZE_XS())
                                                 .child("ARCHIVED"),
                                         )
                                     })
@@ -911,7 +920,7 @@ impl CloneRepositoryDialog {
         div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .children(picker)
             .children(popover)
             .child(
@@ -920,7 +929,7 @@ impl CloneRepositoryDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(text_box(
                         "clone-filter",
                         &self.filter,
@@ -932,7 +941,7 @@ impl CloneRepositoryDialog {
                         button("clone-refresh", "", cx)
                             .icon_button_label("Refresh the list of repositories")
                             .flex_none()
-                            .px(SPACING_HALF)
+                            .px(SPACING_HALF())
                             .when(loading, |d| d.opacity(0.6))
                             .on_click(move |_, _, cx| {
                                 if !loading {
@@ -944,11 +953,11 @@ impl CloneRepositoryDialog {
             )
             .child(
                 div()
-                    .h(LIST_HEIGHT)
+                    .h(LIST_HEIGHT())
                     .w_full()
                     .border_1()
                     .border_color(t.box_border)
-                    .rounded(BORDER_RADIUS)
+                    .rounded(BORDER_RADIUS())
                     .overflow_hidden()
                     .child(list),
             )
@@ -1027,11 +1036,11 @@ impl Render for CloneRepositoryDialog {
             div()
                 .flex()
                 .flex_col()
-                .w(px(560.))
+                .w(zpx(560.))
                 .when_some(error, |d, message| {
                     d.child(dialog_error_banner(message, cx))
                 })
-                .child(div().mb(SPACING).child(tab_bar(
+                .child(div().mb(SPACING()).child(tab_bar(
                     vec![
                         TabModel {
                             id: "clone-tab-dotcom",

@@ -20,9 +20,9 @@ pub fn cloning_view(clone: &CloneState, cx: &App) -> impl IntoElement {
         .bg(t.background)
         .child(
             div()
-                .w(px(600.))
-                .mt(px(-60.))
-                .p(SPACING_DOUBLE)
+                .w(zpx(600.))
+                .mt(zpx(-60.))
+                .p(SPACING_DOUBLE())
                 .flex()
                 .flex_col()
                 .child(
@@ -30,16 +30,16 @@ pub fn cloning_view(clone: &CloneState, cx: &App) -> impl IntoElement {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .mb(SPACING)
+                        .mb(SPACING())
                         .child(
                             octicon(Octicon::DesktopDownload, t.text)
-                                .size(px(32.))
-                                .mr(SPACING)
-                                .mt(px(4.)),
+                                .size(zpx(32.))
+                                .mr(SPACING())
+                                .mt(zpx(4.)),
                         )
                         .child(
                             div()
-                                .text_size(px(32.))
+                                .text_size(zpx(32.))
                                 .font_weight(FontWeight::LIGHT)
                                 .truncate()
                                 .child(format!("Cloning {}", clone.path.display())),
@@ -49,16 +49,16 @@ pub fn cloning_view(clone: &CloneState, cx: &App) -> impl IntoElement {
                     // `progress`: 10 px track, text-colour fill
                     div()
                         .w_full()
-                        .h(px(10.))
-                        .rounded(px(5.))
+                        .h(zpx(10.))
+                        .rounded(zpx(5.))
                         .bg(t.box_alt_background)
                         .overflow_hidden()
                         .child(div().h_full().w(relative(fraction)).bg(t.text)),
                 )
                 .child(
                     div()
-                        .mt(SPACING)
-                        .text_size(FONT_SIZE)
+                        .mt(SPACING())
+                        .text_size(FONT_SIZE())
                         .text_color(t.text_secondary)
                         .truncate()
                         .child(clone.description.clone()),

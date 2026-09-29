@@ -28,13 +28,28 @@ use crate::theme::{ActiveGhdTheme, c, primer};
 use crate::widgets::{Inline, ListRowA11y, button, code_ref, kbd_group, link_button, paragraph};
 
 /// `.tutorial-panel-component { flex: 1 1 350px; max-width: 350px }`
-pub const TUTORIAL_PANEL_WIDTH: Pixels = px(350.);
+#[allow(non_snake_case)]
+pub fn TUTORIAL_PANEL_WIDTH() -> Pixels {
+    zpx(350.)
+}
 /// `--spacing-triple`, `--spacing-quad`, `--spacing-quint`
-const SPACING_TRIPLE: Pixels = px(30.);
-const SPACING_QUAD: Pixels = px(40.);
-const SPACING_QUINT: Pixels = px(50.);
+#[allow(non_snake_case)]
+fn SPACING_TRIPLE() -> Pixels {
+    zpx(30.)
+}
+#[allow(non_snake_case)]
+fn SPACING_QUAD() -> Pixels {
+    zpx(40.)
+}
+#[allow(non_snake_case)]
+fn SPACING_QUINT() -> Pixels {
+    zpx(50.)
+}
 /// `--font-size-xl`
-const FONT_SIZE_XL: Pixels = px(32.);
+#[allow(non_snake_case)]
+fn FONT_SIZE_XL() -> Pixels {
+    zpx(32.)
+}
 
 /// GHD suggests Visual Studio Code (`suggestedExternalEditor`) or Atom.
 const SUGGESTED_EDITOR: (&str, &str) = ("Visual Studio Code", "https://code.visualstudio.com");
@@ -76,8 +91,8 @@ impl TutorialPanel {
         let circle = |bg: Hsla, border: Hsla| {
             div()
                 .flex_none()
-                .size(px(18.))
-                .mr(SPACING)
+                .size(zpx(18.))
+                .mr(SPACING())
                 .rounded_full()
                 .border_1()
                 .border_color(border)
@@ -85,7 +100,7 @@ impl TutorialPanel {
                 .flex()
                 .items_center()
                 .justify_center()
-                .text_size(FONT_SIZE_SM)
+                .text_size(FONT_SIZE_SM())
         };
         let badge_text = if t.is_dark() {
             c(primer::GRAY_300)
@@ -94,7 +109,7 @@ impl TutorialPanel {
         };
         let icon: AnyElement = if complete {
             circle(c(primer::GREEN), c(primer::GREEN))
-                .child(octicon(Octicon::Check, badge_text).size(px(12.)))
+                .child(octicon(Octicon::Check, badge_text).size(zpx(12.)))
                 .into_any_element()
         } else if next {
             circle(c(primer::BLUE), c(primer::BLUE))
@@ -117,8 +132,8 @@ impl TutorialPanel {
             .flex()
             .flex_row()
             .items_center()
-            .p(SPACING_DOUBLE)
-            .when(open, |d| d.pb(SPACING))
+            .p(SPACING_DOUBLE())
+            .when(open, |d| d.pb(SPACING()))
             .font_weight(FontWeight::SEMIBOLD)
             .cursor_pointer()
             .on_click(move |_, _, cx| {
@@ -173,11 +188,11 @@ impl TutorialPanel {
                 d.child(
                     // `details .contents`
                     div()
-                        .pl(SPACING_TRIPLE)
-                        .pb(SPACING_DOUBLE)
-                        .pr(SPACING)
-                        .text_size(FONT_SIZE)
-                        .line_height(px(18.))
+                        .pl(SPACING_TRIPLE())
+                        .pb(SPACING_DOUBLE())
+                        .pr(SPACING())
+                        .text_size(FONT_SIZE())
+                        .line_height(zpx(18.))
                         .child(contents),
                 )
             })
@@ -190,7 +205,7 @@ fn contents(description: AnyElement, action: Option<AnyElement>) -> AnyElement {
     div()
         .flex()
         .flex_col()
-        .child(div().mb(SPACING).child(description))
+        .child(div().mb(SPACING()).child(description))
         .children(action)
         .into_any_element()
 }
@@ -201,7 +216,7 @@ fn action_row(children: Vec<AnyElement>) -> AnyElement {
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING)
+        .gap(SPACING())
         .children(children)
         .into_any_element()
 }
@@ -365,11 +380,11 @@ impl Render for TutorialPanel {
                         .into_any_element(),
                     Some(action_row(vec![
                         button("tutorial-open-pr", "", cx)
-                            .gap(SPACING)
+                            .gap(SPACING())
                             .role(Role::Link)
                             .aria_label("Open Pull Request")
                             .child("Open Pull Request")
-                            .child(octicon(Octicon::LinkExternal, t.text_secondary).size(px(14.)))
+                            .child(octicon(Octicon::LinkExternal, t.text_secondary).size(zpx(14.)))
                             .on_click(|_, _, cx| {
                                 // `openPullRequest`: close the step first, then open
                                 Dispatcher::mark_pull_request_tutorial_step_complete(cx);
@@ -395,21 +410,21 @@ impl Render for TutorialPanel {
             .id("tutorial-panel")
             .role(Role::Complementary)
             .aria_label("Tutorial")
-            .w(TUTORIAL_PANEL_WIDTH)
+            .w(TUTORIAL_PANEL_WIDTH())
             .flex_none()
             .h_full()
             .flex()
             .flex_col()
             .bg(t.background)
             .text_color(t.text)
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .border_l_1()
             .border_color(t.box_border)
             .shadow(vec![BoxShadow {
                 color: t.shadow,
-                offset: point(px(0.), px(2.)),
-                blur_radius: px(7.),
-                spread_radius: px(0.),
+                offset: point(zpx(0.), zpx(2.)),
+                blur_radius: zpx(7.),
+                spread_radius: zpx(0.),
                 inset: false,
             }])
             .overflow_y_scroll()
@@ -420,25 +435,25 @@ impl Render for TutorialPanel {
                     .flex_row()
                     .items_center()
                     .justify_between()
-                    .p(SPACING_TRIPLE)
-                    .pl(SPACING_QUINT)
-                    .pr(SPACING_DOUBLE)
+                    .p(SPACING_TRIPLE())
+                    .pl(SPACING_QUINT())
+                    .pr(SPACING_DOUBLE())
                     .border_b_1()
                     .border_color(t.box_border)
                     .child(
                         div()
-                            .text_size(FONT_SIZE_LG)
+                            .text_size(FONT_SIZE_LG())
                             .font_weight(FontWeight::LIGHT)
                             .child("Get started"),
                     )
-                    .child(img("illustrations/required-status-check.svg").size(px(46.))),
+                    .child(img("illustrations/required-status-check.svg").size(zpx(46.))),
             )
             .children(steps)
             .child(
                 // `.footer`
                 div()
                     .mt_auto()
-                    .py(SPACING_DOUBLE)
+                    .py(SPACING_DOUBLE())
                     .flex()
                     .justify_center()
                     .child(
@@ -455,13 +470,13 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
     let t = cx.ghd();
     let definition = |image: &'static str, bold: &'static str, rest: &'static str| {
         div()
-            .w(px(160.))
+            .w(zpx(160.))
             .flex_none()
             .flex()
             .flex_col()
-            .px(SPACING_HALF)
-            .pb(SPACING_DOUBLE)
-            .child(img(image).size(px(48.)).self_center())
+            .px(SPACING_HALF())
+            .pb(SPACING_DOUBLE())
+            .child(img(image).size(zpx(48.)).self_center())
             .child(
                 paragraph(vec![
                     Inline::Element(
@@ -472,7 +487,7 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
                     ),
                     rest.into(),
                 ])
-                .mt(SPACING),
+                .mt(SPACING()),
             )
     };
     div()
@@ -481,11 +496,11 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
         .flex()
         .flex_col()
         .items_center()
-        .px(SPACING_TRIPLE)
+        .px(SPACING_TRIPLE())
         .overflow_y_scroll()
         .bg(t.background)
         .text_color(t.text)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .child(
             // `.header`
             div()
@@ -493,19 +508,19 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
                 .flex()
                 .flex_col()
                 .items_center()
-                .my(SPACING_QUINT)
-                .pt(SPACING_DOUBLE)
+                .my(SPACING_QUINT())
+                .pt(SPACING_DOUBLE())
                 .text_center()
                 .child(
                     div()
-                        .text_size(FONT_SIZE_XL)
-                        .line_height(px(35.))
+                        .text_size(FONT_SIZE_XL())
+                        .line_height(zpx(35.))
                         .font_weight(FontWeight::LIGHT)
-                        .my(px(21.))
+                        .my(zpx(21.))
                         .child("Welcome to Corvane"),
                 )
                 .child(
-                    div().my(SPACING_THIRD).child(
+                    div().my(SPACING_THIRD()).child(
                         "Use this tutorial to get comfortable with Git, GitHub, and Corvane.",
                     ),
                 ),
@@ -513,7 +528,7 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
         .child(
             // `.definitions`
             div()
-                .max_w(px(600.))
+                .max_w(zpx(600.))
                 .flex()
                 .flex_row()
                 .flex_wrap()
@@ -552,31 +567,31 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
             .flex()
             .flex_row()
             .items_center()
-            .p(SPACING_DOUBLE)
+            .p(SPACING_DOUBLE())
             .border_1()
             .border_color(t.box_border)
-            .rounded(BORDER_RADIUS)
+            .rounded(BORDER_RADIUS())
             .bg(t.background)
             .child(
                 div()
                     .flex_none()
-                    .mr(SPACING_DOUBLE)
-                    .child(octicon(icon, t.text).size(px(24.))),
+                    .mr(SPACING_DOUBLE())
+                    .child(octicon(icon, t.text).size(zpx(24.))),
             )
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
-                    .mr(SPACING_DOUBLE)
+                    .mr(SPACING_DOUBLE())
                     .flex()
                     .flex_col()
                     .child(
                         div()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .line_height(px(18.))
+                            .line_height(zpx(18.))
                             .child(title),
                     )
-                    .child(div().line_height(px(18.)).child(description)),
+                    .child(div().line_height(zpx(18.)).child(description)),
             )
             .child(button(id, label, cx).on_click(move |_, _, cx| on_click(cx)))
     };
@@ -586,15 +601,15 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
         .flex()
         .flex_col()
         .items_center()
-        .p(SPACING_QUAD)
+        .p(SPACING_QUAD())
         .overflow_y_scroll()
         .bg(t.background)
         .text_color(t.text)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .child(
             div()
                 .w_full()
-                .max_w(px(600.))
+                .max_w(zpx(600.))
                 .flex()
                 .flex_col()
                 .child(
@@ -602,7 +617,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                     div()
                         .flex()
                         .flex_row()
-                        .mb(SPACING_DOUBLE)
+                        .mb(SPACING_DOUBLE())
                         .child(
                             div()
                                 .id("tutorial-done-header")
@@ -610,11 +625,11 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                                     "You're done! You’ve learned the basics on how to use Corvane.",
                                 )
                                 .flex_1()
-                                .mr(SPACING_DOUBLE)
+                                .mr(SPACING_DOUBLE())
                                 .child(
                                     div()
-                                        .text_size(FONT_SIZE_XL)
-                                        .line_height(px(35.))
+                                        .text_size(FONT_SIZE_XL())
+                                        .line_height(zpx(35.))
                                         .font_weight(FontWeight::LIGHT)
                                         .child("You're done!"),
                                 )
@@ -627,8 +642,8 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             img("illustrations/admin-mentoring.svg")
                                 .flex_none()
                                 .self_end()
-                                .w(px(73.))
-                                .h(px(70.)),
+                                .w(zpx(73.))
+                                .h(zpx(70.)),
                         ),
                 )
                 .child(
@@ -636,7 +651,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                     div()
                         .flex()
                         .flex_col()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .child(action(
                             "tutorial-explore",
                             Octicon::Telescope,

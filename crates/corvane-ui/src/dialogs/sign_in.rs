@@ -102,7 +102,7 @@ impl SignInDialog {
                 .flex()
                 .flex_col()
                 .items_start()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(
                     "Corvane will show you a one-time code and open GitHub in your browser. \
                      Enter the code there to authorise this app.",
@@ -140,32 +140,32 @@ impl SignInDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(format!("Enter this code at {verification_uri} to sign in:"))
                     .child(
                         div()
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING)
+                            .gap(SPACING())
                             .child(
                                 div()
-                                    .px(SPACING_DOUBLE)
-                                    .py(SPACING)
-                                    .rounded(BORDER_RADIUS)
+                                    .px(SPACING_DOUBLE())
+                                    .py(SPACING())
+                                    .rounded(BORDER_RADIUS())
                                     .border_1()
                                     .border_color(t.box_border_contrast)
                                     .bg(t.box_alt_background)
                                     .font_family(crate::theme::MONO_FONT)
-                                    .text_size(px(28.))
-                                    .line_height(px(34.))
+                                    .text_size(zpx(28.))
+                                    .line_height(zpx(34.))
                                     .child(user_code.clone()),
                             )
                             .child(
                                 button("sign-in-copy", "Copy code", cx)
                                     .child(
                                         octicon(Octicon::Copy, t.secondary_button_text)
-                                            .ml(SPACING_HALF),
+                                            .ml(SPACING_HALF()),
                                     )
                                     .on_click(move |_, _, cx| {
                                         cx.write_to_clipboard(ClipboardItem::new_string(
@@ -177,7 +177,7 @@ impl SignInDialog {
                                 button("sign-in-open", "Open GitHub", cx)
                                     .child(
                                         octicon(Octicon::LinkExternal, t.secondary_button_text)
-                                            .ml(SPACING_HALF),
+                                            .ml(SPACING_HALF()),
                                     )
                                     .on_click(move |_, _, cx| cx.open_url(&uri)),
                             ),
@@ -196,7 +196,7 @@ impl SignInDialog {
             Some(SignInStep::Error(message)) => div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(div().text_color(t.error).child(message))
                 .child(
                     primary_button("sign-in-retry", "Try again", false, cx).on_click(|_, _, cx| {
@@ -232,7 +232,7 @@ impl Render for SignInDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(labeled(
                         "Enterprise address",
                         text_box("sign-in-address", &self.address, None, window, cx),
@@ -262,7 +262,7 @@ impl Render for SignInDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(
                         "Create a token with the repo, workflow, read:user and user:email scopes, \
                          then paste it here.",
@@ -310,7 +310,7 @@ impl Render for SignInDialog {
         dialog(
             "sign-in",
             self.title(),
-            div().w(px(560.)).child(body),
+            div().w(zpx(560.)).child(body),
             buttons,
             close,
             window,

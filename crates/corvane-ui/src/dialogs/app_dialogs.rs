@@ -28,7 +28,12 @@ impl AboutDialog {
     /// doing, and "Check for Updates" / "Quit and Install Update".
     fn update_section(&self, cx: &App) -> Div {
         let t = cx.ghd();
-        let section = div().w_full().flex().flex_col().items_center().gap(SPACING);
+        let section = div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(SPACING());
         if !corvane_core::updater::updates_enabled() {
             return section.child(
                 div()
@@ -49,7 +54,7 @@ impl AboutDialog {
                 .flex_row()
                 .items_center()
                 .justify_center()
-                .gap(SPACING_HALF)
+                .gap(SPACING_HALF())
                 .text_align(TextAlign::Center)
                 .when(loading, |d| {
                     d.child(crate::icons::loading("about-update-spinner", t.text))
@@ -135,11 +140,11 @@ impl Render for AboutDialog {
         let no_check_yet = corvane_core::updater::updates_enabled()
             && self.state.read(cx).update.last_successful_check.is_none();
         let content = div()
-            .w(px(400.))
+            .w(zpx(400.))
             .flex()
             .flex_col()
             .items_center()
-            .gap(SPACING)
+            .gap(SPACING())
             .when(no_check_yet, |d| {
                 d.child(crate::widgets::dialog_error_banner(
                     "Couldn't determine the last time an update check was performed. You may be \
@@ -147,10 +152,10 @@ impl Render for AboutDialog {
                     cx,
                 ))
             })
-            .child(img("icon/Corvane-256.png").size(px(64.)))
+            .child(img("icon/Corvane-256.png").size(zpx(64.)))
             .child(
                 div()
-                    .text_size(FONT_SIZE_MD)
+                    .text_size(FONT_SIZE_MD())
                     .font_weight(FontWeight::SEMIBOLD)
                     .child("Corvane"),
             )
@@ -161,13 +166,13 @@ impl Render for AboutDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(4.))
+                    .gap(zpx(4.))
                     .cursor_pointer()
                     .on_click(move |_, _, cx| {
                         cx.write_to_clipboard(ClipboardItem::new_string(version_for_copy.clone()))
                     })
                     .child(format!("Version {version} ({})", std::env::consts::ARCH))
-                    .child(octicon(Octicon::Copy, t.text_secondary).size(px(12.))),
+                    .child(octicon(Octicon::Copy, t.text_secondary).size(zpx(12.))),
             )
             .child(
                 link_button("about-release-notes", "release notes", cx).on_click(|_, _, cx| {
@@ -177,11 +182,11 @@ impl Render for AboutDialog {
             .child(self.update_section(cx))
             .child(
                 div()
-                    .mt(SPACING)
+                    .mt(SPACING())
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(
                         // GHD `onShowAcknowledgements`
                         link_button("about-license", "License and Open Source Notices", cx)
@@ -247,10 +252,10 @@ impl Render for ConfirmRemoveRepositoryDialog {
         let trash = self.move_to_trash;
         let weak = cx.weak_entity();
         let content = div()
-            .w(px(400.))
+            .w(zpx(400.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(format!(
                 "Are you sure you want to remove the repository \"{name}\" from Corvane?"
             ))
@@ -258,13 +263,13 @@ impl Render for ConfirmRemoveRepositoryDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child("The repository will be removed from Corvane:")
                     .child(
                         div()
                             .font_family(crate::theme::MONO_FONT)
-                            .px(px(3.))
-                            .rounded(px(3.))
+                            .px(zpx(3.))
+                            .rounded(zpx(3.))
                             .bg(t.box_alt_background)
                             .child(path),
                     ),
@@ -414,7 +419,7 @@ impl Render for IntegrationErrorDialog {
             id,
             DialogKind::Error,
             title,
-            div().w(px(450.)).child(message),
+            div().w(zpx(450.)).child(message),
             buttons,
             close,
             window,

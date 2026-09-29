@@ -175,9 +175,9 @@ impl McoDialog {
             && selected.as_deref() != Some(current.as_str());
         let base_for_ok = selected.clone();
         let content = div()
-            .w(px(450.))
-            .mx(px(-20.))
-            .mt(px(-20.))
+            .w(zpx(450.))
+            .mx(zpx(-20.))
+            .mt(zpx(-20.))
             .flex()
             .flex_col()
             .child(list)
@@ -274,9 +274,9 @@ impl McoDialog {
         let selected_for_ok = selected.clone();
         let query_for_ok = query.clone();
         let content = div()
-            .w(px(450.))
-            .mx(px(-20.))
-            .mt(px(-20.))
+            .w(zpx(450.))
+            .mx(zpx(-20.))
+            .mt(zpx(-20.))
             .flex()
             .flex_col()
             .child(list);
@@ -329,7 +329,7 @@ impl McoDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(format!("Are you sure you want to {lower}?"))
             .child(format!(
                 "At the end of the {lower} flow, Corvane will enable you to force push the branch to update the upstream branch. Force pushing will alter the history on the remote and potentially cause problems for others collaborating on this branch."
@@ -340,7 +340,7 @@ impl McoDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_ask_force_push = !this.dont_ask_force_push;
@@ -394,16 +394,16 @@ impl McoDialog {
         };
         let p = mco.progress.clone();
         let content = div()
-            .w(px(400.))
+            .w(zpx(400.))
             .flex()
             .flex_col()
             .child(
                 // <progress>
                 div()
                     .w_full()
-                    .h(px(6.))
-                    .mb(SPACING)
-                    .rounded(px(3.))
+                    .h(zpx(6.))
+                    .mb(SPACING())
+                    .rounded(zpx(3.))
                     .bg(t.box_alt_background)
                     .overflow_hidden()
                     .child(
@@ -418,12 +418,12 @@ impl McoDialog {
                 div()
                     .flex()
                     .flex_row()
-                    .pt(SPACING)
-                    .pb(SPACING_DOUBLE)
+                    .pt(SPACING())
+                    .pb(SPACING_DOUBLE())
                     .child(green_circle(cx))
                     .child(
                         div()
-                            .pl(SPACING)
+                            .pl(SPACING())
                             .flex()
                             .flex_col()
                             .child(
@@ -476,22 +476,22 @@ impl McoDialog {
         let resolved_count = resolved_files(&status, &resolutions).len();
         let close = move |_: &mut Window, cx: &mut App| Dispatcher::hide_conflicts(repo, cx);
 
-        let mut content = div().w(px(460.)).flex().flex_col();
+        let mut content = div().w(zpx(460.)).flex().flex_col();
         if resolved_count > 0 {
             // `DialogSuccess`
             content = content.child(
                 div()
-                    .mb(SPACING)
-                    .px(SPACING)
-                    .py(SPACING_HALF)
-                    .rounded(BORDER_RADIUS)
+                    .mb(SPACING())
+                    .px(SPACING())
+                    .py(SPACING_HALF())
+                    .rounded(BORDER_RADIUS())
                     .bg(t.box_alt_background)
                     .border_1()
                     .border_color(t.color_new)
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child(octicon(Octicon::Check, t.color_new))
                     .child(if conflicted_count == 0 {
                         "All conflicted files have been resolved.".to_string()
@@ -514,16 +514,16 @@ impl McoDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .py(SPACING)
+                    .py(SPACING())
                     .child(green_circle(cx))
-                    .child(div().pl(SPACING).child("All conflicts resolved")),
+                    .child(div().pl(SPACING()).child("All conflicts resolved")),
             );
         } else {
             content = content
                 .child(
                     div()
-                        .mb(SPACING_DOUBLE)
-                        .text_size(FONT_SIZE_MD)
+                        .mb(SPACING_DOUBLE())
+                        .text_size(FONT_SIZE_MD())
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(if conflicted_count == 1 {
                             "1 conflicted file".to_string()
@@ -534,11 +534,11 @@ impl McoDialog {
                 .child(
                     div()
                         .id("unmerged-files")
-                        .max_h(px(285.))
+                        .max_h(zpx(285.))
                         .overflow_y_scroll()
                         .flex()
                         .flex_col()
-                        .gap(SPACING_DOUBLE)
+                        .gap(SPACING_DOUBLE())
                         .children(unmerged.iter().map(|file| {
                             unmerged_file_row(
                                 repo,
@@ -554,7 +554,7 @@ impl McoDialog {
                 )
                 .child(
                     div()
-                        .mt(SPACING_DOUBLE)
+                        .mt(SPACING_DOUBLE())
                         .flex()
                         .flex_row()
                         .flex_wrap()
@@ -617,7 +617,7 @@ impl McoDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(format!("Are you sure you want to abort this {}?", kind.lower()))
             .child(
                 "This will take you back to the original branch state and the conflicts you have already resolved will be discarded.",
@@ -680,7 +680,7 @@ fn green_circle(cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .flex_none()
-        .size(px(22.))
+        .size(zpx(22.))
         .rounded_full()
         .bg(t.color_new)
         .flex()
@@ -696,14 +696,14 @@ fn status_preview(icon: Octicon, color: Hsla, message: AnyElement, cx: &App) -> 
         .flex()
         .flex_col()
         .items_center()
-        .px(SPACING_DOUBLE)
-        .pt(SPACING_HALF)
-        .pb(SPACING)
+        .px(SPACING_DOUBLE())
+        .pt(SPACING_HALF())
+        .pb(SPACING())
         .child(
             div()
                 .relative()
                 .w_full()
-                .h(px(20.))
+                .h(zpx(20.))
                 .flex()
                 .justify_center()
                 .child(
@@ -711,20 +711,20 @@ fn status_preview(icon: Octicon, color: Hsla, message: AnyElement, cx: &App) -> 
                         .absolute()
                         .left_0()
                         .right_0()
-                        .top(px(10.))
-                        .h(px(1.))
+                        .top(zpx(10.))
+                        .h(zpx(1.))
                         .bg(t.box_border),
                 )
                 .child(
                     div()
-                        .px(SPACING_HALF)
+                        .px(SPACING_HALF())
                         .bg(t.background)
                         .child(octicon(icon, color)),
                 ),
         )
         .child(
             div()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .text_color(t.text_secondary)
                 .text_center()
                 .child(message),
@@ -791,14 +791,14 @@ fn unmerged_file_row(
         .flex_col()
         .flex_1()
         .min_w_0()
-        .pr(SPACING)
+        .pr(SPACING())
         .child(div().truncate().child(file.path.clone()));
     let row = div()
         .flex()
         .flex_row()
         .items_center()
         .w_full()
-        .child(octicon(Octicon::FileCode, t.text).mr(SPACING));
+        .child(octicon(Octicon::FileCode, t.text).mr(SPACING()));
     if !unresolved {
         // resolved: status line + Undo (manual) + green check
         let summary = match (resolution, status.conflict_markers) {
@@ -813,7 +813,7 @@ fn unmerged_file_row(
             .child(
                 path_text.child(
                     div()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.color_new)
                         .child(summary),
                 ),
@@ -825,7 +825,7 @@ fn unmerged_file_row(
                         "Undo",
                         cx,
                     )
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .on_click(move |_, _, cx| {
                         Dispatcher::set_manual_resolution(repo, undo_path.clone(), None, cx)
                     }),
@@ -845,7 +845,7 @@ fn unmerged_file_row(
             row.child(
                 path_text.child(
                     div()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.color_conflicted)
                         .child(if conflicts == 1 {
                             "1 conflict".to_string()
@@ -865,8 +865,8 @@ fn unmerged_file_row(
                             "Open in editor",
                             cx,
                         )
-                        .rounded_tr(px(0.))
-                        .rounded_br(px(0.))
+                        .rounded_tr(zpx(0.))
+                        .rounded_br(zpx(0.))
                         .on_click(move |_, _, cx| {
                             if let Some(p) = &open_path {
                                 cx.open_with_system(p);
@@ -879,10 +879,10 @@ fn unmerged_file_row(
                             "",
                             cx,
                         )
-                        .rounded_tl(px(0.))
-                        .rounded_bl(px(0.))
-                        .ml(px(-1.))
-                        .px(SPACING_HALF)
+                        .rounded_tl(zpx(0.))
+                        .rounded_bl(zpx(0.))
+                        .ml(zpx(-1.))
+                        .px(SPACING_HALF())
                         .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                         .on_click(cx.listener(
                             move |_, ev: &ClickEvent, window, cx| {
@@ -930,7 +930,7 @@ fn unmerged_file_row(
             row.child(
                 path_text.child(
                     div()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.color_conflicted)
                         .child(text),
                 ),
@@ -941,7 +941,7 @@ fn unmerged_file_row(
                     "Resolve",
                     cx,
                 )
-                .gap(SPACING_HALF)
+                .gap(SPACING_HALF())
                 .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                 .on_click(cx.listener(move |_, ev: &ClickEvent, window, cx| {
                     let position = ev.mouse_position().unwrap_or_default();
@@ -1048,7 +1048,7 @@ impl Render for LocalChangesOverwrittenDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(format!(
                 "Unable to {} when changes are present on your branch.{}",
                 self.retry.name(),
@@ -1062,13 +1062,13 @@ impl Render for LocalChangesOverwrittenDialog {
                 d.child(
                     div()
                         .id("overwritten-files")
-                        .max_h(px(200.))
+                        .max_h(zpx(200.))
                         .overflow_y_scroll()
                         .flex()
                         .flex_col()
-                        .gap(px(2.))
+                        .gap(zpx(2.))
                         .font_family(crate::theme::MONO_FONT)
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.text_secondary)
                         .children(self.files.iter().map(|f| div().truncate().child(f.clone())))
                         .with_scrollbar(),
@@ -1167,16 +1167,16 @@ impl Render for SquashCommitMessageDialog {
             self.count,
         );
         let content = div()
-            .w(px(450.))
+            .w(zpx(450.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(text_box("squash-summary", &self.summary, None, window, cx))
             .child(
                 div()
                     .border_1()
                     .border_color(t.box_border_contrast)
-                    .rounded(BORDER_RADIUS)
+                    .rounded(BORDER_RADIUS())
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child(Textarea::new(&self.description)),

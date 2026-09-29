@@ -42,7 +42,7 @@ impl Render for UnknownAuthorsDialog {
             div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(
                     "These users weren't found and won't be added as co-authors of this commit. \
                      Are you sure you want to commit?",
@@ -51,7 +51,7 @@ impl Render for UnknownAuthorsDialog {
                     div()
                         .flex()
                         .flex_col()
-                        .pl(SPACING_DOUBLE)
+                        .pl(SPACING_DOUBLE())
                         .font_family(MONO_FONT)
                         .children(self.usernames.iter().map(|u| format!("• @{u}"))),
                 )

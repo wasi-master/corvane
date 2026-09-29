@@ -19,37 +19,183 @@ pub enum Appearance {
     Dark,
 }
 
-/// Sizes that are the same in every theme (`_variables.scss`).
+/// GHD's `_variables.scss` sizes, scaled by the window zoom factor
+/// (View › Zoom In / Zoom Out / Reset Zoom; Electron's page zoom in GHD).
+/// Every size in `corvane-ui` goes through [`sizes::zpx`], so the whole
+/// layout follows one factor.
 pub mod sizes {
+    use std::cell::Cell;
+
     use gpui_kit::{Pixels, px};
 
-    pub const TITLE_BAR_HEIGHT: Pixels = px(32.);
-    pub const TOOLBAR_HEIGHT: Pixels = px(50.);
-    pub const TOOLBAR_BUTTON_HEIGHT: Pixels = px(49.);
-    pub const TOOLBAR_BUTTON_WIDTH: Pixels = px(230.);
-    pub const TOOLBAR_ARROW_WIDTH: Pixels = px(39.);
-    pub const TAB_BAR_HEIGHT: Pixels = px(29.);
-    pub const ROW_HEIGHT: Pixels = px(29.);
-    pub const SIDEBAR_DEFAULT_WIDTH: Pixels = px(250.);
-    pub const SIDEBAR_MIN_WIDTH: Pixels = px(220.);
-    pub const RESIZE_HANDLE_WIDTH: Pixels = px(6.);
-    pub const BUTTON_HEIGHT: Pixels = px(25.);
-    pub const TEXT_FIELD_HEIGHT: Pixels = px(25.);
-    pub const BORDER_RADIUS: Pixels = px(6.);
-    pub const OUTLINED_BORDER_RADIUS: Pixels = px(3.);
-    pub const SPACING: Pixels = px(10.);
-    pub const SPACING_HALF: Pixels = px(5.);
-    pub const SPACING_THIRD: Pixels = px(3.33);
-    pub const SPACING_DOUBLE: Pixels = px(20.);
-    pub const FONT_SIZE: Pixels = px(12.);
-    pub const FONT_SIZE_XS: Pixels = px(9.);
-    pub const FONT_SIZE_SM: Pixels = px(11.);
-    pub const FONT_SIZE_MD: Pixels = px(14.);
-    pub const FONT_SIZE_LG: Pixels = px(28.);
-    pub const AVATAR_SIZE: Pixels = px(25.);
-    pub const ICON_SIZE: Pixels = px(16.);
-    pub const CHECKBOX_SIZE: Pixels = px(13.);
-    pub const DIFF_LINE_NUMBER_WIDTH: Pixels = px(50.);
+    thread_local! {
+        static ZOOM: Cell<f32> = const { Cell::new(1.0) };
+    }
+
+    /// GHD `ZoomInFactors`: the supported steps, ascending.
+    pub const ZOOM_FACTORS: [f32; 10] = [0.67, 0.75, 0.8, 0.9, 1., 1.1, 1.25, 1.5, 1.75, 2.];
+
+    /// The current window zoom factor (1 = 100 %).
+    pub fn zoom_factor() -> f32 {
+        ZOOM.with(|z| z.get())
+    }
+
+    /// Set the zoom factor; callers re-render (`cx.refresh_windows()`).
+    pub fn set_zoom_factor(factor: f32) {
+        ZOOM.with(|z| z.set(factor.clamp(0.25, 5.)));
+    }
+
+    /// `v` CSS pixels at the current zoom.
+    #[inline]
+    pub fn zpx(v: f32) -> Pixels {
+        px(v * zoom_factor())
+    }
+
+    /// Screen pixels back to CSS pixels (persisted widths).
+    #[inline]
+    pub fn unzoom(v: Pixels) -> f32 {
+        f32::from(v) / zoom_factor()
+    }
+
+    /// The next step for `direction` (+1 in, -1 out) from `current`, snapping
+    /// a stray factor to the closest step first (GHD `findClosestValue`).
+    pub fn next_zoom_factor(current: f32, direction: i32) -> f32 {
+        let closest = ZOOM_FACTORS
+            .iter()
+            .copied()
+            .min_by(|a, b| (a - current).abs().total_cmp(&(b - current).abs()))
+            .unwrap_or(1.);
+        let next = if direction > 0 {
+            ZOOM_FACTORS.iter().copied().find(|f| *f > closest)
+        } else {
+            ZOOM_FACTORS.iter().rev().copied().find(|f| *f < closest)
+        };
+        next.unwrap_or(closest)
+    }
+
+    #[allow(non_snake_case)]
+    pub fn TITLE_BAR_HEIGHT() -> Pixels {
+        zpx(32.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TOOLBAR_HEIGHT() -> Pixels {
+        zpx(50.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TOOLBAR_BUTTON_HEIGHT() -> Pixels {
+        zpx(49.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TOOLBAR_BUTTON_WIDTH() -> Pixels {
+        zpx(230.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TOOLBAR_ARROW_WIDTH() -> Pixels {
+        zpx(39.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TAB_BAR_HEIGHT() -> Pixels {
+        zpx(29.)
+    }
+    #[allow(non_snake_case)]
+    pub fn ROW_HEIGHT() -> Pixels {
+        zpx(29.)
+    }
+    #[allow(non_snake_case)]
+    pub fn SIDEBAR_DEFAULT_WIDTH() -> Pixels {
+        zpx(250.)
+    }
+    #[allow(non_snake_case)]
+    pub fn SIDEBAR_MIN_WIDTH() -> Pixels {
+        zpx(220.)
+    }
+    #[allow(non_snake_case)]
+    pub fn RESIZE_HANDLE_WIDTH() -> Pixels {
+        zpx(6.)
+    }
+    #[allow(non_snake_case)]
+    pub fn BUTTON_HEIGHT() -> Pixels {
+        zpx(25.)
+    }
+    #[allow(non_snake_case)]
+    pub fn TEXT_FIELD_HEIGHT() -> Pixels {
+        zpx(25.)
+    }
+    #[allow(non_snake_case)]
+    pub fn BORDER_RADIUS() -> Pixels {
+        zpx(6.)
+    }
+    #[allow(non_snake_case)]
+    pub fn OUTLINED_BORDER_RADIUS() -> Pixels {
+        zpx(3.)
+    }
+    #[allow(non_snake_case)]
+    pub fn SPACING() -> Pixels {
+        zpx(10.)
+    }
+    #[allow(non_snake_case)]
+    pub fn SPACING_HALF() -> Pixels {
+        zpx(5.)
+    }
+    #[allow(non_snake_case)]
+    pub fn SPACING_THIRD() -> Pixels {
+        zpx(3.33)
+    }
+    #[allow(non_snake_case)]
+    pub fn SPACING_DOUBLE() -> Pixels {
+        zpx(20.)
+    }
+    #[allow(non_snake_case)]
+    pub fn FONT_SIZE() -> Pixels {
+        zpx(12.)
+    }
+    #[allow(non_snake_case)]
+    pub fn FONT_SIZE_XS() -> Pixels {
+        zpx(9.)
+    }
+    #[allow(non_snake_case)]
+    pub fn FONT_SIZE_SM() -> Pixels {
+        zpx(11.)
+    }
+    #[allow(non_snake_case)]
+    pub fn FONT_SIZE_MD() -> Pixels {
+        zpx(14.)
+    }
+    #[allow(non_snake_case)]
+    pub fn FONT_SIZE_LG() -> Pixels {
+        zpx(28.)
+    }
+    #[allow(non_snake_case)]
+    pub fn AVATAR_SIZE() -> Pixels {
+        zpx(25.)
+    }
+    #[allow(non_snake_case)]
+    pub fn ICON_SIZE() -> Pixels {
+        zpx(16.)
+    }
+    #[allow(non_snake_case)]
+    pub fn CHECKBOX_SIZE() -> Pixels {
+        zpx(13.)
+    }
+    #[allow(non_snake_case)]
+    pub fn DIFF_LINE_NUMBER_WIDTH() -> Pixels {
+        zpx(50.)
+    }
+
+    #[cfg(test)]
+    mod tests {
+        #[::core::prelude::v1::test]
+        fn zoom_steps_follow_ghd() {
+            use super::next_zoom_factor;
+            assert_eq!(next_zoom_factor(1.0, 1), 1.1);
+            assert_eq!(next_zoom_factor(1.0, -1), 0.9);
+            assert_eq!(next_zoom_factor(2.0, 1), 2.0);
+            assert_eq!(next_zoom_factor(0.67, -1), 0.67);
+            // a stray factor snaps to the closest step first
+            assert_eq!(next_zoom_factor(1.24, 1), 1.5);
+            assert_eq!(next_zoom_factor(1.24, -1), 1.1);
+        }
+    }
 }
 
 pub const UI_FONT: &str = ".SystemUIFont";
@@ -371,11 +517,11 @@ pub fn apply(theme: GhdTheme, cx: &mut App) {
     {
         let kit = KitTheme::global_mut(cx);
         kit.font_family = KIT_UI_FONT.into();
-        kit.font_size = sizes::FONT_SIZE;
+        kit.font_size = sizes::FONT_SIZE();
         kit.mono_font_family = MONO_FONT.into();
-        kit.mono_font_size = sizes::FONT_SIZE;
-        kit.radius = sizes::BORDER_RADIUS;
-        kit.radius_lg = sizes::BORDER_RADIUS;
+        kit.mono_font_size = sizes::FONT_SIZE();
+        kit.radius = sizes::BORDER_RADIUS();
+        kit.radius_lg = sizes::BORDER_RADIUS();
         kit.shadow = false;
         kit.focus_ring = false;
 

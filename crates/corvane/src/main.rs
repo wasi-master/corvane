@@ -81,8 +81,16 @@ fn main() {
             _ => settings.theme,
         };
         APPLIED_THEME.with(|t| t.set(theme_setting));
+        // View › Zoom: every size in corvane-ui scales by this factor
+        // (CORVANE_ZOOM=<factor> overrides the saved one for a session)
+        let zoom = std::env::var("CORVANE_ZOOM")
+            .ok()
+            .and_then(|z| z.parse::<f32>().ok())
+            .unwrap_or(settings.window_zoom_factor);
+        corvane_ui::theme::sizes::set_zoom_factor(zoom);
+        info!(zoom, "window zoom factor");
         corvane_ui::init(cx, resolve_theme(theme_setting, cx));
-        let sidebar_width = px(settings.sidebar_width);
+        let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
         Dispatcher::load_custom_emoji(cx);
         Dispatcher::check_crash_reports(cx);
@@ -185,7 +193,11 @@ fn main() {
                         });
                         match image {
                             Ok(Ok(image)) => match image.save(&path) {
-                                Ok(()) => info!(path, "snapshot saved"),
+                                Ok(()) => info!(
+                                    path,
+                                    zoom = corvane_ui::theme::sizes::zoom_factor(),
+                                    "snapshot saved"
+                                ),
                                 Err(err) => error!(?err, "could not save the snapshot"),
                             },
                             Ok(Err(err)) => error!(?err, "could not render the snapshot"),
@@ -235,6 +247,7 @@ fn main() {
         //   review / comment / checks-failed notifications; needs the .app bundle)
         //   notification-click:review|comment|checks-failed (what clicking such a
         //   notification does: its userInfo payload goes through the click handler)
+        //   zoom-in | zoom-out | zoom-reset (View › Zoom, with the zoom overlay)
         //   update-available[:brew][:about|:notes] (a sample update in the ready /
         //   Homebrew state: the banner, plus About or the Release Notes with
         //   "Install and Restart")
@@ -410,6 +423,9 @@ fn main() {
                                 Dispatcher::show_update_release_notes(cx);
                             }
                         }
+                        ("zoom-in", _) => cx.dispatch_action(&ZoomIn),
+                        ("zoom-out", _) => cx.dispatch_action(&ZoomOut),
+                        ("zoom-reset", _) => cx.dispatch_action(&ResetZoom),
                         ("test-notifications", Some(id)) => {
                             Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
                         }
@@ -729,6 +745,13 @@ fn main() {
         cx.on_action(move |_: &ToggleChangesFilter, cx| {
             ws.update(cx, |w, cx| w.toggle_changes_filter(cx))
         });
+        // View › Reset Zoom / Zoom In / Zoom Out (GHD `zoom(ZoomDirection)`)
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ZoomIn, cx| ws.update(cx, |w, cx| w.zoom(1, cx)));
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ZoomOut, cx| ws.update(cx, |w, cx| w.zoom(-1, cx)));
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ResetZoom, cx| ws.update(cx, |w, cx| w.zoom(0, cx)));
         let ws = workspace.clone();
         cx.on_action(move |_: &CompareToBranch, cx| {
             if let Some(window) = cx.active_window() {

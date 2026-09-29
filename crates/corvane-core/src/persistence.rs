@@ -27,6 +27,9 @@ pub struct Settings {
     /// GHD `last-successful-update-check` (seconds since the epoch).
     #[serde(default)]
     pub last_successful_update_check: Option<u64>,
+    /// View › Zoom (Electron's `zoomFactor`, GHD `ZoomInFactors` steps).
+    #[serde(default = "default_zoom")]
+    pub window_zoom_factor: f32,
     /// Tutorial assessor state (GHD `tutorial-install-editor-skipped`,
     /// `tutorial-pull-request-step-complete`, `tutorial-paused`).
     pub tutorial_install_editor_skipped: bool,
@@ -232,6 +235,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_zoom() -> f32 {
+    1.0
+}
+
 /// GHD `UncommittedChangesStrategy`
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UncommittedChangesStrategy {
@@ -251,6 +258,7 @@ impl Default for Settings {
             save_crash_reports: false,
             last_launched_at: None,
             last_successful_update_check: None,
+            window_zoom_factor: 1.0,
             tutorial_install_editor_skipped: false,
             tutorial_pull_request_step_complete: false,
             tutorial_paused: false,

@@ -23,10 +23,19 @@ use crate::theme::sizes::*;
 use crate::widgets::{button, link_button, primary_button};
 
 /// `--spacing-triple`
-const SPACING_TRIPLE: Pixels = px(30.);
+#[allow(non_snake_case)]
+fn SPACING_TRIPLE() -> Pixels {
+    zpx(30.)
+}
 /// `.dialog-header` height and the illustrations' height in it.
-const HEADER_HEIGHT: Pixels = px(100.);
-const ART_HEIGHT: Pixels = px(90.);
+#[allow(non_snake_case)]
+fn HEADER_HEIGHT() -> Pixels {
+    zpx(100.)
+}
+#[allow(non_snake_case)]
+fn ART_HEIGHT() -> Pixels {
+    zpx(90.)
+}
 
 pub struct ReleaseNotesDialog {
     state: Entity<AppState>,
@@ -48,13 +57,13 @@ fn section(header: &'static str, entries: &[ReleaseNote], cx: &App) -> Option<An
     }
     Some(
         div()
-            .my(SPACING_DOUBLE)
+            .my(SPACING_DOUBLE())
             .flex()
             .flex_col()
-            .gap(SPACING_HALF)
+            .gap(SPACING_HALF())
             .child(
                 div()
-                    .text_size(px(12.))
+                    .text_size(zpx(12.))
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(header),
             )
@@ -71,8 +80,8 @@ fn section(header: &'static str, entries: &[ReleaseNote], cx: &App) -> Option<An
 fn column(children: Vec<Option<AnyElement>>) -> Div {
     div()
         .flex_1()
-        .min_w(px(275.))
-        .mr(px(15.))
+        .min_w(zpx(275.))
+        .mr(zpx(15.))
         .flex()
         .flex_col()
         .children(children.into_iter().flatten())
@@ -118,7 +127,7 @@ impl Render for ReleaseNotesDialog {
             UpdateStatus::Ready { update, .. } if update.version == r.latest_version
         );
         deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("release-notes-overlay")
                     .w(viewport.width)
@@ -134,22 +143,22 @@ impl Render for ReleaseNotesDialog {
                             .role(Role::Dialog)
                             .aria_label(format!("Release notes for version {}", r.latest_version))
                             .child(crate::dialog::window_title("Release Notes"))
-                            .min_w(px(550.))
-                            .max_w(px(800.))
-                            .max_h(px(500.))
+                            .min_w(zpx(550.))
+                            .max_w(zpx(800.))
+                            .max_h(zpx(500.))
                             .flex()
                             .flex_col()
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .bg(t.background)
                             .text_color(t.text)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .border_1()
                             .border_color(t.box_border)
                             .shadow(vec![BoxShadow {
                                 color: t.shadow,
-                                offset: point(px(0.), px(2.)),
-                                blur_radius: px(7.),
-                                spread_radius: px(0.),
+                                offset: point(zpx(0.), zpx(2.)),
+                                blur_radius: zpx(7.),
+                                spread_radius: zpx(0.),
                                 inset: false,
                             }])
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -157,7 +166,7 @@ impl Render for ReleaseNotesDialog {
                                 // `.dialog-header`
                                 div()
                                     .relative()
-                                    .h(HEADER_HEIGHT)
+                                    .h(HEADER_HEIGHT())
                                     .flex_none()
                                     .flex()
                                     .flex_row()
@@ -168,18 +177,18 @@ impl Render for ReleaseNotesDialog {
                                     .child(
                                         img("illustrations/release-note-header-left.svg")
                                             .absolute()
-                                            .left(SPACING_DOUBLE)
-                                            .top(SPACING_HALF)
-                                            .h(ART_HEIGHT)
-                                            .w(ART_HEIGHT * (147. / 71.)),
+                                            .left(SPACING_DOUBLE())
+                                            .top(SPACING_HALF())
+                                            .h(ART_HEIGHT())
+                                            .w(ART_HEIGHT() * (147. / 71.)),
                                     )
                                     .child(
                                         img("illustrations/release-note-header-right.svg")
                                             .absolute()
-                                            .right(SPACING_DOUBLE)
-                                            .top(SPACING_HALF)
-                                            .h(ART_HEIGHT)
-                                            .w(ART_HEIGHT * (144. / 76.)),
+                                            .right(SPACING_DOUBLE())
+                                            .top(SPACING_HALF())
+                                            .h(ART_HEIGHT())
+                                            .w(ART_HEIGHT() * (144. / 76.)),
                                     )
                                     .child(
                                         div()
@@ -188,13 +197,13 @@ impl Render for ReleaseNotesDialog {
                                             .items_center()
                                             .child(
                                                 div()
-                                                    .text_size(px(14.))
+                                                    .text_size(zpx(14.))
                                                     .font_weight(FontWeight::SEMIBOLD)
                                                     .child(format!("Version {}", r.latest_version)),
                                             )
                                             .children(date.map(|d| {
                                                 div()
-                                                    .text_size(px(11.))
+                                                    .text_size(zpx(11.))
                                                     .text_color(t.text_secondary)
                                                     .child(d)
                                             })),
@@ -204,9 +213,9 @@ impl Render for ReleaseNotesDialog {
                                         div()
                                             .id("release-notes-close")
                                             .absolute()
-                                            .top(SPACING)
-                                            .right(SPACING)
-                                            .size(px(16.))
+                                            .top(SPACING())
+                                            .right(SPACING())
+                                            .size(zpx(16.))
                                             .cursor_pointer()
                                             .icon_button_label("Close")
                                             .on_click(move |_, window, cx| close(window, cx))
@@ -217,12 +226,12 @@ impl Render for ReleaseNotesDialog {
                                 // `.dialog-content`
                                 div()
                                     .id("release-notes-content")
-                                    .max_h(px(335.))
+                                    .max_h(zpx(335.))
                                     .overflow_y_scroll()
-                                    .py(SPACING)
-                                    .px(SPACING_TRIPLE)
-                                    .line_height(px(18.))
-                                    .children(pretext.map(|p| div().my(SPACING).child(p)))
+                                    .py(SPACING())
+                                    .px(SPACING_TRIPLE())
+                                    .line_height(zpx(18.))
+                                    .children(pretext.map(|p| div().my(SPACING()).child(p)))
                                     .child(
                                         div().flex().flex_row().justify_around().children(columns),
                                     )
@@ -236,8 +245,8 @@ impl Render for ReleaseNotesDialog {
                                     .flex_row()
                                     .items_center()
                                     .justify_between()
-                                    .gap(SPACING)
-                                    .p(SPACING_DOUBLE)
+                                    .gap(SPACING())
+                                    .p(SPACING_DOUBLE())
                                     .border_t_1()
                                     .border_color(t.box_border)
                                     .child(
@@ -253,7 +262,7 @@ impl Render for ReleaseNotesDialog {
                                             .flex()
                                             .flex_row()
                                             .items_center()
-                                            .gap(SPACING)
+                                            .gap(SPACING())
                                             .child(
                                                 primary_button(
                                                     "release-notes-ok",
@@ -261,7 +270,7 @@ impl Render for ReleaseNotesDialog {
                                                     false,
                                                     cx,
                                                 )
-                                                .min_w(px(120.))
+                                                .min_w(zpx(120.))
                                                 .on_click(move |_, window, cx| close(window, cx)),
                                             )
                                             .when(can_install, |d| {

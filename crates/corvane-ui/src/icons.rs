@@ -192,7 +192,7 @@ impl Octicon {
 pub fn octicon(icon: Octicon, color: Hsla) -> Svg {
     svg()
         .path(icon.path())
-        .size(ICON_SIZE)
+        .size(ICON_SIZE())
         .flex_none()
         .text_color(color)
 }

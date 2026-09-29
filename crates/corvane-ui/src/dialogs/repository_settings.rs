@@ -288,7 +288,7 @@ impl RepositorySettingsDialog {
         div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 "Editing ".into(),
                 code_ref(".gitignore", cx).into_any_element().into(),
@@ -305,15 +305,15 @@ impl RepositorySettingsDialog {
             .child(
                 // `textarea.gitignore { height: 130px }`
                 div()
-                    .h(px(130.))
+                    .h(zpx(130.))
                     .border_1()
                     .border_color(t.box_border_contrast)
-                    .rounded(BORDER_RADIUS)
+                    .rounded(BORDER_RADIUS())
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child(
                         Textarea::new(&self.gitignore)
-                            .h(px(128.))
+                            .h(zpx(128.))
                             .font_family(crate::theme::MONO_FONT),
                     ),
             )
@@ -373,7 +373,7 @@ impl RepositorySettingsDialog {
             div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(select_button(
                     "repo-settings-email-select",
                     self.email_choice
@@ -404,8 +404,8 @@ impl RepositorySettingsDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
-                    .mb(SPACING)
+                    .gap(SPACING_HALF())
+                    .mb(SPACING())
                     .children(options.iter().map(|(value, id, label)| {
                         let value = *value;
                         let weak = cx.weak_entity();
@@ -428,7 +428,7 @@ impl RepositorySettingsDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(labeled("Name", name_field, cx))
                     .child(labeled("Email", email_field, cx)),
             )
@@ -440,13 +440,13 @@ impl RepositorySettingsDialog {
 fn readonly_field(value: String, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .h(TEXT_FIELD_HEIGHT)
+        .h(TEXT_FIELD_HEIGHT())
         .w_full()
         .flex()
         .items_center()
-        .px(SPACING_HALF)
+        .px(SPACING_HALF())
         .border_1()
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .border_color(t.box_border_contrast)
         .bg(t.box_alt_background)
         .text_color(t.text_secondary)
@@ -513,10 +513,10 @@ impl Render for RepositorySettingsDialog {
         };
         // `#repository-settings { width: 600px; .dialog-content { min-height: 305px } }`
         let content = div()
-            .w(px(600.))
-            .mx(px(-20.))
-            .my(px(-20.))
-            .min_h(px(305.))
+            .w(zpx(600.))
+            .mx(zpx(-20.))
+            .my(zpx(-20.))
+            .min_h(zpx(305.))
             .flex()
             .flex_row()
             .items_stretch()
@@ -527,7 +527,7 @@ impl Render for RepositorySettingsDialog {
                     .min_w_0()
                     .border_l_1()
                     .border_color(t.box_border)
-                    .p(SPACING_DOUBLE)
+                    .p(SPACING_DOUBLE())
                     .child(body),
             );
         let name_valid = self.location == GitConfigLocation::Global
@@ -535,20 +535,20 @@ impl Render for RepositorySettingsDialog {
         let content = div()
             .flex()
             .flex_col()
-            .mx(px(-20.))
-            .my(px(-20.))
+            .mx(zpx(-20.))
+            .my(zpx(-20.))
             .when(!name_valid, |d| {
                 d.child(
                     crate::widgets::dialog_error_banner(
                         corvane_core::INVALID_GIT_AUTHOR_NAME_MESSAGE,
                         cx,
                     )
-                    .mx(px(0.))
-                    .mt(px(0.))
-                    .mb(px(0.)),
+                    .mx(zpx(0.))
+                    .mt(zpx(0.))
+                    .mb(zpx(0.)),
                 )
             })
-            .child(content.mx(px(0.)).my(px(0.)));
+            .child(content.mx(zpx(0.)).my(zpx(0.)));
         let weak = cx.weak_entity();
         let loaded = self.loaded && name_valid;
         dialog(

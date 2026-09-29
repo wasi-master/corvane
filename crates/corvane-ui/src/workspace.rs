@@ -41,6 +41,10 @@ pub struct Workspace {
     section: Section,
     sidebar_width: Pixels,
     resizable: Entity<ResizableState>,
+    /// `#window-zoom-info`: the factor to show and when it was set
+    /// (GHD `ZoomInfo`: 750 ms hold after a 100 ms transition).
+    zoom_info: Option<(f32, std::time::Instant)>,
+    zoom_info_nonce: u64,
     changes: Entity<ChangesSidebar>,
     history: Entity<HistorySidebar>,
     selected_commit: Entity<SelectedCommitView>,
@@ -97,7 +101,7 @@ impl Workspace {
                 && width != this.sidebar_width
             {
                 this.sidebar_width = width;
-                Dispatcher::update_settings(cx, |s| s.sidebar_width = f32::from(width));
+                Dispatcher::update_settings(cx, |s| s.sidebar_width = unzoom(width));
                 cx.notify();
             }
         })
@@ -125,8 +129,10 @@ impl Workspace {
             focus_handle,
             state,
             section: Section::Changes,
-            sidebar_width: sidebar_width.max(SIDEBAR_MIN_WIDTH),
+            sidebar_width: sidebar_width.max(SIDEBAR_MIN_WIDTH()),
             resizable,
+            zoom_info: None,
+            zoom_info_nonce: 0,
             changes,
             history,
             selected_commit,
@@ -407,14 +413,14 @@ impl Workspace {
                     .child(
                         resizable_panel()
                             .size(self.sidebar_width)
-                            .size_range(SIDEBAR_MIN_WIDTH..px(900.))
+                            .size_range(SIDEBAR_MIN_WIDTH()..zpx(900.))
                             .child(crate::active_resizable::active_resizable(
                                 "repository-sidebar-resizable",
                                 &self.resizable,
                                 None,
                                 crate::active_resizable::ResizableDescription::new(
                                     "Repository sidebar",
-                                    SIDEBAR_MIN_WIDTH..px(900.),
+                                    SIDEBAR_MIN_WIDTH()..zpx(900.),
                                 ),
                                 self.sidebar(cx),
                             )),
@@ -446,6 +452,79 @@ impl Workspace {
             )
             .child(self.tutorial_panel.clone())
             .into_any_element()
+    }
+}
+
+impl Workspace {
+    /// View › Zoom In (+1) / Zoom Out (-1) / Reset Zoom (0): GHD's
+    /// `zoom(ZoomDirection)` steps through `ZoomInFactors`, persists the
+    /// factor (Electron keeps `zoomFactor`) and shows `#window-zoom-info`.
+    pub fn zoom(&mut self, direction: i32, cx: &mut Context<Self>) {
+        use crate::theme::sizes::{next_zoom_factor, set_zoom_factor, zoom_factor};
+        let current = zoom_factor();
+        let next = if direction == 0 {
+            1.0
+        } else {
+            next_zoom_factor(current, direction)
+        };
+        set_zoom_factor(next);
+        tracing::info!(from = current, to = next, "zoom changed");
+        // sizes read the factor at render; the kit's font size and radius
+        // are copied at apply time
+        crate::theme::apply(cx.ghd().clone(), cx);
+        Dispatcher::update_settings(cx, |s| s.window_zoom_factor = next);
+        let settings_sidebar = self.state.read(cx).settings.sidebar_width;
+        self.sidebar_width = zpx(settings_sidebar).max(SIDEBAR_MIN_WIDTH());
+        // the panel group keeps screen-pixel sizes: drop them so the next
+        // layout takes the sidebar's zoomed width again
+        self.resizable.update(cx, |state, _| state.clear());
+        self.zoom_info_nonce += 1;
+        let nonce = self.zoom_info_nonce;
+        self.zoom_info = Some((next, std::time::Instant::now()));
+        cx.spawn(async move |this, cx: &mut AsyncApp| {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(850))
+                .await;
+            this.update(cx, |this, cx| {
+                if this.zoom_info_nonce == nonce {
+                    this.zoom_info = None;
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+        cx.refresh_windows();
+        cx.notify();
+    }
+
+    /// `#window-zoom-info` (`styles/ui/window/_zoom-info.scss`): a pill
+    /// with the percentage, centred over the content, ignoring the mouse.
+    fn zoom_info_overlay(&self, cx: &App) -> Option<AnyElement> {
+        let (factor, _) = self.zoom_info?;
+        let t = cx.ghd();
+        Some(
+            div()
+                .id("window-zoom-info")
+                .absolute()
+                .inset_0()
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(
+                    div()
+                        .p(SPACING())
+                        .min_w(zpx(100.))
+                        .rounded(zpx(100.))
+                        .bg(t.tooltip_background)
+                        .text_color(t.tooltip_text)
+                        .text_size(FONT_SIZE_MD())
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_align(TextAlign::Center)
+                        .child(format!("{}%", (factor * 100.).round() as i32)),
+                )
+                .into_any_element(),
+        )
     }
 }
 
@@ -538,7 +617,7 @@ impl Render for Workspace {
             .flex_col()
             .bg(t.background)
             .text_color(t.text)
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .font_family(crate::theme::UI_FONT)
             .child(title_bar(cx))
             .when_some(self.welcome.clone(), |d, welcome| {
@@ -597,13 +676,13 @@ impl Render for Workspace {
                 let shift = if worktree_button {
                     worktree_width
                 } else {
-                    px(0.)
+                    zpx(0.)
                 };
                 // `foldoutStyleOverrides`: as wide as the resized button,
                 // at least 365 px
-                let foldout_width = |width: Pixels| width.max(px(365.));
+                let foldout_width = |width: Pixels| width.max(zpx(365.));
                 let (x, width) = match foldout {
-                    corvane_core::Foldout::Repository => (px(0.), self.sidebar_width),
+                    corvane_core::Foldout::Repository => (zpx(0.), self.sidebar_width),
                     corvane_core::Foldout::Worktree => {
                         (self.sidebar_width, foldout_width(worktree_width))
                     }
@@ -612,7 +691,7 @@ impl Render for Workspace {
                     }
                     corvane_core::Foldout::PushPull => (
                         self.sidebar_width + shift + branch_width,
-                        TOOLBAR_BUTTON_WIDTH,
+                        TOOLBAR_BUTTON_WIDTH(),
                     ),
                 };
                 d.child(foldout_layer(
@@ -629,6 +708,7 @@ impl Render for Workspace {
                 ))
             })
             .when(ci_popover, |d| d.child(self.ci_popover.clone()))
+            .children(self.zoom_info_overlay(cx))
             .when(popup, |d| d.child(self.dialogs.clone()))
             // the open dialog's title is the window title (`dialog.rs`);
             // without one it is the app's again

@@ -32,7 +32,10 @@ pub(crate) type RerunChecks = Rc<dyn Fn(Vec<RefCheck>, bool, &mut App)>;
 pub(crate) type RerunJob = Rc<dyn Fn(&mut App)>;
 
 /// `.ci-check-list-popover .popover-component { width: 440px }`
-const POPOVER_WIDTH: Pixels = px(440.);
+#[allow(non_snake_case)]
+fn POPOVER_WIDTH() -> Pixels {
+    zpx(440.)
+}
 
 pub struct CiCheckPopover {
     state: Entity<AppState>,
@@ -184,16 +187,16 @@ impl CiCheckPopover {
         // `renderCompletenessIndicator`: spinner, check, x or the donut
         let indicator: AnyElement = if loading {
             spin(
-                octicon(Octicon::SyncClockwise, t.text_secondary).size(px(30.)),
+                octicon(Octicon::SyncClockwise, t.text_secondary).size(zpx(30.)),
                 "ci-check-run-loading",
             )
         } else if all_success {
             octicon(Octicon::CheckCircleFill, c(primer::GREEN_500))
-                .size(px(30.))
+                .size(zpx(30.))
                 .into_any_element()
         } else if all_failure {
             octicon(Octicon::XCircleFill, c(primer::RED_500))
-                .size(px(30.))
+                .size(zpx(30.))
                 .into_any_element()
         } else {
             donut(checks)
@@ -214,16 +217,16 @@ impl CiCheckPopover {
             .flex()
             .flex_row()
             .items_center()
-            .p(SPACING)
+            .p(SPACING())
             .bg(t.box_alt_background)
             .border_b_1()
             .border_color(t.box_border)
-            .rounded_t(BORDER_RADIUS)
+            .rounded_t(BORDER_RADIUS())
             .child(
                 div()
                     .flex_none()
-                    .mr(SPACING)
-                    .my(SPACING_HALF)
+                    .mr(SPACING())
+                    .my(SPACING_HALF())
                     .child(indicator),
             )
             .child(
@@ -234,14 +237,14 @@ impl CiCheckPopover {
                     .flex_col()
                     .child(
                         div()
-                            .text_size(FONT_SIZE_MD)
+                            .text_size(FONT_SIZE_MD())
                             .font_weight(FontWeight::SEMIBOLD)
                             .text_color(title_color)
                             .child(title),
                     )
                     .child(
                         div()
-                            .text_size(FONT_SIZE_SM)
+                            .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary)
                             .child(summary),
                     ),
@@ -289,11 +292,11 @@ impl CiCheckPopover {
         };
         // `.ci-steps-container`
         let steps_region = div()
-            .p(SPACING)
+            .p(SPACING())
             .bg(t.box_alt_background)
             .border_b_1()
             .border_color(t.box_border)
-            .when(check.job_steps.is_none(), |d| d.h(px(150.)).p(px(0.)))
+            .when(check.job_steps.is_none(), |d| d.h(zpx(150.)).p(zpx(0.)))
             .child(check_run_steps(
                 check,
                 external_url,
@@ -332,7 +335,7 @@ pub(crate) fn rerun_button(
     let checks = checks.to_vec();
     button(id, "", cx)
         .flex_none()
-        .gap(SPACING_HALF)
+        .gap(SPACING_HALF())
         .when(disabled, |d| d.opacity(0.6))
         .child(octicon(Octicon::SyncClockwise, t.secondary_button_text))
         .child(if menu {
@@ -340,7 +343,7 @@ pub(crate) fn rerun_button(
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(px(2.))
+                .gap(zpx(2.))
                 .child("Re-run")
                 .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                 .into_any_element()
@@ -402,34 +405,34 @@ pub(crate) fn check_run_row(
         .child(
             div()
                 .flex_none()
-                .my(px(15.))
-                .ml(SPACING)
+                .my(zpx(15.))
+                .ml(SPACING())
                 .child(ci_status(check.status, check.conclusion)),
         )
         .child(
             div()
                 .flex_1()
                 .min_w_0()
-                .mx(SPACING)
+                .mx(SPACING())
                 .flex()
                 .flex_col()
                 .child(
                     div()
                         .truncate()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(check.name.clone()),
                 )
                 .child(
                     div()
                         .truncate()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.text_secondary)
                         .child(check.description.clone()),
                 ),
         )
         .when(!selectable, |d| {
-            d.child(div().flex_none().mr(SPACING_HALF).child(octicon(
+            d.child(div().flex_none().mr(SPACING_HALF()).child(octicon(
                 if active {
                     Octicon::ChevronUp
                 } else {
@@ -444,13 +447,13 @@ pub(crate) fn check_run_row(
 pub(crate) fn check_run_group_header(name: String, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .px(SPACING)
-        .py(SPACING_HALF)
+        .px(SPACING())
+        .py(SPACING_HALF())
         .bg(t.box_alt_background)
         .border_b_1()
         .border_color(t.box_border)
         .truncate()
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .child(name)
 }
 
@@ -487,8 +490,8 @@ pub(crate) fn check_run_steps(
                             div()
                                 .flex_1()
                                 .min_w_0()
-                                .mb(px(3.))
-                                .text_size(FONT_SIZE)
+                                .mb(zpx(3.))
+                                .text_size(FONT_SIZE())
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(t.text_secondary)
                                 .child(combined_status_summary(&conclusions, "step")),
@@ -530,9 +533,9 @@ pub(crate) fn check_run_steps(
                         .child(
                             div()
                                 .flex_none()
-                                .py(SPACING_HALF)
-                                .pr(SPACING)
-                                .mt(px(2.))
+                                .py(SPACING_HALF())
+                                .pr(SPACING())
+                                .mt(zpx(2.))
                                 .child(octicon(
                                     symbol_for_log_step(step.status, step.conclusion),
                                     color_for(conclusion),
@@ -543,15 +546,15 @@ pub(crate) fn check_run_steps(
                                 .flex_1()
                                 .min_w_0()
                                 .truncate()
-                                .text_size(FONT_SIZE)
+                                .text_size(FONT_SIZE())
                                 .child(step.name.clone()),
                         )
                         .child(
                             div()
                                 .flex_none()
-                                .py(SPACING_HALF)
-                                .px(SPACING)
-                                .text_size(FONT_SIZE)
+                                .py(SPACING_HALF())
+                                .px(SPACING())
+                                .text_size(FONT_SIZE())
                                 .text_color(t.text_secondary)
                                 .child(duration),
                         )
@@ -572,18 +575,18 @@ pub(crate) fn check_run_steps(
             .flex()
             .flex_row()
             .items_center()
-            .p(SPACING_DOUBLE)
+            .p(SPACING_DOUBLE())
             .child(
                 div()
                     .flex_1()
                     .flex()
                     .flex_col()
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .child("There are no steps to display for this check.")
                     .child(
                         button("check-no-steps-view", "", cx)
-                            .mt(SPACING)
-                            .gap(SPACING_HALF)
+                            .mt(SPACING())
+                            .gap(SPACING_HALF())
                             .child("View check details")
                             .child(octicon(Octicon::LinkExternal, t.secondary_button_text))
                             .on_click(move |_, _, cx| cx.open_url(&view_url)),
@@ -592,8 +595,8 @@ pub(crate) fn check_run_steps(
             .child(
                 img("illustrations/paper-stack.svg")
                     .flex_1()
-                    .ml(SPACING_DOUBLE)
-                    .h(px(120.)),
+                    .ml(SPACING_DOUBLE())
+                    .h(zpx(120.)),
             )
             .into_any_element(),
     }
@@ -612,9 +615,9 @@ fn icon_button(
     div()
         .id(id)
         .flex_none()
-        .p(SPACING_HALF)
-        .mb(px(2.))
-        .rounded(BORDER_RADIUS)
+        .p(SPACING_HALF())
+        .mb(zpx(2.))
+        .rounded(BORDER_RADIUS())
         .border_1()
         .border_color(t.box_alt_background)
         .cursor_pointer()
@@ -672,7 +675,7 @@ fn donut(checks: &[RefCheck]) -> AnyElement {
             }
         },
     )
-    .size(px(30.))
+    .size(zpx(30.))
     .into_any_element()
 }
 
@@ -691,10 +694,10 @@ impl Render for CiCheckPopover {
         let anchor = self.anchor.get();
         let viewport = window.viewport_size();
         // `PopoverAnchorPosition.Bottom`: centred under the badge
-        let x = (anchor.origin.x + anchor.size.width / 2. - POPOVER_WIDTH / 2.)
-            .max(px(8.))
-            .min(viewport.width - POPOVER_WIDTH - px(8.));
-        let y = anchor.origin.y + anchor.size.height + px(8.);
+        let x = (anchor.origin.x + anchor.size.width / 2. - POPOVER_WIDTH() / 2.)
+            .max(zpx(8.))
+            .min(viewport.width - POPOVER_WIDTH() - zpx(8.));
+        let y = anchor.origin.y + anchor.size.height + zpx(8.);
         let max_list_height = viewport.height * 0.7;
         let list: AnyElement = if snap.check.is_none() {
             // `renderCheckRunLoadings`
@@ -704,11 +707,15 @@ impl Render for CiCheckPopover {
                 .flex_col()
                 .items_center()
                 .text_center()
-                .p(SPACING)
-                .pb(SPACING_DOUBLE)
-                .child(img("illustrations/empty-no-pull-requests.svg").w(px(240.)))
+                .p(SPACING())
+                .pb(SPACING_DOUBLE())
+                .child(img("illustrations/empty-no-pull-requests.svg").w(zpx(240.)))
                 .child(div().font_weight(FontWeight::SEMIBOLD).child("Stand By"))
-                .child(div().text_size(FONT_SIZE_SM).child("Check runs incoming!"))
+                .child(
+                    div()
+                        .text_size(FONT_SIZE_SM())
+                        .child("Check runs incoming!"),
+                )
                 .into_any_element()
         } else {
             let groups = group_check_runs(&checks);
@@ -730,7 +737,7 @@ impl Render for CiCheckPopover {
                 .into_any_element()
         };
         deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("ci-check-popover-layer")
                     .relative()
@@ -752,15 +759,15 @@ impl Render for CiCheckPopover {
                             .absolute()
                             .left(x)
                             .top(y)
-                            .w(POPOVER_WIDTH)
+                            .w(POPOVER_WIDTH())
                             .flex()
                             .flex_col()
                             .bg(t.box_background)
                             .text_color(t.text)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .border_1()
                             .border_color(t.box_border)
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .shadow_lg()
                             .overflow_hidden()
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())

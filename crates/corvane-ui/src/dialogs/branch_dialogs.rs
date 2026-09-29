@@ -42,13 +42,13 @@ pub fn sanitize_ref_name(input: &str) -> String {
 pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .px(px(4.))
-        .rounded(px(3.))
+        .px(zpx(4.))
+        .rounded(zpx(3.))
         .bg(t.box_alt_background)
         .border_1()
         .border_color(t.box_border)
         .font_family(crate::theme::MONO_FONT)
-        .text_size(FONT_SIZE_SM)
+        .text_size(FONT_SIZE_SM())
         .child(name.into())
 }
 
@@ -192,7 +192,7 @@ impl Render for CreateBranchDialog {
                                 div()
                                     .flex()
                                     .flex_col()
-                                    .child(div().mb(px(5.)).child("Create branch based on…"))
+                                    .child(div().mb(zpx(5.)).child("Create branch based on…"))
                                     .child(
                                         div()
                                             .flex()
@@ -256,14 +256,14 @@ impl Render for CreateBranchDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .when(exists, |d| {
                 d.child(
                     div()
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(px(4.))
+                        .gap(zpx(4.))
                         .text_color(t.form_error_text)
                         .child("A branch named")
                         .child(ref_chip(name.clone(), cx))
@@ -274,7 +274,7 @@ impl Render for CreateBranchDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child("Name")
                     .child(text_box("branch-name", &self.name, None, window, cx)),
             )
@@ -392,14 +392,14 @@ impl Render for RenameBranchDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .when_some(upstream, |d, upstream| {
                 d.child(
                     div()
                         .flex()
                         .flex_row()
                         .items_start()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .child(octicon(Octicon::Alert, t.dialog_warning))
                         .child(
                             paragraph(vec![
@@ -416,7 +416,7 @@ impl Render for RenameBranchDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child("Name")
                     .child(text_box("rename-branch-name", &self.name, None, window, cx)),
             )
@@ -426,7 +426,7 @@ impl Render for RenameBranchDialog {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(px(4.))
+                        .gap(zpx(4.))
                         .text_color(t.form_error_text)
                         .child("A branch named")
                         .child(ref_chip(new_name.clone(), cx))
@@ -510,18 +510,18 @@ impl Render for DeleteBranchDialog {
             .flex_col()
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(4.))
+                    .gap(zpx(4.))
                     .child("Delete branch")
                     .child(ref_chip(self.branch.clone(), cx))
                     .child("?"),
             )
-            .child(div().mb(SPACING).child("This action cannot be undone."))
+            .child(div().mb(SPACING()).child("This action cannot be undone."))
             .when(exists_on_remote, |d| {
-                d.child(div().mb(SPACING).font_weight(FontWeight::SEMIBOLD).child(
+                d.child(div().mb(SPACING()).font_weight(FontWeight::SEMIBOLD).child(
                     "The branch also exists on the remote, do you wish to delete it there as well?",
                 ))
                 .child(
@@ -530,7 +530,7 @@ impl Render for DeleteBranchDialog {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .cursor_pointer()
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.include_remote = !this.include_remote;
@@ -615,14 +615,14 @@ impl Render for StashAndSwitchBranchDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .when(has_stash && action == UncommittedChangesStrategy::StashOnCurrentBranch, |d| {
                 d.child(
                     div()
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .child(octicon(Octicon::Alert, t.dialog_warning))
                         .child("Your current stash will be overwritten by creating a new stash"),
                 )
@@ -633,7 +633,7 @@ impl Render for StashAndSwitchBranchDialog {
                     .flex_col()
                     .child(
                         div()
-                            .mb(px(5.))
+                            .mb(zpx(5.))
                             .child("You have changes on this branch. What would you like to do with them?"),
                     )
                     .child(
@@ -905,14 +905,14 @@ impl Render for MergeBranchDialog {
                 .flex()
                 .flex_col()
                 .items_center()
-                .px(SPACING_DOUBLE)
-                .pt(SPACING_HALF)
-                .pb(SPACING)
+                .px(SPACING_DOUBLE())
+                .pt(SPACING_HALF())
+                .pb(SPACING())
                 .child(
                     div()
                         .relative()
                         .w_full()
-                        .h(px(20.))
+                        .h(zpx(20.))
                         .flex()
                         .justify_center()
                         .child(
@@ -920,20 +920,20 @@ impl Render for MergeBranchDialog {
                                 .absolute()
                                 .left_0()
                                 .right_0()
-                                .top(px(10.))
-                                .h(px(1.))
+                                .top(zpx(10.))
+                                .h(zpx(1.))
                                 .bg(t.box_border),
                         )
                         .child(
                             div()
-                                .px(SPACING_HALF)
+                                .px(SPACING_HALF())
                                 .bg(t.background)
                                 .child(octicon(icon, color)),
                         ),
                 )
                 .child(
                     div()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .text_color(t.text_secondary)
                         .text_center()
                         .child(message),
@@ -948,9 +948,9 @@ impl Render for MergeBranchDialog {
         let selected_for_ok = selected.clone();
         let squash = self.squash;
         let content = div()
-            .w(px(450.))
-            .mx(px(-20.))
-            .mt(px(-20.))
+            .w(zpx(450.))
+            .mx(zpx(-20.))
+            .mt(zpx(-20.))
             .flex()
             .flex_col()
             .child(list)
@@ -1009,7 +1009,7 @@ pub fn branch_picker(
     let selected = selected.map(str::to_string);
     let list = div()
         .id(SharedString::from(format!("{id_prefix}-branch-list")))
-        .h(px(300.))
+        .h(zpx(300.))
         .overflow_y_scroll()
         .flex()
         .flex_col()
@@ -1022,13 +1022,13 @@ pub fn branch_picker(
                 .flex_col()
                 .child(
                     div()
-                        .h(ROW_HEIGHT)
-                        .pt(SPACING)
-                        .px(SPACING_DOUBLE)
+                        .h(ROW_HEIGHT())
+                        .pt(SPACING())
+                        .px(SPACING_DOUBLE())
                         .flex()
                         .items_center()
                         .font_weight(FontWeight::SEMIBOLD)
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .child(group.title),
                 )
                 .children(group.branches.into_iter().map(move |b| {
@@ -1041,12 +1041,12 @@ pub fn branch_picker(
                             "{id_prefix}-branch-{}",
                             b.full_name
                         )))
-                        .h(ROW_HEIGHT)
+                        .h(ROW_HEIGHT())
                         .w_full()
                         .flex()
                         .flex_row()
                         .items_center()
-                        .px(SPACING_DOUBLE)
+                        .px(SPACING_DOUBLE())
                         .cursor_pointer()
                         .when(is_selected, |d| {
                             d.bg(t.box_selected_active_background)
@@ -1069,14 +1069,14 @@ pub fn branch_picker(
                                 },
                                 t.text,
                             )
-                            .mr(SPACING_HALF),
+                            .mr(SPACING_HALF()),
                         )
                         .child(
                             div()
                                 .flex_1()
                                 .min_w_0()
                                 .truncate()
-                                .text_size(FONT_SIZE)
+                                .text_size(FONT_SIZE())
                                 .child(b.name.clone()),
                         )
                 }))
@@ -1087,8 +1087,8 @@ pub fn branch_picker(
         .flex_col()
         .child(
             div()
-                .px(SPACING_DOUBLE)
-                .pb(SPACING)
+                .px(SPACING_DOUBLE())
+                .pb(SPACING())
                 .border_b_1()
                 .border_color(t.box_border)
                 .child(text_box(
