@@ -212,11 +212,11 @@ impl Mode for SimpleMode {
                         for (j, g) in m.groups.iter().enumerate().skip(1) {
                             if let Some(g) = g.as_ref().filter(|g| !g.is_empty()) {
                                 s.pending
-                                    .push((g.chars().count(), tokens.get(j).copied().flatten()));
+                                    .push((super::js_len(g), tokens.get(j).copied().flatten()));
                             }
                         }
-                        let first = m.group(1).map_or(0, |g| g.chars().count());
-                        stream.back_up(m.text.chars().count() - first);
+                        let first = m.group(1).map_or(0, super::js_len);
+                        stream.back_up(super::js_len(&m.text) - first);
                     }
                     tokens.first().copied().flatten().map(style)
                 }

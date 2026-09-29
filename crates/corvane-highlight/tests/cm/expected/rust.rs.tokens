@@ -132,4 +132,15 @@
 27 17 8 m-rust string
 28 0 8 m-rust string
 28 8 1 m-rust string
-29 4 2 m-rust builtin
+29 4 3 m-rust keyword
+29 8 5 m-rust def
+29 14 1 m-rust operator
+29 16 1 m-rust string
+29 17 7 m-rust string
+29 24 1 m-rust string
+29 27 3 m-rust keyword
+29 31 5 m-rust def
+29 37 1 m-rust operator
+29 39 1 m-rust number
+29 42 15 m-rust comment
+30 4 2 m-rust builtin

@@ -3,8 +3,8 @@
 //! `codemirror/addon/runmode/runmode.node.js`), so diff colours come out of
 //! the same tokenizers GHD uses:
 //!
-//! - [`StringStream`]: CodeMirror's stream API, indexed in chars like JS
-//!   string indices (UTF-16 units, identical for the BMP).
+//! - [`StringStream`]: CodeMirror's stream API, indexed in UTF-16 code
+//!   units like JS strings (a char outside the BMP takes two positions).
 //! - [`Mode`]: a tokenizer with a boxed, clonable state, so modes nest
 //!   (htmlmixed runs xml, css and javascript; php runs htmlmixed and clike).
 //! - [`run`]: GHD's worker loop (blank lines → `blankLine`, up to ten tries
@@ -98,10 +98,32 @@ impl Match {
     }
 }
 
-/// CodeMirror 5 `StringStream`.
+/// UTF-16 unit → byte offset (plus the end) and unit → char, the way JS
+/// indexes a string: both halves of a surrogate pair map to the char's first
+/// byte and to the char itself.
+fn units(string: &str) -> (Vec<char>, Vec<usize>) {
+    let mut chars = Vec::with_capacity(string.len());
+    let mut bytes = Vec::with_capacity(string.len() + 1);
+    for (b, c) in string.char_indices() {
+        for _ in 0..c.len_utf16() {
+            chars.push(c);
+            bytes.push(b);
+        }
+    }
+    bytes.push(string.len());
+    (chars, bytes)
+}
+
+/// Length of a string in UTF-16 units (JS `.length`).
+pub fn js_len(s: &str) -> usize {
+    s.encode_utf16().count()
+}
+
+/// CodeMirror 5 `StringStream`. Positions are UTF-16 units, like JS.
 pub struct StringStream<'a> {
+    /// the char at every UTF-16 unit
     chars: Vec<char>,
-    /// byte offset of every char (plus the end), for regex matching
+    /// byte offset of every unit (plus the end), for regex matching
     bytes: Vec<usize>,
     string: &'a str,
     pub pos: usize,
@@ -147,9 +169,7 @@ fn count_column(
 
 impl<'a> StringStream<'a> {
     pub fn new(string: &'a str, tab_size: usize, lines: &'a [&'a str], line: usize) -> Self {
-        let chars: Vec<char> = string.chars().collect();
-        let mut bytes: Vec<usize> = string.char_indices().map(|(b, _)| b).collect();
-        bytes.push(string.len());
+        let (chars, bytes) = units(string);
         Self {
             chars,
             bytes,
@@ -165,7 +185,7 @@ impl<'a> StringStream<'a> {
         }
     }
 
-    /// Length of the line in chars.
+    /// Length of the line in UTF-16 units.
     pub fn len(&self) -> usize {
         self.chars.len()
     }
@@ -267,7 +287,7 @@ impl<'a> StringStream<'a> {
         let rest = &self.string[self.bytes[self.pos.min(self.chars.len())]..];
         match rest.find(needle) {
             Some(b) => {
-                self.pos += rest[..b].chars().count();
+                self.pos += js_len(&rest[..b]);
                 true
             }
             None => false,
@@ -304,7 +324,7 @@ impl<'a> StringStream<'a> {
     }
     /// `match(string, consume, caseInsensitive)`
     pub fn match_str(&mut self, pattern: &str, consume: bool, case_insensitive: bool) -> bool {
-        let n = pattern.chars().count();
+        let n = js_len(pattern);
         if self.pos + n > self.chars.len() {
             return false;
         }
@@ -335,7 +355,7 @@ impl<'a> StringStream<'a> {
                 .collect(),
         };
         if consume {
-            self.pos += whole.as_str().chars().count();
+            self.pos += js_len(whole.as_str());
         }
         Some(m)
     }
@@ -470,11 +490,7 @@ pub fn highlight(mode: &dyn Mode, lines: &[&str], budget: usize) -> Vec<Vec<Span
         .into_iter()
         .zip(lines)
         .map(|(toks, line)| {
-            let offsets: Vec<usize> = line
-                .char_indices()
-                .map(|(b, _)| b)
-                .chain(std::iter::once(line.len()))
-                .collect();
+            let (_, offsets) = units(line);
             let mut spans: Vec<Span> = Vec::new();
             for (start, len, style) in toks {
                 let Some(class) = resolve(&style) else {
@@ -534,5 +550,16 @@ mod tests {
         assert_eq!(s.current(), "  héllo");
         assert!(s.match_str(" WORLD", false, true));
         assert!(!s.match_str(" WORLD", false, false));
+    }
+
+    #[test]
+    fn positions_are_utf16_units_like_js() {
+        let lines = ["a😀b"];
+        let mut s = StringStream::new(lines[0], 4, &lines, 0);
+        assert_eq!(s.len(), 4);
+        assert!(s.match_re(re!("a😀"), true).is_some());
+        assert_eq!(s.pos, 3);
+        assert_eq!(s.current(), "a😀");
+        assert_eq!(s.next(), Some('b'));
     }
 }

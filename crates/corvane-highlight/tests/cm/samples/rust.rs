@@ -27,5 +27,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let multi = "line one
 line two";
+    let emoji = "😀 wide"; let after = 1; // 😀 then text
     Ok(())
 }

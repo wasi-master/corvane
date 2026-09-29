@@ -39,8 +39,9 @@ port from end up in `target/cm-oracle/node_modules/codemirror/mode/<name>/<name>
 
 ### JS → Rust translation notes
 
-- `StringStream` positions are char indices, like JS string indices
-  (`stream.pos`, `stream.start`, `back_up(n)` count chars).
+- `StringStream` positions are UTF-16 units, like JS string indices
+  (`stream.pos`, `stream.start`, `back_up(n)`); use `cm::js_len(s)` for a
+  JS `.length`.
 - `stream.match(/re/)` → `stream.match_re(re!(r"..."), consume)` (unanchored
   search whose match must start at `pos`, exactly like JS; returns the match
   text and groups). `stream.match("str", consume, ci)` → `match_str`.
@@ -48,9 +49,13 @@ port from end up in `target/cm-oracle/node_modules/codemirror/mode/<name>/<name>
   `eatWhile` → `eat_while` / `eat_while_if` / `eat_while_re`.
 - `re!` compiles once per call site with `fancy_regex` (lookahead,
   lookbehind and backreferences work like JS). JS flag `i` → `(?i)`.
-- JS `\w`, `\d`, `\b` are ASCII; Rust's are Unicode. Write
-  `[A-Za-z0-9_]`, `[0-9]` or `(?-u:\b)` when a sample with non-ASCII text
-  would behave differently. JS `\s` is Unicode in both.
+- JS `\w`, `\d`, `\b` are ASCII; Rust's are Unicode. Write `[A-Za-z0-9_]`,
+  `[0-9]`, and word boundaries as lookarounds
+  (`(?<![A-Za-z0-9_])(?=[A-Za-z0-9_])` / `(?<=[A-Za-z0-9_])(?![A-Za-z0-9_])`)
+  when non-ASCII text would behave differently: fancy-regex rejects
+  `(?-u:…)`. JS `\s` is Unicode in both. In fancy-regex `\<` / `\>` are word
+  boundaries, not literal `<` / `>`: drop the backslash. Case-insensitive
+  `(?i)` also folds `ſ` / `K` (Kelvin) onto `s` / `k`, which JS does not.
 - A JS state object becomes a `#[derive(Clone)] struct`; `state.tokenize`
   function pointers become an enum (or `fn` pointer) field. Nested modes keep
   the inner state as `Box<dyn ModeState>`.
