@@ -1,0 +1,23 @@
+# First launch (fresh profile / data dir). Presses are released off the
+# button (a cancelled click in both apps): a real click on "Sign in to
+# GitHub.com" would open the browser OAuth page.
+name: welcome-start
+description: Welcome flow start page, button hover / press, then "Skip this step" → Configure Git
+setup: welcome
+steps:
+  - wait: 600
+  - snap: start
+  - hover: {text: "Sign in to GitHub.com", within: "#welcome"}
+  - snap: sign-in-hover
+  - press: {text: "Sign in to GitHub.com", within: "#welcome"}
+  - snap: sign-in-pressed
+  - release: [700, 790]
+  - hover: {text: "Sign in to GitHub Enterprise", within: "#welcome"}
+  - snap: enterprise-hover
+  - hover: {text: "Skip this step", within: "#welcome"}
+  - snap: skip-hover
+  - click: {text: "Skip this step", within: "#welcome"}
+    wait: 800
+  - snap: configure-git
+  - hover: {text: "Finish", within: "#welcome"}
+  - snap: finish-hover

@@ -1,0 +1,82 @@
+name: main-window
+description: Changes view with the fixture's four working-tree changes, no interaction
+setup: repo
+steps:
+  - wait: 600
+  - snap: initial
+---
+name: toolbar-states
+description: Hover and pressed states of the three toolbar buttons and their resize handles
+setup: repo
+steps:
+  - hover: [125, 56]
+  - snap: repository-hover
+  - press: [125, 56]
+  - snap: repository-pressed
+  - release: [125, 56]
+  - key: escape
+  - hover: [365, 56]
+  - snap: branch-hover
+  - press: [365, 56]
+  - snap: branch-pressed
+  - release: [365, 56]
+  - key: escape
+  - hover: [595, 56]
+  - snap: publish-hover
+  - press: [595, 56]
+  - snap: publish-pressed
+  - release: [595, 56]
+  - key: escape
+  - hover: [480, 56]
+  - snap: resize-handle-hover
+---
+name: sidebar-states
+description: Tabs, filter row, file rows and the commit form in their hover / focus / pressed states
+setup: repo
+steps:
+  - hover: [187, 97]
+  - snap: history-tab-hover
+  - hover: [34, 129]
+  - snap: filter-options-hover
+  - click: [148, 129]
+  - snap: filter-focused
+  - type: "read"
+  - snap: filter-typed
+  - key: escape
+  - hover: [120, 214]
+  - snap: file-row-hover
+  - click: [120, 243]
+  - snap: file-row-selected-readme
+  - click: [120, 214]
+  - snap: file-row-selected-new-file
+  - click: [16, 156]
+  - snap: all-files-excluded
+  - click: [16, 156]
+  - click: [16, 185]
+  - snap: one-file-excluded
+  - hover: [124, 747]
+  - snap: commit-button-hover
+  - click: [139, 583]
+  - snap: summary-focused
+  - type: "Update the README"
+  - snap: summary-typed
+  - click: [124, 647]
+  - type: "Adds the license section."
+  - snap: description-typed
+  - hover: [124, 747]
+  - snap: commit-button-enabled-hover
+  - press: [124, 747]
+  - snap: commit-button-pressed
+  - hover: [219, 791]
+  - snap: undo-hover
+---
+name: panel-resize
+description: Dragging the sidebar resize handle to 320pt, then back past the minimum
+setup: repo
+steps:
+  - hover: [249, 400]
+  - snap: handle-hover
+  - drag: {from: [249, 400], to: [320, 400]}
+  - snap: sidebar-320
+  - drag: {from: [320, 400], to: [100, 400]}
+  - snap: sidebar-minimum

@@ -1,0 +1,14 @@
+name: no-repositories
+description: Welcome done, no repositories ("Let's get started"), action buttons hover / press
+setup: empty
+steps:
+  - wait: 600
+  - snap: blank-slate
+  - hover: {contains: "Clone a Repository from the Internet"}
+  - snap: clone-hover
+  - press: {contains: "Clone a Repository from the Internet"}
+  - snap: clone-pressed
+  - release: {contains: "Clone a Repository from the Internet"}
+  - key: escape
+  - hover: {contains: "Create a New Repository on your"}
+  - snap: create-hover

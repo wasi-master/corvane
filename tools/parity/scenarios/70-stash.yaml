@@ -1,0 +1,10 @@
+name: stash
+description: Stash all changes, the Stashed Changes row and the stash view
+setup: repo
+steps:
+  - menu: stash-all-changes
+    wait: 1500
+  - snap: after-stash
+  - menu: show-stashed-changes
+    wait: 800
+  - snap: stash-view

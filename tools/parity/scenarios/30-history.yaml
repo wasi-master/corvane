@@ -1,0 +1,22 @@
+name: history
+description: History tab, commit rows, commit selection and its diff
+setup: repo
+steps:
+  - click: [187, 97]
+    wait: 600
+  - snap: open
+  - hover: [124, 225]
+  - snap: row-hover
+  - click: [124, 275]
+    wait: 600
+  - snap: second-commit-selected
+  - click: [124, 425]
+    wait: 600
+  - snap: initial-commit-selected
+  - key: up
+    wait: 400
+  - snap: keyboard-up
+  - click: [132, 130]
+  - snap: branch-filter-focused
+  - type: "logo"
+  - snap: branch-filter-typed

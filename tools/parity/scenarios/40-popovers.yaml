@@ -1,0 +1,13 @@
+name: popovers
+description: Diff options popover and the changes filter options menu
+setup: repo
+steps:
+  - hover: [1320, 97]
+  - snap: diff-options-hover
+  - click: [1320, 97]
+    wait: 400
+  - snap: diff-options-open
+  - key: escape
+  - click: [34, 129]
+    wait: 400
+  - snap: filter-options-open

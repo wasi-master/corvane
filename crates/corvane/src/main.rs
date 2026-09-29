@@ -5,6 +5,8 @@ mod assets;
 mod dev_samples;
 mod logging;
 mod menus;
+#[cfg(feature = "snapshots")]
+mod parity_control;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -211,6 +213,15 @@ fn main() {
             })
             .detach();
         }
+        // CORVANE_CONTROL=<port> (build with `--features snapshots`): remote
+        // control for the GitHub Desktop parity harness (`tools/parity`).
+        #[cfg(feature = "snapshots")]
+        if let Some(port) = std::env::var("CORVANE_CONTROL")
+            .ok()
+            .and_then(|p| p.parse().ok())
+        {
+            parity_control::start(port, open_dev_popup, cx);
+        }
         // CORVANE_ADD_REPO=/path adds a repository at launch (dev/testing convenience).
         if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
             Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
@@ -263,234 +274,7 @@ fn main() {
                     .timer(std::time::Duration::from_millis(1500))
                     .await;
                 cx.update(|cx| {
-                    let selected = corvane_core::AppState::global(cx).read(cx).selected;
-                    match (popup.as_str(), selected) {
-                        (other, _) if other.starts_with("preferences") => {
-                            use corvane_core::PreferencesTab as Tab;
-                            let tab = match other.strip_prefix("preferences:") {
-                                Some("integrations") => Tab::Integrations,
-                                Some("git") => Tab::Git,
-                                Some("appearance") => Tab::Appearance,
-                                Some("notifications") => Tab::Notifications,
-                                Some("prompts") => Tab::Prompts,
-                                Some("advanced") => Tab::Advanced,
-                                Some("accessibility") => Tab::Accessibility,
-                                _ => Tab::Accounts,
-                            };
-                            Dispatcher::open_preferences(tab, cx)
-                        }
-                        ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
-                            id,
-                            corvane_core::RepositorySettingsTab::Remote,
-                            cx,
-                        ),
-                        ("about", _) => Dispatcher::show_popup(
-                            Popup::About {
-                                version: env!("CARGO_PKG_VERSION").to_string(),
-                            },
-                            cx,
-                        ),
-                        ("create", _) => {
-                            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
-                        }
-                        ("clone", _) => {
-                            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
-                        }
-                        // GHD `showFakeUpstreamAlreadyExists` (test UI components):
-                        // an in-memory fork of desktop/desktop whose `upstream`
-                        // points elsewhere
-                        ("upstream-already-exists", Some(id)) => {
-                            let parent = corvane_core::GitHubRepository {
-                                endpoint: "https://api.github.com".into(),
-                                owner: "desktop".into(),
-                                name: "desktop".into(),
-                                html_url: "https://github.com/desktop/desktop".into(),
-                                clone_url: "https://github.com/desktop/desktop.git".into(),
-                                default_branch: Some("development".into()),
-                                private: false,
-                                fork: false,
-                                parent: None,
-                                archived: false,
-                                permissions: None,
-                            };
-                            corvane_core::AppState::global(cx).update(cx, |s, _| {
-                                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
-                                    let mut fork = parent.clone();
-                                    fork.owner = "octocat".into();
-                                    fork.fork = true;
-                                    fork.parent = Some(Box::new(parent));
-                                    r.github = Some(fork);
-                                }
-                            });
-                            Dispatcher::show_popup(
-                                Popup::UpstreamAlreadyExists {
-                                    repo: id,
-                                    existing_url: "https://github.com/someone-else/desktop.git"
-                                        .into(),
-                                },
-                                cx,
-                            )
-                        }
-                        // GHD test UI components: `MoveToApplicationsFolder`
-                        ("move-to-applications", _) => {
-                            Dispatcher::show_popup(Popup::MoveToApplicationsFolder, cx)
-                        }
-                        // GHD `showFakeReleaseNotes` (test UI components)
-                        ("release-notes", _) => {
-                            use corvane_core::release_notes::{
-                                parse_release_body, release_summary,
-                            };
-                            let body = "Corvane now reads more of **GitHub Desktop**'s workflow: \
-                                _Markdown_ with `inline code`, ~~webviews~~ and \
-                                [links](https://github.com/wasi-master/corvane).\n\n\
-                                - [New] Branch autocompletion in Add Worktree\n\
-                                - [Improved] Clone resolves owner/name through the API\n\
-                                - [Added] Commit message templates\n\
-                                - [Fixed] Arrow keys scroll the changes list. Thanks @octocat!\n\
-                                - [Fixed] Upstream remote conflicts are reported\n\
-                                - [Removed] Stale menu items";
-                            Dispatcher::show_popup(
-                                Popup::ReleaseNotes {
-                                    summary: release_summary(
-                                        env!("CARGO_PKG_VERSION"),
-                                        Some(std::time::SystemTime::now()),
-                                        parse_release_body(body),
-                                    ),
-                                },
-                                cx,
-                            )
-                        }
-                        // GHD `TestNotifications`: the pull request notification
-                        // dialogs for the CORVANE_ADD_REPO repository
-                        (other, Some(id)) if other.starts_with("pr-review") => {
-                            use corvane_github::api::ApiPullRequestReviewState as State;
-                            let state = match other.strip_prefix("pr-review") {
-                                Some(":approved") => State::Approved,
-                                Some(":commented") => State::Commented,
-                                _ => State::ChangesRequested,
-                            };
-                            Dispatcher::show_popup(
-                                Popup::PullRequestReview {
-                                    repo: id,
-                                    pull_request: dev_samples::pull_request(id, cx),
-                                    review: dev_samples::review(state),
-                                    should_checkout_branch: true,
-                                    should_change_repository: false,
-                                },
-                                cx,
-                            )
-                        }
-                        (other, Some(id)) if other.starts_with("tutorial:") => {
-                            let step = corvane_core::tutorial::TutorialStep::parse(
-                                &other["tutorial:".len()..],
-                            );
-                            corvane_core::AppState::global(cx).update(cx, |s, cx| {
-                                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
-                                    r.is_tutorial_repository = true;
-                                }
-                                s.tutorial_step_override = step;
-                                cx.notify();
-                            });
-                        }
-                        ("tutorial-create", _) => Dispatcher::show_create_tutorial_repository(cx),
-                        ("tutorial-exit", _) => {
-                            Dispatcher::show_popup(Popup::ConfirmExitTutorial, cx)
-                        }
-                        ("crash-report", _) => {
-                            Dispatcher::update_settings(cx, |s| s.save_crash_reports = true);
-                            Dispatcher::sync_crash_reports_setting(cx);
-                            panic!("CORVANE_POPUP=crash-report: deliberate crash");
-                        }
-                        ("no-write-access", Some(id)) => dev_samples::make_read_only(id, cx),
-                        (other, Some(id)) if other.starts_with("notification-click:") => {
-                            use corvane_core::notifications::TestNotificationType as Kind;
-                            let kind = match &other["notification-click:".len()..] {
-                                "comment" => Kind::PullRequestComment,
-                                "checks-failed" => Kind::ChecksFailed,
-                                _ => Kind::PullRequestReview,
-                            };
-                            let notification = corvane_core::samples::notification(kind, id, cx);
-                            if let Some(payload) = Dispatcher::notification_payload(&notification) {
-                                Dispatcher::notification_payload_clicked(&payload, cx);
-                            }
-                        }
-                        (other, _) if other.starts_with("update-available") => {
-                            let flags: Vec<&str> = other.split(':').skip(1).collect();
-                            Dispatcher::install_sample_update(flags.contains(&"brew"), cx);
-                            if flags.contains(&"about") {
-                                Dispatcher::show_popup(
-                                    Popup::About {
-                                        version: env!("CARGO_PKG_VERSION").to_string(),
-                                    },
-                                    cx,
-                                );
-                            } else if flags.contains(&"notes") {
-                                Dispatcher::show_update_release_notes(cx);
-                            }
-                        }
-                        ("zoom-in", _) => cx.dispatch_action(&ZoomIn),
-                        ("zoom-out", _) => cx.dispatch_action(&ZoomOut),
-                        ("zoom-reset", _) => cx.dispatch_action(&ResetZoom),
-                        // GHD `simulateAliveEvent`: an Alive event through the real handler
-                        (other, Some(id)) if other.starts_with("alive:") => {
-                            use corvane_core::notifications::TestNotificationType as Kind;
-                            let parts: Vec<&str> = other.split(':').collect();
-                            let kind = match parts.get(1).copied() {
-                                Some("comment") => Kind::PullRequestComment,
-                                Some("checks-failed") => Kind::ChecksFailed,
-                                _ => Kind::PullRequestReview,
-                            };
-                            let data = if parts.contains(&"api") {
-                                corvane_core::AliveEventData::Api
-                            } else {
-                                corvane_core::AliveEventData::Sample
-                            };
-                            dev_samples::install_pull_requests(id, cx);
-                            Dispatcher::simulate_alive_event(id, kind, data, cx);
-                        }
-                        // the sign-in dialog (device flow by default, browser flow link)
-                        ("sign-in", _) => {
-                            Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx)
-                        }
-                        ("test-notifications", Some(id)) => {
-                            Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
-                        }
-                        ("pr-list", Some(id)) => {
-                            dev_samples::install_pull_requests(id, cx);
-                            Dispatcher::change_branches_tab(
-                                corvane_core::BranchesTab::PullRequests,
-                                cx,
-                            );
-                            Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
-                        }
-                        ("pr-comment", Some(id)) => Dispatcher::show_popup(
-                            Popup::PullRequestComment {
-                                repo: id,
-                                pull_request: dev_samples::pull_request(id, cx),
-                                comment: dev_samples::comment(),
-                                should_checkout_branch: true,
-                                should_change_repository: false,
-                            },
-                            cx,
-                        ),
-                        ("pr-checks-failed", Some(id)) => Dispatcher::show_popup(
-                            Popup::PullRequestChecksFailed {
-                                repo: id,
-                                pull_request: dev_samples::pull_request(id, cx),
-                                checks: dev_samples::failed_checks(),
-                                should_change_repository: false,
-                            },
-                            cx,
-                        ),
-                        // `clone:<url>` opens the URL tab pre-filled
-                        (other, _) if other.starts_with("clone:") => Dispatcher::show_popup(
-                            Popup::CloneRepository {
-                                url: Some(other["clone:".len()..].to_string()),
-                            },
-                            cx,
-                        ),
-                        _ => {}
-                    }
+                    open_dev_popup(&popup, cx);
                 });
             })
             .detach();
@@ -977,6 +761,221 @@ fn focus_main_window(cx: &mut App) {
                 corvane_ui::native_window::show_window(window, cx)
             })
             .ok();
+    }
+}
+
+/// `CORVANE_POPUP=<name>` (and the parity harness's `popup` hook): open a
+/// dialog or sample state for visual checks. Names are listed in `main`.
+fn open_dev_popup(popup: &str, cx: &mut App) {
+    let selected = corvane_core::AppState::global(cx).read(cx).selected;
+    match (popup, selected) {
+        (other, _) if other.starts_with("preferences") => {
+            use corvane_core::PreferencesTab as Tab;
+            let tab = match other.strip_prefix("preferences:") {
+                Some("integrations") => Tab::Integrations,
+                Some("git") => Tab::Git,
+                Some("appearance") => Tab::Appearance,
+                Some("notifications") => Tab::Notifications,
+                Some("prompts") => Tab::Prompts,
+                Some("advanced") => Tab::Advanced,
+                Some("accessibility") => Tab::Accessibility,
+                _ => Tab::Accounts,
+            };
+            Dispatcher::open_preferences(tab, cx)
+        }
+        ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
+            id,
+            corvane_core::RepositorySettingsTab::Remote,
+            cx,
+        ),
+        ("about", _) => Dispatcher::show_popup(
+            Popup::About {
+                version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            cx,
+        ),
+        ("create", _) => Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
+        ("clone", _) => Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx),
+        // GHD `showFakeUpstreamAlreadyExists` (test UI components):
+        // an in-memory fork of desktop/desktop whose `upstream`
+        // points elsewhere
+        ("upstream-already-exists", Some(id)) => {
+            let parent = corvane_core::GitHubRepository {
+                endpoint: "https://api.github.com".into(),
+                owner: "desktop".into(),
+                name: "desktop".into(),
+                html_url: "https://github.com/desktop/desktop".into(),
+                clone_url: "https://github.com/desktop/desktop.git".into(),
+                default_branch: Some("development".into()),
+                private: false,
+                fork: false,
+                parent: None,
+                archived: false,
+                permissions: None,
+            };
+            corvane_core::AppState::global(cx).update(cx, |s, _| {
+                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
+                    let mut fork = parent.clone();
+                    fork.owner = "octocat".into();
+                    fork.fork = true;
+                    fork.parent = Some(Box::new(parent));
+                    r.github = Some(fork);
+                }
+            });
+            Dispatcher::show_popup(
+                Popup::UpstreamAlreadyExists {
+                    repo: id,
+                    existing_url: "https://github.com/someone-else/desktop.git".into(),
+                },
+                cx,
+            )
+        }
+        // GHD test UI components: `MoveToApplicationsFolder`
+        ("move-to-applications", _) => Dispatcher::show_popup(Popup::MoveToApplicationsFolder, cx),
+        // GHD `showFakeReleaseNotes` (test UI components)
+        ("release-notes", _) => {
+            use corvane_core::release_notes::{parse_release_body, release_summary};
+            let body = "Corvane now reads more of **GitHub Desktop**'s workflow: \
+                    _Markdown_ with `inline code`, ~~webviews~~ and \
+                    [links](https://github.com/wasi-master/corvane).\n\n\
+                    - [New] Branch autocompletion in Add Worktree\n\
+                    - [Improved] Clone resolves owner/name through the API\n\
+                    - [Added] Commit message templates\n\
+                    - [Fixed] Arrow keys scroll the changes list. Thanks @octocat!\n\
+                    - [Fixed] Upstream remote conflicts are reported\n\
+                    - [Removed] Stale menu items";
+            Dispatcher::show_popup(
+                Popup::ReleaseNotes {
+                    summary: release_summary(
+                        env!("CARGO_PKG_VERSION"),
+                        Some(std::time::SystemTime::now()),
+                        parse_release_body(body),
+                    ),
+                },
+                cx,
+            )
+        }
+        // GHD `TestNotifications`: the pull request notification
+        // dialogs for the CORVANE_ADD_REPO repository
+        (other, Some(id)) if other.starts_with("pr-review") => {
+            use corvane_github::api::ApiPullRequestReviewState as State;
+            let state = match other.strip_prefix("pr-review") {
+                Some(":approved") => State::Approved,
+                Some(":commented") => State::Commented,
+                _ => State::ChangesRequested,
+            };
+            Dispatcher::show_popup(
+                Popup::PullRequestReview {
+                    repo: id,
+                    pull_request: dev_samples::pull_request(id, cx),
+                    review: dev_samples::review(state),
+                    should_checkout_branch: true,
+                    should_change_repository: false,
+                },
+                cx,
+            )
+        }
+        (other, Some(id)) if other.starts_with("tutorial:") => {
+            let step = corvane_core::tutorial::TutorialStep::parse(&other["tutorial:".len()..]);
+            corvane_core::AppState::global(cx).update(cx, |s, cx| {
+                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
+                    r.is_tutorial_repository = true;
+                }
+                s.tutorial_step_override = step;
+                cx.notify();
+            });
+        }
+        ("tutorial-create", _) => Dispatcher::show_create_tutorial_repository(cx),
+        ("tutorial-exit", _) => Dispatcher::show_popup(Popup::ConfirmExitTutorial, cx),
+        ("crash-report", _) => {
+            Dispatcher::update_settings(cx, |s| s.save_crash_reports = true);
+            Dispatcher::sync_crash_reports_setting(cx);
+            panic!("CORVANE_POPUP=crash-report: deliberate crash");
+        }
+        ("no-write-access", Some(id)) => dev_samples::make_read_only(id, cx),
+        (other, Some(id)) if other.starts_with("notification-click:") => {
+            use corvane_core::notifications::TestNotificationType as Kind;
+            let kind = match &other["notification-click:".len()..] {
+                "comment" => Kind::PullRequestComment,
+                "checks-failed" => Kind::ChecksFailed,
+                _ => Kind::PullRequestReview,
+            };
+            let notification = corvane_core::samples::notification(kind, id, cx);
+            if let Some(payload) = Dispatcher::notification_payload(&notification) {
+                Dispatcher::notification_payload_clicked(&payload, cx);
+            }
+        }
+        (other, _) if other.starts_with("update-available") => {
+            let flags: Vec<&str> = other.split(':').skip(1).collect();
+            Dispatcher::install_sample_update(flags.contains(&"brew"), cx);
+            if flags.contains(&"about") {
+                Dispatcher::show_popup(
+                    Popup::About {
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                    },
+                    cx,
+                );
+            } else if flags.contains(&"notes") {
+                Dispatcher::show_update_release_notes(cx);
+            }
+        }
+        ("zoom-in", _) => cx.dispatch_action(&ZoomIn),
+        ("zoom-out", _) => cx.dispatch_action(&ZoomOut),
+        ("zoom-reset", _) => cx.dispatch_action(&ResetZoom),
+        // GHD `simulateAliveEvent`: an Alive event through the real handler
+        (other, Some(id)) if other.starts_with("alive:") => {
+            use corvane_core::notifications::TestNotificationType as Kind;
+            let parts: Vec<&str> = other.split(':').collect();
+            let kind = match parts.get(1).copied() {
+                Some("comment") => Kind::PullRequestComment,
+                Some("checks-failed") => Kind::ChecksFailed,
+                _ => Kind::PullRequestReview,
+            };
+            let data = if parts.contains(&"api") {
+                corvane_core::AliveEventData::Api
+            } else {
+                corvane_core::AliveEventData::Sample
+            };
+            dev_samples::install_pull_requests(id, cx);
+            Dispatcher::simulate_alive_event(id, kind, data, cx);
+        }
+        // the sign-in dialog (device flow by default, browser flow link)
+        ("sign-in", _) => Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx),
+        ("test-notifications", Some(id)) => {
+            Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
+        }
+        ("pr-list", Some(id)) => {
+            dev_samples::install_pull_requests(id, cx);
+            Dispatcher::change_branches_tab(corvane_core::BranchesTab::PullRequests, cx);
+            Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
+        }
+        ("pr-comment", Some(id)) => Dispatcher::show_popup(
+            Popup::PullRequestComment {
+                repo: id,
+                pull_request: dev_samples::pull_request(id, cx),
+                comment: dev_samples::comment(),
+                should_checkout_branch: true,
+                should_change_repository: false,
+            },
+            cx,
+        ),
+        ("pr-checks-failed", Some(id)) => Dispatcher::show_popup(
+            Popup::PullRequestChecksFailed {
+                repo: id,
+                pull_request: dev_samples::pull_request(id, cx),
+                checks: dev_samples::failed_checks(),
+                should_change_repository: false,
+            },
+            cx,
+        ),
+        // `clone:<url>` opens the URL tab pre-filled
+        (other, _) if other.starts_with("clone:") => Dispatcher::show_popup(
+            Popup::CloneRepository {
+                url: Some(other["clone:".len()..].to_string()),
+            },
+            cx,
+        ),
+        _ => {}
     }
 }
 

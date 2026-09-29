@@ -1,0 +1,17 @@
+# GHD's own UI test hooks (menu events `test-*`) next to Corvane's matching
+# CORVANE_POPUP names.
+name: move-to-applications
+description: Move to Applications folder dialog
+setup: repo
+steps:
+  - popup: {ghd: test-move-to-application-folder, corvane: move-to-applications}
+    wait: 700
+  - snap: open
+---
+name: upstream-already-exists
+description: Upstream already exists dialog (fake fork)
+setup: repo
+steps:
+  - popup: {ghd: test-upstream-already-exists, corvane: upstream-already-exists}
+    wait: 700
+  - snap: open

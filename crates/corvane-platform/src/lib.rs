@@ -26,8 +26,12 @@ pub mod paths {
 
     pub const APP_NAME: &str = "Corvane";
 
-    /// `~/Library/Application Support/Corvane`
+    /// `~/Library/Application Support/Corvane`, or `CORVANE_DATA_DIR` (an
+    /// isolated store for test harnesses such as `tools/parity`).
     pub fn app_support_dir() -> PathBuf {
+        if let Some(dir) = std::env::var_os("CORVANE_DATA_DIR") {
+            return PathBuf::from(dir);
+        }
         dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join(APP_NAME)

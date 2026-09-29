@@ -1,0 +1,39 @@
+name: repository-foldout
+description: Repository list foldout, row hover, filter, Add button
+setup: repo
+steps:
+  - click: [125, 56]
+    wait: 500
+  - snap: open
+  - hover: {text: "parity-fixture", within: ".foldout"}
+  - snap: row-hover
+  - type: "zzz"
+  - snap: filter-no-results
+  - key: cmd-a backspace
+  - hover: {text: "Add", within: ".foldout"}
+  - snap: add-hover
+  - click: {text: "Add", within: ".foldout"}
+  - snap: add-menu
+---
+name: branch-foldout
+description: Branch list foldout, row hover / press, filter, New Branch button
+setup: repo
+steps:
+  - click: [365, 56]
+    wait: 500
+  - snap: open
+  - hover: [432, 231]
+  - snap: row-hover
+  - press: [432, 231]
+  - snap: row-pressed
+  - release: [432, 231]
+  - wait: 600
+  - snap: after-switch-click
+  - click: [365, 56]
+    wait: 500
+  - type: "feat"
+  - snap: filter-typed
+  - type: "zzz"
+  - snap: filter-no-results
+  - hover: [560, 103]
+  - snap: new-branch-hover

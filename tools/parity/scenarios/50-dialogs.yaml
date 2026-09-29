@@ -1,0 +1,140 @@
+name: preferences
+description: Settings dialog, every tab
+setup: repo
+steps:
+  - menu: show-preferences
+    wait: 600
+  - snap: accounts
+  - hover: {text: "Integrations", within: "dialog"}
+  - snap: tab-hover
+  - click: {text: "Integrations", within: "dialog"}
+  - snap: integrations
+  - click: {text: "Git", within: "dialog .tab-bar"}
+  - snap: git
+  - click: {text: "Appearance", within: "dialog"}
+  - snap: appearance
+  - click: {text: "Notifications", within: "dialog"}
+  - snap: notifications
+  - click: {text: "Prompts", within: "dialog"}
+  - snap: prompts
+  - click: {text: "Advanced", within: "dialog"}
+  - snap: advanced
+  - click: {text: "Accessibility", within: "dialog"}
+  - snap: accessibility
+  - hover: {text: "Save", within: "dialog"}
+  - snap: save-hover
+---
+name: about
+description: About dialog
+setup: repo
+steps:
+  - menu: show-about
+    wait: 600
+  - snap: open
+---
+name: create-repository
+description: New Repository dialog, typing a name
+setup: repo
+steps:
+  - menu: create-repository
+    wait: 600
+  - snap: open
+  - type: "demo"
+  - snap: name-typed
+---
+name: clone-repository
+description: Clone dialog, all three tabs
+setup: repo
+steps:
+  - menu: clone-repository
+    wait: 600
+  - snap: github-tab
+  - click: {text: "GitHub Enterprise", within: "dialog"}
+  - snap: enterprise-tab
+  - click: {text: "URL", within: "dialog"}
+  - snap: url-tab
+  - type: "desktop/desktop"
+  - snap: url-typed
+---
+name: add-local-repository
+description: Add Local Repository dialog, empty and with a non-repository path
+setup: repo
+steps:
+  - menu: add-local-repository
+    wait: 600
+  - snap: open
+  - type: "/tmp"
+    wait: 900
+  - snap: not-a-repository
+---
+name: branch-dialogs
+description: New Branch (typing an existing name), Rename and Delete branch
+setup: repo
+steps:
+  - menu: create-branch
+    wait: 600
+  - snap: new-branch
+  - type: "feature/login"
+    wait: 500
+  - snap: new-branch-exists
+  - key: escape
+  - menu: rename-branch
+    wait: 600
+  - snap: rename-branch
+  - key: escape
+  - menu: delete-branch
+    wait: 600
+  - snap: delete-branch
+---
+name: repository-settings
+description: Repository Settings dialog, every tab
+setup: repo
+steps:
+  - menu: show-repository-settings
+    wait: 600
+  - snap: remote
+  - click: {text: "Ignored files", within: "dialog"}
+  - snap: ignored-files
+  - click: {text: "Git config", within: "dialog"}
+  - snap: git-config
+---
+name: confirmations
+description: Discard All Changes and Remove Repository confirmations
+setup: repo
+steps:
+  - menu: discard-all-changes
+    wait: 600
+  - snap: discard-all
+  - key: escape
+  - menu: remove-repository
+    wait: 600
+  - snap: remove-repository
+---
+name: branch-operations
+description: Merge, Squash and Rebase dialogs
+setup: repo
+steps:
+  - menu: merge-branch
+    wait: 700
+  - snap: merge
+  - hover: {text: "feature/login", within: "dialog"}
+  - snap: merge-row-hover
+  - click: {text: "feature/login", within: "dialog"}
+    wait: 600
+  - snap: merge-selected
+  - key: escape
+  - menu: squash-and-merge-branch
+    wait: 700
+  - snap: squash
+  - key: escape
+  - menu: rebase-branch
+    wait: 700
+  - snap: rebase
+---
+name: create-worktree
+description: New Worktree dialog
+setup: repo
+steps:
+  - menu: create-worktree
+    wait: 700
+  - snap: open

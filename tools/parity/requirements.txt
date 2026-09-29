@@ -1,0 +1,6 @@
+pillow>=10
+numpy>=1.26
+pyyaml>=6
+websocket-client>=1.6
+# optional: faster region labelling
+scipy>=1.11

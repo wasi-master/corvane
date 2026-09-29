@@ -1,0 +1,13 @@
+name: keyboard-file-list
+description: Arrow keys and Space in the changes list
+setup: repo
+steps:
+  - click: [120, 185]
+  - key: down
+  - snap: down-once
+  - key: down down
+  - snap: down-three
+  - key: space
+  - snap: space-toggles
+  - key: cmd-down
+  - snap: cmd-down-last
