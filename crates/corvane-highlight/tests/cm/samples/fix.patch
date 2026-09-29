@@ -1,0 +1,30 @@
+From 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b Mon Sep 17 00:00:00 2001
+From: Ada Lovelace <ada@example.com>
+Date: Mon, 1 Jan 2024 12:00:00 +0000
+Subject: [PATCH 1/2] Fix the off-by-one in the queue — ünïcödé
+
+The loop ran one time too many.  
+---
+ src/queue.rs | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+ 
+diff --git a/src/queue.rs b/src/queue.rs
+index 1111111..2222222 100644
+--- a/src/queue.rs
++++ b/src/queue.rs
+@@ -10,7 +10,7 @@ impl Queue {
+     fn drain(&mut self) {
+-        for i in 0..=self.len() {
++        for i in 0..self.len() {
+             self.pop(i);
+         }
+     }
+@@ -30,4 +30,4 @@ impl Queue {
+-    let s = "日本";	
++    let s = "日本語";
+  
+ }
+\ No newline at end of file
+-- 
+2.43.0
+
