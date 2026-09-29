@@ -55,6 +55,16 @@ fn main() {
         }
     });
 
+    // `x-corvane://` URLs (the `corvane` command line tool, Finder's "Open
+    // in Corvane", links) may arrive before launch has finished: queue them
+    let url_inbox = corvane_core::app_url::AppUrlInbox::default();
+    let url_sender = url_inbox.sender();
+    app.on_open_urls(move |urls| {
+        for url in urls {
+            url_sender.send(url);
+        }
+    });
+
     app.run(move |cx| {
         phase(started, "platform ready");
         corvane_ui::theme::preseed_kit_theme(cx);
@@ -86,20 +96,12 @@ fn main() {
         // a notification click brings the (possibly hidden) window forward
         // and opens its dialog; installed before the first frame so a click
         // that launched Corvane is delivered too
-        Dispatcher::listen_for_notification_clicks(
-            |cx| {
-                cx.activate(true);
-                #[cfg(target_os = "macos")]
-                for handle in cx.windows() {
-                    handle
-                        .update(cx, |_, window, cx| {
-                            corvane_ui::native_window::show_window(window, cx)
-                        })
-                        .ok();
-                }
-            },
-            cx,
-        );
+        Dispatcher::listen_for_notification_clicks(focus_main_window, cx);
+        let service_urls = url_inbox.sender();
+        corvane_platform::services::register_open_in_corvane(move |path| {
+            service_urls.send(corvane_core::app_url::open_local_repo_url(&path));
+        });
+        Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
         {
             let s = state.read(cx);
             menus::install(cx, &s.editor_label(), &s.shell_label());
@@ -173,10 +175,11 @@ fn main() {
         if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
             Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
         }
-        // `corvane <path>` (the command line tool) launches with
-        // `--open-repo <path>`: add the repository, or select it when known.
+        // `--open-repo <path>` (GHD `--cli-open`; the command line tool now
+        // sends an `openLocalRepo` URL instead): select the repository, or
+        // offer to add it.
         if let Some(path) = open_repo_argument(std::env::args()) {
-            Dispatcher::add_repository(path, cx);
+            Dispatcher::open_local_repository(path, cx);
         }
         // CORVANE_CLONE="<url>|<path>" clones at launch (dev/testing convenience).
         if let Ok(spec) = std::env::var("CORVANE_CLONE")
@@ -815,6 +818,20 @@ fn main() {
         });
         cx.activate(true);
     });
+}
+
+/// GHD `focusWindow`: bring Corvane forward and show its window, even when
+/// it was hidden with ⌘W.
+fn focus_main_window(cx: &mut App) {
+    cx.activate(true);
+    #[cfg(target_os = "macos")]
+    for handle in cx.windows() {
+        handle
+            .update(cx, |_, window, cx| {
+                corvane_ui::native_window::show_window(window, cx)
+            })
+            .ok();
+    }
 }
 
 /// Settings › Appearance › Theme: swap the palette live (`ApplicationTheme`).

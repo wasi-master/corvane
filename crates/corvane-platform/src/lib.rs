@@ -14,6 +14,7 @@ pub mod editors;
 pub mod keychain;
 pub mod locale;
 pub mod notifications;
+pub mod services;
 pub mod shells;
 pub mod spell;
 pub mod trash;

@@ -293,10 +293,9 @@ impl Dispatcher {
             &title,
             &body,
             Some(&payload),
-            |result| {
-                if let Err(err) = result {
-                    warn!(%err, "notification not shown");
-                }
+            |result| match result {
+                Ok(()) => debug!("notification posted"),
+                Err(err) => warn!(%err, "notification not shown"),
             },
         );
     }

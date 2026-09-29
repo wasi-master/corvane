@@ -773,6 +773,9 @@ pub struct AppState {
     pub global_git: Option<GlobalGitConfig>,
     /// Loaded when the Repository Settings dialog opens.
     pub repo_settings: Option<RepositorySettingsData>,
+    /// `resolveOpenInDesktop`: an `x-corvane://openRepo` action waiting for
+    /// the clone it opened.
+    pub pending_open_in_desktop: Option<crate::app_url::PendingOpenInDesktop>,
 }
 
 struct AppStateHandle(Entity<AppState>);
