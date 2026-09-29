@@ -61,6 +61,7 @@ pub mod stylus;
 pub mod swift;
 pub mod toml;
 pub mod vb;
+pub mod vue;
 pub mod xml;
 pub mod yaml;
 pub mod zig;
@@ -335,6 +336,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
             Some(cached!(coffeescript::CoffeeScript))
         }
         "text/x-styl" => Some(cached!(stylus::Stylus)),
+        "text/x-vue" | "script/x-vue" => Some(vue::vue()),
         "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }

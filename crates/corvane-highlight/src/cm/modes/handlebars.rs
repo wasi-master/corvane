@@ -75,6 +75,14 @@ pub fn handlebars() -> Arc<dyn Mode> {
         .clone()
 }
 
+/// `CodeMirror.getMode({}, "handlebars-tags")`: the simple mode under its
+/// own name, for workers that look it up by name (vue's pug filters).
+pub fn handlebars_tags_mode() -> Arc<dyn Mode> {
+    static MODE: OnceLock<Arc<dyn Mode>> = OnceLock::new();
+    MODE.get_or_init(|| Arc::new(handlebars_tags("handlebars-tags")))
+        .clone()
+}
+
 /// `CodeMirror.getMode(config, {name: "handlebars", base})`: `base`
 /// multiplexed with `handlebars-tags` between `{{` and `}}` / `}}}`.
 pub fn handlebars_with_base(base: Arc<dyn Mode>) -> Arc<dyn Mode> {
