@@ -94,7 +94,7 @@ fn has_ci(set: &[&str], word: &str) -> bool {
 }
 
 /// `keys.hasOwnProperty(word)` (no lower-casing).
-fn has(set: &[&str], word: &str) -> bool {
+pub(crate) fn has(set: &[&str], word: &str) -> bool {
     set.binary_search(&word).is_ok()
 }
 
@@ -921,7 +921,7 @@ const MEDIA_VALUE_KEYWORDS: &[&str] = &[
 ];
 
 /// `propertyKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const PROPERTY_KEYWORDS: &[&str] = &[
+pub(crate) const PROPERTY_KEYWORDS: &[&str] = &[
     "align-content",
     "align-items",
     "align-self",
@@ -1424,7 +1424,7 @@ const NON_STANDARD_PROPERTY_KEYWORDS: &[&str] = &[
 ];
 
 /// `fontProperties_` (lower-cased, sorted, deduplicated: `keySet`)
-const FONT_PROPERTIES: &[&str] = &[
+pub(crate) const FONT_PROPERTIES: &[&str] = &[
     "font-display",
     "font-family",
     "font-feature-settings",
@@ -1451,7 +1451,7 @@ const COUNTER_DESCRIPTORS: &[&str] = &[
 ];
 
 /// `colorKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const COLOR_KEYWORDS: &[&str] = &[
+pub(crate) const COLOR_KEYWORDS: &[&str] = &[
     "aliceblue",
     "antiquewhite",
     "aqua",
@@ -1603,7 +1603,7 @@ const COLOR_KEYWORDS: &[&str] = &[
 ];
 
 /// `valueKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const VALUE_KEYWORDS: &[&str] = &[
+pub(crate) const VALUE_KEYWORDS: &[&str] = &[
     "above",
     "absolute",
     "activeborder",
