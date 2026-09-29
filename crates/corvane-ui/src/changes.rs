@@ -544,13 +544,13 @@ impl ChangesSidebar {
             .flex()
             .flex_row()
             .items_start()
-            .min_h(TEXT_FIELD_HEIGHT)
-            .px(SPACING_HALF)
-            .py(px(2.))
-            .gap(px(2.))
+            .min_h(TEXT_FIELD_HEIGHT())
+            .px(SPACING_HALF())
+            .py(zpx(2.))
+            .gap(zpx(2.))
             .border_1()
             .border_t_0()
-            .rounded_b(BORDER_RADIUS)
+            .rounded_b(BORDER_RADIUS())
             .bg(t.box_background)
             .border_color(if focused {
                 t.focus
@@ -558,18 +558,18 @@ impl ChangesSidebar {
                 t.box_border_contrast
             })
             .cursor_text()
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .child(
                 div()
                     .flex_none()
-                    .h(TEXT_FIELD_HEIGHT - px(6.))
+                    .h(TEXT_FIELD_HEIGHT() - zpx(6.))
                     .flex()
                     .items_center()
                     .text_color(t.text_secondary)
                     .child("Co-Authors "),
             )
             .child(
-                div().flex_1().min_w(px(80.)).child(
+                div().flex_1().min_w(zpx(80.)).child(
                     Textarea::new(&self.co_authors)
                         .appearance(false)
                         .xsmall()
@@ -611,10 +611,10 @@ impl ChangesSidebar {
                                 .flex()
                                 .flex_row()
                                 .items_center()
-                                .gap(px(3.))
-                                .px(px(2.))
-                                .mx(px(2.))
-                                .rounded(BORDER_RADIUS)
+                                .gap(zpx(3.))
+                                .px(zpx(2.))
+                                .mx(zpx(2.))
+                                .rounded(BORDER_RADIUS())
                                 .border_1()
                                 .border_color(border)
                                 .bg(bg)
@@ -626,12 +626,12 @@ impl ChangesSidebar {
                                 .child(ctx.token().label().clone())
                                 .when(unknown == Some(UnknownAuthorState::Searching), |d| {
                                     d.child(spin(
-                                        octicon(Octicon::SyncClockwise, fg).size(px(9.)),
+                                        octicon(Octicon::SyncClockwise, fg).size(zpx(9.)),
                                         "co-author-searching",
                                     ))
                                 })
                                 .when(unknown == Some(UnknownAuthorState::Error), |d| {
-                                    d.child(octicon(Octicon::Stop, fg).size(px(9.)))
+                                    d.child(octicon(Octicon::Stop, fg).size(zpx(9.)))
                                 })
                         }),
                 ),
@@ -820,14 +820,14 @@ impl ChangesSidebar {
                 move |bounds, rects, window, _| {
                     window.with_content_mask(Some(ContentMask { bounds }), |window| {
                         for rect in rects.into_iter().flatten() {
-                            let y = rect.bottom() - px(3.);
+                            let y = rect.bottom() - zpx(3.);
                             let mut x = rect.left();
                             while x < rect.right() {
                                 window.paint_quad(fill(
-                                    Bounds::new(point(x, y), size(px(2.), px(2.))),
+                                    Bounds::new(point(x, y), size(zpx(2.), zpx(2.))),
                                     color,
                                 ));
-                                x += px(4.);
+                                x += zpx(4.);
                             }
                         }
                     });
@@ -1182,8 +1182,8 @@ impl ChangesSidebar {
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(SPACING_HALF)
-                .py(px(3.))
+                .gap(SPACING_HALF())
+                .py(zpx(3.))
                 .cursor_pointer()
                 // GHD closes the popover after every option change
                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -1198,13 +1198,13 @@ impl ChangesSidebar {
                 ))
                 .child(
                     div()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .child(format!("{label} ({count})")),
                 )
         };
         Some(
             deferred(
-                anchored().position(point(px(0.), px(0.))).child(
+                anchored().position(point(zpx(0.), zpx(0.))).child(
                     div()
                         .id("filter-popover-overlay")
                         .relative()
@@ -1216,22 +1216,22 @@ impl ChangesSidebar {
                                 .id("filter-popover")
                                 .absolute()
                                 .left(bounds.origin.x)
-                                .top(bounds.origin.y + bounds.size.height + px(8.))
-                                .min_w(px(200.))
+                                .top(bounds.origin.y + bounds.size.height + zpx(8.))
+                                .min_w(zpx(200.))
                                 .flex()
                                 .flex_col()
-                                .px(SPACING)
-                                .pt(SPACING)
-                                .rounded(BORDER_RADIUS)
+                                .px(SPACING())
+                                .pt(SPACING())
+                                .rounded(BORDER_RADIUS())
                                 .bg(t.background)
                                 .text_color(t.text)
                                 .border_1()
                                 .border_color(t.box_border)
                                 .shadow(vec![BoxShadow {
                                     color: t.shadow,
-                                    offset: point(px(0.), px(2.)),
-                                    blur_radius: px(7.),
-                                    spread_radius: px(0.),
+                                    offset: point(zpx(0.), zpx(2.)),
+                                    blur_radius: zpx(7.),
+                                    spread_radius: zpx(0.),
                                     inset: false,
                                 }])
                                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -1243,7 +1243,7 @@ impl ChangesSidebar {
                                         .justify_between()
                                         .child(
                                             div()
-                                                .text_size(FONT_SIZE_MD)
+                                                .text_size(FONT_SIZE_MD())
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .child("Filter Options"),
                                         )
@@ -1251,7 +1251,7 @@ impl ChangesSidebar {
                                             div()
                                                 .id("filter-popover-close")
                                                 .icon_button_label("Close")
-                                                .size(px(16.))
+                                                .size(zpx(16.))
                                                 .cursor_pointer()
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.filter_popover_open = false;
@@ -1262,7 +1262,7 @@ impl ChangesSidebar {
                                 )
                                 .child(
                                     div()
-                                        .my(SPACING)
+                                        .my(SPACING())
                                         .flex()
                                         .flex_col()
                                         .child(option_row(
@@ -1284,7 +1284,7 @@ impl ChangesSidebar {
                                         )),
                                 )
                                 .when(active, |d| {
-                                    d.child(div().pt(SPACING_HALF).pb(SPACING).child(
+                                    d.child(div().pt(SPACING_HALF()).pb(SPACING()).child(
                                         button("filter-clear", "Clear filters", cx).on_click(
                                             cx.listener(move |this, _, window, cx| {
                                                 this.filter.update(cx, |s, cx| {
@@ -1296,7 +1296,7 @@ impl ChangesSidebar {
                                         ),
                                     ))
                                 })
-                                .when(!active, |d| d.pb(SPACING_HALF)),
+                                .when(!active, |d| d.pb(SPACING_HALF())),
                         ),
                 ),
             )
@@ -1597,8 +1597,8 @@ impl ChangesSidebar {
             .flex_none()
             .flex()
             .flex_col()
-            .px(SPACING)
-            .py(SPACING_HALF)
+            .px(SPACING())
+            .py(SPACING_HALF())
             .bg(t.box_alt_background)
             .border_b_1()
             .border_color(t.box_border)
@@ -1609,7 +1609,7 @@ impl ChangesSidebar {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .h(TEXT_FIELD_HEIGHT)
+                        .h(TEXT_FIELD_HEIGHT())
                         .child({
                             let active_count = self.filter_options(cx).count_active();
                             let active = active_count > 0;
@@ -1624,16 +1624,16 @@ impl ChangesSidebar {
                                 .id("filter-options")
                                 .icon_button_label(filter_label)
                                 .relative()
-                                .h(TEXT_FIELD_HEIGHT)
-                                .w(px(48.))
+                                .h(TEXT_FIELD_HEIGHT())
+                                .w(zpx(48.))
                                 .flex_none()
                                 .flex()
                                 .items_center()
                                 .justify_center()
-                                .gap(px(2.))
+                                .gap(zpx(2.))
                                 .border_1()
                                 .border_color(t.secondary_button_border)
-                                .rounded_l(BORDER_RADIUS)
+                                .rounded_l(BORDER_RADIUS())
                                 .bg(t.secondary_button_background)
                                 .cursor_pointer()
                                 .on_click(cx.listener(|this, _, _, cx| {
@@ -1656,21 +1656,21 @@ impl ChangesSidebar {
                                 ))
                                 .child(
                                     octicon(Octicon::TriangleDown, t.secondary_button_text)
-                                        .size(px(12.)),
+                                        .size(zpx(12.)),
                                 )
                                 // `.active-badge`: 5 px dot with a 1 px ring, right 18 / top 4
                                 .when(active, |d| {
                                     d.child(
                                         div()
                                             .absolute()
-                                            .top(px(4.))
-                                            .right(px(18.))
-                                            .p(px(1.))
+                                            .top(zpx(4.))
+                                            .right(zpx(18.))
+                                            .p(zpx(1.))
                                             .rounded_full()
                                             .bg(t.secondary_button_background)
                                             .child(
                                                 div()
-                                                    .size(px(5.))
+                                                    .size(zpx(5.))
                                                     .rounded_full()
                                                     .bg(t.box_selected_active_background),
                                             ),
@@ -1679,7 +1679,7 @@ impl ChangesSidebar {
                         })
                         .child(
                             text_box("changes-filter", &self.filter, None, window, cx)
-                                .rounded_l(px(0.))
+                                .rounded_l(zpx(0.))
                                 .border_l_0(),
                         ),
                 )
@@ -1687,11 +1687,11 @@ impl ChangesSidebar {
             .child(
                 // "☑ N changed files"
                 div()
-                    .h(ROW_HEIGHT)
+                    .h(ROW_HEIGHT())
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     // GHD shows the include-all box checked but disabled when there is nothing to commit.
                     .child({
                         let (visible, total, include_all, repo_id) = self.header_state(cx);
@@ -1710,7 +1710,7 @@ impl ChangesSidebar {
                     .child({
                         let (visible, total, _, _) = self.header_state(cx);
                         div()
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .truncate()
                             .child(changed_files_label(visible.len(), total))
                     }),
@@ -1794,15 +1794,15 @@ impl ChangesSidebar {
             .role(Role::List)
             .aria_label(label)
             .flex_1()
-            .min_h(px(100.))
+            .min_h(zpx(100.))
             .bg(t.background)
             .flex()
             .flex_col()
             .when_some(empty_message, |d, message| {
                 d.child(
                     div()
-                        .p(SPACING_DOUBLE)
-                        .text_size(FONT_SIZE)
+                        .p(SPACING_DOUBLE())
+                        .text_size(FONT_SIZE())
                         .text_color(t.text_secondary)
                         .child(message),
                 )
@@ -1858,8 +1858,8 @@ impl ChangesSidebar {
                 .id("stashed-changes-button")
                 .flex_none()
                 .w_full()
-                .min_h(ROW_HEIGHT)
-                .px(SPACING)
+                .min_h(ROW_HEIGHT())
+                .px(SPACING())
                 .flex()
                 .flex_row()
                 .items_center()
@@ -1867,7 +1867,7 @@ impl ChangesSidebar {
                 .border_color(t.box_border)
                 .bg(bg)
                 .text_color(text)
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .cursor_pointer()
                 .when(!showing, move |d| d.hover(move |s| s.bg(hover_bg)))
                 .on_click(move |_, _, cx| Dispatcher::toggle_stash_view(id, cx))
@@ -1875,7 +1875,7 @@ impl ChangesSidebar {
                 .child(
                     div()
                         .flex_1()
-                        .mx(SPACING_HALF)
+                        .mx(SPACING_HALF())
                         .truncate()
                         .child("Stashed Changes"),
                 )
@@ -1970,12 +1970,12 @@ impl ChangesSidebar {
             .flex_none()
             .flex()
             .flex_col()
-            .mb(SPACING)
+            .mb(SPACING())
             .bg(t.box_alt_background)
             .child(
                 div()
                     .relative()
-                    .h(px(20.))
+                    .h(zpx(20.))
                     .flex()
                     .justify_center()
                     .child(
@@ -1983,13 +1983,13 @@ impl ChangesSidebar {
                             .absolute()
                             .left_0()
                             .right_0()
-                            .top(px(10.))
-                            .h(px(1.))
+                            .top(zpx(10.))
+                            .h(zpx(1.))
                             .bg(t.box_border),
                     )
                     .child(
                         div()
-                            .px(SPACING_HALF)
+                            .px(SPACING_HALF())
                             .bg(t.box_alt_background)
                             .child(octicon(icon, color)),
                     ),
@@ -2000,8 +2000,8 @@ impl ChangesSidebar {
                     .flex_row()
                     .flex_wrap()
                     .justify_center()
-                    .gap(px(3.))
-                    .text_size(FONT_SIZE)
+                    .gap(zpx(3.))
+                    .text_size(FONT_SIZE())
                     .text_color(t.text_secondary)
                     .child(message),
             )
@@ -2082,7 +2082,7 @@ impl ChangesSidebar {
                 .flex_row()
                 .flex_wrap()
                 .justify_center()
-                .gap(px(3.))
+                .gap(zpx(3.))
                 .children(parts)
                 .into_any_element()
         };
@@ -2227,8 +2227,8 @@ impl ChangesSidebar {
             div()
                 .id("commit-message-failure-hint")
                 .absolute()
-                .right(px(6.))
-                .top(px(4.))
+                .right(zpx(6.))
+                .top(zpx(4.))
                 .cursor_pointer()
                 .tooltip(crate::widgets::tooltip(if can_bypass {
                     "Warning: Commit message fails repository rules, but you can bypass them. View details."
@@ -2264,9 +2264,10 @@ impl ChangesSidebar {
         }
         let anchor = self.rule_hint_bounds.get();
         let viewport = window.viewport_size();
-        let width = px(360.);
-        let x = (anchor.origin.x + anchor.size.width + px(8.)).min(viewport.width - width - px(8.));
-        let y = (anchor.origin.y - px(20.)).max(px(8.));
+        let width = zpx(360.);
+        let x =
+            (anchor.origin.x + anchor.size.width + zpx(8.)).min(viewport.width - width - zpx(8.));
+        let y = (anchor.origin.y - zpx(20.)).max(zpx(8.));
         let total = failures.total();
         let end_text = if failures.status() == RepoRulesMetadataStatus::Bypass {
             format!(
@@ -2300,8 +2301,8 @@ impl ChangesSidebar {
                         div()
                             .flex()
                             .flex_row()
-                            .gap(SPACING_HALF)
-                            .pl(SPACING_DOUBLE)
+                            .gap(SPACING_HALF())
+                            .pl(SPACING_DOUBLE())
                             .child("•")
                             .child(
                                 crate::widgets::link_button(
@@ -2316,7 +2317,7 @@ impl ChangesSidebar {
         };
         Some(
             deferred(
-                anchored().position(point(px(0.), px(0.))).child(
+                anchored().position(point(zpx(0.), zpx(0.))).child(
                     div()
                         .id("rule-failure-layer")
                         .relative()
@@ -2342,22 +2343,22 @@ impl ChangesSidebar {
                                 .left(x)
                                 .top(y)
                                 .w(width)
-                                .min_h(px(200.))
-                                .p(SPACING)
+                                .min_h(zpx(200.))
+                                .p(SPACING())
                                 .flex()
                                 .flex_col()
-                                .gap(SPACING)
+                                .gap(SPACING())
                                 .bg(t.box_background)
                                 .text_color(t.text)
-                                .text_size(FONT_SIZE)
+                                .text_size(FONT_SIZE())
                                 .border_1()
                                 .border_color(t.box_border)
-                                .rounded(BORDER_RADIUS)
+                                .rounded(BORDER_RADIUS())
                                 .shadow_lg()
                                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                                 .child(
                                     div()
-                                        .text_size(FONT_SIZE_MD)
+                                        .text_size(FONT_SIZE_MD())
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child("Commit Message Rule Failures"),
                                 )
@@ -2366,7 +2367,7 @@ impl ChangesSidebar {
                                         .flex()
                                         .flex_row()
                                         .flex_wrap()
-                                        .gap(px(3.))
+                                        .gap(zpx(3.))
                                         .child(format!(
                                             "This commit message fails {total} rule{}{end_text}",
                                             if total > 1 { "s" } else { "" }
@@ -2426,13 +2427,13 @@ impl ChangesSidebar {
                 .flex_none()
                 .flex()
                 .flex_col()
-                .mb(SPACING)
+                .mb(SPACING())
                 .bg(t.box_alt_background)
                 .child(
                     // `.warning-icon-container`: icon centred on a rule
                     div()
                         .relative()
-                        .h(px(20.))
+                        .h(zpx(20.))
                         .flex()
                         .justify_center()
                         .child(
@@ -2440,13 +2441,13 @@ impl ChangesSidebar {
                                 .absolute()
                                 .left_0()
                                 .right_0()
-                                .top(px(10.))
-                                .h(px(1.))
+                                .top(zpx(10.))
+                                .h(zpx(1.))
                                 .bg(t.box_border),
                         )
                         .child(
                             div()
-                                .px(SPACING_HALF)
+                                .px(SPACING_HALF())
                                 .bg(t.box_alt_background)
                                 .child(octicon(Octicon::Info, t.dialog_information)),
                         ),
@@ -2457,7 +2458,7 @@ impl ChangesSidebar {
                         .flex_row()
                         .flex_wrap()
                         .justify_center()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .text_color(t.text_secondary)
                         .child("Your changes will modify your\u{a0}")
                         .child(
@@ -2493,9 +2494,9 @@ impl ChangesSidebar {
                 .flex_row()
                 .items_center()
                 .justify_between()
-                .mt(SPACING)
-                .mx(px(-10.))
-                .mb(px(-10.))
+                .mt(SPACING())
+                .mx(zpx(-10.))
+                .mb(zpx(-10.))
                 .border_t_1()
                 .border_color(t.box_border)
                 .bg(t.box_alt_background)
@@ -2505,10 +2506,10 @@ impl ChangesSidebar {
                         .min_w_0()
                         .flex()
                         .flex_col()
-                        .py(SPACING_HALF)
-                        .pl(SPACING)
-                        .pr(SPACING_HALF)
-                        .text_size(FONT_SIZE_SM)
+                        .py(SPACING_HALF())
+                        .pl(SPACING())
+                        .pr(SPACING_HALF())
+                        .text_size(FONT_SIZE_SM())
                         .child(
                             div()
                                 .text_color(t.text_secondary)
@@ -2518,7 +2519,7 @@ impl ChangesSidebar {
                         .child(div().truncate().child(last.summary.clone())),
                 )
                 .child(
-                    div().p(SPACING).pl(px(0.)).child(
+                    div().p(SPACING()).pl(zpx(0.)).child(
                         button("undo-commit", "Undo", cx)
                             .on_click(move |_, _, cx| Dispatcher::undo_commit(id, cx)),
                     ),
@@ -2556,7 +2557,7 @@ impl ChangesSidebar {
                 .flex_none()
                 .flex()
                 .flex_col()
-                .p(SPACING)
+                .p(SPACING())
                 .bg(t.box_alt_background)
                 .border_t_1()
                 .border_color(t.box_border)
@@ -2579,9 +2580,9 @@ impl ChangesSidebar {
                 .when(untracked, |d| {
                     d.child(
                         div()
-                            .pt(SPACING_HALF)
+                            .pt(SPACING_HALF())
                             .text_align(TextAlign::Center)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .child("Untracked files will be excluded"),
                     )
                 })
@@ -2688,7 +2689,7 @@ impl ChangesSidebar {
             .flex_none()
             .flex()
             .flex_col()
-            .p(SPACING)
+            .p(SPACING())
             .bg(t.box_alt_background)
             .border_t_1()
             .border_color(t.box_border)
@@ -2698,9 +2699,9 @@ impl ChangesSidebar {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
-                    .mb(SPACING)
-                    .child(avatar_image(avatar, AVATAR_SIZE, cx))
+                    .gap(SPACING_HALF())
+                    .mb(SPACING())
+                    .child(avatar_image(avatar, AVATAR_SIZE(), cx))
                     .child(
                         text_box_with_menu(
                             "commit-summary",
@@ -2720,11 +2721,11 @@ impl ChangesSidebar {
                 div()
                     .flex()
                     .flex_col()
-                    .when(!co_authors_visible, |d| d.mb(SPACING))
+                    .when(!co_authors_visible, |d| d.mb(SPACING()))
                     .border_1()
                     .border_color(t.box_border_contrast)
-                    .rounded_t(BORDER_RADIUS)
-                    .when(!co_authors_visible, |d| d.rounded_b(BORDER_RADIUS))
+                    .rounded_t(BORDER_RADIUS())
+                    .when(!co_authors_visible, |d| d.rounded_b(BORDER_RADIUS()))
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child({
@@ -2735,8 +2736,8 @@ impl ChangesSidebar {
                                 Textarea::new(&self.description)
                                     .appearance(false)
                                     .small()
-                                    .text_size(FONT_SIZE)
-                                    .h(px(80.))
+                                    .text_size(FONT_SIZE())
+                                    .h(zpx(80.))
                                     .context_menu(move |m, window, cx| menu(m, window, cx)),
                             )
                             .children(self.spell_overlay(CommitField::Description, cx))
@@ -2747,9 +2748,9 @@ impl ChangesSidebar {
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING_HALF)
-                            .px(SPACING)
-                            .pb(px(8.))
+                            .gap(SPACING_HALF())
+                            .px(SPACING())
+                            .pb(zpx(8.))
                             .when(is_github, |d| {
                                 // `.co-authors-toggle`
                                 let toggle_label = if co_authors_visible {
@@ -2770,7 +2771,7 @@ impl ChangesSidebar {
                                 d.child(
                                     div()
                                         .id("co-authors-toggle")
-                                        .size(px(18.))
+                                        .size(zpx(18.))
                                         .flex()
                                         .items_center()
                                         .justify_center()
@@ -2784,13 +2785,13 @@ impl ChangesSidebar {
                                         }))
                                         .child(octicon(Octicon::PersonAdd, color)),
                                 )
-                                .child(div().w(px(1.)).h(px(16.)).bg(t.box_border_contrast))
+                                .child(div().w(zpx(1.)).h(zpx(16.)).bg(t.box_border_contrast))
                             })
                             .child(
                                 div()
                                     .id("commit-options-button")
                                     .icon_button_label("Configure commit options")
-                                    .size(px(18.))
+                                    .size(zpx(18.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
@@ -2803,7 +2804,7 @@ impl ChangesSidebar {
                     ),
             )
             .when(co_authors_visible, |d| {
-                d.child(div().mb(SPACING).child(self.co_author_input(window, cx)))
+                d.child(div().mb(SPACING()).child(self.co_author_input(window, cx)))
             })
             .children(self.amend_notice(cx))
             .children(
@@ -2832,7 +2833,7 @@ impl ChangesSidebar {
                     div()
                         .flex()
                         .flex_row()
-                        .gap(px(4.))
+                        .gap(zpx(4.))
                         .child(if committing {
                             "Committing to"
                         } else {
@@ -2963,13 +2964,13 @@ fn file_row(
             is_selected,
         )
         .w_full()
-        .h(ROW_HEIGHT)
+        .h(ROW_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
-        .px(SPACING)
+        .gap(SPACING_HALF())
+        .px(SPACING())
         .cursor_pointer()
         .on_mouse_down(
             MouseButton::Right,
@@ -3029,7 +3030,7 @@ fn file_row(
                 .min_w_0()
                 .flex()
                 .flex_row()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .child(
                     div()
                         .min_w_0()

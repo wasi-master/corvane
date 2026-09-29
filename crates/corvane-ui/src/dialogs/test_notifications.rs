@@ -151,12 +151,16 @@ impl Render for TestNotificationsDialog {
                 })
             })
             .collect();
-        let types = div().flex().flex_col().gap(SPACING_HALF).children(buttons);
-        let content = div()
-            .w(px(460.))
+        let types = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING_HALF())
+            .children(buttons);
+        let content = div()
+            .w(zpx(460.))
+            .flex()
+            .flex_col()
+            .gap(SPACING())
             .children(self.hint(cx))
             .child("Select the type of notification to display:")
             .child(types);

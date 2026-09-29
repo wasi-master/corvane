@@ -61,26 +61,26 @@ fn button_impl(
     div()
         .id(id)
         .w_full()
-        .mb(SPACING)
-        .p(SPACING)
+        .mb(SPACING())
+        .p(SPACING())
         .flex()
         .flex_row()
         .items_center()
         .border_1()
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .bg(bg)
         .border_color(border)
         .text_color(text)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .cursor_pointer()
         .hover(move |s| s.bg(hover_bg).border_color(hover_border))
         .on_click(move |_, window, cx| on_click(window, cx))
         .child(
             octicon(icon, text)
-                .size(px(24.))
-                .my(SPACING_HALF)
-                .ml(SPACING_HALF)
-                .mr(SPACING),
+                .size(zpx(24.))
+                .my(SPACING_HALF())
+                .ml(SPACING_HALF())
+                .mr(SPACING()),
         )
         .child(div().flex_1().min_w_0().child(label))
 }
@@ -123,7 +123,7 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
         .flex()
         .flex_row()
         .items_center()
-        .p(px(60.))
+        .p(zpx(60.))
         .bg(t.background)
         .child(
             div()
@@ -136,17 +136,17 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                     div()
                         .flex()
                         .flex_col()
-                        .mb(px(40.))
+                        .mb(zpx(40.))
                         .child(
                             div()
-                                .text_size(px(42.))
-                                .line_height(px(50.))
+                                .text_size(zpx(42.))
+                                .line_height(zpx(50.))
                                 .font_weight(FontWeight::LIGHT)
                                 .child("Let's get started!"),
                         )
                         .child(
                             div()
-                                .text_size(FONT_SIZE)
+                                .text_size(FONT_SIZE())
                                 .child("Add a repository to Corvane to start collaborating"),
                         ),
                 )
@@ -159,7 +159,7 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                         .child(
                             div()
                                 .w_1_2()
-                                .pr(SPACING)
+                                .pr(SPACING())
                                 .flex()
                                 .flex_col()
                                 .items_center()
@@ -167,15 +167,15 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                                 .child(
                                     img("illustrations/empty-no-repo.svg")
                                         .w_full()
-                                        .max_w(px(400.))
-                                        .h(px(240.))
+                                        .max_w(zpx(400.))
+                                        .h(zpx(240.))
                                         .object_fit(ObjectFit::Contain),
                                 ),
                         )
                         .child(
                             div()
                                 .w_1_2()
-                                .pl(SPACING)
+                                .pl(SPACING())
                                 .flex()
                                 .flex_col()
                                 .children(tutorial_button(cx))
@@ -207,20 +207,20 @@ pub fn no_repositories(cx: &App) -> impl IntoElement {
                                 .child(
                                     // `.drag-drop-info`
                                     div()
-                                        .mt(SPACING)
-                                        .p(SPACING_DOUBLE)
+                                        .mt(SPACING())
+                                        .p(SPACING_DOUBLE())
                                         .flex()
                                         .flex_row()
                                         .items_center()
-                                        .rounded(BORDER_RADIUS)
+                                        .rounded(BORDER_RADIUS())
                                         .border_2()
                                         .border_dashed()
                                         .border_color(t.box_border_contrast)
                                         .bg(t.box_alt_background)
-                                        .child(octicon(Octicon::FileDirectory, t.text_secondary).mr(SPACING))
+                                        .child(octicon(Octicon::FileDirectory, t.text_secondary).mr(SPACING()))
                                         .child(
                                             div()
-                                                .text_size(FONT_SIZE)
+                                                .text_size(FONT_SIZE())
                                                 .child("ProTip! You can drag & drop an existing repository folder here to add it to Corvane"),
                                         ),
                                 ),

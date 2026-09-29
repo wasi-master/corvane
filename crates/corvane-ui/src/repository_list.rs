@@ -128,12 +128,12 @@ impl RepositoryFoldout {
         div()
             .id(("repo-row", id))
             .a11y_row(label, selected)
-            .h(ROW_HEIGHT)
+            .h(ROW_HEIGHT())
             .w_full()
             .flex()
             .flex_row()
             .items_center()
-            .px(SPACING)
+            .px(SPACING())
             .cursor_pointer()
             .when(selected, |d| {
                 d.bg(t.box_selected_background)
@@ -141,13 +141,13 @@ impl RepositoryFoldout {
             })
             .when(!selected, move |d| d.hover(move |s| s.bg(hover_bg)))
             .on_click(move |_, _, cx| Dispatcher::select_repository(id, cx))
-            .child(octicon(icon, t.text).mr(SPACING_HALF))
+            .child(octicon(icon, t.text).mr(SPACING_HALF()))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .truncate()
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .when(repo.alias.is_some(), |d| d.italic())
                     .child(repo.name()),
             )
@@ -155,8 +155,8 @@ impl RepositoryFoldout {
                 // `.change-indicator-wrapper`: a dot for uncommitted changes
                 d.child(
                     octicon(Octicon::DotFill, t.text_secondary)
-                        .size(px(10.))
-                        .mr(px(4.)),
+                        .size(zpx(10.))
+                        .mr(zpx(4.)),
                 )
             })
             .when_some(ahead_behind, |d, ab| {
@@ -166,22 +166,22 @@ impl RepositoryFoldout {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(px(2.))
-                        .px(px(5.))
-                        .h(px(13.))
-                        .rounded(px(8.))
+                        .gap(zpx(2.))
+                        .px(zpx(5.))
+                        .h(zpx(13.))
+                        .rounded(zpx(8.))
                         .bg(t.list_item_badge_background)
                         .text_color(t.list_item_badge_text)
-                        .text_size(FONT_SIZE_XS)
-                        .line_height(px(11.))
+                        .text_size(FONT_SIZE_XS())
+                        .line_height(zpx(11.))
                         .when(ab.ahead > 0, |d| {
                             d.child(format!("{}", ab.ahead)).child(
-                                octicon(Octicon::ArrowUp, t.list_item_badge_text).size(px(9.)),
+                                octicon(Octicon::ArrowUp, t.list_item_badge_text).size(zpx(9.)),
                             )
                         })
                         .when(ab.behind > 0, |d| {
                             d.child(format!("{}", ab.behind)).child(
-                                octicon(Octicon::ArrowDown, t.list_item_badge_text).size(px(9.)),
+                                octicon(Octicon::ArrowDown, t.list_item_badge_text).size(zpx(9.)),
                             )
                         }),
                 )
@@ -194,8 +194,8 @@ impl RepositoryFoldout {
             let hover_bg = t.box_hover_background;
             div()
                 .id(id)
-                .h(ROW_HEIGHT)
-                .px(SPACING)
+                .h(ROW_HEIGHT())
+                .px(SPACING())
                 .flex()
                 .items_center()
                 .cursor_pointer()
@@ -206,16 +206,16 @@ impl RepositoryFoldout {
         div()
             .id("add-menu")
             .absolute()
-            .top(SPACING + TEXT_FIELD_HEIGHT + px(4.))
-            .right(SPACING)
-            .w(px(240.))
-            .py(px(4.))
+            .top(SPACING() + TEXT_FIELD_HEIGHT() + zpx(4.))
+            .right(SPACING())
+            .w(zpx(240.))
+            .py(zpx(4.))
             .flex()
             .flex_col()
             .bg(t.box_background)
             .border_1()
             .border_color(t.box_border)
-            .rounded(BORDER_RADIUS)
+            .rounded(BORDER_RADIUS())
             .shadow_md()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
             .child(item("add-clone", "Clone Repository…", |_, cx| {
@@ -266,8 +266,8 @@ impl Render for RepositoryFoldout {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
-                    .p(SPACING)
+                    .gap(SPACING())
+                    .p(SPACING())
                     .child(text_box(
                         "repo-filter",
                         &self.filter,
@@ -278,10 +278,10 @@ impl Render for RepositoryFoldout {
                     .child(
                         button("add-repository", "Add", cx)
                             .flex_none()
-                            .gap(px(5.))
+                            .gap(zpx(5.))
                             .child(
                                 octicon(Octicon::TriangleDown, t.secondary_button_text)
-                                    .size(px(12.)),
+                                    .size(zpx(12.)),
                             )
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.add_menu_open = !this.add_menu_open;
@@ -304,7 +304,7 @@ impl Render for RepositoryFoldout {
                     .when(!has_repos, |d| {
                         d.child(
                             div()
-                                .p(SPACING)
+                                .p(SPACING())
                                 .text_color(t.text_secondary)
                                 .child("No repositories yet. Use Add to get started."),
                         )
@@ -312,7 +312,7 @@ impl Render for RepositoryFoldout {
                     .when(has_repos && groups.is_empty(), |d| {
                         d.child(
                             div()
-                                .p(SPACING)
+                                .p(SPACING())
                                 .w_full()
                                 .text_center()
                                 .text_color(t.text_secondary)
@@ -330,13 +330,13 @@ impl Render for RepositoryFoldout {
                             .child(
                                 // `.filter-list-group-header`
                                 div()
-                                    .h(ROW_HEIGHT)
-                                    .pt(SPACING)
-                                    .px(SPACING)
+                                    .h(ROW_HEIGHT())
+                                    .pt(SPACING())
+                                    .px(SPACING())
                                     .flex()
                                     .items_center()
                                     .font_weight(FontWeight::SEMIBOLD)
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .truncate()
                                     .child(group.title),
                             )

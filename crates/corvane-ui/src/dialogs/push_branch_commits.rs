@@ -70,7 +70,7 @@ impl Render for PushBranchCommitsDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(crate::theme::sizes::SPACING)
+            .gap(crate::theme::sizes::SPACING())
             .child(first)
             .child(second);
         let (repo, base, pushing) = (self.repo, self.base.clone(), self.pushing);

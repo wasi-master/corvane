@@ -20,7 +20,10 @@ use crate::theme::sizes::*;
 use crate::widgets::{Inline, button, code_ref, paragraph, primary_button};
 
 /// `button { min-width: 120px }`
-const BUTTON_MIN_WIDTH: Pixels = px(120.);
+#[allow(non_snake_case)]
+fn BUTTON_MIN_WIDTH() -> Pixels {
+    zpx(120.)
+}
 
 pub fn unsafe_repository_view(
     id: u64,
@@ -35,12 +38,12 @@ pub fn unsafe_repository_view(
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
+        .gap(SPACING_HALF())
         // `<Loading />` (`.octicon.spin`, 11 px)
         .when(trusting, |d| {
             d.child(
                 div()
-                    .size(px(11.))
+                    .size(zpx(11.))
                     .flex()
                     .items_center()
                     .child(loading("trusting-spinner", t.button_text)),
@@ -56,9 +59,9 @@ pub fn unsafe_repository_view(
         .bg(t.background)
         .child(
             div()
-                .w(px(600.))
-                .mt(px(-60.))
-                .p(SPACING_DOUBLE)
+                .w(zpx(600.))
+                .mt(zpx(-60.))
+                .p(SPACING_DOUBLE())
                 .flex()
                 .flex_col()
                 .items_center()
@@ -69,11 +72,11 @@ pub fn unsafe_repository_view(
                         .flex()
                         .flex_col()
                         .items_center()
-                        .mb(SPACING)
+                        .mb(SPACING())
                         .child(
                             div()
                                 .max_w_full()
-                                .text_size(px(32.))
+                                .text_size(zpx(32.))
                                 .font_weight(FontWeight::LIGHT)
                                 .truncate()
                                 .child(format!("{name} is potentially unsafe")),
@@ -81,11 +84,11 @@ pub fn unsafe_repository_view(
                         .child(
                             // `.details`: centred paragraphs
                             div()
-                                .my(SPACING)
+                                .my(SPACING())
                                 .flex()
                                 .flex_col()
                                 .items_center()
-                                .gap(SPACING)
+                                .gap(SPACING())
                                 .child(
                                     paragraph(vec![
                                         "The Git repository at".into(),
@@ -112,10 +115,10 @@ pub fn unsafe_repository_view(
                     div()
                         .flex()
                         .flex_row()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .child(
                             primary_button("trust-repository", trust_label, trusting, cx)
-                                .min_w(BUTTON_MIN_WIDTH)
+                                .min_w(BUTTON_MIN_WIDTH())
                                 .role(Role::Button)
                                 .aria_label("Trust Repository")
                                 .when(!trusting, |b| {
@@ -124,7 +127,7 @@ pub fn unsafe_repository_view(
                         )
                         .child(
                             button("remove-unsafe-repository", "Remove", cx)
-                                .min_w(BUTTON_MIN_WIDTH)
+                                .min_w(BUTTON_MIN_WIDTH())
                                 .role(Role::Button)
                                 .aria_label("Remove")
                                 .on_click(move |_, _, cx| Dispatcher::remove_repository(id, cx)),

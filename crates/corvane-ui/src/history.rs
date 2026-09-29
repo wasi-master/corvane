@@ -36,7 +36,10 @@ use crate::widgets::ListRowA11y;
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button, text_box};
 
 /// `RowHeight` in `commit-list.tsx`
-pub const COMMIT_ROW_HEIGHT: Pixels = px(50.);
+#[allow(non_snake_case)]
+pub fn COMMIT_ROW_HEIGHT() -> Pixels {
+    zpx(50.)
+}
 
 /// GHD `CommitDragData`: what a commit drag carries (drop targets in the
 /// branch foldout and toolbar read it too).
@@ -74,7 +77,7 @@ impl CommitDragElement {
                 .child("Copy to")
                 .child(
                     div()
-                        .ml(SPACING_THIRD)
+                        .ml(SPACING_THIRD())
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(name),
                 )
@@ -94,19 +97,19 @@ impl CommitDragElement {
             div()
                 .absolute()
                 .left_0()
-                .bottom(px(-25.))
-                .px(SPACING_THIRD)
-                .py(px(1.))
-                .rounded(px(1.))
+                .bottom(zpx(-25.))
+                .px(SPACING_THIRD())
+                .py(zpx(1.))
+                .rounded(zpx(1.))
                 .bg(t.tooltip_background)
                 .text_color(t.tooltip_text)
-                .text_size(FONT_SIZE_SM)
+                .text_size(FONT_SIZE_SM())
                 .whitespace_nowrap()
                 .shadow(vec![BoxShadow {
                     color: t.shadow,
-                    offset: point(px(0.), px(1.)),
-                    blur_radius: px(3.),
-                    spread_radius: px(0.),
+                    offset: point(zpx(0.), zpx(1.)),
+                    blur_radius: zpx(3.),
+                    spread_radius: zpx(0.),
                     inset: false,
                 }])
                 .child(content)
@@ -122,9 +125,9 @@ impl Render for CommitDragElement {
         let tooltip = self.tooltip(cx);
         div()
             .relative()
-            .w(px(300.))
-            .h(COMMIT_ROW_HEIGHT)
-            .mt(px(22.))
+            .w(zpx(300.))
+            .h(COMMIT_ROW_HEIGHT())
+            .mt(zpx(22.))
             .children(tooltip)
             .child(
                 div()
@@ -136,9 +139,9 @@ impl Render for CommitDragElement {
                     .border_color(t.box_border)
                     .shadow(vec![BoxShadow {
                         color: t.box_border,
-                        offset: point(px(2.), px(1.)),
-                        blur_radius: px(1.),
-                        spread_radius: px(0.),
+                        offset: point(zpx(2.), zpx(1.)),
+                        blur_radius: zpx(1.),
+                        spread_radius: zpx(0.),
                         inset: false,
                     }])
                     .overflow_hidden()
@@ -153,13 +156,13 @@ impl Render for CommitDragElement {
                 d.child(
                     div()
                         .absolute()
-                        .top(px(-22.))
-                        .left(px(20.))
-                        .size(px(18.))
+                        .top(zpx(-22.))
+                        .left(zpx(20.))
+                        .size(zpx(18.))
                         .rounded_full()
                         .bg(rgb(0xd73a49))
                         .text_color(white())
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .font_weight(FontWeight::MEDIUM)
                         .flex()
                         .items_center()
@@ -365,10 +368,10 @@ impl HistorySidebar {
         if groups.is_empty() {
             return div()
                 .flex_1()
-                .pt(SPACING_DOUBLE)
+                .pt(SPACING_DOUBLE())
                 .flex()
                 .justify_center()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .text_color(t.text_secondary)
                 .child("No branches to compare")
                 .into_any_element();
@@ -393,13 +396,13 @@ impl HistorySidebar {
                     .flex_col()
                     .child(
                         div()
-                            .h(ROW_HEIGHT)
-                            .pt(SPACING)
-                            .px(SPACING)
+                            .h(ROW_HEIGHT())
+                            .pt(SPACING())
+                            .px(SPACING())
                             .flex()
                             .items_center()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .child(group.title),
                     )
                     .children(group.branches.into_iter().map(move |b| {
@@ -412,12 +415,12 @@ impl HistorySidebar {
                                 "compare-branch-{}",
                                 b.full_name
                             )))
-                            .h(ROW_HEIGHT)
+                            .h(ROW_HEIGHT())
                             .w_full()
                             .flex()
                             .flex_row()
                             .items_center()
-                            .px(SPACING)
+                            .px(SPACING())
                             .cursor_pointer()
                             .when(is_focused, |d| {
                                 d.bg(t.box_selected_active_background)
@@ -433,13 +436,13 @@ impl HistorySidebar {
                                 })
                                 .ok();
                             })
-                            .child(octicon(Octicon::GitBranch, t.text).mr(SPACING_HALF))
+                            .child(octicon(Octicon::GitBranch, t.text).mr(SPACING_HALF()))
                             .child(
                                 div()
                                     .flex_1()
                                     .min_w_0()
                                     .truncate()
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .child(b.name.clone()),
                             )
                             .when_some(ab, |d, ab| {
@@ -450,15 +453,15 @@ impl HistorySidebar {
                                         .flex_row()
                                         .items_center()
                                         .child(n.to_string())
-                                        .child(octicon(icon, t.text_secondary).size(px(10.)))
+                                        .child(octicon(icon, t.text_secondary).size(zpx(10.)))
                                 };
                                 d.child(
                                     div()
                                         .flex()
                                         .flex_row()
                                         .items_center()
-                                        .gap(SPACING_HALF)
-                                        .text_size(FONT_SIZE_SM)
+                                        .gap(SPACING_HALF())
+                                        .text_size(FONT_SIZE_SM())
                                         .text_color(t.text_secondary)
                                         .child(counter(ab.behind, Octicon::ArrowDown))
                                         .child(counter(ab.ahead, Octicon::ArrowUp)),
@@ -489,19 +492,19 @@ impl HistorySidebar {
                     "compare-tab-ahead"
                 })
                 .flex_1()
-                .h(px(25.))
+                .h(zpx(25.))
                 .flex()
                 .items_center()
                 .justify_center()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .border_1()
                 .border_color(if selected {
                     t.box_border_accent
                 } else {
                     t.box_border
                 })
-                .when(first, |d| d.rounded_l(BORDER_RADIUS))
-                .when(!first, |d| d.rounded_r(BORDER_RADIUS).ml(px(-1.)))
+                .when(first, |d| d.rounded_l(BORDER_RADIUS()))
+                .when(!first, |d| d.rounded_r(BORDER_RADIUS()).ml(zpx(-1.)))
                 .bg(if selected {
                     t.box_selected_active_background
                 } else {
@@ -521,7 +524,7 @@ impl HistorySidebar {
             .flex_none()
             .flex()
             .flex_row()
-            .p(SPACING_HALF)
+            .p(SPACING_HALF())
             .border_b_1()
             .border_color(t.box_border)
             .child(tab(
@@ -640,22 +643,22 @@ impl HistorySidebar {
             .flex_none()
             .flex()
             .flex_col()
-            .p(SPACING)
+            .p(SPACING())
             .border_t_1()
             .border_color(t.box_border)
-            .text_size(FONT_SIZE_SM)
+            .text_size(FONT_SIZE_SM())
             .when_some(message, |d, message| {
                 d.child(
                     div()
                         .flex()
                         .flex_col()
                         .items_center()
-                        .mb(SPACING)
+                        .mb(SPACING())
                         .child(
                             div()
                                 .relative()
                                 .w_full()
-                                .h(px(20.))
+                                .h(zpx(20.))
                                 .flex()
                                 .justify_center()
                                 .child(
@@ -663,20 +666,20 @@ impl HistorySidebar {
                                         .absolute()
                                         .left_0()
                                         .right_0()
-                                        .top(px(10.))
-                                        .h(px(1.))
+                                        .top(zpx(10.))
+                                        .h(zpx(1.))
                                         .bg(t.box_border),
                                 )
                                 .child(
                                     div()
-                                        .px(SPACING_HALF)
+                                        .px(SPACING_HALF())
                                         .bg(t.background)
                                         .child(octicon(icon, color)),
                                 ),
                         )
                         .child(
                             div()
-                                .mt(SPACING_HALF)
+                                .mt(SPACING_HALF())
                                 .text_center()
                                 .text_color(t.text_secondary)
                                 .child(message),
@@ -691,8 +694,8 @@ impl HistorySidebar {
                     .child(
                         primary_button("compare-merge", label, disabled, cx)
                             .flex_1()
-                            .rounded_tr(px(0.))
-                            .rounded_br(px(0.))
+                            .rounded_tr(zpx(0.))
+                            .rounded_br(zpx(0.))
                             .on_click(move |_, _, cx| {
                                 if !disabled {
                                     Dispatcher::compare_merge_action(id, op, cx);
@@ -701,10 +704,10 @@ impl HistorySidebar {
                     )
                     .child(
                         primary_button("compare-merge-options", "", disabled, cx)
-                            .px(SPACING_HALF)
-                            .rounded_tl(px(0.))
-                            .rounded_bl(px(0.))
-                            .ml(px(1.))
+                            .px(SPACING_HALF())
+                            .rounded_tl(zpx(0.))
+                            .rounded_bl(zpx(0.))
+                            .ml(zpx(1.))
                             .child(octicon(Octicon::TriangleDown, white()))
                             .on_click(move |ev: &ClickEvent, window, cx| {
                                 if disabled {
@@ -1083,25 +1086,25 @@ impl HistorySidebar {
         let t = cx.ghd();
         div()
             .absolute()
-            .top(SPACING_HALF)
-            .left(SPACING_HALF)
-            .right(SPACING_HALF)
-            .p(SPACING)
-            .rounded(BORDER_RADIUS)
+            .top(SPACING_HALF())
+            .left(SPACING_HALF())
+            .right(SPACING_HALF())
+            .p(SPACING())
+            .rounded(BORDER_RADIUS())
             .bg(t.background)
             .border_1()
             .border_color(t.box_border)
             .shadow(vec![BoxShadow {
                 color: t.shadow,
-                offset: point(px(0.), px(2.)),
-                blur_radius: px(7.),
-                spread_radius: px(0.),
+                offset: point(zpx(0.), zpx(2.)),
+                blur_radius: zpx(7.),
+                spread_radius: zpx(0.),
                 inset: false,
             }])
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .flex()
             .flex_col()
-            .gap(SPACING_HALF)
+            .gap(SPACING_HALF())
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
@@ -1112,7 +1115,7 @@ impl HistorySidebar {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(3.))
+                    .gap(zpx(3.))
                     .child("Use")
                     .child(kbd("↑", cx))
                     .child(kbd("↓", cx))
@@ -1123,7 +1126,7 @@ impl HistorySidebar {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(3.))
+                    .gap(zpx(3.))
                     .child("Press")
                     .child(kbd("⏎", cx))
                     .child("to confirm."),
@@ -1170,7 +1173,7 @@ impl HistorySidebar {
                 .flex()
                 .items_start()
                 .justify_center()
-                .p(SPACING_DOUBLE)
+                .p(SPACING_DOUBLE())
                 .text_center()
                 .text_color(t.text_secondary)
                 .child(message)
@@ -1354,18 +1357,18 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
         .flex()
         .flex_row()
         .items_center()
-        .pl(SPACING)
-        .pr(SPACING + SPACING_HALF)
+        .pl(SPACING())
+        .pr(SPACING() + SPACING_HALF())
         .text_color(text)
         .child(
             div()
                 .flex_1()
-                .min_w(px(50.))
+                .min_w(zpx(50.))
                 .flex()
                 .flex_col()
                 .child(
                     div()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .font_weight(FontWeight::SEMIBOLD)
                         .truncate()
                         .when(empty, |d| d.text_color(secondary))
@@ -1373,14 +1376,14 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                 )
                 .child(
                     div()
-                        .mt(px(3.))
+                        .mt(zpx(3.))
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .child(avatar_image(
                             avatar_lookup(&commit.author.email, cx),
-                            px(16.),
+                            zpx(16.),
                             cx,
                         ))
                         .child(
@@ -1388,7 +1391,7 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                                 .flex_1()
                                 .min_w_0()
                                 .truncate()
-                                .text_size(FONT_SIZE)
+                                .text_size(FONT_SIZE())
                                 .text_color(secondary)
                                 .child(byline),
                         ),
@@ -1397,36 +1400,36 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
         .when(!commit.tags.is_empty(), |d| {
             d.child(
                 div()
-                    .ml(SPACING)
-                    .h(px(16.))
+                    .ml(SPACING())
+                    .h(zpx(16.))
                     .max_w(gpui_kit::relative(0.5))
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(4.))
-                    .child(octicon(Octicon::Tag, t.list_item_badge_text).size(px(12.)))
+                    .gap(zpx(4.))
+                    .child(octicon(Octicon::Tag, t.list_item_badge_text).size(zpx(12.)))
                     .child(
                         div()
-                            .px(px(6.))
-                            .h(px(16.))
-                            .rounded(px(8.))
+                            .px(zpx(6.))
+                            .h(zpx(16.))
+                            .rounded(zpx(8.))
                             .bg(t.list_item_badge_background)
                             .text_color(t.list_item_badge_text)
-                            .text_size(FONT_SIZE_SM)
-                            .line_height(px(16.))
+                            .text_size(FONT_SIZE_SM())
+                            .line_height(zpx(16.))
                             .truncate()
                             .child(commit.tags[0].clone()),
                     )
                     .when(commit.tags.len() > 1, |d| {
                         d.child(
                             div()
-                                .px(px(6.))
-                                .h(px(16.))
-                                .rounded(px(8.))
+                                .px(zpx(6.))
+                                .h(zpx(16.))
+                                .rounded(zpx(8.))
                                 .bg(t.list_item_badge_background)
                                 .text_color(t.list_item_badge_text)
-                                .text_size(FONT_SIZE_SM)
-                                .line_height(px(16.))
+                                .text_size(FONT_SIZE_SM())
+                                .line_height(zpx(16.))
                                 .child(format!("+{}", commit.tags.len() - 1)),
                         )
                     }),
@@ -1502,7 +1505,7 @@ fn commit_row(
         )
         .relative()
         .w_full()
-        .h(COMMIT_ROW_HEIGHT)
+        .h(COMMIT_ROW_HEIGHT())
         .flex_none()
         .bg(bg)
         // `.has-highlighted-commits .list-item:not(.highlighted) { opacity: 30% }`
@@ -1597,7 +1600,7 @@ fn commit_row(
                     .top_0()
                     .left_0()
                     .right_0()
-                    .h(px(2.))
+                    .h(zpx(2.))
                     .bg(line),
             )
         })
@@ -1608,7 +1611,7 @@ fn commit_row(
                     .bottom_0()
                     .left_0()
                     .right_0()
-                    .h(px(2.))
+                    .h(zpx(2.))
                     .bg(line),
             )
         })
@@ -1699,7 +1702,7 @@ impl Render for HistorySidebar {
                         this.move_focused_branch(-1, cx)
                     }))
                     .flex_none()
-                    .p(SPACING_HALF)
+                    .p(SPACING_HALF())
                     .bg(t.box_alt_background)
                     .border_b_1()
                     .border_color(t.box_border)

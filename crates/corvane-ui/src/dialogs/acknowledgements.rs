@@ -23,14 +23,22 @@ const WEBSITE_URL: &str = "https://github.com/wasi-master/corvane";
 const REPOSITORY_URL: &str = "https://github.com/wasi-master/corvane";
 
 /// `#acknowledgements`: 600 px wide, 300 px of scrolling content.
-const CONTENT_WIDTH: Pixels = px(560.);
-const CONTENT_HEIGHT: Pixels = px(300.);
+#[allow(non_snake_case)]
+fn CONTENT_WIDTH() -> Pixels {
+    zpx(560.)
+}
+#[allow(non_snake_case)]
+fn CONTENT_HEIGHT() -> Pixels {
+    zpx(300.)
+}
 /// Rows before the libraries: intro, Corvane's license, "also distributes".
 const HEAD_ROWS: usize = 3;
 
 pub struct AcknowledgementsDialog {
     notices: Option<Acknowledgements>,
     list: ListState,
+    /// The zoom factor the rows were measured at.
+    zoom_seen: f32,
 }
 
 impl AcknowledgementsDialog {
@@ -47,7 +55,8 @@ impl AcknowledgementsDialog {
             // every row is measured on the first layout so the scrollbar
             // reflects the whole text (estimated heights made the thumb
             // shrink and jump while scrolling)
-            list: ListState::new(rows, ListAlignment::Top, px(300.)).measure_all(),
+            list: ListState::new(rows, ListAlignment::Top, zpx(300.)).measure_all(),
+            zoom_seen: crate::theme::sizes::zoom_factor(),
         }
     }
 }
@@ -56,34 +65,38 @@ impl AcknowledgementsDialog {
 fn license_text(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .mb(SPACING_DOUBLE)
+        .mb(SPACING_DOUBLE())
         .font_family(MONO_FONT)
-        .text_size(FONT_SIZE_SM)
+        .text_size(FONT_SIZE_SM())
         .text_color(t.text)
         .child(text.into())
 }
 
 impl Render for AcknowledgementsDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.zoom_seen != crate::theme::sizes::zoom_factor() {
+            self.zoom_seen = crate::theme::sizes::zoom_factor();
+            self.list.remeasure();
+        }
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let notices = self.notices.clone();
         let body: AnyElement = match notices {
             None => div()
-                .w(CONTENT_WIDTH)
+                .w(CONTENT_WIDTH())
                 .child("The license notices could not be loaded.")
                 .into_any_element(),
             Some(notices) => {
                 let notices = std::rc::Rc::new(notices);
                 div()
-                    .w(CONTENT_WIDTH)
-                    .h(CONTENT_HEIGHT)
+                    .w(CONTENT_WIDTH())
+                    .h(CONTENT_HEIGHT())
                     .relative()
                     .child(
                         list(self.list.clone(), move |ix, _, cx| {
                             let t = cx.ghd();
                             match ix {
                                 0 => div()
-                                    .pb(SPACING)
+                                    .pb(SPACING())
                                     .child(paragraph(vec![
                                         Inline::Element(
                                             link_button("ack-website", "Corvane", cx)
@@ -106,7 +119,7 @@ impl Render for AcknowledgementsDialog {
                                     license_text(notices.app_license.clone(), cx).into_any_element()
                                 }
                                 2 => div()
-                                    .pb(SPACING)
+                                    .pb(SPACING())
                                     .child("Corvane also distributes these libraries:")
                                     .into_any_element(),
                                 _ => {
@@ -142,8 +155,8 @@ impl Render for AcknowledgementsDialog {
                                         .flex_col()
                                         .child(
                                             div()
-                                                .mb(SPACING)
-                                                .text_size(FONT_SIZE_MD)
+                                                .mb(SPACING())
+                                                .text_size(FONT_SIZE_MD())
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .text_color(t.text)
                                                 .child(header),

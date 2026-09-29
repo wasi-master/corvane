@@ -21,10 +21,14 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{ContractActiveResizable, ExpandActiveResizable};
+use crate::theme::sizes::zpx;
 use crate::widgets::ListRowA11y;
 
 /// `handleMenuResizeEvent`'s step.
-pub const MENU_RESIZE_STEP: Pixels = px(5.);
+#[allow(non_snake_case)]
+pub fn MENU_RESIZE_STEP() -> Pixels {
+    zpx(5.)
+}
 
 thread_local! {
     /// GHD `resizeMessage` state, per resizable.
@@ -79,7 +83,7 @@ fn nudge(
         state.sizes().first().copied()
     });
     if let Some(width) = width {
-        let message: SharedString = about.message(delta > px(0.), width).into();
+        let message: SharedString = about.message(delta > zpx(0.), width).into();
         MESSAGES.with(|m| m.borrow_mut().insert(resizable.entity_id(), message));
         window.refresh();
     }
@@ -114,10 +118,10 @@ pub fn active_resizable(
                 })
         })
         .on_action(move |_: &ExpandActiveResizable, window, cx| {
-            nudge(&expand, MENU_RESIZE_STEP, &expand_about, window, cx)
+            nudge(&expand, MENU_RESIZE_STEP(), &expand_about, window, cx)
         })
         .on_action(move |_: &ContractActiveResizable, window, cx| {
-            nudge(&contract, -MENU_RESIZE_STEP, &about, window, cx)
+            nudge(&contract, -MENU_RESIZE_STEP(), &about, window, cx)
         })
         .child(content)
         // `AriaLiveContainer`: invisible, announced when the message changes
@@ -128,7 +132,7 @@ pub fn active_resizable(
                     .absolute()
                     .top_0()
                     .left_0()
-                    .size(px(1.))
+                    .size(zpx(1.))
                     .overflow_hidden()
                     .a11y_live(message),
             )
@@ -141,13 +145,13 @@ mod tests {
 
     #[::core::prelude::v1::test]
     fn messages_like_ghd() {
-        let about = ResizableDescription::new("Repository sidebar", px(220.)..px(900.));
+        let about = ResizableDescription::new("Repository sidebar", zpx(220.)..zpx(900.));
         assert_eq!(
-            about.message(true, px(559.)),
+            about.message(true, zpx(559.)),
             "Repository sidebar width increased. Set to 50%"
         );
         assert_eq!(
-            about.message(false, px(220.)),
+            about.message(false, zpx(220.)),
             "Repository sidebar width decreased. Set to 0%"
         );
     }

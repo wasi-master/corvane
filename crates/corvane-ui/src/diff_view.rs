@@ -47,7 +47,10 @@ use crate::widgets::{
     text_box,
 };
 
-pub const DIFF_LINE_HEIGHT: Pixels = px(20.);
+#[allow(non_snake_case)]
+pub fn DIFF_LINE_HEIGHT() -> Pixels {
+    zpx(20.)
+}
 
 /// Octicon + colour for a file status (`ui/octicons/status.ts`).
 pub fn status_icon(kind: FileStatusKind, t: &GhdTheme) -> (Octicon, Hsla) {
@@ -77,13 +80,13 @@ pub fn diff_header(
         None => ("", path),
     };
     div()
-        .h(ROW_HEIGHT)
+        .h(ROW_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
-        .px(SPACING)
-        .gap(SPACING)
+        .px(SPACING())
+        .gap(SPACING())
         .bg(t.box_alt_background)
         .border_b_1()
         .border_color(t.box_border)
@@ -92,7 +95,7 @@ pub fn diff_header(
                 .flex_1()
                 .min_w_0()
                 .truncate()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .child(
                     div()
                         .flex()
@@ -228,6 +231,8 @@ pub struct DiffView {
     text_selection: Option<TextSelection>,
     /// Screen bounds of the rendered rows' text, for the selection drag.
     text_bounds: TextBounds,
+    /// The zoom factor the list's row heights were measured at.
+    zoom_seen: f32,
     list_state: ListState,
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
@@ -273,7 +278,8 @@ impl DiffView {
             hovered_group: None,
             text_selection: None,
             text_bounds: Rc::new(RefCell::new(HashMap::new())),
-            list_state: ListState::new(0, ListAlignment::Top, px(200.)),
+            zoom_seen: crate::theme::sizes::zoom_factor(),
+            list_state: ListState::new(0, ListAlignment::Top, zpx(200.)),
             rows: Rc::new(Vec::new()),
             rows_key: None,
             tokens: None,
@@ -430,7 +436,7 @@ impl DiffView {
         self.list_state = self
             .list_state
             .clone()
-            .with_uniform_item_height(DIFF_LINE_HEIGHT);
+            .with_uniform_item_height(DIFF_LINE_HEIGHT());
         self.refresh_search();
         self.highlight(key, cx);
     }
@@ -456,7 +462,7 @@ impl DiffView {
             self.split_mode = split;
             self.text_selection = None;
             self.list_state
-                .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
+                .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT());
         }
     }
 
@@ -484,7 +490,7 @@ impl DiffView {
         self.rows_key = Some(snap.key.clone());
         self.text_selection = None;
         self.list_state
-            .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
+            .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT());
         self.refresh_search();
         self.highlight(snap.key.clone(), cx);
     }
@@ -578,7 +584,7 @@ impl DiffView {
         };
         let line = window.text_system().shape_line(
             SharedString::from(text.to_string()),
-            FONT_SIZE_SM,
+            FONT_SIZE_SM(),
             &[run],
             None,
         );
@@ -663,13 +669,13 @@ impl DiffView {
             }
         } else if let Some((ix, b)) = rows_below.filter(|_| rows_above.is_none()) {
             // above every rendered row: select from the first visible one up
-            if position.y < b.origin.y - DIFF_LINE_HEIGHT / 2. {
-                self.list_state.scroll_by(-DIFF_LINE_HEIGHT);
+            if position.y < b.origin.y - DIFF_LINE_HEIGHT() / 2. {
+                self.list_state.scroll_by(-DIFF_LINE_HEIGHT());
             }
             TextPos { row: ix, col: 0 }
         } else if let Some((ix, b)) = rows_above {
-            if position.y > b.origin.y + b.size.height + DIFF_LINE_HEIGHT / 2. {
-                self.list_state.scroll_by(DIFF_LINE_HEIGHT);
+            if position.y > b.origin.y + b.size.height + DIFF_LINE_HEIGHT() / 2. {
+                self.list_state.scroll_by(DIFF_LINE_HEIGHT());
             }
             TextPos {
                 row: ix,
@@ -1083,9 +1089,9 @@ impl DiffView {
     fn options_popover(&self, snap: &Snapshot, window: &Window, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let anchor = self.gear_bounds.get();
-        let width = px(250.);
-        let x = (anchor.right() - width).max(px(0.));
-        let y = anchor.bottom() + px(4.);
+        let width = zpx(250.);
+        let x = (anchor.right() - width).max(zpx(0.));
+        let y = anchor.bottom() + zpx(4.);
         let source = self.source;
         let interactive = self.source == DiffSource::WorkingDirectory;
         let hide = snap.hide_whitespace;
@@ -1094,32 +1100,32 @@ impl DiffView {
         let legend = |text: &str| {
             div()
                 .font_weight(FontWeight::BOLD)
-                .mb(px(6.))
+                .mb(zpx(6.))
                 .child(text.to_string())
         };
         deferred(
             anchored()
                 .position(point(x, y))
-                .snap_to_window_with_margin(px(8.))
+                .snap_to_window_with_margin(zpx(8.))
                 .child(
                     div()
                         .id("diff-options-popover")
                         .occlude()
                         .w(width)
-                        .p(SPACING)
+                        .p(SPACING())
                         .flex()
                         .flex_col()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .text_color(t.text)
                         .bg(t.background)
                         .border_1()
                         .border_color(t.box_border)
-                        .rounded(BORDER_RADIUS)
+                        .rounded(BORDER_RADIUS())
                         .shadow(vec![BoxShadow {
                             color: hsla(0., 0., 0., 0.3),
-                            offset: point(px(0.), px(0.)),
-                            blur_radius: px(8.),
-                            spread_radius: px(0.),
+                            offset: point(zpx(0.), zpx(0.)),
+                            blur_radius: zpx(8.),
+                            spread_radius: zpx(0.),
                             inset: false,
                         }])
                         .on_mouse_down_out(cx.listener(|this, _, _, cx| {
@@ -1129,15 +1135,15 @@ impl DiffView {
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .text_size(FONT_SIZE_MD)
-                                .mb(px(8.))
+                                .text_size(FONT_SIZE_MD())
+                                .mb(zpx(8.))
                                 .child("Diff Settings"),
                         )
                         .child(
                             div()
                                 .flex()
                                 .flex_col()
-                                .mb(px(8.))
+                                .mb(zpx(8.))
                                 .child(legend("Whitespace"))
                                 .child(checkbox_row(
                                     "diff-hide-whitespace",
@@ -1147,7 +1153,7 @@ impl DiffView {
                                     cx,
                                 ))
                                 .when(interactive, |d| {
-                                    d.child(div().mt(px(6.)).text_color(t.text_secondary).child(
+                                    d.child(div().mt(zpx(6.)).text_color(t.text_secondary).child(
                                         "Interacting with individual lines or hunks \
                                                  will be disabled while hiding whitespace.",
                                     ))
@@ -1157,7 +1163,7 @@ impl DiffView {
                             div()
                                 .flex()
                                 .flex_col()
-                                .gap(px(4.))
+                                .gap(zpx(4.))
                                 .child(legend("Diff display"))
                                 .child(radio_row(
                                     "diff-display-unified",
@@ -1187,27 +1193,27 @@ impl DiffView {
         deferred(
             anchored()
                 .position(anchor)
-                .snap_to_window_with_margin(px(8.))
+                .snap_to_window_with_margin(zpx(8.))
                 .child(
                     div()
                         .id("whitespace-hint")
                         .occlude()
-                        .w(px(225.))
-                        .p(SPACING)
+                        .w(zpx(225.))
+                        .p(SPACING())
                         .flex()
                         .flex_col()
-                        .gap(px(6.))
-                        .text_size(FONT_SIZE)
+                        .gap(zpx(6.))
+                        .text_size(FONT_SIZE())
                         .text_color(t.text)
                         .bg(t.background)
                         .border_1()
                         .border_color(t.box_border)
-                        .rounded(BORDER_RADIUS)
+                        .rounded(BORDER_RADIUS())
                         .shadow(vec![BoxShadow {
                             color: hsla(0., 0., 0., 0.3),
-                            offset: point(px(0.), px(0.)),
-                            blur_radius: px(8.),
-                            spread_radius: px(0.),
+                            offset: point(zpx(0.), zpx(0.)),
+                            blur_radius: zpx(8.),
+                            spread_radius: zpx(0.),
                             inset: false,
                         }])
                         .on_mouse_down_out(cx.listener(|this, _, _, cx| {
@@ -1217,7 +1223,7 @@ impl DiffView {
                         .child(
                             div()
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .text_size(FONT_SIZE_MD)
+                                .text_size(FONT_SIZE_MD())
                                 .child("Show whitespace changes?"),
                         )
                         .child(
@@ -1230,8 +1236,8 @@ impl DiffView {
                                 .flex()
                                 .flex_row()
                                 .justify_end()
-                                .gap(SPACING_HALF)
-                                .mt(px(4.))
+                                .gap(SPACING_HALF())
+                                .mt(zpx(4.))
                                 .child(
                                     primary_button("whitespace-hint-yes", "Yes", false, cx)
                                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -1262,8 +1268,8 @@ impl DiffView {
             .flex()
             .items_center()
             .justify_center()
-            .p(SPACING_DOUBLE)
-            .text_size(FONT_SIZE)
+            .p(SPACING_DOUBLE())
+            .text_size(FONT_SIZE())
             .text_color(t.text_secondary)
             .child(message.into())
             .into_any_element()
@@ -1292,17 +1298,17 @@ impl DiffView {
             .flex()
             .flex_col()
             .items_center()
-            .pt(SPACING)
-            .text_size(FONT_SIZE)
+            .pt(SPACING())
+            .text_size(FONT_SIZE())
             .text_color(t.text)
             .child(
                 div()
-                    .py(SPACING)
-                    .pb(SPACING_HALF)
+                    .py(SPACING())
+                    .pb(SPACING_HALF())
                     .child("This binary file has changed."),
             )
             .child(
-                div().py(SPACING_HALF).child(
+                div().py(SPACING_HALF()).child(
                     link_button("binary-open", "Open file in external program.", cx)
                         .on_click(move |_, _, cx| cx.open_with_system(&full_path)),
                 ),
@@ -1318,13 +1324,13 @@ impl DiffView {
             .flex()
             .flex_col()
             .items_center()
-            .m(SPACING_DOUBLE)
-            .gap(SPACING)
-            .text_size(FONT_SIZE)
+            .m(SPACING_DOUBLE())
+            .gap(SPACING())
+            .text_size(FONT_SIZE())
             .text_color(t.text_secondary)
             .child(
                 img("illustrations/ufo-alert.svg")
-                    .max_h(px(150.))
+                    .max_h(zpx(150.))
                     .object_fit(ObjectFit::Contain),
             )
             .child(div().child("The diff is too large to be displayed by default."))
@@ -1351,9 +1357,9 @@ impl DiffView {
                 .flex()
                 .flex_row()
                 .items_start()
-                .gap(SPACING)
-                .mb(SPACING)
-                .child(div().flex_none().pt(px(2.)).child(octicon(icon, color)))
+                .gap(SPACING())
+                .mb(SPACING())
+                .child(div().flex_none().pt(zpx(2.)).child(octicon(icon, color)))
                 .child(div().flex_1().min_w_0().child(body))
         };
         let sha = |sha: &str| -> Vec<Inline> {
@@ -1366,8 +1372,8 @@ impl DiffView {
                     div()
                         .id(SharedString::from(format!("copy-{sha}")))
                         .cursor_pointer()
-                        .ml(px(2.))
-                        .child(octicon(Octicon::Copy, t.text_secondary).size(px(14.)))
+                        .ml(zpx(2.))
+                        .child(octicon(Octicon::Copy, t.text_secondary).size(zpx(14.)))
                         .on_click(move |_, _, cx| {
                             cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
                         })
@@ -1505,20 +1511,20 @@ impl DiffView {
             .flex()
             .flex_col()
             .items_center()
-            .p(px(40.))
-            .text_size(FONT_SIZE)
+            .p(zpx(40.))
+            .text_size(FONT_SIZE())
             .text_color(t.text)
             .child(
                 div()
                     .w_full()
-                    .max_w(px(600.))
+                    .max_w(zpx(600.))
                     .flex()
                     .flex_col()
                     .child(
                         div()
-                            .text_size(px(20.))
+                            .text_size(zpx(20.))
                             .font_weight(FontWeight::LIGHT)
-                            .mb(SPACING_DOUBLE)
+                            .mb(SPACING_DOUBLE())
                             .child("Submodule changes"),
                     )
                     .children(items)
@@ -1531,6 +1537,12 @@ impl DiffView {
 
 impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // View › Zoom changed the row heights the list has cached
+        let zoom = crate::theme::sizes::zoom_factor();
+        if self.zoom_seen != zoom {
+            self.zoom_seen = zoom;
+            self.list_state.remeasure();
+        }
         let Some(snap) = self.snapshot(cx) else {
             return div().flex_1().into_any_element();
         };
@@ -1669,30 +1681,30 @@ impl DiffView {
                 .flex_none()
                 .flex()
                 .flex_col()
-                .px(SPACING_DOUBLE)
-                .py(SPACING)
+                .px(SPACING_DOUBLE())
+                .py(SPACING())
                 .bg(t.file_warning_background)
                 .border_b_1()
                 .border_color(t.file_warning_border)
                 .font_family(crate::theme::UI_FONT)
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .text_color(t.text)
                 .children(items.into_iter().enumerate().map(|(ix, body)| {
                     div()
                         .flex()
                         .flex_row()
                         .items_start()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .when(ix + 1 < count, |d| {
-                            d.mb(SPACING)
-                                .pb(SPACING)
+                            d.mb(SPACING())
+                                .pb(SPACING())
                                 .border_b_1()
                                 .border_color(t.file_warning_border)
                         })
                         .child(
                             div()
                                 .flex_none()
-                                .pt(px(2.))
+                                .pt(zpx(2.))
                                 .child(octicon(Octicon::Alert, t.file_warning)),
                         )
                         .child(div().flex_1().min_w_0().child(body))
@@ -1755,14 +1767,14 @@ impl DiffView {
                 div()
                     .absolute()
                     .top_0()
-                    .right(SPACING)
-                    .w(px(250.))
-                    .p(SPACING_HALF)
+                    .right(SPACING())
+                    .w(zpx(250.))
+                    .p(SPACING_HALF())
                     .bg(t.background)
                     .border_1()
                     .border_t_0()
                     .border_color(t.box_border)
-                    .rounded_b(BORDER_RADIUS)
+                    .rounded_b(BORDER_RADIUS())
                     .child(text_box("diff-search", &input, None, window, cx))
             });
         div()
@@ -1772,8 +1784,8 @@ impl DiffView {
             .min_h_0()
             .w_full()
             .font_family(MONO_FONT)
-            .text_size(FONT_SIZE_SM)
-            .line_height(DIFF_LINE_HEIGHT)
+            .text_size(FONT_SIZE_SM())
+            .line_height(DIFF_LINE_HEIGHT())
             .text_color(t.diff_text)
             .on_mouse_up(
                 MouseButton::Left,

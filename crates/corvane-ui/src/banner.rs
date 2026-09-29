@@ -16,7 +16,10 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::link_button;
 
-pub const BANNER_HEIGHT: Pixels = px(30.);
+#[allow(non_snake_case)]
+pub fn BANNER_HEIGHT() -> Pixels {
+    zpx(30.)
+}
 
 fn strong(text: impl Into<SharedString>) -> Div {
     div().font_weight(FontWeight::SEMIBOLD).child(text.into())
@@ -159,9 +162,9 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
     let t = cx.ghd();
     let is_conflicts = matches!(banner, Banner::ConflictsFound { .. });
     let icon = if is_conflicts {
-        octicon(Octicon::Alert, t.text).mr(SPACING)
+        octicon(Octicon::Alert, t.text).mr(SPACING())
     } else {
-        octicon(Octicon::CheckCircleFill, t.color_new).mr(SPACING)
+        octicon(Octicon::CheckCircleFill, t.color_new).mr(SPACING())
     };
     let action: Option<AnyElement> = match banner {
         Banner::SuccessfulCherryPick { repo, .. }
@@ -170,7 +173,7 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
             let repo = *repo;
             Some(
                 link_button("banner-undo", "Undo", cx)
-                    .ml(SPACING_HALF)
+                    .ml(SPACING_HALF())
                     .on_click(move |_, _, cx| {
                         Dispatcher::clear_banner(cx);
                         Dispatcher::undo_mco(repo, cx);
@@ -182,7 +185,7 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
             let repo = *repo;
             Some(
                 link_button("banner-view-conflicts", "View conflicts", cx)
-                    .ml(SPACING_HALF)
+                    .ml(SPACING_HALF())
                     .on_click(move |_, _, cx| Dispatcher::show_conflicts(repo, cx))
                     .into_any_element(),
             )
@@ -196,18 +199,18 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
         // announced when it appears (GHD renders banners in an aria-live region)
         .a11y_live(plain_message(banner))
         .w_full()
-        .h(BANNER_HEIGHT)
+        .h(BANNER_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
         .justify_between()
-        .pl(SPACING)
+        .pl(SPACING())
         .overflow_hidden()
         .bg(t.background)
         .border_b_1()
         .border_color(t.box_border)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .text_color(t.text)
         .child(
             div()
@@ -233,9 +236,9 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
                 div()
                     .id("banner-close")
                     .icon_button_label("Dismiss this message")
-                    .mx(SPACING)
+                    .mx(SPACING())
                     .flex_none()
-                    .size(px(16.))
+                    .size(zpx(16.))
                     .flex()
                     .items_center()
                     .justify_center()
@@ -300,18 +303,18 @@ pub fn update_banner(update: &AvailableUpdate, homebrew: bool, cx: &App) -> impl
         .id("update-available")
         .a11y_live(plain)
         .w_full()
-        .h(BANNER_HEIGHT)
+        .h(BANNER_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
         .justify_between()
-        .pl(SPACING)
+        .pl(SPACING())
         .overflow_hidden()
         .bg(t.background)
         .border_b_1()
         .border_color(t.box_border)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .text_color(t.text)
         .child(
             div()
@@ -320,16 +323,16 @@ pub fn update_banner(update: &AvailableUpdate, homebrew: bool, cx: &App) -> impl
                 .flex()
                 .flex_row()
                 .items_center()
-                .child(octicon(Octicon::DesktopDownload, t.banner_warning_icon).mr(SPACING))
+                .child(octicon(Octicon::DesktopDownload, t.banner_warning_icon).mr(SPACING()))
                 .child(div().flex_1().min_w_0().truncate().child(message)),
         )
         .child(
             div()
                 .id("update-banner-close")
                 .icon_button_label("Dismiss this message")
-                .mx(SPACING)
+                .mx(SPACING())
                 .flex_none()
-                .size(px(16.))
+                .size(zpx(16.))
                 .flex()
                 .items_center()
                 .justify_center()

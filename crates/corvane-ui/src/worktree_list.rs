@@ -19,7 +19,10 @@ use crate::widgets::ListRowA11y;
 use crate::widgets::{button, text_box};
 
 /// GHD `RowHeight` of the worktree list.
-const WORKTREE_ROW_HEIGHT: Pixels = px(30.);
+#[allow(non_snake_case)]
+fn WORKTREE_ROW_HEIGHT() -> Pixels {
+    zpx(30.)
+}
 
 /// GHD `generateWorktreeContextMenuItems`.
 pub fn worktree_menu_items(
@@ -204,14 +207,14 @@ impl WorktreeFoldout {
         div()
             .id(SharedString::from(format!("worktree-{}", path.display())))
             .a11y_row(format!("{name}, {description}"), current)
-            .h(WORKTREE_ROW_HEIGHT)
+            .h(WORKTREE_ROW_HEIGHT())
             .w_full()
             .flex()
             .flex_row()
             .items_center()
-            .px(SPACING)
+            .px(SPACING())
             .cursor_pointer()
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .hover(move |s| s.bg(hover_bg).text_color(hover_text))
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
@@ -233,25 +236,25 @@ impl WorktreeFoldout {
                     if current { t.text } else { t.text_secondary },
                 )
                 .flex_none()
-                .mr(SPACING_HALF),
+                .mr(SPACING_HALF()),
             )
             .child(
                 div()
                     .flex_grow(2.)
                     .min_w_0()
                     .max_w(gpui_kit::relative(0.65))
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .child(title),
             )
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .text_right()
                     .whitespace_nowrap()
                     .truncate()
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .text_color(t.text_secondary)
                     .child(description),
             )
@@ -292,13 +295,13 @@ impl Render for WorktreeFoldout {
         let group_header = |label: &str| {
             // `.filter-list-group-header`
             div()
-                .h(ROW_HEIGHT)
-                .pt(SPACING)
-                .px(SPACING)
+                .h(ROW_HEIGHT())
+                .pt(SPACING())
+                .px(SPACING())
                 .flex()
                 .items_center()
                 .font_weight(FontWeight::SEMIBOLD)
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .truncate()
                 .child(label.to_string())
         };
@@ -332,8 +335,8 @@ impl Render for WorktreeFoldout {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
-                    .p(SPACING)
+                    .gap(SPACING())
+                    .p(SPACING())
                     .child(text_box(
                         "worktree-filter",
                         &self.filter,
@@ -360,9 +363,9 @@ impl Render for WorktreeFoldout {
             .child(if groups.is_empty() {
                 // `.no-items-found`
                 div()
-                    .p(SPACING)
+                    .p(SPACING())
                     .text_center()
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .text_color(t.text_secondary)
                     .child("No worktrees found")
                     .into_any_element()

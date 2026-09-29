@@ -39,7 +39,10 @@ use crate::widgets::ListRowA11y;
 use crate::widgets::{button, text_box};
 
 /// `.branches-container { width: 365px }`
-pub const BRANCH_FOLDOUT_WIDTH: Pixels = px(365.);
+#[allow(non_snake_case)]
+pub fn BRANCH_FOLDOUT_WIDTH() -> Pixels {
+    zpx(365.)
+}
 
 pub struct BranchFoldout {
     state: Entity<AppState>,
@@ -156,7 +159,7 @@ impl BranchFoldout {
             quick_view_timer: None,
             container_bounds: Rc::new(Cell::new(Bounds::default())),
             row_bounds: Rc::new(RefCell::new(HashMap::new())),
-            quick_view_height: Rc::new(Cell::new(QUICK_VIEW_MAX_HEIGHT)),
+            quick_view_height: Rc::new(Cell::new(QUICK_VIEW_MAX_HEIGHT())),
             quick_view_hovered: false,
         }
     }
@@ -237,8 +240,8 @@ impl BranchFoldout {
             height,
         );
         let pointer_top = view.row_top - container.origin.y - top
-            + crate::pull_request_list::PR_ROW_HEIGHT / 2.
-            + px(1.);
+            + crate::pull_request_list::PR_ROW_HEIGHT() / 2.
+            + zpx(1.);
         let status = self.state.read(cx).commit_status_summary(&view.pr);
         let entity = cx.entity().downgrade();
         Some(
@@ -365,9 +368,9 @@ impl BranchFoldout {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
-                    .p(SPACING)
-                    .pb(SPACING_HALF)
+                    .gap(SPACING())
+                    .p(SPACING())
+                    .pb(SPACING_HALF())
                     .child(text_box(
                         "pull-request-filter",
                         &self.pr_filter,
@@ -378,7 +381,7 @@ impl BranchFoldout {
                     .child(
                         button("pull-request-refresh", "", cx)
                             .flex_none()
-                            .px(SPACING_HALF)
+                            .px(SPACING_HALF())
                             .when(loading, |d| d.opacity(0.6))
                             .icon_button_label("Refresh the list of pull requests")
                             .on_click(move |_, _, cx| {
@@ -418,13 +421,13 @@ impl BranchFoldout {
                     .child(
                         // `.filter-list-group-header`
                         div()
-                            .h(ROW_HEIGHT)
-                            .pt(SPACING)
-                            .px(SPACING)
+                            .h(ROW_HEIGHT())
+                            .pt(SPACING())
+                            .px(SPACING())
                             .flex()
                             .items_center()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .truncate()
                             .child(format!("Pull requests in {repository_name}")),
                     )
@@ -454,12 +457,12 @@ impl BranchFoldout {
                 },
                 current,
             )
-            .h(ROW_HEIGHT)
+            .h(ROW_HEIGHT())
             .w_full()
             .flex()
             .flex_row()
             .items_center()
-            .px(SPACING)
+            .px(SPACING())
             .cursor_pointer()
             .when(current, |d| {
                 d.bg(t.box_selected_background)
@@ -507,26 +510,26 @@ impl BranchFoldout {
                     },
                     t.text,
                 )
-                .mr(SPACING_HALF),
+                .mr(SPACING_HALF()),
             )
             .child(
                 div()
                     .flex_grow(2.)
                     .min_w_0()
                     .max_w(gpui_kit::relative(0.65))
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .truncate()
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .child(branch.name.clone()),
             )
             .when_some(date, |d, date| {
                 d.child(
                     div()
                         .flex_1()
-                        .mr(SPACING_HALF)
+                        .mr(SPACING_HALF())
                         .text_right()
                         .whitespace_nowrap()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.text_secondary)
                         .child(date),
                 )
@@ -541,9 +544,9 @@ impl BranchFoldout {
             .flex()
             .flex_col()
             .items_center()
-            .p(SPACING)
-            .my(SPACING)
-            .text_size(FONT_SIZE)
+            .p(SPACING())
+            .my(SPACING())
+            .text_size(FONT_SIZE())
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
@@ -551,14 +554,14 @@ impl BranchFoldout {
             )
             .child(
                 div()
-                    .mx(SPACING_DOUBLE)
+                    .mx(SPACING_DOUBLE())
                     .text_center()
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .child("Do you want to create a new branch instead?"),
             )
             .child(
                 crate::widgets::primary_button("no-branches-create", "Create New Branch", false, cx)
-                    .m(SPACING_DOUBLE)
+                    .m(SPACING_DOUBLE())
                     .w_full()
                     .on_click(move |_, _, cx| {
                         Dispatcher::close_foldout(cx);
@@ -574,9 +577,9 @@ impl BranchFoldout {
             )
             .child(
                 div()
-                    .px(px(30.))
+                    .px(zpx(30.))
                     .text_center()
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .text_color(t.text_secondary)
                     .child("Protip! Press ⌘⇧N to quickly create a new branch from anywhere within the app"),
             )
@@ -666,8 +669,8 @@ impl Render for BranchFoldout {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING)
-                    .p(SPACING)
+                    .gap(SPACING())
+                    .p(SPACING())
                     .child(text_box(
                         "branch-filter",
                         &self.filter,
@@ -708,13 +711,13 @@ impl Render for BranchFoldout {
                             .child(
                                 // `.filter-list-group-header`
                                 div()
-                                    .h(ROW_HEIGHT)
-                                    .pt(SPACING)
-                                    .px(SPACING)
+                                    .h(ROW_HEIGHT())
+                                    .pt(SPACING())
+                                    .px(SPACING())
                                     .flex()
                                     .items_center()
                                     .font_weight(FontWeight::SEMIBOLD)
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .child(group.title),
                             )
                             .children(group.branches.iter().map(|b| {
@@ -781,14 +784,14 @@ impl BranchFoldout {
         Some(
             div()
                 .flex_none()
-                .p(SPACING)
+                .p(SPACING())
                 .border_t_1()
                 .border_color(t.box_border)
                 .child(
                     button("merge-into-current", "", cx)
                         .w_full()
                         .justify_center()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .child(octicon(Octicon::GitMerge, t.secondary_button_text))
                         .child(
                             div()

@@ -258,7 +258,7 @@ impl Render for AddWorktreeDialog {
                 Inline::Element(ref_chip(effective.clone(), cx).into_any_element()),
                 ".".into(),
             ])
-            .text_size(FONT_SIZE_SM)
+            .text_size(FONT_SIZE_SM())
             .text_color(t.text_secondary)
         });
         let path_message = full.as_ref().map(|p| {
@@ -267,7 +267,7 @@ impl Render for AddWorktreeDialog {
                 Inline::Element(ref_chip(p.display().to_string(), cx).into_any_element()),
                 ".".into(),
             ])
-            .mb(SPACING)
+            .mb(SPACING())
         });
         dialog(
             "add-worktree",
@@ -275,8 +275,8 @@ impl Render for AddWorktreeDialog {
             div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
-                .w(px(460.))
+                .gap(SPACING())
+                .w(zpx(460.))
                 .child(labeled(
                     "Worktree Name",
                     text_box("worktree-name", &self.name, None, window, cx),
@@ -287,7 +287,7 @@ impl Render for AddWorktreeDialog {
                         .flex()
                         .flex_row()
                         .items_end()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .child(labeled(
                             "Local Path",
                             text_box("worktree-path", &self.path, None, window, cx),
@@ -343,8 +343,8 @@ impl Render for AddWorktreeDialog {
                     |d| {
                         d.child(
                             div()
-                                .mt(px(-6.))
-                                .text_size(FONT_SIZE_SM)
+                                .mt(zpx(-6.))
+                                .text_size(FONT_SIZE_SM())
                                 .text_color(t.text_secondary)
                                 .child(format!("Defaults to {branch_placeholder}")),
                         )
@@ -425,7 +425,7 @@ impl Render for RenameWorktreeDialog {
         dialog(
             "rename-worktree",
             "Rename Worktree",
-            div().w(px(400.)).child(labeled(
+            div().w(zpx(400.)).child(labeled(
                 "Name",
                 text_box("rename-worktree-name", &self.name, None, window, cx),
                 cx,
@@ -488,7 +488,7 @@ impl Render for DeleteWorktreeDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 "Are you sure you want to delete the worktree ".into(),
                 Inline::Element(ref_chip(name, cx).into_any_element()),
@@ -500,7 +500,7 @@ impl Render for DeleteWorktreeDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;
@@ -590,8 +590,8 @@ impl Render for DeleteWorktreeFailedDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
-            .w(px(460.))
+            .gap(SPACING())
+            .w(zpx(460.))
             .child(paragraph(vec![
                 "Deleting the worktree ".into(),
                 Inline::Element(ref_chip(name.clone(), cx).into_any_element()),
@@ -601,15 +601,15 @@ impl Render for DeleteWorktreeFailedDialog {
                 // GHD `Terminal` output
                 div()
                     .id("delete-worktree-error")
-                    .max_h(px(150.))
+                    .max_h(zpx(150.))
                     .overflow_y_scroll()
-                    .p(SPACING_HALF)
-                    .rounded(BORDER_RADIUS)
+                    .p(SPACING_HALF())
+                    .rounded(BORDER_RADIUS())
                     .bg(t.box_alt_background)
                     .border_1()
                     .border_color(t.box_border)
                     .font_family(MONO_FONT)
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .child(self.error.clone())
                     .with_scrollbar(),
             )

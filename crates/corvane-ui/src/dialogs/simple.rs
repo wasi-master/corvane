@@ -28,7 +28,7 @@ impl Render for SimpleDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(format!(
                         "Corvane was unable to find a usable Git on your system ({reason})."
                     ))

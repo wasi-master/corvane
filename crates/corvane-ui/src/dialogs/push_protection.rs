@@ -42,16 +42,16 @@ impl PushProtectionErrorDialog {
             .flex()
             .flex_row()
             .items_center()
-            .gap(SPACING)
-            .text_size(FONT_SIZE)
+            .gap(SPACING())
+            .text_size(FONT_SIZE())
             .child(
                 div()
                     .flex_none()
-                    .min_w(px(95.))
+                    .min_w(zpx(95.))
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child(octicon(Octicon::GitCommit, t.text_secondary))
                     .child(
                         div()
@@ -93,7 +93,7 @@ impl PushProtectionErrorDialog {
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(SPACING_HALF)
+                .gap(SPACING_HALF())
                 .child("Bypassed")
                 .child(octicon(Octicon::Check, c(primer::GREEN_500)))
                 .into_any_element();
@@ -135,7 +135,7 @@ impl Render for PushProtectionErrorDialog {
             div()
                 .flex()
                 .flex_row()
-                .gap(SPACING_HALF)
+                .gap(SPACING_HALF())
                 .child("•")
                 .child(text)
         };
@@ -160,7 +160,7 @@ impl Render for PushProtectionErrorDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .p(SPACING)
+                    .p(SPACING())
                     .border_t_1()
                     .border_color(t.box_border)
                     .child(
@@ -168,7 +168,7 @@ impl Render for PushProtectionErrorDialog {
                             .flex()
                             .flex_row()
                             .items_center()
-                            .mb(SPACING_HALF)
+                            .mb(SPACING_HALF())
                             .child(
                                 div()
                                     .flex_1()
@@ -190,7 +190,7 @@ impl Render for PushProtectionErrorDialog {
                                     div()
                                         .id(SharedString::from(format!("more-{}", secret.id)))
                                         .flex_none()
-                                        .px(SPACING_HALF)
+                                        .px(SPACING_HALF())
                                         .cursor_pointer()
                                         .tooltip(crate::widgets::tooltip(if expanded {
                                             "Show Less Locations"
@@ -220,10 +220,10 @@ impl Render for PushProtectionErrorDialog {
             })
             .collect();
         let content = div()
-            .w(px(460.))
+            .w(zpx(460.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 docs(
                     "secret-scanning-docs",
@@ -258,7 +258,7 @@ impl Render for PushProtectionErrorDialog {
                 // `ul.secret-list`
                 div()
                     .id("secret-list")
-                    .max_h(px(200.))
+                    .max_h(zpx(200.))
                     .overflow_y_scroll()
                     .border_1()
                     .border_color(t.box_border)
@@ -337,10 +337,10 @@ impl Render for BypassPushProtectionDialog {
         let count = items.len();
         let content =
             div()
-                .w(px(440.))
+                .w(zpx(440.))
                 .flex()
                 .flex_col()
-                .child(div().mb(SPACING).child(format!(
+                .child(div().mb(SPACING()).child(format!(
                     "Why are you bypassing this {}?",
                     self.secret.description
                 )))

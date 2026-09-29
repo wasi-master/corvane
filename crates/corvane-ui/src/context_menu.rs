@@ -10,6 +10,7 @@ use gpui_kit::*;
 use crate::actions::CloseFoldout;
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
+use crate::theme::sizes::zpx;
 
 pub type MenuAction = Rc<dyn Fn(&mut Window, &mut App)>;
 
@@ -132,7 +133,7 @@ impl ContextMenu {
         } else {
             0.
         };
-        px((longest * 6.8 + 48. + check_column).clamp(160., 440.))
+        zpx((longest * 6.8 + 48. + check_column).clamp(160., 440.))
     }
 
     fn height(items: &[MenuItem]) -> Pixels {
@@ -146,7 +147,7 @@ impl ContextMenu {
                 }
             })
             .sum();
-        px(inner + INSET * 2. + 2.)
+        zpx(inner + INSET * 2. + 2.)
     }
 
     fn panel(&self, items: &[MenuItem], root: bool, cx: &Context<Self>) -> Div {
@@ -154,18 +155,18 @@ impl ContextMenu {
         let width = Self::width(items);
         div()
             .w(width)
-            .p(px(INSET))
+            .p(zpx(INSET))
             .flex()
             .flex_col()
-            .rounded(px(10.))
+            .rounded(zpx(10.))
             .bg(t.menu_background)
             .border_1()
             .border_color(t.menu_border)
             .shadow(vec![BoxShadow {
                 color: t.shadow,
-                offset: point(px(0.), px(8.)),
-                blur_radius: px(24.),
-                spread_radius: px(0.),
+                offset: point(zpx(0.), zpx(8.)),
+                blur_radius: zpx(24.),
+                spread_radius: zpx(0.),
                 inset: false,
             }])
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -189,9 +190,9 @@ impl ContextMenu {
         let t = cx.ghd();
         if matches!(item.kind, MenuItemKind::Separator) {
             return div()
-                .h(px(1.))
-                .my(px(5.))
-                .mx(px(10.))
+                .h(zpx(1.))
+                .my(zpx(5.))
+                .mx(zpx(10.))
                 .flex_none()
                 .bg(t.menu_border)
                 .into_any_element();
@@ -209,15 +210,15 @@ impl ContextMenu {
         let mut el = div()
             .id(id)
             .relative()
-            .h(px(ITEM_HEIGHT))
+            .h(zpx(ITEM_HEIGHT))
             .flex_none()
             .flex()
             .flex_row()
             .items_center()
-            .pl(px(6.))
-            .pr(px(12.))
-            .rounded(px(5.))
-            .text_size(px(TEXT_SIZE))
+            .pl(zpx(6.))
+            .pr(zpx(12.))
+            .rounded(zpx(5.))
+            .text_size(zpx(TEXT_SIZE))
             .text_color(if enabled {
                 t.menu_text
             } else {
@@ -229,7 +230,7 @@ impl ContextMenu {
             })
             .child(
                 div()
-                    .w(px(CHECK_COLUMN))
+                    .w(zpx(CHECK_COLUMN))
                     .flex_none()
                     .flex()
                     .items_center()
@@ -248,7 +249,7 @@ impl ContextMenu {
                     .child(item.label.clone()),
             );
         if is_submenu {
-            el = el.child(octicon(Octicon::ChevronRight, t.text_secondary).size(px(12.)));
+            el = el.child(octicon(Octicon::ChevronRight, t.text_secondary).size(zpx(12.)));
         }
         if root && enabled {
             el = el.on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
@@ -273,8 +274,8 @@ impl ContextMenu {
                 el = el.child(
                     div()
                         .absolute()
-                        .left(width - px(16.))
-                        .top(px(-INSET - 1.))
+                        .left(width - zpx(16.))
+                        .top(zpx(-INSET - 1.))
                         .child(self.panel(children, false, cx)),
                 );
             }
@@ -292,21 +293,21 @@ impl Render for ContextMenu {
         let mut x = self.position.x;
         let mut y = self.position.y;
         if x + width > viewport.width {
-            x = viewport.width - width - px(4.);
+            x = viewport.width - width - zpx(4.);
         }
         if y + height > viewport.height {
             // native menus open upward when there is no room below the pointer
             y = self.position.y - height;
         }
-        if x < px(0.) {
-            x = px(0.);
+        if x < zpx(0.) {
+            x = zpx(0.);
         }
-        if y < px(0.) {
-            y = px(0.);
+        if y < zpx(0.) {
+            y = zpx(0.);
         }
         let panel = self.panel(&self.items, true, cx);
         deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("context-menu-overlay")
                     .track_focus(&self.focus_handle)

@@ -37,10 +37,10 @@ impl Render for MoveToApplicationsFolderDialog {
         let weak = cx.weak_entity();
         let ask_again = self.ask_again;
         let content = div()
-            .w(px(420.))
+            .w(zpx(420.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(
                 "We've detected that you're not running Corvane from the Applications folder of \
                  your machine. This could cause problems with the app, including impacting your \

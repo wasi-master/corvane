@@ -185,7 +185,7 @@ impl Render for PublishRepositoryDialog {
                     .flex_row()
                     .items_center()
                     .justify_between()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(div().flex_1().child(if enterprise {
                         "If you are using GitHub Enterprise at work, sign in to it to get access to your repositories."
                     } else {
@@ -211,12 +211,12 @@ impl Render for PublishRepositoryDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(
                         div()
                             .flex()
                             .flex_col()
-                            .gap(SPACING_HALF)
+                            .gap(SPACING_HALF())
                             .child("Name")
                             .child(text_box("publish-name", &self.name, None, window, cx)),
                     )
@@ -229,8 +229,8 @@ impl Render for PublishRepositoryDialog {
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(SPACING_HALF)
-                                    .text_size(FONT_SIZE_SM)
+                                    .gap(SPACING_HALF())
+                                    .text_size(FONT_SIZE_SM())
                                     .text_color(t.text_secondary)
                                     .child(octicon(Octicon::Alert, t.dialog_warning))
                                     .child(format!("Will be created as {name}")),
@@ -241,7 +241,7 @@ impl Render for PublishRepositoryDialog {
                         div()
                             .flex()
                             .flex_col()
-                            .gap(SPACING_HALF)
+                            .gap(SPACING_HALF())
                             .child("Description")
                             .child(text_box(
                                 "publish-description",
@@ -257,7 +257,7 @@ impl Render for PublishRepositoryDialog {
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING_HALF)
+                            .gap(SPACING_HALF())
                             .cursor_pointer()
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.private = !this.private;
@@ -271,7 +271,7 @@ impl Render for PublishRepositoryDialog {
                             div()
                                 .flex()
                                 .flex_col()
-                                .gap(SPACING_HALF)
+                                .gap(SPACING_HALF())
                                 .child("Organization")
                                 .child(
                                     button("publish-org", "", cx)
@@ -323,13 +323,13 @@ impl Render for PublishRepositoryDialog {
             }
         };
         let content = div()
-            .w(px(450.))
-            .mx(px(-20.))
-            .mt(px(-20.))
+            .w(zpx(450.))
+            .mx(zpx(-20.))
+            .mt(zpx(-20.))
             .flex()
             .flex_col()
             .child(tabs)
-            .child(div().p(SPACING_DOUBLE).child(body));
+            .child(div().p(SPACING_DOUBLE()).child(body));
         let mut buttons = vec![DialogButton {
             id: "publish-cancel",
             label: "Cancel".into(),
@@ -399,7 +399,7 @@ impl Render for PushNeedsPullDialog {
             "dialog-push-needs-pull",
             DialogKind::Warning,
             "Newer Commits on Remote",
-            div().w(px(450.)).child(
+            div().w(zpx(450.)).child(
                 "Corvane is unable to push commits to this branch because there are commits on the remote that are not present on your local branch. Fetch these new commits before pushing in order to reconcile them with your local commits.",
             ),
             vec![
@@ -454,7 +454,7 @@ impl Render for ConfirmForcePushDialog {
         let content = div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 "A force push will rewrite history on ".into(),
                 code_ref(self.upstream.clone(), cx).into_any_element().into(),
@@ -466,7 +466,7 @@ impl Render for ConfirmForcePushDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_ask_again = !this.dont_ask_again;
@@ -566,16 +566,16 @@ impl Render for GenericGitAuthDialog {
         let mono = |text: String| {
             div()
                 .font_family(crate::theme::MONO_FONT)
-                .px(px(3.))
-                .rounded(px(3.))
+                .px(zpx(3.))
+                .rounded(zpx(3.))
                 .bg(t.box_alt_background)
                 .child(text)
         };
         let content = div()
-            .w(px(450.))
+            .w(zpx(450.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child({
                 let mut parts: Vec<Inline> = vec![
                     "We were unable to authenticate with ".into(),
@@ -597,7 +597,7 @@ impl Render for GenericGitAuthDialog {
                     div()
                         .flex()
                         .flex_col()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .child("Username")
                         .child(text_box("auth-username", &self.username, None, window, cx)),
                 )
@@ -606,7 +606,7 @@ impl Render for GenericGitAuthDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child("Password")
                     .child(text_box("auth-password", &self.password, None, window, cx)),
             )
@@ -614,7 +614,7 @@ impl Render for GenericGitAuthDialog {
                 paragraph(vec![
                     "Depending on your repository's hosting service, you might need to use a Personal Access Token (PAT) as your password. Learn more about creating a PAT in the ".into(),
                     link_button("auth-docs", "integration docs", cx)
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .on_click(|_, _, cx| {
                             Dispatcher::open_url(
                                 "https://github.com/desktop/desktop/tree/development/docs/integrations",
@@ -625,7 +625,7 @@ impl Render for GenericGitAuthDialog {
                         .into(),
                     ".".into(),
                 ])
-                .text_size(FONT_SIZE_SM)
+                .text_size(FONT_SIZE_SM())
                 .text_color(t.text_secondary),
             );
         dialog(
@@ -696,10 +696,10 @@ impl Render for InitializeLfsDialog {
         };
         let plural = repos.len() != 1;
         let content = div()
-            .w(px(450.))
+            .w(zpx(450.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 if plural {
                     "The repositories use "
@@ -721,9 +721,9 @@ impl Render for InitializeLfsDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(px(2.))
+                    .gap(zpx(2.))
                     .font_family(crate::theme::MONO_FONT)
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .text_color(t.text_secondary)
                     .children(paths.into_iter().map(|p| div().truncate().child(p))),
             );

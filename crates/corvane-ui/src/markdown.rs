@@ -21,15 +21,28 @@ use corvane_core::markdown::{Block, RichText, resolve_link};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::theme::sizes::zpx;
 use crate::theme::{ActiveGhdTheme, GhdTheme, MONO_FONT};
 
 /// `.markdown-body` spacing: block margin-bottom and heading / rule margins.
-const BLOCK_GAP: Pixels = px(16.);
-const HEADING_GAP: Pixels = px(24.);
+#[allow(non_snake_case)]
+fn BLOCK_GAP() -> Pixels {
+    zpx(16.)
+}
+#[allow(non_snake_case)]
+fn HEADING_GAP() -> Pixels {
+    zpx(24.)
+}
 /// `ul, ol { padding-left: 2em }` at 12 px.
-const LIST_INDENT: Pixels = px(24.);
+#[allow(non_snake_case)]
+fn LIST_INDENT() -> Pixels {
+    zpx(24.)
+}
 /// `li + li { margin-top: .25em }`
-const ITEM_GAP: Pixels = px(3.);
+#[allow(non_snake_case)]
+fn ITEM_GAP() -> Pixels {
+    zpx(3.)
+}
 
 /// Render `blocks` at `font_size` (GHD `--font-size`, 12 px) with
 /// `line-height: 1.5`. `base_href` resolves relative links (GHD `baseHref`).
@@ -49,8 +62,8 @@ pub fn markdown(
         next: std::cell::Cell::new(0),
     };
     div()
-        .text_size(px(12.))
-        .line_height(px(18.))
+        .text_size(zpx(12.))
+        .line_height(zpx(18.))
         .text_color(r.t.text)
         .child(r.blocks(blocks, 0))
 }
@@ -76,13 +89,13 @@ impl Renderer<'_> {
         let mut prev: Option<&Block> = None;
         for block in blocks {
             let gap = match (prev, block) {
-                (None, _) => px(0.),
+                (None, _) => zpx(0.),
                 // `ul ul, ol ol … { margin: 0 }` inside a list item
-                (Some(_), Block::List { .. }) if list_depth > 0 => px(0.),
+                (Some(_), Block::List { .. }) if list_depth > 0 => zpx(0.),
                 (Some(_), Block::Heading { .. } | Block::Rule) | (Some(Block::Rule), _) => {
-                    HEADING_GAP
+                    HEADING_GAP()
                 }
-                _ => BLOCK_GAP,
+                _ => BLOCK_GAP(),
             };
             col = col.child(div().mt(gap).child(self.block(block, list_depth)));
             prev = Some(block);
@@ -105,12 +118,12 @@ impl Renderer<'_> {
                     _ => 10.2,
                 };
                 div()
-                    .text_size(px(size))
-                    .line_height(px(size * 1.25))
+                    .text_size(zpx(size))
+                    .line_height(zpx(size * 1.25))
                     .font_weight(FontWeight::SEMIBOLD)
                     .when(*level == 6, |d| d.text_color(t.md_fg_muted))
                     .when(*level <= 2, |d| {
-                        d.pb(px(size * 0.3))
+                        d.pb(zpx(size * 0.3))
                             .border_b_1()
                             .border_color(t.md_border_muted)
                     })
@@ -121,29 +134,29 @@ impl Renderer<'_> {
                 .id(self.element_id())
                 .w_full()
                 .overflow_x_scroll()
-                .p(px(16.))
-                .rounded(px(6.))
+                .p(zpx(16.))
+                .rounded(zpx(6.))
                 .bg(t.md_canvas_subtle)
                 .font_family(MONO_FONT)
-                .text_size(px(10.2))
-                .line_height(px(10.2 * 1.45))
+                .text_size(zpx(10.2))
+                .line_height(zpx(10.2 * 1.45))
                 .whitespace_nowrap()
                 .child(SharedString::from(code.clone()))
                 .into_any_element(),
             Block::BlockQuote(inner) => div()
-                .px(px(12.))
-                .border_l(px(3.))
+                .px(zpx(12.))
+                .border_l(zpx(3.))
                 .border_color(t.md_border_default)
                 .text_color(t.md_fg_muted)
                 .child(self.blocks(inner, list_depth))
                 .into_any_element(),
             Block::Rule => div()
-                .h(px(3.))
+                .h(zpx(3.))
                 .w_full()
                 .bg(t.md_border_default)
                 .into_any_element(),
             Block::List { start, items } => {
-                let mut col = div().flex().flex_col().gap(ITEM_GAP);
+                let mut col = div().flex().flex_col().gap(ITEM_GAP());
                 for (ix, item) in items.iter().enumerate() {
                     let marker: SharedString = match start {
                         Some(n) => format!("{}.", n + ix as u64).into(),
@@ -162,8 +175,8 @@ impl Renderer<'_> {
                             .child(
                                 div()
                                     .flex_none()
-                                    .w(LIST_INDENT)
-                                    .pr(px(6.))
+                                    .w(LIST_INDENT())
+                                    .pr(zpx(6.))
                                     .flex()
                                     .justify_end()
                                     .child(marker),
@@ -199,12 +212,12 @@ impl Renderer<'_> {
                     font_style: s.italic.then_some(FontStyle::Italic),
                     background_color: s.code.then_some(t.md_neutral_muted),
                     underline: (link && self.underline).then_some(UnderlineStyle {
-                        thickness: px(1.),
+                        thickness: zpx(1.),
                         color: None,
                         wavy: false,
                     }),
                     strikethrough: s.strikethrough.then_some(StrikethroughStyle {
-                        thickness: px(1.),
+                        thickness: zpx(1.),
                         color: None,
                     }),
                     fade_out: None,

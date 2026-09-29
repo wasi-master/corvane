@@ -30,17 +30,17 @@ pub fn fork_settings_description(
             .flex()
             .flex_row()
             .flex_wrap()
-            .gap(px(3.))
+            .gap(zpx(3.))
             .child("•")
             .child(lead)
             .child(div().font_weight(FontWeight::SEMIBOLD).child(name.clone()))
             .child(tail)
     };
     div()
-        .mt(SPACING)
+        .mt(SPACING())
         .flex()
         .flex_col()
-        .text_size(FONT_SIZE_SM)
+        .text_size(FONT_SIZE_SM())
         .text_color(t.text_secondary)
         .child(item(
             "Pull requests targeting",
@@ -124,10 +124,10 @@ impl Render for CreateForkDialog {
         };
         let content: AnyElement = match &self.error {
             None => div()
-                .w(px(460.))
+                .w(zpx(460.))
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(paragraph(vec![
                     "It looks like you don’t have write access to ".into(),
                     bold(github.full_name()),
@@ -140,10 +140,10 @@ impl Render for CreateForkDialog {
                 ]))
                 .into_any_element(),
             Some(error) => div()
-                .w(px(460.))
+                .w(zpx(460.))
                 .flex()
                 .flex_col()
-                .gap(SPACING)
+                .gap(SPACING())
                 .child(paragraph(vec![
                     "Creating your fork ".into(),
                     bold(fork_name.clone()),
@@ -164,12 +164,12 @@ impl Render for CreateForkDialog {
                 ]))
                 .child(
                     div()
-                        .mt(SPACING)
-                        .p(SPACING)
-                        .rounded(BORDER_RADIUS)
+                        .mt(SPACING())
+                        .p(SPACING())
+                        .rounded(BORDER_RADIUS())
                         .bg(t.box_alt_background)
                         .font_family(crate::theme::MONO_FONT)
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .child(error.clone()),
                 )
                 .into_any_element(),
@@ -271,12 +271,12 @@ impl Render for ChooseForkSettingsDialog {
         let own_name = github.full_name();
         let selected = self.target;
         let content = div()
-            .w(px(440.))
+            .w(zpx(440.))
             .flex()
             .flex_col()
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("This repository is a fork. How do you plan to use it?"),
             )
             .child(
@@ -387,16 +387,16 @@ impl Render for UpstreamAlreadyExistsDialog {
                 .flex()
                 .flex_row()
                 .items_start()
-                .gap(SPACING_HALF)
-                .pl(SPACING)
+                .gap(SPACING_HALF())
+                .pl(SPACING())
                 .child("•")
                 .child(paragraph(vec![label.into(), chip(value)]))
         };
         let content = div()
-            .w(px(460.))
+            .w(zpx(460.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(paragraph(vec![
                 "The repository ".into(),
                 chip(name),
@@ -410,7 +410,7 @@ impl Render for UpstreamAlreadyExistsDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child(bullet("Current: ", self.existing_url.clone()))
                     .child(bullet("Expected: ", parent.clone_url.clone())),
             )

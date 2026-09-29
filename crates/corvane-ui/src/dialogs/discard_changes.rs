@@ -41,22 +41,22 @@ impl Render for DiscardChangesDialog {
         };
         let count = self.paths.len();
         let file_list = if count > MAX_FILES_TO_LIST {
-            div().mb(SPACING).child(format!(
+            div().mb(SPACING()).child(format!(
                 "Are you sure you want to discard all {count} changed files?"
             ))
         } else {
             div()
                 .child(
                     div()
-                        .mb(SPACING)
+                        .mb(SPACING())
                         .child("Are you sure you want to discard all changes to:"),
                 )
                 .child(
                     div()
                         .id("discard-file-list")
-                        .max_h(px(175.))
+                        .max_h(zpx(175.))
                         .overflow_y_scroll()
-                        .my(SPACING)
+                        .my(SPACING())
                         .flex()
                         .flex_col()
                         .children(
@@ -73,7 +73,7 @@ impl Render for DiscardChangesDialog {
             .child(file_list)
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("Changes can be restored by retrieving them from the Trash."),
             )
             .child(
@@ -82,7 +82,7 @@ impl Render for DiscardChangesDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;

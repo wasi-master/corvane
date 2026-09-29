@@ -36,12 +36,12 @@ impl Render for DiscardSelectionDialog {
             .flex_col()
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child("Are you sure you want to discard the selected changes to:"),
             )
             .child(
                 div()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .font_family(MONO_FONT)
                     .child(self.path.clone()),
             )
@@ -51,7 +51,7 @@ impl Render for DiscardSelectionDialog {
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.dont_show_again = !this.dont_show_again;

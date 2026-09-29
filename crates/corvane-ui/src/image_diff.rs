@@ -19,9 +19,15 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 
 /// GHD `.tab-bar` inside `.panel.image`.
-const TAB_BAR_WIDTH: Pixels = px(350.);
+#[allow(non_snake_case)]
+fn TAB_BAR_WIDTH() -> Pixels {
+    zpx(350.)
+}
 /// GHD swipe `SliderOverflow`.
-const SLIDER_OVERFLOW: Pixels = px(14.);
+#[allow(non_snake_case)]
+fn SLIDER_OVERFLOW() -> Pixels {
+    zpx(14.)
+}
 
 struct Side {
     image: Arc<Image>,
@@ -115,7 +121,7 @@ impl ImageDiff {
         if width_ratio < height_ratio {
             ratio = height_ratio.max(1.);
         }
-        size(px(w / ratio), px(h / ratio))
+        size(zpx(w / ratio), zpx(h / ratio))
     }
 
     /// GHD `getMaxFitSize`: the box both images share.
@@ -215,8 +221,8 @@ impl ImageDiff {
             .flex_row()
             .flex_wrap()
             .justify_center()
-            .gap(px(3.))
-            .text_size(FONT_SIZE)
+            .gap(zpx(3.))
+            .text_size(FONT_SIZE())
             .text_color(t.text_secondary)
             .child(strong("W:"))
             .child(format!("{w}px |"))
@@ -233,8 +239,8 @@ impl ImageDiff {
         let container = self.container.get();
         // room for the headers / footers / summary rows
         let image_box = size(
-            ((container.width - SPACING_DOUBLE * 2.) / 2. - SPACING_HALF).max(px(0.)),
-            (container.height - px(90.)).max(px(0.)),
+            ((container.width - SPACING_DOUBLE() * 2.) / 2. - SPACING_HALF()).max(zpx(0.)),
+            (container.height - zpx(90.)).max(zpx(0.)),
         );
         let max_fit = self.max_fit(image_box);
         let column = |side: &Side, label: &str, color: Hsla| {
@@ -245,13 +251,13 @@ impl ImageDiff {
                 .justify_center()
                 .min_w_0()
                 .min_h_0()
-                .max_w(max_fit.width.max(px(200.)))
-                .mb(SPACING_HALF)
+                .max_w(max_fit.width.max(zpx(200.)))
+                .mb(SPACING_HALF())
                 .text_color(color)
                 .child(
                     div()
                         .font_weight(FontWeight::SEMIBOLD)
-                        .pb(px(10.))
+                        .pb(zpx(10.))
                         .child(label.to_string()),
                 )
                 .child(Self::image_element(side, image_box, color))
@@ -291,8 +297,8 @@ impl ImageDiff {
                     .max_h_full()
                     .min_h_0()
                     .min_w_0()
-                    .px(SPACING_DOUBLE)
-                    .gap(SPACING)
+                    .px(SPACING_DOUBLE())
+                    .gap(SPACING())
                     .child(column(previous, "Deleted", t.color_deleted))
                     .child(column(current, "Added", t.color_new)),
             )
@@ -300,7 +306,7 @@ impl ImageDiff {
                 div()
                     .flex()
                     .flex_row()
-                    .gap(px(4.))
+                    .gap(zpx(4.))
                     .text_color(t.text_secondary)
                     .font_weight(FontWeight::SEMIBOLD)
                     .child("Diff:")
@@ -335,8 +341,8 @@ impl ImageDiff {
             .min_h_0()
             .child(
                 div()
-                    .w(box_size.width + SLIDER_OVERFLOW)
-                    .mb(SPACING)
+                    .w(box_size.width + SLIDER_OVERFLOW())
+                    .mb(SPACING())
                     .child(Slider::new(&self.swipe).horizontal()),
             )
             .child(
@@ -345,7 +351,7 @@ impl ImageDiff {
                     .relative()
                     .flex_1()
                     .w_full()
-                    .mb(SPACING_HALF)
+                    .mb(SPACING_HALF())
                     .flex()
                     .justify_center()
                     .items_center()
@@ -366,7 +372,7 @@ impl ImageDiff {
                                     .top_0()
                                     .left_0()
                                     .h(box_size.height)
-                                    .w((box_size.width - swiper_width).max(px(0.)))
+                                    .w((box_size.width - swiper_width).max(zpx(0.)))
                                     .overflow_hidden()
                                     .child(Self::overlay_image(
                                         previous,
@@ -381,7 +387,7 @@ impl ImageDiff {
                                     .top_0()
                                     .right_0()
                                     .h(box_size.height)
-                                    .w(swiper_width.max(px(0.)))
+                                    .w(swiper_width.max(zpx(0.)))
                                     .overflow_hidden()
                                     .child(
                                         div()
@@ -416,7 +422,7 @@ impl ImageDiff {
             .child(
                 div()
                     .w(box_size.width / 2.)
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .child(Slider::new(&self.onion).horizontal()),
             )
             .child(
@@ -425,7 +431,7 @@ impl ImageDiff {
                     .relative()
                     .flex_1()
                     .w_full()
-                    .mb(SPACING_HALF)
+                    .mb(SPACING_HALF())
                     .flex()
                     .justify_center()
                     .items_center()
@@ -468,7 +474,7 @@ impl ImageDiff {
         let stale = self.difference_scales.is_none_or(|(p, c)| {
             (p / c - scales.0 / scales.1).abs() > 0.005 * (scales.0 / scales.1)
         });
-        if stale && !self.difference_pending && box_size.width > px(0.) {
+        if stale && !self.difference_pending && box_size.width > zpx(0.) {
             self.difference_pending = true;
             let a = self.previous.as_ref().map(|s| s.image.clone());
             let b = self.current.as_ref().map(|s| s.image.clone());
@@ -513,8 +519,8 @@ impl ImageDiff {
     fn single(&self, side: &Side, label: &str, color: Hsla, cx: &Context<Self>) -> AnyElement {
         let container = self.container.get();
         let image_box = size(
-            (container.width - SPACING_DOUBLE).max(px(0.)),
-            (container.height - px(40.)).max(px(0.)),
+            (container.width - SPACING_DOUBLE()).max(zpx(0.)),
+            (container.height - zpx(40.)).max(zpx(0.)),
         );
         div()
             .relative()
@@ -529,7 +535,7 @@ impl ImageDiff {
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .pb(px(10.))
+                    .pb(zpx(10.))
                     .child(label.to_string()),
             )
             .child(Self::image_element(side, image_box, color))
@@ -554,15 +560,15 @@ impl Render for ImageDiff {
                 };
                 let switcher = div()
                     .id("image-diff-tabs")
-                    .w(TAB_BAR_WIDTH)
-                    .h(px(29.))
+                    .w(TAB_BAR_WIDTH())
+                    .h(zpx(29.))
                     .flex_none()
                     .flex()
                     .flex_row()
-                    .gap(SPACING)
-                    .mt(SPACING)
+                    .gap(SPACING())
+                    .mt(SPACING())
                     .mx_auto()
-                    .mb(SPACING)
+                    .mb(SPACING())
                     .children(tabs.iter().enumerate().map(|(ix, label)| {
                         let is_selected = ix == selected;
                         div()
@@ -571,9 +577,9 @@ impl Render for ImageDiff {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .cursor_pointer()
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .when(is_selected, |d| {
                                 d.bg(t.tab_bar_active)
                                     .text_color(t.box_selected_active_text)
@@ -630,9 +636,9 @@ impl Render for ImageDiff {
             .flex_1()
             .min_h_0()
             .min_w_0()
-            .p(SPACING)
+            .p(SPACING())
             .bg(t.background)
-            .text_size(FONT_SIZE)
+            .text_size(FONT_SIZE())
             .child(body)
     }
 }
@@ -645,12 +651,12 @@ fn checkerboard() -> AnyElement {
             let light = rgb(0xffffff);
             let dark = rgb(0xcccccc);
             window.paint_quad(fill(bounds, light));
-            let cell = px(10.);
+            let cell = zpx(10.);
             window.with_content_mask(Some(ContentMask { bounds }), |window| {
                 let mut y = bounds.top();
                 let mut row = 0;
                 while y < bounds.bottom() {
-                    let mut x = bounds.left() + if row % 2 == 0 { px(0.) } else { cell };
+                    let mut x = bounds.left() + if row % 2 == 0 { zpx(0.) } else { cell };
                     while x < bounds.right() {
                         window.paint_quad(fill(Bounds::new(point(x, y), size(cell, cell)), dark));
                         x += cell * 2.;

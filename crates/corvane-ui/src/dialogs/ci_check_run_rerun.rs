@@ -120,12 +120,12 @@ impl Render for CiCheckRunRerunDialog {
                     .flex_col()
                     .items_center()
                     .text_center()
-                    .min_h(px(100.))
-                    .child(img("illustrations/empty-no-pull-requests.svg").w(px(240.)))
+                    .min_h(zpx(100.))
+                    .child(img("illustrations/empty-no-pull-requests.svg").w(zpx(240.)))
                     .child(div().font_weight(FontWeight::SEMIBOLD).child("Please wait"))
                     .child(
                         div()
-                            .text_size(FONT_SIZE_SM)
+                            .text_size(FONT_SIZE_SM())
                             .child("Determining which checks can be re-run."),
                     )
                     .into_any_element()
@@ -146,7 +146,7 @@ impl Render for CiCheckRunRerunDialog {
                         .flex()
                         .flex_row()
                         .flex_wrap()
-                        .gap(px(3.))
+                        .gap(zpx(3.))
                         .child("A new attempt of")
                         .child(name)
                         .child(format!(
@@ -157,13 +157,13 @@ impl Render for CiCheckRunRerunDialog {
                     // `.check-run-rerun-list` (condensed rows)
                     div()
                         .id("check-run-rerun-list")
-                        .my(SPACING)
-                        .p(SPACING)
-                        .max_h(px(300.))
+                        .my(SPACING())
+                        .p(SPACING())
+                        .max_h(zpx(300.))
                         .overflow_y_scroll()
                         .border_1()
                         .border_color(t.box_border)
-                        .rounded(BORDER_RADIUS)
+                        .rounded(BORDER_RADIUS())
                         .flex()
                         .flex_col()
                         .children(self.rerunnable.iter().map(|check| {
@@ -171,11 +171,11 @@ impl Render for CiCheckRunRerunDialog {
                                 .flex()
                                 .flex_row()
                                 .items_center()
-                                .gap(SPACING)
+                                .gap(SPACING())
                                 .child(
                                     div()
                                         .flex_none()
-                                        .p(px(3.))
+                                        .p(zpx(3.))
                                         .child(ci_status(check.status, check.conclusion)),
                                 )
                                 .child(
@@ -206,10 +206,10 @@ impl Render for CiCheckRunRerunDialog {
                     .flex()
                     .flex_row()
                     .items_start()
-                    .gap(SPACING_HALF)
-                    .text_size(FONT_SIZE_SM)
+                    .gap(SPACING_HALF())
+                    .text_size(FONT_SIZE_SM())
                     .text_color(t.text_secondary)
-                    .child(octicon(Octicon::Alert, t.dialog_warning).flex_none().mt(px(1.)))
+                    .child(octicon(Octicon::Alert, t.dialog_warning).flex_none().mt(zpx(1.)))
                     .child(div().flex_1().child(format!(
                         "{prefix}. A check run cannot be re-run if the check is more than one \
                          month old, the check or its dependent has not completed, or the check \
@@ -219,7 +219,7 @@ impl Render for CiCheckRunRerunDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .text_size(FONT_SIZE)
+                    .text_size(FONT_SIZE())
                     .children(dependents)
                     .children(list)
                     .children(warning)
@@ -229,7 +229,7 @@ impl Render for CiCheckRunRerunDialog {
         dialog(
             "rerun-check-runs",
             self.title(true),
-            div().w(px(460.)).child(content),
+            div().w(zpx(460.)).child(content),
             vec![
                 DialogButton {
                     id: "rerun-cancel",

@@ -30,10 +30,19 @@ use crate::theme::{ActiveGhdTheme, c, primer};
 use crate::widgets::{button, code_ref, primary_button, text_box};
 
 /// `pullRequestFileListWidth` constraints (`constrain(250, 100, 600)`).
-const FILE_LIST_MIN: Pixels = px(100.);
-const FILE_LIST_MAX: Pixels = px(600.);
+#[allow(non_snake_case)]
+fn FILE_LIST_MIN() -> Pixels {
+    zpx(100.)
+}
+#[allow(non_snake_case)]
+fn FILE_LIST_MAX() -> Pixels {
+    zpx(600.)
+}
 /// `.dialog { max-width: calc(100% - var(--spacing-double) * 4) }`
-const DIALOG_MARGIN: Pixels = px(80.);
+#[allow(non_snake_case)]
+fn DIALOG_MARGIN() -> Pixels {
+    zpx(80.)
+}
 
 pub struct OpenPullRequestDialog {
     state: Entity<AppState>,
@@ -58,16 +67,14 @@ impl OpenPullRequestDialog {
     ) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let diff = cx.new(|cx| DiffView::new(state.clone(), DiffSource::PullRequest, cx));
-        let file_list_width = px(state.read(cx).settings.pull_request_file_list_width);
+        let file_list_width = zpx(state.read(cx).settings.pull_request_file_list_width);
         let resizable = cx.new(|_| ResizableState::default());
         cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
             if let Some(width) = state.read(cx).sizes().first().copied()
                 && width != this.file_list_width
             {
                 this.file_list_width = width;
-                Dispatcher::update_settings(cx, |s| {
-                    s.pull_request_file_list_width = f32::from(width)
-                });
+                Dispatcher::update_settings(cx, |s| s.pull_request_file_list_width = unzoom(width));
                 cx.notify();
             }
         })
@@ -173,10 +180,10 @@ impl OpenPullRequestDialog {
             .flex()
             .flex_row()
             .items_center()
-            .gap(SPACING_HALF)
-            .h(px(25.))
-            .px(SPACING)
-            .rounded(BORDER_RADIUS)
+            .gap(SPACING_HALF())
+            .h(zpx(25.))
+            .px(SPACING())
+            .rounded(BORDER_RADIUS())
             .border_1()
             .border_color(t.secondary_button_border)
             .bg(t.secondary_button_background)
@@ -195,7 +202,7 @@ impl OpenPullRequestDialog {
             .child(octicon(Octicon::GitBranch, t.secondary_button_text))
             .child(
                 div()
-                    .max_w(px(200.))
+                    .max_w(zpx(200.))
                     .truncate()
                     .font_weight(FontWeight::SEMIBOLD)
                     .child(label),
@@ -211,18 +218,18 @@ impl OpenPullRequestDialog {
         let query = self.base_filter.read(cx).value().trim().to_string();
         let (branches, recent, default) = self.base_branches(cx);
         let groups = group_branches(&branches, default.as_deref(), &recent, &query);
-        let width = px(365.);
+        let width = zpx(365.);
         let x = anchor
             .origin
             .x
-            .min(viewport.width - width - px(8.))
-            .max(px(8.));
-        let y = anchor.origin.y + anchor.size.height + px(4.);
+            .min(viewport.width - width - zpx(8.))
+            .max(zpx(8.));
+        let y = anchor.origin.y + anchor.size.height + zpx(4.);
         let repo = self.repo;
         let hover_bg = t.box_selected_active_background;
         let hover_text = t.box_selected_active_text;
         deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("pr-base-select-layer")
                     .relative()
@@ -248,18 +255,18 @@ impl OpenPullRequestDialog {
                             .left(x)
                             .top(y)
                             .w(width)
-                            .max_h(px(400.))
+                            .max_h(zpx(400.))
                             .flex()
                             .flex_col()
                             .bg(t.box_background)
                             .text_color(t.text)
                             .border_1()
                             .border_color(t.box_border)
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .shadow_lg()
                             .overflow_hidden()
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                            .child(div().flex_none().p(SPACING).child(text_box(
+                            .child(div().flex_none().p(SPACING()).child(text_box(
                                 "pr-base-filter",
                                 &self.base_filter,
                                 Some(octicon(Octicon::Search, t.text_secondary)),
@@ -269,8 +276,8 @@ impl OpenPullRequestDialog {
                             .child(if groups.is_empty() {
                                 // `noBranchesMessage`
                                 div()
-                                    .p(SPACING)
-                                    .text_size(FONT_SIZE)
+                                    .p(SPACING())
+                                    .text_size(FONT_SIZE())
                                     .text_color(t.text_secondary)
                                     .child(div().child("Sorry, I can't find that remote branch."))
                                     .child(div().child(
@@ -291,13 +298,13 @@ impl OpenPullRequestDialog {
                                             .flex_col()
                                             .child(
                                                 div()
-                                                    .h(ROW_HEIGHT)
-                                                    .pt(SPACING)
-                                                    .px(SPACING)
+                                                    .h(ROW_HEIGHT())
+                                                    .pt(SPACING())
+                                                    .px(SPACING())
                                                     .flex()
                                                     .items_center()
                                                     .font_weight(FontWeight::SEMIBOLD)
-                                                    .text_size(FONT_SIZE)
+                                                    .text_size(FONT_SIZE())
                                                     .child(group.title),
                                             )
                                             .children(group.branches.into_iter().map(|b| {
@@ -307,13 +314,13 @@ impl OpenPullRequestDialog {
                                                         "pr-base-{}",
                                                         b.full_name
                                                     )))
-                                                    .h(ROW_HEIGHT)
+                                                    .h(ROW_HEIGHT())
                                                     .flex()
                                                     .flex_row()
                                                     .items_center()
-                                                    .gap(SPACING_HALF)
-                                                    .px(SPACING)
-                                                    .text_size(FONT_SIZE)
+                                                    .gap(SPACING_HALF())
+                                                    .px(SPACING())
+                                                    .text_size(FONT_SIZE())
                                                     .cursor_pointer()
                                                     .hover(move |s| {
                                                         s.bg(hover_bg).text_color(hover_text)
@@ -383,13 +390,13 @@ impl OpenPullRequestDialog {
                                 is_selected,
                             )
                             .w_full()
-                            .h(ROW_HEIGHT)
+                            .h(ROW_HEIGHT())
                             .flex_none()
                             .flex()
                             .flex_row()
                             .items_center()
-                            .gap(SPACING_HALF)
-                            .px(SPACING)
+                            .gap(SPACING_HALF())
+                            .px(SPACING())
                             .cursor_pointer()
                             .when(is_selected, |d| {
                                 d.bg(t.box_selected_background)
@@ -405,7 +412,7 @@ impl OpenPullRequestDialog {
                                     .min_w_0()
                                     .flex()
                                     .flex_row()
-                                    .text_size(FONT_SIZE)
+                                    .text_size(FONT_SIZE())
                                     .child(
                                         div()
                                             .min_w_0()
@@ -436,8 +443,8 @@ impl OpenPullRequestDialog {
             .flex_row()
             .flex_wrap()
             .items_center()
-            .gap(px(3.))
-            .text_size(FONT_SIZE)
+            .gap(zpx(3.))
+            .text_size(FONT_SIZE())
             .text_color(t.text_secondary);
         match status {
             None => row.into_any_element(),
@@ -465,7 +472,7 @@ impl OpenPullRequestDialog {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(px(3.))
+                        .gap(zpx(3.))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(c(primer::GREEN_500))
                         .child(octicon(Octicon::Check, c(primer::GREEN_500)))
@@ -479,7 +486,7 @@ impl OpenPullRequestDialog {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(px(3.))
+                        .gap(zpx(3.))
                         .font_weight(FontWeight::SEMIBOLD)
                         .text_color(c(primer::RED_500))
                         .child(octicon(Octicon::X, c(primer::RED_500)))
@@ -499,17 +506,17 @@ impl OpenPullRequestDialog {
             .items_center()
             .justify_center()
             .text_center()
-            .p(SPACING_DOUBLE)
+            .p(SPACING_DOUBLE())
             .child(
                 div()
                     .flex()
                     .flex_col()
                     .items_center()
-                    .gap(SPACING_HALF)
-                    .child(octicon(Octicon::GitPullRequest, t.text_secondary).size(px(32.)))
+                    .gap(SPACING_HALF())
+                    .child(octicon(Octicon::GitPullRequest, t.text_secondary).size(zpx(32.)))
                     .child(
                         div()
-                            .text_size(FONT_SIZE_MD)
+                            .text_size(FONT_SIZE_MD())
                             .font_weight(FontWeight::SEMIBOLD)
                             .child(title),
                     )
@@ -563,7 +570,7 @@ impl Render for OpenPullRequestDialog {
                     .flex_wrap()
                     .items_center()
                     .justify_center()
-                    .gap(px(3.))
+                    .gap(zpx(3.))
                     .child(code_ref(base, cx))
                     .child("and")
                     .child(code_ref(current, cx))
@@ -576,7 +583,7 @@ impl Render for OpenPullRequestDialog {
                     .flex_wrap()
                     .items_center()
                     .justify_center()
-                    .gap(px(3.))
+                    .gap(zpx(3.))
                     .child(code_ref(base, cx))
                     .child("is up to date with all commits from")
                     .child(code_ref(current, cx))
@@ -605,11 +612,11 @@ impl Render for OpenPullRequestDialog {
                         .flex_none()
                         .flex()
                         .items_center()
-                        .p(SPACING)
+                        .p(SPACING())
                         .border_1()
                         .border_color(t.box_border)
-                        .rounded_t(BORDER_RADIUS)
-                        .text_size(FONT_SIZE)
+                        .rounded_t(BORDER_RADIUS())
+                        .text_size(FONT_SIZE())
                         .child(div().flex_1().child("Showing changes from all commits"))
                         .child(diff_options_button(&self.diff, cx)),
                 )
@@ -620,7 +627,7 @@ impl Render for OpenPullRequestDialog {
                         .border_1()
                         .border_t_0()
                         .border_color(t.box_border)
-                        .rounded_b(BORDER_RADIUS)
+                        .rounded_b(BORDER_RADIUS())
                         .overflow_hidden()
                         .child(
                             h_resizable("pr-files-diff")
@@ -631,14 +638,14 @@ impl Render for OpenPullRequestDialog {
                                 .child(
                                     resizable_panel()
                                         .size(self.file_list_width)
-                                        .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
+                                        .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
                                         .child(crate::active_resizable::active_resizable(
                                             "pr-file-list-resizable",
                                             &self.resizable,
                                             Some(&self.file_list_focus),
                                             crate::active_resizable::ResizableDescription::new(
                                                 "Pull request file list",
-                                                FILE_LIST_MIN..FILE_LIST_MAX,
+                                                FILE_LIST_MIN()..FILE_LIST_MAX(),
                                             ),
                                             self.file_list(&preview, cx),
                                         )),
@@ -670,7 +677,7 @@ impl Render for OpenPullRequestDialog {
             if enterprise { " Enterprise" } else { "" }
         );
         let dialog = deferred(
-            anchored().position(point(px(0.), px(0.))).child(
+            anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("open-pull-request")
                     .w(viewport.width)
@@ -689,20 +696,20 @@ impl Render for OpenPullRequestDialog {
                             .role(Role::Dialog)
                             .aria_label("Open a Pull Request")
                             .child(crate::dialog::window_title("Open a Pull Request"))
-                            .w(viewport.width - DIALOG_MARGIN)
-                            .h(viewport.height - DIALOG_MARGIN)
+                            .w(viewport.width - DIALOG_MARGIN())
+                            .h(viewport.height - DIALOG_MARGIN())
                             .flex()
                             .flex_col()
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .bg(t.background)
                             .text_color(t.text)
                             .border_1()
                             .border_color(t.box_border)
                             .shadow(vec![BoxShadow {
                                 color: t.shadow,
-                                offset: point(px(0.), px(2.)),
-                                blur_radius: px(7.),
-                                spread_radius: px(0.),
+                                offset: point(zpx(0.), zpx(2.)),
+                                blur_radius: zpx(7.),
+                                spread_radius: zpx(0.),
                                 inset: false,
                             }])
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -712,9 +719,9 @@ impl Render for OpenPullRequestDialog {
                                     .flex_none()
                                     .flex()
                                     .flex_col()
-                                    .px(SPACING_DOUBLE)
-                                    .pt(px(15.))
-                                    .pb(SPACING)
+                                    .px(SPACING_DOUBLE())
+                                    .pt(zpx(15.))
+                                    .pb(SPACING())
                                     .border_b_1()
                                     .border_color(t.box_border)
                                     .child(
@@ -725,7 +732,7 @@ impl Render for OpenPullRequestDialog {
                                             .child(
                                                 div()
                                                     .flex_1()
-                                                    .text_size(FONT_SIZE_MD)
+                                                    .text_size(FONT_SIZE_MD())
                                                     .font_weight(FontWeight::SEMIBOLD)
                                                     .child("Open a Pull Request"),
                                             )
@@ -733,7 +740,7 @@ impl Render for OpenPullRequestDialog {
                                                 div()
                                                     .id("open-pull-request-close")
                                                     .icon_button_label("Close")
-                                                    .size(px(16.))
+                                                    .size(zpx(16.))
                                                     .cursor_pointer()
                                                     .on_click(close)
                                                     .child(octicon(Octicon::X, t.text_secondary)),
@@ -741,12 +748,12 @@ impl Render for OpenPullRequestDialog {
                                     )
                                     .child(
                                         div()
-                                            .mt(SPACING)
+                                            .mt(SPACING())
                                             .flex()
                                             .flex_row()
                                             .items_center()
-                                            .gap(px(4.))
-                                            .text_size(FONT_SIZE)
+                                            .gap(zpx(4.))
+                                            .text_size(FONT_SIZE())
                                             .child(
                                                 // `.base-branch-details`
                                                 div()
@@ -756,7 +763,7 @@ impl Render for OpenPullRequestDialog {
                                                     .flex_row()
                                                     .items_center()
                                                     .flex_wrap()
-                                                    .gap(px(4.))
+                                                    .gap(zpx(4.))
                                                     .child(format!(
                                                         "Merge {commit_count} commit{} into",
                                                         if commit_count == 1 { "" } else { "s" }
@@ -775,7 +782,7 @@ impl Render for OpenPullRequestDialog {
                                                     .flex_none()
                                                     .flex()
                                                     .flex_row()
-                                                    .text_size(FONT_SIZE_SM)
+                                                    .text_size(FONT_SIZE_SM())
                                                     .child(
                                                         div()
                                                             .text_color(t.color_new)
@@ -794,9 +801,9 @@ impl Render for OpenPullRequestDialog {
                                 // `.open-pull-request-content`
                                 div()
                                     .flex_1()
-                                    .min_h(px(200.))
+                                    .min_h(zpx(200.))
                                     .min_h_0()
-                                    .p(SPACING)
+                                    .p(SPACING())
                                     .flex()
                                     .flex_col()
                                     .child(content),
@@ -808,10 +815,10 @@ impl Render for OpenPullRequestDialog {
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(SPACING)
-                                    .px(SPACING_DOUBLE)
-                                    .pb(SPACING_DOUBLE)
-                                    .pt(SPACING)
+                                    .gap(SPACING())
+                                    .px(SPACING_DOUBLE())
+                                    .pb(SPACING_DOUBLE())
+                                    .pt(SPACING())
                                     .child(
                                         div()
                                             .flex_1()
@@ -820,13 +827,13 @@ impl Render for OpenPullRequestDialog {
                                     )
                                     .child(
                                         button("open-pull-request-cancel", "Cancel", cx)
-                                            .min_w(px(120.))
+                                            .min_w(zpx(120.))
                                             .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
                                     )
                                     .child(
                                         primary_button("open-pull-request-ok", "", ok_disabled, cx)
-                                            .min_w(px(120.))
-                                            .gap(SPACING_HALF)
+                                            .min_w(zpx(120.))
+                                            .gap(SPACING_HALF())
                                             .tooltip(crate::widgets::tooltip(ok_title))
                                             .when(has_pr, |d| {
                                                 d.child(octicon(

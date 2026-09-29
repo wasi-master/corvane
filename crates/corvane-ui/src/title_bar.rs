@@ -11,7 +11,7 @@ pub fn title_bar(_cx: &App) -> impl IntoElement {
     div()
         .id("title-bar")
         .w_full()
-        .h(TITLE_BAR_HEIGHT)
+        .h(TITLE_BAR_HEIGHT())
         .flex_none()
         .bg(linear_gradient(
             180.,

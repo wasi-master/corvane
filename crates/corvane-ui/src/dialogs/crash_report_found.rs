@@ -41,13 +41,13 @@ impl Render for CrashReportFoundDialog {
         };
         let newest = self.reports.first().cloned();
         let content = div()
-            .w(px(420.))
+            .w(zpx(420.))
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(intro)
             .child(
-                div().flex().flex_col().gap(SPACING_HALF).children(
+                div().flex().flex_col().gap(SPACING_HALF()).children(
                     names
                         .into_iter()
                         .map(|n| div().flex().child(code_ref(n, cx))),

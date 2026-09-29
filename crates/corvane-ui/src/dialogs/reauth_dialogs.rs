@@ -13,6 +13,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
+use crate::theme::sizes::zpx;
 use crate::widgets::{Inline, code_ref, paragraph};
 
 pub struct InvalidatedTokenDialog {
@@ -86,10 +87,10 @@ impl Render for WorkflowPushRejectedDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let repo = self.repo;
         let content = div()
-            .w(px(460.))
+            .w(zpx(460.))
             .flex()
             .flex_col()
-            .gap(crate::theme::sizes::SPACING)
+            .gap(crate::theme::sizes::SPACING())
             .child(paragraph(vec![
                 "The push was rejected by the server for containing a modification to the workflow file "
                     .into(),
@@ -171,10 +172,10 @@ impl Render for SamlReauthRequiredDialog {
         let enterprise = self.enterprise;
         let (repo, retry) = (self.repo, self.retry.clone());
         let content = div()
-            .w(px(460.))
+            .w(zpx(460.))
             .flex()
             .flex_col()
-            .gap(crate::theme::sizes::SPACING)
+            .gap(crate::theme::sizes::SPACING())
             .child(paragraph(vec![format!(
                 "The \"{}\" organization has enabled or enforced SAML SSO. To access this \
                  repository, you must sign in again and grant Corvane permission to access the \

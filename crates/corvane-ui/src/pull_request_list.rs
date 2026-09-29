@@ -33,7 +33,10 @@ use crate::widgets::ListRowA11y;
 use crate::widgets::code_ref;
 
 /// `RowHeight`
-pub const PR_ROW_HEIGHT: Pixels = px(47.);
+#[allow(non_snake_case)]
+pub fn PR_ROW_HEIGHT() -> Pixels {
+    zpx(47.)
+}
 
 /// `opened 3 days ago by octocat`
 fn opened_by(pr: &PullRequest) -> String {
@@ -95,12 +98,12 @@ pub fn pull_request_row(
     div()
         .id(SharedString::from(format!("pull-request-{}", pr.number)))
         .a11y_row(format!("{}, {}", pr.title, subtitle(pr)), selected)
-        .h(PR_ROW_HEIGHT)
+        .h(PR_ROW_HEIGHT())
         .w_full()
         .flex()
         .flex_row()
         .items_center()
-        .px(SPACING)
+        .px(SPACING())
         .cursor_pointer()
         .when(selected, |d| {
             d.bg(t.box_selected_background)
@@ -144,10 +147,10 @@ pub fn pull_request_row(
             div()
                 .flex_none()
                 .self_start()
-                .mt(px(2.))
-                .ml(SPACING_HALF)
-                .mr(SPACING)
-                .pt(px(7.))
+                .mt(zpx(2.))
+                .ml(SPACING_HALF())
+                .mr(SPACING())
+                .pt(zpx(7.))
                 .child(octicon(
                     if pr.draft {
                         Octicon::GitPullRequestDraft
@@ -164,12 +167,12 @@ pub fn pull_request_row(
                 .min_w_0()
                 .flex()
                 .flex_col()
-                .mr(SPACING_HALF)
+                .mr(SPACING_HALF())
                 .child(
                     div()
                         .min_w_0()
                         .truncate()
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .font_weight(FontWeight::SEMIBOLD)
                         .child(pr.title.clone()),
                 )
@@ -177,7 +180,7 @@ pub fn pull_request_row(
                     div()
                         .min_w_0()
                         .truncate()
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .font_weight(FontWeight::LIGHT)
                         .text_color(if selected {
                             t.box_selected_text
@@ -191,8 +194,8 @@ pub fn pull_request_row(
             // `.ci-status-container`
             div()
                 .flex_none()
-                .min_w(px(16.))
-                .mr(SPACING_HALF)
+                .min_w(zpx(16.))
+                .mr(SPACING_HALF())
                 .flex()
                 .justify_center()
                 .when_some(status, |d, (status, conclusion)| {
@@ -202,9 +205,15 @@ pub fn pull_request_row(
 }
 
 /// `maxQuickViewHeight`: 500 px body + 56 px header.
-pub const QUICK_VIEW_MAX_HEIGHT: Pixels = px(556.);
+#[allow(non_snake_case)]
+pub fn QUICK_VIEW_MAX_HEIGHT() -> Pixels {
+    zpx(556.)
+}
 /// `.pull-request-quick-view-contents { min-width: 400px }`
-const QUICK_VIEW_WIDTH: Pixels = px(400.);
+#[allow(non_snake_case)]
+fn QUICK_VIEW_WIDTH() -> Pixels {
+    zpx(400.)
+}
 
 /// `calculatePosition`: the card's top relative to the foldout's top, given
 /// the hovered row's top (both window-space) and the window height.
@@ -215,18 +224,18 @@ pub fn quick_view_top(
     height: Pixels,
 ) -> Pixels {
     let clamp = |v: Pixels, min: Pixels, max: Pixels| v.min(max).max(min);
-    let (min_top, max_top) = (px(0.), window_height - list_top - height);
+    let (min_top, max_top) = (zpx(0.), window_height - list_top - height);
     if window_height - row_top > height {
         return clamp(row_top - list_top, min_top, max_top);
     }
-    if row_top - height > px(0.) {
+    if row_top - height > zpx(0.) {
         return clamp(
-            row_top - list_top - height + PR_ROW_HEIGHT,
+            row_top - list_top - height + PR_ROW_HEIGHT(),
             min_top,
             max_top,
         );
     }
-    let middle = row_top + PR_ROW_HEIGHT / 2. - height / 2.;
+    let middle = row_top + PR_ROW_HEIGHT() / 2. - height / 2.;
     clamp(middle, min_top, max_top)
 }
 
@@ -252,19 +261,19 @@ pub fn quick_view(
         .id("pull-request-quick-view")
         .relative()
         .occlude()
-        .px(SPACING)
+        .px(SPACING())
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .child(
             // `.pull-request-quick-view-contents`
             div()
                 .relative()
-                .w(QUICK_VIEW_WIDTH)
+                .w(QUICK_VIEW_WIDTH())
                 .flex()
                 .flex_col()
                 .bg(t.background)
                 .text_color(t.text)
-                .text_size(FONT_SIZE)
-                .rounded(BORDER_RADIUS)
+                .text_size(FONT_SIZE())
+                .rounded(BORDER_RADIUS())
                 .child(
                     canvas(
                         move |b, window, _| {
@@ -284,16 +293,21 @@ pub fn quick_view(
                         .flex()
                         .flex_row()
                         .items_center()
-                        .p(SPACING_DOUBLE)
-                        .pb(SPACING)
+                        .p(SPACING_DOUBLE())
+                        .pb(SPACING())
                         .border_b_1()
                         .border_color(t.box_border)
                         .child(octicon(Octicon::ListUnordered, t.text))
-                        .child(div().flex_1().pl(SPACING_DOUBLE).child("Review requested"))
+                        .child(
+                            div()
+                                .flex_1()
+                                .pl(SPACING_DOUBLE())
+                                .child("Review requested"),
+                        )
                         .child(
                             crate::widgets::button("quick-view-on-github", "", cx)
                                 .flex_none()
-                                .gap(SPACING_HALF)
+                                .gap(SPACING_HALF())
                                 .role(Role::Link)
                                 .aria_label("View on GitHub")
                                 .child("View on GitHub")
@@ -307,9 +321,9 @@ pub fn quick_view(
                     // `.pull-request`
                     div()
                         .id("quick-view-pull-request")
-                        .max_h(px(500.))
+                        .max_h(zpx(500.))
                         .overflow_y_scroll()
-                        .p(SPACING_DOUBLE)
+                        .p(SPACING_DOUBLE())
                         .child(
                             // `.status`
                             div().flex().flex_row().child(
@@ -317,12 +331,12 @@ pub fn quick_view(
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .py(SPACING_HALF)
-                                    .px(SPACING)
-                                    .rounded(px(28.))
+                                    .py(SPACING_HALF())
+                                    .px(SPACING())
+                                    .rounded(zpx(28.))
                                     .bg(pill)
                                     .text_color(gpui_kit::white())
-                                    .text_size(FONT_SIZE_MD)
+                                    .text_size(FONT_SIZE_MD())
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .child(octicon(
                                         if pr.draft {
@@ -332,7 +346,7 @@ pub fn quick_view(
                                         },
                                         gpui_kit::white(),
                                     ))
-                                    .child(div().ml(SPACING_HALF).child(if pr.draft {
+                                    .child(div().ml(SPACING_HALF()).child(if pr.draft {
                                         "Draft"
                                     } else {
                                         "Open"
@@ -342,14 +356,14 @@ pub fn quick_view(
                         .child(
                             // `.title`: h2 + `PullRequestBadge`
                             div()
-                                .my(SPACING)
+                                .my(SPACING())
                                 .flex()
                                 .flex_col()
-                                .gap(SPACING_HALF)
+                                .gap(SPACING_HALF())
                                 .child(
                                     div()
-                                        .text_size(px(18.))
-                                        .line_height(px(24.))
+                                        .text_size(zpx(18.))
+                                        .line_height(zpx(24.))
                                         .font_weight(FontWeight::BOLD)
                                         .child(pr.title.clone()),
                                 )
@@ -358,24 +372,24 @@ pub fn quick_view(
                                         .flex()
                                         .flex_row()
                                         .items_center()
-                                        .gap(SPACING_HALF)
+                                        .gap(SPACING_HALF())
                                         .child(
                                             div()
                                                 .flex_none()
                                                 .flex()
                                                 .flex_row()
                                                 .items_center()
-                                                .h(px(22.))
-                                                .px(SPACING_HALF)
-                                                .rounded(BORDER_RADIUS)
+                                                .h(zpx(22.))
+                                                .px(SPACING_HALF())
+                                                .rounded(BORDER_RADIUS())
                                                 .border_1()
                                                 .border_color(t.box_border)
-                                                .text_size(FONT_SIZE_SM)
+                                                .text_size(FONT_SIZE_SM())
                                                 .child(format!("#{}", pr.number))
                                                 .when_some(status, |d, (status, conclusion)| {
                                                     d.child(
                                                         ci_status(status, conclusion)
-                                                            .ml(SPACING_HALF),
+                                                            .ml(SPACING_HALF()),
                                                     )
                                                 }),
                                         )
@@ -383,7 +397,7 @@ pub fn quick_view(
                                             div()
                                                 .min_w_0()
                                                 .truncate()
-                                                .text_size(FONT_SIZE_SM)
+                                                .text_size(FONT_SIZE_SM())
                                                 .text_color(t.text_secondary)
                                                 .child(opened_by(pr)),
                                         ),
@@ -406,10 +420,10 @@ pub fn quick_view(
                 move |b, _, window, _| {
                     let o = b.origin;
                     let tri = |dx: f32, half: f32| {
-                        let mut path = Path::new(point(o.x + px(dx), o.y + px(8.)));
-                        path.line_to(point(o.x + px(dx + half), o.y + px(8. - half)));
-                        path.line_to(point(o.x + px(dx + half), o.y + px(8. + half)));
-                        path.line_to(point(o.x + px(dx), o.y + px(8.)));
+                        let mut path = Path::new(point(o.x + zpx(dx), o.y + zpx(8.)));
+                        path.line_to(point(o.x + zpx(dx + half), o.y + zpx(8. - half)));
+                        path.line_to(point(o.x + zpx(dx + half), o.y + zpx(8. + half)));
+                        path.line_to(point(o.x + zpx(dx), o.y + zpx(8.)));
                         path
                     };
                     window.paint_path(tri(2., 8.), border);
@@ -417,10 +431,10 @@ pub fn quick_view(
                 },
             )
             .absolute()
-            .left(px(0.))
-            .top(pointer_top - px(8.))
-            .w(px(12.))
-            .h(px(16.)),
+            .left(zpx(0.))
+            .top(pointer_top - zpx(8.))
+            .w(zpx(12.))
+            .h(zpx(16.)),
         )
 }
 
@@ -493,31 +507,31 @@ pub fn no_pull_requests(
         .flex_col()
         .items_center()
         .text_center()
-        .p(SPACING)
-        .text_size(FONT_SIZE)
+        .p(SPACING())
+        .text_size(FONT_SIZE())
         .child(
             img("illustrations/empty-no-pull-requests.svg")
-                .w(px(200.))
-                .mb(SPACING),
+                .w(zpx(200.))
+                .mb(SPACING()),
         )
         .child(div().font_weight(FontWeight::SEMIBOLD).child(title))
         .when(!is_search && !loading, |d| {
             d.child(
                 div()
-                    .pb(SPACING)
+                    .pb(SPACING())
                     .flex()
                     .flex_row()
                     .flex_wrap()
                     .items_center()
                     .justify_center()
-                    .gap(px(3.))
+                    .gap(zpx(3.))
                     .child("No open pull requests in")
                     .child(code_ref(repository_name, cx)),
             )
         })
         .child(
             div()
-                .text_size(FONT_SIZE_SM)
+                .text_size(FONT_SIZE_SM())
                 .text_color(t.text)
                 .child(call_to_action),
         )

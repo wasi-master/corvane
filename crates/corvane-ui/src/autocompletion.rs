@@ -25,9 +25,15 @@ use crate::theme::sizes::*;
 use crate::widgets::{avatar_image, avatar_lookup_url};
 
 /// GHD `RowHeight`.
-const ROW_HEIGHT: Pixels = px(29.);
+#[allow(non_snake_case)]
+fn ROW_HEIGHT() -> Pixels {
+    zpx(29.)
+}
 /// GHD `DefaultPopupHeight`.
-const MAX_HEIGHT: Pixels = px(100.);
+#[allow(non_snake_case)]
+fn MAX_HEIGHT() -> Pixels {
+    zpx(100.)
+}
 
 /// One row of the popup (`IEmojiHit` / `IIssueHit` / `UserHit`).
 #[derive(Clone, Debug)]
@@ -239,20 +245,20 @@ fn popup_with_priority(
     let t = cx.ghd();
     // `.autocompletion-popup` widths per provider kind
     let width = match ac.kind {
-        TriggerKind::Emoji => px(200.),
-        TriggerKind::User => px(220.),
-        TriggerKind::Issue => px(300.),
+        TriggerKind::Emoji => zpx(200.),
+        TriggerKind::User => zpx(220.),
+        TriggerKind::Issue => zpx(300.),
         // `.autocompletion-popup` default
-        TriggerKind::Branch => px(250.),
+        TriggerKind::Branch => zpx(250.),
     };
     let n = ac.hits.len();
-    let height = (ROW_HEIGHT * n as f32).min(MAX_HEIGHT);
+    let height = (ROW_HEIGHT() * n as f32).min(MAX_HEIGHT());
     let hits = Rc::new(ac.hits.clone());
     let selected = ac.selected;
     deferred(
         anchored()
             .position(anchor)
-            .snap_to_window_with_margin(px(8.))
+            .snap_to_window_with_margin(zpx(8.))
             .child(
                 div()
                     .id("autocompletion-popup")
@@ -262,13 +268,13 @@ fn popup_with_priority(
                     .flex()
                     .flex_col()
                     .overflow_hidden()
-                    .rounded(BORDER_RADIUS)
+                    .rounded(BORDER_RADIUS())
                     .bg(t.background)
                     .shadow(vec![BoxShadow {
                         color: hsla(0., 0., 0., 0.3),
-                        offset: point(px(0.), px(0.)),
-                        blur_radius: px(8.),
-                        spread_radius: px(0.),
+                        offset: point(zpx(0.), zpx(0.)),
+                        blur_radius: zpx(8.),
+                        spread_radius: zpx(0.),
                         inset: false,
                     }])
                     .child(
@@ -300,13 +306,13 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
     };
     let mut d = div()
         .id(("autocompletion-row", ix))
-        .h(ROW_HEIGHT)
+        .h(ROW_HEIGHT())
         .w_full()
         .flex()
         .flex_row()
         .items_center()
-        .px(SPACING)
-        .text_size(FONT_SIZE)
+        .px(SPACING())
+        .text_size(FONT_SIZE())
         .text_color(fg)
         .cursor_pointer()
         .when(ix > 0, |d| {
@@ -348,22 +354,22 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
             let icon: AnyElement = match &e.image {
                 // GitHub's image-only emoji (`:shipit:`) from the cache
                 Some(path) => img(path.clone())
-                    .size(px(20.))
+                    .size(zpx(20.))
                     .object_fit(ObjectFit::Contain)
                     .into_any_element(),
                 None => div()
-                    .text_size(px(15.))
+                    .text_size(zpx(15.))
                     .child(e.emoji.clone())
                     .into_any_element(),
             };
             d.child(
                 div()
-                    .size(px(20.))
+                    .size(zpx(20.))
                     .flex_none()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .child(icon),
             )
             .child(div().flex_1().min_w_0().overflow_hidden().child(title))
@@ -377,7 +383,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .truncate()
                     .font_weight(FontWeight::SEMIBOLD)
                     .italic()
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .child(format!("@{name}")),
             )
             .child(
@@ -386,7 +392,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .min_w_0()
                     .truncate()
                     .italic()
-                    .text_size(FONT_SIZE_SM)
+                    .text_size(FONT_SIZE_SM())
                     .text_color(secondary)
                     .child("Search for user"),
             ),
@@ -395,7 +401,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
             .child(
                 crate::icons::octicon(crate::icons::Octicon::GitBranch, fg)
                     .flex_none()
-                    .mr(SPACING_HALF),
+                    .mr(SPACING_HALF()),
             )
             .child(
                 div()
@@ -405,7 +411,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .child(highlighted(name, highlight)),
             ),
         Hit::Issue(i) => d
-            .gap(px(4.))
+            .gap(zpx(4.))
             .child(
                 div()
                     .flex_none()
@@ -427,8 +433,8 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
             });
             d.child(
                 div()
-                    .mr(SPACING_HALF)
-                    .child(avatar_image(avatar, px(16.), cx)),
+                    .mr(SPACING_HALF())
+                    .child(avatar_image(avatar, zpx(16.), cx)),
             )
             .child(
                 div()
@@ -436,7 +442,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .max_w_full()
                     .truncate()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .mr(SPACING_HALF)
+                    .mr(SPACING_HALF())
                     .child(u.login.clone()),
             )
             .when_some(u.name.clone(), |d, name| {

@@ -43,14 +43,14 @@ pub fn primary_button(
 fn base_button(id: impl Into<ElementId>, _t: &GhdTheme) -> Stateful<Div> {
     div()
         .id(id)
-        .h(BUTTON_HEIGHT)
-        .px(SPACING)
+        .h(BUTTON_HEIGHT())
+        .px(SPACING())
         .flex()
         .items_center()
         .justify_center()
         .border_1()
-        .rounded(BORDER_RADIUS)
-        .text_size(FONT_SIZE)
+        .rounded(BORDER_RADIUS())
+        .text_size(FONT_SIZE())
         .whitespace_nowrap()
         .cursor_pointer()
 }
@@ -73,7 +73,7 @@ pub fn link_button(
         .role(Role::Link)
         .aria_label(label.clone())
         .flex_none()
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .text_color(t.link)
         .cursor_pointer()
         .when(underline, |d| d.underline())
@@ -122,8 +122,8 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
         .flex_row()
         .flex_wrap()
         .items_center()
-        .gap_x(px(GAP))
-        .line_height(px(18.));
+        .gap_x(zpx(GAP))
+        .line_height(zpx(18.));
     let mut attach_next = false;
     for part in parts {
         match part {
@@ -135,7 +135,7 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
                     let attach = first && starts_attached && attach_next;
                     row = row.child(
                         div()
-                            .when(attach, |d| d.ml(px(-GAP)))
+                            .when(attach, |d| d.ml(zpx(-GAP)))
                             .child(SharedString::from(word.to_string())),
                     );
                     first = false;
@@ -145,7 +145,7 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
                 }
             }
             Inline::Element(el) => {
-                row = row.child(div().when(attach_next, |d| d.ml(px(-GAP))).child(el));
+                row = row.child(div().when(attach_next, |d| d.ml(zpx(-GAP))).child(el));
                 attach_next = true;
             }
         }
@@ -158,8 +158,8 @@ pub fn code_ref(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .font_family(crate::theme::MONO_FONT)
-        .px(px(3.))
-        .rounded(px(3.))
+        .px(zpx(3.))
+        .rounded(zpx(3.))
         .bg(t.box_alt_background)
         .child(text.into())
 }
@@ -168,10 +168,10 @@ pub fn code_ref(text: impl Into<SharedString>, cx: &App) -> Div {
 pub fn section_heading(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .text_size(FONT_SIZE_MD)
+        .text_size(FONT_SIZE_MD())
         .font_weight(FontWeight::SEMIBOLD)
         .text_color(t.text)
-        .mb(SPACING)
+        .mb(SPACING())
         .child(text.into())
 }
 
@@ -179,9 +179,9 @@ pub fn section_heading(text: impl Into<SharedString>, cx: &App) -> Div {
 pub fn settings_description(cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .mt(SPACING)
-        .text_size(FONT_SIZE_SM)
-        .line_height(px(16.))
+        .mt(SPACING())
+        .text_size(FONT_SIZE_SM())
+        .line_height(zpx(16.))
         .text_color(t.text_secondary)
 }
 
@@ -198,7 +198,7 @@ pub fn checkbox_row(
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
+        .gap(SPACING_HALF())
         .cursor_pointer()
         .on_click(move |_, window, cx| on_toggle(!checked, window, cx))
         .child(checkbox(
@@ -207,7 +207,7 @@ pub fn checkbox_row(
             false,
             cx,
         ))
-        .child(div().flex_1().min_w_0().text_size(FONT_SIZE).child(label))
+        .child(div().flex_1().min_w_0().text_size(FONT_SIZE()).child(label))
 }
 
 /// Chromium's native `<input type="radio">` with GHD's `accent-color`:
@@ -216,7 +216,7 @@ pub fn radio(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful<Div
     let t = cx.ghd();
     div()
         .id(id)
-        .size(px(13.))
+        .size(zpx(13.))
         .flex_none()
         .rounded_full()
         .border_1()
@@ -230,7 +230,7 @@ pub fn radio(id: impl Into<ElementId>, selected: bool, cx: &App) -> Stateful<Div
         .items_center()
         .justify_center()
         .when(selected, |d| {
-            d.child(div().size(px(5.)).rounded_full().bg(t.control_background))
+            d.child(div().size(zpx(5.)).rounded_full().bg(t.control_background))
         })
 }
 
@@ -247,7 +247,7 @@ pub fn radio_row(
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
+        .gap(SPACING_HALF())
         .cursor_pointer()
         .on_click(move |_, window, cx| on_select(window, cx))
         .child(radio(
@@ -255,7 +255,7 @@ pub fn radio_row(
             selected,
             cx,
         ))
-        .child(div().flex_1().min_w_0().text_size(FONT_SIZE).child(label))
+        .child(div().flex_1().min_w_0().text_size(FONT_SIZE()).child(label))
 }
 
 /// An entry of a `select_button_items` popup.
@@ -303,21 +303,21 @@ pub fn select_button_items(
     let hover_bg = t.secondary_button_hover_background;
     div()
         .id(id)
-        .h(TEXT_FIELD_HEIGHT)
+        .h(TEXT_FIELD_HEIGHT())
         .w_full()
         .min_w_0()
         .flex()
         .flex_row()
         .items_center()
         .justify_between()
-        .gap(SPACING_HALF)
-        .pl(SPACING_HALF)
-        .pr(px(4.))
+        .gap(SPACING_HALF())
+        .pl(SPACING_HALF())
+        .pr(zpx(4.))
         .border_1()
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .bg(t.box_background)
         .border_color(t.box_border_contrast)
-        .text_size(FONT_SIZE)
+        .text_size(FONT_SIZE())
         .text_color(t.text)
         .when(disabled, |d| d.opacity(0.6))
         .when(!disabled, |d| {
@@ -351,7 +351,7 @@ pub fn select_button_items(
         .child(div().flex_1().min_w_0().truncate().child(value.into()))
         .child(
             crate::icons::octicon(crate::icons::Octicon::TriangleDown, t.text_secondary)
-                .size(px(12.)),
+                .size(zpx(12.)),
         )
 }
 
@@ -361,18 +361,18 @@ pub fn select_button_items(
 pub fn dialog_error_banner(message: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .mx(px(-20.))
-        .mt(px(-20.))
-        .mb(SPACING_DOUBLE)
-        .px(SPACING_DOUBLE)
-        .py(SPACING)
+        .mx(zpx(-20.))
+        .mt(zpx(-20.))
+        .mb(SPACING_DOUBLE())
+        .px(SPACING_DOUBLE())
+        .py(SPACING())
         .bg(t.form_error_background)
         .border_t_1()
         .border_b_1()
         .border_color(t.form_error_border)
         .text_color(t.form_error_text)
-        .text_size(FONT_SIZE)
-        .line_height(px(18.))
+        .text_size(FONT_SIZE())
+        .line_height(zpx(18.))
         .child(message.into())
 }
 
@@ -389,18 +389,18 @@ pub fn call_to_action(
         .flex_row()
         .items_center()
         .justify_between()
-        .gap(SPACING)
+        .gap(SPACING())
         .child(
             div()
                 .flex_1()
                 .min_w_0()
-                .text_size(FONT_SIZE)
-                .line_height(px(18.))
+                .text_size(FONT_SIZE())
+                .line_height(zpx(18.))
                 .child(body),
         )
         .child(
             primary_button(id, action_title.into(), false, cx)
-                .min_w(px(120.))
+                .min_w(zpx(120.))
                 .flex_none()
                 .on_click(move |_, window, cx| on_action(window, cx)),
         )
@@ -434,12 +434,12 @@ pub fn checkbox_tristate(
     let t = cx.ghd();
     let base = div()
         .id(id)
-        .size(CHECKBOX_SIZE)
+        .size(CHECKBOX_SIZE())
         .flex_none()
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(2.))
+        .rounded(zpx(2.))
         .border_1()
         .when(!disabled, |d| d.cursor_pointer());
     let (fill, glyph) = match (value, disabled) {
@@ -462,7 +462,7 @@ pub fn checkbox_tristate(
     base.bg(fill).border_color(fill).child(
         svg()
             .path(path)
-            .size(CHECKBOX_SIZE)
+            .size(CHECKBOX_SIZE())
             .flex_none()
             .text_color(glyph),
     )
@@ -472,15 +472,15 @@ pub fn checkbox_tristate(
 pub fn counter(count: usize, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .ml(px(4.))
-        .px(px(5.))
-        .py(px(2.))
-        .rounded(px(20.))
+        .ml(zpx(4.))
+        .px(zpx(5.))
+        .py(zpx(2.))
+        .rounded(zpx(20.))
         .bg(t.tab_bar_count_background)
         .text_color(t.tab_bar_count_text)
-        .text_size(FONT_SIZE_XS)
+        .text_size(FONT_SIZE_XS())
         .font_weight(FontWeight::SEMIBOLD)
-        .line_height(px(11.))
+        .line_height(zpx(11.))
         .child(count.to_string())
 }
 
@@ -493,16 +493,16 @@ pub fn kbd(key: impl Into<SharedString>, cx: &App) -> Div {
         .flex()
         .items_center()
         .justify_center()
-        .min_h(px(16.))
-        .min_w(px(18.))
-        .px(px(2.))
-        .py(px(1.))
-        .rounded(BORDER_RADIUS)
+        .min_h(zpx(16.))
+        .min_w(zpx(18.))
+        .px(zpx(2.))
+        .py(zpx(1.))
+        .rounded(BORDER_RADIUS())
         .border_1()
         .border_color(t.box_border_contrast.opacity(0.5))
         .bg(t.box_background)
-        .text_size(FONT_SIZE)
-        .line_height(px(12.))
+        .text_size(FONT_SIZE())
+        .line_height(zpx(12.))
         .text_color(t.text)
         .child(key.into())
 }
@@ -513,7 +513,7 @@ pub fn kbd_group(keys: &[&'static str], cx: &App) -> Div {
         .flex()
         .flex_row()
         .items_center()
-        .gap(px(2.))
+        .gap(zpx(2.))
         .children(keys.iter().map(|k| kbd(*k, cx)))
 }
 
@@ -546,16 +546,16 @@ pub fn text_box_with_menu(
     let focused = state.read(cx).focus_handle(cx).is_focused(window);
     div()
         .id(id)
-        .h(TEXT_FIELD_HEIGHT)
+        .h(TEXT_FIELD_HEIGHT())
         .w_full()
         .min_w_0()
         .flex()
         .flex_row()
         .items_center()
-        .gap(SPACING_HALF)
-        .px(SPACING_HALF)
+        .gap(SPACING_HALF())
+        .px(SPACING_HALF())
         .border_1()
-        .rounded(BORDER_RADIUS)
+        .rounded(BORDER_RADIUS())
         .bg(t.box_background)
         .border_color(if focused {
             t.focus
@@ -565,9 +565,9 @@ pub fn text_box_with_menu(
         .when(focused, |d| {
             d.shadow(vec![BoxShadow {
                 color: t.text_field_focus_shadow,
-                offset: point(px(0.), px(0.)),
-                blur_radius: px(0.),
-                spread_radius: px(1.),
+                offset: point(zpx(0.), zpx(0.)),
+                blur_radius: zpx(0.),
+                spread_radius: zpx(1.),
                 inset: false,
             }])
         })
@@ -582,7 +582,7 @@ pub fn text_box_with_menu(
                     let input = Input::new(state)
                         .appearance(false)
                         .xsmall()
-                        .text_size(FONT_SIZE);
+                        .text_size(FONT_SIZE());
                     match menu {
                         Some(build) => {
                             input.context_menu(move |menu, window, cx| build(menu, window, cx))
@@ -601,10 +601,10 @@ pub fn labeled(label: impl Into<SharedString>, field: impl IntoElement, cx: &App
         .min_w_0()
         .flex()
         .flex_col()
-        .gap(SPACING_THIRD)
+        .gap(SPACING_THIRD())
         .child(
             div()
-                .text_size(FONT_SIZE)
+                .text_size(FONT_SIZE())
                 .text_color(t.text)
                 .child(label.into()),
         )
@@ -669,20 +669,20 @@ pub fn segmented_option(
         .flex()
         .flex_row()
         .items_start()
-        .p(SPACING)
+        .p(SPACING())
         .border_1()
         .border_color(t.box_border)
         .when(!last, |d| d.border_b_0())
-        .when(first, |d| d.rounded_t(BORDER_RADIUS))
-        .when(last, |d| d.rounded_b(BORDER_RADIUS))
+        .when(first, |d| d.rounded_t(BORDER_RADIUS()))
+        .when(last, |d| d.rounded_b(BORDER_RADIUS()))
         .cursor_pointer()
         .hover(move |s| s.bg(hover_bg).text_color(hover_text))
         .child(
             // radio
             div()
-                .mx(SPACING_HALF)
-                .mt(px(4.))
-                .size(px(13.))
+                .mx(SPACING_HALF())
+                .mt(zpx(4.))
+                .size(zpx(13.))
                 .flex_none()
                 .rounded_full()
                 .border_1()
@@ -700,7 +700,7 @@ pub fn segmented_option(
                 .items_center()
                 .justify_center()
                 .when(selected, |d| {
-                    d.child(div().size(px(5.)).rounded_full().bg(t.button_text))
+                    d.child(div().size(zpx(5.)).rounded_full().bg(t.button_text))
                 }),
         )
         .child(
@@ -728,18 +728,18 @@ impl Render for TextTooltip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         div()
-            .px(SPACING_THIRD)
-            .py(px(1.))
-            .rounded(px(1.))
+            .px(SPACING_THIRD())
+            .py(zpx(1.))
+            .rounded(zpx(1.))
             .bg(t.tooltip_background)
             .text_color(t.tooltip_text)
-            .text_size(FONT_SIZE_SM)
+            .text_size(FONT_SIZE_SM())
             .whitespace_nowrap()
             .shadow(vec![BoxShadow {
                 color: t.shadow,
-                offset: point(px(0.), px(1.)),
-                blur_radius: px(3.),
-                spread_radius: px(0.),
+                offset: point(zpx(0.), zpx(1.)),
+                blur_radius: zpx(3.),
+                spread_radius: zpx(0.),
                 inset: false,
             }])
             .child(self.text.clone())

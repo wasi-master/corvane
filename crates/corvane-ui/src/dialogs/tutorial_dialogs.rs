@@ -47,7 +47,7 @@ impl Render for CreateTutorialRepositoryDialog {
         let site = html_url(&self.account.endpoint);
         let friendly = self.account.host();
         let content = div()
-            .w(px(410.))
+            .w(zpx(410.))
             .flex()
             .flex_col()
             .child(paragraph(vec![
@@ -67,23 +67,23 @@ impl Render for CreateTutorialRepositoryDialog {
             .children(self.progress.clone().map(|(title, value, detail)| {
                 // `.progress-container`
                 div()
-                    .mt(SPACING)
+                    .mt(SPACING())
                     .flex()
                     .flex_col()
-                    .gap(px(4.))
+                    .gap(zpx(4.))
                     .child(title)
                     .child(
                         div()
                             .w_full()
-                            .h(px(6.))
-                            .rounded(px(3.))
+                            .h(zpx(6.))
+                            .rounded(zpx(3.))
                             .bg(t.box_alt_background)
                             .border_1()
                             .border_color(t.box_border)
                             .child(
                                 div()
                                     .h_full()
-                                    .rounded(px(3.))
+                                    .rounded(zpx(3.))
                                     .bg(t.button_background)
                                     .w(relative(f32::from(value.min(100)) / 100.)),
                             ),
@@ -91,7 +91,7 @@ impl Render for CreateTutorialRepositoryDialog {
                     .children(detail.map(|d| {
                         div()
                             .font_family(MONO_FONT)
-                            .text_size(FONT_SIZE_SM)
+                            .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary)
                             .truncate()
                             .child(d)
@@ -137,7 +137,7 @@ impl Render for ConfirmExitTutorialDialog {
         dialog(
             "confirm-exit-tutorial",
             "Exit Tutorial",
-            div().w(px(360.)).child(
+            div().w(zpx(360.)).child(
                 "Are you sure you want to leave the tutorial? This will bring you back to the \
                  home screen.",
             ),

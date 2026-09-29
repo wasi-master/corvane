@@ -237,8 +237,8 @@ impl Render for CreateRepositoryDialog {
             div()
                 .flex()
                 .flex_col()
-                .gap(SPACING)
-                .w(px(560.))
+                .gap(SPACING())
+                .w(zpx(560.))
                 .child(labeled(
                     "Name",
                     text_box("create-name", &self.name, None, window, cx),
@@ -254,7 +254,7 @@ impl Render for CreateRepositoryDialog {
                         .flex()
                         .flex_row()
                         .items_end()
-                        .gap(SPACING)
+                        .gap(SPACING())
                         .child(labeled(
                             "Local Path",
                             text_box("create-path", &self.path, None, window, cx),
@@ -273,7 +273,7 @@ impl Render for CreateRepositoryDialog {
                             .flex()
                             .flex_row()
                             .flex_wrap()
-                            .gap(px(4.))
+                            .gap(zpx(4.))
                             .text_color(t.text_secondary)
                             .child(format!(
                                 "The directory {} appears to be a Git repository.",
@@ -302,7 +302,7 @@ impl Render for CreateRepositoryDialog {
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(SPACING_HALF)
+                        .gap(SPACING_HALF())
                         .cursor_pointer()
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.readme = !this.readme;

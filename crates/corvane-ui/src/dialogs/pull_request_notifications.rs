@@ -45,11 +45,20 @@ use crate::theme::{ActiveGhdTheme, GhdTheme};
 use crate::widgets::{IconButtonA11y, button, link_button, primary_button};
 
 /// `#pull-request-review, #pull-request-comment { min-width: 500px }`
-const COMMENT_LIKE_MIN_WIDTH: Pixels = px(500.);
+#[allow(non_snake_case)]
+fn COMMENT_LIKE_MIN_WIDTH() -> Pixels {
+    zpx(500.)
+}
 /// `--avatar-size: 40px`
-const AVATAR: Pixels = px(40.);
+#[allow(non_snake_case)]
+fn AVATAR() -> Pixels {
+    zpx(40.)
+}
 /// The timeline's x: avatar + `margin: 0 var(--spacing)` + half the 30 px icon.
-const TIMELINE_X: Pixels = px(64.);
+#[allow(non_snake_case)]
+fn TIMELINE_X() -> Pixels {
+    zpx(64.)
+}
 
 /// `getVerbForPullRequestReview`
 fn review_verb(state: ApiPullRequestReviewState) -> &'static str {
@@ -114,7 +123,7 @@ fn frame(
     let viewport = window.viewport_size();
     let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
     deferred(
-        anchored().position(point(px(0.), px(0.))).child(
+        anchored().position(point(zpx(0.), zpx(0.))).child(
             div()
                 .id(id)
                 .w(viewport.width)
@@ -134,17 +143,17 @@ fn frame(
                         .max_w(max_w)
                         .flex()
                         .flex_col()
-                        .rounded(BORDER_RADIUS)
+                        .rounded(BORDER_RADIUS())
                         .bg(t.background)
                         .text_color(t.text)
-                        .text_size(FONT_SIZE)
+                        .text_size(FONT_SIZE())
                         .border_1()
                         .border_color(t.box_border)
                         .shadow(vec![BoxShadow {
                             color: t.shadow,
-                            offset: point(px(0.), px(2.)),
-                            blur_radius: px(7.),
-                            spread_radius: px(0.),
+                            offset: point(zpx(0.), zpx(2.)),
+                            blur_radius: zpx(7.),
+                            spread_radius: zpx(0.),
                             inset: false,
                         }])
                         .child(
@@ -154,14 +163,14 @@ fn frame(
                                 .flex()
                                 .flex_row()
                                 .items_center()
-                                .p(SPACING_DOUBLE)
+                                .p(SPACING_DOUBLE())
                                 .border_b_1()
                                 .border_color(t.box_border)
                                 .child(
                                     div()
                                         .flex_1()
                                         .min_w_0()
-                                        .text_size(FONT_SIZE_MD)
+                                        .text_size(FONT_SIZE_MD())
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child(title),
                                 )
@@ -171,7 +180,7 @@ fn frame(
                                         .id("dialog-close")
                                         .flex_none()
                                         .icon_button_label("Close")
-                                        .size(px(16.))
+                                        .size(zpx(16.))
                                         .cursor_pointer()
                                         .on_click(move |_, window, cx| close(window, cx))
                                         .child(octicon(Octicon::X, t.text_secondary)),
@@ -182,7 +191,7 @@ fn frame(
                             // `.dialog-footer`
                             div()
                                 .flex_none()
-                                .p(SPACING_DOUBLE)
+                                .p(SPACING_DOUBLE())
                                 .border_t_1()
                                 .border_color(t.box_border)
                                 .child(footer),
@@ -204,15 +213,15 @@ fn ok_cancel(
         .flex_none()
         .flex()
         .flex_row()
-        .gap(SPACING_HALF)
+        .gap(SPACING_HALF())
         .children(cancel.map(|label| {
             button("notification-cancel", label, cx)
-                .min_w(px(120.))
+                .min_w(zpx(120.))
                 .on_click(|_, _, cx| Dispatcher::close_popup(cx))
         }))
         .child(
             primary_button("notification-ok", ok, false, cx)
-                .min_w(px(120.))
+                .min_w(zpx(120.))
                 .on_click(move |_, window, cx| on_ok(window, cx)),
         )
 }
@@ -241,16 +250,16 @@ fn timeline_line(top: bool, color: Hsla) -> impl IntoElement {
             for (len, on) in &pattern {
                 if *on {
                     window.paint_quad(fill(
-                        Bounds::new(point(bounds.origin.x, y), size(px(1.), px(*len))),
+                        Bounds::new(point(bounds.origin.x, y), size(zpx(1.), zpx(*len))),
                         color,
                     ));
                 }
-                y += px(*len);
+                y += zpx(*len);
             }
         },
     )
-    .w(px(1.))
-    .h(px(24.))
+    .w(zpx(1.))
+    .h(zpx(24.))
 }
 
 /// The bubble's upward arrow (`.comment-bubble::before/::after`): a border
@@ -261,10 +270,10 @@ fn bubble_arrow(border: Hsla, background: Hsla) -> impl IntoElement {
         move |bounds, _, window, _| {
             let o = bounds.origin;
             let tri = |dy: f32| {
-                let mut path = Path::new(point(o.x + px(8.), o.y + px(dy)));
-                path.line_to(point(o.x + px(16.), o.y + px(8. + dy)));
-                path.line_to(point(o.x, o.y + px(8. + dy)));
-                path.line_to(point(o.x + px(8.), o.y + px(dy)));
+                let mut path = Path::new(point(o.x + zpx(8.), o.y + zpx(dy)));
+                path.line_to(point(o.x + zpx(16.), o.y + zpx(8. + dy)));
+                path.line_to(point(o.x, o.y + zpx(8. + dy)));
+                path.line_to(point(o.x + zpx(8.), o.y + zpx(dy)));
                 path
             };
             window.paint_path(tri(0.), border);
@@ -272,10 +281,10 @@ fn bubble_arrow(border: Hsla, background: Hsla) -> impl IntoElement {
         },
     )
     .absolute()
-    .left(px(6.))
-    .top(px(-7.))
-    .w(px(16.))
-    .h(px(9.))
+    .left(zpx(6.))
+    .top(zpx(-7.))
+    .w(zpx(16.))
+    .h(zpx(9.))
 }
 
 /// The pull request as data for `PullRequestCommentLike`.
@@ -316,7 +325,7 @@ impl CommentLike {
                         },
                     )
                     .flex_none()
-                    .mr(SPACING_HALF),
+                    .mr(SPACING_HALF()),
                 )
                 .child(div().flex_1().min_w_0().child(
                     StyledText::new(title.clone()).with_highlights([(
@@ -345,16 +354,16 @@ impl CommentLike {
         // `renderTimelineItem`: avatar, review icon, "login verb your pull request <time>"
         let item = div()
             .relative()
-            .mt(px(6.))
+            .mt(zpx(6.))
             .flex()
             .flex_row()
             .items_center()
-            .child(crate::widgets::avatar_image(avatar, AVATAR, cx))
+            .child(crate::widgets::avatar_image(avatar, AVATAR(), cx))
             .child(
                 div()
                     .flex_none()
-                    .size(px(30.))
-                    .mx(SPACING)
+                    .size(zpx(30.))
+                    .mx(SPACING())
                     .rounded_full()
                     .bg(bg)
                     .flex()
@@ -377,8 +386,8 @@ impl CommentLike {
             .child(
                 div()
                     .absolute()
-                    .left(TIMELINE_X)
-                    .top(px(-9.))
+                    .left(TIMELINE_X())
+                    .top(zpx(-9.))
                     .child(timeline_line(true, line)),
             )
             .child(item);
@@ -388,18 +397,18 @@ impl CommentLike {
                 .child(
                     div()
                         .absolute()
-                        .left(TIMELINE_X)
-                        .top(px(42.))
-                        .w(px(1.))
-                        .h(px(12.))
+                        .left(TIMELINE_X())
+                        .top(zpx(42.))
+                        .w(zpx(1.))
+                        .h(zpx(12.))
                         .bg(line),
                 )
                 .child(
                     // `.comment-bubble-container`
                     div()
                         .relative()
-                        .mt(px(15.))
-                        .ml(SPACING + AVATAR)
+                        .mt(zpx(15.))
+                        .ml(SPACING() + AVATAR())
                         .flex()
                         .flex_col()
                         .child(
@@ -407,10 +416,10 @@ impl CommentLike {
                                 .relative()
                                 .border_1()
                                 .border_color(line)
-                                .rounded(px(6.))
-                                .p(SPACING)
+                                .rounded(zpx(6.))
+                                .p(SPACING())
                                 .child(bubble_arrow(line, t.background))
-                                .child(div().pl(px(15.)).child(crate::markdown::markdown(
+                                .child(div().pl(zpx(15.)).child(crate::markdown::markdown(
                                     self.id,
                                     &self.body,
                                     pr.base.repository.as_ref().map(|r| r.html_url.as_str()),
@@ -419,8 +428,8 @@ impl CommentLike {
                         )
                         .child(
                             div()
-                                .ml(px(14.))
-                                .mb(px(-14.))
+                                .ml(zpx(14.))
+                                .mb(zpx(-14.))
                                 .child(timeline_line(false, line)),
                         ),
                 );
@@ -428,17 +437,17 @@ impl CommentLike {
             timeline = timeline.child(
                 div()
                     .absolute()
-                    .left(TIMELINE_X)
-                    .top(px(42.))
+                    .left(TIMELINE_X())
+                    .top(zpx(42.))
                     .child(timeline_line(false, line)),
             );
         }
         let content = div()
             .id(SharedString::from(format!("{}-content", self.id)))
-            .max_h(px(300.))
+            .max_h(zpx(300.))
             .overflow_y_scroll()
-            .p(SPACING_DOUBLE)
-            .line_height(px(18.))
+            .p(SPACING_DOUBLE())
+            .line_height(zpx(18.))
             .child(timeline)
             .with_scrollbar()
             .into_any_element();
@@ -475,7 +484,7 @@ impl CommentLike {
             title.into(),
             header,
             None,
-            (COMMENT_LIKE_MIN_WIDTH, px(600.)),
+            (COMMENT_LIKE_MIN_WIDTH(), zpx(600.)),
             content,
             footer,
             window,
@@ -502,7 +511,7 @@ fn summary(
         color: Some(t.link),
         font_weight: bold.then_some(FontWeight::BOLD),
         underline: underline.then_some(UnderlineStyle {
-            thickness: px(1.),
+            thickness: zpx(1.),
             color: None,
             wavy: false,
         }),
@@ -679,9 +688,9 @@ impl Render for PullRequestChecksFailedDialog {
             .items_center()
             .child(
                 octicon(Octicon::XCircleFill, t.status_error)
-                    .size(px(20.))
+                    .size(zpx(20.))
                     .flex_none()
-                    .mr(SPACING),
+                    .mr(SPACING()),
             )
             .child(
                 div()
@@ -693,7 +702,7 @@ impl Render for PullRequestChecksFailedDialog {
                     .child(
                         div()
                             .font_weight(FontWeight::NORMAL)
-                            .text_size(FONT_SIZE)
+                            .text_size(FONT_SIZE())
                             .child(StyledText::new(pr_title.clone()).with_highlights([(
                                 pr.title.len() + 1..pr_title.len(),
                                 HighlightStyle {
@@ -707,8 +716,8 @@ impl Render for PullRequestChecksFailedDialog {
         let accessory = github.clone().map(|github| {
             div()
                 .flex_none()
-                .mx(SPACING)
-                .text_size(FONT_SIZE)
+                .mx(SPACING())
+                .text_size(FONT_SIZE())
                 .font_weight(FontWeight::NORMAL)
                 .child(rerun_button(
                     "checks-failed-rerun",
@@ -742,13 +751,13 @@ impl Render for PullRequestChecksFailedDialog {
                             .flex()
                             .flex_col()
                             .when(!single_other, |d| {
-                                d.child(check_run_group_header(name, cx).pl(SPACING_DOUBLE))
+                                d.child(check_run_group_header(name, cx).pl(SPACING_DOUBLE()))
                             })
                             .children(items.iter().map(|check| {
                                 let id = check.id;
                                 let entity = entity.clone();
                                 check_run_row(check, true, self.selected == Some(id), cx)
-                                    .pl(SPACING)
+                                    .pl(SPACING())
                                     .on_click(move |_, _, cx| {
                                         entity
                                             .update(cx, |this, cx| {
@@ -770,7 +779,7 @@ impl Render for PullRequestChecksFailedDialog {
             .min_w_0()
             .h_full()
             .overflow_y_scroll()
-            .p(SPACING)
+            .p(SPACING())
             .bg(t.box_alt_background)
             .children(selected.map(|check| {
                 let external = check.html_url.clone().unwrap_or_else(|| {
@@ -792,7 +801,7 @@ impl Render for PullRequestChecksFailedDialog {
             }))
             .with_scrollbar();
         let content = div()
-            .h(px(300.))
+            .h(zpx(300.))
             .w_full()
             .flex()
             .flex_row()
@@ -808,7 +817,7 @@ impl Render for PullRequestChecksFailedDialog {
             .flex_row()
             .items_center()
             // `.footer-question`
-            .child(div().flex_1().min_w_0().pr(SPACING).child(format!(
+            .child(div().flex_1().min_w_0().pr(SPACING()).child(format!(
                 "Do you want to switch to that Pull Request now and start fixing {them}?"
             )))
             .child(ok_cancel(
@@ -828,7 +837,7 @@ impl Render for PullRequestChecksFailedDialog {
             headline.into(),
             header,
             accessory,
-            (px(600.), px(600.)),
+            (zpx(600.), zpx(600.)),
             content,
             footer,
             window,

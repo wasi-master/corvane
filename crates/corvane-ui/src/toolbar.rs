@@ -91,9 +91,10 @@ pub fn toolbar_widths(
     sidebar_width: Pixels,
     resize: &ToolbarResize,
 ) -> (ToolbarWidths, Pixels, Pixels) {
+    // the constraint math is in CSS pixels (GHD); widths persist unzoomed
     let widths = corvane_core::toolbar_widths::toolbar_widths(
-        f32::from(window_width),
-        f32::from(sidebar_width),
+        unzoom(window_width),
+        unzoom(sidebar_width),
         worktree_button_visible(state),
         state.settings.worktree_dropdown_width,
         state.settings.branch_dropdown_width,
@@ -104,7 +105,7 @@ pub fn toolbar_widths(
     let branch = resize
         .live_width(ResizeTarget::Branch)
         .unwrap_or_else(|| widths.branch.clamped());
-    (widths, px(worktree), px(branch))
+    (widths, zpx(worktree), zpx(branch))
 }
 
 /// `renderPullRequestInfo`
@@ -275,7 +276,7 @@ pub fn toolbar_models(
         icon: Octicon::SyncClockwise,
         description: "".into(),
         title: "".into(),
-        width: Some(TOOLBAR_BUTTON_WIDTH),
+        width: Some(TOOLBAR_BUTTON_WIDTH()),
         foldout: None,
         open: state.foldout == Some(Foldout::PushPull),
         disabled: false,
@@ -440,12 +441,12 @@ pub fn toolbar_button(
     };
     let button = div()
         .id(model.id)
-        .h(TOOLBAR_BUTTON_HEIGHT)
+        .h(TOOLBAR_BUTTON_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
-        .p(SPACING)
+        .p(SPACING())
         .border_r_1()
         .border_color(t.toolbar_button_border)
         .bg(bg)
@@ -503,11 +504,11 @@ pub fn toolbar_button(
         .child(if model.spin {
             div()
                 .flex_none()
-                .mr(SPACING)
+                .mr(SPACING())
                 .child(spin(octicon(model.icon, text), "toolbar-button-spin"))
                 .into_any_element()
         } else {
-            octicon(model.icon, text).mr(SPACING).into_any_element()
+            octicon(model.icon, text).mr(SPACING()).into_any_element()
         })
         .child(
             div()
@@ -515,19 +516,19 @@ pub fn toolbar_button(
                 .flex_col()
                 .flex_1()
                 .min_w_0()
-                .mr(SPACING)
+                .mr(SPACING())
                 .child(
                     div()
-                        .text_size(FONT_SIZE_SM)
-                        .line_height(px(14.))
+                        .text_size(FONT_SIZE_SM())
+                        .line_height(zpx(14.))
                         .text_color(secondary)
                         .truncate()
                         .child(model.description),
                 )
                 .child(
                     div()
-                        .text_size(FONT_SIZE)
-                        .line_height(px(15.))
+                        .text_size(FONT_SIZE())
+                        .line_height(zpx(15.))
                         .font_weight(FontWeight::SEMIBOLD)
                         .truncate()
                         .child(model.title),
@@ -551,10 +552,10 @@ pub fn toolbar_button(
                     .flex()
                     .flex_row()
                     .items_center()
-                    .h(px(22.))
-                    .px(SPACING_HALF)
-                    .mr(SPACING)
-                    .rounded(BORDER_RADIUS)
+                    .h(zpx(22.))
+                    .px(SPACING_HALF())
+                    .mr(SPACING())
+                    .rounded(BORDER_RADIUS())
                     .border_1()
                     .border_color(t.toolbar_badge_background)
                     .bg(badge_bg)
@@ -576,12 +577,12 @@ pub fn toolbar_button(
                     )
                     .child(
                         div()
-                            .text_size(FONT_SIZE_SM)
-                            .line_height(px(22.))
+                            .text_size(FONT_SIZE_SM())
+                            .line_height(zpx(22.))
                             .child(format!("#{}", badge.number)),
                     )
                     .when_some(badge.status, |d, (status, conclusion)| {
-                        d.child(crate::ci_status::ci_status(status, conclusion).ml(SPACING_HALF))
+                        d.child(crate::ci_status::ci_status(status, conclusion).ml(SPACING_HALF()))
                     }),
             )
         })
@@ -593,21 +594,21 @@ pub fn toolbar_button(
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(px(2.))
-                    .px(px(5.))
-                    .h(px(13.))
-                    .mr(SPACING_HALF)
-                    .rounded(px(8.))
+                    .gap(zpx(2.))
+                    .px(zpx(5.))
+                    .h(zpx(13.))
+                    .mr(SPACING_HALF())
+                    .rounded(zpx(8.))
                     .bg(t.toolbar_badge_background)
-                    .text_size(FONT_SIZE_XS)
-                    .line_height(px(11.))
+                    .text_size(FONT_SIZE_XS())
+                    .line_height(zpx(11.))
                     .when(ab.ahead > 0, |d| {
                         d.child(format!("{}", ab.ahead))
-                            .child(octicon(Octicon::ArrowUp, text).size(px(9.)))
+                            .child(octicon(Octicon::ArrowUp, text).size(zpx(9.)))
                     })
                     .when(ab.behind > 0, |d| {
                         d.child(format!("{}", ab.behind))
-                            .child(octicon(Octicon::ArrowDown, text).size(px(9.)))
+                            .child(octicon(Octicon::ArrowDown, text).size(zpx(9.)))
                     }),
             )
         })
@@ -633,8 +634,8 @@ pub fn toolbar_button(
                     .absolute()
                     .top_0()
                     .bottom_0()
-                    .right(px(-3.))
-                    .w(px(6.))
+                    .right(zpx(-3.))
+                    .w(zpx(6.))
                     .occlude()
                     .cursor(CursorStyle::ResizeLeftRight)
                     .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
@@ -652,7 +653,7 @@ pub fn toolbar_button(
                         state.drag.set(Some(ResizeDrag {
                             target,
                             start_x: ev.position.x,
-                            start_width: f32::from(width),
+                            start_width: unzoom(width),
                             constraint,
                         }));
                         window.refresh();
@@ -668,14 +669,14 @@ pub fn toolbar_button(
         .flex()
         .flex_row()
         .flex_none()
-        .w(TOOLBAR_BUTTON_WIDTH)
-        .child(button.w(TOOLBAR_BUTTON_WIDTH - TOOLBAR_ARROW_WIDTH))
+        .w(TOOLBAR_BUTTON_WIDTH())
+        .child(button.w(TOOLBAR_BUTTON_WIDTH() - TOOLBAR_ARROW_WIDTH()))
         .child(
             div()
                 .id("toolbar-push-pull-arrow")
                 .icon_button_label("Push, pull, fetch options")
-                .h(TOOLBAR_BUTTON_HEIGHT)
-                .w(TOOLBAR_ARROW_WIDTH)
+                .h(TOOLBAR_BUTTON_HEIGHT())
+                .w(TOOLBAR_ARROW_WIDTH())
                 .flex_none()
                 .flex()
                 .items_center()
@@ -706,7 +707,7 @@ pub fn toolbar(
     div()
         .id("toolbar")
         .w_full()
-        .h(TOOLBAR_HEIGHT)
+        .h(TOOLBAR_HEIGHT())
         .flex_none()
         .flex()
         .flex_row()
@@ -726,9 +727,9 @@ pub fn toolbar(
                         let state = listeners.clone();
                         window.on_mouse_event(move |ev: &MouseMoveEvent, _, window, _| {
                             if let Some(drag) = state.drag.get() {
-                                let width = drag.constraint.clamp(
-                                    drag.start_width + f32::from(ev.position.x - drag.start_x),
-                                );
+                                let width = drag
+                                    .constraint
+                                    .clamp(drag.start_width + unzoom(ev.position.x - drag.start_x));
                                 state.live.set(Some((drag.target, width)));
                                 window.refresh();
                             }
