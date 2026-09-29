@@ -10,6 +10,11 @@ gpui_kit::actions!(
         // ⇧↑ / ⇧↓ range selection in multi-select lists
         ExtendSelectionUp,
         ExtendSelectionDown,
+        // ⌘↑ / ⌘↓ (Home / End): the first / last row (GHD `List` isHomeKey / isEndKey)
+        SelectFirstFile,
+        SelectLastFile,
+        // Space in the changes list: include / exclude the highlighted files
+        ToggleIncludeSelected,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
