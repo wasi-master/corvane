@@ -9,6 +9,7 @@ use gpui_kit::*;
 use crate::ci_status::ci_status;
 use crate::dialog::{DialogButton, dialog};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 
@@ -186,6 +187,7 @@ impl Render for CiCheckRunRerunDialog {
                                         .child(check.name.clone()),
                                 )
                         }))
+                        .with_scrollbar()
                 });
                 let warning =
                     (!self.loading_suites && !self.non_rerunnable.is_empty()).then(|| {

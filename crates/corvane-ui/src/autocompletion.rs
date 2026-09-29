@@ -17,6 +17,7 @@ use corvane_core::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::scrollbar::{gutter, scrollbar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{avatar_image, avatar_lookup_url};
@@ -227,8 +228,10 @@ pub fn popup(
                                 .collect::<Vec<_>>()
                         })
                         .track_scroll(&ac.scroll)
-                        .size_full(),
-                    ),
+                        .size_full()
+                        .pr(gutter(&ac.scroll)),
+                    )
+                    .child(scrollbar("autocompletion-scrollbar", ac.scroll.clone())),
             ),
     )
     .with_priority(3)

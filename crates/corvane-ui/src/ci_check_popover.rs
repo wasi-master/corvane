@@ -19,6 +19,7 @@ use gpui_kit::*;
 use crate::ci_status::{ci_status, color_for, effective_conclusion, symbol_for_log_step};
 use crate::context_menu::MenuItem;
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, c, primer};
 use crate::widgets::button;
@@ -690,6 +691,7 @@ impl Render for CiCheckPopover {
                         })
                         .children(items.iter().map(|check| self.check_item(&snap, check, cx)))
                 }))
+                .with_scrollbar()
                 .into_any_element()
         };
         deferred(

@@ -18,6 +18,7 @@ use gpui_kit::*;
 use crate::icons::{Octicon, octicon};
 use crate::pull_request_list::{matches_filter, no_pull_requests, pull_request_row};
 use crate::relative_time::relative;
+use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -240,6 +241,7 @@ impl BranchFoldout {
                             .child(format!("Pull requests in {repository_name}")),
                     )
                     .children(rows)
+                    .with_scrollbar()
                     .into_any_element()
             })
             .into_any_element()
@@ -514,6 +516,7 @@ impl Render for BranchFoldout {
                                 self.row(id, b, current.as_deref() == Some(b.name.as_str()), cx)
                             }))
                     }))
+                    .with_scrollbar()
                     .into_any_element()
             })
             .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))

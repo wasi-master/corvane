@@ -13,6 +13,7 @@ use gpui_kit::*;
 
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, MONO_FONT};
 use crate::widgets::{avatar_image, avatar_lookup, link_button};
@@ -333,7 +334,8 @@ impl SelectedCommitView {
                                             .child(div().truncate().child(commit.tags.join(", "))),
                                     )
                                 }),
-                        ),
+                        )
+                        .with_scrollbar(),
                 )
                 .into_any_element(),
         )
@@ -399,7 +401,8 @@ impl SelectedCommitView {
                         .collect()
                 })
                 .flex_1()
-                .min_h_0(),
+                .min_h_0()
+                .with_scrollbar(),
             )
             .into_any_element()
     }

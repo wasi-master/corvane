@@ -29,6 +29,7 @@ use crate::branch_list::group_branches;
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button, text_box};
@@ -464,6 +465,7 @@ impl HistorySidebar {
                             })
                     }))
             }))
+            .with_scrollbar()
             .into_any_element()
     }
 
@@ -1255,7 +1257,8 @@ impl HistorySidebar {
                         .collect()
                 })
                 .flex_1()
-                .min_h_0(),
+                .min_h_0()
+                .with_scrollbar(),
             )
             .when(in_reorder, |d| d.child(self.reorder_hint(cx)))
             .into_any_element()

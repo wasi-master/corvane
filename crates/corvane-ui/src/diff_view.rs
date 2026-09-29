@@ -37,6 +37,7 @@ use crate::diff_view_rows::{
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
+use crate::scrollbar::{ScrollbarExt, gutter, scrollbar};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, GhdTheme, MONO_FONT};
 use crate::widgets::{
@@ -369,6 +370,12 @@ impl DiffView {
         self.rebuild_split_rows();
         self.rows_key = Some(key.clone());
         self.list_state.splice(0..old_len, self.row_count());
+        // Unmeasured rows count as 0 px, which grows the content (and shrinks
+        // the scrollbar thumb) as rows get rendered; hint one line each.
+        self.list_state = self
+            .list_state
+            .clone()
+            .with_uniform_item_height(DIFF_LINE_HEIGHT);
         self.refresh_search();
         self.highlight(key, cx);
     }
@@ -392,7 +399,8 @@ impl DiffView {
     fn set_split_mode(&mut self, split: bool) {
         if self.split_mode != split {
             self.split_mode = split;
-            self.list_state.reset(self.row_count());
+            self.list_state
+                .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
         }
     }
 
@@ -418,7 +426,8 @@ impl DiffView {
         self.rows = Rc::new(build_rows(&self.hunks));
         self.rebuild_split_rows();
         self.rows_key = Some(snap.key.clone());
-        self.list_state.reset(self.row_count());
+        self.list_state
+            .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
         self.refresh_search();
         self.highlight(snap.key.clone(), cx);
     }
@@ -1193,6 +1202,7 @@ impl DiffView {
                     .children(items)
                     .children(open_action),
             )
+            .with_scrollbar()
             .into_any_element()
     }
 }
@@ -1449,8 +1459,10 @@ impl DiffView {
                 })
                 .flex_1()
                 .min_h_0()
-                .w_full(),
+                .w_full()
+                .pr(gutter(&self.list_state)),
             )
+            .child(scrollbar("diff-scrollbar", self.list_state.clone()))
             .children(search)
             .into_any_element()
     }

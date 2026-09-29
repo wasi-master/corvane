@@ -8,6 +8,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{checkbox, text_box};
@@ -501,7 +502,8 @@ impl Render for UnreachableCommitsDialog {
                                 t.text_secondary,
                                 cx,
                             ))
-                    })),
+                    }))
+                    .with_scrollbar(),
             );
         dialog(
             "dialog-unreachable-commits",

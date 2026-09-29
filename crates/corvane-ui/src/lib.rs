@@ -31,6 +31,7 @@ pub mod no_repositories;
 pub mod pull_request_list;
 pub mod relative_time;
 pub mod repository_list;
+pub mod scrollbar;
 pub mod selected_commit;
 pub mod stash_view;
 pub mod tab_bar;

@@ -7,6 +7,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, text_box};
@@ -328,7 +329,8 @@ impl Render for RepositoryFoldout {
                                     .iter()
                                     .map(|repo| self.row(repo, selected == Some(repo.id), cx)),
                             )
-                    })),
+                    }))
+                    .with_scrollbar(),
             )
             .when(add_open, |d| d.child(self.add_menu(cx)))
     }

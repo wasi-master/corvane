@@ -11,6 +11,7 @@ use gpui_kit::*;
 
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::octicon;
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, primary_button};
@@ -74,7 +75,8 @@ impl StashDiffViewer {
                         .collect()
                 })
                 .flex_1()
-                .min_h_0(),
+                .min_h_0()
+                .with_scrollbar(),
             )
             .into_any_element()
     }
