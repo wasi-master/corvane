@@ -924,6 +924,44 @@ pub struct DiffHunk {
     pub lines: Vec<DiffLine>,
 }
 
+/// GHD `WorktreeType`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorktreeType {
+    Main,
+    Linked,
+}
+
+/// GHD `WorktreeEntry` (`git worktree list --porcelain`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorktreeEntry {
+    pub path: PathBuf,
+    pub head: String,
+    /// Full ref (`refs/heads/main`) when checked out on a branch.
+    pub branch: Option<String>,
+    pub is_detached: bool,
+    pub kind: WorktreeType,
+    pub is_locked: bool,
+    pub is_prunable: bool,
+}
+
+impl WorktreeEntry {
+    /// GHD `getWorktreeDisplayName`: the folder name.
+    pub fn display_name(&self) -> String {
+        self.path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| self.path.display().to_string())
+    }
+
+    /// GHD `getWorktreeDescription`: the branch, else the short SHA.
+    pub fn description(&self) -> String {
+        match &self.branch {
+            Some(b) => b.strip_prefix("refs/heads/").unwrap_or(b).to_string(),
+            None => self.head.chars().take(7).collect(),
+        }
+    }
+}
+
 /// GHD `SubmoduleStatus`: what changed inside a submodule.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubmoduleStatus {

@@ -418,6 +418,8 @@ impl Dispatcher {
                     cherry_pick_snapshot,
                     last_fetched: corvane_git::last_fetched(&info.workdir),
                     pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
+                    worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
+                        .unwrap_or_default(),
                 }
             });
             Ok::<_, GitError>((info, ahead_behind, status, extras))
@@ -447,6 +449,7 @@ impl Dispatcher {
                                 repo_state.stash_count = extras.stash_count;
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
+                                repo_state.worktrees = extras.worktrees;
                                 if repo_state.stash.is_none() {
                                     repo_state.showing_stash = false;
                                     repo_state.stash_files = None;
@@ -2620,4 +2623,5 @@ struct RefreshExtras {
     cherry_pick_snapshot: Option<corvane_git::CherryPickSnapshot>,
     last_fetched: Option<std::time::SystemTime>,
     pull_with_rebase: bool,
+    worktrees: Vec<corvane_models::WorktreeEntry>,
 }

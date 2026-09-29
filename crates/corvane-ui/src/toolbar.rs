@@ -32,11 +32,44 @@ pub struct ToolbarButtonModel {
     pub progress: Option<f32>,
 }
 
-/// GHD `Toolbar` render: repository, branch, push/pull - from the app state.
+/// GHD `renderWorktreeToolbarButton`: only with linked worktrees, or while
+/// the foldout is open (so it can be reached from the menu).
+pub fn worktree_button_visible(state: &AppState) -> bool {
+    let has_linked = state
+        .selected_state()
+        .is_some_and(|rs| rs.worktrees.len() > 1);
+    state.selected.is_some() && (has_linked || state.foldout == Some(Foldout::Worktree))
+}
+
+/// GHD `Toolbar` render: repository, worktree, branch, push/pull - from the app state.
 pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarButtonModel> {
     let repo = state.selected_repository();
     let repo_state = state.selected_state();
     let info = repo_state.and_then(|s| s.info.as_ref());
+
+    // `WorktreeDropdown`: title = current worktree folder, else the repository name
+    let worktree = worktree_button_visible(state).then(|| {
+        let title: SharedString = repo
+            .and_then(|r| crate::worktree_list::current_worktree(state, r.id))
+            .map(|w| w.display_name())
+            .or_else(|| repo.map(|r| r.name()))
+            .unwrap_or_default()
+            .into();
+        ToolbarButtonModel {
+            id: "toolbar-worktree",
+            icon: Octicon::FileDirectory,
+            description: "Current Worktree".into(),
+            title,
+            width: Some(TOOLBAR_BUTTON_WIDTH),
+            foldout: Some(Foldout::Worktree),
+            open: state.foldout == Some(Foldout::Worktree),
+            disabled: false,
+            badge: None,
+            push_pull: false,
+            arrow: false,
+            progress: None,
+        }
+    });
 
     let repository = ToolbarButtonModel {
         id: "toolbar-repository",
@@ -239,7 +272,11 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         }
     };
 
-    vec![repository, branch, push_pull]
+    let mut buttons = vec![repository];
+    buttons.extend(worktree);
+    buttons.push(branch);
+    buttons.push(push_pull);
+    buttons
 }
 
 pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
@@ -322,6 +359,12 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
                     .w(gpui_kit::relative(value.clamp(0., 1.)))
                     .bg(t.toolbar_button_progress),
             )
+        })
+        .when(foldout == Some(Foldout::Worktree), |d| {
+            // `WorktreeDropdown.onContextMenu`
+            d.on_mouse_down(MouseButton::Right, |ev, window, cx| {
+                crate::worktree_list::toolbar_button_menu(ev.position, window, cx)
+            })
         })
         .when(foldout == Some(Foldout::Branch), |d| {
             // GHD `onDragEnter` on the branch dropdown: dragging commits over

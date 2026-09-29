@@ -354,6 +354,17 @@ fn main() {
             }
         });
         let ws = workspace.clone();
+        cx.on_action(move |_: &ShowWorktreesList, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.show_worktrees_list(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
         cx.on_action(move |_: &GoToSummary, cx| {
             if let Some(window) = cx.active_window() {
                 let ws = ws.clone();
@@ -402,6 +413,11 @@ fn main() {
                     },
                     cx,
                 );
+            }
+        });
+        cx.on_action(move |_: &NewWorktree, cx| {
+            if let Some(id) = selected(cx) {
+                Dispatcher::show_popup(Popup::AddWorktree { repo: id }, cx);
             }
         });
         let current_branch = |cx: &App| -> Option<(u64, String)> {

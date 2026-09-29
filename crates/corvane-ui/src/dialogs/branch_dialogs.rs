@@ -38,7 +38,7 @@ pub fn sanitize_ref_name(input: &str) -> String {
     out.replace("..", "-").replace("@{", "-").replace("//", "/")
 }
 
-fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
+pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .px(px(4.))

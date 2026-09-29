@@ -37,6 +37,7 @@ pub mod toolbar;
 pub mod welcome;
 pub mod widgets;
 pub mod workspace;
+pub mod worktree_list;
 
 use gpui_kit::App;
 

@@ -24,6 +24,7 @@ pub enum Foldout {
     Repository,
     Branch,
     PushPull,
+    Worktree,
 }
 
 /// Modal dialogs (`PopupType`, the subset Corvane has so far).
@@ -89,6 +90,26 @@ pub enum Popup {
     RenameBranch {
         repo: u64,
         name: String,
+    },
+    /// Worktrees (GHD 3.6 `enableWorktreeSupport`).
+    AddWorktree {
+        repo: u64,
+    },
+    RenameWorktree {
+        repo: u64,
+        path: PathBuf,
+    },
+    DeleteWorktree {
+        repo: u64,
+        path: PathBuf,
+    },
+    /// `git worktree remove` failed: offer `--force`; dismissing switches
+    /// back to `original` when the current worktree was the one deleted.
+    DeleteWorktreeFailed {
+        repo: u64,
+        path: PathBuf,
+        error: String,
+        original: Option<PathBuf>,
     },
     DeleteBranch {
         repo: u64,
@@ -415,6 +436,9 @@ pub struct RepositoryState {
     // ---- branches (`IBranchesState`) ----
     /// `recentBranches` (reflog checkouts, newest first).
     pub recent_branches: Vec<String>,
+    /// `git worktree list` (main first); the toolbar button shows once
+    /// there is more than one.
+    pub worktrees: Vec<corvane_models::WorktreeEntry>,
     /// `defaultBranch` name (`findDefaultBranch`).
     pub default_branch: Option<String>,
     /// Branch a checkout is switching to (`checkoutProgress.target`).

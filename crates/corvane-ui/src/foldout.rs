@@ -10,6 +10,14 @@ use crate::icons::{Octicon, octicon};
 use crate::repository_list::RepositoryFoldout;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::worktree_list::WorktreeFoldout;
+
+/// The views the foldout layer can show.
+pub struct FoldoutPanels<'a> {
+    pub repository: &'a Entity<RepositoryFoldout>,
+    pub branch: &'a Entity<BranchFoldout>,
+    pub worktree: &'a Entity<WorktreeFoldout>,
+}
 
 /// Renders the overlay + the open foldout panel, positioned below the toolbar.
 /// `panel_x` / `panel_width` come from the toolbar button geometry.
@@ -17,8 +25,7 @@ pub fn foldout_layer(
     foldout: Foldout,
     panel_x: Pixels,
     panel_width: Pixels,
-    repository_foldout: &Entity<RepositoryFoldout>,
-    branch_foldout: &Entity<BranchFoldout>,
+    panels: FoldoutPanels<'_>,
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
@@ -26,8 +33,9 @@ pub fn foldout_layer(
     let top = TITLE_BAR_HEIGHT + TOOLBAR_HEIGHT;
     let viewport = window.viewport_size();
     let panel: AnyElement = match foldout {
-        Foldout::Repository => repository_foldout.clone().into_any_element(),
-        Foldout::Branch => branch_foldout.clone().into_any_element(),
+        Foldout::Repository => panels.repository.clone().into_any_element(),
+        Foldout::Branch => panels.branch.clone().into_any_element(),
+        Foldout::Worktree => panels.worktree.clone().into_any_element(),
         Foldout::PushPull => push_pull_dropdown(cx),
     };
     let full_height = foldout != Foldout::PushPull;

@@ -28,6 +28,8 @@ pub struct Settings {
     pub uncommitted_changes_strategy: UncommittedChangesStrategy,
     /// GHD `askForConfirmationOnDiscardStash`.
     pub confirm_discard_stash: bool,
+    /// GHD `confirmWorktreeRemoval` (Prompts › Removing worktrees).
+    pub confirm_worktree_removal: bool,
     /// GHD `askForConfirmationOnForcePush`.
     #[serde(default = "default_true")]
     pub confirm_force_push: bool,
@@ -166,6 +168,7 @@ impl Default for Settings {
             confirm_undo_commit: true,
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
+            confirm_worktree_removal: true,
             confirm_force_push: true,
             external_editor: None,
             shell: None,

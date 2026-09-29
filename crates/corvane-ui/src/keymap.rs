@@ -32,6 +32,7 @@ pub fn install(cx: &mut App) {
         KeyBinding::new("cmd-2", ShowHistory, None),
         KeyBinding::new("cmd-t", ShowRepositoryList, None),
         KeyBinding::new("cmd-b", ShowBranchesList, None),
+        KeyBinding::new("alt-cmd-w", ShowWorktreesList, None),
         KeyBinding::new("cmd-g", GoToSummary, None),
         KeyBinding::new("ctrl-h", ToggleStashedChanges, None),
         KeyBinding::new("cmd-l", ToggleChangesFilter, None),
@@ -55,6 +56,7 @@ pub fn install(cx: &mut App) {
         KeyBinding::new("cmd-i", CreateIssue, None),
         // Branch
         KeyBinding::new("shift-cmd-n", NewBranch, None),
+        KeyBinding::new("shift-cmd-w", NewWorktree, None),
         KeyBinding::new("shift-cmd-r", RenameBranch, None),
         KeyBinding::new("shift-cmd-d", DeleteBranch, None),
         KeyBinding::new("shift-cmd-backspace", DiscardAllChanges, None),

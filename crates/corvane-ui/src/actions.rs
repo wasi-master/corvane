@@ -7,6 +7,9 @@ gpui_kit::actions!(
         SelectNextFile,
         SelectPreviousFile,
         SelectAllFiles,
+        // Worktrees
+        NewWorktree,
+        ShowWorktreesList,
         // Commit form context menu (spelling suggestions are picked by index)
         SpellSuggestion0,
         SpellSuggestion1,
