@@ -174,6 +174,11 @@ fn main() {
         //   pr-review[:approved|:commented] (changes requested by default)
         //   pr-comment | pr-checks-failed
         //   pr-list (sample pull requests in the branch foldout's Pull Requests tab)
+        //   tutorial:<step> (the repository becomes the tutorial repository, shown at
+        //   <step>: pick-editor, create-branch, edit-file, make-commit, push-branch,
+        //   open-pull-request, all-done, announced, paused)
+        //   tutorial-create | tutorial-exit (the two tutorial dialogs; tutorial-create
+        //   needs CORVANE_DEV_ACCOUNTS)
         //   crash-report (turns on "Save crash reports locally" and panics, so the
         //   next launch shows "Corvane quit unexpectedly last time")
         //   no-write-access (the repository becomes a read-only GitHub repository;
@@ -290,6 +295,22 @@ fn main() {
                                 },
                                 cx,
                             )
+                        }
+                        (other, Some(id)) if other.starts_with("tutorial:") => {
+                            let step = corvane_core::tutorial::TutorialStep::parse(
+                                &other["tutorial:".len()..],
+                            );
+                            corvane_core::AppState::global(cx).update(cx, |s, cx| {
+                                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
+                                    r.is_tutorial_repository = true;
+                                }
+                                s.tutorial_step_override = step;
+                                cx.notify();
+                            });
+                        }
+                        ("tutorial-create", _) => Dispatcher::show_create_tutorial_repository(cx),
+                        ("tutorial-exit", _) => {
+                            Dispatcher::show_popup(Popup::ConfirmExitTutorial, cx)
                         }
                         ("crash-report", _) => {
                             Dispatcher::update_settings(cx, |s| s.save_crash_reports = true);

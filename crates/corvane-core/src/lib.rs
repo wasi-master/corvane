@@ -27,6 +27,7 @@ pub mod repo_rules;
 pub mod state;
 pub mod templates;
 pub mod toolbar_widths;
+pub mod tutorial;
 pub mod watcher;
 pub mod worktrees;
 

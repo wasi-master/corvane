@@ -33,6 +33,7 @@ use crate::toolbar::{
 };
 use crate::welcome::WelcomeView;
 use crate::worktree_list::WorktreeFoldout;
+use corvane_core::tutorial::TutorialStep;
 
 pub struct Workspace {
     focus_handle: FocusHandle,
@@ -44,6 +45,8 @@ pub struct Workspace {
     history: Entity<HistorySidebar>,
     selected_commit: Entity<SelectedCommitView>,
     stash_view: Entity<StashDiffViewer>,
+    /// The onboarding tutorial's right-hand panel.
+    tutorial_panel: Entity<crate::tutorial_panel::TutorialPanel>,
     repository_foldout: Entity<RepositoryFoldout>,
     branch_foldout: Entity<BranchFoldout>,
     worktree_foldout: Entity<WorktreeFoldout>,
@@ -104,6 +107,8 @@ impl Workspace {
         let history = cx.new(|cx| HistorySidebar::new(state.clone(), window, cx));
         let selected_commit = cx.new(|cx| SelectedCommitView::new(state.clone(), cx));
         let stash_view = cx.new(|cx| StashDiffViewer::new(state.clone(), cx));
+        let tutorial_panel =
+            cx.new(|cx| crate::tutorial_panel::TutorialPanel::new(state.clone(), cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
         let branch_foldout = cx.new(|cx| BranchFoldout::new(state.clone(), window, cx));
         let worktree_foldout = cx.new(|cx| WorktreeFoldout::new(state.clone(), window, cx));
@@ -126,6 +131,7 @@ impl Workspace {
             history,
             selected_commit,
             stash_view,
+            tutorial_panel,
             repository_foldout,
             branch_foldout,
             worktree_foldout,
@@ -299,6 +305,33 @@ impl Workspace {
                     .child(self.diff_view.clone())
                     .into_any_element()
             }
+            // `renderTutorialPane` in place of "No local changes"
+            Section::Changes if state.selected_tutorial_step().is_valid() => {
+                let step = state.selected_tutorial_step();
+                if matches!(step, TutorialStep::AllDone | TutorialStep::Announced) {
+                    div()
+                        .size_full()
+                        .relative()
+                        .child(
+                            canvas(
+                                |_, _, _| {},
+                                move |_, _, _, cx| {
+                                    // `onTutorialCompletionAnnounced`, deferred:
+                                    // it notifies AppState
+                                    if step == TutorialStep::AllDone {
+                                        cx.defer(Dispatcher::mark_tutorial_completion_announced);
+                                    }
+                                },
+                            )
+                            .absolute()
+                            .size_0(),
+                        )
+                        .child(crate::tutorial_panel::tutorial_done(cx))
+                        .into_any_element()
+                } else {
+                    crate::tutorial_panel::tutorial_welcome(cx).into_any_element()
+                }
+            }
             Section::Changes => {
                 let (repo_id, repo_path, editor_label) = {
                     let s = self.state.read(cx);
@@ -385,6 +418,31 @@ impl Workspace {
                     .child(resizable_panel().child(self.content(cx))),
             )
     }
+
+    /// `maybeRenderTutorialPanel`: the repository view with the tutorial
+    /// panel on the right while a tutorial step is showing.
+    fn repository_view_with_tutorial(&self, cx: &Context<Self>) -> AnyElement {
+        if !self.state.read(cx).selected_tutorial_step().is_valid() {
+            return self.repository_view(cx).into_any_element();
+        }
+        div()
+            .flex_1()
+            .min_h_0()
+            .w_full()
+            .flex()
+            .flex_row()
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .flex()
+                    .flex_col()
+                    .child(self.repository_view(cx)),
+            )
+            .child(self.tutorial_panel.clone())
+            .into_any_element()
+    }
 }
 
 impl Render for Workspace {
@@ -399,6 +457,8 @@ impl Render for Workspace {
         }
         let t = cx.ghd();
         let welcome_done = self.state.read(cx).settings.welcome_completed;
+        // `inNoRepositoriesViewState`: a paused tutorial shows the blank slate
+        let tutorial_paused = self.state.read(cx).selected_tutorial_step() == TutorialStep::Paused;
         if welcome_done {
             self.welcome = None;
         }
@@ -468,8 +528,8 @@ impl Render for Workspace {
                         .border_color(t.box_border)
                         .child(cloning_view(clone, cx))
                         .into_any_element()
-                } else if has_repos {
-                    self.repository_view(cx).into_any_element()
+                } else if has_repos && !tutorial_paused {
+                    self.repository_view_with_tutorial(cx)
                 } else {
                     div()
                         .flex_1()

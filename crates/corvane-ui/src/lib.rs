@@ -42,6 +42,7 @@ pub mod tab_bar;
 pub mod theme;
 pub mod title_bar;
 pub mod toolbar;
+pub mod tutorial_panel;
 pub mod welcome;
 pub mod widgets;
 pub mod workspace;

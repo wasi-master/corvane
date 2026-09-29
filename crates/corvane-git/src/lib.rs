@@ -30,8 +30,8 @@ pub use branch_ops::{
     parse_recent_branches, pop_stash, recent_branches, remote_head, rename_branch, stashed_files,
 };
 pub use commit::{
-    CommitOptions, commit, discard_changes, format_message, head_sha, merge_trailers, stage_files,
-    undo_last_commit, unstage_all,
+    CommitOptions, add_paths, commit, discard_changes, format_message, head_sha, merge_trailers,
+    stage_files, undo_last_commit, unstage_all,
 };
 pub use config::{
     global_config_value, local_config_value, remove_local_config_value, set_default_branch,
