@@ -126,6 +126,17 @@ impl SignInDialog {
                             })
                         }),
                 )
+                .child(
+                    // GHD's `authenticateWithBrowser` (web application flow)
+                    div()
+                        .id("sign-in-web-flow-link")
+                        .text_color(t.link)
+                        .cursor_pointer()
+                        .child("Use the browser flow instead (no code to type)")
+                        .on_click(|_, _, cx| {
+                            Dispatcher::sign_in_web_flow(Endpoint::github_com(), cx)
+                        }),
+                )
                 .into_any_element(),
             Some(SignInStep::Requesting) => div()
                 .text_color(t.text_secondary)
@@ -193,6 +204,31 @@ impl SignInDialog {
                 .text_color(t.text_secondary)
                 .child("Signing in…")
                 .into_any_element(),
+            Some(SignInStep::Browser { authorize_url }) => {
+                let url = authorize_url.clone();
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(SPACING())
+                    .child(
+                        "Authorise Corvane on the GitHub page that opened in your browser. \
+                         GitHub sends you back here when you are done.",
+                    )
+                    .child(
+                        button("sign-in-open-again", "Open GitHub again", cx)
+                            .child(
+                                octicon(Octicon::LinkExternal, t.secondary_button_text)
+                                    .ml(SPACING_HALF()),
+                            )
+                            .on_click(move |_, _, cx| cx.open_url(&url)),
+                    )
+                    .child(
+                        div()
+                            .text_color(t.text_secondary)
+                            .child("Waiting for GitHub to send the sign-in back to Corvane…"),
+                    )
+                    .into_any_element()
+            }
             Some(SignInStep::Error(message)) => div()
                 .flex()
                 .flex_col()

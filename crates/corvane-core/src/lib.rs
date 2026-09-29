@@ -35,6 +35,7 @@ pub mod toolbar_widths;
 pub mod tutorial;
 pub mod updater;
 pub mod watcher;
+pub mod web_flow;
 pub mod worktrees;
 
 pub use alive::{AliveEventData, AliveState};
