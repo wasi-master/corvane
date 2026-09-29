@@ -12,6 +12,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod markdown;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -234,6 +235,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         // text/html is htmlmixed in GHD (htmlmixed.js redefines the MIME)
         "text/xml" | "application/xml" => Some(xml()),
         "text/jsx" => Some(jsx()),
+        "text/markdown" | "text/x-markdown" => Some(markdown()),
         "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }
@@ -288,6 +290,12 @@ shared_mode!(
     /// xml.js, which htmlmixed replaces in GHD)
     xml_html,
     xml::XmlMode::new(xml::XmlConfig::html())
+);
+shared_mode!(
+    /// `codemirror/mode/markdown/markdown.js` (`text/markdown`,
+    /// `text/x-markdown`)
+    markdown,
+    markdown::Markdown::new()
 );
 shared_mode!(
     /// `codemirror/mode/jsx/jsx.js` (`text/jsx`)

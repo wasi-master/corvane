@@ -377,6 +377,12 @@ impl<'a> StringStream<'a> {
     pub fn look_ahead(&self, n: usize) -> Option<&'a str> {
         self.lines.get(self.line + n).copied()
     }
+    /// The line's index in the document: GHD makes one stream per line, so
+    /// this stands in for the stream's identity (markdown's
+    /// `stream != state.thisLine.stream`).
+    pub fn line(&self) -> usize {
+        self.line
+    }
 }
 
 /// Compile a regex once (`static` per call site).
