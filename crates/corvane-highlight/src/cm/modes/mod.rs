@@ -19,8 +19,6 @@ pub mod haxe;
 pub mod htmlembedded;
 pub mod htmlmixed;
 pub mod javascript;
-pub mod javascript;
-pub mod jsx;
 pub mod jsx;
 pub mod julia;
 pub mod luau;
