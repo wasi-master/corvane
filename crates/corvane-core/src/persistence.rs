@@ -15,6 +15,10 @@ pub struct Settings {
     pub sidebar_width: f32,
     /// History file-list width (`commitSummaryWidth`, default 250).
     pub commit_summary_width: f32,
+    /// Resized toolbar buttons (`branch-dropdown-width`,
+    /// `worktree-dropdown-width`); `None` is the 230 px default.
+    pub branch_dropdown_width: Option<f32>,
+    pub worktree_dropdown_width: Option<f32>,
     pub clone_dir: Option<PathBuf>,
     /// GHD `hasShownWelcomeFlow`.
     pub welcome_completed: bool,
@@ -229,6 +233,8 @@ impl Default for Settings {
         Self {
             theme: ThemeSetting::System,
             sidebar_width: 250.0,
+            branch_dropdown_width: None,
+            worktree_dropdown_width: None,
             commit_summary_width: 250.0,
             clone_dir: None,
             welcome_completed: false,

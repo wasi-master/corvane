@@ -1,9 +1,16 @@
 //! `#desktop-app-toolbar`: Repository / Branch / Push-Pull buttons.
 //! Geometry from `styles/ui/toolbar/{_toolbar,_button,_dropdown}.scss`.
+//!
+//! The worktree and branch buttons are resizable (`enableResizingToolbarButtons`,
+//! `ui/resizable/resizable.tsx`, `_resizable.scss`): a 6 px handle straddles
+//! their right edge; dragging sets the width within
+//! `corvane_core::toolbar_widths`, double-clicking resets it to 230 px. The
+//! width is saved when the drag ends (GHD writes it on every move).
 
 use std::cell::Cell;
 use std::rc::Rc;
 
+use corvane_core::toolbar_widths::{ConstrainedWidth, ToolbarWidths};
 use corvane_core::{AheadBehind, AppState, Dispatcher, Foldout, Tip};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -39,6 +46,65 @@ pub struct ToolbarButtonModel {
     pub spin: bool,
     /// `PullRequestBadge` on the branch button (`#N` + CI status).
     pub pr_badge: Option<PrBadge>,
+    /// Resizable worktree / branch button and its width constraints.
+    pub resize: Option<(ResizeTarget, ConstrainedWidth)>,
+}
+
+/// Which toolbar button a resize handle belongs to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ResizeTarget {
+    Worktree,
+    Branch,
+}
+
+#[derive(Clone, Copy)]
+struct ResizeDrag {
+    target: ResizeTarget,
+    start_x: Pixels,
+    start_width: f32,
+    constraint: ConstrainedWidth,
+}
+
+/// Drag state shared by the toolbar's resize handles (owned by the workspace).
+#[derive(Default)]
+pub struct ToolbarResize {
+    drag: Cell<Option<ResizeDrag>>,
+    /// The width being dragged to; saved to the settings on mouse up.
+    live: Cell<Option<(ResizeTarget, f32)>>,
+}
+
+impl ToolbarResize {
+    /// The width a button shows while it is being dragged.
+    pub fn live_width(&self, target: ResizeTarget) -> Option<f32> {
+        self.live
+            .get()
+            .filter(|(t, _)| *t == target)
+            .map(|(_, w)| w)
+    }
+}
+
+/// The worktree and branch button widths for this window
+/// (`updateResizableConstraints`), with a drag in progress applied.
+pub fn toolbar_widths(
+    state: &AppState,
+    window_width: Pixels,
+    sidebar_width: Pixels,
+    resize: &ToolbarResize,
+) -> (ToolbarWidths, Pixels, Pixels) {
+    let widths = corvane_core::toolbar_widths::toolbar_widths(
+        f32::from(window_width),
+        f32::from(sidebar_width),
+        worktree_button_visible(state),
+        state.settings.worktree_dropdown_width,
+        state.settings.branch_dropdown_width,
+    );
+    let worktree = resize
+        .live_width(ResizeTarget::Worktree)
+        .unwrap_or_else(|| widths.worktree.clamped());
+    let branch = resize
+        .live_width(ResizeTarget::Branch)
+        .unwrap_or_else(|| widths.branch.clamped());
+    (widths, px(worktree), px(branch))
 }
 
 /// `renderPullRequestInfo`
@@ -65,6 +131,7 @@ pub fn worktree_button_visible(state: &AppState) -> bool {
 pub fn toolbar_models(
     state: &AppState,
     sidebar_width: Pixels,
+    (widths, worktree_width, branch_width): (ToolbarWidths, Pixels, Pixels),
     pr_badge_bounds: &Rc<Cell<Bounds<Pixels>>>,
 ) -> Vec<ToolbarButtonModel> {
     let repo = state.selected_repository();
@@ -84,7 +151,7 @@ pub fn toolbar_models(
             icon: Octicon::FileDirectory,
             description: "Current Worktree".into(),
             title,
-            width: Some(TOOLBAR_BUTTON_WIDTH),
+            width: Some(worktree_width),
             foldout: Some(Foldout::Worktree),
             open: state.foldout == Some(Foldout::Worktree),
             disabled: false,
@@ -94,6 +161,7 @@ pub fn toolbar_models(
             progress: None,
             spin: false,
             pr_badge: None,
+            resize: Some((ResizeTarget::Worktree, widths.worktree)),
         }
     });
 
@@ -120,6 +188,7 @@ pub fn toolbar_models(
         progress: None,
         spin: false,
         pr_badge: None,
+        resize: None,
     };
 
     // `currentPullRequest`: the icon becomes the PR icon and the badge shows
@@ -165,7 +234,7 @@ pub fn toolbar_models(
         icon: branch_icon,
         description: branch_desc.into(),
         title: branch_title,
-        width: Some(TOOLBAR_BUTTON_WIDTH),
+        width: Some(branch_width),
         foldout: Some(Foldout::Branch),
         open: state.foldout == Some(Foldout::Branch),
         disabled: repo.is_none(),
@@ -175,6 +244,7 @@ pub fn toolbar_models(
         progress: None,
         spin: switching,
         pr_badge,
+        resize: Some((ResizeTarget::Branch, widths.branch)),
     };
 
     // Push/Pull (`PushPullButton.renderButton`)
@@ -215,6 +285,7 @@ pub fn toolbar_models(
         progress: None,
         spin: false,
         pr_badge: None,
+        resize: None,
     };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
@@ -324,8 +395,13 @@ pub fn toolbar_models(
     buttons
 }
 
-pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
+pub fn toolbar_button(
+    model: ToolbarButtonModel,
+    resize_state: &Rc<ToolbarResize>,
+    cx: &App,
+) -> AnyElement {
     let t = cx.ghd();
+    let resize = model.resize.zip(model.width);
     let hover_bg = t.toolbar_button_hover_background;
     let hover_text = t.toolbar_button_hover_text;
     let (bg, text, secondary) = if model.open {
@@ -540,6 +616,50 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
                 s.with_transformation(Transformation::rotate(Radians(std::f32::consts::PI)))
             }))
         });
+    if let Some(((target, constraint), width)) = resize {
+        // `.resizable-component` + `.resize-handle` (6 px, `right: -3px`)
+        let state = resize_state.clone();
+        return div()
+            .relative()
+            .flex_none()
+            .w(width)
+            .child(button.w_full())
+            .child(
+                div()
+                    .id(match target {
+                        ResizeTarget::Worktree => "toolbar-worktree-resize-handle",
+                        ResizeTarget::Branch => "toolbar-branch-resize-handle",
+                    })
+                    .absolute()
+                    .top_0()
+                    .bottom_0()
+                    .right(px(-3.))
+                    .w(px(6.))
+                    .occlude()
+                    .cursor(CursorStyle::ResizeLeftRight)
+                    .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
+                        cx.stop_propagation();
+                        if ev.click_count >= 2 {
+                            // `onReset`
+                            state.drag.set(None);
+                            state.live.set(None);
+                            Dispatcher::update_settings(cx, |s| match target {
+                                ResizeTarget::Worktree => s.worktree_dropdown_width = None,
+                                ResizeTarget::Branch => s.branch_dropdown_width = None,
+                            });
+                            return;
+                        }
+                        state.drag.set(Some(ResizeDrag {
+                            target,
+                            start_x: ev.position.x,
+                            start_width: f32::from(width),
+                            constraint,
+                        }));
+                        window.refresh();
+                    }),
+            )
+            .into_any_element();
+    }
     if !arrow {
         return button.into_any_element();
     }
@@ -575,8 +695,14 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
 }
 
 /// The toolbar row: 50 px tall including its 1 px bottom border.
-pub fn toolbar(buttons: Vec<ToolbarButtonModel>, cx: &App) -> impl IntoElement {
+pub fn toolbar(
+    buttons: Vec<ToolbarButtonModel>,
+    resize: &Rc<ToolbarResize>,
+    cx: &App,
+) -> impl IntoElement {
     let t = cx.ghd();
+    let dragging = resize.drag.get().is_some();
+    let listeners = resize.clone();
     div()
         .id("toolbar")
         .w_full()
@@ -589,5 +715,43 @@ pub fn toolbar(buttons: Vec<ToolbarButtonModel>, cx: &App) -> impl IntoElement {
         .border_b_1()
         .border_color(t.toolbar_border)
         .text_color(t.toolbar_text)
-        .children(buttons.into_iter().map(|b| toolbar_button(b, cx)))
+        .children(buttons.into_iter().map(|b| toolbar_button(b, resize, cx)))
+        .when(dragging, |d| {
+            // `handleDragMove` / `handleDragStop` on the document
+            d.child(
+                canvas(
+                    |_, _, _| {},
+                    move |_, _, window, _| {
+                        window.set_window_cursor_style(CursorStyle::ResizeLeftRight);
+                        let state = listeners.clone();
+                        window.on_mouse_event(move |ev: &MouseMoveEvent, _, window, _| {
+                            if let Some(drag) = state.drag.get() {
+                                let width = drag.constraint.clamp(
+                                    drag.start_width + f32::from(ev.position.x - drag.start_x),
+                                );
+                                state.live.set(Some((drag.target, width)));
+                                window.refresh();
+                            }
+                        });
+                        let state = listeners.clone();
+                        window.on_mouse_event(move |_: &MouseUpEvent, _, window, cx| {
+                            if state.drag.take().is_none() {
+                                return;
+                            }
+                            if let Some((target, width)) = state.live.take() {
+                                Dispatcher::update_settings(cx, |s| match target {
+                                    ResizeTarget::Worktree => {
+                                        s.worktree_dropdown_width = Some(width)
+                                    }
+                                    ResizeTarget::Branch => s.branch_dropdown_width = Some(width),
+                                });
+                            }
+                            window.refresh();
+                        });
+                    },
+                )
+                .absolute()
+                .size_0(),
+            )
+        })
 }

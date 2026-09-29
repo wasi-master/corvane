@@ -17,7 +17,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Worktrees (GHD 3.6 feature flag)
 
-- [ ] Resizable worktree / branch toolbar buttons (`enableResizingToolbarButtons`, `worktreeDropdownWidth`)
 - [ ] `mainWorktreePath` for unsafe (untrusted) repositories (the fallback to the main worktree when a linked worktree is deleted is built)
 
 ## Tutorial + onboarding extras
