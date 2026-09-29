@@ -34,3 +34,8 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 - `Window › Close Window` ⌘W hides the app (GPUI has no per-window hide with a Dock relaunch); GHD hides just the window.
 - Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD, but the buttons are not resizable (TODO.md).
+
+## Scrolling
+
+- Scrollbars reproduce Chromium's macOS scrollers (`crates/corvane-ui/src/scrollbar.rs`), overlay or legacy as `NSScroller.preferredScrollerStyle` says. Mouse-wheel ticks are animated with Chromium's smooth-scroll curve; Electron on macOS only does that when `NSScrollAnimationEnabled` is set, so GHD usually jumps 40 px per tick. Track clicks always page (87.5 % of the viewport) whatever "Click in the scroll bar to" says; ⌥-click jumps to the spot.
+- The diff list estimates rows it has not rendered yet at one line (20 px), so the thumb can shift slightly as wrapped lines come into view; GHD's react-virtualized list estimates too.
