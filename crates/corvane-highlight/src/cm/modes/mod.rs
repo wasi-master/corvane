@@ -21,6 +21,7 @@ pub mod haxe;
 pub mod htmlembedded;
 pub mod htmlmixed;
 pub mod javascript;
+mod js_syntax;
 pub mod jsx;
 pub mod julia;
 pub mod luau;
@@ -34,6 +35,7 @@ pub mod pig;
 pub mod powershell;
 pub mod properties;
 pub mod protobuf;
+pub mod pug;
 pub mod puppet;
 pub mod python;
 pub mod q;
@@ -249,6 +251,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-zig" => Some(Arc::new(zig::Zig)),
         "text/x-cmake" => Some(Arc::new(cmake::Cmake)),
         "text/x-protobuf" => Some(Arc::new(protobuf::Protobuf)),
+        "text/x-pug" | "text/x-jade" => Some(pug::pug()),
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
