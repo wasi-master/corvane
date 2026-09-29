@@ -481,6 +481,11 @@ pub enum SignInStep {
     },
     /// Token in hand; fetching the account.
     Verifying,
+    /// Browser (web application) flow: GitHub's authorize page is open;
+    /// waiting for the callback with the code.
+    Browser {
+        authorize_url: String,
+    },
     Error(String),
 }
 
@@ -490,6 +495,17 @@ pub struct SignInState {
     pub endpoint: String,
     pub step: SignInStep,
     pub cancel: Arc<std::sync::atomic::AtomicBool>,
+    /// The browser flow in progress (`SignInStore.oauthState`): CSRF state
+    /// and PKCE verifier the callback must match.
+    pub web_flow: Option<PendingWebFlow>,
+}
+
+/// GHD `oauthState`: the browser flow waiting for its callback.
+#[derive(Clone, Debug)]
+pub struct PendingWebFlow {
+    pub flow: corvane_github::auth::WebFlow,
+    /// The loopback listener, kept alive until the flow ends.
+    pub loopback: Option<Arc<corvane_github::auth::LoopbackListener>>,
 }
 
 impl PartialEq for SignInState {

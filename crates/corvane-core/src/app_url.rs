@@ -14,7 +14,7 @@
 //!   `open-repository` action - the repository root containing the path is
 //!   selected, or the worktree it belongs to switched to, or the Add Local
 //!   Repository dialog opens prefilled.
-//! - `oauth` is parsed as in GHD; the browser sign-in it completes is not
+//! - `oauth` completes the browser sign-in (`Dispatcher::complete_web_flow`); it is
 //!   built (device flow only), so it is logged and ignored.
 //!
 //! Deviations: GHD 3.6.6 has no `openLocalRepo` action (its CLI passes
@@ -268,9 +268,7 @@ impl Dispatcher {
         let action = parse_app_url(url);
         info!(?action, "URL action");
         match action {
-            UrlAction::OAuth { .. } => {
-                warn!("browser OAuth sign-in is not supported; use the device flow");
-            }
+            UrlAction::OAuth { code, state } => Self::complete_web_flow(code, state, cx),
             UrlAction::OpenRepositoryFromUrl {
                 url,
                 branch,

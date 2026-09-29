@@ -250,6 +250,7 @@ fn main() {
         //   notification-click:review|comment|checks-failed (what clicking such a
         //   notification does: its userInfo payload goes through the click handler)
         //   zoom-in | zoom-out | zoom-reset (View › Zoom, with the zoom overlay)
+        //   sign-in (the GitHub.com sign-in dialog)
         //   alive:review|comment|checks-failed[:api] (an Alive event for the sample
         //   pull requests through the notification handler; sample data unless :api)
         //   update-available[:brew][:about|:notes] (a sample update in the ready /
@@ -446,6 +447,10 @@ fn main() {
                             };
                             dev_samples::install_pull_requests(id, cx);
                             Dispatcher::simulate_alive_event(id, kind, data, cx);
+                        }
+                        // the sign-in dialog (device flow by default, browser flow link)
+                        ("sign-in", _) => {
+                            Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx)
                         }
                         ("test-notifications", Some(id)) => {
                             Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)

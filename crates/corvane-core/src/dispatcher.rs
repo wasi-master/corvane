@@ -2559,7 +2559,7 @@ impl Dispatcher {
 
     // ---- sign-in (GHD `SignInStore`) ----
 
-    fn set_sign_in_step(step: SignInStep, cx: &mut App) {
+    pub(crate) fn set_sign_in_step(step: SignInStep, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             if let Some(si) = s.sign_in.as_mut() {
                 si.step = step;
@@ -2580,6 +2580,7 @@ impl Dispatcher {
             s.sign_in = Some(SignInState {
                 endpoint: endpoint.api_base.clone(),
                 step: SignInStep::Requesting,
+                web_flow: None,
                 cancel: cancel.clone(),
             });
             cx.notify();
@@ -2693,11 +2694,22 @@ impl Dispatcher {
             s.sign_in = Some(SignInState {
                 endpoint: endpoint.api_base.clone(),
                 step: SignInStep::Verifying,
+                web_flow: None,
                 cancel: Arc::new(AtomicBool::new(false)),
             });
             cx.notify();
         });
         Self::finish_sign_in(endpoint, token, Vec::new(), cx);
+    }
+
+    /// `finish_sign_in` for the browser flow (`web_flow.rs`).
+    pub(crate) fn finish_sign_in_public(
+        endpoint: corvane_github::Endpoint,
+        token: String,
+        scopes: Vec<String>,
+        cx: &mut App,
+    ) {
+        Self::finish_sign_in(endpoint, token, scopes, cx);
     }
 
     /// Token → account (background), keychain + store, then close the dialog.

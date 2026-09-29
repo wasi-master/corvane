@@ -26,6 +26,11 @@ pub const CLIENT_ID: &str = match option_env!("CORVANE_GITHUB_CLIENT_ID") {
 /// Scopes GitHub Desktop requests, plus `read:user`/`user:email` for the account card.
 pub const SCOPES: &str = "repo workflow read:user user:email";
 
+/// The OAuth app's client secret for the browser flow's token exchange
+/// (GHD `ClientSecret`); `None` when the build has none - the exchange then
+/// relies on PKCE alone. Set with `CORVANE_GITHUB_CLIENT_SECRET` at build time.
+pub const CLIENT_SECRET: Option<&str> = option_env!("CORVANE_GITHUB_CLIENT_SECRET");
+
 pub const USER_AGENT: &str = concat!("Corvane/", env!("CARGO_PKG_VERSION"));
 
 /// Plain GET of a small binary resource (avatars); 5 s per phase, no auth.
