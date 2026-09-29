@@ -101,6 +101,72 @@ unsafe fn build_menu(items: &[MenuItem], actions: &mut Vec<Option<MenuAction>>) 
     }
 }
 
+thread_local! {
+    /// Parity-harness mode: every menu is recorded and, after being shown for
+    /// this long, closes itself (`cancelTracking`), so a remote-controlled
+    /// window is never stuck in AppKit's modal tracking loop.
+    static AUTO_DISMISS: Cell<Option<std::time::Duration>> = const { Cell::new(None) };
+    /// The last menu recorded in headless mode.
+    static RECORDED: std::cell::RefCell<Vec<MenuItem>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Harness mode: record every menu and close it after `hold` (the real
+/// `NSMenu` is still shown, so screen captures see GHD-comparable chrome).
+pub fn set_auto_dismiss(hold: Option<std::time::Duration>) {
+    AUTO_DISMISS.with(|h| h.set(hold));
+}
+
+/// The last shown menu as `label` lines: `-` for separators, `  ` indent
+/// for submenu items, a `[disabled]` / `[x]` suffix like GHD's item flags.
+pub fn recorded_menu() -> Vec<String> {
+    fn walk(items: &[MenuItem], depth: usize, out: &mut Vec<String>) {
+        for item in items {
+            let pad = "  ".repeat(depth);
+            match &item.kind {
+                MenuItemKind::Separator => out.push(format!("{pad}-")),
+                MenuItemKind::Action(_) | MenuItemKind::Submenu(_) => {
+                    let mut line = format!("{pad}{}", item.label);
+                    if !item.enabled {
+                        line.push_str(" [disabled]");
+                    }
+                    if item.checked == Some(true) {
+                        line.push_str(" [x]");
+                    }
+                    out.push(line);
+                    if let MenuItemKind::Submenu(children) = &item.kind {
+                        walk(children, depth + 1, out);
+                    }
+                }
+            }
+        }
+    }
+    let mut out = Vec::new();
+    RECORDED.with(|r| walk(&r.borrow(), 0, &mut out));
+    out
+}
+
+/// Run the recorded menu's item with this label (a click on it).
+pub fn pick_recorded(label: &str, window: &mut Window, cx: &mut App) -> bool {
+    fn find(items: &[MenuItem], label: &str) -> Option<MenuAction> {
+        items.iter().find_map(|item| match &item.kind {
+            MenuItemKind::Action(action) if item.label.as_ref() == label && item.enabled => {
+                Some(action.clone())
+            }
+            MenuItemKind::Submenu(children) => find(children, label),
+            _ => None,
+        })
+    }
+    let action = RECORDED.with(|r| find(&r.borrow(), label));
+    match action {
+        Some(action) => {
+            RECORDED.with(|r| r.borrow_mut().clear());
+            action(window, cx);
+            true
+        }
+        None => false,
+    }
+}
+
 /// Pop up a native menu with its top-left corner at `position` (window
 /// coordinates, top-left origin as GPUI reports them).
 pub fn show_context_menu(
@@ -109,6 +175,10 @@ pub fn show_context_menu(
     window: &mut Window,
     cx: &mut App,
 ) {
+    let auto_dismiss = AUTO_DISMISS.with(|h| h.get());
+    if auto_dismiss.is_some() {
+        RECORDED.with(|r| *r.borrow_mut() = items.clone());
+    }
     let ns_view = match window.window_handle().map(|h| h.as_raw()) {
         Ok(RawWindowHandle::AppKit(h)) => h.ns_view.as_ptr() as usize,
         _ => return,
@@ -125,6 +195,12 @@ pub fn show_context_menu(
                 let bounds: NSRect = msg_send![view, bounds];
                 let location = NSPoint::new(x, bounds.size.height - y);
                 CHOSEN.with(|c| c.set(None));
+                if let Some(hold) = auto_dismiss {
+                    // performed in NSRunLoopCommonModes, which includes the
+                    // event-tracking mode the menu's loop runs in
+                    let modes: id = msg_send![class!(NSArray), arrayWithObject: ns_string("kCFRunLoopCommonModes")];
+                    let _: () = msg_send![menu, performSelector: sel!(cancelTracking) withObject: nil afterDelay: hold.as_secs_f64() inModes: modes];
+                }
                 let _: bool = msg_send![menu, popUpMenuPositioningItem: nil atLocation: location inView: view];
                 let _: () = msg_send![menu, release];
                 CHOSEN.with(|c| c.take())

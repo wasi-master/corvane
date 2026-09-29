@@ -598,6 +598,13 @@ impl Dispatcher {
             .upstream_short()
             .and_then(|u| u.split_once('/').map(|(_, b)| b.to_string()));
         let remote_url = remote.url.clone();
+        // GHD `pushRepo(…, gitStore.tagsToPush)`: unpushed tags ride along
+        let tags: Vec<String> = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .map(|r| r.tags_to_push.clone())
+            .unwrap_or_default();
+        let pushed_tags = !tags.is_empty();
         let retry = RetryAction::Push {
             force_with_lease,
             branch: Some(branch.name.clone()),
@@ -612,7 +619,7 @@ impl Dispatcher {
                     &remote_name,
                     &local,
                     remote_branch.as_deref(),
-                    &[],
+                    &tags,
                     force_with_lease,
                     askpass.as_ref(),
                     &mut |value, text| {
@@ -657,6 +664,10 @@ impl Dispatcher {
             },
             move |result, cx| {
                 let pushed = result.is_ok();
+                // `clearTagsToPush` once the push went through
+                if pushed && pushed_tags {
+                    Self::update_tags_to_push(id, cx, Vec::clear);
+                }
                 if let Err(err) = result {
                     Self::handle_remote_error(
                         id,

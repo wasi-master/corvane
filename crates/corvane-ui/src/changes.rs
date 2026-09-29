@@ -102,6 +102,9 @@ pub struct ChangesSidebar {
     description_rects: RectCache,
     summary_focus: FocusHandle,
     description_focus: FocusHandle,
+    /// The commit options gear; inside the description box, so focusing it
+    /// lights the box's `:focus-within` border like in GHD.
+    commit_options_focus: FocusHandle,
     co_authors_focus: FocusHandle,
     pending_spell: Option<PendingSpell>,
     /// A handle typed with a trailing space, turned into a token on the next
@@ -239,6 +242,7 @@ impl ChangesSidebar {
             description_rects: Rc::new(RefCell::new(Vec::new())),
             summary_focus,
             description_focus,
+            commit_options_focus: cx.focus_handle(),
             co_authors_focus,
             pending_spell: None,
             pending_author: None,
@@ -2737,6 +2741,8 @@ impl ChangesSidebar {
 
     fn commit_form(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        let description_box_focused = self.description_focus.is_focused(window)
+            || self.commit_options_focus.is_focused(window);
         let avatar = self
             .state
             .read(cx)
@@ -2865,13 +2871,28 @@ impl ChangesSidebar {
                     ),
             )
             .child(
-                // `.description-focus-container`: textarea + action bar
+                // `.description-focus-container`: textarea + action bar, with
+                // the text field focus border + ring while anything inside
+                // has focus (`:focus-within`)
                 div()
                     .flex()
                     .flex_col()
                     .when(!co_authors_visible, |d| d.mb(SPACING()))
                     .border_1()
-                    .border_color(t.box_border_contrast)
+                    .border_color(if description_box_focused {
+                        t.focus
+                    } else {
+                        t.box_border_contrast
+                    })
+                    .when(description_box_focused, |d| {
+                        d.shadow(vec![BoxShadow {
+                            color: t.text_field_focus_shadow,
+                            offset: point(zpx(0.), zpx(0.)),
+                            blur_radius: zpx(0.),
+                            spread_radius: zpx(1.),
+                            inset: false,
+                        }])
+                    })
                     .rounded_t(BORDER_RADIUS())
                     .when(!co_authors_visible, |d| d.rounded_b(BORDER_RADIUS()))
                     .bg(t.box_background)
@@ -2944,6 +2965,7 @@ impl ChangesSidebar {
                             .child(
                                 div()
                                     .id("commit-options-button")
+                                    .track_focus(&self.commit_options_focus)
                                     .icon_button_label("Configure commit options")
                                     .w(zpx(18.))
                                     .h(zpx(17.))
@@ -2952,6 +2974,7 @@ impl ChangesSidebar {
                                     .justify_center()
                                     .cursor_pointer()
                                     .on_click(cx.listener(|this, ev: &ClickEvent, window, cx| {
+                                        window.focus(&this.commit_options_focus, cx);
                                         this.open_commit_options_menu(ev.position(), window, cx)
                                     }))
                                     .child(octicon(Octicon::Gear, t.text_secondary)),
@@ -3174,18 +3197,40 @@ fn file_row(
         .border_b_1()
         .border_color(t.box_border)
         .cursor_pointer()
-        .on_mouse_down(
-            MouseButton::Right,
+        .on_mouse_down(MouseButton::Right, {
+            // GHD `List.onRowMouseDown`: a right-click selects the row unless
+            // it is already part of the selection, then the menu opens
+            let list_focus = list_focus.clone();
+            let path = file.path.clone();
             move |ev: &MouseDownEvent, window, cx| {
                 cx.stop_propagation();
+                window.focus(&list_focus, cx);
+                if !is_selected && let Some(id) = repo_id {
+                    Dispatcher::select_file(id, path.clone(), cx);
+                }
                 let position = ev.position;
                 let file = file_for_menu.clone();
                 weak.update(cx, |this, cx| {
                     this.open_file_menu(file, position, window, cx)
                 })
                 .ok();
-            },
-        )
+            }
+        })
+        // GHD selects on mouse down (plain left button; ⌘ / ⇧ act on click)
+        .on_mouse_down(MouseButton::Left, {
+            let list_focus = list_focus.clone();
+            let path = file.path.clone();
+            move |ev: &MouseDownEvent, window, cx| {
+                let m = ev.modifiers;
+                if m.secondary() || m.shift || m.control {
+                    return;
+                }
+                window.focus(&list_focus, cx);
+                if !is_selected && let Some(id) = repo_id {
+                    Dispatcher::select_file(id, path.clone(), cx);
+                }
+            }
+        })
         .when(is_selected, |d| {
             if list_focused {
                 d.bg(t.box_selected_active_background)
