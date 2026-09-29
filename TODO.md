@@ -6,9 +6,8 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** Alive websocket producer for pull request notifications (`lib/stores/alive-store.ts`, the event handling in `notifications-store.ts`: PR cache lookup, API fetch of the review / comment / checks, commit-author and check-suite dedup) feeding `Dispatcher::notify_pull_request_event`; posting, clicks and the dialogs are built
-- [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
+- [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 
 ## Copilot (omitted by design)
