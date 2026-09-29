@@ -60,10 +60,9 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Diff viewer
 
-- [ ] Split (side-by-side) rendering (`showSideBySideDiff`); the Diff Settings radio shows "Split" disabled and the setting is persisted
-- [ ] Bidi-character / line-endings warnings above the diff (`DiffContentsWarning`)
-- [ ] Text selection + "Copy" in the diff context menu (GPUI rows are not selectable text)
+- [ ] Text selection + "Copy" in the diff context menu (GPUI's static text is not selectable; needs a custom selection layer across the virtualized rows)
 - [ ] Overlaid image modes letterbox both images with `ObjectFit::Contain` (GHD top-left aligns them); the "Difference" blend is computed on the CPU
+- [ ] Split mode always pairs deletions with additions per block like GHD; GHD's word-wrap of long lines inside a column is not replicated (rows keep one line)
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
 
 ## Settings (`ui/preferences/`)
