@@ -48,9 +48,10 @@ def main():
         p = out / stub
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("// replaced by runmode.node.js's require-cache shim\n")
-    # the codemirror-mode-{elixir,luau,zig} packages are ES modules
-    # (`import CodeMirror from "codemirror"`), resolved through package.json
-    # `main`: point codemirror at the shimmed lib, each mode at its entry file
+    # the codemirror-mode-* packages are ES modules. cmtok.js evaluates
+    # index.js ones (luau, zig) itself; codemirror-mode-elixir only ships a
+    # minified dist/*.m.js (`import e from"codemirror";…`) that node loads by
+    # package.json `main`, with "codemirror" resolving to the shimmed lib
     mains = {"codemirror": "lib/codemirror.js"}
     for pkg in sorted((out / "node_modules").glob("codemirror-mode-*")):
         entry = pkg / "index.js"
