@@ -320,7 +320,9 @@ pub fn github_from_remote(url: &str, ghes_hosts: &[String]) -> Option<GitHubRepo
     })
 }
 
-fn split_remote(url: &str) -> Option<(String, String)> {
+/// `(host, path)` of a remote URL (`https://`, `http://`, `ssh://`, `git://`
+/// or scp-style `git@host:path`); `None` for anything else (GHD `parseRemote`).
+pub fn split_remote(url: &str) -> Option<(String, String)> {
     let url = url.trim();
     if let Some(rest) = url.strip_prefix("git@") {
         // git@host:owner/name

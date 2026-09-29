@@ -122,6 +122,27 @@ fn main() {
         cx.on_action(|_: &CloneRepository, cx| {
             Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
         });
+        // CORVANE_DEV_ACCOUNTS="login@api-base,…" adds token-less accounts to
+        // this session only (dev/testing convenience for the account pickers).
+        if let Ok(spec) = std::env::var("CORVANE_DEV_ACCOUNTS") {
+            corvane_core::AppState::global(cx).update(cx, |s, cx| {
+                for (ix, item) in spec.split(',').enumerate() {
+                    if let Some((login, endpoint)) = item.split_once('@') {
+                        s.accounts.push(corvane_core::Account {
+                            endpoint: endpoint.to_string(),
+                            id: 1_000_000 + ix as u64,
+                            login: login.to_string(),
+                            name: None,
+                            avatar_url: None,
+                            emails: Vec::new(),
+                            scopes: Vec::new(),
+                            plan: None,
+                        });
+                    }
+                }
+                cx.notify();
+            });
+        }
         // CORVANE_ADD_REPO=/path adds a repository at launch (dev/testing convenience).
         if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
             Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
@@ -130,9 +151,9 @@ fn main() {
         if let Ok(spec) = std::env::var("CORVANE_CLONE")
             && let Some((url, path)) = spec.split_once('|')
         {
-            Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), cx);
+            Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), None, cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about|create|clone opens a dialog at
+        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url> opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
@@ -163,6 +184,13 @@ fn main() {
                         ("clone", _) => {
                             Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
                         }
+                        // `clone:<url>` opens the URL tab pre-filled
+                        (other, _) if other.starts_with("clone:") => Dispatcher::show_popup(
+                            Popup::CloneRepository {
+                                url: Some(other["clone:".len()..].to_string()),
+                            },
+                            cx,
+                        ),
                         _ => {}
                     }
                 });

@@ -4,7 +4,14 @@
 //! `cloneable-repository-filter-list.tsx`, grouped as in
 //! `group-repositories.ts`); the URL tab takes any clone URL. The local path
 //! is validated like `validateEmptyFolder` and errors show as a `DialogError`.
+//! Cloning first resolves the input through the API
+//! (`corvane_core::clone_info`, GHD `resolveCloneInfo`) for the canonical URL,
+//! the default branch and the "couldn't find that repository" error. With
+//! several accounts for a tab, the `AccountPicker` (`ui/account-picker.tsx`,
+//! `styles/ui/_account-picker.scss`, a `PopoverDropdown`) picks which one
+//! lists repositories.
 
+use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -13,13 +20,16 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::dialog::{DialogButton, dialog};
+use crate::dialog::{DialogButton, dialog_loading};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{button, dialog_error_banner, labeled, link_button, primary_button, text_box};
+use crate::widgets::{
+    avatar_image, avatar_lookup_url, button, dialog_error_banner, labeled, link_button,
+    primary_button, text_box,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
@@ -31,6 +41,8 @@ enum Tab {
 /// `RowHeight` of the cloneable repository list.
 const LIST_ROW_HEIGHT: Pixels = px(31.);
 const LIST_HEIGHT: Pixels = px(290.);
+/// `AccountPicker` `rowHeight`.
+const ACCOUNT_ROW_HEIGHT: Pixels = px(47.);
 
 /// One row of the flattened, filtered repository list.
 #[derive(Clone)]
@@ -53,6 +65,17 @@ pub struct CloneRepositoryDialog {
     selected_repo: Option<String>,
     /// `validateEmptyFolder` result for the current path.
     path_error: Option<&'static str>,
+    /// `resolveCloneInfo` is running (GHD `loading`).
+    resolving: bool,
+    /// `resolveCloneInfo` failed: the repository was not found.
+    resolve_error: Option<&'static str>,
+    /// `selectedAccount` per GitHub tab, as `(endpoint, login)`.
+    dotcom_account: Option<(String, String)>,
+    enterprise_account: Option<(String, String)>,
+    /// `AccountPicker` popover.
+    account_picker_open: bool,
+    account_filter: Entity<InputState>,
+    account_button_bounds: Rc<Cell<Bounds<Pixels>>>,
 }
 
 impl CloneRepositoryDialog {
@@ -82,13 +105,17 @@ impl CloneRepositoryDialog {
         });
         let filter =
             cx.new(|cx| InputState::new(window, cx).placeholder("Filter your repositories"));
+        let account_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.observe(&account_filter, |_, _, cx| cx.notify()).detach();
         cx.observe_in(&url, window, |this, _, window, cx| {
+            this.resolve_error = None;
             this.derive_path(window, cx);
             this.validate(cx);
             cx.notify()
         })
         .detach();
         cx.observe(&path, |this, _, cx| {
+            this.resolve_error = None;
             this.validate(cx);
             cx.notify()
         })
@@ -118,18 +145,69 @@ impl CloneRepositoryDialog {
             initial_path,
             selected_repo: None,
             path_error: None,
+            resolving: false,
+            resolve_error: None,
+            dotcom_account: None,
+            enterprise_account: None,
+            account_picker_open: false,
+            account_filter,
+            account_button_bounds: Rc::new(Cell::new(Bounds::default())),
         };
         this.ensure_loaded(cx);
         this
     }
 
-    fn account(&self, cx: &App) -> Option<Account> {
+    /// GHD `getAccountsForTab`.
+    fn accounts_for_tab(&self, cx: &App) -> Vec<Account> {
         let s = self.state.read(cx);
         match self.tab {
-            Tab::DotCom => s.dotcom_account().cloned(),
-            Tab::Enterprise => s.accounts.iter().find(|a| !a.is_dotcom()).cloned(),
-            Tab::Url => None,
+            Tab::DotCom => s
+                .accounts
+                .iter()
+                .filter(|a| a.is_dotcom())
+                .cloned()
+                .collect(),
+            Tab::Enterprise => s
+                .accounts
+                .iter()
+                .filter(|a| !a.is_dotcom())
+                .cloned()
+                .collect(),
+            Tab::Url => Vec::new(),
         }
+    }
+
+    /// GHD `getAccountForTab`: the picked account while it is still signed
+    /// in, else the tab's first account.
+    fn account(&self, cx: &App) -> Option<Account> {
+        let accounts = self.accounts_for_tab(cx);
+        let picked = match self.tab {
+            Tab::DotCom => self.dotcom_account.as_ref(),
+            Tab::Enterprise => self.enterprise_account.as_ref(),
+            Tab::Url => None,
+        };
+        picked
+            .and_then(|(endpoint, login)| {
+                accounts
+                    .iter()
+                    .find(|a| a.endpoint == *endpoint && a.login == *login)
+            })
+            .or_else(|| accounts.first())
+            .cloned()
+    }
+
+    /// `onSelectedAccountChanged`.
+    fn pick_account(&mut self, account: &Account, cx: &mut Context<Self>) {
+        let key = Some((account.endpoint.clone(), account.login.clone()));
+        match self.tab {
+            Tab::DotCom => self.dotcom_account = key,
+            Tab::Enterprise => self.enterprise_account = key,
+            Tab::Url => {}
+        }
+        self.account_picker_open = false;
+        self.selected_repo = None;
+        self.ensure_loaded(cx);
+        cx.notify();
     }
 
     /// Fetch the account's repositories once per dialog tab.
@@ -149,6 +227,8 @@ impl CloneRepositoryDialog {
 
     fn set_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) {
         self.tab = tab;
+        self.resolve_error = None;
+        self.account_picker_open = false;
         let handle = if tab == Tab::Url {
             self.url.read(cx).focus_handle(cx)
         } else {
@@ -238,13 +318,34 @@ impl CloneRepositoryDialog {
         Some((url, PathBuf::from(path)))
     }
 
+    /// GHD `clone`: `resolveCloneInfo`, then clone or show the error.
     fn submit(&mut self, cx: &mut Context<Self>) {
-        if self.path_error.is_some() {
+        if self.path_error.is_some() || self.resolving {
             return;
         }
-        if let Some((url, path)) = self.clone_target(cx) {
-            Dispatcher::clone_repository(url, path, cx);
-        }
+        let Some((_, path)) = self.clone_target(cx) else {
+            return;
+        };
+        let input = self.url.read(cx).value().trim().to_string();
+        self.resolving = true;
+        self.resolve_error = None;
+        cx.notify();
+        let weak = cx.weak_entity();
+        Dispatcher::resolve_clone_info(
+            input,
+            move |result, cx| match result {
+                Ok(info) => Dispatcher::clone_repository(info.url, path, info.default_branch, cx),
+                Err(message) => {
+                    weak.update(cx, |this, cx| {
+                        this.resolving = false;
+                        this.resolve_error = Some(message);
+                        cx.notify();
+                    })
+                    .ok();
+                }
+            },
+            cx,
+        );
     }
 
     /// `onSelectionChanged` on the repository list: the clone URL drives the
@@ -356,6 +457,254 @@ impl CloneRepositoryDialog {
                     .flex_none()
                     .on_click(cx.listener(|this, _, window, cx| this.choose(window, cx))),
             )
+    }
+
+    /// `.account-picker-row`: the `PopoverDropdown` button, "@login - host".
+    fn account_picker(&self, account: &Account, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let bounds = self.account_button_bounds.clone();
+        let hover_bg = t.secondary_button_hover_background;
+        div()
+            .flex()
+            .flex_col()
+            .w_full()
+            .child(
+                div()
+                    .mb(SPACING_THIRD)
+                    .text_size(FONT_SIZE)
+                    .child("Account"),
+            )
+            .child(
+                div()
+                    .id("clone-account-picker")
+                    .relative()
+                    .w_full()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(SPACING_HALF)
+                    .h(px(25.))
+                    .px(SPACING_HALF)
+                    .rounded(BORDER_RADIUS)
+                    .border_1()
+                    .border_color(t.secondary_button_border)
+                    .bg(t.secondary_button_background)
+                    .text_color(t.secondary_button_text)
+                    .text_size(FONT_SIZE)
+                    .cursor_pointer()
+                    .hover(move |s| s.bg(hover_bg))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.account_picker_open = !this.account_picker_open;
+                        cx.notify();
+                    }))
+                    .child(
+                        canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
+                            .absolute()
+                            .inset_0(),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .flex()
+                            .flex_row()
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .child(format!("@{}", account.login)),
+                            )
+                            .child(format!("\u{a0}-\u{a0}{}", account.host())),
+                    )
+                    .child(octicon(Octicon::TriangleDown, t.secondary_button_text)),
+            )
+            .into_any_element()
+    }
+
+    /// `.popover-dropdown-popover` with the account `SectionFilterList`.
+    fn account_popover(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let anchor = self.account_button_bounds.get();
+        let viewport = window.viewport_size();
+        let width = px(365.);
+        let x = anchor
+            .origin
+            .x
+            .min(viewport.width - width - px(8.))
+            .max(px(8.));
+        let y = anchor.origin.y + anchor.size.height + px(4.);
+        let query = self.account_filter.read(cx).value().trim().to_lowercase();
+        let current = self.account(cx);
+        let accounts: Vec<Account> = self
+            .accounts_for_tab(cx)
+            .into_iter()
+            .filter(|a| {
+                query.is_empty()
+                    || corvane_core::filter::fuzzy_score(&query, &a.login).is_some()
+                    || corvane_core::filter::fuzzy_score(&query, &a.endpoint).is_some()
+            })
+            .collect();
+        let selected_bg = t.box_selected_active_background;
+        let selected_text = t.box_selected_active_text;
+        let hover_bg = t.list_item_hover_background;
+        let close = cx.listener(|this, _, _, cx| {
+            this.account_picker_open = false;
+            cx.notify();
+        });
+        deferred(
+            anchored().position(point(px(0.), px(0.))).child(
+                div()
+                    .id("clone-account-layer")
+                    .relative()
+                    .w(viewport.width)
+                    .h(viewport.height)
+                    .child(
+                        div()
+                            .id("clone-account-overlay")
+                            .absolute()
+                            .inset_0()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.account_picker_open = false;
+                                    cx.notify();
+                                }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("clone-account-popover")
+                            .absolute()
+                            .left(x)
+                            .top(y)
+                            .w(width)
+                            .min_h(px(200.))
+                            .max_h(px(500.))
+                            .flex()
+                            .flex_col()
+                            .bg(t.box_background)
+                            .text_color(t.text)
+                            .text_size(FONT_SIZE)
+                            .border_1()
+                            .border_color(t.box_border)
+                            .rounded(BORDER_RADIUS)
+                            .shadow_lg()
+                            .overflow_hidden()
+                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                            // `.popover-dropdown-header`
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap(SPACING)
+                                    .p(SPACING)
+                                    .border_b_1()
+                                    .border_color(t.box_border)
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .child("Choose an account"),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("clone-account-close")
+                                            .cursor_pointer()
+                                            .tooltip(crate::widgets::tooltip("Close"))
+                                            .on_click(close)
+                                            .child(octicon(Octicon::X, t.text_secondary)),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .flex_none()
+                                    .mt(SPACING)
+                                    .mx(SPACING)
+                                    .mb(SPACING_HALF)
+                                    .child(text_box(
+                                        "clone-account-filter",
+                                        &self.account_filter,
+                                        Some(octicon(Octicon::Search, t.text_secondary)),
+                                        window,
+                                        cx,
+                                    )),
+                            )
+                            .child(
+                                div()
+                                    .id("clone-account-list")
+                                    .flex_1()
+                                    .min_h_0()
+                                    .overflow_y_scroll()
+                                    .flex()
+                                    .flex_col()
+                                    .children(accounts.into_iter().map(|account| {
+                                        let is_selected = current.as_ref().is_some_and(|c| {
+                                            c.endpoint == account.endpoint
+                                                && c.login == account.login
+                                        });
+                                        let avatar = account
+                                            .avatar_url
+                                            .as_deref()
+                                            .and_then(|url| avatar_lookup_url(url, cx));
+                                        let (fg, secondary) = if is_selected {
+                                            (selected_text, selected_text)
+                                        } else {
+                                            (t.text, t.text_secondary)
+                                        };
+                                        let picked = account.clone();
+                                        div()
+                                            .id(SharedString::from(format!(
+                                                "clone-account-{}@{}",
+                                                account.login, account.endpoint
+                                            )))
+                                            .h(ACCOUNT_ROW_HEIGHT)
+                                            .flex_none()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .px(SPACING)
+                                            .cursor_pointer()
+                                            .text_color(fg)
+                                            .when(is_selected, |d| d.bg(selected_bg))
+                                            .when(!is_selected, move |d| {
+                                                d.hover(move |s| s.bg(hover_bg))
+                                            })
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.pick_account(&picked, cx)
+                                            }))
+                                            .child(avatar_image(avatar, px(32.), cx))
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .min_w_0()
+                                                    .mx(SPACING)
+                                                    .flex()
+                                                    .flex_col()
+                                                    .child(
+                                                        div()
+                                                            .truncate()
+                                                            .font_weight(FontWeight::SEMIBOLD)
+                                                            .child(format!("@{}", account.login)),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .truncate()
+                                                            .font_weight(FontWeight::LIGHT)
+                                                            .text_size(FONT_SIZE_SM)
+                                                            .text_color(secondary)
+                                                            .child(account.host()),
+                                                    ),
+                                            )
+                                    }))
+                                    .with_scrollbar(),
+                            ),
+                    ),
+            ),
+        )
+        .with_priority(25)
+        .into_any_element()
     }
 
     fn account_tab(&self, enterprise: bool, window: &Window, cx: &Context<Self>) -> AnyElement {
@@ -553,10 +902,16 @@ impl CloneRepositoryDialog {
             .with_scrollbar()
             .into_any_element()
         };
+        let picker =
+            (self.accounts_for_tab(cx).len() > 1).then(|| self.account_picker(&account, cx));
+        let popover = (picker.is_some() && self.account_picker_open)
+            .then(|| self.account_popover(window, cx));
         div()
             .flex()
             .flex_col()
             .gap(SPACING)
+            .children(picker)
+            .children(popover)
             .child(
                 // filter row: text box + refresh (`renderPostFilter`)
                 div()
@@ -645,7 +1000,8 @@ fn highlighted(text: &str, query_lower: &str) -> Div {
 
 impl Render for CloneRepositoryDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let can_clone = self.path_error.is_none() && self.clone_target(cx).is_some();
+        let can_clone =
+            self.path_error.is_none() && !self.resolving && self.clone_target(cx).is_some();
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
         let selected = match self.tab {
@@ -659,11 +1015,12 @@ impl Render for CloneRepositoryDialog {
             Tab::Enterprise => self.account_tab(true, window, cx),
             Tab::Url => self.url_tab(window, cx).into_any_element(),
         };
-        let error = self.path_error;
+        let error = self.resolve_error.or(self.path_error);
 
-        dialog(
+        dialog_loading(
             "clone-repository",
             "Clone a Repository",
+            self.resolving,
             div()
                 .flex()
                 .flex_col()

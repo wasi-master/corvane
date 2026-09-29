@@ -233,14 +233,20 @@ pub fn clone(
     git: Arc<GitBinary>,
     url: &str,
     path: &Path,
+    default_branch: Option<&str>,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(crate::error::GitError::Spawn)?;
     }
     info!(url, path = %path.display(), "cloning");
-    GitCommand::new(git)
-        .args(["clone", "--progress", "--recurse-submodules", "--", url])
+    let mut cmd = GitCommand::new(git);
+    // GHD `clone`: `-c init.defaultBranch=<the repository's default branch>`
+    // so an empty repository starts on the right branch
+    if let Some(branch) = default_branch {
+        cmd = cmd.args(["-c".to_string(), format!("init.defaultBranch={branch}")]);
+    }
+    cmd.args(["clone", "--progress", "--recurse-submodules", "--", url])
         .arg(path)
         .run_streaming(|line| on_progress(parse_clone_progress(line)))?;
     Ok(())

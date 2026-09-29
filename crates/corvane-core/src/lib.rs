@@ -3,6 +3,7 @@
 
 pub mod autocomplete;
 pub mod avatars;
+pub mod clone_info;
 pub mod commit_status;
 pub mod compare;
 pub mod dispatcher;
