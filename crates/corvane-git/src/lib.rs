@@ -82,7 +82,9 @@ pub use remote_ops::{
     parse_progress_line, pull, pull_with_rebase, push, remote_failure, remove_remote,
     set_remote_url, update_remote_head,
 };
-pub use repo::{ahead_behind, open_repository, symmetric_ahead_behind};
+pub use repo::{
+    ahead_behind, open_repository, symmetric_ahead_behind, top_level_working_directory,
+};
 pub use status::{get_status, map_status, parse_porcelain_v2};
 pub use worktree::{
     add_worktree, list_worktrees, move_worktree, parse_worktree_porcelain, remove_worktree,

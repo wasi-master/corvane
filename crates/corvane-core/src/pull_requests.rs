@@ -87,7 +87,7 @@ fn store_key(key: &str) -> String {
 }
 
 /// `IAPIPullRequest` → `PullRequest` (+ whether it is still open).
-fn convert_pull_request(client: &Client, pr: ApiPullRequest) -> (PullRequest, bool) {
+pub(crate) fn convert_pull_request(client: &Client, pr: ApiPullRequest) -> (PullRequest, bool) {
     let open = pr.state == "open";
     let convert_ref = |r: corvane_github::api::ApiPullRequestRef| PullRequestRef {
         ref_name: r.ref_name,

@@ -95,6 +95,7 @@ impl Dispatcher {
             shells: Vec::new(),
             global_git: None,
             repo_settings: None,
+            pending_open_in_desktop: None,
         });
         AppState::install(state.clone(), cx);
         Self::detect_integrations(cx);
@@ -257,6 +258,16 @@ impl Dispatcher {
     /// Validate `path` is a git repository (background), then add + select it.
     /// Existing entries for the same path are selected instead of duplicated.
     pub fn add_repository(path: PathBuf, cx: &mut App) {
+        Self::add_repository_then(path, cx, |_, _| {});
+    }
+
+    /// [`Dispatcher::add_repository`], then `then` with the repository's id
+    /// once it is added (or found) and selected.
+    pub fn add_repository_then(
+        path: PathBuf,
+        cx: &mut App,
+        then: impl FnOnce(u64, &mut App) + 'static,
+    ) {
         let state = Self::state(cx);
         if let Some(existing) = state
             .read(cx)
@@ -266,6 +277,7 @@ impl Dispatcher {
         {
             let id = existing.id;
             Self::select_repository(id, cx);
+            then(id, cx);
             return;
         }
         let probe = cx
@@ -294,6 +306,7 @@ impl Dispatcher {
                         id
                     });
                     Self::select_repository(id, cx);
+                    then(id, cx);
                 }
                 Err(GitError::NotARepository(path)) => Self::show_error(
                     "Not a git repository",
@@ -2065,7 +2078,8 @@ impl Dispatcher {
                     cx.notify();
                 });
                 match result {
-                    Ok(()) => Self::add_repository(path, cx),
+                    // an `openRepo` URL waiting for this clone continues
+                    Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
                     Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
                 }
             });
@@ -2773,7 +2787,7 @@ pub(crate) fn persist_repositories(s: &mut AppState) {
     }
 }
 
-fn same_path(a: &Path, b: &Path) -> bool {
+pub(crate) fn same_path(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,

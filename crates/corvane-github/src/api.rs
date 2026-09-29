@@ -837,6 +837,11 @@ impl Client {
         }
     }
 
+    /// `fetchPullRequest`: `GET /repos/{owner}/{name}/pulls/{number}`.
+    pub fn pull_request(&self, owner: &str, name: &str, number: u64) -> Result<ApiPullRequest> {
+        self.get_json(&format!("repos/{owner}/{name}/pulls/{number}"))
+    }
+
     /// `fetchAllOpenPullRequests`: every open pull request, newest page first.
     pub fn open_pull_requests(&self, owner: &str, name: &str) -> Result<Vec<ApiPullRequest>> {
         let mut out = Vec::new();

@@ -1,6 +1,6 @@
 //! Read-side repository inspection via gitoxide.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use corvane_models::{AheadBehind, Branch, BranchKind, Identity, Remote, RepositoryInfo, Tip};
@@ -9,6 +9,14 @@ use gix::bstr::ByteSlice;
 use crate::detect::GitBinary;
 use crate::error::{GitError, Result};
 use crate::process::GitCommand;
+
+/// GHD `getRepositoryType` → `topLevelWorkingDirectory`: the working
+/// directory containing `path` (a subdirectory of a repository resolves to
+/// its root, as `git rev-parse --show-toplevel`); `None` outside one.
+pub fn top_level_working_directory(path: &Path) -> Option<PathBuf> {
+    let repo = gix::discover(path).ok()?;
+    repo.workdir().map(Path::to_path_buf)
+}
 
 /// Open `path` (a worktree or `.git` dir) and collect tip, branches, remotes
 /// and identity. Cheap enough to run on every refresh.
