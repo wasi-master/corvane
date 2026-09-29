@@ -1,0 +1,154 @@
+@charset "UTF-8";
+@import url("reset.css") screen and (min-width: 600px);
+@import 'print.css' print;
+@namespace svg url(http://www.w3.org/2000/svg);
+
+/* ==========================================================================
+   Base styles — ünïcödé comment spanning
+   several lines
+   ========================================================================== */
+
+:root {
+  --primary-color: #0366d6;
+  --secondary: rgb(36, 41, 46);
+  --spacing-unit: 8px;
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --empty:;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	font-family: var(--font-stack);
+	font-size: 14px;
+	line-height: 1.5;
+	color: #24292e;
+	background-color: white !important;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+a:hover, a:focus-visible { text-decoration: underline; color: #0366D6; }
+a[href^="https://"]::after { content: " ↗"; }
+input[type='checkbox' i]:checked + label { font-weight: 600; }
+ul > li ~ li { margin-top: .5em; }
+a[class|=top], a[title~=flower], a[x$="y"], a[x*=z] { color: inherit; }
+div|span, svg|circle { fill: currentColor; }
+p:not(.lead):nth-child(2n + 1)::first-line { text-transform: uppercase; }
+.btn.btn-primary:disabled, #main-nav .item.active { opacity: 0.65; cursor: not-allowed; }
+.card-header>h2 { margin: -1px -1px 0; }
+.café { color: rebeccapurple; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-gap: calc(var(--spacing-unit) * 2);
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.5);
+  transition: opacity 0.3s ease-in-out, transform .2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: url(images/bg.png) no-repeat center / cover, linear-gradient(to right, rgba(255,255,255,0) 0%, #fff 100%);
+  width: calc(100% - 2 * var(--spacing-unit));
+  color: #abcdefgh;
+  border: 1px solid #ccc;
+  z-index: -1;
+  margin: -0.5em auto 1e3px;
+  unknown-property: foo;
+  filter: drop-shadow(0 0 2px hsla(210, 50%, 40%, .5));
+  zoom: 1;
+  COLOR: RED;
+  -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.2);
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+  font: italic small-caps bold 12px/30px Georgia, serif;
+}
+
+.quote::before { content: "\201C"; }
+.escaped { content: "a \"quoted\" string"; font-family: 'Open Sans', "Helvetica Neue"; }
+.continued { content: "line one \
+line two"; }
+.unterminated { content: "this string never ends
+}
+.next-line { color: red; }
+
+@media screen and (max-width: 768px), print and (orientation: landscape) {
+  .sidebar { display: none; }
+  .content { width: 100%; }
+}
+
+@media only screen and (min-resolution: 2dppx) and (prefers-color-scheme: dark) {
+  body { background: #0d1117; color: #c9d1d9; }
+}
+
+@media not all and (monochrome) { a { color: blue } }
+
+@supports (display: grid) and (not (display: inline-grid)) {
+  .grid { float: none; }
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter.woff2") format("woff2"),
+       url('/fonts/Inter.woff') format("woff");
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131;
+  bogus-descriptor: 1;
+}
+
+@counter-style thumbs {
+  system: cyclic;
+  symbols: "✓";
+  suffix: " ";
+  color: red;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  50% { transform: rotate(180deg); }
+  to { transform: rotate(360deg); }
+}
+
+@-webkit-keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@page :first {
+  margin: 1in;
+}
+
+@-moz-document url-prefix() {
+  .firefox-only { color: red; }
+}
+
+@document url(http://www.w3.org/), url-prefix("http://www.w3.org/Style/"), domain(mozilla.org), regexp("https:.*") {
+  body { color: purple; }
+}
+
+@layer base, components;
+@container sidebar (min-width: 400px) { .card { display: flex; } }
+@viewport { width: device-width; }
+
+.url-unterminated { background: url(foo.png
+  ) no-repeat; }
+
+.selector::-webkit-scrollbar { width: 8px; }
+.selector::-moz-selection { background: highlight; }
+table td:first-child:not(:last-child) { border-right: 0 }
+.a{color:red}.b{color:blue}
+#id-only { top: 0 }
+@media print { #header, .nav { display: none } }
+.x { width: 10px - 2px; margin: - 4px; }
+.y { color: red }}
+.z { grid-area: 1 / 2 / 3 / 4; }
+.stale { color - }
+.stale-hash { #abc - }
+a { -: 1; top:-2px; left:-.5em; --x:-y; -moz-foo-: bar }
+@component foo { color: red }
+@media screen and (weird-feature: 1) and (color) { a { b: c } }
+a[data-x='1'] , b ~ c + d > e { color : red ; }
+.unclosed-url { background: url(  "a.png"  ) }
+@import url(foo.css) screen;
+/* unterminated comment at the end
+.never { color: red; }
