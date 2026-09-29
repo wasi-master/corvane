@@ -38,6 +38,8 @@ pub struct SelectedCommitView {
     file_list_width: Pixels,
     /// The file list takes focus on click so ⌘9 / ⌘8 resize it.
     file_list_focus: FocusHandle,
+    /// `file_list_focus` held focus at the last render (active selection colours).
+    file_list_focused: bool,
 }
 
 impl SelectedCommitView {
@@ -62,6 +64,7 @@ impl SelectedCommitView {
             resizable,
             file_list_width,
             file_list_focus: cx.focus_handle(),
+            file_list_focused: false,
         }
     }
 
@@ -412,6 +415,8 @@ impl SelectedCommitView {
         }
         let count = files.len();
         let files = std::rc::Rc::new(files);
+        let focus = self.file_list_focus.clone();
+        let focused = self.file_list_focused;
         div()
             .size_full()
             .flex()
@@ -456,7 +461,7 @@ impl SelectedCommitView {
                                     let file = &files[ix];
                                     let is_selected =
                                         selected.as_deref() == Some(file.path.as_str());
-                                    commit_file_row(id, file, is_selected, cx)
+                                    commit_file_row(id, file, is_selected, &focus, focused, cx)
                                 })
                                 .collect()
                         })
@@ -541,7 +546,14 @@ fn open_commit_file_menu(
     let _ = (items, position, window);
 }
 
-fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &App) -> AnyElement {
+fn commit_file_row(
+    id: u64,
+    file: &CommittedFileChange,
+    is_selected: bool,
+    focus: &FocusHandle,
+    list_focused: bool,
+    cx: &App,
+) -> AnyElement {
     let t = cx.ghd();
     let hover_bg = t.list_item_hover_background;
     let (icon, color) = status_icon(file.status.kind, t);
@@ -550,17 +562,30 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
     div()
         .id(SharedString::from(format!("commit-file-{}", file.path)))
         // GHD `SelectedCommits.onContextMenu`
-        .on_mouse_down(
-            MouseButton::Right,
+        .on_mouse_down(MouseButton::Right, {
+            let focus = focus.clone();
             move |ev: &MouseDownEvent, window, cx| {
                 cx.stop_propagation();
-                // a right-click selects the file first (`List.onRowMouseDown`)
+                // a right-click focuses the list and selects the file first
+                // (`List.onRowMouseDown`)
+                window.focus(&focus, cx);
                 if !is_selected {
                     Dispatcher::select_commit_file(id, menu_path.clone(), cx);
                 }
                 open_commit_file_menu(id, &menu_path, ev.position, window, cx);
-            },
-        )
+            }
+        })
+        // presses select at once and focus the list
+        .on_mouse_down(MouseButton::Left, {
+            let focus = focus.clone();
+            let path = file.path.clone();
+            move |_, window, cx| {
+                window.focus(&focus, cx);
+                if !is_selected {
+                    Dispatcher::select_commit_file(id, path.clone(), cx);
+                }
+            }
+        })
         .a11y_row(
             format!(
                 "{}, {}",
@@ -582,8 +607,13 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
         .border_color(t.box_border)
         .cursor_pointer()
         .when(is_selected, |d| {
-            d.bg(t.box_selected_background)
-                .text_color(t.box_selected_text)
+            if list_focused {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
+            } else {
+                d.bg(t.box_selected_background)
+                    .text_color(t.box_selected_text)
+            }
         })
         .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
         .on_click(move |_, _, cx| Dispatcher::select_commit_file(id, path.clone(), cx))
@@ -601,10 +631,10 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
                         .min_w_0()
                         .truncate()
                         // `.list-item.selected .dirname` inherits the row colour
-                        .text_color(if is_selected {
-                            t.box_selected_text
-                        } else {
-                            t.text_secondary
+                        .text_color(match (is_selected, list_focused) {
+                            (true, true) => t.box_selected_active_text,
+                            (true, false) => t.box_selected_text,
+                            _ => t.text_secondary,
                         })
                         .child(file.directory().to_string()),
                 )
@@ -621,7 +651,8 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
 }
 
 impl Render for SelectedCommitView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.file_list_focused = self.file_list_focus.is_focused(window);
         let author_email = self.state.read(cx).selected_state().and_then(|rs| {
             let sha = rs.selected_commit.as_ref()?;
             rs.commits
