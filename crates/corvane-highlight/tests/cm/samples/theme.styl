@@ -1,0 +1,286 @@
+// Stylus theme for Corvane — ünïcode comment
+/* Block comment
+   spanning lines */
+/* single-line block */
+
+@import 'nib'
+@require "mixins/base"
+@charset "utf-8"
+
+$primary = #0366d6
+$secondary = #F0F
+$accent = #abcd
+$alpha-color = #11223344
+$bad-hex = #12345
+$hyphen = #abc-def
+font-stack = Helvetica, Arial, sans-serif
+base-size = 14px
+line-ratio = 1.5
+negative = -0.5em
+half = .5
+percent = 50%
+$map = {
+  small: 10px,
+  large: 20px
+}
+$list = 1 2 3
+$map.small
+$list[0]
+
+border-radius(n)
+  -webkit-border-radius n
+  -moz-border-radius n
+  border-radius n
+
+button-variant($color, $bg = white)
+  color $color
+  background $bg !important
+  border 1px solid darken($bg, 10%) !optional
+  &:hover
+    background lighten($bg, 5%)
+  &.active
+    box-shadow inset 0 1px 2px rgba(0, 0, 0, .15)
+
+body
+  font 12px Helvetica, Arial, sans-serif
+  font-family "Segoe UI", Roboto
+  margin 0 auto
+  padding: 10px 20px;
+  color: $primary;
+  background url(images/bg.png) no-repeat
+  background-image url("quoted.png")
+  background-image url( 'spaced.png' )
+  cursor not-allowed
+
+a
+  color blue
+  text-decoration none
+  &:hover
+    text-decoration underline
+  &__element
+    display block
+  &--modifier
+    display inline-block
+  & > span
+    margin-left 4px
+  /.root-ref
+    color red
+
+#header
+  width 100%
+  .nav
+    list-style none
+    li
+      float left
+      a
+        padding 5px
+
+.btn, .button,
+input[type="submit"]
+  button-variant(#fff, #333)
+  border-radius(4px)
+  +block-mixin()
+    color red
+
+ul li:first-child
+  margin-top 0
+ul li:nth-child(2n + 1)
+  background #eee
+
+div::before
+  content ""
+  content "escaped \" quote"
+  content 'single \' quote'
+
+*
+  box-sizing border-box
+* + *
+  margin-top 1em
+
+table
+  border-collapse collapse
+  td, th
+    padding 4px
+
+pre
+  white-space pre-wrap
+
+@media screen and (max-width: 768px)
+  .sidebar
+    display none
+@media print
+  body
+    color black
+@media only screen and (min-width: 100px) and (orientation: landscape)
+  a
+    color red
+@media not all and (monochrome)
+  b
+    font-weight bold
+
+@font-face
+  font-family 'Icons'
+  src url('icons.woff2') format('woff2')
+
+@keyframes pulse
+  0%
+    opacity 1
+  50%
+    opacity .5
+  100%
+    opacity 1
+
+@-webkit-keyframes spin
+  from
+    transform rotate(0deg)
+  to
+    transform rotate(360deg)
+
+@supports (display: grid)
+  .grid
+    display grid
+
+.placeholder
+  @extend .btn
+  @extends $placeholder
+
+$placeholder
+  color red
+
+sum(a, b)
+  a + b
+
+add(a, b = a)
+  a + b
+
+if base-size > 10px
+  body
+    font-size base-size
+else if base-size == 10px
+  body
+    font-size 10px
+else
+  body
+    font-size 12px
+
+unless disabled
+  .x
+    opacity 1
+
+for i in 1..5
+  .col-{i}
+    width (100% / i)
+
+for key, value in $map
+  .m-{key}
+    margin value
+
+.postfix
+  color red if dark
+  padding 0 unless compact
+
+vendor(prop, args)
+  -webkit-{prop} args
+  {prop} args
+
+.interp-{$name}
+  {$prop}-top 1px
+
+.ops
+  width 10px + 2px * 3 - 1px / 2 % 4
+  height 2 ** 3
+  a = b
+  a ?= c
+  a := d
+  a += 1
+  a -= 1
+  a *= 2
+  a /= 2
+  flag = true && false || !true
+  eq = 1 == 1 and 2 != 3 or not false
+  cmp = 1 < 2 and 2 > 1 and 1 <= 1 and 1 >= 1
+  isnt = a isnt b
+  isa = a is a 'unit'
+  def = b is defined
+  tern = x ? y : z
+  range = 1...10
+  inside = 1 in (1 2 3)
+  tilde ~ sibling
+
+.url-prefix
+  @-moz-document url-prefix()
+    color red
+
+.vendor
+  -webkit-transition all .3s ease
+  -ms-filter "progid"
+  -o-transform none
+
+.return-func()
+  return 42
+
+.property-lookup
+  width 100px
+  height @width
+
+#{selector}
+  color red
+
+.unterminated
+  content "no closing quote
+  color green
+  background url(multi
+  line) no-repeat
+  content "backslash at end \
+continued"
+
+.emoji
+  content "🎉 ✓"
+  font-family Ünïcode
+
+.a:hover .b
+  x 1
+
+em
+  font-style italic
+b
+  i = 1
+col
+  s 2
+
+.box
+  a
+    color red
+  width: calc(100% - 10px)
+  filter: alpha(opacity=50)
+  transform: translate(-50%, -50%) scale(1.5)
+
+	.tabbed
+	  color red
+
+@media screen, print and zoom, tv, only braille
+  a
+    color red
+@media (min-width: 100px) and (max-height: 50em)
+  .m
+    width 1px
+@document url(http://example.com), domain(example.com), regexp("https:.*")
+  body
+    color red
+@media {$query}
+  a
+    b 1
+.keys
+  constructor 1
+  __proto__ 2
+  value Constructor
+  width auto
+  color transparent
+  color aliceblue
+@keyframes fade
+  from
+    opacity 0
+  to
+    opacity 1
+h1
+  color red

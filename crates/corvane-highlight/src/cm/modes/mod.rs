@@ -8,6 +8,7 @@ pub mod asciiarmor;
 pub mod clike;
 pub mod clojure;
 pub mod cmake;
+pub mod coffeescript;
 pub mod crystal;
 pub mod css;
 pub mod cypher;
@@ -24,6 +25,7 @@ pub mod javascript;
 pub mod jsx;
 pub mod julia;
 pub mod luau;
+pub mod markdown;
 pub mod mllike;
 pub mod multiplex;
 pub mod oz;
@@ -48,6 +50,7 @@ pub mod smalltalk;
 pub mod sparql;
 pub mod sql;
 pub mod stex;
+pub mod stylus;
 pub mod swift;
 pub mod toml;
 pub mod vb;
@@ -314,6 +317,11 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-php" => Some(php::x_php()),
         "text/xml" | "application/xml" => Some(xml()),
         "text/jsx" => Some(jsx()),
+        "text/markdown" | "text/x-markdown" => Some(markdown()),
+        "application/vnd.coffeescript" | "text/x-coffeescript" | "text/coffeescript" => {
+            Some(cached!(coffeescript::CoffeeScript))
+        }
+        "text/x-styl" => Some(cached!(stylus::Stylus)),
         "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }
@@ -364,6 +372,12 @@ shared_mode!(
     xml::XmlMode::new(xml::XmlConfig::xml())
 );
 shared_mode!(
+    /// `{name: "xml", htmlMode: true}`: xml.js's own `text/html` definition,
+    /// which markdown gets when htmlmixed is not loaded
+    xml_html,
+    xml::XmlMode::new(xml::XmlConfig::html())
+);
+shared_mode!(
     /// `codemirror/mode/htmlmixed/htmlmixed.js` (`text/html`)
     htmlmixed,
     htmlmixed::HtmlMixed::new(Default::default(), html_modes)
@@ -403,6 +417,12 @@ pub fn html_modes(spec: &str) -> Option<Arc<dyn Mode>> {
         _ => None,
     }
 }
+shared_mode!(
+    /// `codemirror/mode/markdown/markdown.js` (`text/markdown`,
+    /// `text/x-markdown`)
+    markdown,
+    markdown::Markdown::new()
+);
 shared_mode!(
     /// `codemirror/mode/jsx/jsx.js` (`text/jsx`)
     jsx,
