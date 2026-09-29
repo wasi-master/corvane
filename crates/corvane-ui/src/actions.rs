@@ -101,6 +101,7 @@ gpui_kit::actions!(
         ReportIssue,
         ContactSupport,
         ShowUserGuides,
+        ShowReleaseNotes,
         ShowKeyboardShortcuts,
         ShowLogs,
         // In-app

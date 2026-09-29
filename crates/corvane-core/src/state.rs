@@ -69,6 +69,10 @@ pub enum Popup {
     CreateFork {
         repo: u64,
     },
+    /// `ReleaseNotes`: what's new in the running version.
+    ReleaseNotes {
+        summary: crate::release_notes::ReleaseSummary,
+    },
     /// `UpstreamAlreadyExists`: the fork's `upstream` remote points elsewhere.
     UpstreamAlreadyExists {
         repo: u64,

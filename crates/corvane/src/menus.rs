@@ -114,6 +114,8 @@ pub fn install(cx: &mut App, editor: &str, shell: &str) {
             MenuItem::action("Show User Guides", ShowUserGuides),
             MenuItem::action("Show Keyboard Shortcuts", ShowKeyboardShortcuts),
             MenuItem::action("Show Logs in Finder", ShowLogs),
+            MenuItem::separator(),
+            MenuItem::action("Show Release Notes", ShowReleaseNotes),
         ]),
     ]);
 }

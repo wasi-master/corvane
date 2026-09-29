@@ -61,6 +61,20 @@ pub struct ApiRepository {
     pub archived: bool,
 }
 
+/// A GitHub release (`GET /repos/{owner}/{repo}/releases/tags/{tag}`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRelease {
+    pub tag_name: String,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub body: Option<String>,
+    /// ISO-8601.
+    #[serde(default)]
+    pub published_at: Option<String>,
+    pub html_url: String,
+}
+
 /// GHD `IAPIRepositoryCloneInfo`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepositoryCloneInfo {
@@ -637,6 +651,22 @@ impl Client {
                 },
                 default_branch: repo.default_branch,
             })),
+            Err(GitHubError::Api { status: 404, .. }) => Ok(None),
+            Err(err) => Err(err),
+        }
+    }
+
+    /// `GET /repos/{owner}/{name}/releases/tags/{tag}`; `None` when there is
+    /// no such release.
+    pub fn release_by_tag(&self, owner: &str, name: &str, tag: &str) -> Result<Option<ApiRelease>> {
+        let path = format!(
+            "repos/{}/{}/releases/tags/{}",
+            encode_path_component(owner),
+            encode_path_component(name),
+            encode_path_component(tag)
+        );
+        match self.get_json::<ApiRelease>(&path) {
+            Ok(release) => Ok(Some(release)),
             Err(GitHubError::Api { status: 404, .. }) => Ok(None),
             Err(err) => Err(err),
         }
