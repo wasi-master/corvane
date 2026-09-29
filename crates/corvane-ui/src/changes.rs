@@ -30,6 +30,7 @@ use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
@@ -1726,7 +1727,8 @@ impl ChangesSidebar {
                         .collect()
                 })
                 .flex_1()
-                .min_h_0(),
+                .min_h_0()
+                .with_scrollbar(),
             )
     }
 

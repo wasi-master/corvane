@@ -19,6 +19,7 @@ use crate::context_menu::MenuItem;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::dialogs::branch_dialogs::{CreateBranchDialog, branch_picker};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, checkbox, link_button, text_box};
@@ -546,7 +547,8 @@ impl McoDialog {
                                 workdir.as_deref(),
                                 cx,
                             )
-                        })),
+                        }))
+                        .with_scrollbar(),
                 )
                 .child(
                     div()
@@ -1056,7 +1058,8 @@ impl Render for LocalChangesOverwrittenDialog {
                         .font_family(crate::theme::MONO_FONT)
                         .text_size(FONT_SIZE_SM)
                         .text_color(t.text_secondary)
-                        .children(self.files.iter().map(|f| div().truncate().child(f.clone()))),
+                        .children(self.files.iter().map(|f| div().truncate().child(f.clone())))
+                        .with_scrollbar(),
                 )
             })
             .when(!has_stash, |d| {

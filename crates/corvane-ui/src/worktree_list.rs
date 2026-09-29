@@ -12,6 +12,7 @@ use gpui_kit::*;
 
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, text_box};
@@ -358,6 +359,7 @@ impl Render for WorktreeFoldout {
                     .flex()
                     .flex_col()
                     .children(groups)
+                    .with_scrollbar()
                     .into_any_element()
             })
             .children(self.context_menu.clone())

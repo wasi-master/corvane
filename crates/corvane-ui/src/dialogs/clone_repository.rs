@@ -15,6 +15,7 @@ use gpui_kit::*;
 
 use crate::dialog::{DialogButton, dialog};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -549,6 +550,7 @@ impl CloneRepositoryDialog {
                 },
             )
             .size_full()
+            .with_scrollbar()
             .into_any_element()
         };
         div()

@@ -26,6 +26,7 @@ use gpui_kit::*;
 use crate::branch_list::group_branches;
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, c, primer};
 use crate::widgets::{button, code_ref, primary_button, text_box};
@@ -328,6 +329,7 @@ impl OpenPullRequestDialog {
                                                     .child(div().min_w_0().truncate().child(b.name))
                                             }))
                                     }))
+                                    .with_scrollbar()
                                     .into_any_element()
                             }),
                     ),
@@ -408,7 +410,8 @@ impl OpenPullRequestDialog {
                                     ),
                             )
                             .child(octicon(icon, color))
-                    })),
+                    }))
+                    .with_scrollbar(),
             )
             .into_any_element()
     }

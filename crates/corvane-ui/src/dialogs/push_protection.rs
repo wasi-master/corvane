@@ -10,6 +10,7 @@ use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::theme::{MONO_FONT, c, primer};
@@ -263,7 +264,7 @@ impl Render for PushProtectionErrorDialog {
                     .border_color(t.box_border)
                     .flex()
                     .flex_col()
-                    .children(secrets),
+                    .children(secrets).with_scrollbar(),
             );
         dialog_with_kind(
             "push-protection-error",

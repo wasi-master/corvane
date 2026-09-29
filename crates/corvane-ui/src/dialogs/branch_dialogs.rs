@@ -13,6 +13,7 @@ use gpui_kit::*;
 use crate::branch_list::group_branches;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
+use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{Inline, checkbox, paragraph, segmented_option, text_box};
@@ -1079,7 +1080,8 @@ pub fn branch_picker(
                                 .child(b.name.clone()),
                         )
                 }))
-        }));
+        }))
+        .with_scrollbar();
     div()
         .flex()
         .flex_col()
