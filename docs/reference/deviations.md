@@ -13,6 +13,10 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** caches the repository list in redb per endpoint and filters it locally (as GHD does); there is no server-side search.
 - **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git`. The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
 
+## Markdown
+
+- Markdown (release-notes pretext, pull request bodies, reviews and comments) is laid out natively by `crates/corvane-ui/src/markdown.rs` from a `pulldown-cmark` walk (`corvane_core::markdown`) instead of GHD's `marked` + DOMPurify output in a sandboxed webview. Headings, paragraphs, emphasis, strikethrough, inline and fenced code, links, lists, quotes and rules are styled after `static/common/markdown.css`; images show their alt text, tables become " | "-separated lines, raw HTML loses its tags. Text is not selectable, inline code keeps the paragraph size, and GHD's markdown filters (emoji, `@mentions`, `#123` / commit links, videos) are not applied; bare URLs are still linkified.
+
 ## Editor / commit form
 
 - Spellcheck language follows `NSSpellChecker`'s automatic identification; there is no per-language picker and no Chromium-style "Ignore" item.
