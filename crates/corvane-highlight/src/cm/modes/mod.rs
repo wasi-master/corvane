@@ -18,6 +18,7 @@ pub mod properties;
 pub mod protobuf;
 pub mod python;
 pub mod ruby;
+pub mod scheme;
 pub mod shell;
 pub mod sql;
 pub mod stex;
@@ -221,6 +222,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
+        "text/x-scheme" => Some(Arc::new(scheme::Scheme)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
