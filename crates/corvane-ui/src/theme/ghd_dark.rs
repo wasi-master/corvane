@@ -175,5 +175,20 @@ pub fn theme() -> GhdTheme {
         file_warning: c(YELLOW_700),
         file_warning_border: ca(YELLOW_800, 0.4),
         diff_empty_hunk_handle: c(GRAY_700),
+
+        md_border_default: c(0x30363d),
+        md_border_muted: c(0x21262d),
+        md_canvas_subtle: c(0x161b22),
+        md_fg_muted: c(0x8b949e),
+        md_neutral_muted: ca(0x6e7681, 0.4),
+        md_accent_fg: c(0x58a6ff),
+
+        pr_timeline_line: c(GRAY_500),
+        pr_changes_requested_icon: c(WHITE),
+        pr_changes_requested_icon_background: c(0xda3633),
+        pr_approved_icon: c(WHITE),
+        pr_approved_icon_background: c(0x2da44e),
+        pr_commented_icon: c(0x8b949e),
+        pr_commented_icon_background: c(GRAY_700),
     }
 }

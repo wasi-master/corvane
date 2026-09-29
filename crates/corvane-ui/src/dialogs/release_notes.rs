@@ -4,8 +4,8 @@
 //! two columns, "View all release notes" on the left of the footer.
 //!
 //! Deviations: entries are plain text (GHD's `RichText` renders emoji, links
-//! and `#123` references) and the pretext is a plain paragraph (GHD renders it
-//! as sandboxed Markdown). There is no "Install and Restart" button: the notes
+//! and `#123` references); the pretext goes through `crate::markdown` instead
+//! of GHD's sandboxed Markdown webview. There is no "Install and Restart" button: the notes
 //! are always the running version's (the self-updater is not built yet).
 
 use corvane_core::Dispatcher;
@@ -99,7 +99,14 @@ impl Render for ReleaseNotesDialog {
                 section("Other", &r.other, cx),
             ])]
         };
-        let pretext = r.pretext.first().map(|p| p.message.clone());
+        let pretext = r.pretext.first().map(|p| {
+            crate::markdown::markdown(
+                "release-notes-pretext",
+                &corvane_core::markdown::parse(&p.message),
+                None,
+                cx,
+            )
+        });
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         deferred(
             anchored().position(point(px(0.), px(0.))).child(

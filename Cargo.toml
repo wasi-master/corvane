@@ -39,6 +39,8 @@ keyring = "4.2"
 anyhow = "1"
 thiserror = "2"
 regex = "1"
+# Markdown for PR bodies / comments (GHD renders `marked` in a sandboxed webview)
+pulldown-cmark = { version = "0.13", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 redb = "4"
