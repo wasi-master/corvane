@@ -1,0 +1,76 @@
+% !TEX program = pdflatex
+% Corvane design notes — ünïcödé comment
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb}
+\usepackage[colorlinks=true]{hyperref}
+\importmodule[smglom/sets]{mod/set}
+\RequirePackage{xcolor}
+\makeatletter
+\def\@version{1.2}
+\makeatother
+
+\newcommand{\corvane}{\textsc{Corvane}}
+\renewcommand*\abstractname{Summary}
+\title{A Native Clone of \corvane\ in Rust}
+\author{Wasi Master \and Ünïcödé Author}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We port 30 syntax modes token for token. Prices: 50\% off, \$10 each, \& more \# of items \{braces\} and under\_score.
+Spacing\,tweaks\;and\!negative\/italic\\
+line break.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+As shown in Section~\ref{sec:method} and Equation~\eqref{eq:euler}, see also \cite{knuth1984,lamport94}.
+\subsection*{Inline math}
+The identity $e^{i\pi} + 1 = 0$ is famous; so is $a_1^2 + b_{12}^{3.5} \leq c$.
+Display math: \[ \sum_{k=0}^{n} \binom{n}{k} = 2^n \]
+and parenthesized \( x \in \mathbb{R}, |x| < 1 \) too.
+$$\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}$$
+Mixed: $f(x) = 3.14 x + .5 - 2. * y ; ' " ` ~ # ? @ !$ done.
+Math escapes: $\$ \& \% \# \{ \} \_ \, \; \! \/ ok$.
+Unclosed math $ x + y
+continues onto the next line $ back to text.
+
+\begin{equation}
+  \label{eq:euler}
+  e^{i\theta} = \cos\theta + i \sin\theta % comment in env
+\end{equation}
+
+\begin{itemize}
+	\item First item with \emph{emphasis} and \textbf{bold}
+	\item Second item: \verb|code| and \texttt{mono}
+	\item[$\star$] Custom bullet
+\end{itemize}
+
+\begin{table}[htbp]
+  \centering
+  \begin{tabular}{|l|c|r|}
+    \hline
+    Mode & Tokens & Status \\ \hline
+    zig & 561 & ok \\
+    stex & 42pt & 3.5em \\
+  \end{tabular}
+  \caption{Results}\label{tab:results}
+\end{table}
+
+\section
+  {Split command arguments}
+\ref
+{sec:intro} and \label [opt] {lbl}
+Stray closing } bracket and ] too.
+Numbers 12pt 3.5cm 100% 2e3 and words-with-dashes under_scores.
+Non-ASCII: naïve café 日本語 🎉 \'{e} \"{o} \^{a} \~{n} \`{u}
+\begin{thebibliography}{9}
+\bibitem{knuth1984} D. Knuth, \emph{The \TeX book}, 1984.
+\Bibitem{x} and \RBibitem{y}
+\end{thebibliography}
+
+\end{document}
+{unclosed group \textit{nested {deep} text
+\foo@bar{x}[y]{z}
