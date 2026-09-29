@@ -55,6 +55,14 @@ pub enum Popup {
         paths: Vec<String>,
         all: bool,
     },
+    /// `UnknownAuthors`: co-author handles that could not be resolved;
+    /// "Commit Anyway" commits with the known ones only.
+    UnknownAuthors {
+        repo: u64,
+        usernames: Vec<String>,
+        summary: String,
+        description: String,
+    },
     /// `ConfirmDiscardSelection`: lines picked from the diff gutter menu.
     ConfirmDiscardSelection {
         repo: u64,
@@ -399,6 +407,9 @@ pub struct RepositoryState {
     pub last_commit: Option<LastCommit>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
+    /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).
+    pub show_co_authored_by: bool,
+    pub co_authors: Vec<corvane_models::Author>,
     pub committing: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,

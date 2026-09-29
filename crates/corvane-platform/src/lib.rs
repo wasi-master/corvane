@@ -1,10 +1,16 @@
 //! OS integration. macOS first; every function here is the seam for
 //! Windows/Linux later.
 
+/// `CFBundleIdentifier` of the app bundle (keychain service, notification
+/// settings deep link, GPUI `app_id`).
+pub const BUNDLE_ID: &str = "com.wasimaster.corvane";
+
 pub mod apps;
 pub mod custom_integration;
 pub mod editors;
 pub mod keychain;
+pub mod locale;
+pub mod notifications;
 pub mod shells;
 pub mod spell;
 pub mod trash;

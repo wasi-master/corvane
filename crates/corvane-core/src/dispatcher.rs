@@ -2049,9 +2049,24 @@ impl Dispatcher {
             cx.notify();
         });
         let message = corvane_git::format_message(&summary, &description);
+        // GHD `getCoAuthorTrailers`: known co-authors become `Co-Authored-By` trailers
+        let trailers: Vec<(String, String)> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .filter(|rs| rs.show_co_authored_by)
+            .map(|rs| {
+                rs.co_authors
+                    .iter()
+                    .filter_map(|a| a.trailer_value())
+                    .map(|v| ("Co-Authored-By".to_string(), v))
+                    .collect()
+            })
+            .unwrap_or_default();
         let summary_for_bar = summary.trim().to_string();
         let task = cx.background_executor().spawn(async move {
             corvane_git::hook_env::reload_if_uncached();
+            let message = corvane_git::merge_trailers(git.clone(), &workdir, &message, &trailers)?;
             corvane_git::unstage_all(git.clone(), &workdir)?;
             corvane_git::stage_files(git.clone(), &workdir, &files)?;
             corvane_git::stage_partial_files(git.clone(), &workdir, &files)?;
@@ -2093,6 +2108,7 @@ impl Dispatcher {
                             at: std::time::SystemTime::now(),
                         });
                         rs.commit_to_amend = None;
+                        rs.co_authors.clear();
                         rs.commit_nonce += 1;
                     }
                     cx.notify();

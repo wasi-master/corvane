@@ -6,7 +6,7 @@ pub mod auth;
 pub mod endpoint;
 pub mod error;
 
-pub use api::{ApiIssue, ApiMentionableUser, Client, IssueState};
+pub use api::{ApiIdentity, ApiIssue, ApiMentionableUser, Client, IssueState};
 pub use endpoint::Endpoint;
 pub use error::{GitHubError, Result};
 
@@ -39,4 +39,26 @@ pub fn download(url: &str) -> Result<Vec<u8>> {
     }
     let bytes = response.body_mut().read_to_vec()?;
     Ok(bytes)
+}
+
+/// `GET /emojis` (no authentication needed on GitHub.com): emoji name → image URL.
+pub fn public_emojis(endpoint: &Endpoint) -> Result<std::collections::HashMap<String, String>> {
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(15)))
+        .user_agent(USER_AGENT)
+        .build()
+        .new_agent();
+    let url = endpoint.api("emojis");
+    let mut response = agent
+        .get(&url)
+        .header("Accept", "application/vnd.github+json")
+        .call()?;
+    let status = response.status().as_u16();
+    if !(200..300).contains(&status) {
+        return Err(GitHubError::Api {
+            status,
+            message: url,
+        });
+    }
+    Ok(response.body_mut().read_json()?)
 }

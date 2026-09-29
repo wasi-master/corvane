@@ -6,12 +6,14 @@
 //! Advanced (no telemetry), no Git Credential Manager toggle and no
 //! Formatting section (behind a feature flag in GHD).
 
+use std::path::Path;
 use std::rc::Rc;
 
 use corvane_core::{
     AppState, Dispatcher, Popup, PreferencesSave, PreferencesTab, Settings, TAB_SIZE_DEFAULT,
     ThemeSetting, UncommittedChangesStrategy,
 };
+use corvane_platform::notifications::NotificationPermission;
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -22,9 +24,21 @@ use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled, link_button, paragraph,
-    radio, radio_row, section_heading, select_button, settings_description, text_box,
+    Inline, SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled, link_button,
+    paragraph, radio, radio_row, section_heading, select_button, settings_description, text_box,
 };
+
+/// `isValidCustomIntegration`: the bundle id of a `.app` path (kept when the
+/// path did not change, `mdls` is a subprocess).
+fn bundle_id_for(path: &str, previous: Option<&corvane_core::CustomIntegration>) -> Option<String> {
+    if !path.ends_with(".app") {
+        return None;
+    }
+    match previous {
+        Some(prev) if prev.path == path && prev.bundle_id.is_some() => prev.bundle_id.clone(),
+        _ => corvane_platform::custom_integration::app_bundle_id(Path::new(path)),
+    }
+}
 
 const TABS: [PreferencesTab; 8] = [
     PreferencesTab::Accounts,
@@ -63,6 +77,8 @@ pub struct PreferencesDialog {
     email_choice: Option<String>,
     /// The git config arrived and the fields were filled from it.
     git_loaded: bool,
+    /// GHD `Notifications` state: `getNotificationsPermission()` result.
+    notification_permission: Option<NotificationPermission>,
     /// `CustomIntegrationForm` inputs (Integrations tab).
     custom_editor_path: Entity<InputState>,
     custom_editor_args: Entity<InputState>,
@@ -100,10 +116,12 @@ impl PreferencesDialog {
         let custom_shell_args = custom_input("Command line arguments", shell.arguments, cx);
         for input in [&custom_editor_path, &custom_editor_args] {
             cx.observe(input, |this, _, cx| {
+                let path = this.custom_editor_path.read(cx).value().trim().to_string();
+                let bundle_id = bundle_id_for(&path, this.draft.custom_editor.as_ref());
                 this.draft.custom_editor = Some(corvane_core::CustomIntegration {
-                    path: this.custom_editor_path.read(cx).value().trim().to_string(),
+                    path,
                     arguments: this.custom_editor_args.read(cx).value().trim().to_string(),
-                    bundle_id: None,
+                    bundle_id,
                 });
                 cx.notify();
             })
@@ -111,10 +129,12 @@ impl PreferencesDialog {
         }
         for input in [&custom_shell_path, &custom_shell_args] {
             cx.observe(input, |this, _, cx| {
+                let path = this.custom_shell_path.read(cx).value().trim().to_string();
+                let bundle_id = bundle_id_for(&path, this.draft.custom_shell.as_ref());
                 this.draft.custom_shell = Some(corvane_core::CustomIntegration {
-                    path: this.custom_shell_path.read(cx).value().trim().to_string(),
+                    path,
                     arguments: this.custom_shell_args.read(cx).value().trim().to_string(),
-                    bundle_id: None,
+                    bundle_id,
                 });
                 cx.notify();
             })
@@ -135,13 +155,60 @@ impl PreferencesDialog {
             default_branch,
             email_choice: None,
             git_loaded: false,
+            notification_permission: None,
             custom_editor_path,
             custom_editor_args,
             custom_shell_path,
             custom_shell_args,
         };
         this.fill_from_git_config(&state, window, cx);
+        this.poll_notification_permission(cx);
         this
+    }
+
+    /// `updateNotificationsState`: the centre answers on its own queue, so
+    /// ask off the main thread.
+    fn poll_notification_permission(&mut self, cx: &mut Context<Self>) {
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_platform::notifications::permission() });
+        cx.spawn(async move |this, cx| {
+            let permission = task.await;
+            this.update(cx, |this, cx| {
+                this.notification_permission = Some(permission);
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    /// `onGrantNotificationPermission`: show the system prompt, then poll
+    /// until the status leaves `Default` (the prompt is asynchronous).
+    fn grant_notification_permission(&mut self, cx: &mut Context<Self>) {
+        corvane_platform::notifications::request_permission();
+        cx.spawn(async move |this, cx| {
+            for _ in 0..60 {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(500))
+                    .await;
+                let permission = cx
+                    .background_executor()
+                    .spawn(async move { corvane_platform::notifications::permission() })
+                    .await;
+                let done = this
+                    .update(cx, |this, cx| {
+                        this.notification_permission = Some(permission);
+                        cx.notify();
+                        permission != NotificationPermission::Default
+                    })
+                    .unwrap_or(true);
+                if done {
+                    break;
+                }
+            }
+        })
+        .detach();
     }
 
     /// `isLoadingGitConfig` → fields filled once the global config is read.
@@ -1103,6 +1170,66 @@ impl PreferencesDialog {
     }
 
     fn notifications_tab(&self, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let settings_url =
+            corvane_platform::notifications::settings_url(corvane_platform::BUNDLE_ID);
+        let permission = self
+            .draft
+            .notifications_enabled
+            .then_some(self.notification_permission)
+            .flatten();
+        let notifications_link = |id: &'static str, cx: &Context<Self>| {
+            let url = settings_url.clone();
+            link_button(id, "Notifications Settings", cx)
+                .on_click(move |_, _, cx| cx.open_url(&url))
+                .into_any_element()
+        };
+        // `renderNotificationHint`
+        let mut parts: Vec<Inline> = vec![
+            "Allows the display of notifications when high-signal events take place in the current repository."
+                .into(),
+        ];
+        let mut warning: Option<Div> = None;
+        match permission {
+            None | Some(NotificationPermission::Unsupported) => {}
+            Some(NotificationPermission::Default) => {
+                parts.push(" You need to ".into());
+                parts.push(Inline::Element(
+                    link_button("prefs-notifications-grant", "grant permission", cx)
+                        .on_click(
+                            cx.listener(|this, _, _, cx| this.grant_notification_permission(cx)),
+                        )
+                        .into_any_element(),
+                ));
+                parts.push(" to display these notifications from Corvane.".into());
+            }
+            Some(NotificationPermission::Denied) => {
+                // `.setting-hint-warning`
+                warning = Some(
+                    div().mt(SPACING).child(paragraph(vec![
+                        Inline::Element(
+                            div()
+                                .text_color(t.dialog_warning)
+                                .child("⚠️")
+                                .into_any_element(),
+                        ),
+                        " Corvane has no permission to display notifications. Please, enable them in the ".into(),
+                        Inline::Element(notifications_link("prefs-notifications-settings", cx)),
+                        ".".into(),
+                    ])),
+                );
+            }
+            Some(NotificationPermission::Granted) => {
+                parts.push(
+                    " Make sure notifications are properly configured for Corvane in the ".into(),
+                );
+                parts.push(Inline::Element(notifications_link(
+                    "prefs-notifications-settings",
+                    cx,
+                )));
+                parts.push(".".into());
+            }
+        }
         div()
             .flex()
             .flex_col()
@@ -1114,9 +1241,11 @@ impl PreferencesDialog {
                 self.edit(cx, |s, v| s.notifications_enabled = v),
                 cx,
             ))
-            .child(settings_description(cx).child(
-                "Allows the display of notifications when high-signal events take place in the current repository.",
-            ))
+            .child(
+                settings_description(cx)
+                    .child(paragraph(parts).line_height(px(16.)))
+                    .children(warning),
+            )
             .into_any_element()
     }
 

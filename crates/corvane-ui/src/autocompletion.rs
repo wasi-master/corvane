@@ -32,6 +32,9 @@ pub enum Hit {
     Emoji(EmojiHit),
     Issue(IssueHit),
     User(MentionableUser),
+    /// GHD `unknown-user`: a handle nobody in the mentionables matched
+    /// (co-author input only; looked up on the API once added).
+    UnknownUser(String),
 }
 
 impl Hit {
@@ -41,8 +44,47 @@ impl Hit {
             Hit::Emoji(e) => e.key.clone(),
             Hit::Issue(i) => format!("#{}", i.number),
             Hit::User(u) => format!("@{}", u.login),
+            Hit::UnknownUser(name) => format!("@{name}"),
         }
     }
+}
+
+/// GHD `CoAuthorAutocompletionProvider.getAutocompletionItems`: mentionable
+/// users matching `filter` (minus the ones already added) plus the typed
+/// handle as an unknown user when nothing matches it exactly.
+pub fn co_author_hits(
+    filter: &str,
+    github: &GitHubRepository,
+    exclude: &[String],
+    cx: &mut App,
+) -> Vec<Hit> {
+    Dispatcher::refresh_mentionables(github, cx);
+    let own = Dispatcher::own_login_for(github, cx);
+    let Some(state) = AppState::try_global(cx) else {
+        return Vec::new();
+    };
+    let s = state.read(cx);
+    let key = corvane_core::autocomplete::cache_key(github);
+    let users = s
+        .mentionables
+        .get(&key)
+        .map(|c| c.users.as_slice())
+        .unwrap_or(&[]);
+    let mut hits: Vec<Hit> = users_matching(users, filter, own.as_deref(), DEFAULT_MAX_HITS)
+        .into_iter()
+        .filter(|u| !exclude.iter().any(|e| e.eq_ignore_ascii_case(&u.login)))
+        .map(Hit::User)
+        .collect();
+    if !filter.is_empty() {
+        let exact = hits.iter().any(|h| match h {
+            Hit::User(u) => u.login.eq_ignore_ascii_case(filter),
+            _ => false,
+        });
+        if !exact {
+            hits.push(Hit::UnknownUser(filter.to_string()));
+        }
+    }
+    hits
 }
 
 /// GHD `IAutocompletionState`.
@@ -248,6 +290,17 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .child(alias[end..].to_string())
                     .into_any_element()
             };
+            let icon: AnyElement = match &e.image {
+                // GitHub's image-only emoji (`:shipit:`) from the cache
+                Some(path) => img(path.clone())
+                    .size(px(20.))
+                    .object_fit(ObjectFit::Contain)
+                    .into_any_element(),
+                None => div()
+                    .text_size(px(15.))
+                    .child(e.emoji.clone())
+                    .into_any_element(),
+            };
             d.child(
                 div()
                     .size(px(20.))
@@ -255,12 +308,33 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_size(px(15.))
                     .mr(SPACING_HALF)
-                    .child(e.emoji.clone()),
+                    .child(icon),
             )
             .child(div().flex_1().min_w_0().overflow_hidden().child(title))
         }
+        Hit::UnknownUser(name) => d
+            // `.user.unknown`
+            .child(
+                div()
+                    .flex_none()
+                    .max_w_full()
+                    .truncate()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .italic()
+                    .mr(SPACING_HALF)
+                    .child(format!("@{name}")),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .italic()
+                    .text_size(FONT_SIZE_SM)
+                    .text_color(secondary)
+                    .child("Search for user"),
+            ),
         Hit::Issue(i) => d
             .gap(px(4.))
             .child(

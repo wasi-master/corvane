@@ -24,6 +24,7 @@ pub use avatars::{AvatarEntry, avatar_for_email, avatar_for_url};
 pub use compare::{CompareForm, CompareState, ComparisonMode};
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
+pub use emoji::CustomEmoji;
 pub use integrations::{PreferencesSave, RepositorySettingsSave};
 pub use mco::{
     Banner, ConflictKind, ConflictState, McoConflicts, McoDetail, McoStep, McoUndo, MergePreview,

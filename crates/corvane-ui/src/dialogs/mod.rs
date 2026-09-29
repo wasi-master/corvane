@@ -15,6 +15,7 @@ mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
 mod simple;
+mod unknown_authors;
 mod worktree_dialogs;
 
 use corvane_core::{AppState, Popup};
@@ -44,6 +45,7 @@ pub use remote_dialogs::{
 pub use repository_settings::RepositorySettingsDialog;
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
+pub use unknown_authors::UnknownAuthorsDialog;
 pub use worktree_dialogs::{
     AddWorktreeDialog, DeleteWorktreeDialog, DeleteWorktreeFailedDialog, RenameWorktreeDialog,
 };
@@ -82,6 +84,21 @@ impl DialogHost {
                 .into(),
             Popup::DiscardChanges { repo, paths, all } => cx
                 .new(|_| DiscardChangesDialog::new(*repo, paths.clone(), *all))
+                .into(),
+            Popup::UnknownAuthors {
+                repo,
+                usernames,
+                summary,
+                description,
+            } => cx
+                .new(|_| {
+                    UnknownAuthorsDialog::new(
+                        *repo,
+                        usernames.clone(),
+                        summary.clone(),
+                        description.clone(),
+                    )
+                })
                 .into(),
             Popup::ConfirmDiscardSelection {
                 repo,

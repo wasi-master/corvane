@@ -113,6 +113,28 @@ pub fn head_sha(git: Arc<GitBinary>, workdir: &Path) -> Result<String> {
     Ok(out.stdout_string()?.trim().to_string())
 }
 
+/// GHD `mergeTrailers`: `git interpret-trailers --no-divider --trailer k=v …`
+/// appends the trailers to a commit message (folding into an existing
+/// trailer block when there is one).
+pub fn merge_trailers(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    message: &str,
+    trailers: &[(String, String)],
+) -> Result<String> {
+    if trailers.is_empty() {
+        return Ok(message.to_string());
+    }
+    let mut cmd = GitCommand::new(git)
+        .args(["interpret-trailers", "--no-divider"])
+        .current_dir(workdir);
+    for (token, value) in trailers {
+        cmd = cmd.arg("--trailer").arg(format!("{token}={value}"));
+    }
+    let out = cmd.stdin(message.as_bytes().to_vec()).run()?;
+    out.stdout_string()
+}
+
 /// Summary + blank line + description, as GHD formats the message.
 pub fn format_message(summary: &str, description: &str) -> String {
     let summary = summary.trim();

@@ -924,6 +924,91 @@ pub struct DiffHunk {
     pub lines: Vec<DiffLine>,
 }
 
+/// GHD `UnknownAuthor.state`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UnknownAuthorState {
+    Searching,
+    Error,
+}
+
+/// GHD `Author` (`models/author.ts`): a co-author handle in the commit form.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Author {
+    Known {
+        name: String,
+        email: String,
+        username: Option<String>,
+    },
+    Unknown {
+        username: String,
+        state: UnknownAuthorState,
+    },
+}
+
+impl Author {
+    pub fn username(&self) -> Option<&str> {
+        match self {
+            Author::Known { username, .. } => username.as_deref(),
+            Author::Unknown { username, .. } => Some(username),
+        }
+    }
+
+    /// GHD `getDisplayTextForAuthor`: `@login`, or the name without a login.
+    pub fn display_text(&self) -> String {
+        match self {
+            Author::Known {
+                name,
+                username: None,
+                ..
+            } => name.clone(),
+            Author::Known {
+                username: Some(u), ..
+            }
+            | Author::Unknown { username: u, .. } => format!("@{u}"),
+        }
+    }
+
+    /// GHD `getFullTextForAuthor`: `@login (Name)`.
+    pub fn full_text(&self) -> String {
+        match self {
+            Author::Known {
+                name,
+                username: Some(u),
+                ..
+            } => format!("@{u} ({name})"),
+            _ => self.display_text(),
+        }
+    }
+
+    /// The `Co-Authored-By` trailer value of a known author.
+    pub fn trailer_value(&self) -> Option<String> {
+        match self {
+            Author::Known { name, email, .. } => Some(format!("{name} <{email}>")),
+            Author::Unknown { .. } => None,
+        }
+    }
+}
+
+/// GHD `getLegacyStealthEmailForUser`: the no-reply address of a login.
+pub fn legacy_stealth_email(login: &str, endpoint: &str) -> String {
+    let host = if endpoint == "https://api.github.com" {
+        "github.com".to_string()
+    } else {
+        endpoint
+            .trim_start_matches("https://")
+            .split('/')
+            .next()
+            .unwrap_or("github.com")
+            .to_string()
+    };
+    format!("{login}@users.noreply.{host}")
+}
+
+/// GHD `getStealthEmailForUser`: `<id>+<login>@users.noreply.<host>`.
+pub fn stealth_email(id: u64, login: &str, endpoint: &str) -> String {
+    format!("{id}+{}", legacy_stealth_email(login, endpoint))
+}
+
 /// GHD `WorktreeType`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorktreeType {
