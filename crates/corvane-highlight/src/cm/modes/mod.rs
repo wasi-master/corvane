@@ -5,9 +5,14 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod css;
+pub mod diff;
+pub mod dockerfile;
+pub mod go;
 pub mod python;
 pub mod ruby;
 pub mod shell;
+pub mod sql;
+pub mod swift;
 pub mod toml;
 pub mod yaml;
 
@@ -195,6 +200,11 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-cython" => Some(cached!(python::Python::cython())),
         "text/x-ruby" => Some(cached!(ruby::Ruby)),
         "text/x-sh" | "application/x-sh" => Some(cached!(shell::Shell)),
+        "text/x-go" => Some(Arc::new(go::Go)),
+        "text/x-swift" => Some(Arc::new(swift::Swift)),
+        "text/x-diff" => Some(Arc::new(diff::Diff)),
+        "text/x-dockerfile" => Some(dockerfile::dockerfile()),
+        mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         _ => None,
     }
 }
