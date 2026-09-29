@@ -426,6 +426,7 @@ impl Dispatcher {
             McoDetail::Merge { .. } => (String::new(), 0),
         };
         Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).mco_flow += 1;
             s.repo_state_mut(id).mco = Some(MultiCommitOperation {
                 step,
                 detail,
@@ -445,12 +446,22 @@ impl Dispatcher {
     }
 
     fn show_mco_popup(id: u64, cx: &mut App) {
-        Self::show_popup(Popup::MultiCommitOperation { repo: id }, cx);
+        let flow = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .map(|r| r.mco_flow)
+            .unwrap_or(0);
+        Self::show_popup(Popup::MultiCommitOperation { repo: id, flow }, cx);
+    }
+
+    fn is_mco_popup(popup: &Option<Popup>, id: u64) -> bool {
+        matches!(popup, Some(Popup::MultiCommitOperation { repo, .. }) if *repo == id)
     }
 
     fn close_mco_popup(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
-            if s.popup == Some(Popup::MultiCommitOperation { repo: id }) {
+            if Self::is_mco_popup(&s.popup, id) {
                 s.popup = None;
                 cx.notify();
             }
@@ -461,7 +472,7 @@ impl Dispatcher {
     pub fn end_mco(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             s.repo_state_mut(id).mco = None;
-            if s.popup == Some(Popup::MultiCommitOperation { repo: id }) {
+            if Self::is_mco_popup(&s.popup, id) {
                 s.popup = None;
             }
             cx.notify();
@@ -822,7 +833,9 @@ impl Dispatcher {
         Self::show_mco_popup(id, cx);
         let confirm = Self::state(cx).read(cx).settings.confirm_force_push;
         if confirm && !force_push_checked {
-            let upstream = Self::branch_by_name(id, &base_branch, cx).and_then(|b| b.upstream);
+            // GHD warns when the branch being rewritten (the current one) is
+            // published and its remote commits would be rewritten.
+            let upstream = Self::branch_by_name(id, &target, cx).and_then(|b| b.upstream);
             let (git2, workdir2) = (git.clone(), workdir.clone());
             spawn_bg(
                 cx,

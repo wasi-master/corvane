@@ -254,12 +254,14 @@ impl Render for CreateRepositoryDialog {
                     id: "create-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "create-ok",
                     label: "Create Repository".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if can_create {
                             this.update(cx, |d, cx| d.submit(cx));

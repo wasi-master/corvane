@@ -194,6 +194,7 @@ impl McoDialog {
                 id: "rebase-start",
                 label: "Start rebase".into(),
                 primary: true,
+                disabled: !can_start,
                 on_click: Box::new(move |_, cx| {
                     let Some(base) = base_for_ok.clone() else {
                         return;
@@ -288,6 +289,7 @@ impl McoDialog {
                 id: "cherry-pick-ok",
                 label: ok_label.into(),
                 primary: true,
+                disabled: !enabled,
                 on_click: Box::new(move |_, cx| {
                     if !enabled {
                         return;
@@ -354,12 +356,14 @@ impl McoDialog {
                     id: "force-push-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "force-push-begin",
                     label: format!("Begin {label}").into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::begin_after_force_push_warning(repo, !dont_ask, cx)
                     }),
@@ -574,12 +578,14 @@ impl McoDialog {
                     id: "conflicts-abort",
                     label: format!("Abort {label}").into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| Dispatcher::request_abort_mco(repo, cx)),
                 },
                 DialogButton {
                     id: "conflicts-continue",
                     label: format!("Continue {label}").into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if can_continue {
                             Dispatcher::continue_after_conflicts(repo, cx);
@@ -622,12 +628,14 @@ impl McoDialog {
                     id: "abort-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "abort-ok",
                     label: format!("Abort {}", kind.label()).into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| Dispatcher::abort_mco(repo, cx)),
                 },
             ],
@@ -1058,6 +1066,7 @@ impl Render for LocalChangesOverwrittenDialog {
             id: "overwritten-close",
             label: "Close".into(),
             primary: has_stash,
+            disabled: false,
             on_click: Box::new(close),
         }];
         if !has_stash {
@@ -1065,6 +1074,7 @@ impl Render for LocalChangesOverwrittenDialog {
                 id: "overwritten-stash",
                 label: "Stash Changes and Continue".into(),
                 primary: true,
+                disabled: false,
                 on_click: Box::new(move |_, cx| {
                     Dispatcher::stash_and_retry(repo, retry.clone(), cx)
                 }),
@@ -1166,12 +1176,14 @@ impl Render for SquashCommitMessageDialog {
                     id: "squash-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "squash-ok",
                     label: title.into(),
                     primary: true,
+                    disabled,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
                             return;

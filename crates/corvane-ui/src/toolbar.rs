@@ -73,7 +73,7 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         Some(Tip::Detached { sha }) => (
             Octicon::GitCommit,
             "Detached HEAD",
-            sha.chars().take(7).collect::<String>().into(),
+            format!("On {}", sha.chars().take(7).collect::<String>()).into(),
         ),
         _ => (Octicon::GitBranch, "Current Branch", "".into()),
     };

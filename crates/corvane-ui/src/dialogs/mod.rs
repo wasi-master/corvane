@@ -155,7 +155,7 @@ impl DialogHost {
             Popup::InitializeLFS { repos } => cx
                 .new(|_| InitializeLfsDialog::new(state, repos.clone()))
                 .into(),
-            Popup::MultiCommitOperation { repo } => {
+            Popup::MultiCommitOperation { repo, .. } => {
                 cx.new(|cx| McoDialog::new(state, *repo, window, cx)).into()
             }
             Popup::LocalChangesOverwritten { repo, retry, files } => cx

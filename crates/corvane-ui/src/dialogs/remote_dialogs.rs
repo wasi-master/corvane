@@ -14,7 +14,9 @@ use crate::icons::{Octicon, octicon};
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{button, checkbox, link_button, primary_button, text_box};
+use crate::widgets::{
+    Inline, button, checkbox, code_ref, link_button, paragraph, primary_button, text_box,
+};
 
 /// GHD `sanitizedRepositoryName`: only `[A-Za-z0-9_.-]`, others become `-`.
 pub fn sanitized_repository_name(name: &str) -> String {
@@ -332,6 +334,7 @@ impl Render for PublishRepositoryDialog {
             id: "publish-cancel",
             label: "Cancel".into(),
             primary: false,
+            disabled: false,
             on_click: Box::new(close),
         }];
         if let Some(account) = account {
@@ -346,6 +349,7 @@ impl Render for PublishRepositoryDialog {
                     "Publish Repository".into()
                 },
                 primary: true,
+                disabled,
                 on_click: Box::new(move |_, cx| {
                     if disabled {
                         return;
@@ -403,12 +407,14 @@ impl Render for PushNeedsPullDialog {
                     id: "needs-pull-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "needs-pull-fetch",
                     label: "Fetch".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::fetch(repo, false, cx);
@@ -443,31 +449,17 @@ impl ConfirmForcePushDialog {
 
 impl Render for ConfirmForcePushDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.ghd();
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let (repo, dont_ask) = (self.repo, self.dont_ask_again);
         let content = div()
             .flex()
             .flex_col()
             .gap(SPACING)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .child("A force push will rewrite history on\u{a0}")
-                    .child(
-                        div()
-                            .font_family(crate::theme::MONO_FONT)
-                            .px(px(3.))
-                            .rounded(px(3.))
-                            .bg(t.box_alt_background)
-                            .child(self.upstream.clone()),
-                    )
-                    .child(
-                        ". Any collaborators working on this branch will need to reset their own local branch to match the history of the remote.",
-                    ),
-            )
+            .child(paragraph(vec![
+                "A force push will rewrite history on ".into(),
+                code_ref(self.upstream.clone(), cx).into_any_element().into(),
+                ". Any collaborators working on this branch will need to reset their own local branch to match the history of the remote.".into(),
+            ]))
             .child(
                 div()
                     .id("force-push-dont-ask")
@@ -493,12 +485,14 @@ impl Render for ConfirmForcePushDialog {
                     id: "force-push-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "force-push-ok",
                     label: "I'm sure".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if dont_ask {
                             Dispatcher::update_settings(cx, |s| s.confirm_force_push = false);
@@ -582,24 +576,22 @@ impl Render for GenericGitAuthDialog {
             .flex()
             .flex_col()
             .gap(SPACING)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .items_center()
-                    .child("We were unable to authenticate with\u{a0}")
-                    .child(mono(self.remote_url.clone()))
-                    .child(match &self.fixed_username {
-                        Some(u) => div()
-                            .flex()
-                            .flex_row()
-                            .child(".\u{a0}Please enter the password for the user\u{a0}")
-                            .child(mono(u.clone()))
-                            .child("\u{a0}to try again."),
-                        None => div().child(". Please enter your username and password to try again."),
-                    }),
-            )
+            .child({
+                let mut parts: Vec<Inline> = vec![
+                    "We were unable to authenticate with ".into(),
+                    mono(self.remote_url.clone()).into_any_element().into(),
+                ];
+                match &self.fixed_username {
+                    Some(u) => {
+                        parts.push(". Please enter the password for the user ".into());
+                        parts.push(mono(u.clone()).into_any_element().into());
+                        parts.push(" to try again.".into());
+                    }
+                    None => parts
+                        .push(". Please enter your username and password to try again.".into()),
+                }
+                paragraph(parts)
+            })
             .when(self.fixed_username.is_none(), |d| {
                 d.child(
                     div()
@@ -619,24 +611,22 @@ impl Render for GenericGitAuthDialog {
                     .child(text_box("auth-password", &self.password, None, window, cx)),
             )
             .child(
-                div()
-                    .text_size(FONT_SIZE_SM)
-                    .text_color(t.text_secondary)
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .child(
-                        "Depending on your repository's hosting service, you might need to use a Personal Access Token (PAT) as your password. Learn more about creating a PAT in the\u{a0}",
-                    )
-                    .child(
-                        link_button("auth-docs", "integration docs", cx).on_click(|_, _, cx| {
+                paragraph(vec![
+                    "Depending on your repository's hosting service, you might need to use a Personal Access Token (PAT) as your password. Learn more about creating a PAT in the ".into(),
+                    link_button("auth-docs", "integration docs", cx)
+                        .text_size(FONT_SIZE_SM)
+                        .on_click(|_, _, cx| {
                             Dispatcher::open_url(
                                 "https://github.com/desktop/desktop/tree/development/docs/integrations",
                                 cx,
                             )
-                        }),
-                    )
-                    .child("."),
+                        })
+                        .into_any_element()
+                        .into(),
+                    ".".into(),
+                ])
+                .text_size(FONT_SIZE_SM)
+                .text_color(t.text_secondary),
             );
         dialog(
             "dialog-generic-git-auth",
@@ -647,12 +637,14 @@ impl Render for GenericGitAuthDialog {
                     id: "auth-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "auth-save",
                     label: "Save and Retry".into(),
                     primary: true,
+                    disabled,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
                             return;
@@ -708,24 +700,23 @@ impl Render for InitializeLfsDialog {
             .flex()
             .flex_col()
             .gap(SPACING)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .child(if plural {
-                        "The repositories use\u{a0}"
-                    } else {
-                        "This repository uses\u{a0}"
-                    })
-                    .child(link_button("lfs-link", "Git LFS", cx).on_click(|_, _, cx| {
-                        Dispatcher::open_url("https://git-lfs.github.com/", cx)
-                    }))
-                    .child(format!(
-                        ". To contribute to {}, Git LFS must first be initialized. Would you like to do so now?",
-                        if plural { "them" } else { "it" }
-                    )),
-            )
+            .child(paragraph(vec![
+                if plural {
+                    "The repositories use "
+                } else {
+                    "This repository uses "
+                }
+                .into(),
+                link_button("lfs-link", "Git LFS", cx)
+                    .on_click(|_, _, cx| Dispatcher::open_url("https://git-lfs.github.com/", cx))
+                    .into_any_element()
+                    .into(),
+                format!(
+                    ". To contribute to {}, Git LFS must first be initialized. Would you like to do so now?",
+                    if plural { "them" } else { "it" }
+                )
+                .into(),
+            ]))
             .child(
                 div()
                     .flex()
@@ -745,12 +736,14 @@ impl Render for InitializeLfsDialog {
                     id: "lfs-not-now",
                     label: "Not Now".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "lfs-init",
                     label: "Initialize Git LFS".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::install_lfs_hooks(repos.clone(), cx);

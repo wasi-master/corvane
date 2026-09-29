@@ -170,12 +170,14 @@ impl Render for AddExistingRepositoryDialog {
                     id: "add-existing-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "add-existing-ok",
                     label: "Add Repository".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if can_add {
                             this.update(cx, |d, cx| d.submit(cx));

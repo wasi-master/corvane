@@ -40,12 +40,14 @@ impl Render for SimpleDialog {
                         id: "install-git-cancel",
                         label: "Cancel".into(),
                         primary: false,
+                        disabled: false,
                         on_click: Box::new(close),
                     },
                     DialogButton {
                         id: "install-git-retry",
                         label: "Retry".into(),
                         primary: true,
+                        disabled: false,
                         on_click: Box::new(|_, cx| {
                             Dispatcher::close_popup(cx);
                             Dispatcher::detect_git(cx);
@@ -65,6 +67,7 @@ impl Render for SimpleDialog {
                     id: "error-close",
                     label: "Close".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 }],
                 close,

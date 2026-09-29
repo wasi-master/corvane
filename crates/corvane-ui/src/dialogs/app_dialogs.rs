@@ -35,7 +35,7 @@ impl Render for AboutDialog {
             .flex_col()
             .items_center()
             .gap(SPACING)
-            .child(img("icon/Corvane-small.svg").size(px(64.)))
+            .child(img("icon/Corvane-256.png").size(px(64.)))
             .child(
                 div()
                     .text_size(FONT_SIZE_MD)
@@ -95,6 +95,7 @@ impl Render for AboutDialog {
                 id: "about-close",
                 label: "Close".into(),
                 primary: true,
+                disabled: false,
                 on_click: Box::new(close),
             }],
             close,
@@ -184,12 +185,14 @@ impl Render for ConfirmRemoveRepositoryDialog {
                     id: "remove-repo-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "remove-repo-ok",
                     label: "Remove".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         if trash {
@@ -242,6 +245,7 @@ impl Render for IntegrationErrorDialog {
                         )
                         .into(),
                         primary: false,
+                        disabled: false,
                         on_click: Box::new(|_, cx| {
                             Dispatcher::close_popup(cx);
                             Dispatcher::open_url(
@@ -255,6 +259,7 @@ impl Render for IntegrationErrorDialog {
                         id: "editor-error-settings",
                         label: "Open Settings".into(),
                         primary: false,
+                        disabled: false,
                         on_click: Box::new(|_, cx| {
                             Dispatcher::open_preferences(PreferencesTab::Integrations, cx)
                         }),
@@ -277,6 +282,7 @@ impl Render for IntegrationErrorDialog {
                     id: "shell-error-settings",
                     label: "Open Settings".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(|_, cx| {
                         Dispatcher::open_preferences(PreferencesTab::Integrations, cx)
                     }),
@@ -292,6 +298,7 @@ impl Render for IntegrationErrorDialog {
             id: "integration-error-close",
             label: "Close".into(),
             primary: true,
+            disabled: false,
             on_click: Box::new(close),
         });
         dialog_with_kind(
