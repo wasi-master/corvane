@@ -34,7 +34,8 @@ fn main() {
                 ?err,
                 "could not open settings store; falling back to a temporary one"
             );
-            let tmp = std::env::temp_dir().join("corvane-fallback");
+            // per process, so several instances can fall back at once
+            let tmp = std::env::temp_dir().join(format!("corvane-fallback-{}", std::process::id()));
             Arc::new(corvane_store::Store::open_in(tmp).expect("temporary store"))
         }
     };
@@ -162,6 +163,39 @@ fn main() {
                 }
                 cx.notify();
             });
+        }
+        // CORVANE_SNAPSHOT=<png> (build with `--features snapshots`): render the
+        // window offscreen after CORVANE_SNAPSHOT_DELAY_MS (default 4000), save
+        // it and quit - visual checks without screen-recording permission.
+        #[cfg(feature = "snapshots")]
+        if let Ok(path) = std::env::var("CORVANE_SNAPSHOT") {
+            let delay = std::env::var("CORVANE_SNAPSHOT_DELAY_MS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(4000u64);
+            cx.spawn(async move |cx: &mut AsyncApp| {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(delay))
+                    .await;
+                cx.update(|cx| {
+                    for handle in cx.windows() {
+                        let image = handle.update(cx, |_, window, _| {
+                            window.refresh();
+                            window.render_to_image()
+                        });
+                        match image {
+                            Ok(Ok(image)) => match image.save(&path) {
+                                Ok(()) => info!(path, "snapshot saved"),
+                                Err(err) => error!(?err, "could not save the snapshot"),
+                            },
+                            Ok(Err(err)) => error!(?err, "could not render the snapshot"),
+                            Err(err) => error!(?err, "no window for the snapshot"),
+                        }
+                    }
+                    cx.quit();
+                });
+            })
+            .detach();
         }
         // CORVANE_ADD_REPO=/path adds a repository at launch (dev/testing convenience).
         if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
