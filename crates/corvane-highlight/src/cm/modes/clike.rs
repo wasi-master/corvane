@@ -1,7 +1,8 @@
 //! `codemirror/mode/clike/clike.js`: the C-family mode and every MIME the
 //! file defines (`def(...)` / `defineMIME`): C, C++, Java, C#, Scala,
 //! Kotlin, GLSL shaders, nesC, Objective-C, Objective-C++, Squirrel and
-//! Ceylon. `mode/dart/dart.js` builds on it (see [`super::dart`]).
+//! Ceylon. `mode/dart/dart.js` and `mode/php/php.js` build on it (see
+//! [`super::dart`], [`super::php`]).
 //!
 //! Each MIME's parser config is a [`Config`] value, mirroring the JS
 //! `def(mimes, {...})` objects; the per-char `hooks` and `hooks.token`
@@ -22,7 +23,7 @@ use std::sync::{Arc, OnceLock};
 
 use fancy_regex::Regex;
 
-use super::dart;
+use super::{dart, php};
 use crate::cm::{self, Mode, ModeState, StringStream};
 use crate::re;
 
@@ -167,6 +168,8 @@ pub(super) enum Hook {
     DartRaw,
     /// Dart `"}"`
     DartCloseBrace,
+    /// php.js hooks (`"$"`, `"<"`, `"#"`, `"/"`, `'"'`, `"{"`, `"}"`)
+    Php(char),
 }
 
 /// `parserConfig.hooks.token`
@@ -328,6 +331,12 @@ pub(super) enum Tokenize {
     DartInterpolation,
     /// dart.js `tokenInterpolationIdentifier`
     DartInterpolationIdentifier,
+    /// php.js `phpString(closing, escapes)` (`closing` in
+    /// `State::php_closing`); `escapes` is `escapes !== false`
+    PhpString { escapes: bool },
+    /// php.js `matchSequence(list, end)`: the `$a[…]` (`object: false`) or
+    /// `$a->b` (`object: true`) sequence at `step`
+    PhpSequence { object: bool, step: u8 },
 }
 
 /// `Context`, reduced to what tokens depend on.
@@ -353,9 +362,18 @@ pub(super) struct State {
     pub(super) interpolation_stack: Vec<Tokenize>,
     /// clike.js module-level `stringTokenizer` (Ceylon)
     ceylon_string_tokenizer: Option<Tokenize>,
+    /// php.js `state.tokStack`: `[delimiter, open braces]` pairs
+    pub(super) tok_stack: Vec<(String, i32)>,
+    /// the `closing` of php.js's current `phpString(closing)` /
+    /// `matchSequence(list, end)` closure
+    pub(super) php_closing: String,
 }
 
 impl State {
+    /// `!state.context.prev`: only the top context is open
+    pub(super) fn at_top_context(&self) -> bool {
+        self.context.len() == 1
+    }
     fn top_type(&self) -> &'static str {
         self.context.last().map_or("top", |c| c.ty)
     }
@@ -653,6 +671,26 @@ pub struct Clike {
 }
 
 impl Clike {
+    /// `startState`
+    pub(super) fn start(&self) -> State {
+        State {
+            tokenize: Tokenize::Base,
+            context: vec![Context {
+                ty: "top",
+                namespace: false,
+                align: Some(false),
+            }],
+            start_of_line: true,
+            prev_token: None,
+            type_at_end_of_line: false,
+            cpp11_raw_string_delim: String::new(),
+            interpolation_stack: Vec::new(),
+            ceylon_string_tokenizer: None,
+            tok_stack: Vec::new(),
+            php_closing: String::new(),
+        }
+    }
+
     /// `(state.tokenize || tokenBase)(stream, state)`
     fn tokenize(&self, stream: &mut StringStream, state: &mut State, cur: &mut Cur) -> Style {
         match state.tokenize {
@@ -672,6 +710,10 @@ impl Clike {
             Tokenize::DartInterpolation => dart::token_interpolation(stream, state),
             Tokenize::DartInterpolationIdentifier => {
                 dart::token_interpolation_identifier(stream, state)
+            }
+            Tokenize::PhpString { escapes } => php::php_string(escapes, stream, state),
+            Tokenize::PhpSequence { object, step } => {
+                php::match_sequence(object, step, stream, state)
             }
         }
     }
@@ -797,6 +839,7 @@ impl Clike {
                 state.tokenize = prev;
                 Some(None)
             }
+            Hook::Php(ch) => php::hook(ch, stream, state),
         }
     }
 
@@ -905,20 +948,7 @@ impl Mode for Clike {
     }
 
     fn start_state(&self) -> Box<dyn ModeState> {
-        Box::new(State {
-            tokenize: Tokenize::Base,
-            context: vec![Context {
-                ty: "top",
-                namespace: false,
-                align: Some(false),
-            }],
-            start_of_line: true,
-            prev_token: None,
-            type_at_end_of_line: false,
-            cpp11_raw_string_delim: String::new(),
-            interpolation_stack: Vec::new(),
-            ceylon_string_tokenizer: None,
-        })
+        Box::new(self.start())
     }
 
     fn token(&self, stream: &mut StringStream, st: &mut dyn ModeState) -> Option<String> {
