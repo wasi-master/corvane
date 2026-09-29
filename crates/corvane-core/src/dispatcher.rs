@@ -673,8 +673,8 @@ impl Dispatcher {
                     // selection to the lines that exist in this diff.
                     let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {
                         Some(
-                            corvane_models::Diff::Text { hunks }
-                            | corvane_models::Diff::LargeText { hunks },
+                            corvane_models::Diff::Text { hunks, .. }
+                            | corvane_models::Diff::LargeText { hunks, .. },
                         ) => hunks
                             .iter()
                             .flat_map(|h| {

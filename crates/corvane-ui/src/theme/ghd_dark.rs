@@ -168,6 +168,10 @@ pub fn theme() -> GhdTheme {
         diff_delete_hover_gutter: c(RED_700),
         diff_delete_hover_text: c(GRAY_100),
         diff_empty_row_background: c(GRAY_900_DARKEN_1),
+        diff_empty_row_gutter_background: c(GRAY_900_DARKEN_3),
+        file_warning_background: ca(YELLOW_900, 0.4),
+        file_warning: c(YELLOW_700),
+        file_warning_border: ca(YELLOW_800, 0.4),
         diff_empty_hunk_handle: c(GRAY_700),
     }
 }

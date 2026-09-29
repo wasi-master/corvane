@@ -6,8 +6,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use corvane_models::{
-    Diff, DiffHunk, DiffLine, DiffLineKind, FileStatusKind, ImageBlob, SubmoduleDiff,
-    SubmoduleStatus, WorkingDirectoryFileChange, image_media_type,
+    Diff, DiffHunk, DiffLine, DiffLineKind, DiffWarnings, FileStatusKind, ImageBlob,
+    LineEndingsChange, SubmoduleDiff, SubmoduleStatus, WorkingDirectoryFileChange,
+    image_media_type,
 };
 
 use crate::detect::GitBinary;
@@ -60,7 +61,7 @@ pub fn working_directory_diff(
             &out.stdout,
         ));
     }
-    let diff = parse_raw_diff(&out.stdout);
+    let diff = parse_raw_diff_with_warnings(&out.stdout, &out.stderr);
     Ok(match diff {
         Diff::Binary => {
             let previous_path = file.old_path.as_deref().unwrap_or(&file.path);
@@ -184,6 +185,62 @@ pub fn blob_lines(
         .map(|b| file_lines(&b))
 }
 
+/// GHD `parseLineEndingsWarning`: git's stderr notice that the working copy's
+/// line endings will be converted on checkout (both the classic and the
+/// git ≥ 2.37 wording).
+pub fn parse_line_endings_warning(stderr: &str) -> Option<LineEndingsChange> {
+    for line in stderr.lines() {
+        let line = line.trim();
+        let rest = line.strip_prefix("warning: ")?;
+        // "in the working copy of 'x', CRLF will be replaced by LF the next time…"
+        let rest = match rest.find(", ") {
+            Some(ix) if rest.starts_with("in the working copy of") => &rest[ix + 2..],
+            _ => rest,
+        };
+        let (from, tail) = rest.split_once(" will be replaced by ")?;
+        let to = tail
+            .split([' ', '.'])
+            .next()
+            .unwrap_or("");
+        let valid = |s: &str| matches!(s, "CRLF" | "LF" | "CR");
+        if valid(from) && valid(to) {
+            return Some(LineEndingsChange {
+                from: from.to_string(),
+                to: to.to_string(),
+            });
+        }
+    }
+    None
+}
+
+/// GHD `HiddenBidiCharsRegex`.
+pub fn has_hidden_bidi_chars(text: &str) -> bool {
+    text.chars()
+        .any(|c| matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'))
+}
+
+/// [`parse_raw_diff`] plus the warnings derived from git's stderr.
+pub fn parse_raw_diff_with_warnings(stdout: &[u8], stderr: &str) -> Diff {
+    let line_endings = parse_line_endings_warning(stderr);
+    match parse_raw_diff(stdout) {
+        Diff::Text {
+            hunks,
+            mut warnings,
+        } => {
+            warnings.line_endings = line_endings;
+            Diff::Text { hunks, warnings }
+        }
+        Diff::LargeText {
+            hunks,
+            mut warnings,
+        } => {
+            warnings.line_endings = line_endings;
+            Diff::LargeText { hunks, warnings }
+        }
+        other => other,
+    }
+}
+
 /// Parse `--patch-with-raw -z` output: skip the raw header block, then the
 /// unified diff. Handles binary and oversize diffs.
 pub fn parse_raw_diff(stdout: &[u8]) -> Diff {
@@ -201,7 +258,9 @@ pub fn parse_raw_diff(stdout: &[u8]) -> Diff {
         return Diff::Binary;
     }
     match parse_unified(patch) {
-        Diff::Text { hunks } if stdout.len() > MAX_DIFF_BYTES => Diff::LargeText { hunks },
+        Diff::Text { hunks, warnings } if stdout.len() > MAX_DIFF_BYTES => {
+            Diff::LargeText { hunks, warnings }
+        }
         other => other,
     }
 }
@@ -307,11 +366,19 @@ pub fn parse_unified(patch: &str) -> Diff {
         hunks.push(h);
     }
     if hunks.is_empty() {
-        Diff::Empty
-    } else if truncated {
-        Diff::LargeText { hunks }
+        return Diff::Empty;
+    }
+    let warnings = DiffWarnings {
+        hidden_bidi: hunks
+            .iter()
+            .flat_map(|h| h.lines.iter())
+            .any(|l| has_hidden_bidi_chars(&l.text)),
+        line_endings: None,
+    };
+    if truncated {
+        Diff::LargeText { hunks, warnings }
     } else {
-        Diff::Text { hunks }
+        Diff::Text { hunks, warnings }
     }
 }
 
@@ -324,7 +391,7 @@ mod tests {
     #[test]
     fn parses_hunks_and_line_numbers() {
         let diff = parse_unified(SAMPLE);
-        let Diff::Text { hunks } = diff else {
+        let Diff::Text { hunks, .. } = diff else {
             panic!("expected text diff")
         };
         assert_eq!(hunks.len(), 1);
@@ -401,5 +468,25 @@ mod tests {
                 assert_eq!(file.status.kind, corvane_models::FileStatusKind::Untracked);
             }
         }
+    }
+
+    #[test]
+    fn parses_line_endings_warnings() {
+        let old = "warning: CRLF will be replaced by LF in a.txt.\nThe file will have its original line endings in your working directory\n";
+        assert_eq!(
+            parse_line_endings_warning(old),
+            Some(LineEndingsChange {
+                from: "CRLF".into(),
+                to: "LF".into()
+            })
+        );
+        let new = "warning: in the working copy of 'a.txt', CRLF will be replaced by LF the next time Git touches it\n";
+        assert_eq!(
+            parse_line_endings_warning(new).map(|c| c.to),
+            Some("LF".to_string())
+        );
+        assert_eq!(parse_line_endings_warning("warning: something else"), None);
+        assert!(has_hidden_bidi_chars("abc\u{202E}def"));
+        assert!(!has_hidden_bidi_chars("plain"));
     }
 }

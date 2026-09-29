@@ -248,6 +248,11 @@ pub struct GhdTheme {
     pub diff_delete_hover_gutter: Hsla,
     pub diff_delete_hover_text: Hsla,
     pub diff_empty_row_background: Hsla,
+    pub diff_empty_row_gutter_background: Hsla,
+    /// `--file-warning-*`: the bidi / line-endings notice above a diff.
+    pub file_warning_background: Hsla,
+    pub file_warning: Hsla,
+    pub file_warning_border: Hsla,
     pub diff_empty_hunk_handle: Hsla,
 }
 
