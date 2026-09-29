@@ -16,7 +16,7 @@ use gpui_kit::*;
 use crate::dialog::{DialogButton, dialog};
 use crate::scrollbar::{gutter, scrollbar};
 use crate::theme::sizes::*;
-use crate::theme::{ActiveGhdTheme, MONO_FONT};
+use crate::theme::{ActiveGhdTheme, mono_font};
 use crate::widgets::{Inline, link_button, paragraph};
 
 const WEBSITE_URL: &str = "https://github.com/wasi-master/corvane";
@@ -66,7 +66,7 @@ fn license_text(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .mb(SPACING_DOUBLE())
-        .font_family(MONO_FONT)
+        .font_family(mono_font())
         .text_size(FONT_SIZE_SM())
         .text_color(t.text)
         .child(text.into())

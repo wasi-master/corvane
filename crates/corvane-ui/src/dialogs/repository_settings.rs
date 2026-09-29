@@ -314,7 +314,7 @@ impl RepositorySettingsDialog {
                     .child(
                         Textarea::new(&self.gitignore)
                             .h(zpx(128.))
-                            .font_family(crate::theme::MONO_FONT),
+                            .font_family(crate::theme::mono_font()),
                     ),
             )
             .into_any_element()

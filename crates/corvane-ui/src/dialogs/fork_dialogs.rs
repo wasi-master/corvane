@@ -168,7 +168,7 @@ impl Render for CreateForkDialog {
                         .p(SPACING())
                         .rounded(BORDER_RADIUS())
                         .bg(t.box_alt_background)
-                        .font_family(crate::theme::MONO_FONT)
+                        .font_family(crate::theme::mono_font())
                         .text_size(FONT_SIZE_SM())
                         .child(error.clone()),
                 )

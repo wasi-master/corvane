@@ -11,7 +11,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::ListRowA11y;
-use crate::widgets::{button, text_box};
+use crate::widgets::button;
 
 pub struct RepositoryFoldout {
     state: Entity<AppState>,
@@ -268,7 +268,7 @@ impl Render for RepositoryFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
-                    .child(text_box(
+                    .child(crate::widgets::filter_text_box(
                         "repo-filter",
                         &self.filter,
                         Some(octicon(Octicon::Search, t.text_secondary)),

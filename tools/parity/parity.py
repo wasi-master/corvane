@@ -244,6 +244,28 @@ class Run:
             else:
                 drv.resize(w, h)
 
+    @staticmethod
+    def stable_snap(drv, path: Path, timeout: float = 4.0, interval: float = 0.25):
+        """Capture until two consecutive frames agree (async work such as
+        syntax highlighting or avatars has landed). A few hundred changed
+        pixels (a blinking caret) still count as stable."""
+        import numpy as np
+        from PIL import Image
+
+        tmp = path.with_suffix(".prev.png")
+        drv.snap(path)
+        prev = np.asarray(Image.open(path).convert("RGB"))
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            time.sleep(interval)
+            drv.snap(tmp)
+            cur = np.asarray(Image.open(tmp).convert("RGB"))
+            changed = cur.shape != prev.shape or int((np.abs(cur.astype(int) - prev).max(axis=2) > 8).sum()) > 400
+            tmp.replace(path)
+            if not changed:
+                return
+            prev = cur
+
     def snap(self, spec, i, ghd: Ghd, cv: Corvane, cfg, shots: Path, result):
         spec = {"name": spec} if isinstance(spec, str) else dict(spec)
         name = spec.get("name", f"step{i}")
@@ -256,7 +278,7 @@ class Run:
                                     "ghd": pg.name, "corvane": "", "diff": "", "regions": []})
             print(f"    snap {name}", flush=True)
             return
-        both(lambda: ghd.snap(pg), lambda: cv.snap(pc))
+        both(lambda: self.stable_snap(ghd, pg), lambda: self.stable_snap(cv, pc))
         threshold = spec.get("threshold", cfg["threshold"])
         res = imgdiff.compare(
             pg, pc, shots, stem, cv.scale,

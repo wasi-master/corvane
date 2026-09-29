@@ -8,7 +8,7 @@ use gpui_kit::*;
 
 use crate::dialog::{DialogButton, dialog, dialog_loading};
 use crate::theme::sizes::*;
-use crate::theme::{ActiveGhdTheme, MONO_FONT};
+use crate::theme::{ActiveGhdTheme, mono_font};
 use crate::widgets::{Inline, code_ref, link_button, paragraph};
 
 /// `getHTMLURL`: the web address of an API endpoint.
@@ -90,7 +90,7 @@ impl Render for CreateTutorialRepositoryDialog {
                     )
                     .children(detail.map(|d| {
                         div()
-                            .font_family(MONO_FONT)
+                            .font_family(mono_font())
                             .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary)
                             .truncate()

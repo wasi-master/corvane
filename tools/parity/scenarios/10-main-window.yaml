@@ -69,6 +69,7 @@ steps:
   - snap: commit-button-enabled-hover
   - press: [124, 747]
   - snap: commit-button-pressed
+  - release: [124, 700]
   - hover: [219, 791]
   - snap: undo-hover
 ---

@@ -22,7 +22,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::theme::sizes::zpx;
-use crate::theme::{ActiveGhdTheme, GhdTheme, MONO_FONT};
+use crate::theme::{ActiveGhdTheme, GhdTheme, mono_font};
 
 /// `.markdown-body` spacing: block margin-bottom and heading / rule margins.
 #[allow(non_snake_case)]
@@ -137,7 +137,7 @@ impl Renderer<'_> {
                 .p(zpx(16.))
                 .rounded(zpx(6.))
                 .bg(t.md_canvas_subtle)
-                .font_family(MONO_FONT)
+                .font_family(mono_font())
                 .text_size(zpx(10.2))
                 .line_height(zpx(10.2 * 1.45))
                 .whitespace_nowrap()
@@ -224,7 +224,7 @@ impl Renderer<'_> {
                 },
             ));
             if s.code {
-                fonts.push((span.range.clone(), MONO_FONT.into()));
+                fonts.push((span.range.clone(), mono_font().into()));
             }
             if let Some(href) = &span.link {
                 ranges.push(span.range.clone());

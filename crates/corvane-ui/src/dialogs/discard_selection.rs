@@ -6,7 +6,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
-use crate::theme::MONO_FONT;
+use crate::theme::mono_font;
 use crate::theme::sizes::*;
 use crate::widgets::checkbox;
 
@@ -42,7 +42,7 @@ impl Render for DiscardSelectionDialog {
             .child(
                 div()
                     .mb(SPACING())
-                    .font_family(MONO_FONT)
+                    .font_family(mono_font())
                     .child(self.path.clone()),
             )
             .child(

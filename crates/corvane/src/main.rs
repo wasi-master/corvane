@@ -97,6 +97,7 @@ fn main() {
             .and_then(|z| z.parse::<f32>().ok())
             .unwrap_or(settings.window_zoom_factor);
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
+        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
         info!(zoom, "window zoom factor");
         corvane_ui::init(cx, resolve_theme(shown_theme, cx));
         let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);

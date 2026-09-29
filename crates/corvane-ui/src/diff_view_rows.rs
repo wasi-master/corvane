@@ -93,10 +93,15 @@ pub struct Row {
 
 impl Row {
     pub fn height(&self) -> Pixels {
-        if self.kind == DiffLineKind::Hunk && self.expansion == HunkExpansionType::Both {
-            DIFF_LINE_HEIGHT() * 2.
-        } else {
-            DIFF_LINE_HEIGHT()
+        match (self.kind, self.expansion) {
+            (DiffLineKind::Hunk, HunkExpansionType::Both) => DIFF_LINE_HEIGHT() * 2.,
+            // `.hunk-expansion-handle button`: 16 px icon + 4 / 1 px padding +
+            // 1 px margins grows the row to 23 px (measured in GHD 3.6.6);
+            // a hunk without a handle stays 20 px
+            (DiffLineKind::Hunk, HunkExpansionType::Up)
+            | (DiffLineKind::Hunk, HunkExpansionType::Down)
+            | (DiffLineKind::Hunk, HunkExpansionType::Short) => zpx(23.),
+            _ => DIFF_LINE_HEIGHT(),
         }
     }
 }

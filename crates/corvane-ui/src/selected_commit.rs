@@ -18,7 +18,7 @@ use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
-use crate::theme::{ActiveGhdTheme, MONO_FONT};
+use crate::theme::{ActiveGhdTheme, mono_font};
 use crate::widgets::{avatar_image, avatar_lookup, link_button};
 
 /// `commitSummaryWidth` constraints (GHD `constrain(250, 100, 600)`).
@@ -264,7 +264,7 @@ impl SelectedCommitView {
                             d.child(
                                 div()
                                     .pb(SPACING_HALF())
-                                    .font_family(MONO_FONT)
+                                    .font_family(mono_font())
                                     .text_size(FONT_SIZE_SM())
                                     .child(description),
                             )

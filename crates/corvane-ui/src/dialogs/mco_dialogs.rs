@@ -1067,7 +1067,7 @@ impl Render for LocalChangesOverwrittenDialog {
                         .flex()
                         .flex_col()
                         .gap(zpx(2.))
-                        .font_family(crate::theme::MONO_FONT)
+                        .font_family(crate::theme::mono_font())
                         .text_size(FONT_SIZE_SM())
                         .text_color(t.text_secondary)
                         .children(self.files.iter().map(|f| div().truncate().child(f.clone())))
