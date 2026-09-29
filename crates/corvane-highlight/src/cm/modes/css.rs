@@ -177,6 +177,18 @@ struct CssState {
     ty: Ty,
 }
 
+/// Carry the mode closure's `type` from a finished block's state into a
+/// fresh one, for nesting modes that run one css instance over several
+/// blocks (slim's cached `modes[…]`).
+pub(crate) fn carry_type(prev: &dyn ModeState, next: &mut dyn ModeState) {
+    if let (Some(prev), Some(next)) = (
+        prev.as_any().downcast_ref::<CssState>(),
+        next.as_any_mut().downcast_mut::<CssState>(),
+    ) {
+        next.ty = prev.ty.clone();
+    }
+}
+
 impl CssState {
     fn cx(&self) -> St {
         self.context.last().copied().unwrap_or(St::Top)

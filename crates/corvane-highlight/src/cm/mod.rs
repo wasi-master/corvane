@@ -409,6 +409,14 @@ impl<'a> StringStream<'a> {
         self.line_start -= n;
         r
     }
+    /// `new StringStream(stream.string.slice(from), stream.tabSize)`: a
+    /// fresh stream over the rest of the visible line from `from` on,
+    /// without look-ahead (slim's `sub`).
+    pub fn tail(&self, from: usize) -> StringStream<'a> {
+        let from = from.min(self.end);
+        let string: &'a str = &self.string[self.bytes[from]..self.bytes[self.end]];
+        StringStream::new(string, self.tab_size, &[], 0)
+    }
     /// `lookAhead(n)`: line `n` below this one.
     pub fn look_ahead(&self, n: usize) -> Option<&'a str> {
         self.lines.get(self.line + n).copied()
