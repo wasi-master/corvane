@@ -23,6 +23,10 @@ pub struct Repository {
     /// Commit form gear menu (`CommitOptions`, persisted per repository).
     #[serde(default)]
     pub commit_options: RepoCommitOptions,
+    /// `workflowPreferences.forkContributionTarget` (Repository Settings ›
+    /// Fork Behavior); `None` = the GHD default (contribute to the parent).
+    #[serde(default)]
+    pub fork_contribution_target: Option<ForkContributionTarget>,
 }
 
 /// GHD `ICommitOptions`: `skipCommitHooks`, `signOffCommits`, `allowEmptyCommit`.
@@ -42,6 +46,7 @@ impl Repository {
             github: None,
             missing: false,
             commit_options: RepoCommitOptions::default(),
+            fork_contribution_target: None,
         }
     }
 
@@ -1168,5 +1173,617 @@ impl Diff {
             Diff::Text { warnings, .. } | Diff::LargeText { warnings, .. } => Some(warnings),
             _ => None,
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pull requests (`models/pull-request.ts`)
+// ---------------------------------------------------------------------------
+
+/// `PullRequestRef`: a ref in a GitHub repository. `repository` is `None`
+/// when the head repository was deleted after the pull request was opened.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PullRequestRef {
+    pub ref_name: String,
+    pub sha: String,
+    pub repository: Option<GitHubRepository>,
+}
+
+/// `PullRequest`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PullRequest {
+    pub number: u64,
+    pub title: String,
+    /// ISO-8601 timestamps as the API sends them (`2024-01-31T12:00:00Z`).
+    pub created_at: String,
+    pub updated_at: String,
+    pub head: PullRequestRef,
+    pub base: PullRequestRef,
+    /// The author's login.
+    pub author: String,
+    pub draft: bool,
+    pub body: String,
+}
+
+impl PullRequest {
+    /// `getPullRequestCommitRef`: the ref GitHub exposes for the PR head.
+    pub fn commit_ref(&self) -> String {
+        format!("refs/pull/{}/head", self.number)
+    }
+
+    /// `<base html url>/pull/<number>`
+    pub fn html_url(&self) -> Option<String> {
+        self.base
+            .repository
+            .as_ref()
+            .map(|r| format!("{}/pull/{}", r.html_url, self.number))
+    }
+}
+
+/// Parse an ISO-8601 UTC timestamp (`2024-01-31T12:00:00Z`, optional
+/// fractional seconds) into a `SystemTime`.
+pub fn parse_iso8601(value: &str) -> Option<std::time::SystemTime> {
+    let value = value.trim().trim_end_matches('Z');
+    let (date, time) = value.split_once('T')?;
+    let mut d = date.split('-');
+    let year: i64 = d.next()?.parse().ok()?;
+    let month: u32 = d.next()?.parse().ok()?;
+    let day: u32 = d.next()?.parse().ok()?;
+    let time = time.split(['+', '-']).next()?;
+    let mut t = time.split(':');
+    let hour: u64 = t.next()?.parse().ok()?;
+    let minute: u64 = t.next()?.parse().ok()?;
+    let second: u64 = t
+        .next()
+        .map(|s| s.split('.').next().unwrap_or("0"))
+        .unwrap_or("0")
+        .parse()
+        .ok()?;
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return None;
+    }
+    // Howard Hinnant's days-from-civil.
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = if y >= 0 { y } else { y - 399 } / 400;
+    let yoe = (y - era * 400) as u64;
+    let mp = (month as u64 + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + day as u64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe as i64 - 719_468;
+    let secs = days * 86_400 + (hour * 3600 + minute * 60 + second) as i64;
+    if secs < 0 {
+        return None;
+    }
+    Some(std::time::UNIX_EPOCH + std::time::Duration::from_secs(secs as u64))
+}
+
+/// `urlMatchesRemote` / `repositoryMatchesRemote`: same host and
+/// `owner/name`, ignoring scheme, credentials, case and a `.git` suffix.
+pub fn url_matches_remote(a: &str, b: &str) -> bool {
+    fn key(url: &str) -> Option<(String, String)> {
+        let (host, path) = split_remote(url)?;
+        let path = path.trim_matches('/');
+        let path = path.strip_suffix(".git").unwrap_or(path);
+        Some((host.to_lowercase(), path.to_lowercase()))
+    }
+    match (key(a), key(b)) {
+        (Some(a), Some(b)) => a == b,
+        _ => false,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Forks (`models/workflow-preferences.ts`)
+// ---------------------------------------------------------------------------
+
+/// `ForkContributionTarget`: what the user contributes to with a fork.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ForkContributionTarget {
+    #[default]
+    Parent,
+    #[serde(rename = "self")]
+    Own,
+}
+
+impl Repository {
+    /// `getForkContributionTarget`
+    pub fn fork_contribution_target(&self) -> ForkContributionTarget {
+        self.fork_contribution_target.unwrap_or_default()
+    }
+
+    /// `isForkedRepositoryContributingToParent`
+    pub fn is_fork_contributing_to_parent(&self) -> bool {
+        self.github.as_ref().is_some_and(|gh| gh.parent.is_some())
+            && self.fork_contribution_target() == ForkContributionTarget::Parent
+    }
+
+    /// `getNonForkGitHubRepository`: the parent when this fork contributes
+    /// to it, else the repository itself.
+    pub fn non_fork_github(&self) -> Option<&GitHubRepository> {
+        let gh = self.github.as_ref()?;
+        match (&gh.parent, self.fork_contribution_target()) {
+            (Some(parent), ForkContributionTarget::Parent) => Some(parent),
+            _ => Some(gh),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CI checks (`lib/ci-checks/ci-checks.ts`, `lib/api.ts`)
+// ---------------------------------------------------------------------------
+
+/// `APICheckStatus`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckStatus {
+    Queued,
+    InProgress,
+    Completed,
+    /// Anything else the API sends (`waiting`, `requested`, `pending`).
+    #[serde(other)]
+    Pending,
+}
+
+/// `APICheckConclusion`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CheckConclusion {
+    ActionRequired,
+    Cancelled,
+    TimedOut,
+    Failure,
+    Neutral,
+    Success,
+    Skipped,
+    Stale,
+    #[serde(other)]
+    Unknown,
+}
+
+impl CheckConclusion {
+    /// `getCheckRunConclusionAdjective`
+    pub fn adjective(conclusion: Option<CheckConclusion>) -> &'static str {
+        match conclusion {
+            None => "In progress",
+            Some(CheckConclusion::ActionRequired) => "Action required",
+            Some(CheckConclusion::Cancelled) => "Canceled",
+            Some(CheckConclusion::TimedOut) => "Timed out",
+            Some(CheckConclusion::Failure) => "Failed",
+            Some(CheckConclusion::Neutral) | Some(CheckConclusion::Unknown) => "Neutral",
+            Some(CheckConclusion::Success) => "Successful",
+            Some(CheckConclusion::Skipped) => "Skipped",
+            Some(CheckConclusion::Stale) => "Marked as stale",
+        }
+    }
+
+    /// `FailingCheckConclusions`
+    pub fn is_failing(self) -> bool {
+        matches!(
+            self,
+            CheckConclusion::Failure
+                | CheckConclusion::Cancelled
+                | CheckConclusion::ActionRequired
+                | CheckConclusion::TimedOut
+        )
+    }
+}
+
+/// `IAPIWorkflowRun` (the fields the check-run list needs).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkflowRun {
+    pub id: u64,
+    pub workflow_id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub event: String,
+    pub check_suite_id: Option<u64>,
+    pub created_at: String,
+}
+
+/// `IAPIWorkflowJobStep`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct JobStep {
+    pub name: String,
+    pub number: u64,
+    pub status: CheckStatus,
+    pub conclusion: Option<CheckConclusion>,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+/// `IRefCheck`: one status or check run of a ref.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RefCheck {
+    pub id: u64,
+    pub name: String,
+    pub description: String,
+    pub status: CheckStatus,
+    pub conclusion: Option<CheckConclusion>,
+    pub app_name: String,
+    pub html_url: Option<String>,
+    pub check_suite_id: Option<u64>,
+    pub actions_workflow: Option<WorkflowRun>,
+    pub job_steps: Option<Vec<JobStep>>,
+}
+
+/// `ICombinedRefCheck`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CombinedRefCheck {
+    pub status: CheckStatus,
+    pub conclusion: Option<CheckConclusion>,
+    pub checks: Vec<RefCheck>,
+}
+
+impl RefCheck {
+    /// `isIncomplete`
+    pub fn is_incomplete(&self) -> bool {
+        self.status == CheckStatus::Completed
+            && matches!(
+                self.conclusion,
+                Some(CheckConclusion::TimedOut)
+                    | Some(CheckConclusion::Stale)
+                    | Some(CheckConclusion::Cancelled)
+            )
+    }
+
+    /// `isFailure`
+    pub fn is_failure(&self) -> bool {
+        self.status == CheckStatus::Completed
+            && matches!(
+                self.conclusion,
+                Some(CheckConclusion::Failure) | Some(CheckConclusion::ActionRequired)
+            )
+    }
+
+    /// `isSuccess`
+    pub fn is_success(&self) -> bool {
+        self.status == CheckStatus::Completed
+            && matches!(
+                self.conclusion,
+                Some(CheckConclusion::Success)
+                    | Some(CheckConclusion::Neutral)
+                    | Some(CheckConclusion::Skipped)
+            )
+    }
+}
+
+impl CombinedRefCheck {
+    /// `createCombinedCheckFromChecks`
+    pub fn from_checks(checks: Vec<RefCheck>) -> Option<Self> {
+        if checks.is_empty() {
+            return None;
+        }
+        if checks.len() == 1 {
+            let (status, conclusion) = (checks[0].status, checks[0].conclusion);
+            return Some(Self {
+                status,
+                conclusion,
+                checks,
+            });
+        }
+        if checks.iter().any(|c| c.is_incomplete() || c.is_failure()) {
+            Some(Self {
+                status: CheckStatus::Completed,
+                conclusion: Some(CheckConclusion::Failure),
+                checks,
+            })
+        } else if checks.iter().all(RefCheck::is_success) {
+            Some(Self {
+                status: CheckStatus::Completed,
+                conclusion: Some(CheckConclusion::Success),
+                checks,
+            })
+        } else {
+            Some(Self {
+                status: CheckStatus::InProgress,
+                conclusion: None,
+                checks,
+            })
+        }
+    }
+}
+
+/// `formatPreciseDuration`: `1h 2m 3s`.
+pub fn format_precise_duration(ms: u64) -> String {
+    let secs = ms / 1000;
+    let (d, h, m, s) = (secs / 86_400, secs / 3600 % 24, secs / 60 % 60, secs % 60);
+    let mut parts = Vec::new();
+    if d > 0 {
+        parts.push(format!("{d}d"));
+    }
+    if h > 0 {
+        parts.push(format!("{h}h"));
+    }
+    if m > 0 {
+        parts.push(format!("{m}m"));
+    }
+    if s > 0 || parts.is_empty() {
+        parts.push(format!("{s}s"));
+    }
+    parts.join(" ")
+}
+
+/// `getCheckDurationInMilliseconds`
+pub fn check_duration_ms(started_at: Option<&str>, completed_at: Option<&str>) -> Option<u64> {
+    let start = parse_iso8601(started_at?)?;
+    let end = parse_iso8601(completed_at?)?;
+    end.duration_since(start).ok().map(|d| d.as_millis() as u64)
+}
+
+/// `getCheckRunShortDescription`
+pub fn check_short_description(
+    status: CheckStatus,
+    conclusion: Option<CheckConclusion>,
+    duration_ms: Option<u64>,
+) -> String {
+    let Some(conclusion) = conclusion.filter(|_| status == CheckStatus::Completed) else {
+        return "In progress".to_string();
+    };
+    let adjective = CheckConclusion::adjective(Some(conclusion));
+    if matches!(
+        conclusion,
+        CheckConclusion::ActionRequired | CheckConclusion::Skipped | CheckConclusion::Stale
+    ) {
+        return adjective.to_string();
+    }
+    let preposition = if conclusion == CheckConclusion::Success {
+        "in"
+    } else {
+        "after"
+    };
+    match duration_ms {
+        Some(ms) if ms > 0 => format!("{adjective} {preposition} {}", format_precise_duration(ms)),
+        _ => adjective.to_string(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Repository rules (`models/repo-rules.ts`)
+// ---------------------------------------------------------------------------
+
+/// `RepoRuleEnforced`: `false` | `true` | `'bypass'`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RepoRuleEnforced {
+    #[default]
+    No,
+    Yes,
+    /// The rule applies but the current user may bypass it.
+    Bypass,
+}
+
+impl RepoRuleEnforced {
+    /// `info.x !== true ? enforced : true`: once enforced, stays enforced.
+    pub fn combine(self, other: RepoRuleEnforced) -> RepoRuleEnforced {
+        if self == RepoRuleEnforced::Yes {
+            self
+        } else {
+            other
+        }
+    }
+}
+
+/// `APIRepoRuleMetadataOperator`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RuleOperator {
+    StartsWith,
+    EndsWith,
+    Contains,
+    #[serde(rename = "regex")]
+    RegexMatch,
+}
+
+/// `IRepoRulesMetadataRule` (the matcher is built from the pattern in core).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoRulesMetadataRule {
+    pub enforced: RepoRuleEnforced,
+    pub ruleset_id: u64,
+    pub operator: RuleOperator,
+    pub pattern: String,
+    pub negate: bool,
+}
+
+impl RepoRulesMetadataRule {
+    /// `toHumanDescription`: `must not start with "foo"`.
+    pub fn human_description(&self) -> String {
+        let mut description = String::from("must ");
+        if self.negate {
+            description.push_str("not ");
+        }
+        match self.operator {
+            RuleOperator::RegexMatch => {
+                description.push_str(&format!(
+                    "match the regular expression \"{}\"",
+                    self.pattern
+                ));
+            }
+            RuleOperator::StartsWith => {
+                description.push_str(&format!("start with \"{}\"", self.pattern))
+            }
+            RuleOperator::EndsWith => {
+                description.push_str(&format!("end with \"{}\"", self.pattern))
+            }
+            RuleOperator::Contains => {
+                description.push_str(&format!("contain \"{}\"", self.pattern))
+            }
+        }
+        description
+    }
+}
+
+/// `RepoRulesMetadataFailure`
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RepoRulesMetadataFailure {
+    pub description: String,
+    pub ruleset_id: u64,
+}
+
+/// `RepoRulesMetadataStatus`
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RepoRulesMetadataStatus {
+    Pass,
+    Fail,
+    Bypass,
+}
+
+/// `RepoRulesMetadataFailures`
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RepoRulesMetadataFailures {
+    pub failed: Vec<RepoRulesMetadataFailure>,
+    pub bypassed: Vec<RepoRulesMetadataFailure>,
+}
+
+impl RepoRulesMetadataFailures {
+    pub fn status(&self) -> RepoRulesMetadataStatus {
+        if !self.failed.is_empty() {
+            RepoRulesMetadataStatus::Fail
+        } else if !self.bypassed.is_empty() {
+            RepoRulesMetadataStatus::Bypass
+        } else {
+            RepoRulesMetadataStatus::Pass
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.failed.len() + self.bypassed.len()
+    }
+}
+
+/// `RepoRulesInfo`: what the rulesets of the current branch enforce.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RepoRulesInfo {
+    /// `update` / `required_deployments` / `required_status_checks`.
+    pub basic_commit_warning: RepoRuleEnforced,
+    pub creation_restricted: RepoRuleEnforced,
+    pub signed_commits_required: RepoRuleEnforced,
+    pub pull_request_required: RepoRuleEnforced,
+    pub commit_message_patterns: Vec<RepoRulesMetadataRule>,
+    pub commit_author_email_patterns: Vec<RepoRulesMetadataRule>,
+    pub committer_email_patterns: Vec<RepoRulesMetadataRule>,
+    pub branch_name_patterns: Vec<RepoRulesMetadataRule>,
+}
+
+// ---------------------------------------------------------------------------
+// Secret scanning push protection (`ui/secret-scanning/`)
+// ---------------------------------------------------------------------------
+
+/// `ISecretLocation`
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretLocation {
+    pub commit_sha: String,
+    pub path: String,
+    pub line_number: u64,
+}
+
+/// `ISecretScanResult`: one secret the server refused to accept.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SecretScanResult {
+    /// The placeholder id at the end of the bypass URL.
+    pub id: String,
+    pub description: String,
+    pub locations: Vec<SecretLocation>,
+    pub bypass_url: String,
+    /// Bypassing needs an admin's approval ("request an exemption").
+    pub requires_approval: bool,
+}
+
+/// `BypassReason`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BypassReason {
+    FalsePositive,
+    UsedInTests,
+    WillFixLater,
+}
+
+impl BypassReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BypassReason::FalsePositive => "false_positive",
+            BypassReason::UsedInTests => "used_in_tests",
+            BypassReason::WillFixLater => "will_fix_later",
+        }
+    }
+}
+
+#[cfg(test)]
+mod github_layer_tests {
+    use super::*;
+
+    #[test]
+    fn parses_iso_timestamps() {
+        let t = parse_iso8601("1970-01-02T00:00:00Z").unwrap();
+        assert_eq!(
+            t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            86_400
+        );
+        let t = parse_iso8601("2024-03-01T12:30:15.5Z").unwrap();
+        assert_eq!(
+            t.duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+            1_709_296_215
+        );
+        assert!(parse_iso8601("nope").is_none());
+    }
+
+    #[test]
+    fn matches_remote_urls() {
+        assert!(url_matches_remote(
+            "https://github.com/Octocat/Hello-World.git",
+            "git@github.com:octocat/hello-world"
+        ));
+        assert!(!url_matches_remote(
+            "https://github.com/octocat/hello-world",
+            "https://github.com/octocat/other"
+        ));
+    }
+
+    #[test]
+    fn combines_checks() {
+        let check = |conclusion| RefCheck {
+            id: 1,
+            name: "ci".into(),
+            description: String::new(),
+            status: CheckStatus::Completed,
+            conclusion,
+            app_name: String::new(),
+            html_url: None,
+            check_suite_id: None,
+            actions_workflow: None,
+            job_steps: None,
+        };
+        let combined = CombinedRefCheck::from_checks(vec![
+            check(Some(CheckConclusion::Success)),
+            check(Some(CheckConclusion::Skipped)),
+        ])
+        .unwrap();
+        assert_eq!(combined.conclusion, Some(CheckConclusion::Success));
+        let combined = CombinedRefCheck::from_checks(vec![
+            check(Some(CheckConclusion::Success)),
+            check(Some(CheckConclusion::Cancelled)),
+        ])
+        .unwrap();
+        assert_eq!(combined.conclusion, Some(CheckConclusion::Failure));
+        assert!(CombinedRefCheck::from_checks(vec![]).is_none());
+        assert_eq!(
+            check_short_description(
+                CheckStatus::Completed,
+                Some(CheckConclusion::Failure),
+                Some(65_000)
+            ),
+            "Failed after 1m 5s"
+        );
+    }
+
+    #[test]
+    fn describes_rules() {
+        let rule = RepoRulesMetadataRule {
+            enforced: RepoRuleEnforced::Yes,
+            ruleset_id: 1,
+            operator: RuleOperator::StartsWith,
+            pattern: "feat".into(),
+            negate: true,
+        };
+        assert_eq!(rule.human_description(), "must not start with \"feat\"");
     }
 }

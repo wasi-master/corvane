@@ -80,6 +80,11 @@ impl Dispatcher {
             drag_target: None,
             api_repositories: std::collections::HashMap::new(),
             api_repositories_loading: std::collections::HashSet::new(),
+            pull_requests: std::collections::HashMap::new(),
+            branches_tab: crate::pull_requests::BranchesTab::Branches,
+            show_ci_status_popover: false,
+            commit_statuses: crate::commit_status::CommitStatusStore::default(),
+            repo_rulesets: std::collections::HashMap::new(),
             issues: std::collections::HashMap::new(),
             mentionables: std::collections::HashMap::new(),
             editors: Vec::new(),
@@ -179,14 +184,23 @@ impl Dispatcher {
     // ---- foldouts / popups ----
 
     pub fn toggle_foldout(foldout: Foldout, cx: &mut App) {
-        Self::state(cx).update(cx, |s, cx| {
+        let opened = Self::state(cx).update(cx, |s, cx| {
             s.foldout = if s.foldout == Some(foldout) {
                 None
             } else {
                 Some(foldout)
             };
+            s.show_ci_status_popover = false;
             cx.notify();
+            s.foldout == Some(foldout)
         });
+        // opening the branch list is a good moment to look for new pull requests
+        if opened
+            && foldout == Foldout::Branch
+            && let Some(id) = Self::state(cx).read(cx).selected
+        {
+            Self::refresh_pull_requests(id, false, cx);
+        }
     }
 
     pub fn close_foldout(cx: &mut App) {
@@ -299,6 +313,7 @@ impl Dispatcher {
             Self::refresh_repository(id, cx);
             Self::start_watching(id, cx);
             Self::check_lfs(id, cx);
+            Self::ensure_pull_requests(id, cx);
         }
     }
 
@@ -509,6 +524,9 @@ impl Dispatcher {
                 }
                 Self::load_commits(id, false, cx);
                 Self::refresh_compare(id, cx);
+                Self::subscribe_current_pull_request_status(id, cx);
+                Self::add_upstream_remote_if_needed(id, cx);
+                Self::refresh_branch_protection(id, cx);
                 let rerun = Self::state(cx).update(cx, |s, _| {
                     let rs = s.repo_state_mut(id);
                     std::mem::take(&mut rs.refresh_pending)
@@ -2616,7 +2634,7 @@ impl Dispatcher {
     }
 }
 
-fn persist_repositories(s: &mut AppState) {
+pub(crate) fn persist_repositories(s: &mut AppState) {
     if let Err(err) = s.store.save_repositories(&s.repositories) {
         error!(?err, "could not save repositories");
     }

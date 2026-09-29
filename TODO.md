@@ -6,18 +6,17 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** Pull Requests tab in Branch foldout (`app/src/ui/branches/pull-request-list.tsx`, `BranchesTab.PullRequests`), PR updater every 30 min (`lib/stores/pull-request-store.ts`, `pull-request-updater.ts`)
-- [ ] **[GH]** CI check-run status in branch button + PR list + popover (`ui/branches/ci-status.tsx`, `ui/check-runs/`), `CICheckRunRerun` popup
-- [ ] **[GH]** Preview Pull Request dialog (`ui/open-pull-request/`, `PopupType.StartPullRequest`); the `Branch › Preview Pull Request` item stays disabled. "Create Pull Request" pushes an unpublished branch and opens `/pull/new/<branch>`
+- [ ] **[GH]** Pull Requests tab: no quick view on hover (`enablePullRequestQuickView` feature flag) and no "Checkout in New Worktree…" context-menu item; the 30-minute updater runs whether or not the window is focused
+- [ ] **[GH]** CI check runs: GHES version gating (`lib/endpoint-capabilities.ts`) is reduced to dotcom-vs-enterprise, the loading spinner does not spin, and the popover subscribes by "touching" rendered rows instead of component mount/unmount
+- [ ] **[GH]** Preview Pull Request: the Diff Settings gear sits in the selected file's header (GHD: in the "Showing changes from all commits" row); no `PushBranchCommits` prompt (an unpublished branch is pushed automatically before the compare page opens)
 - [ ] **[GH]** PR quick view / review / comment popups (`PullRequestReview`, `PullRequestComment`, `PullRequestChecksFailed`)
 - [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications › "Enable notifications" is persisted (with the permission hint) but nothing emits notifications yet
-- [ ] **[GH]** Forks: `CreateFork`, `ChooseForkSettings`, Repository Settings › Fork Behavior tab, upstream remote handling (`lib/stores/app-store.ts` `_updateRepositoryFork…`)
-- [ ] **[GH]** Repo rules / protected-branch warnings in commit form (`ui/changes/commit-warning.tsx`, `lib/api.ts fetchRepoRulesForBranch`)
-- [ ] **[GH]** Secret-scanning push protection (`PushProtectionError`, `BypassPushProtection`)
-- [ ] **[GH]** `PushRejectedDueToMissingWorkflowScope` re-auth flow, `SAMLReauthRequired`, `InvalidatedToken`
+- [ ] **[GH]** Forks: the fork suggestion follows a push refused with "Permission denied" (GHD reads the repository's API `permissions`); the "You don't have write access" commit warning needs those permissions too; `UpstreamAlreadyExists` only logs
+- [ ] **[GH]** Repo rules: GHD skips the rules API for free-plan private repositories (`useRepoRulesLogic`); the commit-message check formats summary + description without the `Co-Authored-By` trailers; committer-email rules are fetched but not checked
+- [ ] **[GH]** Re-auth flows (`workflow` scope, SAML SSO, invalidated token) open the device-flow sign-in; GHD's browser flow retries the push automatically after signing in
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
-- [ ] **[GH]** Clone dialog: org filter, repo search across pages, "Your repositories" caching in redb
+- [ ] **[GH]** Clone dialog: the list is cached in redb per endpoint and filtered locally like GHD; no server-side search
 - [ ] **[GH]** Issue creation with template picker (v1 opens `/issues/new` in browser)
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 

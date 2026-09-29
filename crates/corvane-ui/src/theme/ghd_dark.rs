@@ -58,6 +58,8 @@ pub fn theme() -> GhdTheme {
         tab_bar_hover_background: c(GRAY_800),
         tab_bar_count_text: c(GRAY_100),
         tab_bar_count_background: c(GRAY_700),
+        pr_open_icon: c(GREEN_500),
+        pr_draft_icon: c(GRAY_400),
         list_item_hover_background: c(GRAY_800),
         list_item_badge_text: c(GRAY_100),
         list_item_badge_background: c(GRAY_600),

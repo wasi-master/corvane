@@ -9,7 +9,8 @@ use std::rc::Rc;
 use corvane_core::filter::{filtered_files, no_results_message, option_count};
 use corvane_core::{
     AppState, Author, DiffSelectionType, Dispatcher, FileListFilter, FileStatusKind, FilterOption,
-    Popup, Tip, UnknownAuthorState, WorkingDirectoryFileChange, legacy_stealth_email,
+    Foldout, Popup, RepoRuleEnforced, RepoRulesMetadataFailures, RepoRulesMetadataStatus, Tip,
+    UnknownAuthorState, WorkingDirectoryFileChange, failed_rules, legacy_stealth_email,
 };
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{
@@ -97,6 +98,23 @@ pub struct ChangesSidebar {
     /// A handle typed with a trailing space, turned into a token on the next
     /// render (needs a window).
     pending_author: Option<(Range<usize>, Author)>,
+    /// `isRuleFailurePopoverOpen`: the commit-message rule failures popover.
+    rule_failure_popover_open: bool,
+    rule_hint_bounds: Rc<Cell<Bounds<Pixels>>>,
+}
+
+/// What the repository rules say about the commit being written
+/// (`renderBranchProtectionsRepoRulesCommitWarning` inputs).
+struct RulesSnapshot {
+    html_url: String,
+    branch: Option<String>,
+    /// `aheadBehind === null`: the branch is unpublished.
+    unpublished: bool,
+    protected: bool,
+    info: corvane_core::RepoRulesInfo,
+    message_failures: RepoRulesMetadataFailures,
+    author_failures: RepoRulesMetadataFailures,
+    branch_failures: RepoRulesMetadataFailures,
 }
 
 impl ChangesSidebar {
@@ -188,6 +206,8 @@ impl ChangesSidebar {
             co_authors_focus,
             pending_spell: None,
             pending_author: None,
+            rule_failure_popover_open: false,
+            rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
         }
     }
 
@@ -1762,6 +1782,461 @@ impl ChangesSidebar {
         )
     }
 
+    /// The repository rules that apply to the commit form, `None` for
+    /// repositories without a GitHub remote.
+    fn rules_snapshot(&self, cx: &App) -> Option<RulesSnapshot> {
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let github = s.repository(id)?.github.as_ref()?;
+        let rs = s.repo_states.get(&id)?;
+        let info = rs.repo_rules.clone();
+        let branch = rs
+            .info
+            .as_ref()
+            .and_then(|i| i.current_branch())
+            .map(|b| b.name.clone());
+        // `formatCommitMessage`: summary, blank line, description
+        let summary = self.summary.read(cx).value().trim().to_string();
+        let description = self.description.read(cx).value().trim().to_string();
+        let message = if description.is_empty() {
+            format!("{summary}\n")
+        } else {
+            format!("{summary}\n\n{description}\n")
+        };
+        let message_failures = if summary.is_empty() {
+            RepoRulesMetadataFailures::default()
+        } else {
+            failed_rules(&info.commit_message_patterns, &message)
+        };
+        let author_failures = rs
+            .info
+            .as_ref()
+            .and_then(|i| i.identity.email.as_deref())
+            .map(|email| failed_rules(&info.commit_author_email_patterns, email))
+            .unwrap_or_default();
+        let branch_failures = branch
+            .as_deref()
+            .map(|b| failed_rules(&info.branch_name_patterns, b))
+            .unwrap_or_default();
+        Some(RulesSnapshot {
+            html_url: github.html_url.clone(),
+            branch,
+            unpublished: rs.ahead_behind.is_none(),
+            protected: rs.current_branch_protected,
+            info,
+            message_failures,
+            author_failures,
+            branch_failures,
+        })
+    }
+
+    /// `hasRepoRuleFailure`
+    fn has_repo_rule_failure(&self, cx: &App) -> bool {
+        let Some(rules) = self.rules_snapshot(cx) else {
+            return false;
+        };
+        rules.info.basic_commit_warning == RepoRuleEnforced::Yes
+            || rules.info.signed_commits_required == RepoRuleEnforced::Yes
+            || rules.info.pull_request_required == RepoRuleEnforced::Yes
+            || rules.message_failures.status() == RepoRulesMetadataStatus::Fail
+            || rules.author_failures.status() == RepoRulesMetadataStatus::Fail
+            || (rules.unpublished
+                && (rules.info.creation_restricted == RepoRuleEnforced::Yes
+                    || rules.branch_failures.status() == RepoRulesMetadataStatus::Fail))
+    }
+
+    /// `CommitWarning`: an icon centred on a rule above a centred message.
+    fn commit_warning(
+        &self,
+        icon: Octicon,
+        color: Hsla,
+        message: AnyElement,
+        cx: &App,
+    ) -> AnyElement {
+        let t = cx.ghd();
+        div()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .mb(SPACING)
+            .bg(t.box_alt_background)
+            .child(
+                div()
+                    .relative()
+                    .h(px(20.))
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .absolute()
+                            .left_0()
+                            .right_0()
+                            .top(px(10.))
+                            .h(px(1.))
+                            .bg(t.box_border),
+                    )
+                    .child(
+                        div()
+                            .px(SPACING_HALF)
+                            .bg(t.box_alt_background)
+                            .child(octicon(icon, color)),
+                    ),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .justify_center()
+                    .gap(px(3.))
+                    .text_size(FONT_SIZE)
+                    .text_color(t.text_secondary)
+                    .child(message),
+            )
+            .into_any_element()
+    }
+
+    /// `renderBranchProtectionsRepoRulesCommitWarning`
+    fn branch_protection_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let rules = self.rules_snapshot(cx)?;
+        let branch = rules.branch.clone()?;
+        let bold = |text: String| {
+            div()
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(t.text)
+                .child(text)
+                .into_any_element()
+        };
+        let switch_link = || {
+            crate::widgets::link_button("commit-warning-switch", "switch branches", cx)
+                .on_click(|_, _, cx| Dispatcher::toggle_foldout(Foldout::Branch, cx))
+                .into_any_element()
+        };
+        let rulesets_link = |label: &'static str| {
+            let url = format!(
+                "{}/rules/?ref={}",
+                rules.html_url,
+                corvane_core::integrations::encode_component(&format!("refs/heads/{branch}"))
+            );
+            crate::widgets::link_button("commit-warning-rulesets", label, cx)
+                .on_click(move |_, _, cx| cx.open_url(&url))
+                .into_any_element()
+        };
+        let message = |parts: Vec<AnyElement>| {
+            div()
+                .flex()
+                .flex_row()
+                .flex_wrap()
+                .justify_center()
+                .gap(px(3.))
+                .children(parts)
+                .into_any_element()
+        };
+        if rules.protected {
+            return Some(self.commit_warning(
+                Octicon::Alert,
+                t.dialog_warning,
+                message(vec![
+                    bold(branch.clone()),
+                    div().child("is a protected branch. Want to").into_any_element(),
+                    switch_link(),
+                    div().child("?").into_any_element(),
+                ]),
+                cx,
+            ));
+        }
+        // which rule warning to show: enforced ones first, then bypassable
+        let publish = if rules.unpublished {
+            if rules.info.creation_restricted == RepoRuleEnforced::Yes
+                || rules.branch_failures.status() == RepoRulesMetadataStatus::Fail
+            {
+                RepoRuleEnforced::Yes
+            } else if rules.info.creation_restricted == RepoRuleEnforced::Bypass
+                || rules.branch_failures.status() == RepoRulesMetadataStatus::Bypass
+            {
+                RepoRuleEnforced::Bypass
+            } else {
+                RepoRuleEnforced::No
+            }
+        } else {
+            RepoRuleEnforced::No
+        };
+        let statuses = [
+            ("publish", publish),
+            ("signing", rules.info.signed_commits_required),
+            ("basic", rules.info.basic_commit_warning),
+        ];
+        let warning = statuses
+            .iter()
+            .find(|(_, e)| *e == RepoRuleEnforced::Yes)
+            .or_else(|| {
+                statuses
+                    .iter()
+                    .find(|(_, e)| *e == RepoRuleEnforced::Bypass)
+            })
+            .copied()?;
+        let can_bypass = warning.1 == RepoRuleEnforced::Bypass;
+        let (icon, color) = if can_bypass {
+            (Octicon::Alert, t.dialog_warning)
+        } else {
+            (Octicon::Stop, t.dialog_error)
+        };
+        let bypass_tail = || {
+            if can_bypass {
+                vec![
+                    div()
+                        .child(", but you can bypass them. Proceed with caution!")
+                        .into_any_element(),
+                ]
+            } else {
+                vec![
+                    div().child(". Want to").into_any_element(),
+                    switch_link(),
+                    div().child("?").into_any_element(),
+                ]
+            }
+        };
+        let parts = match warning.0 {
+            "publish" => {
+                let mut parts = vec![
+                    div().child("The branch name").into_any_element(),
+                    bold(branch.clone()),
+                    div().child("fails").into_any_element(),
+                    rulesets_link("one or more rules"),
+                    div()
+                        .child(format!(
+                            "that {} prevent it from being published",
+                            if can_bypass { "would" } else { "will" }
+                        ))
+                        .into_any_element(),
+                ];
+                parts.extend(bypass_tail());
+                parts
+            }
+            "signing" => vec![
+                rulesets_link("One or more rules"),
+                div().child("apply to the branch").into_any_element(),
+                bold(branch.clone()),
+                div()
+                    .child(format!(
+                        "that require signed commits{}",
+                        if can_bypass {
+                            ", but you can bypass them. Proceed with caution!"
+                        } else {
+                            "."
+                        }
+                    ))
+                    .into_any_element(),
+                crate::widgets::link_button(
+                    "commit-warning-signing-docs",
+                    "Learn more about commit signing.",
+                    cx,
+                )
+                .on_click(|_, _, cx| {
+                    cx.open_url(
+                        "https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits",
+                    )
+                })
+                .into_any_element(),
+            ],
+            _ => {
+                let mut parts = vec![
+                    rulesets_link("One or more rules"),
+                    div().child("apply to the branch").into_any_element(),
+                    bold(branch.clone()),
+                    div()
+                        .child(format!(
+                            "that {} prevent pushing",
+                            if can_bypass { "would" } else { "will" }
+                        ))
+                        .into_any_element(),
+                ];
+                parts.extend(bypass_tail());
+                parts
+            }
+        };
+        Some(self.commit_warning(icon, color, message(parts), cx))
+    }
+
+    /// `renderRepoRuleCommitMessageFailureHint`: the stop / alert button at
+    /// the end of the summary box.
+    fn rule_failure_hint(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let rules = self.rules_snapshot(cx)?;
+        let status = rules.message_failures.status();
+        if status == RepoRulesMetadataStatus::Pass {
+            return None;
+        }
+        let can_bypass = status == RepoRulesMetadataStatus::Bypass;
+        let bounds = self.rule_hint_bounds.clone();
+        Some(
+            div()
+                .id("commit-message-failure-hint")
+                .absolute()
+                .right(px(6.))
+                .top(px(4.))
+                .cursor_pointer()
+                .tooltip(crate::widgets::tooltip(if can_bypass {
+                    "Warning: Commit message fails repository rules, but you can bypass them. View details."
+                } else {
+                    "Error: Commit message fails repository rules. View details."
+                }))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.rule_failure_popover_open = !this.rule_failure_popover_open;
+                    cx.notify();
+                }))
+                .child(
+                    canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
+                        .absolute()
+                        .inset_0(),
+                )
+                .child(if can_bypass {
+                    octicon(Octicon::Alert, t.dialog_warning)
+                } else {
+                    octicon(Octicon::Stop, t.dialog_error)
+                })
+                .into_any_element(),
+        )
+    }
+
+    /// `renderRuleFailurePopover` + `RepoRulesMetadataFailureList`.
+    fn rule_failure_popover(&self, window: &Window, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let rules = self.rules_snapshot(cx)?;
+        let branch = rules.branch.clone()?;
+        let failures = &rules.message_failures;
+        if failures.status() == RepoRulesMetadataStatus::Pass {
+            return None;
+        }
+        let anchor = self.rule_hint_bounds.get();
+        let viewport = window.viewport_size();
+        let width = px(360.);
+        let x = (anchor.origin.x + anchor.size.width + px(8.)).min(viewport.width - width - px(8.));
+        let y = (anchor.origin.y - px(20.)).max(px(8.));
+        let total = failures.total();
+        let end_text = if failures.status() == RepoRulesMetadataStatus::Bypass {
+            format!(
+                ", but you can bypass {}. Proceed with caution!",
+                if total == 1 { "it" } else { "them" }
+            )
+        } else {
+            ".".to_string()
+        };
+        let all_url = format!(
+            "{}/rules/?ref={}",
+            rules.html_url,
+            corvane_core::integrations::encode_component(&format!("refs/heads/{branch}"))
+        );
+        let html_url = rules.html_url.clone();
+        let list = |label: &'static str, items: &[corvane_core::RepoRulesMetadataFailure]| {
+            if items.is_empty() {
+                return None;
+            }
+            Some(
+                div()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        div()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(format!("{label} Rules:")),
+                    )
+                    .children(items.iter().enumerate().map(|(ix, f)| {
+                        let url = format!("{html_url}/rules/{}", f.ruleset_id);
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap(SPACING_HALF)
+                            .pl(SPACING_DOUBLE)
+                            .child("•")
+                            .child(
+                                crate::widgets::link_button(
+                                    SharedString::from(format!("rule-{label}-{ix}")),
+                                    f.description.clone(),
+                                    cx,
+                                )
+                                .on_click(move |_, _, cx| cx.open_url(&url)),
+                            )
+                    })),
+            )
+        };
+        Some(
+            deferred(
+                anchored().position(point(px(0.), px(0.))).child(
+                    div()
+                        .id("rule-failure-layer")
+                        .relative()
+                        .w(viewport.width)
+                        .h(viewport.height)
+                        .child(
+                            div()
+                                .id("rule-failure-overlay")
+                                .absolute()
+                                .inset_0()
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _, _, cx| {
+                                        this.rule_failure_popover_open = false;
+                                        cx.notify();
+                                    }),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .id("rule-failure-popover")
+                                .absolute()
+                                .left(x)
+                                .top(y)
+                                .w(width)
+                                .min_h(px(200.))
+                                .p(SPACING)
+                                .flex()
+                                .flex_col()
+                                .gap(SPACING)
+                                .bg(t.box_background)
+                                .text_color(t.text)
+                                .text_size(FONT_SIZE)
+                                .border_1()
+                                .border_color(t.box_border)
+                                .rounded(BORDER_RADIUS)
+                                .shadow_lg()
+                                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                                .child(
+                                    div()
+                                        .text_size(FONT_SIZE_MD)
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .child("Commit Message Rule Failures"),
+                                )
+                                .child(
+                                    div()
+                                        .flex()
+                                        .flex_row()
+                                        .flex_wrap()
+                                        .gap(px(3.))
+                                        .child(format!(
+                                            "This commit message fails {total} rule{}{end_text}",
+                                            if total > 1 { "s" } else { "" }
+                                        ))
+                                        .child(
+                                            crate::widgets::link_button(
+                                                "rule-failure-all",
+                                                "View all rulesets for this branch.",
+                                                cx,
+                                            )
+                                            .on_click(move |_, _, cx| cx.open_url(&all_url)),
+                                        ),
+                                )
+                                .children(list("Failed", &failures.failed))
+                                .children(list("Bypassed", &failures.bypassed)),
+                        ),
+                ),
+            )
+            .with_priority(12)
+            .into_any_element(),
+        )
+    }
+
     fn commit_disabled(&self, cx: &App) -> bool {
         let s = self.state.read(cx);
         let rs = s.selected_state();
@@ -1783,6 +2258,7 @@ impl ChangesSidebar {
         self.summary.read(cx).value().trim().is_empty()
             || (!any_included && !allow_empty && !amending)
             || committing
+            || self.has_repo_rule_failure(cx)
     }
 
     /// `CommitWarning` with the information icon: "Your changes will modify
@@ -2079,7 +2555,8 @@ impl ChangesSidebar {
                             cx,
                         )
                         .relative()
-                        .children(self.spell_overlay(CommitField::Summary, cx)),
+                        .children(self.spell_overlay(CommitField::Summary, cx))
+                        .children(self.rule_failure_hint(cx)),
                     ),
             )
             .child(
@@ -2171,6 +2648,12 @@ impl ChangesSidebar {
                 d.child(div().mb(SPACING).child(self.co_author_input(window, cx)))
             })
             .children(self.amend_notice(cx))
+            .children(self.branch_protection_warning(cx))
+            .children(
+                self.rule_failure_popover_open
+                    .then(|| self.rule_failure_popover(window, cx))
+                    .flatten(),
+            )
             .child({
                 let (amending, committing) = self
                     .state

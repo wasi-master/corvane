@@ -73,6 +73,12 @@ pub struct Settings {
     pub hide_whitespace_in_changes_diff: bool,
     /// Same for the History tab (`hideWhitespaceInHistoryDiff`).
     pub hide_whitespace_in_history_diff: bool,
+    /// Same for the Preview Pull Request dialog (`hideWhitespaceInPullRequestDiff`).
+    #[serde(default)]
+    pub hide_whitespace_in_pull_request_diff: bool,
+    /// Preview Pull Request file-list width (`pullRequestFileListWidth`, default 250).
+    #[serde(default = "default_file_list_width")]
+    pub pull_request_file_list_width: f32,
     /// Diff Settings › Diff display › Split (`showSideBySideDiff`).
     pub show_side_by_side_diff: bool,
     /// Last chosen tab of a modified-image diff (`imageDiffType`).
@@ -191,6 +197,10 @@ pub fn default_number_format_for(country: Option<&str>) -> String {
     format!("{thousands}|{decimal}")
 }
 
+fn default_file_list_width() -> f32 {
+    250.0
+}
+
 fn default_tab_size() -> u32 {
     TAB_SIZE_DEFAULT
 }
@@ -240,6 +250,8 @@ impl Default for Settings {
             show_diff_check_marks: true,
             hide_whitespace_in_changes_diff: false,
             hide_whitespace_in_history_diff: false,
+            hide_whitespace_in_pull_request_diff: false,
+            pull_request_file_list_width: 250.0,
             show_side_by_side_diff: false,
             image_diff_type: corvane_models::ImageDiffType::TwoUp,
             tab_size: TAB_SIZE_DEFAULT,

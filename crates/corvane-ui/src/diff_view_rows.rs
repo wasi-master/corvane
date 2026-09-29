@@ -23,8 +23,29 @@ use crate::theme::{ActiveGhdTheme, GhdTheme};
 pub const HANDLE_WIDTH: f32 = 16.;
 /// `.line-number-check`
 pub const CHECK_WIDTH: f32 = 20.;
-/// `--width-line-number`
-pub const LINE_NUMBER_WIDTH: f32 = 55.;
+
+/// GHD `getLineWidthFromDigitCount(getNumberOfDigits(diff.maxLineNumber))`
+/// (`diff-helpers.tsx`): one line-number column, sized for the largest line
+/// number in the diff. `--width-line-number: 55px` is only the CSS default;
+/// the row overrides it with this inline width.
+pub fn line_number_width(max_line_number: u32) -> f32 {
+    let digits = max_line_number.checked_ilog10().map_or(1, |d| d + 1);
+    digits.max(3) as f32 * 10. + 5.
+}
+
+/// The largest old/new line number among `rows` (GHD `diff.maxLineNumber`).
+/// Both sides only grow down the diff, so the last numbered rows hold them.
+pub fn max_line_number(rows: &[Row]) -> u32 {
+    let (mut old, mut new) = (None, None);
+    for row in rows.iter().rev() {
+        old = old.or(row.old);
+        new = new.or(row.new);
+        if old.is_some() && new.is_some() {
+            break;
+        }
+    }
+    old.unwrap_or(0).max(new.unwrap_or(0))
+}
 
 /// GHD `DiffRangeType`: what a block of consecutive changes contains.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -115,6 +136,8 @@ pub struct RowContext {
     pub search: Option<Rc<SearchIndex>>,
     /// Settings › Accessibility › Show check marks in the diff.
     pub show_check_marks: bool,
+    /// `lineNumberWidth`: one line-number column (`line_number_width`).
+    pub line_number_width: f32,
 }
 
 /// `.cm-s-default` colours; classes that inherit are not emitted by the highlighter.
@@ -457,8 +480,15 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     .child("No newline at end of file"),
             )
         });
-    let handle_width = if selectable { HANDLE_WIDTH } else { 0. };
-    let gutter_width = if selectable { CHECK_WIDTH } else { 0. } + 2. * LINE_NUMBER_WIDTH;
+    // `.has-check-all-control`: 16 px strip with check marks, 4 px without
+    let check_marks = selectable && ctx.show_check_marks;
+    let handle_width = match (selectable, check_marks) {
+        (false, _) => 0.,
+        (true, true) => HANDLE_WIDTH,
+        (true, false) => 4.,
+    };
+    // `lineGutterWidth`: both columns, plus the check column when shown
+    let gutter_width = if check_marks { CHECK_WIDTH } else { 0. } + 2. * ctx.line_number_width;
     let height = row.height();
 
     let mut el = div()
@@ -533,7 +563,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
             let hide_whitespace = ctx.hide_whitespace;
             div()
                 .id(("hunk-handle", abs as usize))
-                .w(px(HANDLE_WIDTH))
+                .w(px(handle_width))
                 .flex_none()
                 .bg(bg)
                 .cursor_pointer()
@@ -582,7 +612,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
         } else {
             // `.editable .row.context { border-left: 16px solid diff-border }`
             div()
-                .w(px(HANDLE_WIDTH))
+                .w(px(handle_width))
                 .flex_none()
                 .bg(t.diff_border)
                 .into_any_element()
@@ -691,7 +721,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     }
                 })
         })
-        .when(selectable, |d| {
+        .when(check_marks, |d| {
             d.child(
                 div()
                     .w(px(CHECK_WIDTH))
@@ -699,7 +729,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     .flex()
                     .justify_center()
                     .items_center()
-                    .when(selected && ctx.show_check_marks, |d| {
+                    .when(selected, |d| {
                         d.child(octicon(Octicon::DiffCheck, num_text).size(px(12.)))
                     }),
             )
@@ -967,7 +997,7 @@ fn split_line_number(
     let side = if column == Column::Before { 0 } else { 1 };
     div()
         .id(("split-gutter", row.abs as usize * 2 + side))
-        .w(px(LINE_NUMBER_WIDTH + check_width))
+        .w(px(ctx.line_number_width + check_width))
         .flex_none()
         .flex()
         .flex_row()
@@ -1216,7 +1246,7 @@ pub fn render_split_row(
             } else {
                 0.
             };
-            let width = LINE_NUMBER_WIDTH + check;
+            let width = ctx.line_number_width + check;
             let height = r.height();
             let gutter: AnyElement = match r.expansion {
                 HunkExpansionType::Both => div()

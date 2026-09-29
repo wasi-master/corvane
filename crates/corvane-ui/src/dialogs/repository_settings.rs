@@ -21,10 +21,11 @@ use crate::widgets::{
     section_heading, select_button, text_box,
 };
 
-const TABS: [RepositorySettingsTab; 3] = [
+const TABS: [RepositorySettingsTab; 4] = [
     RepositorySettingsTab::Remote,
     RepositorySettingsTab::IgnoredFiles,
     RepositorySettingsTab::GitConfig,
+    RepositorySettingsTab::ForkSettings,
 ];
 
 pub struct RepositorySettingsDialog {
@@ -41,6 +42,8 @@ pub struct RepositorySettingsDialog {
     /// Email picked from the account emails; `None` = "Other" (text box).
     email_choice: Option<String>,
     loaded: bool,
+    /// Fork Behavior tab (`forkContributionTarget`).
+    fork_target: corvane_core::ForkContributionTarget,
 }
 
 impl RepositorySettingsDialog {
@@ -87,6 +90,11 @@ impl RepositorySettingsDialog {
             email,
             email_choice: None,
             loaded: false,
+            fork_target: state
+                .read(cx)
+                .repository(repo)
+                .map(|r| r.fork_contribution_target())
+                .unwrap_or_default(),
         };
         this.fill(&state, window, cx);
         this
@@ -146,9 +154,62 @@ impl RepositorySettingsDialog {
         account.map(|a| a.emails.clone()).unwrap_or_default()
     }
 
+    /// `ForkSettings` tab: "I'll be using this fork…"
+    fn fork_settings_tab(&self, cx: &Context<Self>) -> AnyElement {
+        let Some(github) = self
+            .state
+            .read(cx)
+            .repository(self.repo)
+            .and_then(|r| r.github.clone())
+        else {
+            return div().into_any_element();
+        };
+        let target = self.fork_target;
+        let select = |value: corvane_core::ForkContributionTarget, cx: &Context<Self>| {
+            let weak = cx.weak_entity();
+            move |_: &mut Window, cx: &mut App| {
+                weak.update(cx, |this, cx| {
+                    this.fork_target = value;
+                    cx.notify();
+                })
+                .ok();
+            }
+        };
+        div()
+            .flex()
+            .flex_col()
+            .child(section_heading("I'll be using this fork…", cx))
+            .child(radio_row(
+                "repo-settings-fork-parent",
+                target == corvane_core::ForkContributionTarget::Parent,
+                "To contribute to the parent repository",
+                select(corvane_core::ForkContributionTarget::Parent, cx),
+                cx,
+            ))
+            .child(radio_row(
+                "repo-settings-fork-self",
+                target == corvane_core::ForkContributionTarget::Own,
+                "For my own purposes",
+                select(corvane_core::ForkContributionTarget::Own, cx),
+                cx,
+            ))
+            .child(crate::dialogs::fork_settings_description(
+                &github, target, cx,
+            ))
+            .into_any_element()
+    }
+
     fn save(&self, cx: &mut App) {
         let data = self.data(cx);
         let mut save = RepositorySettingsSave::default();
+        let stored_target = self
+            .state
+            .read(cx)
+            .repository(self.repo)
+            .map(|r| r.fork_contribution_target());
+        if stored_target.is_some_and(|t| t != self.fork_target) {
+            Dispatcher::set_fork_contribution_target(self.repo, self.fork_target, cx);
+        }
         if let Some(remote) = data.as_ref().and_then(|d| d.remote.clone()) {
             let url = self.remote_url.read(cx).value().trim().to_string();
             if url != remote.url {
@@ -397,6 +458,16 @@ impl Render for RepositorySettingsDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        // "Fork Behavior" only for forks with a known parent
+        let is_fork = self
+            .state
+            .read(cx)
+            .repository(self.repo)
+            .and_then(|r| r.github.as_ref())
+            .is_some_and(|gh| gh.parent.is_some());
+        if self.tab == RepositorySettingsTab::ForkSettings && !is_fork {
+            self.tab = RepositorySettingsTab::Remote;
+        }
         let selected = TABS.iter().position(|t| *t == self.tab).unwrap_or(0);
         let weak = cx.weak_entity();
         let nav = vertical_tab_bar(
@@ -416,7 +487,14 @@ impl Render for RepositorySettingsDialog {
                     label: "Git Config".into(),
                     icon: Octicon::GitCommit,
                 },
-            ],
+            ]
+            .into_iter()
+            .chain(is_fork.then_some(VerticalTab {
+                id: "repo-settings-tab-fork",
+                label: "Fork Behavior".into(),
+                icon: Octicon::RepoForked,
+            }))
+            .collect(),
             selected,
             move |ix, _, cx| {
                 weak.update(cx, |this, cx| {
@@ -431,6 +509,7 @@ impl Render for RepositorySettingsDialog {
             RepositorySettingsTab::Remote => self.remote_tab(window, cx),
             RepositorySettingsTab::IgnoredFiles => self.ignored_files_tab(cx),
             RepositorySettingsTab::GitConfig => self.git_config_tab(window, cx),
+            RepositorySettingsTab::ForkSettings => self.fork_settings_tab(cx),
         };
         // `#repository-settings { width: 600px; .dialog-content { min-height: 305px } }`
         let content = div()

@@ -1,5 +1,8 @@
 //! Root view: title bar, toolbar, resizable sidebar + content, foldouts, dialogs.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use corvane_core::{AppState, Dispatcher, Section};
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
@@ -10,6 +13,7 @@ use gpui_kit::*;
 use crate::banner::banner_bar;
 use crate::branch_list::BranchFoldout;
 use crate::changes::ChangesSidebar;
+use crate::ci_check_popover::CiCheckPopover;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
 use crate::diff_view::{DiffSource, DiffView, diff_header};
@@ -44,6 +48,9 @@ pub struct Workspace {
     dialogs: Entity<DialogHost>,
     diff_view: Entity<DiffView>,
     welcome: Option<Entity<WelcomeView>>,
+    /// The branch button's PR badge rectangle (anchor of the CI popover).
+    pr_badge_bounds: Rc<Cell<Bounds<Pixels>>>,
+    ci_popover: Entity<CiCheckPopover>,
 }
 
 impl Workspace {
@@ -95,6 +102,9 @@ impl Workspace {
         let worktree_foldout = cx.new(|cx| WorktreeFoldout::new(state.clone(), window, cx));
         let diff_view = cx.new(|cx| DiffView::new(state.clone(), DiffSource::WorkingDirectory, cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
+        let pr_badge_bounds: Rc<Cell<Bounds<Pixels>>> = Rc::new(Cell::new(Bounds::default()));
+        let ci_popover =
+            cx.new(|cx| CiCheckPopover::new(state.clone(), pr_badge_bounds.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
             .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
         window.focus(&focus_handle, cx);
@@ -112,6 +122,8 @@ impl Workspace {
             repository_foldout,
             branch_foldout,
             worktree_foldout,
+            pr_badge_bounds,
+            ci_popover,
             dialogs,
             diff_view,
             welcome,
@@ -377,16 +389,20 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
-        let (buttons, foldout, popup, has_repos, cloning, banner, worktree_button) = {
+        let (buttons, foldout, popup, has_repos, cloning, banner, worktree_button, ci_popover) = {
             let state = self.state.read(cx);
             (
-                toolbar_models(state, self.sidebar_width),
+                toolbar_models(state, self.sidebar_width, &self.pr_badge_bounds),
                 state.foldout,
                 state.popup.is_some(),
                 !state.repositories.is_empty(),
                 state.cloning.clone(),
                 state.banner.clone(),
                 worktree_button_visible(state),
+                state.show_ci_status_popover
+                    && state
+                        .selected
+                        .is_some_and(|id| state.current_pull_request(id).is_some()),
             )
         };
 
@@ -462,6 +478,7 @@ impl Render for Workspace {
                     cx,
                 ))
             })
+            .when(ci_popover, |d| d.child(self.ci_popover.clone()))
             .when(popup, |d| d.child(self.dialogs.clone()))
     }
 }

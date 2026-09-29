@@ -405,6 +405,88 @@ pub fn commit_file_diff(
     ))
 }
 
+/// `getMergeBase`: `None` when the two commits have unrelated histories.
+pub fn merge_base(git: Arc<GitBinary>, workdir: &Path, a: &str, b: &str) -> Result<Option<String>> {
+    let out = GitCommand::new(git)
+        .args(["merge-base", a, b])
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .run()?;
+    if !out.status.success() {
+        return Ok(None);
+    }
+    let sha = out.stdout_string()?.trim().to_string();
+    Ok((!sha.is_empty()).then_some(sha))
+}
+
+/// `getBranchMergeBaseChangedFiles`: the files `compare` changed since it
+/// diverged from `base` (`git diff --merge-base`), `None` without a merge
+/// base. `newest` is the comparison branch's tip, recorded as the files'
+/// commitish.
+pub fn merge_base_changed_files(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    base: &str,
+    compare: &str,
+    newest: &str,
+) -> Result<Option<ChangesetData>> {
+    if merge_base(git.clone(), workdir, base, compare)?.is_none() {
+        return Ok(None);
+    }
+    let out = GitCommand::new(git)
+        .args([
+            "diff",
+            "--merge-base",
+            base,
+            compare,
+            "-C",
+            "-M",
+            "-z",
+            "--raw",
+            "--numstat",
+            "--",
+        ])
+        .current_dir(workdir)
+        .run()?;
+    Ok(Some(parse_raw_log_with_numstat(&out.stdout, newest)))
+}
+
+/// `getBranchMergeBaseDiff`: one file's patch between the merge base of
+/// `base`/`compare` and `compare`.
+pub fn merge_base_file_diff(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    file: &CommittedFileChange,
+    base: &str,
+    compare: &str,
+    hide_whitespace: bool,
+    newest: &str,
+) -> Result<Diff> {
+    let mut args = vec!["diff", "--merge-base", base, compare];
+    if hide_whitespace {
+        args.push("-w");
+    }
+    args.extend(["--patch-with-raw", "-z", "--no-color", "--"]);
+    let mut cmd = GitCommand::new(git.clone())
+        .args(args)
+        .current_dir(workdir)
+        .arg(&file.path);
+    if let Some(old) = &file.old_path {
+        cmd = cmd.arg(old);
+    }
+    let out = cmd.run()?;
+    let merge_base =
+        merge_base(git.clone(), workdir, base, compare)?.unwrap_or_else(|| newest.to_string());
+    Ok(finish_committed_diff(
+        git,
+        workdir,
+        file,
+        newest,
+        &merge_base,
+        &out.stdout,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

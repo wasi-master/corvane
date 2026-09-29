@@ -121,6 +121,9 @@ pub struct GhdTheme {
     pub tab_bar_hover_background: Hsla,
     pub tab_bar_count_text: Hsla,
     pub tab_bar_count_background: Hsla,
+    /// `--pr-open-icon-color` / `--pr-draft-icon-color`
+    pub pr_open_icon: Hsla,
+    pub pr_draft_icon: Hsla,
     pub list_item_hover_background: Hsla,
     pub list_item_badge_text: Hsla,
     pub list_item_badge_background: Hsla,

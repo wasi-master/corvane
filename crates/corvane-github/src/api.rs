@@ -2,7 +2,10 @@
 
 use std::time::Duration;
 
-use corvane_models::{Account, GitHubRepository};
+use corvane_models::{
+    Account, BypassReason, CheckConclusion, CheckStatus, GitHubRepository, RepoRuleEnforced,
+    RuleOperator,
+};
 use serde::Deserialize;
 use tracing::debug;
 
@@ -31,7 +34,7 @@ struct ApiEmail {
     verified: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ApiRepository {
     pub name: String,
     pub owner: ApiOwner,
@@ -104,9 +107,301 @@ pub struct ApiMentionableUser {
     pub avatar_url: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct ApiOwner {
     pub login: String,
+}
+
+/// `IAPIPullRequestRef`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiPullRequestRef {
+    #[serde(rename = "ref")]
+    pub ref_name: String,
+    pub sha: String,
+    /// `null` when the head repository was deleted.
+    pub repo: Option<ApiRepository>,
+}
+
+/// `IAPIPullRequest`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiPullRequest {
+    pub number: u64,
+    pub title: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub user: ApiOwner,
+    pub head: ApiPullRequestRef,
+    pub base: ApiPullRequestRef,
+    #[serde(default)]
+    pub body: Option<String>,
+    /// `open` | `closed`
+    pub state: String,
+    #[serde(default)]
+    pub draft: bool,
+}
+
+/// `IAPIRefStatusItem` (the legacy commit status API).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRefStatusItem {
+    pub id: u64,
+    /// `success` | `pending` | `failure` | `error`
+    pub state: String,
+    #[serde(default)]
+    pub target_url: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub context: String,
+}
+
+/// `IAPIRefStatus`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRefStatus {
+    pub state: String,
+    #[serde(default)]
+    pub total_count: u64,
+    #[serde(default)]
+    pub statuses: Vec<ApiRefStatusItem>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiCheckSuiteRef {
+    pub id: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiCheckApp {
+    #[serde(default)]
+    pub name: String,
+}
+
+/// `IAPIRefCheckRun`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRefCheckRun {
+    pub id: u64,
+    pub status: CheckStatus,
+    #[serde(default)]
+    pub conclusion: Option<CheckConclusion>,
+    pub name: String,
+    #[serde(default)]
+    pub check_suite: Option<ApiCheckSuiteRef>,
+    #[serde(default)]
+    pub app: Option<ApiCheckApp>,
+    #[serde(default)]
+    pub completed_at: Option<String>,
+    #[serde(default)]
+    pub started_at: Option<String>,
+    #[serde(default)]
+    pub html_url: Option<String>,
+    #[serde(default)]
+    pub pull_requests: Vec<serde_json::Value>,
+}
+
+/// `IAPIRefCheckRuns`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRefCheckRuns {
+    #[serde(default)]
+    pub total_count: u64,
+    #[serde(default)]
+    pub check_runs: Vec<ApiRefCheckRun>,
+}
+
+/// `IAPICheckSuite`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiCheckSuite {
+    pub id: u64,
+    #[serde(default)]
+    pub rerequestable: bool,
+    #[serde(default)]
+    pub runs_rerequestable: bool,
+    pub status: CheckStatus,
+    pub created_at: String,
+}
+
+/// `IAPIWorkflowRun`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiWorkflowRun {
+    pub id: u64,
+    pub workflow_id: u64,
+    #[serde(default)]
+    pub name: String,
+    pub created_at: String,
+    #[serde(default)]
+    pub check_suite_id: Option<u64>,
+    #[serde(default)]
+    pub event: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiWorkflowRuns {
+    #[serde(default)]
+    pub total_count: u64,
+    #[serde(default)]
+    pub workflow_runs: Vec<ApiWorkflowRun>,
+}
+
+/// `IAPIWorkflowJobStep`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiWorkflowJobStep {
+    pub name: String,
+    pub number: u64,
+    pub status: CheckStatus,
+    #[serde(default)]
+    pub conclusion: Option<CheckConclusion>,
+    #[serde(default)]
+    pub completed_at: Option<String>,
+    #[serde(default)]
+    pub started_at: Option<String>,
+}
+
+/// `IAPIWorkflowJob`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiWorkflowJob {
+    pub id: u64,
+    pub name: String,
+    pub status: CheckStatus,
+    #[serde(default)]
+    pub conclusion: Option<CheckConclusion>,
+    #[serde(default)]
+    pub steps: Vec<ApiWorkflowJobStep>,
+    #[serde(default)]
+    pub html_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiWorkflowJobs {
+    #[serde(default)]
+    pub total_count: u64,
+    #[serde(default)]
+    pub jobs: Vec<ApiWorkflowJob>,
+}
+
+/// `IAPIPushControl`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiPushControl {
+    #[serde(default)]
+    pub required_status_checks: Vec<String>,
+    #[serde(default)]
+    pub required_approving_review_count: u64,
+    #[serde(default = "default_true")]
+    pub allow_actor: bool,
+    #[serde(default)]
+    pub pattern: Option<String>,
+    #[serde(default)]
+    pub required_signatures: bool,
+    #[serde(default)]
+    pub required_linear_history: bool,
+    #[serde(default = "default_true")]
+    pub allow_deletions: bool,
+    #[serde(default = "default_true")]
+    pub allow_force_pushes: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+impl ApiPushControl {
+    /// A branch nobody can push to directly (`isBranchPushable` negated).
+    pub fn is_pushable(&self) -> bool {
+        self.allow_actor
+            && self.required_status_checks.is_empty()
+            && self.required_approving_review_count == 0
+    }
+}
+
+impl Default for ApiPushControl {
+    fn default() -> Self {
+        Self {
+            required_status_checks: Vec::new(),
+            required_approving_review_count: 0,
+            allow_actor: true,
+            pattern: None,
+            required_signatures: false,
+            required_linear_history: false,
+            allow_deletions: true,
+            allow_force_pushes: true,
+        }
+    }
+}
+
+/// `IAPIRepoRuleMetadataParameters`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRepoRuleParameters {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub negate: bool,
+    pub pattern: String,
+    pub operator: RuleOperator,
+}
+
+/// `IAPIRepoRule`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRepoRule {
+    pub ruleset_id: u64,
+    /// `creation` | `update` | `required_signatures` | `commit_message_pattern` | …
+    #[serde(rename = "type")]
+    pub kind: String,
+    #[serde(default)]
+    pub parameters: Option<ApiRepoRuleParameters>,
+}
+
+/// `IAPISlimRepoRuleset`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiSlimRepoRuleset {
+    pub id: u64,
+}
+
+/// `IAPIRepoRuleset`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiRepoRuleset {
+    pub id: u64,
+    /// `always` | `pull_requests_only` | `never`
+    #[serde(default)]
+    pub current_user_can_bypass: Option<String>,
+}
+
+impl ApiRepoRuleset {
+    pub fn enforced(&self) -> RepoRuleEnforced {
+        if self.current_user_can_bypass.as_deref() == Some("always") {
+            RepoRuleEnforced::Bypass
+        } else {
+            RepoRuleEnforced::Yes
+        }
+    }
+}
+
+/// `IAPICreatePushProtectionBypassResponse`
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiPushProtectionBypass {
+    pub reason: String,
+    #[serde(default)]
+    pub expire_at: Option<String>,
+    #[serde(default)]
+    pub token_type: Option<String>,
+}
+
+/// `encodeURIComponent` for refs and branch names in API paths.
+pub fn encode_path_component(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z'
+            | b'a'..=b'z'
+            | b'0'..=b'9'
+            | b'-'
+            | b'_'
+            | b'.'
+            | b'!'
+            | b'~'
+            | b'*'
+            | b'\''
+            | b'('
+            | b')' => out.push(b as char),
+            _ => out.push_str(&format!("%{b:02X}")),
+        }
+    }
+    out
 }
 
 #[derive(Debug, Deserialize)]
@@ -134,12 +429,21 @@ impl Client {
     }
 
     fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T> {
+        self.get_json_accept(path, "application/vnd.github+json")
+    }
+
+    /// `GET` with a specific `Accept` header (the preview APIs).
+    fn get_json_accept<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        accept: &str,
+    ) -> Result<T> {
         let url = self.endpoint.api(path);
         debug!(%url, "GET");
         let mut response = self
             .agent
             .get(&url)
-            .header("Accept", "application/vnd.github+json")
+            .header("Accept", accept)
             .header("Authorization", &format!("Bearer {}", self.token))
             .header("X-GitHub-Api-Version", "2022-11-28")
             .call()?;
@@ -182,6 +486,41 @@ impl Client {
             emails,
             scopes,
         })
+    }
+
+    /// `GET` whose non-2xx answers (other than 401) mean "not available"
+    /// rather than an error (`fetchCombinedRefStatus`, `fetchRefCheckRuns`…).
+    fn get_json_opt<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        accept: &str,
+    ) -> Result<Option<T>> {
+        match self.get_json_accept::<T>(path, accept) {
+            Ok(value) => Ok(Some(value)),
+            Err(GitHubError::Api { status, message }) => {
+                debug!(status, %message, %path, "not available");
+                Ok(None)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    /// `POST` without a body; `Ok(true)` for a 2xx answer.
+    fn post_empty(&self, path: &str) -> Result<bool> {
+        let url = self.endpoint.api(path);
+        debug!(%url, "POST");
+        let response = self
+            .agent
+            .post(&url)
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .send_empty()?;
+        let status = response.status().as_u16();
+        if status == 401 {
+            return Err(GitHubError::Auth("token rejected".into()));
+        }
+        Ok((200..300).contains(&status))
     }
 
     fn post_json<T: serde::de::DeserializeOwned>(
@@ -341,7 +680,234 @@ impl Client {
         }
     }
 
-    fn convert(&self, repo: ApiRepository) -> GitHubRepository {
+    /// `fetchAllOpenPullRequests`: every open pull request, newest page first.
+    pub fn open_pull_requests(&self, owner: &str, name: &str) -> Result<Vec<ApiPullRequest>> {
+        let mut out = Vec::new();
+        for page in 1..=50u32 {
+            let batch: Vec<ApiPullRequest> = self.get_json(&format!(
+                "repos/{owner}/{name}/pulls?state=open&per_page=100&page={page}"
+            ))?;
+            let done = batch.len() < 100;
+            out.extend(batch);
+            if done {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// `fetchUpdatedPullRequests`: pull requests (open and closed) updated
+    /// after `since`, most recently updated first. `None` once more than
+    /// `max_results` came back (`MaxResultsError`): the caller refetches
+    /// the open list instead.
+    pub fn pull_requests_updated_since(
+        &self,
+        owner: &str,
+        name: &str,
+        since: &str,
+        max_results: usize,
+    ) -> Result<Option<Vec<ApiPullRequest>>> {
+        let mut out: Vec<ApiPullRequest> = Vec::new();
+        for page in 1..=50u32 {
+            let batch: Vec<ApiPullRequest> = self.get_json(&format!(
+                "repos/{owner}/{name}/pulls?state=all&sort=updated&direction=desc&per_page=100&page={page}"
+            ))?;
+            let done = batch.len() < 100
+                || batch
+                    .last()
+                    .is_some_and(|last| last.updated_at.as_str() <= since);
+            out.extend(
+                batch
+                    .into_iter()
+                    .filter(|pr| pr.updated_at.as_str() > since),
+            );
+            if out.len() >= max_results {
+                return Ok(None);
+            }
+            if done {
+                break;
+            }
+        }
+        Ok(Some(out))
+    }
+
+    /// `fetchCombinedRefStatus`: `GET /repos/{o}/{n}/commits/{ref}/status`.
+    pub fn combined_ref_status(
+        &self,
+        owner: &str,
+        name: &str,
+        git_ref: &str,
+    ) -> Result<Option<ApiRefStatus>> {
+        let safe = encode_path_component(git_ref);
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/commits/{safe}/status?per_page=100"),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `fetchRefCheckRuns`: `GET /repos/{o}/{n}/commits/{ref}/check-runs`.
+    pub fn ref_check_runs(
+        &self,
+        owner: &str,
+        name: &str,
+        git_ref: &str,
+    ) -> Result<Option<ApiRefCheckRuns>> {
+        let safe = encode_path_component(git_ref);
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/commits/{safe}/check-runs?per_page=100"),
+            "application/vnd.github.antiope-preview+json",
+        )
+    }
+
+    /// `fetchPRActionWorkflowRunByCheckSuiteId`
+    pub fn workflow_run_by_check_suite(
+        &self,
+        owner: &str,
+        name: &str,
+        check_suite_id: u64,
+    ) -> Result<Option<ApiWorkflowRun>> {
+        let runs: Option<ApiWorkflowRuns> = self.get_json_opt(
+            &format!(
+                "repos/{owner}/{name}/actions/runs?event=pull_request&check_suite_id={check_suite_id}"
+            ),
+            "application/vnd.github.antiope-preview+json",
+        )?;
+        Ok(runs.and_then(|r| r.workflow_runs.into_iter().next()))
+    }
+
+    /// `fetchPRWorkflowRunsByBranchName`
+    pub fn workflow_runs_by_branch(
+        &self,
+        owner: &str,
+        name: &str,
+        branch: &str,
+    ) -> Result<Option<ApiWorkflowRuns>> {
+        let safe = encode_path_component(branch);
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/actions/runs?event=pull_request&branch={safe}"),
+            "application/vnd.github.antiope-preview+json",
+        )
+    }
+
+    /// `fetchWorkflowRunJobs`
+    pub fn workflow_run_jobs(
+        &self,
+        owner: &str,
+        name: &str,
+        run_id: u64,
+    ) -> Result<Option<ApiWorkflowJobs>> {
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/actions/runs/{run_id}/jobs"),
+            "application/vnd.github.antiope-preview+json",
+        )
+    }
+
+    /// `fetchCheckSuite`
+    pub fn check_suite(
+        &self,
+        owner: &str,
+        name: &str,
+        check_suite_id: u64,
+    ) -> Result<Option<ApiCheckSuite>> {
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/check-suites/{check_suite_id}"),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `rerequestCheckSuite`
+    pub fn rerequest_check_suite(&self, owner: &str, name: &str, id: u64) -> Result<bool> {
+        self.post_empty(&format!("repos/{owner}/{name}/check-suites/{id}/rerequest"))
+    }
+
+    /// `rerunJob`
+    pub fn rerun_job(&self, owner: &str, name: &str, job_id: u64) -> Result<bool> {
+        self.post_empty(&format!("repos/{owner}/{name}/actions/jobs/{job_id}/rerun"))
+    }
+
+    /// `rerunFailedJobs`
+    pub fn rerun_failed_jobs(&self, owner: &str, name: &str, run_id: u64) -> Result<bool> {
+        self.post_empty(&format!(
+            "repos/{owner}/{name}/actions/runs/{run_id}/rerun-failed-jobs"
+        ))
+    }
+
+    /// `forkRepository`: `POST /repos/{o}/{n}/forks` (202 with the fork).
+    pub fn fork_repository(&self, owner: &str, name: &str) -> Result<GitHubRepository> {
+        let repo: ApiRepository = self.post_json(
+            &format!("repos/{owner}/{name}/forks"),
+            &serde_json::json!({}),
+        )?;
+        Ok(self.convert(repo))
+    }
+
+    /// `fetchPushControl`: whether the branch takes direct pushes. The
+    /// defaults (pushable) come back when the endpoint has no answer.
+    pub fn push_control(&self, owner: &str, name: &str, branch: &str) -> Result<ApiPushControl> {
+        let safe = encode_path_component(branch);
+        Ok(self
+            .get_json_opt(
+                &format!("repos/{owner}/{name}/branches/{safe}/push_control"),
+                "application/vnd.github.phandalin-preview",
+            )?
+            .unwrap_or_default())
+    }
+
+    /// `fetchAllRepoRulesets`
+    pub fn repo_rulesets(
+        &self,
+        owner: &str,
+        name: &str,
+    ) -> Result<Option<Vec<ApiSlimRepoRuleset>>> {
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/rulesets"),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `fetchRepoRuleset`
+    pub fn repo_ruleset(&self, owner: &str, name: &str, id: u64) -> Result<Option<ApiRepoRuleset>> {
+        self.get_json_opt(
+            &format!("repos/{owner}/{name}/rulesets/{id}"),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `fetchRepoRulesForBranch`
+    pub fn repo_rules_for_branch(
+        &self,
+        owner: &str,
+        name: &str,
+        branch: &str,
+    ) -> Result<Vec<ApiRepoRule>> {
+        let safe = encode_path_component(branch);
+        Ok(self
+            .get_json_opt(
+                &format!("repos/{owner}/{name}/rules/branches/{safe}"),
+                "application/vnd.github+json",
+            )?
+            .unwrap_or_default())
+    }
+
+    /// `createPushProtectionBypass`
+    pub fn create_push_protection_bypass(
+        &self,
+        owner: &str,
+        name: &str,
+        reason: BypassReason,
+        placeholder_id: &str,
+    ) -> Result<ApiPushProtectionBypass> {
+        self.post_json(
+            &format!("repos/{owner}/{name}/secret-scanning/push-protection-bypasses"),
+            &serde_json::json!({
+                "reason": reason.as_str(),
+                "placeholder_id": placeholder_id,
+            }),
+        )
+    }
+
+    /// The API repository → model conversion (endpoint-aware).
+    pub fn convert(&self, repo: ApiRepository) -> GitHubRepository {
         GitHubRepository {
             endpoint: self.endpoint.api_base.clone(),
             owner: repo.owner.login,

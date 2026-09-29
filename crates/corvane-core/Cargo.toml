@@ -19,6 +19,7 @@ tracing.workspace = true
 anyhow.workspace = true
 rust-embed.workspace = true
 notify = "7"
+regex.workspace = true
 async-channel = "2"
 
 [dev-dependencies]

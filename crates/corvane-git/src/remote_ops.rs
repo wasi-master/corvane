@@ -152,12 +152,27 @@ pub enum RemoteFailure {
     PermissionDenied,
     /// Protected branch / push rejected by a remote hook.
     ProtectedBranch,
+    /// `GITHUB PUSH PROTECTION`: secret scanning blocked the push.
+    PushWithSecretDetected,
+    /// The token lacks the `workflow` scope for a workflow file change.
+    MissingWorkflowScope,
+    /// An organization enforces SAML SSO; the token must be re-authorized.
+    SamlReauthRequired,
     Other,
 }
 
 /// Classify a failed remote command from its stderr.
 pub fn classify_remote_failure(stderr: &str) -> RemoteFailure {
     let s = stderr;
+    if s.contains("GITHUB PUSH PROTECTION") && s.contains("Push cannot contain secrets") {
+        return RemoteFailure::PushWithSecretDetected;
+    }
+    if s.contains("without `workflow` scope") {
+        return RemoteFailure::MissingWorkflowScope;
+    }
+    if s.contains("organization has enabled or enforced SAML SSO") {
+        return RemoteFailure::SamlReauthRequired;
+    }
     if s.contains("Authentication failed for")
         || s.contains("could not read Username for")
         || s.contains("could not read Password for")

@@ -233,6 +233,11 @@ fn main() {
                 Dispatcher::create_pull_request(id, cx);
             }
         });
+        cx.on_action(move |_: &PreviewPullRequest, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::start_pull_request(id, cx);
+            }
+        });
         // Help
         cx.on_action(|_: &ReportIssue, cx| {
             Dispatcher::open_url("https://github.com/wasi-master/corvane/issues/new", cx)
@@ -482,6 +487,8 @@ fn main() {
             }
         });
         Dispatcher::start_background_tasks(cx);
+        Dispatcher::start_pull_request_updater(cx);
+        Dispatcher::start_commit_status_refresh(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::start_rebase_flow(id, cx);

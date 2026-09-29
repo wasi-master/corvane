@@ -80,6 +80,12 @@ pub enum Octicon {
     Server,
     File,
     Person,
+    GitPullRequestDraft,
+    Stop,
+    Skip,
+    SquareFill,
+    IssueReopened,
+    ChevronUp,
 }
 
 impl Octicon {
@@ -142,6 +148,12 @@ impl Octicon {
             Octicon::Server => "octicons/server-16.svg",
             Octicon::File => "octicons/file-16.svg",
             Octicon::Person => "octicons/person-16.svg",
+            Octicon::GitPullRequestDraft => "octicons/git-pull-request-draft-16.svg",
+            Octicon::Stop => "octicons/stop-16.svg",
+            Octicon::Skip => "octicons/skip-16.svg",
+            Octicon::SquareFill => "octicons/square-fill-16.svg",
+            Octicon::IssueReopened => "octicons/issue-reopened-16.svg",
+            Octicon::ChevronUp => "octicons/chevron-up-16.svg",
             Octicon::Info => "octicons/info-16.svg",
             Octicon::IssueOpened => "octicons/issue-opened-16.svg",
             Octicon::LinkExternal => "octicons/link-external-16.svg",
