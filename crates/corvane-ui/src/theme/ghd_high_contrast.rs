@@ -137,6 +137,7 @@ pub fn theme() -> GhdTheme {
     t.dialog_banner_success_background = ca(SUCCESS_EMPHASIS, 0.15);
     t.dialog_banner_success_border = c(SUCCESS_EMPHASIS);
     t.dialog_banner_success_text = c(FG_DEFAULT);
+    t.text_selection_background = ca(ACCENT_FG, 0.45);
     t.banner_warning_background = ca(ATTENTION_FG, 0.15);
     t.banner_warning_text = c(FG_DEFAULT);
     t.banner_warning_link = c(ACCENT_FG);

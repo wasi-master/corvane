@@ -105,6 +105,7 @@ pub fn theme() -> GhdTheme {
         dialog_banner_success_background: c(GREEN_100),
         dialog_banner_success_border: c(GREEN_300),
         dialog_banner_success_text: c(GREEN_800),
+        text_selection_background: c(0xb3d7ff),
         banner_warning_background: c(YELLOW_100),
         banner_warning_text: c(GRAY_900),
         banner_warning_link: c(0x046ee7),
