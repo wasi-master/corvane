@@ -29,7 +29,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Diff viewer
 
-- [ ] Text selection + "Copy" in the diff context menu (GPUI's static text is not selectable; needs a custom selection layer across the virtualized rows)
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
 
 ## View menu

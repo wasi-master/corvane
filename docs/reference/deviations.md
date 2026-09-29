@@ -34,6 +34,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Diff viewer
 
 - The image "Difference" mode blends on the CPU (GPUI has no `mix-blend-mode`), at the two images' on-screen relative scale; it is recomputed when that scale changes.
+- Text selection (`crates/corvane-ui/src/diff_view.rs` `TextSelection`; GHD uses the browser's selection over the rows): drag over the text, shift-click extends, ⌘A selects every row, ⌘C and the context menu's Copy put the lines on the clipboard without line numbers or +/- markers, one line per row (hunk headers included, as in GHD's DOM). In split mode the selection stays in the column the drag started in and copies only that side's lines (GHD's `selecting-before` / `selecting-after`). Differences: the highlight is a fixed colour per theme instead of the system selection colour, empty rows show no highlight, there is no double-click word / triple-click line selection, the selection is dropped when the diff changes (GHD keeps the DOM selection until the rows re-render), and dragging past the visible rows scrolls one line per pointer move rather than continuously.
 
 ## Settings
 
