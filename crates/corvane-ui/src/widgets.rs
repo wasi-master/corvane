@@ -2,6 +2,7 @@
 
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::native_menu::NativeMenu;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -521,6 +522,22 @@ pub fn text_box(
     window: &Window,
     cx: &App,
 ) -> Stateful<Div> {
+    text_box_with_menu(id, state, prefix, None, window, cx)
+}
+
+/// A custom right-click menu for an input (the kit's native edit menu is
+/// replaced wholesale, so builders add Cut/Copy/Paste themselves).
+pub type InputMenuBuilder = std::rc::Rc<dyn Fn(NativeMenu, &mut Window, &mut App) -> NativeMenu>;
+
+/// [`text_box`] with an optional context-menu builder.
+pub fn text_box_with_menu(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    prefix: Option<Svg>,
+    menu: Option<InputMenuBuilder>,
+    window: &Window,
+    cx: &App,
+) -> Stateful<Div> {
     let t = cx.ghd();
     let focused = state.read(cx).focus_handle(cx).is_focused(window);
     div()
@@ -557,12 +574,18 @@ pub fn text_box(
                 .min_w_0()
                 // GHD inputs use the body font size (`--font-size`, 12 px);
                 // the kit's `xsmall` would shrink text + placeholder to `text_xs`.
-                .child(
-                    Input::new(state)
+                .child({
+                    let input = Input::new(state)
                         .appearance(false)
                         .xsmall()
-                        .text_size(FONT_SIZE),
-                ),
+                        .text_size(FONT_SIZE);
+                    match menu {
+                        Some(build) => {
+                            input.context_menu(move |menu, window, cx| build(menu, window, cx))
+                        }
+                        None => input,
+                    }
+                }),
         )
 }
 

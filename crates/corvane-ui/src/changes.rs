@@ -2,6 +2,7 @@
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
 use std::cell::Cell;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -11,11 +12,19 @@ use corvane_core::{
     WorkingDirectoryFileChange,
 };
 use gpui_kit::component::Sizable;
-use gpui_kit::component::input::{InputState, Textarea, TextareaState};
+use gpui_kit::component::input::{
+    Copy, Cut, Enter, Escape, IndentInline, InputEvent, InputState, MoveDown, MoveUp, Paste, Redo,
+    SelectAll, Textarea, TextareaState, Undo,
+};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::actions::{Commit, SelectAllFiles, SelectNextFile, SelectPreviousFile};
+use crate::actions::{
+    Commit, SelectAllFiles, SelectNextFile, SelectPreviousFile, SpellAddToDictionary,
+    SpellSuggestion0, SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4,
+    ToggleCommitSpellcheck,
+};
+use crate::autocompletion::{self, Autocompletion, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
@@ -23,8 +32,25 @@ use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    avatar_image, avatar_lookup, button, checkbox, checkbox_tristate, primary_button, text_box,
+    InputMenuBuilder, avatar_image, avatar_lookup, button, checkbox, checkbox_tristate,
+    primary_button, text_box, text_box_with_menu,
 };
+
+/// Which commit-form field an autocompletion / spellcheck result belongs to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CommitField {
+    Summary,
+    Description,
+}
+
+/// The misspelled word under the last right-click and its suggestions; the
+/// context menu's items are index actions (`SpellSuggestionN`).
+struct PendingSpell {
+    field: CommitField,
+    range: Range<usize>,
+    word: String,
+    suggestions: Vec<String>,
+}
 
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
@@ -41,6 +67,12 @@ pub struct ChangesSidebar {
     list_focus: FocusHandle,
     /// View › Hide Changes Filter (`isChangesFilterVisible`).
     filter_visible: bool,
+    /// GHD `AutocompletingTextInput` state for whichever field has the popup.
+    autocomplete: Option<(CommitField, Autocompletion)>,
+    /// Misspelled words per field (`NSSpellChecker`), refreshed on change.
+    summary_misspelled: Vec<Range<usize>>,
+    description_misspelled: Vec<Range<usize>>,
+    pending_spell: Option<PendingSpell>,
 }
 
 impl ChangesSidebar {
@@ -58,6 +90,9 @@ impl ChangesSidebar {
                 this.summary.update(cx, |s, cx| s.set_value("", window, cx));
                 this.description
                     .update(cx, |s, cx| s.set_value("", window, cx));
+                this.summary_misspelled.clear();
+                this.description_misspelled.clear();
+                this.autocomplete = None;
                 cx.notify();
             }
             // GHD `prepareToAmendCommit`: load the commit's message into the form.
@@ -73,6 +108,8 @@ impl ChangesSidebar {
                         .update(cx, |s, cx| s.set_value(commit.summary.clone(), window, cx));
                     this.description
                         .update(cx, |s, cx| s.set_value(commit.body.clone(), window, cx));
+                    this.refresh_spelling(CommitField::Summary, cx);
+                    this.refresh_spelling(CommitField::Description, cx);
                     cx.notify();
                 }
             }
@@ -86,6 +123,14 @@ impl ChangesSidebar {
                 .rows(4)
                 .placeholder("Description")
         });
+        cx.subscribe(&summary, |this, _, ev: &InputEvent, cx| {
+            this.on_input_event(CommitField::Summary, ev, cx)
+        })
+        .detach();
+        cx.subscribe(&description, |this, _, ev: &InputEvent, cx| {
+            this.on_input_event(CommitField::Description, ev, cx)
+        })
+        .detach();
         Self {
             filter,
             summary,
@@ -98,7 +143,327 @@ impl ChangesSidebar {
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
             list_focus: cx.focus_handle(),
             filter_visible: true,
+            autocomplete: None,
+            summary_misspelled: Vec::new(),
+            description_misspelled: Vec::new(),
+            pending_spell: None,
         }
+    }
+
+    // ---- autocompletion + spellcheck (GHD `AutocompletingTextInput`) ----
+
+    fn on_input_event(&mut self, field: CommitField, ev: &InputEvent, cx: &mut Context<Self>) {
+        match ev {
+            InputEvent::Change => {
+                self.refresh_spelling(field, cx);
+                self.open_autocomplete(field, cx);
+            }
+            InputEvent::Blur if self.autocomplete.as_ref().is_some_and(|(f, _)| *f == field) => {
+                self.autocomplete = None;
+                cx.notify();
+            }
+            _ => {}
+        }
+    }
+
+    fn field_text_and_caret(&self, field: CommitField, cx: &App) -> (String, usize) {
+        match field {
+            CommitField::Summary => {
+                let s = self.summary.read(cx);
+                (s.value().to_string(), s.cursor())
+            }
+            CommitField::Description => {
+                let s = self.description.read(cx);
+                (s.value().to_string(), s.cursor())
+            }
+        }
+    }
+
+    fn field_focus_handle(&self, field: CommitField, cx: &App) -> FocusHandle {
+        match field {
+            CommitField::Summary => self.summary.read(cx).focus_handle(cx),
+            CommitField::Description => self.description.read(cx).focus_handle(cx),
+        }
+    }
+
+    /// Replace a byte range of a field's text and put the caret after it.
+    fn replace_range(
+        &mut self,
+        field: CommitField,
+        range: Range<usize>,
+        text: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        match field {
+            CommitField::Summary => self.summary.update(cx, |s, cx| {
+                s.set_selected_range(range, cx);
+                s.replace(text, window, cx);
+            }),
+            CommitField::Description => self.description.update(cx, |s, cx| {
+                s.set_selected_range(range, cx);
+                s.replace(text, window, cx);
+            }),
+        }
+        let handle = self.field_focus_handle(field, cx);
+        window.focus(&handle, cx);
+        self.refresh_spelling(field, cx);
+        cx.notify();
+    }
+
+    /// GHD `open`: re-run the providers against the text at the caret.
+    fn open_autocomplete(&mut self, field: CommitField, cx: &mut Context<Self>) {
+        let (text, caret) = self.field_text_and_caret(field, cx);
+        let github = {
+            let s = self.state.read(cx);
+            s.selected
+                .and_then(|id| s.repository(id))
+                .and_then(|r| r.github.clone())
+        };
+        self.autocomplete =
+            autocompletion::attempt(&text, caret, github.as_ref(), cx).map(|ac| (field, ac));
+        cx.notify();
+    }
+
+    /// ↑/↓ while the popup is open; `false` lets the key reach the field.
+    fn autocomplete_move(&mut self, delta: i64, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_mut() {
+            Some((_, ac)) => {
+                ac.move_selection(delta);
+                cx.notify();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Enter / Tab: insert the highlighted item (GHD `insertCompletion`).
+    fn autocomplete_accept(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_ref().and_then(|(_, ac)| ac.selected) {
+            Some(ix) => {
+                self.autocomplete_insert(ix, window, cx);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn autocomplete_insert(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some((field, ac)) = self.autocomplete.take() else {
+            return;
+        };
+        let Some(hit) = ac.hits.get(ix) else {
+            return;
+        };
+        // The trigger character sits right before the filter text; GHD
+        // appends its `completionSuffix` (a space).
+        let range = ac.range.start.saturating_sub(1)..ac.range.end;
+        let text = format!("{} ", hit.completion_text());
+        self.replace_range(field, range, text, window, cx);
+    }
+
+    fn refresh_spelling(&mut self, field: CommitField, cx: &mut Context<Self>) {
+        let enabled = self.state.read(cx).settings.commit_spellcheck_enabled;
+        let ranges = if enabled {
+            let (text, _) = self.field_text_and_caret(field, cx);
+            corvane_platform::spell::misspelled_ranges(&text)
+        } else {
+            Vec::new()
+        };
+        match field {
+            CommitField::Summary => self.summary_misspelled = ranges,
+            CommitField::Description => self.description_misspelled = ranges,
+        }
+        cx.notify();
+    }
+
+    /// Window-space rectangle of a byte range in a field, scroll included.
+    fn range_rect(
+        &self,
+        field: CommitField,
+        range: &Range<usize>,
+        cx: &App,
+    ) -> Option<Bounds<Pixels>> {
+        let (bounds, scroll) = match field {
+            CommitField::Summary => {
+                let s = self.summary.read(cx);
+                (s.range_to_bounds(range)?, s.scroll_offset())
+            }
+            CommitField::Description => {
+                let s = self.description.read(cx);
+                (s.range_to_bounds(range)?, s.scroll_offset())
+            }
+        };
+        Some(Bounds {
+            origin: point(bounds.origin.x + scroll.x, bounds.origin.y),
+            size: bounds.size,
+        })
+    }
+
+    /// The misspelled word under `position`, for the context menu.
+    fn misspelled_at(
+        &self,
+        field: CommitField,
+        position: Point<Pixels>,
+        cx: &App,
+    ) -> Option<(Range<usize>, String)> {
+        let ranges = match field {
+            CommitField::Summary => &self.summary_misspelled,
+            CommitField::Description => &self.description_misspelled,
+        };
+        let (text, _) = self.field_text_and_caret(field, cx);
+        ranges
+            .iter()
+            .find(|r| {
+                self.range_rect(field, r, cx)
+                    .is_some_and(|rect| rect.contains(&position))
+            })
+            .and_then(|r| text.get(r.clone()).map(|w| (r.clone(), w.to_string())))
+    }
+
+    /// Red dotted underline beneath each misspelled word (Chromium's marker).
+    fn spell_overlay(&self, field: CommitField, cx: &Context<Self>) -> Option<AnyElement> {
+        let ranges = match field {
+            CommitField::Summary => self.summary_misspelled.clone(),
+            CommitField::Description => self.description_misspelled.clone(),
+        };
+        if ranges.is_empty() {
+            return None;
+        }
+        let color = cx.ghd().error;
+        let weak = cx.weak_entity();
+        Some(
+            canvas(
+                move |_, _, cx| {
+                    weak.upgrade().map(|this| {
+                        let this = this.read(cx);
+                        ranges
+                            .iter()
+                            .filter_map(|r| this.range_rect(field, r, cx))
+                            .collect::<Vec<_>>()
+                    })
+                },
+                move |bounds, rects, window, _| {
+                    let Some(rects) = rects else { return };
+                    window.with_content_mask(Some(ContentMask { bounds }), |window| {
+                        for rect in rects {
+                            let y = rect.bottom() - px(3.);
+                            let mut x = rect.left();
+                            while x < rect.right() {
+                                window.paint_quad(fill(
+                                    Bounds::new(point(x, y), size(px(2.), px(2.))),
+                                    color,
+                                ));
+                                x += px(4.);
+                            }
+                        }
+                    });
+                },
+            )
+            .absolute()
+            .inset_0()
+            .into_any_element(),
+        )
+    }
+
+    /// GHD `onAutocompletingInputContextMenu` + Chromium's spelling items:
+    /// suggestions, Add to Dictionary, the edit menu, the spellcheck toggle.
+    fn input_menu(&self, field: CommitField, cx: &Context<Self>) -> InputMenuBuilder {
+        let weak = cx.weak_entity();
+        Rc::new(move |mut menu, window, cx| {
+            let mut suggestions: Option<Vec<String>> = None;
+            let mut enabled = true;
+            let mut has_selection = false;
+            weak.update(cx, |this, cx| {
+                this.pending_spell = None;
+                let handle = this.field_focus_handle(field, cx);
+                window.focus(&handle, cx);
+                has_selection = match field {
+                    CommitField::Summary => !this.summary.read(cx).selected_range().is_empty(),
+                    CommitField::Description => {
+                        !this.description.read(cx).selected_range().is_empty()
+                    }
+                };
+                enabled = this.state.read(cx).settings.commit_spellcheck_enabled;
+                if let Some((range, word)) = this.misspelled_at(field, window.mouse_position(), cx)
+                {
+                    let guesses = corvane_platform::spell::guesses(&word);
+                    this.pending_spell = Some(PendingSpell {
+                        field,
+                        range,
+                        word,
+                        suggestions: guesses.clone(),
+                    });
+                    suggestions = Some(guesses);
+                }
+            })
+            .ok();
+            if let Some(guesses) = suggestions {
+                if guesses.is_empty() {
+                    menu = menu.menu_with_disabled(
+                        "No Guesses Found",
+                        true,
+                        Box::new(SpellSuggestion0),
+                    );
+                }
+                for (ix, guess) in guesses.into_iter().enumerate() {
+                    let action: Box<dyn Action> = match ix {
+                        0 => Box::new(SpellSuggestion0),
+                        1 => Box::new(SpellSuggestion1),
+                        2 => Box::new(SpellSuggestion2),
+                        3 => Box::new(SpellSuggestion3),
+                        _ => Box::new(SpellSuggestion4),
+                    };
+                    menu = menu.menu(guess, action);
+                }
+                menu = menu
+                    .menu("Add to Dictionary", Box::new(SpellAddToDictionary))
+                    .separator();
+            }
+            menu.menu("Undo", Box::new(Undo))
+                .menu("Redo", Box::new(Redo))
+                .separator()
+                .menu_with_disabled("Cut", !has_selection, Box::new(Cut))
+                .menu_with_disabled("Copy", !has_selection, Box::new(Copy))
+                .menu("Paste", Box::new(Paste))
+                .menu("Select All", Box::new(SelectAll))
+                .separator()
+                .menu(
+                    if enabled {
+                        "Disable Commit Spellcheck"
+                    } else {
+                        "Enable Commit Spellcheck"
+                    },
+                    Box::new(ToggleCommitSpellcheck),
+                )
+        })
+    }
+
+    fn apply_spell_suggestion(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(pending) = self.pending_spell.take() else {
+            return;
+        };
+        let Some(word) = pending.suggestions.get(ix).cloned() else {
+            return;
+        };
+        self.replace_range(pending.field, pending.range, word, window, cx);
+    }
+
+    fn add_to_dictionary(&mut self, cx: &mut Context<Self>) {
+        let Some(pending) = self.pending_spell.take() else {
+            return;
+        };
+        corvane_platform::spell::learn_word(&pending.word);
+        self.refresh_spelling(CommitField::Summary, cx);
+        self.refresh_spelling(CommitField::Description, cx);
+    }
+
+    fn toggle_spellcheck(&mut self, cx: &mut Context<Self>) {
+        Dispatcher::update_settings(cx, |s| {
+            s.commit_spellcheck_enabled = !s.commit_spellcheck_enabled
+        });
+        self.refresh_spelling(CommitField::Summary, cx);
+        self.refresh_spelling(CommitField::Description, cx);
     }
 
     /// View › Go to Summary.
@@ -1143,6 +1508,20 @@ impl ChangesSidebar {
             .and_then(|rs| rs.info.as_ref())
             .and_then(|i| i.identity.email.as_deref())
             .and_then(|email| avatar_lookup(email, cx));
+        // Autocompletion popup anchored at the caret's bottom-left.
+        let popup = self.autocomplete.as_ref().and_then(|(field, ac)| {
+            let (bounds, line_height) = match field {
+                CommitField::Summary => self.summary.read(cx).cursor_layout()?,
+                CommitField::Description => self.description.read(cx).cursor_layout()?,
+            };
+            let anchor = point(bounds.origin.x, bounds.origin.y + line_height);
+            let weak = cx.weak_entity();
+            let on_pick: PickHandler = Rc::new(move |ix, window, cx| {
+                weak.update(cx, |this, cx| this.autocomplete_insert(ix, window, cx))
+                    .ok();
+            });
+            Some(autocompletion::popup(ac, anchor, on_pick, cx))
+        });
         div()
             .id("commit-message")
             .key_context("CommitMessage")
@@ -1151,6 +1530,55 @@ impl ChangesSidebar {
                     this.do_commit(cx)
                 }
             }))
+            // Popup keys win over the field's own bindings (GHD `onKeyDown`).
+            .capture_action(cx.listener(|this, _: &MoveUp, _, cx| {
+                if this.autocomplete_move(-1, cx) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(|this, _: &MoveDown, _, cx| {
+                if this.autocomplete_move(1, cx) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(|this, ev: &Enter, window, cx| {
+                if !ev.secondary && !ev.shift && this.autocomplete_accept(window, cx) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(|this, _: &IndentInline, window, cx| {
+                if this.autocomplete_accept(window, cx) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_action(cx.listener(|this, _: &Escape, _, cx| {
+                if this.autocomplete.take().is_some() {
+                    cx.notify();
+                    cx.stop_propagation();
+                }
+            }))
+            .on_action(cx.listener(|this, _: &SpellSuggestion0, window, cx| {
+                this.apply_spell_suggestion(0, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SpellSuggestion1, window, cx| {
+                this.apply_spell_suggestion(1, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SpellSuggestion2, window, cx| {
+                this.apply_spell_suggestion(2, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SpellSuggestion3, window, cx| {
+                this.apply_spell_suggestion(3, window, cx)
+            }))
+            .on_action(cx.listener(|this, _: &SpellSuggestion4, window, cx| {
+                this.apply_spell_suggestion(4, window, cx)
+            }))
+            .on_action(
+                cx.listener(|this, _: &SpellAddToDictionary, _, cx| this.add_to_dictionary(cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &ToggleCommitSpellcheck, _, cx| this.toggle_spellcheck(cx)),
+            )
+            .children(popup)
             .flex_none()
             .flex()
             .flex_col()
@@ -1167,7 +1595,18 @@ impl ChangesSidebar {
                     .gap(SPACING_HALF)
                     .mb(SPACING)
                     .child(avatar_image(avatar, AVATAR_SIZE, cx))
-                    .child(text_box("commit-summary", &self.summary, None, window, cx)),
+                    .child(
+                        text_box_with_menu(
+                            "commit-summary",
+                            &self.summary,
+                            None,
+                            Some(self.input_menu(CommitField::Summary, cx)),
+                            window,
+                            cx,
+                        )
+                        .relative()
+                        .children(self.spell_overlay(CommitField::Summary, cx)),
+                    ),
             )
             .child(
                 // `.description-focus-container`: textarea + action bar
@@ -1180,13 +1619,20 @@ impl ChangesSidebar {
                     .rounded(BORDER_RADIUS)
                     .bg(t.box_background)
                     .overflow_hidden()
-                    .child(
-                        Textarea::new(&self.description)
-                            .appearance(false)
-                            .small()
-                            .text_size(FONT_SIZE)
-                            .h(px(80.)),
-                    )
+                    .child({
+                        let menu = self.input_menu(CommitField::Description, cx);
+                        div()
+                            .relative()
+                            .child(
+                                Textarea::new(&self.description)
+                                    .appearance(false)
+                                    .small()
+                                    .text_size(FONT_SIZE)
+                                    .h(px(80.))
+                                    .context_menu(move |m, window, cx| menu(m, window, cx)),
+                            )
+                            .children(self.spell_overlay(CommitField::Description, cx))
+                    })
                     .child(
                         // `.action-bar`: add co-authors | commit options
                         div()

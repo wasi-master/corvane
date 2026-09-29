@@ -561,6 +561,9 @@ pub struct AppState {
     /// Clone dialog: `GET /user/repos` per account endpoint (`ApiRepositoriesStore`).
     pub api_repositories: HashMap<String, Vec<corvane_models::GitHubRepository>>,
     pub api_repositories_loading: std::collections::HashSet<String>,
+    /// `#issue` / `@user` autocompletion caches (`IssuesStore`, `GitHubUserStore`).
+    pub issues: crate::autocomplete::IssueCaches,
+    pub mentionables: crate::autocomplete::MentionableCaches,
     /// Installed editors / shells (`getAvailableEditors` / `getAvailableShells`).
     pub editors: Vec<FoundEditor>,
     pub shells: Vec<FoundShell>,
