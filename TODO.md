@@ -23,10 +23,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
 
-## History
-
-- [ ] Cherry-pick by dropping commits on a pull request in the Pull Requests tab (`onDropOntoPullRequest`)
-
 ## Diff viewer
 
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
