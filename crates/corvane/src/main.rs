@@ -153,7 +153,7 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), None, cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|release-notes|
+        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|release-notes|move-to-applications|
         // upstream-already-exists opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
@@ -218,6 +218,10 @@ fn main() {
                                 },
                                 cx,
                             )
+                        }
+                        // GHD test UI components: `MoveToApplicationsFolder`
+                        ("move-to-applications", _) => {
+                            Dispatcher::show_popup(Popup::MoveToApplicationsFolder, cx)
                         }
                         // GHD `showFakeReleaseNotes` (test UI components)
                         ("release-notes", _) => {
@@ -603,6 +607,8 @@ fn main() {
         Dispatcher::refresh_accounts(cx);
         Dispatcher::start_pull_request_updater(cx);
         Dispatcher::start_commit_status_refresh(cx);
+        // GHD `componentDidMount`: offer the move to /Applications
+        Dispatcher::check_move_to_applications_folder(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::start_rebase_flow(id, cx);

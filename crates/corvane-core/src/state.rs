@@ -69,6 +69,8 @@ pub enum Popup {
     CreateFork {
         repo: u64,
     },
+    /// `MoveToApplicationsFolder`: offered at launch outside /Applications.
+    MoveToApplicationsFolder,
     /// `Acknowledgements`: License and Open Source Notices.
     Acknowledgements,
     /// `ReleaseNotes`: what's new in the running version.
