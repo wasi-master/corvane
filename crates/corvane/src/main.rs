@@ -23,6 +23,8 @@ fn main() {
     let started = Instant::now();
     let _log_guard = logging::init();
     info!(version = env!("CARGO_PKG_VERSION"), "starting corvane");
+    // writes a local report only while "Save crash reports locally" is on
+    corvane_platform::crash_reports::install_panic_hook(env!("CARGO_PKG_VERSION"));
     phase(started, "logging initialised");
 
     let store = match corvane_store::Store::open_in(corvane_platform::paths::app_support_dir()) {
@@ -80,6 +82,7 @@ fn main() {
         let sidebar_width = px(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
         Dispatcher::load_custom_emoji(cx);
+        Dispatcher::check_crash_reports(cx);
         {
             let s = state.read(cx);
             menus::install(cx, &s.editor_label(), &s.shell_label());
@@ -97,6 +100,7 @@ fn main() {
         };
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
+            Dispatcher::sync_crash_reports_setting(cx);
             let (theme, labels) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
@@ -164,6 +168,8 @@ fn main() {
         //   pr-review[:approved|:commented] (changes requested by default)
         //   pr-comment | pr-checks-failed
         //   pr-list (sample pull requests in the branch foldout's Pull Requests tab)
+        //   crash-report (turns on "Save crash reports locally" and panics, so the
+        //   next launch shows "Corvane quit unexpectedly last time")
         //   no-write-access (the repository becomes a read-only GitHub repository;
         //   add CORVANE_DEV_ACCOUNTS=login@https://api.github.com for the fork dialog)
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
@@ -278,6 +284,11 @@ fn main() {
                                 },
                                 cx,
                             )
+                        }
+                        ("crash-report", _) => {
+                            Dispatcher::update_settings(cx, |s| s.save_crash_reports = true);
+                            Dispatcher::sync_crash_reports_setting(cx);
+                            panic!("CORVANE_POPUP=crash-report: deliberate crash");
                         }
                         ("no-write-access", Some(id)) => dev_samples::make_read_only(id, cx),
                         ("pr-list", Some(id)) => {

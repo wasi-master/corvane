@@ -19,6 +19,11 @@ pub struct Settings {
     /// `worktree-dropdown-width`); `None` is the 230 px default.
     pub branch_dropdown_width: Option<f32>,
     pub worktree_dropdown_width: Option<f32>,
+    /// Settings › Advanced › "Save crash reports locally" (Corvane addition).
+    pub save_crash_reports: bool,
+    /// When Corvane last started (seconds since the epoch): crash reports
+    /// newer than this are from the previous session.
+    pub last_launched_at: Option<u64>,
     pub clone_dir: Option<PathBuf>,
     /// GHD `hasShownWelcomeFlow`.
     pub welcome_completed: bool,
@@ -235,6 +240,8 @@ impl Default for Settings {
             sidebar_width: 250.0,
             branch_dropdown_width: None,
             worktree_dropdown_width: None,
+            save_crash_reports: false,
+            last_launched_at: None,
             commit_summary_width: 250.0,
             clone_dir: None,
             welcome_completed: false,

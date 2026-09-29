@@ -73,6 +73,11 @@ pub enum Popup {
     MoveToApplicationsFolder,
     /// `Acknowledgements`: License and Open Source Notices.
     Acknowledgements,
+    /// Corvane addition: crash reports left by the previous session (newest
+    /// first), with "Save crash reports locally" on.
+    CrashReportFound {
+        reports: Vec<PathBuf>,
+    },
     /// `ReleaseNotes`: what's new in the running version.
     ReleaseNotes {
         summary: crate::release_notes::ReleaseSummary,

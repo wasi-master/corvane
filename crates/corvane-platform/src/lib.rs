@@ -7,6 +7,7 @@ pub const BUNDLE_ID: &str = "com.wasimaster.corvane";
 
 pub mod app_location;
 pub mod apps;
+pub mod crash_reports;
 pub mod custom_integration;
 pub mod editors;
 pub mod keychain;
