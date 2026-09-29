@@ -34,6 +34,11 @@ pub struct Repository {
     /// GHD `isTutorialRepository`: created by "Create a Tutorial Repository…".
     #[serde(default)]
     pub is_tutorial_repository: bool,
+    /// GHD `tagsToPush` (`storeTagsToPush`): tags created in Corvane and not
+    /// pushed yet. They go out with the next push and only they can be
+    /// deleted from the history context menu.
+    #[serde(default)]
+    pub tags_to_push: Vec<String>,
 }
 
 /// GHD `ICommitOptions`: `skipCommitHooks`, `signOffCommits`, `allowEmptyCommit`.
@@ -56,6 +61,7 @@ impl Repository {
             fork_contribution_target: None,
             main_worktree_path: None,
             is_tutorial_repository: false,
+            tags_to_push: Vec::new(),
         }
     }
 

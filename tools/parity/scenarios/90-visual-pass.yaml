@@ -1,0 +1,7 @@
+# Setup only: both apps on the fixture, for manual or screen-capture passes
+# (`--hold-open`), e.g. popped native menus, which no capture API sees.
+name: visual-pass
+description: Both apps on the fixture repository, nothing else (use with --hold-open)
+setup: repo
+steps:
+  - wait: 300

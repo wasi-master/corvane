@@ -1385,22 +1385,64 @@ impl Dispatcher {
         );
     }
 
+    /// GHD `_createTag`: the new tag joins `tagsToPush`.
     pub fn create_tag(id: u64, name: String, sha: String, cx: &mut App) {
-        Self::run_history_op(
-            id,
-            "Could not create tag",
-            move |git, workdir| corvane_git::create_tag(git, &workdir, &name, &sha),
-            cx,
-        );
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let tag = name.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::create_tag(git, &workdir, &name, &sha) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                match result {
+                    Ok(()) => Self::update_tags_to_push(id, cx, |tags| {
+                        if !tags.contains(&tag) {
+                            tags.push(tag);
+                        }
+                    }),
+                    Err(err) => Self::show_error("Could not create tag", err.to_string(), cx),
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
     }
 
+    /// GHD `_deleteTag` (only unpushed tags are offered): it leaves `tagsToPush`.
     pub fn delete_tag(id: u64, name: String, cx: &mut App) {
+        let tag = name.clone();
+        Self::update_tags_to_push(id, cx, |tags| tags.retain(|t| *t != tag));
         Self::run_history_op(
             id,
             "Could not delete tag",
             move |git, workdir| corvane_git::delete_tag(git, &workdir, &name),
             cx,
         );
+    }
+
+    /// GHD `changeRepositoryAlias` / `removeRepositoryAlias` (`None`).
+    pub fn change_repository_alias(id: u64, alias: Option<String>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                repo.alias = alias.filter(|a| !a.is_empty());
+                persist_repositories(s);
+                cx.notify();
+            }
+        });
+    }
+
+    /// Edit the repository's persisted `tagsToPush` (`storeTagsToPush`).
+    pub(crate) fn update_tags_to_push(id: u64, cx: &mut App, edit: impl FnOnce(&mut Vec<String>)) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                edit(&mut repo.tags_to_push);
+                persist_repositories(s);
+                cx.notify();
+            }
+        });
     }
 
     /// `Undo Commit…` from history: warn about local changes first.

@@ -86,6 +86,8 @@ pub fn pull_request_row(
     cx: &App,
 ) -> Stateful<Div> {
     let t = cx.ghd();
+    // `.list-item:hover`: `--list-item-hover-background-color`, text unchanged
+    let list_hover = t.list_item_hover_background;
     let hover_bg = t.box_selected_active_background;
     let hover_text = t.box_selected_active_text;
     let icon_color = if pr.draft {
@@ -111,9 +113,7 @@ pub fn pull_request_row(
             d.bg(t.box_selected_background)
                 .text_color(t.box_selected_text)
         })
-        .when(!selected, move |d| {
-            d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
-        })
+        .when(!selected, move |d| d.hover(move |s| s.bg(list_hover)))
         // `PullRequestListItem` drop target: dragged commits are copied onto
         // the pull request's branch (`emitEnterDropTarget({ type: Branch })`)
         .when(!selected, |d| {

@@ -141,6 +141,21 @@ impl RepositoryFoldout {
             })
             .when(!selected, move |d| d.hover(move |s| s.bg(hover_bg)))
             .on_click(move |_, _, cx| Dispatcher::select_repository(id, cx))
+            .on_mouse_down(MouseButton::Right, {
+                let repo = repo.clone();
+                move |ev: &MouseDownEvent, window, cx| {
+                    cx.stop_propagation();
+                    #[cfg(target_os = "macos")]
+                    crate::native_menu::show_context_menu(
+                        repository_menu_items(&repo, cx),
+                        ev.position,
+                        window,
+                        cx,
+                    );
+                    #[cfg(not(target_os = "macos"))]
+                    let _ = (ev, window, &repo);
+                }
+            })
             .child(octicon(icon, t.text).mr(SPACING_HALF()))
             .child(
                 div()
@@ -235,6 +250,104 @@ impl RepositoryFoldout {
     }
 }
 
+/// GHD `generateRepositoryListContextMenu`.
+#[cfg(target_os = "macos")]
+fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu::MenuItem> {
+    use crate::context_menu::MenuItem;
+    let state = AppState::global(cx).read(cx);
+    let (editor, shell) = (state.editor_label(), state.shell_label());
+    let confirm = state.settings.confirm_repository_removal;
+    let id = repo.id;
+    let missing = repo.missing;
+    let path = repo.path.clone();
+    let (name, copy_path, shell_path, reveal, editor_path) = (
+        repo.name(),
+        path.to_string_lossy().to_string(),
+        path.clone(),
+        path.clone(),
+        path,
+    );
+    let verb = if repo.alias.is_some() {
+        "Change"
+    } else {
+        "Create"
+    };
+    let mut items = vec![MenuItem::new(format!("{verb} Alias"), move |_, cx| {
+        Dispatcher::close_foldout(cx);
+        Dispatcher::show_popup(Popup::ChangeRepositoryAlias { repo: id }, cx)
+    })];
+    if repo.alias.is_some() {
+        items.push(MenuItem::new("Remove Alias", move |_, cx| {
+            Dispatcher::change_repository_alias(id, None, cx)
+        }));
+    }
+    items.extend([
+        // `buildWorktreeMenuItems` (worktree support is on)
+        MenuItem::new("Show Worktrees", move |_, cx| {
+            Dispatcher::select_repository(id, cx);
+            Dispatcher::toggle_foldout(corvane_core::Foldout::Worktree, cx);
+        }),
+        MenuItem::new("New Worktree…", move |_, cx| {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::show_popup(
+                Popup::AddWorktree {
+                    repo: id,
+                    initial_branch_name: None,
+                    initial_worktree_name: None,
+                },
+                cx,
+            )
+        }),
+        MenuItem::new("Copy Repo Name", move |_, cx| {
+            cx.write_to_clipboard(ClipboardItem::new_string(name.clone()))
+        }),
+        MenuItem::new("Copy Repo Path", move |_, cx| {
+            cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
+        }),
+        MenuItem::separator(),
+        MenuItem::new("View on GitHub", move |_, cx| {
+            Dispatcher::view_on_github(id, cx)
+        })
+        .enabled(repo.github.is_some()),
+        MenuItem::new(format!("Open in {shell}"), move |_, cx| {
+            Dispatcher::open_in_shell(&shell_path, cx)
+        })
+        .enabled(!missing),
+        MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal)).enabled(!missing),
+        MenuItem::new(format!("Open in {editor}"), move |_, cx| {
+            Dispatcher::open_in_editor(editor_path.clone(), cx)
+        })
+        .enabled(!missing),
+        MenuItem::separator(),
+        MenuItem::new(
+            if confirm { "Remove…" } else { "Remove" },
+            move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::request_remove_repository(id, cx)
+            },
+        ),
+    ]);
+    items
+}
+
+/// The Add button's items (`onNewRepositoryButtonClick`).
+#[cfg(target_os = "macos")]
+fn add_menu_items() -> Vec<crate::context_menu::MenuItem> {
+    use crate::context_menu::MenuItem;
+    vec![
+        MenuItem::new("Clone Repository…", |_, cx| {
+            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+        }),
+        MenuItem::new("Create New Repository…", |_, cx| {
+            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
+        }),
+        MenuItem::new("Add Existing Repository…", |_, cx| {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::prompt_add_repository(cx);
+        }),
+    ]
+}
+
 impl Render for RepositoryFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
@@ -283,10 +396,26 @@ impl Render for RepositoryFoldout {
                                 octicon(Octicon::TriangleDown, t.secondary_button_text)
                                     .size(zpx(12.)),
                             )
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.add_menu_open = !this.add_menu_open;
+                            .on_click(cx.listener(|this, ev: &ClickEvent, window, cx| {
                                 cx.stop_propagation();
-                                cx.notify();
+                                // GHD `onNewRepositoryButtonClick`: a native
+                                // contextual menu at the pointer
+                                #[cfg(target_os = "macos")]
+                                {
+                                    let _ = this;
+                                    crate::native_menu::show_context_menu(
+                                        add_menu_items(),
+                                        ev.position(),
+                                        window,
+                                        cx,
+                                    );
+                                }
+                                #[cfg(not(target_os = "macos"))]
+                                {
+                                    let _ = (ev, window);
+                                    this.add_menu_open = !this.add_menu_open;
+                                    cx.notify();
+                                }
                             })),
                     ),
             )

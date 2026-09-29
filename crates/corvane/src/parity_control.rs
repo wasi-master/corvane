@@ -22,6 +22,9 @@
 //!   `theme light|dark|high-contrast|system`, `popup <name>` (a
 //!   `CORVANE_POPUP` name, opened now)
 //! - `snap {path}` → draws a fresh frame and saves it as PNG
+//! - `menu` → the items of the last native menu (while the control socket is
+//!   on, menus still pop up but are recorded and close themselves after
+//!   `CORVANE_MENU_HOLD_MS`, default 1500); `menu-pick {label}` runs one
 //! - `quit`
 
 use std::io::{BufRead, BufReader, Write};
@@ -49,6 +52,15 @@ pub fn start(port: u16, popup: PopupHook, cx: &mut App) {
         }
     };
     info!(port, "parity control listening");
+    // menus pop for real (screen captures compare them with GHD's) but are
+    // recorded and close themselves, so this loop is only held for a moment
+    #[cfg(target_os = "macos")]
+    corvane_ui::native_menu::set_auto_dismiss(Some(Duration::from_millis(
+        std::env::var("CORVANE_MENU_HOLD_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1500),
+    )));
     std::thread::spawn(move || {
         for stream in listener.incoming().flatten() {
             let tx = tx.clone();
@@ -176,6 +188,11 @@ fn window_command(
             window.dispatch_event(up(position), cx);
         }
         "click" => {
+            // a menu this click opens must not be confused with an older one
+            #[cfg(target_os = "macos")]
+            if button == MouseButton::Right {
+                corvane_ui::native_menu::clear_recorded();
+            }
             window.dispatch_event(moved(position, None), cx);
             window.dispatch_event(down(position), cx);
             window.dispatch_event(up(position), cx);
@@ -254,6 +271,16 @@ fn window_command(
             let image = window.render_to_image().map_err(|err| err.to_string())?;
             image.save(path).map_err(|err| err.to_string())?;
             return Ok(json!({"w": image.width(), "h": image.height()}));
+        }
+        // the last native menu the app tried to show (recorded headless)
+        #[cfg(target_os = "macos")]
+        "menu" => return Ok(json!({"items": corvane_ui::native_menu::recorded_menu()})),
+        #[cfg(target_os = "macos")]
+        "menu-pick" => {
+            let label = request["label"].as_str().unwrap_or_default();
+            if !corvane_ui::native_menu::pick_recorded(label, window, cx) {
+                return Err(format!("no enabled menu item {label:?}"));
+            }
         }
         other => return Err(format!("unknown command {other:?}")),
     }

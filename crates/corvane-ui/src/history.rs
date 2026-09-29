@@ -379,8 +379,8 @@ impl HistorySidebar {
         }
         let focused = self.focused_branch.clone();
         let weak = cx.weak_entity();
-        let hover_bg = t.box_selected_active_background;
-        let hover_text = t.box_selected_active_text;
+        // `.list-item:hover`: `--list-item-hover-background-color`, text unchanged
+        let list_hover = t.list_item_hover_background;
         div()
             .id("compare-branch-list")
             .flex_1()
@@ -427,9 +427,7 @@ impl HistorySidebar {
                                 d.bg(t.box_selected_active_background)
                                     .text_color(t.box_selected_active_text)
                             })
-                            .when(!is_focused, move |d| {
-                                d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
-                            })
+                            .when(!is_focused, move |d| d.hover(move |s| s.bg(list_hover)))
                             .on_click(move |_, window, cx| {
                                 let name = name.clone();
                                 weak.update(cx, |this, cx| {
@@ -943,20 +941,34 @@ impl HistorySidebar {
         ]);
         if !commit.tags.is_empty() {
             items.push(MenuItem::separator());
+            // GHD `getDeleteTagsMenuItem`: only tags still in `tagsToPush`
+            // (created here, not pushed) can be deleted
+            let unpushed: Vec<String> = self
+                .state
+                .read(cx)
+                .repository(id)
+                .map(|r| r.tags_to_push.clone())
+                .unwrap_or_default();
             if commit.tags.len() == 1 {
                 let tag = commit.tags[0].clone();
-                items.push(MenuItem::new(format!("Delete tag {tag}"), move |_, cx| {
-                    Dispatcher::delete_tag(id, tag.clone(), cx)
-                }));
+                let enabled = unpushed.contains(&tag);
+                items.push(
+                    MenuItem::new(format!("Delete tag {tag}"), move |_, cx| {
+                        Dispatcher::delete_tag(id, tag.clone(), cx)
+                    })
+                    .enabled(enabled),
+                );
             } else {
                 let entries = commit
                     .tags
                     .iter()
                     .map(|tag| {
+                        let enabled = unpushed.contains(tag);
                         let tag = tag.clone();
                         MenuItem::new(tag.clone(), move |_, cx| {
                             Dispatcher::delete_tag(id, tag.clone(), cx)
                         })
+                        .enabled(enabled)
                     })
                     .collect();
                 items.push(MenuItem::submenu("Delete tag…", entries));
@@ -1570,10 +1582,32 @@ fn commit_row(
                 }
             }
         })
+        // GHD `List.onRowMouseDown`: plain presses select at once (not on
+        // release), unless the row is part of a multi-selection being dragged
+        .on_mouse_down(MouseButton::Left, {
+            let sha = sha.clone();
+            let list_focus = list_focus.clone();
+            let multi = selection.len() > 1 && selection.contains(&sha);
+            move |ev: &MouseDownEvent, window, cx| {
+                let m = ev.modifiers;
+                if m.secondary() || m.shift || m.control || multi {
+                    return;
+                }
+                window.focus(&list_focus, cx);
+                if !is_selected {
+                    Dispatcher::select_commit(id, sha.clone(), cx);
+                }
+            }
+        })
         .on_mouse_down(MouseButton::Right, {
             let weak = weak.clone();
+            let sha = sha.clone();
             move |ev: &MouseDownEvent, window, cx| {
                 cx.stop_propagation();
+                // a right-click selects the commit unless it is selected
+                if !is_selected && !selection.contains(&sha) {
+                    Dispatcher::select_commit(id, sha.clone(), cx);
+                }
                 let position = ev.position;
                 let commit = commit_for_menu.clone();
                 window.focus(&list_focus, cx);
