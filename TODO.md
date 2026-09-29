@@ -24,7 +24,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Resizable worktree / branch toolbar buttons (`enableResizingToolbarButtons`, `worktreeDropdownWidth`)
 - [ ] `mainWorktreePath` bookkeeping for unsafe (untrusted) repositories and worktrees whose git dir disappeared
-- [ ] Branch autocompletion inside the Add Worktree "Branch Name" box (`BranchAutocompletionProvider`)
 
 ## Tutorial + onboarding extras
 

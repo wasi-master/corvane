@@ -30,14 +30,18 @@ pub enum TriggerKind {
     Emoji,
     Issue,
     User,
+    /// GHD `BranchAutocompletionProvider`: the whole input is the filter
+    /// (`/^(.*)$/`), so there is no trigger character.
+    Branch,
 }
 
 impl TriggerKind {
-    fn char(self) -> u8 {
+    fn char(self) -> Option<u8> {
         match self {
-            TriggerKind::Emoji => b':',
-            TriggerKind::Issue => b'#',
-            TriggerKind::User => b'@',
+            TriggerKind::Emoji => Some(b':'),
+            TriggerKind::Issue => Some(b'#'),
+            TriggerKind::User => Some(b'@'),
+            TriggerKind::Branch => None,
         }
     }
 }
@@ -60,7 +64,9 @@ pub fn find_trigger(text: &str, caret: usize) -> Option<Trigger> {
     let lower = text.to_ascii_lowercase();
     let bytes = lower.as_bytes();
     for kind in [TriggerKind::Emoji, TriggerKind::Issue, TriggerKind::User] {
-        let trigger = kind.char();
+        let Some(trigger) = kind.char() else {
+            continue;
+        };
         let mut i = 0;
         while i < bytes.len() {
             if bytes[i] != trigger || !(i == 0 || bytes[i - 1] == b'\n' || bytes[i - 1] == b' ') {

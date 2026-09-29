@@ -1,6 +1,8 @@
-//! Commit-form autocompletion popup: `:emoji:`, `#issue` and `@user`
-//! (GHD `ui/autocompletion/autocompleting-text-input.tsx`, the three
-//! providers next to it and `styles/ui/_autocompletion.scss`).
+//! Autocompletion popup: `:emoji:`, `#issue` and `@user` in the commit form,
+//! branch names in Add Worktree (GHD
+//! `ui/autocompletion/autocompleting-text-input.tsx`, the providers next to
+//! it incl. `branch-autocompletion-provider.tsx`, and
+//! `styles/ui/_autocompletion.scss`).
 //!
 //! The matching lives in `corvane_core::autocomplete` / `corvane_core::emoji`;
 //! this module owns the popup state, its rendering and the wrap-around
@@ -36,6 +38,11 @@ pub enum Hit {
     /// GHD `unknown-user`: a handle nobody in the mentionables matched
     /// (co-author input only; looked up on the API once added).
     UnknownUser(String),
+    /// GHD `IBranchHit`: a branch name and its matched char positions.
+    Branch {
+        name: String,
+        highlight: Vec<usize>,
+    },
 }
 
 impl Hit {
@@ -46,6 +53,7 @@ impl Hit {
             Hit::Issue(i) => format!("#{}", i.number),
             Hit::User(u) => format!("@{}", u.login),
             Hit::UnknownUser(name) => format!("@{name}"),
+            Hit::Branch { name, .. } => name.clone(),
         }
     }
 }
@@ -116,6 +124,25 @@ impl Autocompletion {
     }
 }
 
+/// GHD `attemptAutocompletion` with only the `BranchAutocompletionProvider`:
+/// the whole of `text` filters `branches`. `None` when nothing matches.
+pub fn attempt_branch(text: &str, branches: &[String]) -> Option<Autocompletion> {
+    let hits: Vec<Hit> = corvane_core::filter::branch_matches(text, branches)
+        .into_iter()
+        .map(|(name, highlight)| Hit::Branch { name, highlight })
+        .collect();
+    if hits.is_empty() {
+        return None;
+    }
+    Some(Autocompletion {
+        kind: TriggerKind::Branch,
+        range: 0..text.len(),
+        hits,
+        selected: None,
+        scroll: UniformListScrollHandle::new(),
+    })
+}
+
 /// GHD `attemptAutocompletion` over the commit-message providers. Issue and
 /// user lookups also kick off the throttled cache refreshes.
 pub fn attempt(
@@ -146,6 +173,8 @@ pub fn attempt(
                 .map(Hit::Issue)
                 .collect()
         }
+        // never produced by `find_trigger` (see `attempt_branch`)
+        TriggerKind::Branch => return None,
         TriggerKind::User => {
             let gh = github?;
             Dispatcher::refresh_mentionables(gh, cx);
@@ -186,12 +215,35 @@ pub fn popup(
     on_pick: PickHandler,
     cx: &App,
 ) -> AnyElement {
+    popup_with_priority(ac, anchor, on_pick, 3, cx)
+}
+
+/// [`popup`] inside a dialog: drawn above the dialog's deferred layer
+/// (`dialog::dialog` uses priority 20).
+pub fn dialog_popup(
+    ac: &Autocompletion,
+    anchor: Point<Pixels>,
+    on_pick: PickHandler,
+    cx: &App,
+) -> AnyElement {
+    popup_with_priority(ac, anchor, on_pick, 30, cx)
+}
+
+fn popup_with_priority(
+    ac: &Autocompletion,
+    anchor: Point<Pixels>,
+    on_pick: PickHandler,
+    priority: usize,
+    cx: &App,
+) -> AnyElement {
     let t = cx.ghd();
     // `.autocompletion-popup` widths per provider kind
     let width = match ac.kind {
         TriggerKind::Emoji => px(200.),
         TriggerKind::User => px(220.),
         TriggerKind::Issue => px(300.),
+        // `.autocompletion-popup` default
+        TriggerKind::Branch => px(250.),
     };
     let n = ac.hits.len();
     let height = (ROW_HEIGHT * n as f32).min(MAX_HEIGHT);
@@ -234,7 +286,7 @@ pub fn popup(
                     .child(scrollbar("autocompletion-scrollbar", ac.scroll.clone())),
             ),
     )
-    .with_priority(3)
+    .with_priority(priority)
     .into_any_element()
 }
 
@@ -338,6 +390,20 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .text_color(secondary)
                     .child("Search for user"),
             ),
+        Hit::Branch { name, highlight } => d
+            // `.branch`: git-branch octicon, then the name with `<mark>` hits
+            .child(
+                crate::icons::octicon(crate::icons::Octicon::GitBranch, fg)
+                    .flex_none()
+                    .mr(SPACING_HALF),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .truncate()
+                    .child(highlighted(name, highlight)),
+            ),
         Hit::Issue(i) => d
             .gap(px(4.))
             .child(
@@ -386,4 +452,24 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
         }
     };
     d.into_any_element()
+}
+
+/// GHD `HighlightText`: the chars at `positions` in bold.
+fn highlighted(text: &str, positions: &[usize]) -> StyledText {
+    let mut ranges: Vec<Range<usize>> = Vec::new();
+    for (ci, (bi, c)) in text.char_indices().enumerate() {
+        if !positions.contains(&ci) {
+            continue;
+        }
+        let end = bi + c.len_utf8();
+        match ranges.last_mut() {
+            Some(last) if last.end == bi => last.end = end,
+            _ => ranges.push(bi..end),
+        }
+    }
+    let bold = HighlightStyle {
+        font_weight: Some(FontWeight::BOLD),
+        ..Default::default()
+    };
+    StyledText::new(text.to_string()).with_highlights(ranges.into_iter().map(|r| (r, bold)))
 }
