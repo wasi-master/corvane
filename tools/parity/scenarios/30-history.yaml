@@ -4,11 +4,13 @@ setup: repo
 steps:
   - click: [187, 97]
     wait: 600
+  - dump: open
   - snap: open
   - hover: [124, 225]
   - snap: row-hover
   - click: [124, 275]
     wait: 600
+  - dump: second-commit-selected
   - snap: second-commit-selected
   - click: [124, 425]
     wait: 600

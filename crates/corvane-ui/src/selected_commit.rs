@@ -220,7 +220,8 @@ impl SelectedCommitView {
                         .font_weight(FontWeight::SEMIBOLD)
                         .line_height(zpx(16.))
                         .when(empty, |d| d.text_color(t.text_secondary))
-                        .child(div().flex_1().min_w_0().child(title))
+                        // the expander follows the title (`margin-left: 10px`)
+                        .child(div().min_w_0().child(title))
                         .child(
                             div()
                                 .id("commit-summary-expander")
@@ -261,12 +262,18 @@ impl SelectedCommitView {
                         .flex_col()
                         .when(expanded, |d| d.max_h(zpx(400.)))
                         .when(!commit.body.is_empty(), |d| {
+                            // `.ecs-description-text`: a 5 px padded box in
+                            // `--box-alt-background-color`, 5 px above the meta row
                             d.child(
-                                div()
-                                    .pb(SPACING_HALF())
-                                    .font_family(mono_font())
-                                    .text_size(FONT_SIZE_SM())
-                                    .child(description),
+                                div().pb(SPACING_HALF()).child(
+                                    div()
+                                        .p(SPACING_HALF())
+                                        .bg(t.box_alt_background)
+                                        .font_family(mono_font())
+                                        .text_size(FONT_SIZE_SM())
+                                        .line_height(zpx(16.5))
+                                        .child(description),
+                                ),
                             )
                         })
                         .child(
@@ -276,6 +283,7 @@ impl SelectedCommitView {
                                 .flex_row()
                                 .flex_wrap()
                                 .items_center()
+                                .line_height(zpx(16.5))
                                 .child(
                                     meta_item(div())
                                         .gap(zpx(4.))
@@ -288,7 +296,7 @@ impl SelectedCommitView {
                                 )
                                 .child(
                                     meta_item(div())
-                                        .child(octicon(Octicon::GitCommit, t.text_secondary))
+                                        .child(octicon(Octicon::GitCommit, t.text))
                                         .child(div().pl(SPACING_HALF()).child(if expanded {
                                             commit.sha.clone()
                                         } else {
@@ -296,22 +304,32 @@ impl SelectedCommitView {
                                         }))
                                         .child({
                                             let sha = commit.sha.clone();
+                                            // `.copy-button`: 16 × 14 with a 12 px icon
                                             div()
                                                 .id("copy-sha")
                                                 .icon_button_label("Copy the full SHA")
                                                 .ml(SPACING_HALF())
+                                                .w(zpx(16.))
+                                                .h(zpx(14.))
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
                                                 .cursor_pointer()
                                                 .on_click(move |_, _, cx| {
                                                     cx.write_to_clipboard(
                                                         ClipboardItem::new_string(sha.clone()),
                                                     )
                                                 })
-                                                .child(octicon(Octicon::Copy, t.text_secondary))
+                                                .child(
+                                                    octicon(Octicon::Copy, t.text).size(zpx(12.)),
+                                                )
                                         }),
                                 )
                                 .when(added > 0 || deleted > 0, |d| {
+                                    // `.lines-added-deleted { margin-left: auto }`
                                     d.child(
                                         meta_item(div())
+                                            .ml_auto()
                                             .when(expanded, |d| {
                                                 d.child(
                                                     octicon(Octicon::FileDiff, t.text_secondary)

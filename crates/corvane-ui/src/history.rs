@@ -34,7 +34,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::ListRowA11y;
-use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button, text_box};
+use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button};
 
 /// `RowHeight` in `commit-list.tsx`
 #[allow(non_snake_case)]
@@ -1397,14 +1397,18 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
         .pr(SPACING() + SPACING_HALF())
         .text_color(text)
         .child(
+            // `.info { margin-top: -4px }`: 18 px summary, 3 px gap, the
+            // 16.5 px byline in 11 px text after the 20 px avatar stack
             div()
                 .flex_1()
                 .min_w(zpx(50.))
+                .mt(zpx(-4.))
                 .flex()
                 .flex_col()
                 .child(
                     div()
                         .text_size(FONT_SIZE())
+                        .line_height(zpx(18.))
                         .font_weight(FontWeight::SEMIBOLD)
                         .truncate()
                         .when(empty, |d| d.text_color(secondary))
@@ -1416,7 +1420,7 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(SPACING_HALF())
+                        .gap(zpx(4.))
                         .child(avatar_image(
                             avatar_lookup(&commit.author.email, cx),
                             zpx(16.),
@@ -1427,12 +1431,16 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                                 .flex_1()
                                 .min_w_0()
                                 .truncate()
-                                .text_size(FONT_SIZE())
+                                .text_size(FONT_SIZE_SM())
+                                .line_height(zpx(16.5))
                                 .text_color(secondary)
                                 .child(byline),
                         ),
                 ),
         )
+        // `.commit-indicators .tag-indicator`: the first tag as a 16 px pill
+        // (5 px padding, 6 px radius, no icon); more tags peek out behind it
+        // as a 10 px tab (`.tag-indicator-more`)
         .when(!commit.tags.is_empty(), |d| {
             d.child(
                 div()
@@ -1441,32 +1449,28 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                     .max_w(gpui_kit::relative(0.5))
                     .flex()
                     .flex_row()
-                    .items_center()
-                    .gap(zpx(4.))
-                    .child(octicon(Octicon::Tag, t.list_item_badge_text).size(zpx(12.)))
+                    .text_color(t.list_item_badge_text)
+                    .text_size(FONT_SIZE())
+                    .line_height(zpx(16.))
                     .child(
                         div()
-                            .px(zpx(6.))
+                            .min_w_0()
+                            .px(SPACING_HALF())
                             .h(zpx(16.))
-                            .rounded(zpx(8.))
+                            .rounded(BORDER_RADIUS())
                             .bg(t.list_item_badge_background)
-                            .text_color(t.list_item_badge_text)
-                            .text_size(FONT_SIZE_SM())
-                            .line_height(zpx(16.))
                             .truncate()
                             .child(commit.tags[0].clone()),
                     )
                     .when(commit.tags.len() > 1, |d| {
                         d.child(
                             div()
-                                .px(zpx(6.))
+                                .flex_none()
+                                .w(SPACING())
+                                .ml(zpx(-5.))
                                 .h(zpx(16.))
-                                .rounded(zpx(8.))
-                                .bg(t.list_item_badge_background)
-                                .text_color(t.list_item_badge_text)
-                                .text_size(FONT_SIZE_SM())
-                                .line_height(zpx(16.))
-                                .child(format!("+{}", commit.tags.len() - 1)),
+                                .rounded_r(BORDER_RADIUS())
+                                .bg(t.list_item_badge_background),
                         )
                     }),
             )
@@ -1549,10 +1553,8 @@ fn commit_row(
         .border_b_1()
         .border_color(t.box_border)
         .cursor_pointer()
-        .when(!is_selected && !hint.squash_target, |d| {
-            let hover = t.list_item_hover_background;
-            d.hover(move |s| s.bg(hover))
-        })
+        // no hover colour: `.commit` paints `--background-color` over the
+        // list item's hover background in GHD
         .on_click({
             let sha = sha.clone();
             let list_focus = list_focus.clone();
@@ -1742,13 +1744,22 @@ impl Render for HistorySidebar {
                     .bg(t.box_alt_background)
                     .border_b_1()
                     .border_color(t.box_border)
-                    .child(text_box(
-                        "compare-branch",
-                        &self.compare,
-                        Some(octicon(Octicon::GitBranch, t.text_secondary)),
-                        window,
-                        cx,
-                    )),
+                    .child({
+                        // `FancyTextBox`: 27 px, `--box-border-color` frame,
+                        // a 9 px branch glyph 7 px in, the text at 27 px
+                        let focused = self.compare.read(cx).focus_handle(cx).is_focused(window);
+                        crate::widgets::filter_text_box(
+                            "compare-branch",
+                            &self.compare,
+                            Some(octicon(Octicon::GitBranch, t.text).size(zpx(9.))),
+                            window,
+                            cx,
+                        )
+                        .h(zpx(27.))
+                        .pl(zpx(7.))
+                        .gap(zpx(1.))
+                        .when(!focused, |d| d.border_color(t.box_border))
+                    }),
             )
             .child(body)
             .children(self.context_menu.clone())
