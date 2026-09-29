@@ -1,6 +1,9 @@
 //! `#desktop-app-toolbar`: Repository / Branch / Push-Pull buttons.
 //! Geometry from `styles/ui/toolbar/{_toolbar,_button,_dropdown}.scss`.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use corvane_core::{AheadBehind, AppState, Dispatcher, Foldout, Tip};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -30,6 +33,19 @@ pub struct ToolbarButtonModel {
     pub arrow: bool,
     /// `progressValue`: fill the button background up to this fraction.
     pub progress: Option<f32>,
+    /// `PullRequestBadge` on the branch button (`#N` + CI status).
+    pub pr_badge: Option<PrBadge>,
+}
+
+/// `renderPullRequestInfo`
+pub struct PrBadge {
+    pub number: u64,
+    pub status: Option<(
+        corvane_core::CheckStatus,
+        Option<corvane_core::CheckConclusion>,
+    )>,
+    /// Window-space rectangle of the badge, for the check-run popover.
+    pub bounds: Rc<Cell<Bounds<Pixels>>>,
 }
 
 /// GHD `renderWorktreeToolbarButton`: only with linked worktrees, or while
@@ -42,7 +58,11 @@ pub fn worktree_button_visible(state: &AppState) -> bool {
 }
 
 /// GHD `Toolbar` render: repository, worktree, branch, push/pull - from the app state.
-pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarButtonModel> {
+pub fn toolbar_models(
+    state: &AppState,
+    sidebar_width: Pixels,
+    pr_badge_bounds: &Rc<Cell<Bounds<Pixels>>>,
+) -> Vec<ToolbarButtonModel> {
     let repo = state.selected_repository();
     let repo_state = state.selected_state();
     let info = repo_state.and_then(|s| s.info.as_ref());
@@ -68,6 +88,7 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
             push_pull: false,
             arrow: false,
             progress: None,
+            pr_badge: None,
         }
     });
 
@@ -92,13 +113,25 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         push_pull: false,
         arrow: false,
         progress: None,
+        pr_badge: None,
     };
 
+    // `currentPullRequest`: the icon becomes the PR icon and the badge shows
+    let current_pr = repo.and_then(|r| state.current_pull_request(r.id));
+    let pr_badge = current_pr.map(|pr| PrBadge {
+        number: pr.number,
+        status: state.commit_status_summary(pr),
+        bounds: pr_badge_bounds.clone(),
+    });
     let (branch_icon, branch_desc, branch_title): (Octicon, &str, SharedString) = match info
         .map(|i| &i.tip)
     {
         Some(Tip::Valid { branch }) => (
-            Octicon::GitBranch,
+            if current_pr.is_some() {
+                Octicon::GitPullRequest
+            } else {
+                Octicon::GitBranch
+            },
             "Current Branch",
             branch.name.clone().into(),
         ),
@@ -133,6 +166,7 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         push_pull: false,
         arrow: false,
         progress: None,
+        pr_badge,
     };
 
     // Push/Pull (`PushPullButton.renderButton`)
@@ -171,6 +205,7 @@ pub fn toolbar_models(state: &AppState, sidebar_width: Pixels) -> Vec<ToolbarBut
         push_pull: true,
         arrow: false,
         progress: None,
+        pr_badge: None,
     };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
@@ -404,6 +439,58 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
                         .child(model.title),
                 ),
         )
+        .when_some(model.pr_badge, |d, badge| {
+            // `.pr-badge`: 22 px tall, `#N` + the CI status; clickable once
+            // a status is known (opens the check-run popover)
+            let clickable = badge.status.is_some();
+            let bounds = badge.bounds.clone();
+            let badge_bg = if model.open {
+                gpui_kit::transparent_black()
+            } else {
+                t.toolbar_background
+            };
+            d.child(
+                div()
+                    .id("pr-badge")
+                    .relative()
+                    .flex_none()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .h(px(22.))
+                    .px(SPACING_HALF)
+                    .mr(SPACING)
+                    .rounded(BORDER_RADIUS)
+                    .border_1()
+                    .border_color(t.toolbar_badge_background)
+                    .bg(badge_bg)
+                    .when(clickable, |d| {
+                        d.cursor_pointer().hover(move |s| s.bg(hover_bg)).on_click(
+                            move |_, _, cx| {
+                                let show = corvane_core::AppState::global(cx)
+                                    .read(cx)
+                                    .show_ci_status_popover;
+                                Dispatcher::set_show_ci_status_popover(!show, cx);
+                                cx.stop_propagation();
+                            },
+                        )
+                    })
+                    .child(
+                        canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
+                            .absolute()
+                            .inset_0(),
+                    )
+                    .child(
+                        div()
+                            .text_size(FONT_SIZE_SM)
+                            .line_height(px(22.))
+                            .child(format!("#{}", badge.number)),
+                    )
+                    .when_some(badge.status, |d, (status, conclusion)| {
+                        d.child(crate::ci_status::ci_status(status, conclusion).ml(SPACING_HALF))
+                    }),
+            )
+        })
         .when_some(model.badge, |d, ab| {
             // `.ahead-behind` pill: 13 px tall, radius 8, 9 px text
             d.child(

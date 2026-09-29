@@ -6,7 +6,11 @@ pub mod auth;
 pub mod endpoint;
 pub mod error;
 
-pub use api::{ApiIdentity, ApiIssue, ApiMentionableUser, Client, IssueState};
+pub use api::{
+    ApiCheckSuite, ApiIdentity, ApiIssue, ApiMentionableUser, ApiPullRequest, ApiPushControl,
+    ApiRefCheckRun, ApiRefStatus, ApiRepoRule, ApiRepoRuleset, ApiWorkflowJob, ApiWorkflowRun,
+    Client, IssueState, encode_path_component,
+};
 pub use endpoint::Endpoint;
 pub use error::{GitHubError, Result};
 

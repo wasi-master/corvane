@@ -1,0 +1,838 @@
+//! Preview Pull Request - GHD `ui/open-pull-request/{open-pull-request-dialog,
+//! open-pull-request-header,pull-request-files-changed,pull-request-merge-status}.tsx`
+//! with `ui/branches/branch-select.tsx` (`styles/ui/dialogs/_open-pull-request.scss`,
+//! `_open-pull-request-header.scss`): a dialog filling the window minus
+//! 80 px on every side; header "Merge N commits into [base ▾] from
+//! <current>." with the lines added/removed, a resizable file list next to
+//! the merge-base diff, the mergeability in the footer.
+//!
+//! Deviation: the Diff Settings gear lives in the diff header of the
+//! selected file (as on the Changes tab) rather than in the
+//! "Showing changes from all commits" row.
+
+use std::cell::Cell;
+use std::rc::Rc;
+
+use corvane_core::{
+    AppState, Branch, BranchKind, CommittedFileChange, Dispatcher, MergeStatus, PullRequestPreview,
+};
+use gpui_kit::component::input::InputState;
+use gpui_kit::component::resizable::{
+    ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
+};
+use gpui_kit::prelude::*;
+use gpui_kit::*;
+
+use crate::branch_list::group_branches;
+use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
+use crate::icons::{Octicon, octicon};
+use crate::theme::sizes::*;
+use crate::theme::{ActiveGhdTheme, c, primer};
+use crate::widgets::{button, code_ref, primary_button, text_box};
+
+/// `pullRequestFileListWidth` constraints (`constrain(250, 100, 600)`).
+const FILE_LIST_MIN: Pixels = px(100.);
+const FILE_LIST_MAX: Pixels = px(600.);
+/// `.dialog { max-width: calc(100% - var(--spacing-double) * 4) }`
+const DIALOG_MARGIN: Pixels = px(80.);
+
+pub struct OpenPullRequestDialog {
+    state: Entity<AppState>,
+    repo: u64,
+    diff: Entity<DiffView>,
+    resizable: Entity<ResizableState>,
+    file_list_width: Pixels,
+    /// `BranchSelect`: the base branch popover.
+    base_select_open: bool,
+    base_filter: Entity<InputState>,
+    base_button_bounds: Rc<Cell<Bounds<Pixels>>>,
+}
+
+impl OpenPullRequestDialog {
+    pub fn new(
+        state: Entity<AppState>,
+        repo: u64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        let diff = cx.new(|cx| DiffView::new(state.clone(), DiffSource::PullRequest, cx));
+        let file_list_width = px(state.read(cx).settings.pull_request_file_list_width);
+        let resizable = cx.new(|_| ResizableState::default());
+        cx.subscribe(&resizable, |this, state, _: &ResizablePanelEvent, cx| {
+            if let Some(width) = state.read(cx).sizes().first().copied()
+                && width != this.file_list_width
+            {
+                this.file_list_width = width;
+                Dispatcher::update_settings(cx, |s| {
+                    s.pull_request_file_list_width = f32::from(width)
+                });
+                cx.notify();
+            }
+        })
+        .detach();
+        let base_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.observe(&base_filter, |_, _, cx| cx.notify()).detach();
+        Self {
+            state,
+            repo,
+            diff,
+            resizable,
+            file_list_width,
+            base_select_open: false,
+            base_filter,
+            base_button_bounds: Rc::new(Cell::new(Bounds::default())),
+        }
+    }
+
+    fn preview(&self, cx: &App) -> Option<PullRequestPreview> {
+        self.state
+            .read(cx)
+            .repo_states
+            .get(&self.repo)
+            .and_then(|rs| rs.pull_request_preview.clone())
+    }
+
+    /// `prBaseBranches` / `prRecentBaseBranches`: only branches on the remote
+    /// the pull request targets (the parent's `upstream` for a fork
+    /// contributing to it, else the default remote).
+    fn base_branches(&self, cx: &App) -> (Vec<Branch>, Vec<String>, Option<String>) {
+        let s = self.state.read(cx);
+        let Some(rs) = s.repo_states.get(&self.repo) else {
+            return (Vec::new(), Vec::new(), None);
+        };
+        let remote = if s
+            .repository(self.repo)
+            .is_some_and(|r| r.is_fork_contributing_to_parent())
+        {
+            Some("upstream".to_string())
+        } else {
+            Dispatcher::current_remote_in(s, self.repo).map(|r| r.name)
+        };
+        let Some(info) = rs.info.as_ref() else {
+            return (Vec::new(), Vec::new(), None);
+        };
+        let on_remote = |b: &Branch| match b.kind {
+            BranchKind::Local => b.upstream_remote_name() == remote.as_deref(),
+            BranchKind::Remote => b
+                .name
+                .split_once('/')
+                .map(|(r, _)| Some(r) == remote.as_deref())
+                .unwrap_or(false),
+        };
+        let all: Vec<Branch> = info
+            .branches
+            .iter()
+            .filter(|b| on_remote(b))
+            .cloned()
+            .collect();
+        let recent: Vec<String> = rs
+            .recent_branches
+            .iter()
+            .filter(|name| all.iter().any(|b| &b.name == *name))
+            .cloned()
+            .collect();
+        (all, recent, rs.default_branch.clone())
+    }
+
+    fn close(&self, cx: &mut App) {
+        Dispatcher::close_popup(cx);
+        Dispatcher::close_pull_request_preview(self.repo, cx);
+    }
+
+    /// `onCreatePullRequest`
+    fn submit(&self, preview: &PullRequestPreview, cx: &mut App) {
+        let has_pr = self
+            .state
+            .read(cx)
+            .current_pull_request(self.repo)
+            .is_some();
+        if has_pr {
+            Dispatcher::show_pull_request(self.repo, cx);
+        } else {
+            Dispatcher::create_pull_request_with_base(self.repo, preview.base_branch.clone(), cx);
+        }
+        self.close(cx);
+    }
+
+    /// `BranchSelect` button + its popover.
+    fn base_select(&self, preview: &PullRequestPreview, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let bounds = self.base_button_bounds.clone();
+        let label = preview
+            .base_branch
+            .clone()
+            .unwrap_or_else(|| "Choose a branch".to_string());
+        let hover_bg = t.secondary_button_hover_background;
+        div()
+            .id("pr-base-select")
+            .relative()
+            .flex()
+            .flex_row()
+            .items_center()
+            .gap(SPACING_HALF)
+            .h(px(25.))
+            .px(SPACING)
+            .rounded(BORDER_RADIUS)
+            .border_1()
+            .border_color(t.secondary_button_border)
+            .bg(t.secondary_button_background)
+            .text_color(t.secondary_button_text)
+            .cursor_pointer()
+            .hover(move |s| s.bg(hover_bg))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.base_select_open = !this.base_select_open;
+                cx.notify();
+            }))
+            .child(
+                canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
+                    .absolute()
+                    .inset_0(),
+            )
+            .child(octicon(Octicon::GitBranch, t.secondary_button_text))
+            .child(
+                div()
+                    .max_w(px(200.))
+                    .truncate()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .child(label),
+            )
+            .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
+            .into_any_element()
+    }
+
+    fn base_popover(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let anchor = self.base_button_bounds.get();
+        let viewport = window.viewport_size();
+        let query = self.base_filter.read(cx).value().trim().to_string();
+        let (branches, recent, default) = self.base_branches(cx);
+        let groups = group_branches(&branches, default.as_deref(), &recent, &query);
+        let width = px(365.);
+        let x = anchor
+            .origin
+            .x
+            .min(viewport.width - width - px(8.))
+            .max(px(8.));
+        let y = anchor.origin.y + anchor.size.height + px(4.);
+        let repo = self.repo;
+        let hover_bg = t.box_selected_active_background;
+        let hover_text = t.box_selected_active_text;
+        deferred(
+            anchored().position(point(px(0.), px(0.))).child(
+                div()
+                    .id("pr-base-select-layer")
+                    .relative()
+                    .w(viewport.width)
+                    .h(viewport.height)
+                    .child(
+                        div()
+                            .id("pr-base-select-overlay")
+                            .absolute()
+                            .inset_0()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.base_select_open = false;
+                                    cx.notify();
+                                }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("pr-base-select-popover")
+                            .absolute()
+                            .left(x)
+                            .top(y)
+                            .w(width)
+                            .max_h(px(400.))
+                            .flex()
+                            .flex_col()
+                            .bg(t.box_background)
+                            .text_color(t.text)
+                            .border_1()
+                            .border_color(t.box_border)
+                            .rounded(BORDER_RADIUS)
+                            .shadow_lg()
+                            .overflow_hidden()
+                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                            .child(div().flex_none().p(SPACING).child(text_box(
+                                "pr-base-filter",
+                                &self.base_filter,
+                                Some(octicon(Octicon::Search, t.text_secondary)),
+                                window,
+                                cx,
+                            )))
+                            .child(if groups.is_empty() {
+                                // `noBranchesMessage`
+                                div()
+                                    .p(SPACING)
+                                    .text_size(FONT_SIZE)
+                                    .text_color(t.text_secondary)
+                                    .child(div().child("Sorry, I can't find that remote branch."))
+                                    .child(div().child(
+                                        "You can only open pull requests against remote branches.",
+                                    ))
+                                    .into_any_element()
+                            } else {
+                                div()
+                                    .id("pr-base-branches")
+                                    .flex_1()
+                                    .min_h_0()
+                                    .overflow_y_scroll()
+                                    .flex()
+                                    .flex_col()
+                                    .children(groups.into_iter().map(|group| {
+                                        div()
+                                            .flex()
+                                            .flex_col()
+                                            .child(
+                                                div()
+                                                    .h(ROW_HEIGHT)
+                                                    .pt(SPACING)
+                                                    .px(SPACING)
+                                                    .flex()
+                                                    .items_center()
+                                                    .font_weight(FontWeight::SEMIBOLD)
+                                                    .text_size(FONT_SIZE)
+                                                    .child(group.title),
+                                            )
+                                            .children(group.branches.into_iter().map(|b| {
+                                                let name = b.name.clone();
+                                                div()
+                                                    .id(SharedString::from(format!(
+                                                        "pr-base-{}",
+                                                        b.full_name
+                                                    )))
+                                                    .h(ROW_HEIGHT)
+                                                    .flex()
+                                                    .flex_row()
+                                                    .items_center()
+                                                    .gap(SPACING_HALF)
+                                                    .px(SPACING)
+                                                    .text_size(FONT_SIZE)
+                                                    .cursor_pointer()
+                                                    .hover(move |s| {
+                                                        s.bg(hover_bg).text_color(hover_text)
+                                                    })
+                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                        this.base_select_open = false;
+                                                        Dispatcher::update_pull_request_base_branch(
+                                                            repo,
+                                                            name.clone(),
+                                                            cx,
+                                                        );
+                                                        cx.notify();
+                                                    }))
+                                                    .child(octicon(Octicon::GitBranch, t.text))
+                                                    .child(div().min_w_0().truncate().child(b.name))
+                                            }))
+                                    }))
+                                    .into_any_element()
+                            }),
+                    ),
+            ),
+        )
+        .with_priority(25)
+        .into_any_element()
+    }
+
+    /// `FileList` of the changed files (250 px, resizable).
+    fn file_list(&self, preview: &PullRequestPreview, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let files: Vec<CommittedFileChange> = preview
+            .changeset
+            .as_ref()
+            .map(|c| c.files.clone())
+            .unwrap_or_default();
+        let selected = preview.file.clone();
+        let repo = self.repo;
+        let hover_bg = t.list_item_hover_background;
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .border_r_1()
+            .border_color(t.box_border)
+            .child(
+                div()
+                    .id("pr-file-rows")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .children(files.into_iter().map(|file| {
+                        let is_selected = selected.as_deref() == Some(file.path.as_str());
+                        let (icon, color) = status_icon(file.status.kind, t);
+                        let path = file.path.clone();
+                        div()
+                            .id(SharedString::from(format!("pr-file-{}", file.path)))
+                            .w_full()
+                            .h(ROW_HEIGHT)
+                            .flex_none()
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(SPACING_HALF)
+                            .px(SPACING)
+                            .cursor_pointer()
+                            .when(is_selected, |d| {
+                                d.bg(t.box_selected_background)
+                                    .text_color(t.box_selected_text)
+                            })
+                            .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+                            .on_click(move |_, _, cx| {
+                                Dispatcher::select_pull_request_file(repo, path.clone(), cx)
+                            })
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .flex()
+                                    .flex_row()
+                                    .text_size(FONT_SIZE)
+                                    .child(
+                                        div()
+                                            .min_w_0()
+                                            .truncate()
+                                            .text_color(t.text_secondary)
+                                            .child(file.directory().to_string()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex_none()
+                                            .max_w_full()
+                                            .truncate()
+                                            .child(file.file_name().to_string()),
+                                    ),
+                            )
+                            .child(octicon(icon, color))
+                    })),
+            )
+            .into_any_element()
+    }
+
+    /// `PullRequestMergeStatus`
+    fn merge_status(&self, status: Option<MergeStatus>, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let row = div()
+            .flex()
+            .flex_row()
+            .flex_wrap()
+            .items_center()
+            .gap(px(3.))
+            .text_size(FONT_SIZE)
+            .text_color(t.text_secondary);
+        match status {
+            None => row.into_any_element(),
+            Some(MergeStatus::Loading) => row
+                .child(
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(t.text)
+                        .child("Checking mergeability…"),
+                )
+                .child("Don’t worry, you can still create the pull request.")
+                .into_any_element(),
+            Some(MergeStatus::Invalid) => row
+                .child(
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(t.text)
+                        .child("Error checking merge status."),
+                )
+                .child("Unable to merge unrelated histories in this repository")
+                .into_any_element(),
+            Some(MergeStatus::Clean) => row
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(3.))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(c(primer::GREEN_500))
+                        .child(octicon(Octicon::Check, c(primer::GREEN_500)))
+                        .child("Able to merge."),
+                )
+                .child("These branches can be automatically merged.")
+                .into_any_element(),
+            Some(MergeStatus::Conflicts) => row
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(px(3.))
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(c(primer::RED_500))
+                        .child(octicon(Octicon::X, c(primer::RED_500)))
+                        .child("Can't automatically merge."),
+                )
+                .child("Don’t worry, you can still create the pull request.")
+                .into_any_element(),
+        }
+    }
+
+    /// `.open-pull-request-message`
+    fn message(&self, title: &'static str, body: AnyElement, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        div()
+            .size_full()
+            .flex()
+            .items_center()
+            .justify_center()
+            .text_center()
+            .p(SPACING_DOUBLE)
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .gap(SPACING_HALF)
+                    .child(octicon(Octicon::GitPullRequest, t.text_secondary).size(px(32.)))
+                    .child(
+                        div()
+                            .text_size(FONT_SIZE_MD)
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .child(title),
+                    )
+                    .child(body),
+            )
+            .into_any_element()
+    }
+}
+
+impl Render for OpenPullRequestDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        let Some(preview) = self.preview(cx) else {
+            return div().into_any_element();
+        };
+        let viewport = window.viewport_size();
+        let has_pr = self
+            .state
+            .read(cx)
+            .current_pull_request(self.repo)
+            .is_some();
+        let enterprise = self
+            .state
+            .read(cx)
+            .repository(self.repo)
+            .and_then(|r| r.github.as_ref())
+            .is_some_and(|gh| gh.endpoint != "https://api.github.com");
+        let commit_count = preview.commit_shas.as_ref().map(|s| s.len()).unwrap_or(0);
+        let (added, deleted) = preview
+            .changeset
+            .as_ref()
+            .map(|c| (c.lines_added, c.lines_deleted))
+            .unwrap_or((0, 0));
+        let ok_disabled = preview.commit_shas.as_ref().is_none_or(|s| s.is_empty());
+        let selected_file = preview.file.as_ref().and_then(|p| {
+            preview
+                .changeset
+                .as_ref()
+                .and_then(|c| c.files.iter().find(|f| &f.path == p))
+                .map(|f| (f.path.clone(), f.status.kind))
+        });
+        // `renderContent`: no base branch / no changes / files + diff
+        let content: AnyElement = if preview.base_branch.is_none() {
+            self.message(
+                "Could not find a default branch to compare against.",
+                div()
+                    .child("Select a base branch above.")
+                    .into_any_element(),
+                cx,
+            )
+        } else if preview.commit_shas.as_ref().is_some_and(|s| s.is_empty()) {
+            let base = preview.base_branch.clone().unwrap_or_default();
+            let current = preview.current_branch.clone();
+            let body = if preview.merge_status == Some(MergeStatus::Invalid) {
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(3.))
+                    .child(code_ref(base, cx))
+                    .child("and")
+                    .child(code_ref(current, cx))
+                    .child("are entirely different commit histories.")
+                    .into_any_element()
+            } else {
+                div()
+                    .flex()
+                    .flex_row()
+                    .flex_wrap()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(3.))
+                    .child(code_ref(base, cx))
+                    .child("is up to date with all commits from")
+                    .child(code_ref(current, cx))
+                    .child(".")
+                    .into_any_element()
+            };
+            self.message("There are no changes.", body, cx)
+        } else if preview.commit_shas.is_none() {
+            div()
+                .size_full()
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_color(t.text_secondary)
+                .child("Loading…")
+                .into_any_element()
+        } else {
+            div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .min_h_0()
+                .child(
+                    // `.files-changed-header`
+                    div()
+                        .flex_none()
+                        .h(px(30.))
+                        .flex()
+                        .items_center()
+                        .px(SPACING)
+                        .bg(t.box_alt_background)
+                        .border_1()
+                        .border_color(t.box_border)
+                        .rounded_t(BORDER_RADIUS)
+                        .text_size(FONT_SIZE)
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child("Showing changes from all commits"),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .border_1()
+                        .border_t_0()
+                        .border_color(t.box_border)
+                        .rounded_b(BORDER_RADIUS)
+                        .overflow_hidden()
+                        .child(
+                            h_resizable("pr-files-diff")
+                                .with_state(&self.resizable)
+                                .with_handle_appearance(Rc::new(|_, _, _| {
+                                    Some(div().into_any_element())
+                                }))
+                                .child(
+                                    resizable_panel()
+                                        .size(self.file_list_width)
+                                        .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
+                                        .child(self.file_list(&preview, cx)),
+                                )
+                                .child(
+                                    resizable_panel().child(
+                                        div()
+                                            .size_full()
+                                            .flex()
+                                            .flex_col()
+                                            .min_h_0()
+                                            .when_some(selected_file, |d, (path, kind)| {
+                                                d.child(diff_header(&path, kind, &self.diff, cx))
+                                            })
+                                            .child(self.diff.clone()),
+                                    ),
+                                ),
+                        ),
+                )
+                .into_any_element()
+        };
+        let close = cx.listener(|this, _, _, cx| this.close(cx));
+        let preview_for_submit = preview.clone();
+        let ok_label = if has_pr {
+            "View Pull Request"
+        } else {
+            "Create Pull Request"
+        };
+        let ok_title = format!(
+            "{} pull request on GitHub{}.",
+            if has_pr { "View" } else { "Create" },
+            if enterprise { " Enterprise" } else { "" }
+        );
+        let dialog = deferred(
+            anchored().position(point(px(0.), px(0.))).child(
+                div()
+                    .id("open-pull-request")
+                    .w(viewport.width)
+                    .h(viewport.height)
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(t.overlay)
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| this.close(cx)),
+                    )
+                    .child(
+                        div()
+                            .id("open-pull-request-box")
+                            .w(viewport.width - DIALOG_MARGIN)
+                            .h(viewport.height - DIALOG_MARGIN)
+                            .flex()
+                            .flex_col()
+                            .rounded(BORDER_RADIUS)
+                            .bg(t.background)
+                            .text_color(t.text)
+                            .border_1()
+                            .border_color(t.box_border)
+                            .shadow(vec![BoxShadow {
+                                color: t.shadow,
+                                offset: point(px(0.), px(2.)),
+                                blur_radius: px(7.),
+                                spread_radius: px(0.),
+                                inset: false,
+                            }])
+                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                            .child(
+                                // `OpenPullRequestDialogHeader`
+                                div()
+                                    .flex_none()
+                                    .flex()
+                                    .flex_col()
+                                    .px(SPACING_DOUBLE)
+                                    .pt(px(15.))
+                                    .pb(SPACING)
+                                    .border_b_1()
+                                    .border_color(t.box_border)
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .text_size(FONT_SIZE_MD)
+                                                    .font_weight(FontWeight::SEMIBOLD)
+                                                    .child("Open a Pull Request"),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id("open-pull-request-close")
+                                                    .size(px(16.))
+                                                    .cursor_pointer()
+                                                    .on_click(close)
+                                                    .child(octicon(Octicon::X, t.text_secondary)),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .mt(SPACING)
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap(px(4.))
+                                            .text_size(FONT_SIZE)
+                                            .child(
+                                                // `.base-branch-details`
+                                                div()
+                                                    .flex_1()
+                                                    .min_w_0()
+                                                    .flex()
+                                                    .flex_row()
+                                                    .items_center()
+                                                    .flex_wrap()
+                                                    .gap(px(4.))
+                                                    .child(format!(
+                                                        "Merge {commit_count} commit{} into",
+                                                        if commit_count == 1 { "" } else { "s" }
+                                                    ))
+                                                    .child(self.base_select(&preview, cx))
+                                                    .child("from")
+                                                    .child(code_ref(
+                                                        preview.current_branch.clone(),
+                                                        cx,
+                                                    ))
+                                                    .child("."),
+                                            )
+                                            .child(
+                                                // `.lines-added-deleted`
+                                                div()
+                                                    .flex_none()
+                                                    .flex()
+                                                    .flex_row()
+                                                    .text_size(FONT_SIZE_SM)
+                                                    .child(
+                                                        div()
+                                                            .text_color(t.color_new)
+                                                            .child(format!("{added} added lines")),
+                                                    )
+                                                    .child(", ")
+                                                    .child(
+                                                        div().text_color(t.color_deleted).child(
+                                                            format!("{deleted} removed lines"),
+                                                        ),
+                                                    ),
+                                            ),
+                                    ),
+                            )
+                            .child(
+                                // `.open-pull-request-content`
+                                div()
+                                    .flex_1()
+                                    .min_h(px(200.))
+                                    .min_h_0()
+                                    .p(SPACING)
+                                    .flex()
+                                    .flex_col()
+                                    .child(content),
+                            )
+                            .child(
+                                // footer: merge status + buttons
+                                div()
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .gap(SPACING)
+                                    .px(SPACING_DOUBLE)
+                                    .pb(SPACING_DOUBLE)
+                                    .pt(SPACING)
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .child(self.merge_status(preview.merge_status, cx)),
+                                    )
+                                    .child(
+                                        button("open-pull-request-cancel", "Cancel", cx)
+                                            .min_w(px(120.))
+                                            .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
+                                    )
+                                    .child(
+                                        primary_button("open-pull-request-ok", "", ok_disabled, cx)
+                                            .min_w(px(120.))
+                                            .gap(SPACING_HALF)
+                                            .tooltip(crate::widgets::tooltip(ok_title))
+                                            .when(has_pr, |d| {
+                                                d.child(octicon(
+                                                    Octicon::LinkExternal,
+                                                    t.button_text,
+                                                ))
+                                            })
+                                            .child(ok_label)
+                                            .when(!ok_disabled, |d| {
+                                                d.on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.submit(&preview_for_submit, cx)
+                                                }))
+                                            }),
+                                    ),
+                            ),
+                    ),
+            ),
+        )
+        .with_priority(20)
+        .into_any_element();
+        // the base-branch popover sits above the dialog
+        let popover = self.base_select_open.then(|| self.base_popover(window, cx));
+        div().child(dialog).children(popover).into_any_element()
+    }
+}

@@ -62,18 +62,31 @@ pub fn encode_component(s: &str) -> String {
     out
 }
 
-/// `${htmlURL}/pull/new/${branch}` (or `${parent}/pull/new/${owner}:${branch}`
-/// for a fork) - GHD `_createPullRequest`.
-pub fn pull_request_url(gh: &GitHubRepository, branch: &str) -> String {
-    match &gh.parent {
-        Some(parent) => format!(
-            "{}/pull/new/{}:{}",
-            parent.html_url,
-            encode_component(&gh.owner),
-            encode_component(branch)
-        ),
-        None => format!("{}/pull/new/{}", gh.html_url, encode_component(branch)),
-    }
+/// GHD `_openCreatePullRequestInBrowser`: `${htmlURL}/pull/new/[base...]compare`;
+/// a fork contributing to its parent prefixes both refs with `owner:name:`.
+pub fn pull_request_url(
+    gh: &GitHubRepository,
+    compare: &str,
+    base: Option<&str>,
+    contributing_to_parent: bool,
+) -> String {
+    let base_prefix = match (&gh.parent, contributing_to_parent) {
+        (Some(parent), true) => format!("{}:{}:", parent.owner, parent.name),
+        _ => String::new(),
+    };
+    let encoded_base = base
+        .map(|b| format!("{base_prefix}{}...", encode_component(b)))
+        .unwrap_or_default();
+    let compare_prefix = if contributing_to_parent {
+        format!("{}:{}:", gh.owner, gh.name)
+    } else {
+        String::new()
+    };
+    format!(
+        "{}/pull/new/{encoded_base}{compare_prefix}{}",
+        gh.html_url,
+        encode_component(compare)
+    )
 }
 
 impl Dispatcher {
@@ -337,11 +350,25 @@ impl Dispatcher {
     }
 
     /// Branch › Create Pull Request. An unpublished branch is pushed first
-    /// (GHD `_createPullRequest` → `_publishBranch`), then the compare page opens.
+    /// (GHD `_createPullRequest` → `_publishBranch`), then the compare page
+    /// opens; with an open pull request the menu shows it instead.
     pub fn create_pull_request(id: u64, cx: &mut App) {
+        if Self::state(cx).read(cx).current_pull_request(id).is_some() {
+            Self::show_pull_request(id, cx);
+            return;
+        }
+        Self::create_pull_request_with_base(id, None, cx);
+    }
+
+    /// `_createPullRequest(repository, baseBranch)`
+    pub fn create_pull_request_with_base(id: u64, base: Option<String>, cx: &mut App) {
         let Some((gh, Some(branch))) = Self::github_and_branch(id, cx) else {
             return;
         };
+        let contributing_to_parent = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .is_some_and(|r| r.is_fork_contributing_to_parent());
         let published = Self::state(cx)
             .read(cx)
             .repo_states
@@ -352,7 +379,16 @@ impl Dispatcher {
         if !published {
             Self::push(id, false, None, cx);
         }
-        Self::open_url(&pull_request_url(&gh, &branch), cx);
+        // the base is a remote branch name in the dialog; GitHub wants it bare
+        let base = base.map(|b| {
+            b.split_once('/')
+                .map(|(_, name)| name.to_string())
+                .unwrap_or(b)
+        });
+        Self::open_url(
+            &pull_request_url(&gh, &branch, base.as_deref(), contributing_to_parent),
+            cx,
+        );
     }
 
     /// Settings › Git › Hooks: (re)load the login-shell environment for git
@@ -695,12 +731,24 @@ mod tests {
     #[test]
     fn pull_request_urls() {
         assert_eq!(
-            pull_request_url(&gh(false), "feat/one"),
+            pull_request_url(&gh(false), "feat/one", None, false),
             "https://github.com/octocat/hello/pull/new/feat%2Fone"
         );
         assert_eq!(
-            pull_request_url(&gh(true), "feat"),
-            "https://github.com/octocat/hello/pull/new/me:feat"
+            pull_request_url(&gh(false), "feat", Some("develop"), false),
+            "https://github.com/octocat/hello/pull/new/develop...feat"
+        );
+        assert_eq!(
+            pull_request_url(&gh(true), "feat", None, true),
+            "https://github.com/me/hello/pull/new/me:hello:feat"
+        );
+        assert_eq!(
+            pull_request_url(&gh(true), "feat", Some("main"), true),
+            "https://github.com/me/hello/pull/new/octocat:hello:main...me:hello:feat"
+        );
+        assert_eq!(
+            pull_request_url(&gh(true), "feat", None, false),
+            "https://github.com/me/hello/pull/new/feat"
         );
     }
 }

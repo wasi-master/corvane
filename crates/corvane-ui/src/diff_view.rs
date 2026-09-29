@@ -32,7 +32,8 @@ use crate::diff_expansion::{
 };
 use crate::diff_view_rows::{
     RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection, build_rows,
-    build_split_rows, render_row, render_split_row, search_rows, unified_to_split,
+    build_split_rows, line_number_width, max_line_number, render_row, render_split_row,
+    search_rows, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -140,6 +141,19 @@ pub enum DiffSource {
     Commit,
     /// Stash viewer: the selected stashed file (read-only).
     Stash,
+    /// Preview Pull Request dialog: the selected file's merge-base diff.
+    PullRequest,
+}
+
+/// Which "hide whitespace" setting a source uses.
+fn set_hide_whitespace(source: DiffSource, hide: bool, cx: &mut App) {
+    match source {
+        DiffSource::WorkingDirectory => Dispatcher::set_hide_whitespace_in_diff(false, hide, cx),
+        DiffSource::Commit | DiffSource::Stash => {
+            Dispatcher::set_hide_whitespace_in_diff(true, hide, cx)
+        }
+        DiffSource::PullRequest => Dispatcher::set_hide_whitespace_in_pull_request_diff(hide, cx),
+    }
 }
 
 /// One render's snapshot of the repository state.
@@ -282,6 +296,24 @@ impl DiffView {
                     rs.stash_diff_generation,
                     rs.stash_diff_contents.clone(),
                     s.settings.hide_whitespace_in_history_diff,
+                )
+            }
+            DiffSource::PullRequest => {
+                let preview = rs.pull_request_preview.as_ref()?;
+                let file = preview.file.as_ref().and_then(|p| {
+                    preview
+                        .changeset
+                        .as_ref()
+                        .and_then(|c| c.files.iter().find(|f| &f.path == p))
+                })?;
+                (
+                    file.path.clone(),
+                    file.status.kind,
+                    DiffSelection::all(),
+                    preview.diff.clone()?,
+                    preview.diff_generation,
+                    preview.diff_contents.clone(),
+                    s.settings.hide_whitespace_in_pull_request_diff,
                 )
             }
         };
@@ -723,7 +755,7 @@ impl DiffView {
         let width = px(250.);
         let x = (anchor.right() - width).max(px(0.));
         let y = anchor.bottom() + px(4.);
-        let history = self.source != DiffSource::WorkingDirectory;
+        let source = self.source;
         let interactive = self.source == DiffSource::WorkingDirectory;
         let hide = snap.hide_whitespace;
         let split = self.state.read(cx).settings.show_side_by_side_diff;
@@ -780,11 +812,7 @@ impl DiffView {
                                     "diff-hide-whitespace",
                                     hide,
                                     "Hide Whitespace Changes",
-                                    move |checked, _, cx| {
-                                        Dispatcher::set_hide_whitespace_in_diff(
-                                            history, checked, cx,
-                                        )
-                                    },
+                                    move |checked, _, cx| set_hide_whitespace(source, checked, cx),
                                     cx,
                                 ))
                                 .when(interactive, |d| {
@@ -824,7 +852,7 @@ impl DiffView {
     /// `WhitespaceHintPopover`: "Show whitespace changes?"
     fn whitespace_hint_popover(&self, anchor: Point<Pixels>, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
-        let history = self.source != DiffSource::WorkingDirectory;
+        let source = self.source;
         deferred(
             anchored()
                 .position(anchor)
@@ -877,9 +905,7 @@ impl DiffView {
                                     primary_button("whitespace-hint-yes", "Yes", false, cx)
                                         .on_click(cx.listener(move |this, _, _, cx| {
                                             this.whitespace_hint = None;
-                                            Dispatcher::set_hide_whitespace_in_diff(
-                                                history, false, cx,
-                                            );
+                                            set_hide_whitespace(source, false, cx);
                                         })),
                                 )
                                 .child(button("whitespace-hint-no", "No", cx).on_click(
@@ -1361,6 +1387,7 @@ impl DiffView {
             search: self.search_index(),
             show_check_marks: AppState::try_global(cx)
                 .is_none_or(|s| s.read(cx).settings.show_diff_check_marks),
+            line_number_width: line_number_width(max_line_number(&self.rows)),
         });
         let rows = self.rows.clone();
         let split_rows = self.split_rows.clone();

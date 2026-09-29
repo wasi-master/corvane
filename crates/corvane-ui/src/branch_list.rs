@@ -3,19 +3,22 @@
 //! (`styles/ui/_branches.scss`, `_no-branches.scss`, `_filter-list.scss`):
 //! `[🔍 Filter][New Branch]`, groups Default Branch / Recent Branches /
 //! Other Branches, 29 px rows (check or branch icon, name, relative date) and
-//! the "Choose a branch to merge into <current>" footer. The Pull Requests
-//! tab needs the GitHub layer.
+//! the "Choose a branch to merge into <current>" footer. GitHub repositories
+//! get the Branches / Pull Requests tab bar (`branches-container.tsx`); the
+//! pull request rows come from `pull_request_list.rs`.
 
 use std::time::{Duration, UNIX_EPOCH};
 
 use corvane_core::filter::fuzzy_score;
-use corvane_core::{AppState, Branch, BranchKind, Dispatcher, Popup, Tip};
+use corvane_core::{AppState, Branch, BranchKind, BranchesTab, Dispatcher, Popup, Tip};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::icons::{Octicon, octicon};
+use crate::pull_request_list::{matches_filter, no_pull_requests, pull_request_row};
 use crate::relative_time::relative;
+use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, text_box};
@@ -26,6 +29,8 @@ pub const BRANCH_FOLDOUT_WIDTH: Pixels = px(365.);
 pub struct BranchFoldout {
     state: Entity<AppState>,
     filter: Entity<InputState>,
+    /// The Pull Requests tab has its own filter text (`PullRequestList.filterText`).
+    pr_filter: Entity<InputState>,
 }
 
 pub struct BranchGroup {
@@ -99,14 +104,145 @@ pub fn group_branches(
 impl BranchFoldout {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        let pr_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         cx.observe(&filter, |_, _, cx| cx.notify()).detach();
-        Self { state, filter }
+        cx.observe(&pr_filter, |_, _, cx| cx.notify()).detach();
+        Self {
+            state,
+            filter,
+            pr_filter,
+        }
     }
 
     pub fn focus_filter(&self, window: &mut Window, cx: &mut Context<Self>) {
-        let handle = self.filter.read(cx).focus_handle(cx);
+        let input = if self.pull_requests_tab_shown(cx) {
+            &self.pr_filter
+        } else {
+            &self.filter
+        };
+        let handle = input.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+    }
+
+    /// The tab bar only exists for GitHub repositories.
+    fn is_github(&self, cx: &App) -> bool {
+        let s = self.state.read(cx);
+        s.selected
+            .and_then(|id| s.repository(id))
+            .is_some_and(|r| r.github.is_some())
+    }
+
+    fn pull_requests_tab_shown(&self, cx: &App) -> bool {
+        self.is_github(cx) && self.state.read(cx).branches_tab == BranchesTab::PullRequests
+    }
+
+    /// `PullRequestList`: filter row, group header, rows or the blank slate.
+    fn pull_requests_tab(&self, id: u64, window: &Window, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let query = self.pr_filter.read(cx).value().trim().to_string();
+        let s = self.state.read(cx);
+        let loading = s.pull_requests_loading(id);
+        let repository_name = s
+            .repository(id)
+            .and_then(|r| r.non_fork_github())
+            .map(|gh| gh.full_name())
+            .unwrap_or_default();
+        let current = s.current_pull_request(id).map(|pr| pr.number);
+        let rs = s.repo_states.get(&id);
+        let on_default_branch = rs.is_some_and(|rs| {
+            rs.default_branch.is_some()
+                && rs.default_branch.as_deref()
+                    == rs
+                        .info
+                        .as_ref()
+                        .and_then(|i| i.current_branch())
+                        .map(|b| b.name.as_str())
+        });
+        let all = s.pull_requests_for(id);
+        let items: Vec<corvane_core::PullRequest> = all
+            .iter()
+            .filter(|pr| matches_filter(pr, &query))
+            .cloned()
+            .collect();
+        let rows: Vec<AnyElement> = items
+            .iter()
+            .map(|pr| {
+                let status = s.commit_status_summary(pr);
+                pull_request_row(id, pr, current == Some(pr.number), status, cx)
+            })
+            .collect();
+        div()
+            .id("pull-request-list")
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .child(
+                // `.filter-field-row` with `renderPostFilter` (the refresh button)
+                div()
+                    .flex_none()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .gap(SPACING)
+                    .p(SPACING)
+                    .pb(SPACING_HALF)
+                    .child(text_box(
+                        "pull-request-filter",
+                        &self.pr_filter,
+                        Some(octicon(Octicon::Search, t.text_secondary)),
+                        window,
+                        cx,
+                    ))
+                    .child(
+                        button("pull-request-refresh", "", cx)
+                            .flex_none()
+                            .px(SPACING_HALF)
+                            .when(loading, |d| d.opacity(0.6))
+                            .tooltip(crate::widgets::tooltip("Refresh the list of pull requests"))
+                            .on_click(move |_, _, cx| {
+                                if !loading {
+                                    Dispatcher::refresh_pull_requests(id, true, cx)
+                                }
+                            })
+                            .child(octicon(Octicon::Sync, t.secondary_button_text)),
+                    ),
+            )
+            .child(if rows.is_empty() {
+                no_pull_requests(
+                    id,
+                    repository_name,
+                    !query.is_empty(),
+                    loading && all.is_empty(),
+                    on_default_branch,
+                    cx,
+                )
+            } else {
+                div()
+                    .id("pull-request-rows")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        // `.filter-list-group-header`
+                        div()
+                            .h(ROW_HEIGHT)
+                            .pt(SPACING)
+                            .px(SPACING)
+                            .flex()
+                            .items_center()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_size(FONT_SIZE)
+                            .truncate()
+                            .child(format!("Pull requests in {repository_name}")),
+                    )
+                    .children(rows)
+                    .into_any_element()
+            })
+            .into_any_element()
     }
 
     fn row(&self, id: u64, branch: &Branch, current: bool, cx: &Context<Self>) -> impl IntoElement {
@@ -278,12 +414,46 @@ impl Render for BranchFoldout {
             return div().into_any_element();
         };
         let query_for_new = query.clone();
+        let is_github = self.is_github(cx);
+        let tab = if is_github {
+            self.state.read(cx).branches_tab
+        } else {
+            BranchesTab::Branches
+        };
+        let open_prs = self.state.read(cx).pull_requests_for(id).len();
+        if tab == BranchesTab::PullRequests {
+            // `CIStatus.subscribe` for every row on screen
+            let refs: Vec<(corvane_core::GitHubRepository, String)> = {
+                let query = self.pr_filter.read(cx).value().trim().to_string();
+                self.state
+                    .read(cx)
+                    .pull_requests_for(id)
+                    .iter()
+                    .filter(|pr| matches_filter(pr, &query))
+                    .filter_map(|pr| pr.base.repository.clone().map(|r| (r, pr.commit_ref())))
+                    .collect()
+            };
+            for (base, git_ref) in refs {
+                Dispatcher::touch_commit_status(&base, &git_ref, None, cx);
+            }
+            return div()
+                .id("branches-container")
+                .size_full()
+                .flex()
+                .flex_col()
+                .min_h_0()
+                .child(self.tab_bar(open_prs, tab, cx))
+                .child(self.pull_requests_tab(id, window, cx))
+                .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))
+                .into_any_element();
+        }
         div()
             .id("branches-container")
             .size_full()
             .flex()
             .flex_col()
             .min_h_0()
+            .when(is_github, |d| d.child(self.tab_bar(open_prs, tab, cx)))
             .child(
                 // `.filter-field-row`: [🔍 Filter][New Branch]
                 div()
@@ -346,42 +516,91 @@ impl Render for BranchFoldout {
                     }))
                     .into_any_element()
             })
-            .when_some(current.filter(|_| tip_valid), |d, current| {
-                // `.merge-button-row`
-                d.child(
-                    div()
-                        .flex_none()
-                        .p(SPACING)
-                        .border_t_1()
-                        .border_color(t.box_border)
-                        .child(
-                            button("merge-into-current", "", cx)
-                                .w_full()
-                                .justify_center()
-                                .gap(SPACING_HALF)
-                                .child(octicon(Octicon::GitMerge, t.secondary_button_text))
-                                .child(
-                                    div()
-                                        .flex()
-                                        .flex_row()
-                                        .child("Choose a branch to merge into\u{a0}")
-                                        .child(
-                                            div().font_weight(FontWeight::SEMIBOLD).child(current),
-                                        ),
-                                )
-                                .on_click(move |_, _, cx| {
-                                    Dispatcher::close_foldout(cx);
-                                    Dispatcher::show_popup(
-                                        Popup::MergeBranch {
-                                            repo: id,
-                                            squash: false,
-                                        },
-                                        cx,
-                                    )
-                                }),
-                        ),
-                )
-            })
+            .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))
             .into_any_element()
+    }
+}
+
+impl BranchFoldout {
+    /// `renderTabBar`: Branches | Pull Requests (with the open count bubble).
+    fn tab_bar(&self, open_prs: usize, tab: BranchesTab, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        div()
+            .flex_none()
+            .border_t_1()
+            .border_color(t.box_border)
+            .child(tab_bar(
+                vec![
+                    TabModel {
+                        id: "branches-tab",
+                        label: "Branches".into(),
+                        count: None,
+                    },
+                    TabModel {
+                        id: "pull-requests-tab",
+                        label: "Pull Requests".into(),
+                        count: (open_prs > 0).then_some(open_prs),
+                    },
+                ],
+                match tab {
+                    BranchesTab::Branches => 0,
+                    BranchesTab::PullRequests => 1,
+                },
+                |ix, _, cx| {
+                    Dispatcher::change_branches_tab(
+                        if ix == 0 {
+                            BranchesTab::Branches
+                        } else {
+                            BranchesTab::PullRequests
+                        },
+                        cx,
+                    )
+                },
+                cx,
+            ))
+            .into_any_element()
+    }
+
+    /// `.merge-button-row`: "Choose a branch to merge into <current>".
+    fn merge_button_row(
+        &self,
+        id: u64,
+        current: Option<String>,
+        cx: &Context<Self>,
+    ) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let current = current?;
+        Some(
+            div()
+                .flex_none()
+                .p(SPACING)
+                .border_t_1()
+                .border_color(t.box_border)
+                .child(
+                    button("merge-into-current", "", cx)
+                        .w_full()
+                        .justify_center()
+                        .gap(SPACING_HALF)
+                        .child(octicon(Octicon::GitMerge, t.secondary_button_text))
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .child("Choose a branch to merge into\u{a0}")
+                                .child(div().font_weight(FontWeight::SEMIBOLD).child(current)),
+                        )
+                        .on_click(move |_, _, cx| {
+                            Dispatcher::close_foldout(cx);
+                            Dispatcher::show_popup(
+                                Popup::MergeBranch {
+                                    repo: id,
+                                    squash: false,
+                                },
+                                cx,
+                            )
+                        }),
+                )
+                .into_any_element(),
+        )
     }
 }

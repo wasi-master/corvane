@@ -238,7 +238,7 @@ pub fn cache_key(github: &GitHubRepository) -> String {
 }
 
 impl Dispatcher {
-    fn api_for(
+    pub(crate) fn api_for(
         github: &GitHubRepository,
         cx: &App,
     ) -> Option<(corvane_github::Endpoint, String, String)> {

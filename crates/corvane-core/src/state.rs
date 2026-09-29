@@ -12,8 +12,8 @@ use gpui_kit::{App, Entity, Global};
 
 use crate::persistence::Settings;
 use corvane_models::{
-    Account, AheadBehind, Diff, Identity, Remote, Repository, RepositoryInfo, Section,
-    WorkingDirectoryStatus,
+    Account, AheadBehind, Diff, GitHubRepository, Identity, Remote, Repository, RepositoryInfo,
+    Section, WorkingDirectoryStatus,
 };
 use corvane_platform::editors::FoundEditor;
 use corvane_platform::shells::FoundShell;
@@ -54,6 +54,58 @@ pub enum Popup {
         repo: u64,
         paths: Vec<String>,
         all: bool,
+    },
+    /// `InvalidatedToken`: an API call answered 401; the account was
+    /// signed out and can sign in again.
+    InvalidatedToken {
+        account: Account,
+    },
+    /// `StartPullRequest`: the Preview Pull Request dialog (state in
+    /// `RepositoryState::pull_request_preview`).
+    StartPullRequest {
+        repo: u64,
+    },
+    /// `CreateFork`: "Do you want to fork this repository?"
+    CreateFork {
+        repo: u64,
+    },
+    /// `ChooseForkSettings`: "How are you planning to use this fork?"
+    ChooseForkSettings {
+        repo: u64,
+    },
+    /// `PushProtectionError`: secrets the server refused; `bypassed` lists
+    /// the placeholder ids already allowed through.
+    PushProtectionError {
+        repo: u64,
+        secrets: Vec<corvane_models::SecretScanResult>,
+        bypassed: Vec<String>,
+    },
+    /// `BypassPushProtection`: why a secret gets pushed anyway.
+    BypassPushProtection {
+        repo: u64,
+        secret: corvane_models::SecretScanResult,
+        secrets: Vec<corvane_models::SecretScanResult>,
+        bypassed: Vec<String>,
+    },
+    /// `PushRejectedDueToMissingWorkflowScope`
+    PushRejectedDueToMissingWorkflowScope {
+        repo: u64,
+        rejected_path: String,
+    },
+    /// `SAMLReauthRequired`
+    SAMLReauthRequired {
+        repo: u64,
+        organization: String,
+        endpoint: String,
+        retry: Option<RetryAction>,
+    },
+    /// `CICheckRunRerun`: re-run (failed) checks of the PR head ref.
+    CICheckRunRerun {
+        repo: u64,
+        github: GitHubRepository,
+        checks: Vec<corvane_models::RefCheck>,
+        git_ref: String,
+        failed_only: bool,
     },
     /// `UnknownAuthors`: co-author handles that could not be resolved;
     /// "Commit Anyway" commits with the known ones only.
@@ -264,6 +316,8 @@ pub enum RepositorySettingsTab {
     Remote,
     IgnoredFiles,
     GitConfig,
+    /// "Fork Behavior" (forks with a known parent only).
+    ForkSettings,
 }
 
 /// GHD `GitConfigLocation`.
@@ -460,6 +514,17 @@ pub struct RepositoryState {
     pub stash_count: usize,
     /// Merge dialog preview.
     pub merge_preview: Option<crate::mco::MergePreview>,
+    /// `pullRequestState`: the Preview Pull Request dialog's data.
+    pub pull_request_preview: Option<crate::pull_request_preview::PullRequestPreview>,
+    /// `addUpstreamRemoteIfNeeded` ran for this repository this session.
+    pub upstream_checked: bool,
+    /// `changesState.currentBranchProtected`
+    pub current_branch_protected: bool,
+    /// `changesState.currentRepoRulesInfo`
+    pub repo_rules: corvane_models::RepoRulesInfo,
+    /// Which branch the rules were fetched for, and when.
+    pub repo_rules_branch: Option<String>,
+    pub repo_rules_fetched_at: Option<Instant>,
     /// Rebase dialog preview.
     pub rebase_preview: Option<crate::mco::RebasePreview>,
 
@@ -610,6 +675,16 @@ pub struct AppState {
     /// `#issue` / `@user` autocompletion caches (`IssuesStore`, `GitHubUserStore`).
     pub issues: crate::autocomplete::IssueCaches,
     pub mentionables: crate::autocomplete::MentionableCaches,
+    /// Open pull requests per GitHub repository (`PullRequestCoordinator`).
+    pub pull_requests: crate::pull_requests::PullRequestCaches,
+    /// `selectedBranchesTab`
+    pub branches_tab: crate::pull_requests::BranchesTab,
+    /// `showCIStatusPopover`: the check-run popover under the PR badge.
+    pub show_ci_status_popover: bool,
+    /// `CommitStatusStore`: CI statuses of refs.
+    pub commit_statuses: crate::commit_status::CommitStatusStore,
+    /// `cachedRepoRulesets`: ruleset id → how it applies to the user.
+    pub repo_rulesets: HashMap<u64, corvane_models::RepoRuleEnforced>,
     /// Installed editors / shells (`getAvailableEditors` / `getAvailableShells`).
     pub editors: Vec<FoundEditor>,
     pub shells: Vec<FoundShell>,

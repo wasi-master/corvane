@@ -80,7 +80,7 @@ impl Dispatcher {
 
     /// `GIT_ASKPASS` environment: one login per host from the signed-in
     /// accounts and the generic credentials the user saved.
-    fn askpass_env(cx: &App) -> Option<AskpassEnv> {
+    pub(crate) fn askpass_env(cx: &App) -> Option<AskpassEnv> {
         let s = Self::state(cx).read(cx);
         let mut logins: Vec<String> = s
             .accounts
@@ -211,9 +211,75 @@ impl Dispatcher {
             warn!(id, %err, "background remote operation failed");
             return;
         }
+        let stderr = match &err {
+            corvane_git::GitError::Failed { stderr, .. } => stderr.clone(),
+            _ => String::new(),
+        };
+        let github = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.github.clone());
         match corvane_git::remote_failure(&err) {
             RemoteFailure::PushNotFastForward => {
                 Self::show_popup(Popup::PushNeedsPull { repo: id }, cx);
+            }
+            // `secretScanningPushProtectionErrorHandler`
+            RemoteFailure::PushWithSecretDetected => {
+                let secrets = crate::push_errors::secret_scan_results(
+                    &crate::push_errors::remote_message(&stderr),
+                );
+                if secrets.is_empty() {
+                    Self::show_error(title, err.to_string(), cx);
+                } else {
+                    Self::show_popup(
+                        Popup::PushProtectionError {
+                            repo: id,
+                            secrets,
+                            bypassed: Vec::new(),
+                        },
+                        cx,
+                    );
+                }
+            }
+            // `refusedWorkflowUpdate`
+            RemoteFailure::MissingWorkflowScope if github.is_some() => {
+                match crate::push_errors::rejected_workflow_path(&stderr) {
+                    Some(rejected_path) => Self::show_popup(
+                        Popup::PushRejectedDueToMissingWorkflowScope {
+                            repo: id,
+                            rejected_path,
+                        },
+                        cx,
+                    ),
+                    None => Self::show_error(title, err.to_string(), cx),
+                }
+            }
+            // `samlReauthRequired`
+            RemoteFailure::SamlReauthRequired if github.is_some() => {
+                let organization = crate::push_errors::saml_organization(
+                    &crate::push_errors::remote_message(&stderr),
+                );
+                match (organization, github) {
+                    (Some(organization), Some(gh)) => Self::show_popup(
+                        Popup::SAMLReauthRequired {
+                            repo: id,
+                            organization,
+                            endpoint: gh.endpoint,
+                            retry: Some(retry),
+                        },
+                        cx,
+                    ),
+                    _ => Self::show_error(title, err.to_string(), cx),
+                }
+            }
+            // `insufficientGitHubRepoPermissions`: offer a fork
+            RemoteFailure::PermissionDenied
+                if matches!(retry, RetryAction::Push { .. })
+                    && github.as_ref().is_some_and(|gh| {
+                        Self::state(cx).read(cx).account_for(&gh.endpoint).is_some()
+                    }) =>
+            {
+                Self::show_create_fork_dialog(id, cx);
             }
             RemoteFailure::AuthenticationFailed => {
                 let host = host_of(&remote_url);
@@ -949,6 +1015,17 @@ impl Dispatcher {
             if s.api_repositories_loading.contains(&endpoint) {
                 return true;
             }
+            // `ApiRepositoriesStore`: the last list shows right away while
+            // the fresh one loads
+            if !s.api_repositories.contains_key(&endpoint)
+                && let Ok(Some(cached)) =
+                    s.store
+                        .get::<Vec<corvane_models::GitHubRepository>>(&format!(
+                            "api-repositories:{endpoint}"
+                        ))
+            {
+                s.api_repositories.insert(endpoint.clone(), cached);
+            }
             s.api_repositories_loading.insert(endpoint.clone());
             cx.notify();
             false
@@ -980,6 +1057,12 @@ impl Dispatcher {
                     s.api_repositories_loading.remove(&endpoint_for_result);
                     match result {
                         Ok(repos) => {
+                            if let Err(err) = s
+                                .store
+                                .set(&format!("api-repositories:{endpoint_for_result}"), &repos)
+                            {
+                                warn!(%err, "could not cache the repository list");
+                            }
                             s.api_repositories
                                 .insert(endpoint_for_result.clone(), repos);
                         }

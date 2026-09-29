@@ -4,13 +4,18 @@
 mod add_existing;
 mod app_dialogs;
 pub(crate) mod branch_dialogs;
+mod ci_check_run_rerun;
 mod clone_repository;
 mod create_repository;
 mod discard_changes;
 mod discard_selection;
+mod fork_dialogs;
 mod history_dialogs;
 mod mco_dialogs;
+mod open_pull_request;
 mod preferences;
+mod push_protection;
+mod reauth_dialogs;
 mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
@@ -28,16 +33,23 @@ pub use branch_dialogs::{
     ConfirmOverwriteStashDialog, CreateBranchDialog, DeleteBranchDialog, MergeBranchDialog,
     RenameBranchDialog, StashAndSwitchBranchDialog,
 };
+pub use ci_check_run_rerun::CiCheckRunRerunDialog;
 pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
 pub use discard_selection::DiscardSelectionDialog;
+pub use fork_dialogs::{ChooseForkSettingsDialog, CreateForkDialog, fork_settings_description};
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
     UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
+pub use open_pull_request::OpenPullRequestDialog;
 pub use preferences::PreferencesDialog;
+pub use push_protection::{BypassPushProtectionDialog, PushProtectionErrorDialog};
+pub use reauth_dialogs::{
+    InvalidatedTokenDialog, SamlReauthRequiredDialog, WorkflowPushRejectedDialog,
+};
 pub use remote_dialogs::{
     ConfirmForcePushDialog, GenericGitAuthDialog, InitializeLfsDialog, PublishRepositoryDialog,
     PushNeedsPullDialog,
@@ -84,6 +96,67 @@ impl DialogHost {
                 .into(),
             Popup::DiscardChanges { repo, paths, all } => cx
                 .new(|_| DiscardChangesDialog::new(*repo, paths.clone(), *all))
+                .into(),
+            Popup::InvalidatedToken { account } => cx
+                .new(|_| InvalidatedTokenDialog::new(account.clone()))
+                .into(),
+            Popup::StartPullRequest { repo } => cx
+                .new(|cx| OpenPullRequestDialog::new(state, *repo, window, cx))
+                .into(),
+            Popup::CreateFork { repo } => {
+                cx.new(|cx| CreateForkDialog::new(state, *repo, cx)).into()
+            }
+            Popup::ChooseForkSettings { repo } => cx
+                .new(|cx| ChooseForkSettingsDialog::new(state, *repo, cx))
+                .into(),
+            Popup::PushProtectionError {
+                repo,
+                secrets,
+                bypassed,
+            } => cx
+                .new(|_| PushProtectionErrorDialog::new(*repo, secrets.clone(), bypassed.clone()))
+                .into(),
+            Popup::BypassPushProtection {
+                repo,
+                secret,
+                secrets,
+                bypassed,
+            } => cx
+                .new(|_| {
+                    BypassPushProtectionDialog::new(
+                        *repo,
+                        secret.clone(),
+                        secrets.clone(),
+                        bypassed.clone(),
+                    )
+                })
+                .into(),
+            Popup::PushRejectedDueToMissingWorkflowScope { rejected_path, .. } => cx
+                .new(|_| WorkflowPushRejectedDialog::new(rejected_path.clone()))
+                .into(),
+            Popup::SAMLReauthRequired {
+                organization,
+                endpoint,
+                ..
+            } => cx
+                .new(|_| SamlReauthRequiredDialog::new(organization.clone(), endpoint.clone()))
+                .into(),
+            Popup::CICheckRunRerun {
+                github,
+                checks,
+                git_ref,
+                failed_only,
+                ..
+            } => cx
+                .new(|cx| {
+                    CiCheckRunRerunDialog::new(
+                        github.clone(),
+                        checks.clone(),
+                        git_ref.clone(),
+                        *failed_only,
+                        cx,
+                    )
+                })
                 .into(),
             Popup::UnknownAuthors {
                 repo,
