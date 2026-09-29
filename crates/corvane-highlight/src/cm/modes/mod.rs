@@ -15,6 +15,7 @@ pub mod jsx;
 pub mod perl;
 pub mod powershell;
 pub mod python;
+pub mod r;
 pub mod ruby;
 pub mod shell;
 pub mod sql;
@@ -208,6 +209,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-ruby" => Some(cached!(ruby::Ruby)),
         "text/x-perl" => Some(cached!(perl::Perl)),
         "application/x-powershell" => Some(cached!(powershell::PowerShell)),
+        "text/x-rsrc" => Some(cached!(r::R)),
         "text/x-sh" | "application/x-sh" => Some(cached!(shell::Shell)),
         "text/x-go" => Some(Arc::new(go::Go)),
         "text/x-swift" => Some(Arc::new(swift::Swift)),
