@@ -228,7 +228,9 @@ fn main() {
                             use corvane_core::release_notes::{
                                 parse_release_body, release_summary,
                             };
-                            let body = "Corvane now reads more of GitHub Desktop's workflow.\n\n\
+                            let body = "Corvane now reads more of **GitHub Desktop**'s workflow: \
+                                _Markdown_ with `inline code`, ~~webviews~~ and \
+                                [links](https://github.com/wasi-master/corvane).\n\n\
                                 - [New] Branch autocompletion in Add Worktree\n\
                                 - [Improved] Clone resolves owner/name through the API\n\
                                 - [Added] Commit message templates\n\

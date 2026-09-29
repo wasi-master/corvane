@@ -257,6 +257,23 @@ pub struct GhdTheme {
     pub file_warning: Hsla,
     pub file_warning_border: Hsla,
     pub diff_empty_hunk_handle: Hsla,
+
+    // Markdown (`--md-*-color`, `static/common/markdown.css`)
+    pub md_border_default: Hsla,
+    pub md_border_muted: Hsla,
+    pub md_canvas_subtle: Hsla,
+    pub md_fg_muted: Hsla,
+    pub md_neutral_muted: Hsla,
+    pub md_accent_fg: Hsla,
+
+    // Pull request reviews (`--pr-*-icon-*-color`)
+    pub pr_timeline_line: Hsla,
+    pub pr_changes_requested_icon: Hsla,
+    pub pr_changes_requested_icon_background: Hsla,
+    pub pr_approved_icon: Hsla,
+    pub pr_approved_icon_background: Hsla,
+    pub pr_commented_icon: Hsla,
+    pub pr_commented_icon_background: Hsla,
 }
 
 impl Global for GhdTheme {}
