@@ -23,4 +23,4 @@ Native Rust clone of GitHub Desktop (macOS first). UI is a 1:1 port of GitHub De
 
 ## Verification
 
-`cargo test --workspace`, then the manual QA checklist in `PLAN.md` §6 for touched views. Compare screenshots against GHD at 1367×814 dark + light.
+`cargo test --workspace`, then the manual QA checklist in `PLAN.md` §6 for touched views. Compare against GHD at 1367×814 dark + light with the parity harness: `cargo build -p corvane --features snapshots && python3 tools/parity/parity.py [scenario…]` (drives a private GHD over CDP and Corvane over `CORVANE_CONTROL` with identical input, diffs every snap, report in `target/parity/latest/index.html`; see `tools/parity/README.md`). A touched view's scenarios must not get worse; add a scenario for any new surface or state.
