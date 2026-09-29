@@ -39,6 +39,8 @@ pub struct OpenPullRequestDialog {
     diff: Entity<DiffView>,
     resizable: Entity<ResizableState>,
     file_list_width: Pixels,
+    /// The file list takes focus on click so ⌘9 / ⌘8 resize it.
+    file_list_focus: FocusHandle,
     /// `BranchSelect`: the base branch popover.
     base_select_open: bool,
     base_filter: Entity<InputState>,
@@ -76,6 +78,7 @@ impl OpenPullRequestDialog {
             diff,
             resizable,
             file_list_width,
+            file_list_focus: cx.focus_handle(),
             base_select_open: false,
             base_filter,
             base_button_bounds: Rc::new(Cell::new(Bounds::default())),
@@ -617,7 +620,12 @@ impl Render for OpenPullRequestDialog {
                                     resizable_panel()
                                         .size(self.file_list_width)
                                         .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
-                                        .child(self.file_list(&preview, cx)),
+                                        .child(crate::active_resizable::active_resizable(
+                                            "pr-file-list-resizable",
+                                            &self.resizable,
+                                            Some(&self.file_list_focus),
+                                            self.file_list(&preview, cx),
+                                        )),
                                 )
                                 .child(
                                     resizable_panel().child(

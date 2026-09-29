@@ -370,7 +370,12 @@ impl Workspace {
                         resizable_panel()
                             .size(self.sidebar_width)
                             .size_range(SIDEBAR_MIN_WIDTH..px(900.))
-                            .child(self.sidebar(cx)),
+                            .child(crate::active_resizable::active_resizable(
+                                "repository-sidebar-resizable",
+                                &self.resizable,
+                                None,
+                                self.sidebar(cx),
+                            )),
                     )
                     .child(resizable_panel().child(self.content(cx))),
             )

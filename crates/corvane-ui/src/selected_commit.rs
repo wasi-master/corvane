@@ -27,6 +27,8 @@ pub struct SelectedCommitView {
     diff: Entity<DiffView>,
     resizable: Entity<ResizableState>,
     file_list_width: Pixels,
+    /// The file list takes focus on click so ⌘9 / ⌘8 resize it.
+    file_list_focus: FocusHandle,
 }
 
 impl SelectedCommitView {
@@ -50,6 +52,7 @@ impl SelectedCommitView {
             diff,
             resizable,
             file_list_width,
+            file_list_focus: cx.focus_handle(),
         }
     }
 
@@ -552,7 +555,12 @@ impl Render for SelectedCommitView {
                         resizable_panel()
                             .size(self.file_list_width)
                             .size_range(FILE_LIST_MIN..FILE_LIST_MAX)
-                            .child(self.file_list(id, cx)),
+                            .child(crate::active_resizable::active_resizable(
+                                "commit-file-list-resizable",
+                                &self.resizable,
+                                Some(&self.file_list_focus),
+                                self.file_list(id, cx),
+                            )),
                     )
                     .child(
                         resizable_panel().child(

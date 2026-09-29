@@ -5,6 +5,7 @@
 //! they dispatch actions that `corvane-core` handles.
 
 pub mod actions;
+pub mod active_resizable;
 pub mod autocompletion;
 pub mod banner;
 pub mod branch_list;
