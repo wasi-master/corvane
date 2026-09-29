@@ -192,6 +192,16 @@ pub trait ScrollbarExt: TrackScroll {
     fn with_scrollbar(self) -> WithScrollbar<Self> {
         WithScrollbar {
             element: Some(self),
+            handle: None,
+        }
+    }
+
+    /// `with_scrollbar` with a caller-owned handle, for lists that scroll a
+    /// row into view (`scroll_to_item`).
+    fn with_scrollbar_handle(self, handle: &Self::Handle) -> WithScrollbar<Self> {
+        WithScrollbar {
+            element: Some(self),
+            handle: Some(handle.clone()),
         }
     }
 }
@@ -200,6 +210,7 @@ impl<E: TrackScroll> ScrollbarExt for E {}
 
 pub struct WithScrollbar<E: TrackScroll> {
     element: Option<E>,
+    handle: Option<E::Handle>,
 }
 
 /// Per-element state behind `WithScrollbar`.
@@ -218,12 +229,20 @@ impl<H: Clone> Clone for Tracked<H> {
 }
 
 impl<E: TrackScroll> WithScrollbar<E> {
-    fn tracked(id: &GlobalElementId, window: &mut Window, cx: &mut App) -> Tracked<E::Handle> {
+    fn tracked(
+        id: &GlobalElementId,
+        handle: Option<&E::Handle>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Tracked<E::Handle> {
         window.with_element_state(id, |tracked: Option<Tracked<E::Handle>>, _| {
-            let tracked = tracked.unwrap_or_else(|| Tracked {
+            let mut tracked = tracked.unwrap_or_else(|| Tracked {
                 handle: E::Handle::default(),
                 state: cx.new(|_| State::default()),
             });
+            if let Some(handle) = handle {
+                tracked.handle = handle.clone();
+            }
             (tracked.clone(), tracked)
         })
     }
@@ -259,7 +278,7 @@ impl<E: TrackScroll> Element for WithScrollbar<E> {
         let (Some(id), Some(element)) = (id, self.element.take()) else {
             return (window.request_layout(Style::default(), None, cx), None);
         };
-        let tracked = Self::tracked(id, window, cx);
+        let tracked = Self::tracked(id, self.handle.as_ref(), window, cx);
         let mut element = element.track(&tracked.handle);
         // a legacy scrollbar sits between the border and the padding
         let gutter = reserved(&tracked.handle, Axis::Vertical);
@@ -286,7 +305,7 @@ impl<E: TrackScroll> Element for WithScrollbar<E> {
         cx: &mut App,
     ) -> Option<Prepaint> {
         child.as_mut()?.prepaint(window, cx);
-        let tracked = Self::tracked(id?, window, cx);
+        let tracked = Self::tracked(id?, self.handle.as_ref(), window, cx);
         let handle: Rc<dyn ScrollbarHandle> = Rc::new(tracked.handle);
         prepaint_bar(&handle, Axis::Vertical, tracked.state, window, cx)
     }
@@ -306,7 +325,8 @@ impl<E: TrackScroll> Element for WithScrollbar<E> {
         };
         child.paint(window, cx);
         if let (Some(id), Some(p)) = (id, prepaint.take()) {
-            let handle: Rc<dyn ScrollbarHandle> = Rc::new(Self::tracked(id, window, cx).handle);
+            let handle: Rc<dyn ScrollbarHandle> =
+                Rc::new(Self::tracked(id, self.handle.as_ref(), window, cx).handle);
             paint_bar(&handle, Axis::Vertical, p, window, cx);
         }
     }

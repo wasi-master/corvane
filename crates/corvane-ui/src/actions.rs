@@ -7,6 +7,9 @@ gpui_kit::actions!(
         SelectNextFile,
         SelectPreviousFile,
         SelectAllFiles,
+        // ⇧↑ / ⇧↓ range selection in multi-select lists
+        ExtendSelectionUp,
+        ExtendSelectionDown,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,

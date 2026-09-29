@@ -599,13 +599,41 @@ impl Dispatcher {
             ) else {
                 return;
             };
-            let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
-            rs.selected_files = order[lo..=hi].to_vec();
+            // ordered anchor → clicked row, so ⇧-arrows continue from the click
+            rs.selected_files = crate::list_selection::selection_between(&order, a, b);
             if rs.selected_file.is_none() {
                 rs.selected_file = Some(path);
             }
             cx.notify();
         });
+    }
+
+    /// ⇧↑ / ⇧↓ (GHD `List.addSelection`): grow or shrink the range between the
+    /// anchor and its moving end by one visible row. With no anchor it moves
+    /// the plain selection like an unmodified arrow key.
+    pub fn extend_file_selection_by(id: u64, delta: isize, order: Vec<String>, cx: &mut App) {
+        let first = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            let anchor = rs
+                .selected_file
+                .clone()
+                .filter(|p| order.contains(p))
+                .or_else(|| rs.selected_files.first().cloned())
+                .filter(|p| order.contains(p));
+            let Some(anchor) = anchor else {
+                return order.first().cloned();
+            };
+            if let Some(range) =
+                crate::list_selection::extend_selection(&order, &anchor, &rs.selected_files, delta)
+            {
+                rs.selected_files = range;
+                cx.notify();
+            }
+            None
+        });
+        if let Some(path) = first {
+            Self::select_file(id, path, cx);
+        }
     }
 
     /// ⌘A in the list: every visible file.

@@ -9,6 +9,8 @@ pub fn install(cx: &mut App) {
         KeyBinding::new("down", SelectNextFile, Some("ChangesList")),
         KeyBinding::new("up", SelectPreviousFile, Some("ChangesList")),
         KeyBinding::new("cmd-a", SelectAllFiles, Some("ChangesList")),
+        KeyBinding::new("shift-down", ExtendSelectionDown, Some("ChangesList")),
+        KeyBinding::new("shift-up", ExtendSelectionUp, Some("ChangesList")),
         KeyBinding::new("down", SelectNextFile, Some("HistoryList")),
         KeyBinding::new("up", SelectPreviousFile, Some("HistoryList")),
         KeyBinding::new("enter", ReorderConfirm, Some("HistoryList")),

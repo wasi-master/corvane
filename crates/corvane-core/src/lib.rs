@@ -10,6 +10,7 @@ pub mod emoji;
 pub mod filter;
 pub mod forks;
 pub mod integrations;
+pub mod list_selection;
 pub mod mco;
 pub mod persistence;
 pub mod pull_request_preview;
