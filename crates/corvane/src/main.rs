@@ -71,24 +71,16 @@ fn main() {
         gpui_kit::init(cx);
         phase(started, "gpui-kit initialised");
 
-        // CORVANE_THEME=light|dark overrides the saved setting (dev convenience).
+        // CORVANE_THEME=light|dark|high-contrast overrides the saved setting (dev convenience).
         let stored_theme = settings.theme;
         let theme_setting = match std::env::var("CORVANE_THEME").as_deref() {
             Ok("light") => ThemeSetting::Light,
             Ok("dark") => ThemeSetting::Dark,
+            Ok("high-contrast") => ThemeSetting::HighContrast,
             _ => settings.theme,
         };
-        let theme = match theme_setting {
-            ThemeSetting::Light => corvane_ui::theme::Appearance::Light,
-            ThemeSetting::Dark => corvane_ui::theme::Appearance::Dark,
-            ThemeSetting::System => match cx.window_appearance() {
-                WindowAppearance::Dark | WindowAppearance::VibrantDark => {
-                    corvane_ui::theme::Appearance::Dark
-                }
-                _ => corvane_ui::theme::Appearance::Light,
-            },
-        };
-        corvane_ui::init(cx, theme);
+        APPLIED_THEME.with(|t| t.set(theme_setting));
+        corvane_ui::init(cx, resolve_theme(theme_setting, cx));
         let sidebar_width = px(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
         Dispatcher::load_custom_emoji(cx);
@@ -189,7 +181,9 @@ fn main() {
         }
         // CORVANE_POPUP=<name> opens a dialog at launch (dev/testing convenience
         // for headless smoke runs; API-backed dialogs get sample data):
-        //   preferences | repository-settings | about | create | clone | clone:<url>
+        //   preferences[:<tab>] (accounts, integrations, git, appearance, notifications,
+        //   prompts, advanced, accessibility) | repository-settings | about | create
+        //   clone | clone:<url>
         //   release-notes | move-to-applications | upstream-already-exists
         //   pr-review[:approved|:commented] (changes requested by default)
         //   pr-comment | pr-checks-failed
@@ -216,8 +210,19 @@ fn main() {
                 cx.update(|cx| {
                     let selected = corvane_core::AppState::global(cx).read(cx).selected;
                     match (popup.as_str(), selected) {
-                        ("preferences", _) => {
-                            Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
+                        (other, _) if other.starts_with("preferences") => {
+                            use corvane_core::PreferencesTab as Tab;
+                            let tab = match other.strip_prefix("preferences:") {
+                                Some("integrations") => Tab::Integrations,
+                                Some("git") => Tab::Git,
+                                Some("appearance") => Tab::Appearance,
+                                Some("notifications") => Tab::Notifications,
+                                Some("prompts") => Tab::Prompts,
+                                Some("advanced") => Tab::Advanced,
+                                Some("accessibility") => Tab::Accessibility,
+                                _ => Tab::Accounts,
+                            };
+                            Dispatcher::open_preferences(tab, cx)
                         }
                         ("repository-settings", Some(id)) => Dispatcher::open_repository_settings(
                             id,
@@ -557,10 +562,25 @@ fn main() {
             }
         };
 
-        // System theme follows macOS light/dark switches (`supportsSystemThemeChanges`).
+        // System theme follows macOS light/dark switches (`supportsSystemThemeChanges`)
+        // and, back in Corvane, the "Increase contrast" display option.
         if let Some(window) = cx.active_window() {
+            let ws = workspace.clone();
             window
                 .update(cx, |_, window, cx| {
+                    ws.update(cx, |_, cx| {
+                        cx.observe_window_activation(window, |_, window, cx| {
+                            let theme = APPLIED_THEME.with(|t| t.get());
+                            if window.is_window_active()
+                                && theme == ThemeSetting::System
+                                && resolve_theme(theme, cx).name
+                                    != corvane_ui::theme::ActiveGhdTheme::ghd(&**cx).name
+                            {
+                                apply_theme(theme, cx);
+                            }
+                        })
+                        .detach();
+                    });
                     // the red close button hides the window like ⌘W (GHD
                     // `window.on('close')` → `hide()` unless quitting)
                     #[cfg(target_os = "macos")]
@@ -570,7 +590,7 @@ fn main() {
                     });
                     window
                         .observe_window_appearance(|_, cx| {
-                            let theme = corvane_core::AppState::global(cx).read(cx).settings.theme;
+                            let theme = APPLIED_THEME.with(|t| t.get());
                             if theme == ThemeSetting::System {
                                 apply_theme(theme, cx);
                             }
@@ -820,6 +840,26 @@ fn main() {
     });
 }
 
+thread_local! {
+    /// The theme setting last applied (the saved one, or `CORVANE_THEME`).
+    static APPLIED_THEME: std::cell::Cell<ThemeSetting> =
+        const { std::cell::Cell::new(ThemeSetting::System) };
+}
+
+/// The palette for `setting` given the system appearance and Settings ›
+/// Accessibility › Display › "Increase contrast".
+fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme {
+    let system_dark = matches!(
+        cx.window_appearance(),
+        WindowAppearance::Dark | WindowAppearance::VibrantDark
+    );
+    corvane_ui::theme::GhdTheme::for_setting(
+        setting,
+        system_dark,
+        corvane_platform::accessibility::increase_contrast(),
+    )
+}
+
 /// GHD `focusWindow`: bring Corvane forward and show its window, even when
 /// it was hidden with ⌘W.
 fn focus_main_window(cx: &mut App) {
@@ -836,17 +876,8 @@ fn focus_main_window(cx: &mut App) {
 
 /// Settings › Appearance › Theme: swap the palette live (`ApplicationTheme`).
 fn apply_theme(setting: ThemeSetting, cx: &mut App) {
-    let appearance = match setting {
-        ThemeSetting::Light => corvane_ui::theme::Appearance::Light,
-        ThemeSetting::Dark => corvane_ui::theme::Appearance::Dark,
-        ThemeSetting::System => match cx.window_appearance() {
-            WindowAppearance::Dark | WindowAppearance::VibrantDark => {
-                corvane_ui::theme::Appearance::Dark
-            }
-            _ => corvane_ui::theme::Appearance::Light,
-        },
-    };
-    corvane_ui::theme::apply(corvane_ui::theme::GhdTheme::for_appearance(appearance), cx);
+    APPLIED_THEME.with(|t| t.set(setting));
+    corvane_ui::theme::apply(resolve_theme(setting, cx), cx);
     for window in cx.windows() {
         window.update(cx, |_, window, _| window.refresh()).ok();
     }

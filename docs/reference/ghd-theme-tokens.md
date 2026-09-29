@@ -150,3 +150,27 @@ Aliases: `$blue` = blue-500, `$green` = green-500, `$red` = red-500, `$yellow` =
 Sizes (theme-independent): toolbar-height 50, tab-bar-height 29, button-height 25, text-field-height 25, border-radius 6, spacing 10, diff-line-number-column-width 50, diff-line-padding-y 2, font-size 12/11/14/28/32/42/9, z-index side-panel 14 < drag 15 < nudge 16 < foldout 17 < popup-overlay 18 < popup 19 < tooltip 20.
 
 Rows marked "(see ghd-src)" appear in `_dark.scss` beyond the first 300 lines; read `ghd-src/_dark.scss` directly when porting `ghd-dark.json`.
+
+## High contrast (Corvane addition)
+
+GitHub Desktop 3.6.6 has no high contrast theme. Corvane's (`crates/corvane-ui/src/theme/ghd_high_contrast.rs`) starts from the dark tokens above and recolours them with Primer's `dark_high_contrast` palette (`@primer/primitives` 7.17, `dist/json/colors/dark_high_contrast.json`):
+
+| Primer token | Value | Used for |
+|---|---|---|
+| canvas.default | #0a0c10 | background, box-background, tab bar, diff gutter |
+| canvas.inset | #010409 | toolbar background, shadows |
+| canvas.subtle / overlay | #272b33 | box-alt-background, hover, secondary buttons, menus |
+| fg.default (= fg.muted) | #f0f3f6 | text, diff text, line numbers |
+| gray.2 | #d9dee3 | text-secondary (Primer's fg.muted is fg.default; one step down keeps the hierarchy) |
+| fg.subtle | #9ea7b3 | placeholders, muted text |
+| fg.onEmphasis | #0a0c10 | text on the blue selection, primary buttons, review bubbles |
+| border.default | #7a828e | every border |
+| gray.6 | #525964 | inactive selection, secondary-button hover, badges |
+| accent.emphasis / accent.fg | #409eff / #71b7ff | selection, primary button (hover #71b7ff), focus, links (hover #91cbff) |
+| success.fg / emphasis | #26cd4d / #09b43a | new files, CI success; diff additions (line 15 %, gutter #26cd4d 30 %, word 50 %) |
+| danger.fg | #ff6a69 | deleted files, errors; diff deletions (line 10 %, gutter 30 %, word 45 %) |
+| attention.fg | #f0b72f | modified files, warnings, pending |
+| severe.fg | #e7811d | conflicted files |
+| prettylights.syntax | keyword #ff9492, string #addcff, comment #bdc4cc, variable #ffb757, entity #dbb7ff, constant #91cbff, tag #72f088 | syntax colours |
+
+Settings › Appearance offers it as a fourth theme; with System selected, macOS's Accessibility › Display › "Increase contrast" picks it too.
