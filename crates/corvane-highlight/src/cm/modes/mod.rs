@@ -26,6 +26,7 @@ pub mod sieve;
 pub mod smalltalk;
 pub mod sparql;
 pub mod sql;
+pub mod stex;
 pub mod swift;
 pub mod toml;
 pub mod xml;
@@ -233,6 +234,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         | "application/pgp-encrypted"
         | "application/pgp-keys"
         | "application/pgp-signature" => Some(Arc::new(asciiarmor::AsciiArmor)),
+        "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
