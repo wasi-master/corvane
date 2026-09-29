@@ -648,6 +648,7 @@ mod tests {
             fork: false,
             parent: None,
             archived: false,
+            permissions: None,
         }
     }
 

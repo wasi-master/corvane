@@ -69,6 +69,7 @@ fn github_repository(repo: u64, cx: &App) -> GitHubRepository {
             fork: false,
             parent: None,
             archived: false,
+            permissions: None,
         })
 }
 
@@ -128,6 +129,18 @@ pub fn install_pull_requests(repo: u64, cx: &mut App) {
         cache.pull_requests = prs;
         s.pull_requests
             .insert(corvane_core::cache_key(&github), cache);
+        cx.notify();
+    });
+}
+
+/// `repo` becomes a GitHub repository the user can only read.
+pub fn make_read_only(repo: u64, cx: &mut App) {
+    let mut github = github_repository(repo, cx);
+    github.permissions = Some(corvane_core::RepositoryPermission::Read);
+    AppState::global(cx).update(cx, |s, cx| {
+        if let Some(r) = s.repositories.iter_mut().find(|r| r.id == repo) {
+            r.github = Some(github);
+        }
         cx.notify();
     });
 }

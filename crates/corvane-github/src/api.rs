@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use corvane_models::{
     Account, BypassReason, CheckConclusion, CheckStatus, GitHubRepository, RepoRuleEnforced,
-    RuleOperator,
+    RepositoryPermission, RuleOperator,
 };
 use serde::Deserialize;
 use tracing::debug;
@@ -59,6 +59,37 @@ pub struct ApiRepository {
     pub pushed_at: Option<String>,
     #[serde(default)]
     pub archived: bool,
+    /// Only on `GET /repos/{owner}/{name}` with a token (`IAPIRepositoryPermissions`).
+    #[serde(default)]
+    pub permissions: Option<ApiRepositoryPermissions>,
+}
+
+/// `IAPIRepositoryPermissions`
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct ApiRepositoryPermissions {
+    #[serde(default)]
+    pub admin: bool,
+    /// aka write
+    #[serde(default)]
+    pub push: bool,
+    /// aka read
+    #[serde(default)]
+    pub pull: bool,
+}
+
+impl ApiRepositoryPermissions {
+    /// `getPermissionsString`
+    pub fn permission(self) -> Option<RepositoryPermission> {
+        if self.admin {
+            Some(RepositoryPermission::Admin)
+        } else if self.push {
+            Some(RepositoryPermission::Write)
+        } else if self.pull {
+            Some(RepositoryPermission::Read)
+        } else {
+            None
+        }
+    }
 }
 
 /// A GitHub release (`GET /repos/{owner}/{repo}/releases/tags/{tag}`).
@@ -1045,6 +1076,7 @@ impl Client {
             fork: repo.fork,
             parent: repo.parent.map(|p| Box::new(self.convert(*p))),
             archived: repo.archived,
+            permissions: repo.permissions.and_then(|p| p.permission()),
         }
     }
 }
@@ -1097,6 +1129,39 @@ mod tests {
                 serde_json::from_str(&format!("\"{raw}\"")).expect("state");
             assert_eq!(parsed, state);
         }
+    }
+
+    #[test]
+    fn repository_permissions_map_like_get_permissions_string() {
+        let perms = |json: &str| -> Option<RepositoryPermission> {
+            serde_json::from_str::<ApiRepositoryPermissions>(json)
+                .expect("permissions")
+                .permission()
+        };
+        assert_eq!(
+            perms(r#"{"admin":true,"push":true,"pull":true}"#),
+            Some(RepositoryPermission::Admin)
+        );
+        assert_eq!(
+            perms(r#"{"admin":false,"push":true,"pull":true,"maintain":true}"#),
+            Some(RepositoryPermission::Write)
+        );
+        assert_eq!(
+            perms(r#"{"admin":false,"push":false,"pull":true}"#),
+            Some(RepositoryPermission::Read)
+        );
+        assert_eq!(perms(r#"{}"#), None);
+
+        let repo: ApiRepository = serde_json::from_str(
+            r#"{"name":"desktop","owner":{"login":"desktop"},"html_url":"https://github.com/desktop/desktop",
+                "clone_url":"https://github.com/desktop/desktop.git","default_branch":"development",
+                "permissions":{"admin":false,"push":false,"pull":true}}"#,
+        )
+        .expect("repository");
+        let client = Client::new(crate::Endpoint::github_com(), "");
+        let converted = client.convert(repo);
+        assert_eq!(converted.permissions, Some(RepositoryPermission::Read));
+        assert!(!converted.has_write_permission());
     }
 
     #[test]

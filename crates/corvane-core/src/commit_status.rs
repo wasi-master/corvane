@@ -389,6 +389,7 @@ impl Dispatcher {
             fork: false,
             parent: None,
             archived: false,
+            permissions: None,
         };
         let Some((endpoint, token, _)) = Self::api_for(&gh, cx) else {
             Self::state(cx).update(cx, |s, _| {

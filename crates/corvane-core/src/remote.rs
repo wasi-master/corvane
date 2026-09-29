@@ -272,11 +272,14 @@ impl Dispatcher {
                     _ => Self::show_error(title, err.to_string(), cx),
                 }
             }
-            // `insufficientGitHubRepoPermissions`: offer a fork
+            // `insufficientGitHubRepoPermissions`: offer a fork. Known
+            // read-only repositories never get here (see `push_then`); this
+            // covers repositories whose permissions were never fetched.
             RemoteFailure::PermissionDenied
                 if matches!(retry, RetryAction::Push { .. })
                     && github.as_ref().is_some_and(|gh| {
-                        Self::state(cx).read(cx).account_for(&gh.endpoint).is_some()
+                        gh.permissions.is_none()
+                            && Self::state(cx).read(cx).account_for(&gh.endpoint).is_some()
                     }) =>
             {
                 Self::show_create_fork_dialog(id, cx);
@@ -523,6 +526,20 @@ impl Dispatcher {
             Self::show_popup(Popup::PublishRepository { repo: id }, cx);
             return then(false, cx);
         };
+        // no write access: suggest a fork before git runs (GHD pushes and
+        // offers it after the auth failure, `insufficientGitHubRepoPermissions`)
+        let read_only = {
+            let s = Self::state(cx).read(cx);
+            s.repository(id)
+                .and_then(|r| r.github.as_ref())
+                .is_some_and(|gh| {
+                    !gh.has_write_permission() && s.account_for(&gh.endpoint).is_some()
+                })
+        };
+        if read_only {
+            Self::show_create_fork_dialog(id, cx);
+            return then(false, cx);
+        }
         let (branch, tip_error) = {
             let s = Self::state(cx).read(cx);
             let info = s.repo_states.get(&id).and_then(|r| r.info.as_ref());
