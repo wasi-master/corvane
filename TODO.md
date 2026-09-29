@@ -50,7 +50,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
 - [ ] **[PLAT]** OS notifications (`ui/notifications/`), `TestNotifications` popup
 - [ ] **[PLAT]** `Install Command Line Tool…` (`github` CLI shim → `corvane` shim), Finder Services "Open in Corvane"
-- [ ] **[PLAT]** `MoveToApplicationsFolder` prompt
 
 ## Infra / release
 
