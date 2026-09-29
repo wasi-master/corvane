@@ -66,15 +66,19 @@ pub fn link_button(
     // Settings › Accessibility › Underline links (`body.underline-links`).
     let underline =
         corvane_core::AppState::try_global(cx).is_some_and(|s| s.read(cx).settings.underline_links);
+    let label: SharedString = label.into();
     div()
         .id(id)
+        // a `Link` node VoiceOver can name and press
+        .role(Role::Link)
+        .aria_label(label.clone())
         .flex_none()
         .text_size(FONT_SIZE)
         .text_color(t.link)
         .cursor_pointer()
         .when(underline, |d| d.underline())
         .hover(move |s| s.text_color(hover).underline())
-        .child(label.into())
+        .child(label)
 }
 
 /// Shared handler for `select_button` choices (index of the picked option).
