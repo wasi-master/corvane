@@ -412,6 +412,10 @@ impl Workspace {
                                 "repository-sidebar-resizable",
                                 &self.resizable,
                                 None,
+                                crate::active_resizable::ResizableDescription::new(
+                                    "Repository sidebar",
+                                    SIDEBAR_MIN_WIDTH..px(900.),
+                                ),
                                 self.sidebar(cx),
                             )),
                     )

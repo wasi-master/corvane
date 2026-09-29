@@ -1186,6 +1186,9 @@ impl HistorySidebar {
         let in_reorder = reorder.is_some();
         div()
             .id("commit-list")
+            // GHD `ariaLabel="Commits"` on the list
+            .role(Role::List)
+            .aria_label("Commits")
             .key_context("HistoryList")
             .track_focus(&self.list_focus)
             .on_action(cx.listener(|this, _: &ReorderMoveUp, _, cx| this.move_insertion(-1, cx)))
