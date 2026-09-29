@@ -71,15 +71,11 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Settings (`ui/preferences/`)
 
-- [ ] Git › Hooks sub-tab (`enableGitHookEnv`, `cacheGitHookEnv`: load the user's shell environment before running hooks, `lib/shell.ts` `getShellEnv`)
-- [ ] Advanced › "Use Git Credential Manager" (`useExternalCredentialHelper`: `-c credential.helper=manager` for non-GitHub remotes); Corvane answers generic prompts through its askpass helper instead
-- [ ] Appearance › Formatting (date / time / number format selects, "Prefer absolute dates") — behind `enableFormattingPreferences()` in GHD 3.6.6
-- [ ] Prompts › "Overriding commit message with generated message" (Copilot) and "Removing worktrees" (worktree flag)
-- [ ] Integrations › custom editor / shell (`enableCustomIntegration()`: path + arguments form)
-- [ ] Accounts: avatar images (needs the avatar cache), `lookupPreferredEmail`
+- [ ] Prompts › "Overriding commit message with generated message" (Copilot, omitted by design)
 - [ ] Notifications tab permission hint (`getNotificationsPermission`, macOS `UNUserNotificationCenter`)
-- [ ] Settings dialog `DialogError` banner for an invalid author name (`gitAuthorNameIsValid`); the Save button just writes what was typed
 - [ ] Editor detection on Windows/Linux (`lib/editors/win32.ts`, `linux.ts`); macOS uses LaunchServices (`NSWorkspace URLForApplicationWithBundleIdentifier`)
+- [ ] Custom integration bundle ids are resolved at launch (`mdls`) rather than stored when the path is chosen
+- [ ] Formatting defaults follow GHD's en-US branch (`MMM d, yyyy`, `h:mm aaa`, `1,234.5`); GHD picks them from the OS locale country
 
 ## View menu
 
