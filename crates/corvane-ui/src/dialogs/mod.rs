@@ -26,6 +26,7 @@ mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
 mod simple;
+mod tutorial_dialogs;
 mod unknown_authors;
 mod worktree_dialogs;
 
@@ -429,6 +430,17 @@ impl DialogHost {
                 .new(|_| move_to_applications_folder::MoveToApplicationsFolderDialog::new())
                 .into(),
             Popup::Acknowledgements => cx.new(acknowledgements::AcknowledgementsDialog::new).into(),
+            Popup::CreateTutorialRepository { account, progress } => cx
+                .new(|_| {
+                    tutorial_dialogs::CreateTutorialRepositoryDialog::new(
+                        account.clone(),
+                        progress.clone(),
+                    )
+                })
+                .into(),
+            Popup::ConfirmExitTutorial => cx
+                .new(|_| tutorial_dialogs::ConfirmExitTutorialDialog)
+                .into(),
             Popup::CrashReportFound { reports } => cx
                 .new(|_| crash_report_found::CrashReportFoundDialog::new(reports.clone()))
                 .into(),

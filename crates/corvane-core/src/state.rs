@@ -121,6 +121,14 @@ pub enum Popup {
         endpoint: String,
         retry: Option<RetryAction>,
     },
+    /// `CreateTutorialRepository`: "Start tutorial" for `account`, with the
+    /// creation progress (title, percent, detail) once it runs.
+    CreateTutorialRepository {
+        account: Account,
+        progress: Option<(String, u8, Option<String>)>,
+    },
+    /// `ConfirmExitTutorial`
+    ConfirmExitTutorial,
     /// `CICheckRunRerun`: re-run (failed) checks of the PR head ref.
     CICheckRunRerun {
         repo: u64,
@@ -742,6 +750,11 @@ pub struct AppState {
     pub pull_requests: crate::pull_requests::PullRequestCaches,
     /// `selectedBranchesTab`
     pub branches_tab: crate::pull_requests::BranchesTab,
+    /// `OnboardingTutorialAssessor.tutorialAnnounced` (per session).
+    pub tutorial_announced: bool,
+    /// `CORVANE_POPUP=tutorial:<step>`: the step the tutorial repository is
+    /// shown at, whatever its state (dev/testing convenience).
+    pub tutorial_step_override: Option<crate::tutorial::TutorialStep>,
     /// `showCIStatusPopover`: the check-run popover under the PR badge.
     pub show_ci_status_popover: bool,
     /// `CommitStatusStore`: CI statuses of refs.

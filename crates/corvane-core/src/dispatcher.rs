@@ -84,6 +84,8 @@ impl Dispatcher {
             api_repositories_loading: std::collections::HashSet::new(),
             pull_requests: std::collections::HashMap::new(),
             branches_tab: crate::pull_requests::BranchesTab::Branches,
+            tutorial_announced: false,
+            tutorial_step_override: None,
             show_ci_status_popover: false,
             commit_statuses: crate::commit_status::CommitStatusStore::default(),
             repo_rulesets: std::collections::HashMap::new(),
@@ -329,6 +331,7 @@ impl Dispatcher {
             Self::check_lfs(id, cx);
             Self::ensure_pull_requests(id, cx);
             Self::refresh_github_repository(id, cx);
+            Self::resume_tutorial_on_other_repository(id, cx);
             Self::restart_pull_request_updater(cx);
         }
     }

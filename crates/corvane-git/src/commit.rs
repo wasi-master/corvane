@@ -75,6 +75,14 @@ pub fn stage_files(
     Ok(())
 }
 
+/// `git add -- <paths>` (the tutorial repository's README).
+pub fn add_paths(git: Arc<GitBinary>, workdir: &Path, paths: &[&str]) -> Result<()> {
+    let mut args = vec!["add", "--"];
+    args.extend_from_slice(paths);
+    GitCommand::new(git).args(args).current_dir(workdir).run()?;
+    Ok(())
+}
+
 /// `git commit -F -` with the message on stdin (GHD `createCommit`). Returns the new HEAD sha.
 pub fn commit(
     git: Arc<GitBinary>,

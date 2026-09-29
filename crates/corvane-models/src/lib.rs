@@ -31,6 +31,9 @@ pub struct Repository {
     /// entry belongs to, so a deleted linked worktree falls back to it.
     #[serde(default)]
     pub main_worktree_path: Option<PathBuf>,
+    /// GHD `isTutorialRepository`: created by "Create a Tutorial Repository…".
+    #[serde(default)]
+    pub is_tutorial_repository: bool,
 }
 
 /// GHD `ICommitOptions`: `skipCommitHooks`, `signOffCommits`, `allowEmptyCommit`.
@@ -52,6 +55,7 @@ impl Repository {
             commit_options: RepoCommitOptions::default(),
             fork_contribution_target: None,
             main_worktree_path: None,
+            is_tutorial_repository: false,
         }
     }
 
