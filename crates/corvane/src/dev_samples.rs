@@ -72,6 +72,66 @@ fn github_repository(repo: u64, cx: &App) -> GitHubRepository {
         })
 }
 
+/// Marks `repo` as a GitHub repository and fills its pull request cache and
+/// their CI statuses, so the branch foldout's Pull Requests tab and quick
+/// view can be exercised without an account.
+pub fn install_pull_requests(repo: u64, cx: &mut App) {
+    let github = github_repository(repo, cx);
+    let mut first = pull_request(repo, cx);
+    first.body = REVIEW_BODY.into();
+    let mut draft = pull_request(repo, cx);
+    draft.number = 41;
+    draft.title = "Resizable toolbar buttons".into();
+    draft.draft = true;
+    draft.author = "octocat".into();
+    draft.created_at = iso_ago(9 * 86_400);
+    draft.head.ref_name = "resizable-toolbar".into();
+    draft.body = String::new();
+    let mut third = pull_request(repo, cx);
+    third.number = 37;
+    third.title = "Crash reports saved locally".into();
+    third.author = "hubot".into();
+    third.created_at = iso_ago(40 * 86_400);
+    third.head.ref_name = "crash-reports".into();
+    third.body =
+        "Adds an opt-in panic hook.\n\n- writes `~/Library/Logs/Corvane/crashes`\n- never uploads"
+            .into();
+    let prs = vec![first, draft, third];
+    let statuses = [
+        CheckConclusion::Failure,
+        CheckConclusion::Success,
+        CheckConclusion::Success,
+    ];
+    AppState::global(cx).update(cx, |s, cx| {
+        if let Some(r) = s.repositories.iter_mut().find(|r| r.id == repo) {
+            r.github = Some(github.clone());
+        }
+        for (pr, conclusion) in prs.iter().zip(statuses) {
+            let checks = failed_checks()
+                .into_iter()
+                .map(|mut c| {
+                    if conclusion == CheckConclusion::Success {
+                        c.conclusion = Some(CheckConclusion::Success);
+                    }
+                    c
+                })
+                .collect();
+            s.commit_statuses.entries.insert(
+                corvane_core::status_key(&github, &pr.commit_ref()),
+                corvane_core::commit_status::CommitStatusEntry {
+                    check: corvane_core::CombinedRefCheck::from_checks(checks),
+                    fetched_at: std::time::Instant::now(),
+                },
+            );
+        }
+        let mut cache = corvane_core::PullRequestCache::default();
+        cache.pull_requests = prs;
+        s.pull_requests
+            .insert(corvane_core::cache_key(&github), cache);
+        cx.notify();
+    });
+}
+
 pub fn pull_request(repo: u64, cx: &App) -> PullRequest {
     let github = github_repository(repo, cx);
     PullRequest {

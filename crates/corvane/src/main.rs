@@ -163,6 +163,7 @@ fn main() {
         //   release-notes | move-to-applications | upstream-already-exists
         //   pr-review[:approved|:commented] (changes requested by default)
         //   pr-comment | pr-checks-failed
+        //   pr-list (sample pull requests in the branch foldout's Pull Requests tab)
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -274,6 +275,14 @@ fn main() {
                                 },
                                 cx,
                             )
+                        }
+                        ("pr-list", Some(id)) => {
+                            dev_samples::install_pull_requests(id, cx);
+                            Dispatcher::change_branches_tab(
+                                corvane_core::BranchesTab::PullRequests,
+                                cx,
+                            );
+                            Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
                         }
                         ("pr-comment", Some(id)) => Dispatcher::show_popup(
                             Popup::PullRequestComment {
@@ -588,7 +597,14 @@ fn main() {
         });
         cx.on_action(move |_: &NewWorktree, cx| {
             if let Some(id) = selected(cx) {
-                Dispatcher::show_popup(Popup::AddWorktree { repo: id }, cx);
+                Dispatcher::show_popup(
+                    Popup::AddWorktree {
+                        repo: id,
+                        initial_branch_name: None,
+                        initial_worktree_name: None,
+                    },
+                    cx,
+                );
             }
         });
         let current_branch = |cx: &App| -> Option<(u64, String)> {

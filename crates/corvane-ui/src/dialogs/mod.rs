@@ -291,8 +291,21 @@ impl DialogHost {
             Popup::RenameBranch { repo, name } => cx
                 .new(|cx| RenameBranchDialog::new(state, *repo, name.clone(), window, cx))
                 .into(),
-            Popup::AddWorktree { repo } => cx
-                .new(|cx| AddWorktreeDialog::new(state, *repo, window, cx))
+            Popup::AddWorktree {
+                repo,
+                initial_branch_name,
+                initial_worktree_name,
+            } => cx
+                .new(|cx| {
+                    AddWorktreeDialog::new(
+                        state,
+                        *repo,
+                        initial_branch_name.clone(),
+                        initial_worktree_name.clone(),
+                        window,
+                        cx,
+                    )
+                })
                 .into(),
             Popup::RenameWorktree { repo, path } => cx
                 .new(|cx| RenameWorktreeDialog::new(*repo, path.clone(), window, cx))

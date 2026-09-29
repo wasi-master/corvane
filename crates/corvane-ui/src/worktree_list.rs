@@ -92,7 +92,14 @@ pub fn toolbar_button_menu(position: Point<Pixels>, window: &mut Window, cx: &mu
     let mut items = vec![
         MenuItem::new("New Worktree…", move |_, cx| {
             Dispatcher::close_foldout(cx);
-            Dispatcher::show_popup(Popup::AddWorktree { repo }, cx);
+            Dispatcher::show_popup(
+                Popup::AddWorktree {
+                    repo,
+                    initial_branch_name: None,
+                    initial_worktree_name: None,
+                },
+                cx,
+            );
         }),
         MenuItem::separator(),
     ];
@@ -337,7 +344,14 @@ impl Render for WorktreeFoldout {
                             .flex_none()
                             .on_click(move |_, _, cx| {
                                 Dispatcher::close_foldout(cx);
-                                Dispatcher::show_popup(Popup::AddWorktree { repo: id }, cx);
+                                Dispatcher::show_popup(
+                                    Popup::AddWorktree {
+                                        repo: id,
+                                        initial_branch_name: None,
+                                        initial_worktree_name: None,
+                                    },
+                                    cx,
+                                );
                             }),
                     ),
             )
