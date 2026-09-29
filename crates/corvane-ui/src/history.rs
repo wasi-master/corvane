@@ -22,7 +22,8 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{
-    CompareClear, CompareSelect, ReorderCancel, ReorderConfirm, ReorderMoveDown, ReorderMoveUp,
+    CompareClear, CompareSelect, ExtendSelectionDown, ExtendSelectionUp, ReorderCancel,
+    ReorderConfirm, ReorderMoveDown, ReorderMoveUp, SelectFirstFile, SelectLastFile,
     SelectNextFile, SelectPreviousFile,
 };
 use crate::branch_list::group_branches;
@@ -1216,6 +1217,19 @@ impl HistorySidebar {
                     this.step_selection(id, -1, cx);
                 }
             }))
+            // ⌘↑ / ⌘↓ (GHD isHomeKey / isEndKey), ⇧↑ / ⇧↓ (`addSelection`)
+            .on_action(cx.listener(move |this, _: &SelectFirstFile, _, cx| {
+                this.step_selection(id, -(1 << 30), cx)
+            }))
+            .on_action(cx.listener(move |this, _: &SelectLastFile, _, cx| {
+                this.step_selection(id, 1 << 30, cx)
+            }))
+            .on_action(cx.listener(move |this, _: &ExtendSelectionDown, _, cx| {
+                this.extend_selection(id, 1, cx)
+            }))
+            .on_action(cx.listener(move |this, _: &ExtendSelectionUp, _, cx| {
+                this.extend_selection(id, -1, cx)
+            }))
             .relative()
             .flex_1()
             .min_h_0()
@@ -1290,6 +1304,28 @@ impl HistorySidebar {
         };
         if let Some(sha) = next {
             Dispatcher::select_commit(id, sha, cx);
+        }
+    }
+
+    /// ⇧↑ / ⇧↓: extend the multi-selection from its moving end (GHD
+    /// `List.addSelection`).
+    fn extend_selection(&self, id: u64, delta: isize, cx: &mut App) {
+        let next = {
+            let s = self.state.read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let end = rs
+                .selected_commits
+                .last()
+                .or(rs.selected_commit.as_ref())
+                .and_then(|sha| rs.commits.iter().position(|c| &c.sha == sha));
+            let Some(end) = end else { return };
+            let ix = (end as isize + delta).clamp(0, rs.commits.len() as isize - 1) as usize;
+            rs.commits.get(ix).map(|c| c.sha.clone())
+        };
+        if let Some(sha) = next {
+            Dispatcher::extend_commit_selection(id, sha, cx);
         }
     }
 

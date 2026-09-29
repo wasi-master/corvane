@@ -24,9 +24,10 @@ use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
 use crate::actions::{
-    Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectNextFile,
-    SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0, SpellSuggestion1, SpellSuggestion2,
-    SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors, ToggleCommitSpellcheck,
+    Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectFirstFile,
+    SelectLastFile, SelectNextFile, SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0,
+    SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors,
+    ToggleCommitSpellcheck, ToggleIncludeSelected,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
@@ -1050,6 +1051,35 @@ impl ChangesSidebar {
         Dispatcher::select_file(id, files[index].path.clone(), cx);
         self.list_scroll
             .scroll_to_item(index, ScrollStrategy::Nearest);
+    }
+
+    /// Space (GHD `onToggleInclude` for the row's `onKeyDown`): include the
+    /// highlighted files, or exclude them when they are all included.
+    fn toggle_include_selected(&mut self, cx: &mut Context<Self>) {
+        let (id, paths, all_included) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            let Some(rs) = s.selected_state() else { return };
+            let mut paths = rs.selected_files.clone();
+            if paths.is_empty()
+                && let Some(one) = rs.selected_file.clone()
+            {
+                paths.push(one);
+            }
+            let Some(status) = rs.status.as_ref() else {
+                return;
+            };
+            let all_included = status
+                .files
+                .iter()
+                .filter(|f| paths.contains(&f.path))
+                .all(|f| f.selection.kind() == corvane_core::DiffSelectionType::All);
+            (id, paths, all_included)
+        };
+        if paths.is_empty() {
+            return;
+        }
+        Dispatcher::set_files_included(id, paths, !all_included, cx);
     }
 
     /// ⇧↑ / ⇧↓: extend the range selection (GHD `List.addSelection`).
@@ -2893,6 +2923,17 @@ impl Render for ChangesSidebar {
                     }))
                     .on_action(cx.listener(|this, _: &ExtendSelectionUp, _, cx| {
                         this.extend_relative(-1, cx)
+                    }))
+                    // ⌘↑ / ⌘↓ (GHD `moveSelectionToLastSelectableRow`)
+                    .on_action(cx.listener(|this, _: &SelectFirstFile, _, cx| {
+                        this.select_relative(-(1 << 30), cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &SelectLastFile, _, cx| {
+                        this.select_relative(1 << 30, cx)
+                    }))
+                    // Space: "Select or deselect all highlighted files"
+                    .on_action(cx.listener(|this, _: &ToggleIncludeSelected, _, cx| {
+                        this.toggle_include_selected(cx)
                     }))
                     .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
                         let (files, _) = this.visible_files(cx);
