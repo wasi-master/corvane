@@ -118,6 +118,7 @@ impl BranchFoldout {
             .map(|s| relative(UNIX_EPOCH + Duration::from_secs(s as u64)));
         let hover_bg = t.box_selected_active_background;
         let hover_text = t.box_selected_active_text;
+        let branch_name_for_target = branch.name.clone();
         div()
             .id(SharedString::from(format!("branch-{}", branch.full_name)))
             .h(ROW_HEIGHT)
@@ -132,9 +133,19 @@ impl BranchFoldout {
                     .text_color(t.box_selected_text)
             })
             .when(!current, move |d| {
+                let target_name = branch_name_for_target.clone();
                 d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
                     .drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
                         s.bg(hover_bg).text_color(hover_text)
+                    })
+                    // `emitEnterDropTarget({ type: Branch })` → "Copy to <branch>" tooltip
+                    .on_drag_move::<crate::history::CommitDrag>(move |ev, _, cx| {
+                        if ev.bounds.contains(&ev.event.position) {
+                            Dispatcher::set_drag_target(
+                                Some(corvane_core::DropTarget::Branch(target_name.clone())),
+                                cx,
+                            );
+                        }
                     })
             })
             .on_click(move |_, _, cx| {
@@ -145,6 +156,7 @@ impl BranchFoldout {
                 // `startCherryPickWithBranch`: drop commits on a branch to copy them there
                 let target = branch.name.clone();
                 move |drag: &crate::history::CommitDrag, _, cx| {
+                    Dispatcher::set_drag_target(None, cx);
                     if current || drag.repo != id {
                         return;
                     }

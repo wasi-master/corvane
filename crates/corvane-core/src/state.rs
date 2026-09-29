@@ -181,6 +181,31 @@ pub enum Popup {
     ShellError {
         message: String,
     },
+    /// `UnreachableCommits`: which selected commits the range diff covers.
+    UnreachableCommits {
+        repo: u64,
+        tab: UnreachableCommitsTab,
+    },
+}
+
+/// GHD `UnreachableCommitsTab`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum UnreachableCommitsTab {
+    #[default]
+    Unreachable,
+    Reachable,
+}
+
+/// GHD `DropTarget`: what the dragged commits currently hover, for the
+/// drag element's tooltip ("Copy to <branch>", "Squash N commits", …).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DropTarget {
+    Branch(String),
+    Commit,
+    /// Reorder insertion line; `count` = commits being dragged.
+    InsertionPoint {
+        count: usize,
+    },
 }
 
 /// GHD `PreferencesTab` (Copilot omitted).
@@ -398,6 +423,9 @@ pub struct RepositoryState {
     pub mco: Option<crate::mco::MultiCommitOperation>,
     /// Bumped by every new multi-commit operation (see `Popup::MultiCommitOperation`).
     pub mco_flow: u64,
+    /// `shasToHighlight`: rows kept opaque while hovering the multi-commit
+    /// summary's counts; everything else dims.
+    pub highlighted_shas: Vec<String>,
     pub mco_undo: Option<crate::mco::McoUndo>,
     /// `changesState.conflictState`
     pub conflict_state: Option<crate::mco::ConflictState>,
@@ -526,6 +554,8 @@ pub struct AppState {
     pub generic_logins: HashMap<String, String>,
     /// Avatar cache (`crate::avatars`).
     pub avatars: crate::avatars::Avatars,
+    /// `dragAndDropManager` drop target during a commit drag.
+    pub drag_target: Option<DropTarget>,
     /// Clone dialog: `GET /user/repos` per account endpoint (`ApiRepositoriesStore`).
     pub api_repositories: HashMap<String, Vec<corvane_models::GitHubRepository>>,
     pub api_repositories_loading: std::collections::HashSet<String>,

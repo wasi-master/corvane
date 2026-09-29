@@ -30,7 +30,7 @@ pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
-    WarnLocalChangesBeforeUndoDialog,
+    UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use preferences::PreferencesDialog;
@@ -196,6 +196,9 @@ impl DialogHost {
             Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
             Popup::ExternalEditorError { .. } | Popup::ShellError { .. } => cx
                 .new(|_| IntegrationErrorDialog::new(popup.clone()))
+                .into(),
+            Popup::UnreachableCommits { repo, tab } => cx
+                .new(|_| UnreachableCommitsDialog::new(state, *repo, *tab))
                 .into(),
         }
     }
