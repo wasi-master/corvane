@@ -2,7 +2,7 @@
 
 Native Rust GitHub Desktop clone. Layout, buttons, workflows and positions match GitHub Desktop 3.6.6 one-to-one. Rendering quality, motion and typography target Zed. Fast cold start, near-zero idle CPU, low resident memory.
 
-Status (2026-09-29): M0–M6 implemented (M1 leftovers: GitHub.com clone list, avatar cache; M6 leftovers in `TODO.md` › Settings / View menu). Next: M7 Ship. Perf numbers in `docs/perf.md`.
+Status (2026-09-29): M0–M7 implemented; `v0.1.0` tagged locally. The first public release still needs the maintainer's minisign key pair, the `homebrew-corvane` tap repository and the release workflow (`packaging/release.md`, `TODO.md` › Infra). Perf numbers and open budgets in `docs/perf.md`.
 
 ## 1. Context
 
