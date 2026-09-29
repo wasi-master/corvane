@@ -1,0 +1,81 @@
+2 0 1 m-xml tag bracket
+2 1 4 m-xml tag
+2 5 1 m-xml tag bracket
+3 0 1 m-xml tag bracket
+3 1 4 m-xml tag
+3 5 1 m-xml tag bracket
+4 2 1 m-xml tag bracket
+4 3 5 m-xml tag
+4 8 1 m-xml tag bracket
+4 21 2 m-xml tag bracket
+4 23 5 m-xml tag
+4 28 1 m-xml tag bracket
+5 2 1 m-xml tag bracket
+5 3 6 m-xml tag
+5 9 1 m-xml tag bracket
+5 10 3 m-javascript keyword
+5 14 3 m-javascript def
+5 18 1 m-javascript operator
+5 20 1 m-javascript string
+5 52 2 m-javascript string
+5 54 2 m-xml tag bracket
+5 56 6 m-xml tag
+5 62 1 m-xml tag bracket
+6 0 2 m-xml tag bracket
+6 2 4 m-xml tag
+6 6 1 m-xml tag bracket
+7 0 1 m-xml tag bracket
+7 1 4 m-xml tag
+7 5 1 m-xml tag bracket
+8 2 4 m-xml comment comment-open
+8 6 13 comment
+8 19 4 comment comment-close
+9 2 1 m-xml tag bracket
+9 3 2 m-xml tag
+9 5 1 m-xml tag bracket
+9 49 2 m-xml tag bracket
+9 51 2 m-xml tag
+9 53 1 m-xml tag bracket
+10 2 1 m-xml tag bracket
+10 3 9 m-xml tag
+10 13 3 m-xml attribute
+10 17 6 m-xml string
+10 24 5 m-xml attribute
+10 30 10 m-xml string
+10 40 1 m-xml tag bracket
+11 4 1 m-xml tag bracket
+11 5 3 m-xml tag
+11 9 5 m-xml attribute
+11 15 6 m-xml string
+11 21 1 m-xml tag bracket
+11 35 7 m-xml atom
+11 43 1 m-xml tag bracket
+11 44 16 m-xml tag
+11 61 5 m-xml attribute
+11 67 15 m-xml string
+11 83 4 m-xml attribute
+11 88 10 m-xml string
+11 98 2 m-xml tag bracket
+11 100 2 m-xml tag bracket
+11 102 3 m-xml tag
+11 105 1 m-xml tag bracket
+12 2 2 m-xml tag bracket
+12 4 9 m-xml tag
+12 13 1 m-xml tag bracket
+18 2 1 m-xml tag bracket
+18 3 1 m-xml tag
+18 4 1 m-xml tag bracket
+18 45 2 m-xml tag bracket
+18 47 1 m-xml tag
+18 48 1 m-xml tag bracket
+19 2 1 m-xml tag bracket
+19 3 11 m-xml tag
+19 15 4 m-xml attribute
+19 20 12 m-xml string
+19 33 2 m-xml tag bracket
+20 0 2 m-xml tag bracket
+20 2 4 m-xml tag
+20 6 1 m-xml tag bracket
+21 0 2 m-xml tag bracket
+21 2 4 m-xml tag
+21 6 1 m-xml tag bracket

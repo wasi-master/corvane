@@ -56,6 +56,8 @@ port from end up in `target/cm-oracle/node_modules/codemirror/mode/<name>/<name>
   `(?-u:…)`. JS `\s` is Unicode in both. In fancy-regex `\<` / `\>` are word
   boundaries, not literal `<` / `>`: drop the backslash. Case-insensitive
   `(?i)` also folds `ſ` / `K` (Kelvin) onto `s` / `k`, which JS does not.
+  JS `.` excludes `\n`, `\r`, U+2028 and U+2029; Rust's only `\n`: write
+  `[^\n\r\x{2028}\x{2029}]` where a line can contain those.
 - A JS state object becomes a `#[derive(Clone)] struct`; `state.tokenize`
   function pointers become an enum (or `fn` pointer) field. Nested modes keep
   the inner state as `Box<dyn ModeState>`.

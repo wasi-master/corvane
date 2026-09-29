@@ -1,0 +1,40 @@
+---
+import BaseHead from "../components/BaseHead.astro";
+import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
+const { title = SITE_TITLE, posts } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<html lang="en">
+  <head>
+    <BaseHead title={title} description={SITE_DESCRIPTION} />
+    <style is:global>
+      main { max-width: 65ch; margin-inline: auto; }
+      .post:not(:last-child) { border-bottom: 1px solid #eee; }
+    </style>
+  </head>
+  <body>
+    <Header />
+    <main>
+      <h1>{title}</h1>
+      <ul>
+        {posts.map((post) => (
+          <li class="post">
+            <a href={`/blog/${post.slug}/`}>{post.data.title}</a>
+            <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toLocaleDateString()}</time>
+          </li>
+        ))}
+      </ul>
+      {posts.length === 0 && <p>No posts yet 😢</p>}
+      <slot />
+    </main>
+    <footer>&copy; {year} Corvane</footer>
+    <script>
+      const toggle = document.querySelector<HTMLButtonElement>("#theme");
+      toggle?.addEventListener("click", () => document.documentElement.classList.toggle("dark"));
+    </script>
+    <script is:inline define:vars={{ year }}>
+      console.log(year);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd" [
+  <!ENTITY corvane "Corvane">
+]>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>Legacy page</title>
+	<script type="text/javascript">
+	<!--
+	var legacy = true;
+	function openWin(url) { window.open(url, "_blank", "width=400,height=300"); }
+	//-->
+	</script>
+	<script type="text/vbscript">MsgBox "not javascript"</script>
+	<script language="javascript">var lang = 'ignored attribute';</script>
+	<script type="">var empty = "type";</script>
+	<script type="text/ecmascript">var ecma = 262;</script>
+	<script type = 'application/x-javascript' >var spaced = true;</script>
+	<style type="text/stylesheet">p { color: green }</style>
+	<style lang="CSS">p { color: blue }</style>
+	<style type="text/sass">p
+	  color: red</style>
+	<script
+	  type="module"
+	  crossorigin>
+	  import("./lazy.js").then(m => m.default());
+	</script>
+</head>
+<body bgcolor="#FFFFFF" text=black>
+	<center><font face="Verdana" size=2>Welcome to &corvane;!</font></center>
+	<form action="/search" method="get">
+		<label for="q">Search:</label> <input id="q" name="q" value="a &quot;b&quot;">
+		<select name="kind"><option value=1 selected>One<option value=2>Two</select>
+		<button type="submit" onclick='return confirm("Sure?")'>Go</button>
+	</form>
+	<dl><dt>Term<dd>Definition<dt>Other<dd>More</dl>
+	<pre>
+  preformatted   text
+	with	tabs &amp; entities
+	</pre>
+	<p>Emoji 🎉 and CJK 漢字 and accents: café, naïve.</p>
+	<script>document.write("<p>" + new Date() + "</p>");</script>
+	<script>if (a < b && c > d) { console.log("</scr" + "ipt>"); }</script>
+	<script>var tail = 1; </script ><p>after</p>
+	<script>
+	</SCRIPT>
+	<a href="javascript:void(0)" onmouseover="this.style.color='red'">hover</a>
+	<!-- trailing comment -->
+	<!--> weird comment -->
+	<p class="a" class="b">duplicate attrs</p>
+	<br/>
+	<hr />
+	<img src="a.png" alt=unquoted/>
+</body>
+</html>
