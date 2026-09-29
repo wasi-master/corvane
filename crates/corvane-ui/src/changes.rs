@@ -21,9 +21,9 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{
-    Commit, SelectAllFiles, SelectNextFile, SelectPreviousFile, SpellAddToDictionary,
-    SpellSuggestion0, SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4,
-    ToggleCoAuthors, ToggleCommitSpellcheck,
+    Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectNextFile,
+    SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0, SpellSuggestion1, SpellSuggestion2,
+    SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors, ToggleCommitSpellcheck,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
@@ -80,6 +80,8 @@ pub struct ChangesSidebar {
     filter_button_bounds: Rc<Cell<Bounds<Pixels>>>,
     /// Focus target for arrow-key navigation of the list.
     list_focus: FocusHandle,
+    /// Keeps the row an arrow key moved to in view (`scrollRowToVisible`).
+    list_scroll: UniformListScrollHandle,
     /// View › Hide Changes Filter (`isChangesFilterVisible`).
     filter_visible: bool,
     /// GHD `AutocompletingTextInput` state for whichever field has the popup.
@@ -196,6 +198,7 @@ impl ChangesSidebar {
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
             list_focus: cx.focus_handle(),
+            list_scroll: UniformListScrollHandle::new(),
             filter_visible: true,
             autocomplete: None,
             summary_misspelled: Vec::new(),
@@ -965,9 +968,16 @@ impl ChangesSidebar {
         let (id, current) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
+            // GHD `moveSelection` starts from the last selected row: the
+            // moving end of a ⇧-arrow range
             (
                 id,
-                s.selected_state().and_then(|rs| rs.selected_file.clone()),
+                s.selected_state().and_then(|rs| {
+                    rs.selected_files
+                        .last()
+                        .or(rs.selected_file.as_ref())
+                        .cloned()
+                }),
             )
         };
         let index = current
@@ -976,6 +986,27 @@ impl ChangesSidebar {
             .unwrap_or(0)
             .clamp(0, files.len() as isize - 1) as usize;
         Dispatcher::select_file(id, files[index].path.clone(), cx);
+        self.list_scroll
+            .scroll_to_item(index, ScrollStrategy::Nearest);
+    }
+
+    /// ⇧↑ / ⇧↓: extend the range selection (GHD `List.addSelection`).
+    fn extend_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let (files, _) = self.visible_files(cx);
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let order: Vec<String> = files.into_iter().map(|f| f.path).collect();
+        Dispatcher::extend_file_selection_by(id, delta, order.clone(), cx);
+        let end = self
+            .state
+            .read(cx)
+            .selected_state()
+            .and_then(|rs| rs.selected_files.last().cloned());
+        if let Some(index) = end.and_then(|p| order.iter().position(|o| *o == p)) {
+            self.list_scroll
+                .scroll_to_item(index, ScrollStrategy::Nearest);
+        }
     }
 
     /// Commit form gear: GHD's native checkbox menu (`onCommitOptionsButtonClick`).
@@ -1728,7 +1759,7 @@ impl ChangesSidebar {
                 })
                 .flex_1()
                 .min_h_0()
-                .with_scrollbar(),
+                .with_scrollbar_handle(&self.list_scroll),
             )
     }
 
@@ -2727,6 +2758,12 @@ impl Render for ChangesSidebar {
                     )
                     .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
                         this.select_relative(-1, cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &ExtendSelectionDown, _, cx| {
+                        this.extend_relative(1, cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &ExtendSelectionUp, _, cx| {
+                        this.extend_relative(-1, cx)
                     }))
                     .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
                         let (files, _) = this.visible_files(cx);
