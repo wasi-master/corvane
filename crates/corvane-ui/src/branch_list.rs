@@ -62,6 +62,11 @@ pub struct BranchFoldout {
     /// The pointer is over the quick view (GPUI may report entering it
     /// before leaving the row, so the row's leave timer checks this).
     quick_view_hovered: bool,
+    /// `FilterList` selection: the row last pressed or right-clicked (the
+    /// current branch until then), and whether the list has keyboard focus.
+    selected_row: Option<String>,
+    list_focus: FocusHandle,
+    list_focused: bool,
 }
 
 /// The pull request whose quick view is shown, its parsed body, and the
@@ -161,6 +166,9 @@ impl BranchFoldout {
             row_bounds: Rc::new(RefCell::new(HashMap::new())),
             quick_view_height: Rc::new(Cell::new(QUICK_VIEW_MAX_HEIGHT())),
             quick_view_hovered: false,
+            selected_row: None,
+            list_focus: cx.focus_handle(),
+            list_focused: false,
         }
     }
 
@@ -268,7 +276,9 @@ impl BranchFoldout {
         )
     }
 
-    pub fn focus_filter(&self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // a freshly opened list selects the current branch again
+        self.selected_row = None;
         let input = if self.pull_requests_tab_shown(cx) {
             &self.pr_filter
         } else {
@@ -441,6 +451,10 @@ impl BranchFoldout {
     fn row(&self, id: u64, branch: &Branch, current: bool, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let name = branch.name.clone();
+        let selected = match &self.selected_row {
+            Some(row) => *row == branch.name,
+            None => current,
+        };
         let date = branch
             .tip_time
             .filter(|s| *s > 0)
@@ -459,36 +473,114 @@ impl BranchFoldout {
                 },
                 current,
             )
-            .h(ROW_HEIGHT())
+            // `.branches-list-item`: 30 px rows
+            .h(zpx(30.))
             .w_full()
             .flex()
             .flex_row()
             .items_center()
             .px(SPACING())
             .cursor_pointer()
-            .when(current, |d| {
+            // GHD `List.onRowMouseDown`: pressing (or right-clicking) a row
+            // selects it and focuses the list; the click then checks it out
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener({
+                    let name = branch.name.clone();
+                    move |this, _, window, cx| this.select_row(name.clone(), window, cx)
+                }),
+            )
+            .when(selected && self.list_focused, |d| {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
+            })
+            .when(selected && !self.list_focused, |d| {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
+            .when(!selected, move |d| d.hover(move |s| s.bg(list_hover)))
             .when(!current, move |d| {
                 let target_name = branch_name_for_target.clone();
-                d.hover(move |s| s.bg(list_hover))
-                    .drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
-                        s.bg(hover_bg).text_color(hover_text)
-                    })
-                    // `emitEnterDropTarget({ type: Branch })` → "Copy to <branch>" tooltip
-                    .on_drag_move::<crate::history::CommitDrag>(move |ev, _, cx| {
-                        if ev.bounds.contains(&ev.event.position) {
-                            Dispatcher::set_drag_target(
-                                Some(corvane_core::DropTarget::Branch(target_name.clone())),
-                                cx,
-                            );
-                        }
-                    })
+                d.drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
+                    s.bg(hover_bg).text_color(hover_text)
+                })
+                // `emitEnterDropTarget({ type: Branch })` → "Copy to <branch>" tooltip
+                .on_drag_move::<crate::history::CommitDrag>(move |ev, _, cx| {
+                    if ev.bounds.contains(&ev.event.position) {
+                        Dispatcher::set_drag_target(
+                            Some(corvane_core::DropTarget::Branch(target_name.clone())),
+                            cx,
+                        );
+                    }
+                })
             })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
                 Dispatcher::checkout_branch(id, name.clone(), None, cx)
+            })
+            // GHD `generateBranchContextMenuItems`
+            .on_mouse_down(MouseButton::Right, {
+                let branch = branch.clone();
+                let this = cx.entity().downgrade();
+                move |ev: &MouseDownEvent, window, cx| {
+                    cx.stop_propagation();
+                    this.update(cx, |this, cx| {
+                        this.select_row(branch.name.clone(), window, cx)
+                    })
+                    .ok();
+                    #[cfg(target_os = "macos")]
+                    {
+                        use crate::context_menu::MenuItem;
+                        let local = branch.kind == BranchKind::Local;
+                        let (rename, copy, worktree, delete) = (
+                            branch.name.clone(),
+                            branch.name.clone(),
+                            branch.name.clone(),
+                            branch.name.clone(),
+                        );
+                        let items = vec![
+                            MenuItem::new("Rename…", move |_, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::RenameBranch {
+                                        repo: id,
+                                        name: rename.clone(),
+                                    },
+                                    cx,
+                                )
+                            })
+                            .enabled(local),
+                            MenuItem::new("Copy Branch Name", move |_, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()))
+                            }),
+                            MenuItem::new("Checkout in New Worktree…", move |_, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::AddWorktree {
+                                        repo: id,
+                                        initial_branch_name: Some(worktree.clone()),
+                                        initial_worktree_name: None,
+                                    },
+                                    cx,
+                                )
+                            }),
+                            MenuItem::separator(),
+                            MenuItem::new("Delete…", move |_, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::DeleteBranch {
+                                        repo: id,
+                                        name: delete.clone(),
+                                    },
+                                    cx,
+                                )
+                            }),
+                        ];
+                        crate::native_menu::show_context_menu(items, ev.position, window, cx);
+                    }
+                    #[cfg(not(target_os = "macos"))]
+                    let _ = (ev, window, &branch);
+                }
             })
             .on_drop({
                 // `startCherryPickWithBranch`: drop commits on a branch to copy them there
@@ -532,10 +624,18 @@ impl BranchFoldout {
                         .text_right()
                         .whitespace_nowrap()
                         .text_size(FONT_SIZE_SM())
-                        .text_color(t.text_secondary)
+                        .line_height(zpx(16.5))
+                        // the selected row's date takes the row colour
+                        .when(!selected, |d| d.text_color(t.text_secondary))
                         .child(date),
                 )
             })
+    }
+
+    fn select_row(&mut self, name: String, window: &mut Window, cx: &mut Context<Self>) {
+        self.selected_row = Some(name);
+        window.focus(&self.list_focus, cx);
+        cx.notify();
     }
 
     /// `NoBranches`: shown when the filter matches nothing.
@@ -591,6 +691,7 @@ impl BranchFoldout {
 impl Render for BranchFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        self.list_focused = self.list_focus.is_focused(window);
         let query = self.filter.read(cx).value().trim().to_string();
         let (id, groups, current, tip_valid) = {
             let s = self.state.read(cx);
@@ -699,6 +800,7 @@ impl Render for BranchFoldout {
             } else {
                 div()
                     .id("branches-list")
+                    .track_focus(&self.list_focus)
                     .role(Role::List)
                     .aria_label("Branches")
                     .flex_1()
@@ -713,8 +815,7 @@ impl Render for BranchFoldout {
                             .child(
                                 // `.filter-list-group-header`
                                 div()
-                                    .h(ROW_HEIGHT())
-                                    .pt(SPACING())
+                                    .h(zpx(30.))
                                     .px(SPACING())
                                     .flex()
                                     .items_center()

@@ -188,6 +188,11 @@ fn window_command(
             window.dispatch_event(up(position), cx);
         }
         "click" => {
+            // a menu this click opens must not be confused with an older one
+            #[cfg(target_os = "macos")]
+            if button == MouseButton::Right {
+                corvane_ui::native_menu::clear_recorded();
+            }
             window.dispatch_event(moved(position, None), cx);
             window.dispatch_event(down(position), cx);
             window.dispatch_event(up(position), cx);

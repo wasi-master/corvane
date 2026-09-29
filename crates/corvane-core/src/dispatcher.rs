@@ -1423,6 +1423,17 @@ impl Dispatcher {
         );
     }
 
+    /// GHD `changeRepositoryAlias` / `removeRepositoryAlias` (`None`).
+    pub fn change_repository_alias(id: u64, alias: Option<String>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                repo.alias = alias.filter(|a| !a.is_empty());
+                persist_repositories(s);
+                cx.notify();
+            }
+        });
+    }
+
     /// Edit the repository's persisted `tagsToPush` (`storeTagsToPush`).
     pub(crate) fn update_tags_to_push(id: u64, cx: &mut App, edit: impl FnOnce(&mut Vec<String>)) {
         Self::state(cx).update(cx, |s, cx| {
