@@ -156,7 +156,7 @@ fn is_operator_char(c: char) -> bool {
 // eatPnLocal
 fn eat_pn_local(stream: &mut StringStream) {
     stream.matches(re!(
-        r"(\.(?=[A-Za-z0-9_\-\\%])|[:A-Za-z0-9_-]|\\[-\\_~.!$&'()*+,;=/?#@%]|%[a-fA-F0-9][a-fA-F0-9])+"
+        r"^(?:(\.(?=[A-Za-z0-9_\-\\%])|[:A-Za-z0-9_-]|\\[-\\_~.!$&'()*+,;=/?#@%]|%[a-fA-F0-9][a-fA-F0-9])+)"
     ));
 }
 
@@ -166,7 +166,7 @@ fn token_base(stream: &mut StringStream, s: &mut SparqlState) -> &'static str {
         return "variable";
     };
     if ch == '$' || ch == '?' {
-        if ch == '?' && stream.match_re(re!(r"\s"), false).is_some() {
+        if ch == '?' && stream.match_re(re!(r"^(?:\s)"), false).is_some() {
             return "operator";
         }
         stream.matches(re!(
@@ -193,7 +193,7 @@ fn token_base(stream: &mut StringStream, s: &mut SparqlState) -> &'static str {
         stream.eat_while_if(|c| c.is_ascii_alphanumeric() || c == '-');
         return "meta";
     } else if ch.is_ascii_alphabetic()
-        && stream.matches(re!(r"(([A-Za-z_\-0-9]|\.)*([A-Za-z_\-0-9]))?:"))
+        && stream.matches(re!(r"^(?:(([A-Za-z_\-0-9]|\.)*([A-Za-z_\-0-9]))?:)"))
     {
         eat_pn_local(stream);
         return "atom";

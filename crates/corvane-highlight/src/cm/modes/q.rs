@@ -322,7 +322,7 @@ fn token_base(stream: &mut StringStream, s: &mut QState) -> &'static str {
             || stream.matches(re!(r"^0x[0-9a-fA-F]*"))
             || stream.matches(re!(r"^[01]+[b]{1}"))
             || stream.matches(re!(r"^[0-9]+[chijn]{1}"))
-            || stream.matches(re!(r"-?[0-9]*(\.[0-9]*)?(e[+\-]?[0-9]+)?(e|f)?"))
+            || stream.matches(re!(r"^(?:-?[0-9]*(\.[0-9]*)?(e[+\-]?[0-9]+)?(e|f)?)"))
         {
             t = Some("number");
         }
