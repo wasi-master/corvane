@@ -108,6 +108,15 @@ impl DialogHost {
             Popup::CreateFork { repo } => {
                 cx.new(|cx| CreateForkDialog::new(state, *repo, cx)).into()
             }
+            Popup::UpstreamAlreadyExists { repo, existing_url } => cx
+                .new(|_| {
+                    fork_dialogs::UpstreamAlreadyExistsDialog::new(
+                        state,
+                        *repo,
+                        existing_url.clone(),
+                    )
+                })
+                .into(),
             Popup::ChooseForkSettings { repo } => cx
                 .new(|cx| ChooseForkSettingsDialog::new(state, *repo, cx))
                 .into(),

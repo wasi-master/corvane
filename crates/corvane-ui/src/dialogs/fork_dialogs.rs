@@ -1,13 +1,15 @@
 //! GHD `ui/forks/create-fork-dialog.tsx` (`styles/ui/dialogs/_create-fork.scss`)
 //! and `ui/choose-fork-settings/choose-fork-settings-dialog.tsx`
 //! (`_fork-settings.scss`), plus the `ForkSettingsDescription` list shared
-//! with Repository Settings › Fork Behavior.
+//! with Repository Settings › Fork Behavior; also
+//! `ui/upstream-already-exists/upstream-already-exists.tsx`.
 
 use corvane_core::{AppState, Dispatcher, ForkContributionTarget, GitHubRepository};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
+use crate::dialogs::branch_dialogs::ref_chip;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{Inline, link_button, paragraph, segmented_option};
@@ -329,6 +331,116 @@ impl Render for ChooseForkSettingsDialog {
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::set_fork_contribution_target(repo, selected, cx);
                         Dispatcher::close_popup(cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+        .into_any_element()
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+/// GHD `UpstreamAlreadyExists`: the fork's `upstream` remote does not point
+/// at the parent. Update is destructive, so Ignore is the default button.
+pub struct UpstreamAlreadyExistsDialog {
+    state: Entity<AppState>,
+    repo: u64,
+    existing_url: String,
+}
+
+impl UpstreamAlreadyExistsDialog {
+    pub fn new(state: Entity<AppState>, repo: u64, existing_url: String) -> Self {
+        Self {
+            state,
+            repo,
+            existing_url,
+        }
+    }
+}
+
+impl Render for UpstreamAlreadyExistsDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let (name, parent) = {
+            let s = self.state.read(cx);
+            let repository = s.repository(self.repo);
+            (
+                repository.map(|r| r.name()).unwrap_or_default(),
+                repository
+                    .and_then(|r| r.github.as_ref())
+                    .and_then(|gh| gh.parent.as_deref())
+                    .cloned(),
+            )
+        };
+        let repo = self.repo;
+        // GHD dismisses without choosing on Escape / close
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let Some(parent) = parent else {
+            return div().into_any_element();
+        };
+        let chip = |text: String| Inline::Element(ref_chip(text, cx).into_any_element());
+        let bullet = |label: &'static str, value: String| {
+            div()
+                .flex()
+                .flex_row()
+                .items_start()
+                .gap(SPACING_HALF)
+                .pl(SPACING)
+                .child("•")
+                .child(paragraph(vec![label.into(), chip(value)]))
+        };
+        let content = div()
+            .w(px(460.))
+            .flex()
+            .flex_col()
+            .gap(SPACING)
+            .child(paragraph(vec![
+                "The repository ".into(),
+                chip(name),
+                " is a fork of ".into(),
+                chip(parent.full_name()),
+                ", but its ".into(),
+                chip(corvane_core::forks::UPSTREAM_REMOTE_NAME.to_string()),
+                " remote points elsewhere.".into(),
+            ]))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(SPACING_HALF)
+                    .child(bullet("Current: ", self.existing_url.clone()))
+                    .child(bullet("Expected: ", parent.clone_url.clone())),
+            )
+            .child(paragraph(vec![
+                "Would you like to update the remote to use the expected URL?".into(),
+            ]));
+        dialog_with_kind(
+            "upstream-already-exists",
+            DialogKind::Warning,
+            "Upstream Already Exists",
+            content,
+            vec![
+                DialogButton {
+                    id: "upstream-already-exists-ignore",
+                    label: "Ignore".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::ignore_existing_upstream_remote(repo, cx);
+                        Dispatcher::close_popup(cx);
+                    }),
+                },
+                DialogButton {
+                    id: "upstream-already-exists-update",
+                    label: "Update".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::update_existing_upstream_remote(repo, cx);
                     }),
                 },
             ],
