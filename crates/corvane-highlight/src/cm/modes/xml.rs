@@ -7,8 +7,9 @@
 //! closures (`inAttribute(quote)`, `inBlock(style, terminator)`,
 //! `doctype(depth)`) become [`Tokenize`] variants and the parser states
 //! (`baseState`, `tagNameState`, …) become [`St`]. Indentation bookkeeping
-//! (`indented`, `tagStart`, `startOfLine`, `noIndent`) is left out: it never
-//! changes a token.
+//! (`indented`, `startOfLine`, `noIndent`) is left out: it never changes a
+//! token. Of `tagStart` only whether it is `null` is kept, which markdown
+//! reads to decide when an HTML block ends.
 //!
 //! GHD maps `text/html` to htmlmixed (`codemirror/mode/htmlmixed`), which
 //! nests this mode with [`XmlConfig::html`]; only `text/xml` and
@@ -87,6 +88,8 @@ pub struct XmlState {
     tokenize: Tokenize,
     state: St,
     tag_name: Option<String>,
+    /// `state.tagStart !== null` (its column value only drives indentation)
+    tag_start: bool,
     /// `state.context` chain of tag names, innermost last
     context: Vec<String>,
 }
@@ -99,6 +102,14 @@ impl XmlState {
     /// `state.context` is set
     pub fn has_context(&self) -> bool {
         !self.context.is_empty()
+    }
+    /// `state.tagStart === null`
+    pub fn tag_start_is_null(&self) -> bool {
+        !self.tag_start
+    }
+    /// `state.tokenize.isInText`
+    pub fn tokenize_is_in_text(&self) -> bool {
+        self.tokenize == Tokenize::InText
     }
 }
 
@@ -205,6 +216,7 @@ impl XmlMode {
             tokenize: Tokenize::InText,
             state: St::Base,
             tag_name: None,
+            tag_start: false,
             context: Vec::new(),
         }
     }
@@ -313,6 +325,7 @@ impl XmlMode {
             s.tokenize = Tokenize::InText;
             s.state = St::Base;
             s.tag_name = None;
+            s.tag_start = false;
             let next = self.tokenize(stream, s, kind);
             Some(match next {
                 Some(next) => Cow::Owned(format!("{next} tag error")),
@@ -405,6 +418,7 @@ impl XmlMode {
             // baseState
             St::Base => {
                 if kind == "openTag" {
+                    s.tag_start = true;
                     St::TagName
                 } else if kind == "closeTag" {
                     St::CloseTagName
@@ -473,6 +487,7 @@ impl XmlMode {
                     St::AttrEq
                 } else if kind == "endTag" || kind == "selfcloseTag" {
                     let tag_name = s.tag_name.take();
+                    s.tag_start = false;
                     let self_closing = kind == "selfcloseTag"
                         || (html
                             && tag_name

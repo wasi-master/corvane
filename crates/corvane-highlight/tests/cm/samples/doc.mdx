@@ -1,0 +1,109 @@
+---
+title: Getting started
+description: "Front matter is just an hr and text"
+tags: [intro, setup]
+---
+
+import { Callout } from '../components/Callout'
+import Tabs from "@theme/Tabs";
+export const meta = { author: 'Corvane' }
+
+# Getting *started* with **Corvane**
+
+<Callout type="warning">
+  Make sure `git` is on your `PATH`.
+</Callout>
+
+<Tabs>
+<TabItem value="mac" label="macOS">
+
+```sh
+brew install corvane
+```
+
+</TabItem>
+</Tabs>
+
+{/* an MDX comment */}
+Inline JSX <Badge text="new" /> in a sentence, and an expression {props.version}.
+
+## Steps
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/example/corvane.git
+   ```
+2. Build **only** the crate you touch:
+
+       cargo build -p corvane-highlight
+
+3. Run the tests (`cargo test`), then *celebrate* 🎉.
+   - Sub-step with a [link](https://example.com "title (with parens)").
+   - Sub-step with a footnote[^note].
+
+> **Note**
+> Blockquotes can hold `code`, *em* and [links][docs].
+
+[docs]: https://example.com/docs
+[^note]: Footnotes work like link definitions.
+
+___bold italic___ and **_mixed_** and *__mixed__* and ****four stars****.
+Intraword: foo*bar*baz, foo**bar**baz, foo_bar_baz, foo__bar__baz.
+Punctuation: *(a)*, _(b)_, **"c"**, __'d'__, *.* and _._
+Spaces: * not em *, ** not strong **, _ not em _.
+Unicode flanking: 。*句*。 and 「_括弧_」 and ‘*quote*’ and —*dash*—.
+Closing without opening* and _ opener without closer.
+Tabs	between	words	and *em	with tab*.
+
+Hard break with backslash\
+next line and a trailing space 
+next line.
+
+    Indented code after a paragraph is just text continuation
+
+Text
+
+    real indented code
+    	with a tab
+
+        deeper code
+Paragraph right after code.
+
+* * *
+
+Final line with trailing `backticks
+
+```md
+not found by name: md is only an extension
+```
+
+```Markdown
+<div>
+unclosed html in nested markdown
+```
+After nested fence with *open* html.
+
+```xml
+  <indented attr="x">
+  ```
+</indented>
+```
+
+- item
+  ```xml
+  <a>
+  </a>
+  ```
+- item two
+  ```html
+  <p>
+back at column zero</p>
+  ```
+
+<div>
+
+*blank line inside div keeps html*
+
+</div>
+Text [with a link](http://example.com) and ![img](i.png)x.
+[link]  [two spaces] and ![alt]  (two spaces).
