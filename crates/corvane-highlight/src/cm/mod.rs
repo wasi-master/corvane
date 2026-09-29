@@ -136,6 +136,9 @@ pub struct StringStream<'a> {
     last_column_pos: usize,
     last_column_value: usize,
     pub line_start: usize,
+    /// `lineStart` became `NaN` (`hideFirstChars(NaN, …)`): `sol()` is
+    /// false and column maths ignore it until the next line
+    line_start_nan: bool,
     lines: &'a [&'a str],
     line: usize,
 }
@@ -185,6 +188,7 @@ impl<'a> StringStream<'a> {
             last_column_pos: 0,
             last_column_value: 0,
             line_start: 0,
+            line_start_nan: false,
             lines,
             line,
         }
@@ -235,7 +239,7 @@ impl<'a> StringStream<'a> {
         self.pos >= self.end
     }
     pub fn sol(&self) -> bool {
-        self.pos == self.line_start
+        !self.line_start_nan && self.pos == self.line_start
     }
     pub fn peek(&self) -> Option<char> {
         self.chars[..self.end].get(self.pos).copied()
@@ -332,7 +336,7 @@ impl<'a> StringStream<'a> {
             self.last_column_pos = self.start;
         }
         self.last_column_value
-            - if self.line_start > 0 {
+            - if self.line_start > 0 && !self.line_start_nan {
                 count_column(
                     &self.chars[..self.end],
                     Some(self.line_start),
@@ -346,7 +350,7 @@ impl<'a> StringStream<'a> {
     }
     pub fn indentation(&self) -> usize {
         count_column(&self.chars[..self.end], None, self.tab_size, 0, 0)
-            - if self.line_start > 0 {
+            - if self.line_start > 0 && !self.line_start_nan {
                 count_column(
                     &self.chars[..self.end],
                     Some(self.line_start),
@@ -423,6 +427,21 @@ impl<'a> StringStream<'a> {
         let r = inner(self);
         self.line_start -= n;
         r
+    }
+    /// `new StringStream(stream.string.slice(from), stream.tabSize)`: a
+    /// fresh stream over the rest of the visible line from `from` on,
+    /// without look-ahead (slim's `sub`).
+    pub fn tail(&self, from: usize) -> StringStream<'a> {
+        let from = from.min(self.end);
+        let string: &'a str = &self.string[self.bytes[from]..self.bytes[self.end]];
+        StringStream::new(string, self.tab_size, &[], 0)
+    }
+    /// `hideFirstChars(NaN, inner)`, which a mode computing its indent
+    /// from an undefined `indentUnit` does: `lineStart` stays `NaN` for
+    /// the rest of the line, even after `inner` returns.
+    pub fn hide_first_chars_nan<R>(&mut self, inner: impl FnOnce(&mut Self) -> R) -> R {
+        self.line_start_nan = true;
+        inner(self)
     }
     /// `lookAhead(n)`: line `n` below this one.
     pub fn look_ahead(&self, n: usize) -> Option<&'a str> {

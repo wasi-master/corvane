@@ -94,7 +94,7 @@ fn has_ci(set: &[&str], word: &str) -> bool {
 }
 
 /// `keys.hasOwnProperty(word)` (no lower-casing).
-fn has(set: &[&str], word: &str) -> bool {
+pub(crate) fn has(set: &[&str], word: &str) -> bool {
     set.binary_search(&word).is_ok()
 }
 
@@ -175,6 +175,18 @@ struct CssState {
     context: Vec<St>,
     /// the mode closure's `type`
     ty: Ty,
+}
+
+/// Carry the mode closure's `type` from a finished block's state into a
+/// fresh one, for nesting modes that run one css instance over several
+/// blocks (slim's cached `modes[…]`).
+pub(crate) fn carry_type(prev: &dyn ModeState, next: &mut dyn ModeState) {
+    if let (Some(prev), Some(next)) = (
+        prev.as_any().downcast_ref::<CssState>(),
+        next.as_any_mut().downcast_mut::<CssState>(),
+    ) {
+        next.ty = prev.ty.clone();
+    }
 }
 
 impl CssState {
@@ -909,7 +921,7 @@ const MEDIA_VALUE_KEYWORDS: &[&str] = &[
 ];
 
 /// `propertyKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const PROPERTY_KEYWORDS: &[&str] = &[
+pub(crate) const PROPERTY_KEYWORDS: &[&str] = &[
     "align-content",
     "align-items",
     "align-self",
@@ -1412,7 +1424,7 @@ const NON_STANDARD_PROPERTY_KEYWORDS: &[&str] = &[
 ];
 
 /// `fontProperties_` (lower-cased, sorted, deduplicated: `keySet`)
-const FONT_PROPERTIES: &[&str] = &[
+pub(crate) const FONT_PROPERTIES: &[&str] = &[
     "font-display",
     "font-family",
     "font-feature-settings",
@@ -1439,7 +1451,7 @@ const COUNTER_DESCRIPTORS: &[&str] = &[
 ];
 
 /// `colorKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const COLOR_KEYWORDS: &[&str] = &[
+pub(crate) const COLOR_KEYWORDS: &[&str] = &[
     "aliceblue",
     "antiquewhite",
     "aqua",
@@ -1591,7 +1603,7 @@ const COLOR_KEYWORDS: &[&str] = &[
 ];
 
 /// `valueKeywords_` (lower-cased, sorted, deduplicated: `keySet`)
-const VALUE_KEYWORDS: &[&str] = &[
+pub(crate) const VALUE_KEYWORDS: &[&str] = &[
     "above",
     "absolute",
     "activeborder",

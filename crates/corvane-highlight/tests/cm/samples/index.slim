@@ -1,0 +1,104 @@
+doctype html
+/ Page layout: index.slim
+/! Visible HTML comment
+   continues on an indented line
+/[if IE]
+html lang="en"
+  head
+    meta charset="utf-8"
+    meta name="viewport" content="width=device-width, initial-scale=1"
+    title = @page_title || "Corvane — Slim"
+    == stylesheet_link_tag "application", media: "all"
+    javascript:
+      window.flags = { beta: true, count: 3 };
+      function greet(name) {
+        return "Hello, " + name + "!";
+      }
+
+      greet("Zoë");
+    css:
+      body { margin: 0; font-family: "Helvetica Neue", sans-serif; }
+      .card:hover { color: #336699 !important; }
+    scss:
+      $gap: 8px;
+      .grid { gap: $gap * 2; }
+  body#main.layout.layout--wide class=body_class data-turbo="false"
+    header.site-header
+      nav
+        a.logo href="/" Home
+        a href=about_path title="About #{@company.name}" About
+        a[href="/contact" target="_blank"] Contact
+        a(href='/help' class="help") Help
+        a{href="/blog"} Blog
+    - if user_signed_in?
+      p.greeting Hello, #{current_user.name}!
+    - elsif guest?
+      p Welcome, guest
+    - else
+      p = link_to "Sign in", new_session_path
+    ul.items
+      - @items.each_with_index do |item, i|
+        li class=(i.odd? ? "odd" : "even") id="item-#{item.id}" = item.name
+    .card
+      .card__title Plain text title
+      #sidebar.col-3
+        h2 Ångström café — 中文
+    p
+      | Piped text line one
+        continued pipe text
+      ' Trailing-space text
+    p: strong Inline nested tag
+    p<> Whitespace around
+    img src="/logo.png" alt="Logo" /
+    input type="checkbox" checked=true disabled=false value=nil
+    input*{type: "text", name: "q"} placeholder="Search…"
+    div*attrs Splat attrs
+    span class=:primary,:large Symbols
+    = render partial: "shared/footer",
+      locals: { year: Time.now.year }
+    - total = @items.sum(&:price) * 1.2 \
+      + shipping
+    ruby:
+      helper = ->(x) { x * 2 }
+      puts helper.(21)
+    <div class="raw">Raw <em>HTML</em> line</div>
+    p Text with #{interpolation} and \#{escaped}
+    p title="multi #{word} string" data-x='single' Quoted
+    a href="unterminated
+    ==< raw_html
+    =' spaced_output
+    table.data
+      thead
+        tr
+          - %w[Name Price Qty].each do |heading|
+            th scope="col" = heading
+      tbody
+        - @rows.each do |row|
+          tr id=dom_id(row) class=[row.state, ("hot" if row.hot?)]
+            td = row.name
+            td.num = number_with_precision(row.price, precision: 2)
+            td.num == row.qty.nil? ? "&mdash;" : row.qty
+    - case @status
+    - when :draft
+      span.badge.badge--draft Draft
+    - when :published, :archived
+      span.badge class="badge--#{@status}" = @status.to_s.capitalize
+    form action="/search" method="get"
+      input(type="text" name="q" value=params[:q] required=true)
+      select name="sort"
+        - [["Newest", "new"], ["Oldest", "old"]].each do |label, value|
+          option value=value selected=(value == params[:sort]) = label
+      button.btn.btn-primary type="submit" disabled=false Go
+    - valid = email =~ /\A[^@\s]+@[^@\s]+\z/i
+    p.note data-count=@items.size data-ratio=0.75 Items: #{@items.size}
+    footer
+      small &copy; 2026
+	tabbed line
+    footer.again
+      p Last styled line before the null-mode blocks
+    coffee:
+      square = (x) -> x * x
+    p swallowed by the coffee block
+    markdown:
+      # Not highlighted
+      Some *markdown* text
