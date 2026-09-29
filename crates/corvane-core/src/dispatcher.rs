@@ -973,10 +973,19 @@ impl Dispatcher {
                         Err(err) => warn!(id, %err, "history failed"),
                     }
                     cx.notify();
-                    !more && !rs.selected_commits.is_empty() && !rs.compare.is_comparing()
+                    // GHD `updateOrSelectFirstCommit`: with nothing (left)
+                    // selected, the newest commit becomes the selection
+                    let comparing = rs.compare.is_comparing();
+                    if !more && !comparing && rs.selected_commits.is_empty() {
+                        Err(rs.commits.first().map(|c| c.sha.clone()))
+                    } else {
+                        Ok(!more && !rs.selected_commits.is_empty() && !comparing)
+                    }
                 });
-                if reselect {
-                    Self::load_changeset(id, cx);
+                match reselect {
+                    Err(Some(first)) => Self::select_commits(id, vec![first], cx),
+                    Ok(true) => Self::load_changeset(id, cx),
+                    _ => {}
                 }
             });
         })
