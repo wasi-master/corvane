@@ -1,0 +1,88 @@
+// Less stylesheet: variables, mixins, guards, operations
+@import (reference) "bootstrap.less";
+@import url("theme.css");
+@charset "utf-8";
+
+@primary: #428bca;
+@primary-dark: darken(@primary, 10%);
+@base-url: "http://assets.example.com";
+@min768: ~"(min-width: 768px)";
+@my-ruleset: {
+  .my-selector { background-color: black; }
+};
+@selector: ~".my-class";
+
+/* Block comment
+   across lines — ünïcödé */
+
+.bordered(@width: 2px; @style: solid) {
+  border: @width @style black;
+}
+
+.mixin(@color) when (lightness(@color) >= 50%) {
+  background-color: black;
+}
+.mixin(@color) when (lightness(@color) < 50%) {
+  background-color: white;
+}
+.mixin(@a; @b: 2) when (default()) { width: @a * @b; }
+
+#namespace {
+  .m() { color: red; }
+}
+
+.header {
+  .bordered(4px; dashed);
+  #namespace > .m();
+  #namespace.m();
+  color: @primary;
+  background+: url("@{base-url}/images/bg.png");
+  width: (@a + @b) * 2;
+  height: ~"calc(100% - @{gutter})";
+  margin: -@gutter;
+  top: @a / 2;
+  @media @min768 { float: left; }
+  @media (min-width: 768px) and (max-width: 979px), (max-width: 480px) {
+    display: none;
+  }
+
+  &:extend(.banner all);
+  &-title { font-size: 20px; }
+  & + & { margin-left: 0; }
+  .navigation { font-size: 12px; }
+  .logo:hover { text-decoration: none }
+  span { color: fade(@black, 20%) }
+}
+
+@{selector} { color: red; }
+.@{name}-suffix { top: 0; }
+@plugin "my-plugin";
+@r: { color: blue };
+
+.guard when (@mode = huge) { width: 100% }
+.loop(@i) when (@i > 0) {
+  .w-@{i} { width: (@i * 100% / 5); }
+  .loop(@i - 1);
+}
+.loop(5);
+
+.e(@rules) { @media screen { @rules(); } }
+@detached: { background: red; };
+.call { @detached(); }
+
+.lazy-eval {
+  width: @var;
+  @var: @a;
+  @a: 9%;
+}
+
+@keyframes pulse { 0% { opacity: 1 } 100% { opacity: .5 } }
+@-webkit-keyframes pulse { from { opacity: 1 } }
+@font-face { font-family: "Mono"; src: url(mono.woff); }
+@supports (display: flex) { .f { display: flex } }
+@namespace svg url(http://www.w3.org/2000/svg);
+@page { margin: 1cm }
+.str { content: "a \"b\" c"; font: 12px/1.5 'Helvetica Neue', sans-serif; }
+.important { color: red !important; .mixin() !important; }
+.unclosed { content: 'never closed
+.x { color: blue }

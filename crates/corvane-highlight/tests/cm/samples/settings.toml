@@ -1,0 +1,88 @@
+# This is a TOML document — ünïcödé comment
+title = "TOML Example"
+bare_key = "value"
+bare-key = 'literal value'
+1234 = "numeric key"
+"quoted key" = "value"
+'literal key' = 42
+site."google.com" = true
+physical.color = "orange"
+fruit . flavor = "banana"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00 # offset datetime
+utc = 1979-05-27T07:32:00Z
+local_date = 1979-05-27
+local_time = 07:32:00
+
+[database]
+enabled = true
+disabled = false
+ports = [ 8000, 8001, 8002 ]
+data = [ ["delta", "phi"], [3.14] ]
+temp_targets = { cpu = 79.5, case = 72.0 }
+negative = -17
+float = +1.0
+exp = 5e+22
+hex = 0xDEADBEEF
+oct = 0o755
+bin = 0b11010110
+underscored = 1_000_000
+inf = inf
+nan = nan
+
+[servers]
+
+  [servers.alpha]
+  ip = "10.0.0.1"
+  role = "frontend"
+
+  [servers.beta]
+	ip = "10.0.0.2"
+	role = "backend"
+
+[[products]]
+name = "Hammer"
+sku = 738594937
+
+[[products]]  # empty table within the array
+
+[[products]]
+name = "Nail"
+sku = 284758393
+color = "gray"
+
+[dog."tater.man"]
+type.name = "pug"
+
+[a.b.c]
+[ d.e.f ]
+[ j . "ʞ" . 'l' ]
+
+str1 = "I'm a string. \"You can quote me\". Name\tJos\u00E9\nLocation\tSF."
+winpath = 'C:\Users\nodejs\templates'
+regex = '<\i\c*\s*>'
+multi_basic = """
+Roses are red
+Violets are "blue"
+The quick brown \
+  fox jumps over \
+  the lazy dog."""
+multi_literal = '''
+The first newline is
+trimmed in raw strings.
+   All other whitespace
+   is preserved.
+'''
+nested_array = [
+  1, 2,
+  3, # comment inside array
+  [4, 5],
+  "six",
+]
+inline = { name = "Tom", "last name" = 'Preston', point = { x = 1, y = 2 } }
+unterminated = "this string does not end
+next = 1
+emoji = "★"
+empty_string = ""

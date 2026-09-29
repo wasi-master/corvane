@@ -1,0 +1,102 @@
+%YAML 1.2
+---
+# Application configuration — ünïcödé comment
+app:
+  name: "Corvane"
+  version: 1.4.2
+  description: 'A native Git client'
+  enabled: true
+  debug: False
+  verbose: yes
+  legacy: off
+  ratio: -0.75
+  count: 1,000
+  empty:
+  nothing: ~
+  nullish: null
+  date: 2026-09-30
+  timestamp: 2026-09-30T12:34:56Z
+  path: /usr/local/bin # trailing comment
+  url: http://example.com/#anchor
+  hash#notcomment: value#also
+  "quoted key": value
+  'single key': 42
+  key with spaces: some value here
+  ключ: значение
+  emoji: "★ launch"
+
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+  pool: 5
+
+development:
+  <<: *defaults
+  database: dev_db
+
+test:
+  <<: *defaults
+  database: test_db
+
+list:
+  - apple
+  - banana
+  - "cherry pie"
+  - 42
+  - true
+  -   nested:
+        - deep
+  - key: value
+    other: thing
+  -
+    - sub
+
+inline_list: [one, two, "three, four", 5, [nested, list]]
+inline_map: {name: Wasi, age: 30, tags: [a, b], ok: true}
+inline_nums: {x: 1, y: -2.5, z: 3}
+mixed: [ {a: 1}, {b: 2} ]
+
+literal_block: |
+  This is a literal block.
+    Indentation is preserved.
+  Line three with "quotes" and # not a comment
+
+  After a blank line.
+folded_block: >-
+  Folded text continues
+  across several lines
+  until dedent.
+keep: |+
+  kept
+
+after_block: done
+
+tagged: !!str 123
+binary: !!binary |
+  R0lGODlhDAAMAIQAAP//9/X17unp5WZmZgAAAOfn515eXvPz7Y6OjuDg4J+fn5
+custom: !MyTag { a: 1 }
+set: !!set
+  ? item1
+  ? item2
+? complex key
+: complex value
+
+multi_line_plain: this is a plain
+  scalar that continues
+  on following lines
+escaped: "line1\nline2 \"quoted\" \\ end"
+single_escape: 'it''s fine'
+unterminated: "no end here
+next: value
+backslash: a\,b
+anchor_list: &list [1, 2, 3]
+ref: *list
+key.with.dots: v
+key-with-dashes: v
+key_with_underscore: v
+123: numeric key
+"on": quoted keyword
+	tabbed: value
+---
+second: document
+...

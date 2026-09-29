@@ -4,6 +4,10 @@
 //! To port a mode: add `<name>.rs` exposing a constructor, list its MIME
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
+pub mod css;
+pub mod toml;
+pub mod yaml;
+
 use std::sync::{Arc, OnceLock};
 
 use super::Mode;
@@ -173,6 +177,9 @@ pub fn guess_mime(first_line: &str) -> Option<&'static str> {
 pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
     match mime {
         "text/x-rustsrc" | "text/rust" => Some(rust()),
+        "text/css" | "text/x-scss" | "text/x-less" | "text/x-gss" => css::css_for_mime(mime),
+        "text/yaml" | "text/x-yaml" => Some(yaml::yaml()),
+        "text/x-toml" => Some(toml::toml()),
         _ => None,
     }
 }
