@@ -1,0 +1,57 @@
+# SPARQL 1.1 — requête de démonstration
+BASE <http://example.org/>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+prefix dc.terms.v2: <http://purl.org/dc/terms/>
+PREFIX : <http://example.org/ns#>
+
+SELECT DISTINCT ?name (COUNT(?friend) AS ?count) $mbox ?nómbre
+FROM NAMED <http://example.org/graph>
+WHERE {
+	?person a foaf:Person ;
+	        foaf:name ?name ;
+	        foaf:mbox $mbox .
+  OPTIONAL { ?person foaf:knows ?friend . }
+  FILTER (lang(?name) = "en" && regex(str(?name), "^A", "i"))
+  FILTER NOT EXISTS { ?person :blocked true }
+  FILTER (?age >= 18 || ?age < 65 && !bound(?x))
+  BIND (CONCAT(?first, " ", ?last) AS ?full)
+  ?doc dc.terms.v2:title 'Lettre à Élise'@fr .
+  ?doc :value "42"^^xsd:integer .
+  ?doc :esc :local\.name%20x .
+  ?doc :path foaf:knows+/foaf:name* .
+  VALUES ?type { :Book :Article UNDEF }
+  ?s <urn:isbn:0451450523> ?o .
+  FILTER (?x < 10 && ?y <= 3)
+  ?x ?y 3.14 .
+}
+GROUP BY ?name
+HAVING (COUNT(?friend) > 2)
+ORDER BY DESC(?count) ASC(?name)
+LIMIT 10 OFFSET 20
+
+INSERT DATA {
+  GRAPH <http://example.org/g1> {
+    :book1 dc.terms.v2:title "A \"quoted\" title" ;
+           :note 'it\'s fine' ;
+           :tag "Ünïcödé ✓ 😀" .
+  }
+}
+
+DELETE { ?s ?p ?o } WHERE { ?s ?p ?o . FILTER (isBlank(?s)) }
+CONSTRUCT { ?s foaf:name ?n } WHERE { SERVICE SILENT <http://dbpedia.org/sparql> { ?s rdfs:label ?n } }
+ASK { ?x foaf:name "Alice" }
+DESCRIBE ?x ?
+SELECT (SHA256(STR(?x)) AS ?h) (NOW() AS ?t) (UUID() AS ?u) WHERE { ?x ?p ? }
+LOAD <http://example.org/data.ttl> INTO GRAPH <http://example.org/g2>
+"""a long
+string"""
+'unterminated string
+continues here' ; ?done
+@en-GB-oxendict
+123 -45 _:blank1 _:b2 .
+?v ?  $
+<unterminated
+< = x
+"final open string at eof

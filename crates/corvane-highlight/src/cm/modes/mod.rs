@@ -6,6 +6,7 @@
 
 pub mod clike;
 pub mod css;
+pub mod cypher;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
@@ -16,6 +17,7 @@ pub mod puppet;
 pub mod python;
 pub mod ruby;
 pub mod shell;
+pub mod sparql;
 pub mod sql;
 pub mod swift;
 pub mod toml;
@@ -211,6 +213,8 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-diff" => Some(Arc::new(diff::Diff)),
         "text/x-dockerfile" => Some(dockerfile::dockerfile()),
         "text/x-puppet" => Some(Arc::new(puppet::Puppet)),
+        "application/sparql-query" => Some(Arc::new(sparql::Sparql)),
+        "application/x-cypher-query" => Some(Arc::new(cypher::Cypher)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
