@@ -15,8 +15,10 @@ pub mod javascript;
 pub mod jsx;
 pub mod puppet;
 pub mod python;
+pub mod q;
 pub mod ruby;
 pub mod shell;
+pub mod smalltalk;
 pub mod sparql;
 pub mod sql;
 pub mod swift;
@@ -215,6 +217,8 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-puppet" => Some(Arc::new(puppet::Puppet)),
         "application/sparql-query" => Some(Arc::new(sparql::Sparql)),
         "application/x-cypher-query" => Some(Arc::new(cypher::Cypher)),
+        "text/x-stsrc" => Some(Arc::new(smalltalk::Smalltalk)),
+        "text/x-q" => Some(Arc::new(q::Q)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
