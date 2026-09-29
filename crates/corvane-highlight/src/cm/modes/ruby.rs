@@ -8,7 +8,7 @@
 //! the root context's `indented` is `-undefined` (`NaN`), like a paused
 //! context's missing one.
 
-use super::super::{Mode, ModeState, StringStream, state};
+use super::super::{Mode, ModeState, StringStream, state, state_ref};
 use crate::re;
 
 const KEYWORD_LIST: &[&str] = &[
@@ -183,6 +183,17 @@ fn match_re(stream: &mut StringStream, re: &fancy_regex::Regex) -> bool {
 }
 
 pub struct Ruby;
+
+/// `state.tokenize.length` of a ruby state (haml's and slim's
+/// `rubyInQuote` step out of ruby when it is back to 1).
+pub fn tokenize_depth(st: &dyn ModeState) -> usize {
+    state_ref::<RubyState>(st).tokenize.len()
+}
+
+/// `state.context.prev` is set (slim's `startRubySplat`).
+pub fn has_context_prev(st: &dyn ModeState) -> bool {
+    state_ref::<RubyState>(st).context.len() > 1
+}
 
 impl Ruby {
     /// `chain(newtok, stream, state)`

@@ -1,0 +1,94 @@
+!!! 5
+-# Haml comment: silent, never rendered
+   still part of the silent comment? no, only one line
+/ HTML comment line
+  indented lines under an HTML comment
+  are comment too
+%html{lang: "en", 'data-theme' => @theme}
+  %head
+    %meta{charset: "utf-8"}
+    %title= @page.title || "Untitled"
+    %link(rel="stylesheet" href="/css/app.css" media=print)
+    :javascript
+      window.flags = { beta: true };
+    %script{type: "text/javascript"}
+      console.log("inline");
+    %style
+      body { margin: 0; }
+  %body#main.layout.layout--wide{class: body_classes, data: {user_id: current_user.id}}
+    - if user_signed_in?
+      %p.greeting Hello, #{current_user.name}!
+    - else
+      %p= link_to "Sign in", new_session_path
+    %ul.items
+      - @items.each_with_index do |item, i|
+        %li{class: ("odd" if i.odd?), id: "item_#{item.id}"}= item.name
+        %li(title="Price: #{number_to_currency(item.price)}")
+          = item.description.truncate(80)
+    .card
+      .card__title Plain text title
+      #sidebar.col-3
+        %h2 Zoë's Ångström café — 中文
+    %p
+      = succeed "." do
+        %a{href: "#"} a link
+    %form{action: "/search", method: :get}
+      %input{type: "text", name: "q", value: params[:q],
+        placeholder: "Search…"}
+      %button{type: "submit", disabled: true} Go
+    = render partial: "shared/footer",
+      locals: { year: Time.now.year }
+    %div{ :class => "old-style", :id => 'hashrocket' } Old syntax
+    %p{% raw %} liquid-ish brace
+    %br/
+    %img(src="/logo.png" alt='Logo')/
+    <div class="raw-html">raw <em>html</em> passes through</div>
+    <!-- html comment
+    -->
+    %pre
+      :preserve
+        def keep
+	  tabbed
+        end
+    ~ "tilde output"
+    &= "escaped #{html}"
+    != raw_html
+    - # trailing ruby comment
+    - x = [1, 2,
+      3, 4]
+    %span= x.map { |n| n * 2 }.join(", ")
+    %p Unterminated "quote
+    %p{title: "unterminated
+    %footer
+      %small &copy; 2026
+
+- content_for :sidebar do
+  %nav.menu{role: "navigation", "aria-label" => t("menu.label")}
+    - MENU_ITEMS.each do |key, path|
+      = link_to t("menu.#{key}"), path, class: ("active" if current_page?(path))
+- case @status
+- when :draft
+  %span.badge.badge--draft Draft
+- when :published, :archived
+  %span.badge{class: "badge--#{@status}"}= @status.to_s.capitalize
+- else
+  %span.badge Unknown
+- total = @items.sum(&:price) * 1.2 + 0x1F - 3e2
+- valid = email =~ /\A[^@\s]+@[^@\s]+\z/i
+%table.data
+  %thead
+    %tr
+      - %w[Name Price Qty].each do |heading|
+        %th{scope: "col"}= heading
+  %tbody
+    - @rows.each do |row|
+      %tr{id: dom_id(row), class: cycle("even", "odd")}
+        %td= row.name
+        %td.num= number_with_precision(row.price, precision: 2)
+        %td.num= row.qty.nil? ? "—" : row.qty
+%script
+  :plain
+    var legacy = true;
+%section(id="about" class='intro' data-count=@items.size)
+  %h2(title="About") About us
+  %p(class="lead")= t(:about, name: @company.name, year: 2026)
