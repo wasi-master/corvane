@@ -1,4 +1,5 @@
-//! Error / InstallGit dialogs: static content, one or two buttons.
+//! Error / InstallGit / CLIInstalled (GHD `ui/cli-installed/cli-installed.tsx`)
+//! dialogs: static content, one or two buttons.
 
 use corvane_core::{Dispatcher, Popup};
 use gpui_kit::prelude::*;
@@ -66,6 +67,30 @@ impl Render for SimpleDialog {
                 vec![DialogButton {
                     id: "error-close",
                     label: "Close".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(close),
+                }],
+                close,
+                window,
+                cx,
+            )
+            .into_any_element(),
+            Popup::CLIInstalled { path } => dialog(
+                "cli-installed",
+                "Command Line Tool Installed",
+                crate::widgets::paragraph(vec![
+                    "The command line tool has been installed at ".into(),
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(path.display().to_string())
+                        .into_any_element()
+                        .into(),
+                    ".".into(),
+                ]),
+                vec![DialogButton {
+                    id: "cli-installed-ok",
+                    label: "Ok".into(),
                     primary: true,
                     disabled: false,
                     on_click: Box::new(close),

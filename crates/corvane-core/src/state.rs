@@ -69,6 +69,10 @@ pub enum Popup {
     CreateFork {
         repo: u64,
     },
+    /// `CLIInstalled`: the command line tool was linked at `path`.
+    CLIInstalled {
+        path: PathBuf,
+    },
     /// `MoveToApplicationsFolder`: offered at launch outside /Applications.
     MoveToApplicationsFolder,
     /// `Acknowledgements`: License and Open Source Notices.
