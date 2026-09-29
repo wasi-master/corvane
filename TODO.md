@@ -6,7 +6,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`) that open the built `PullRequestReview` / `PullRequestComment` / `PullRequestChecksFailed` dialogs; Settings › Notifications is persisted but nothing emits notifications yet
+- [ ] **[GH]** Alive websocket producer for pull request notifications (`lib/stores/alive-store.ts`, the event handling in `notifications-store.ts`: PR cache lookup, API fetch of the review / comment / checks, commit-author and check-suite dedup) feeding `Dispatcher::notify_pull_request_event`; posting, clicks and the dialogs are built
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
@@ -41,7 +41,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[PLAT]** Windows: in-app menu bar (`ui/app-menu/`), 28 px custom title bar, `x-github-desktop-auth` style protocol registration, Credential Manager, NSIS via Velopack, editor/shell detection (`lib/editors/win32.ts`)
 - [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak, editor/shell detection (`lib/editors/linux.ts`)
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
-- [ ] **[PLAT]** OS notifications (`ui/notifications/`), `TestNotifications` popup
 - [ ] **[PLAT]** Finder Services "Open in Corvane"; `corvane` CLI subcommands beyond opening a path (GHD `cli/main.ts`: `open`, `clone`) and reaching an already running Corvane (URL scheme)
 
 ## Infra / release
