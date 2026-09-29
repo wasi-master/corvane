@@ -12,6 +12,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod puppet;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -209,6 +210,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-swift" => Some(Arc::new(swift::Swift)),
         "text/x-diff" => Some(Arc::new(diff::Diff)),
         "text/x-dockerfile" => Some(dockerfile::dockerfile()),
+        "text/x-puppet" => Some(Arc::new(puppet::Puppet)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
