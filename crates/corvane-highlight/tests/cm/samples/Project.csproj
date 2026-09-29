@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Corvane.Tool</AssemblyName>
+    <Description>Tool with "quotes" &amp; &lt;brackets&gt; &#169; &#x2603; &nbsp;</Description>
+    <DefineConstants Condition=" '$(Configuration)' == 'Debug' ">DEBUG;TRACE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Serilog" Version="3.1.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+    <Compile Remove="obj\**" />
+    <None Update="appsettings.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    Targets below run after build.
+    <Target Name="Commented" />
+  -->
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="echo Built $(TargetPath) &gt; build.log" />
+    <Message Importance="high" Text='Single-quoted attribute with "double" inside' />
+  </Target>
+
+  <UsingTask TaskName="Inline" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        if (a < b && c > d) { Log.LogMessage("<ok>"); }
+        var s = "]]" + ">";
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <svg:rect xmlns:svg="http://www.w3.org/2000/svg" x="0" y="0" width="100%" />
+  <Mixed>text <b>bold</b> tail <i>italic <u>under</u></i>.</Mixed>
+  <Br></br>
+  <Upper></upper>
+  <Unclosed>
+    <Child/>
+</Project>
+</Project>
+<?pi target with data ?>
+<!doctype lowercase [ <!ENTITY e "v"> <!-- nested <comment> --> ]>

@@ -1,0 +1,97 @@
+1 2 6 m-javascript string property
+1 10 17 m-javascript string
+2 2 9 m-javascript string property
+2 13 7 m-javascript string
+3 2 17 m-javascript string property
+3 21 1 m-javascript number
+4 2 10 m-javascript string property
+4 14 4 m-javascript atom
+5 2 10 m-javascript string property
+6 4 2 m-javascript string property
+7 6 6 m-javascript string property
+7 14 17 m-javascript string
+8 6 9 m-javascript string property
+8 17 7 m-javascript string
+9 6 9 m-javascript string property
+9 17 5 m-javascript string
+10 6 14 m-javascript string property
+11 8 12 m-javascript string property
+11 22 10 m-javascript string
+12 8 7 m-javascript string property
+12 17 9 m-javascript string
+14 6 17 m-javascript string property
+15 8 12 m-javascript string property
+15 22 7 m-javascript string
+17 6 9 m-javascript string property
+17 19 6 m-javascript string property
+17 27 6 m-javascript string
+19 4 25 m-javascript string property
+20 6 9 m-javascript string property
+20 17 9 m-javascript string
+21 6 10 m-javascript string property
+21 18 64 m-javascript string
+22 6 11 m-javascript string property
+22 19 97 m-javascript string
+23 6 5 m-javascript string property
+23 13 5 m-javascript atom
+24 6 10 m-javascript string property
+24 18 5 m-javascript atom
+25 6 6 m-javascript string property
+25 14 4 m-javascript atom
+26 6 9 m-javascript string property
+27 10 6 m-javascript string property
+27 18 8 m-javascript string
+27 28 5 m-javascript string property
+27 35 37 m-javascript string
+28 10 6 m-javascript string property
+28 18 9 m-javascript string
+28 29 5 m-javascript string property
+28 36 32 m-javascript string
+32 2 8 m-javascript string property
+32 14 1 m-javascript number
+32 17 1 m-javascript number
+32 20 1 m-javascript number
+32 25 1 m-javascript operator
+32 26 3 m-javascript number
+32 31 3 m-javascript number
+32 36 4 m-javascript number
+33 2 9 m-javascript string property
+33 13 49 m-javascript string
+34 2 9 m-javascript string property
+34 13 21 m-javascript string
+35 2 13 m-javascript string property
+35 17 2 m-javascript string
+36 2 6 m-javascript string property
+36 10 1 m-javascript number
+37 2 14 m-javascript string property
+37 18 1 m-javascript operator
+37 19 1 m-javascript number
+38 2 13 m-javascript string property
+38 17 22 m-javascript number
+39 2 6 m-javascript string property
+39 11 4 m-javascript atom
+39 17 5 m-javascript atom
+40 2 14 m-javascript string property
+40 20 6 m-javascript string property
+40 28 7 m-javascript string
+40 37 6 m-javascript string property
+40 45 4 m-javascript atom
+40 51 10 m-javascript string property
+40 63 1 m-javascript number
+41 2 8 m-javascript string property
+41 12 21 m-javascript string
+42 2 8 m-javascript property
+42 12 1 m-javascript number
+43 2 10 m-javascript string property
+43 15 1 m-javascript number
+43 18 1 m-javascript number
+43 21 1 m-javascript number
+44 2 31 m-javascript comment
+45 2 12 m-javascript comment
+46 0 16 m-javascript comment
+47 2 6 m-javascript string property
+47 12 6 m-javascript string property
+47 22 8 m-javascript string property
+47 34 9 m-javascript string property
+47 49 3 m-javascript string property
+47 54 1 m-javascript number

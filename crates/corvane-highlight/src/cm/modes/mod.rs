@@ -10,12 +10,15 @@ pub mod dart;
 pub mod diff;
 pub mod dockerfile;
 pub mod go;
+pub mod javascript;
+pub mod jsx;
 pub mod python;
 pub mod ruby;
 pub mod shell;
 pub mod sql;
 pub mod swift;
 pub mod toml;
+pub mod xml;
 pub mod yaml;
 
 use std::sync::{Arc, OnceLock};
@@ -220,9 +223,85 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/javascript"
+        | "text/ecmascript"
+        | "application/javascript"
+        | "application/x-javascript"
+        | "application/ecmascript" => Some(javascript()),
+        "application/json" | "application/x-json" | "application/manifest+json" => Some(json()),
+        "application/ld+json" => Some(jsonld()),
+        "text/typescript" | "application/typescript" => Some(typescript()),
+        // text/html is htmlmixed in GHD (htmlmixed.js redefines the MIME)
+        "text/xml" | "application/xml" => Some(xml()),
+        "text/jsx" => Some(jsx()),
+        "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }
 }
+
+macro_rules! shared_mode {
+    ($(#[$doc:meta])* $name:ident, $make:expr) => {
+        $(#[$doc])*
+        pub fn $name() -> Arc<dyn Mode> {
+            static MODE: OnceLock<Arc<dyn Mode>> = OnceLock::new();
+            MODE.get_or_init(|| Arc::new($make)).clone()
+        }
+    };
+}
+
+shared_mode!(
+    /// `codemirror/mode/javascript/javascript.js` (`text/javascript`)
+    javascript,
+    javascript::JsMode::new(javascript::JsConfig::default())
+);
+shared_mode!(
+    /// `{name: "javascript", json: true}`
+    json,
+    javascript::JsMode::new(javascript::JsConfig {
+        json: true,
+        ..Default::default()
+    })
+);
+shared_mode!(
+    /// `{name: "javascript", jsonld: true}`
+    jsonld,
+    javascript::JsMode::new(javascript::JsConfig {
+        jsonld: true,
+        ..Default::default()
+    })
+);
+shared_mode!(
+    /// `{name: "javascript", typescript: true}`
+    typescript,
+    javascript::JsMode::new(javascript::JsConfig {
+        typescript: true,
+        ..Default::default()
+    })
+);
+shared_mode!(
+    /// `codemirror/mode/xml/xml.js` (`text/xml`)
+    xml,
+    xml::XmlMode::new(xml::XmlConfig::xml())
+);
+shared_mode!(
+    /// `{name: "xml", htmlMode: true}` (the `text/html` definition in
+    /// xml.js, which htmlmixed replaces in GHD)
+    xml_html,
+    xml::XmlMode::new(xml::XmlConfig::html())
+);
+shared_mode!(
+    /// `codemirror/mode/jsx/jsx.js` (`text/jsx`)
+    jsx,
+    jsx::JsxMode::new(javascript::JsConfig::default())
+);
+shared_mode!(
+    /// `{name: "jsx", base: {name: "javascript", typescript: true}}`
+    typescript_jsx,
+    jsx::JsxMode::new(javascript::JsConfig {
+        typescript: true,
+        ..Default::default()
+    })
+);
 
 /// `codemirror/mode/rust/rust.js`
 pub fn rust() -> Arc<dyn Mode> {
