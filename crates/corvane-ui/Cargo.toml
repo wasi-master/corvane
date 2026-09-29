@@ -14,6 +14,8 @@ corvane-github.workspace = true
 corvane-platform.workspace = true
 tracing.workspace = true
 libc = "0.2"
+# image diffs: dimensions + the "Difference" blend (same major as GPUI's)
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

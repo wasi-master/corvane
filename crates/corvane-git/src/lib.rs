@@ -36,7 +36,10 @@ pub use config::{
     set_global_config_value, set_local_config_value,
 };
 pub use detect::{GitBinary, GitVersion, find_git};
-pub use diff::{parse_raw_diff, parse_unified, working_directory_diff};
+pub use diff::{
+    blob_bytes, blob_lines, file_lines, image_diff, parse_raw_diff, parse_unified, submodule_diff,
+    working_directory_diff, working_file_lines,
+};
 pub use error::GitError;
 pub use history_ops::{
     ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
@@ -54,7 +57,10 @@ pub use ops::{
     normalize_clone_url, parse_clone_progress, path_status, repository_name_from_url,
     set_global_identity,
 };
-pub use patch::{apply_patch_to_index, format_patch, stage_partial_files};
+pub use patch::{
+    apply_patch_to_index, discard_changes_from_selection, format_patch,
+    format_patch_to_discard_changes, stage_partial_files,
+};
 pub use paths::git_dir;
 pub use process::{GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{

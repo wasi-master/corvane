@@ -1,55 +1,193 @@
-//! Working-directory diffs (GHD `lib/git/diff.ts` + `lib/diff-parser.ts`).
+//! Working-directory diffs (GHD `lib/git/diff.ts` + `lib/diff-parser.ts`):
+//! text, image, submodule and large-diff detection, plus the blob / file
+//! readers that back hunk expansion (`fileContents.newContents`).
 
 use std::path::Path;
 use std::sync::Arc;
 
-use corvane_models::{Diff, DiffHunk, DiffLine, DiffLineKind, WorkingDirectoryFileChange};
+use corvane_models::{
+    Diff, DiffHunk, DiffLine, DiffLineKind, FileStatusKind, ImageBlob, SubmoduleDiff,
+    SubmoduleStatus, WorkingDirectoryFileChange, image_media_type,
+};
 
 use crate::detect::GitBinary;
 use crate::error::Result;
 use crate::process::GitCommand;
 
-/// GHD `MaxDiffBufferSize` (70 MB) is the git buffer; the UI refuses to render
-/// beyond `MaxReasonableDiffSize` (3 MB) and this many lines.
+/// GHD `MaxReasonableDiffSize`: beyond this the diff is `LargeText` and only
+/// rendered on request.
 pub const MAX_DIFF_BYTES: usize = 3 * 1024 * 1024;
+/// GHD `MaxDiffBufferSize` (70 MB): beyond this nothing is rendered.
+pub const UNRENDERABLE_BYTES: usize = 70 * 1024 * 1024;
+/// Line budget after which a diff is `LargeText`.
 pub const MAX_DIFF_LINES: usize = 50_000;
 
 /// `git diff` for one working-directory file, compared against HEAD (or an
-/// empty file for new/untracked files), exactly like GHD.
+/// empty file for new/untracked files), exactly like GHD. `hide_whitespace`
+/// adds `-w` (Diff Settings › Hide Whitespace Changes).
 pub fn working_directory_diff(
     git: Arc<GitBinary>,
     workdir: &Path,
     file: &WorkingDirectoryFileChange,
+    hide_whitespace: bool,
 ) -> Result<Diff> {
-    if file.status.submodule {
-        return Ok(Diff::Submodule);
+    let mut args = vec!["diff"];
+    if hide_whitespace {
+        args.push("-w");
     }
-    let mut cmd = GitCommand::new(git)
-        .args([
-            "diff",
-            "--no-ext-diff",
-            "--patch-with-raw",
-            "-z",
-            "--no-color",
-        ])
-        .current_dir(workdir);
-    if file.status.kind.is_new_or_untracked() {
+    args.extend(["--no-ext-diff", "--patch-with-raw", "-z", "--no-color"]);
+    let mut cmd = GitCommand::new(git.clone()).args(args).current_dir(workdir);
+    let is_submodule = file.status.submodule;
+    if !is_submodule && file.status.kind.is_new_or_untracked() {
         // `--no-index` exits 1 when files differ, which is the normal case.
         cmd = cmd
             .args(["--no-index", "--", "/dev/null"])
             .arg(&file.path)
             .allow_exit_code(1);
+    } else if file.status.kind == FileStatusKind::Renamed {
+        cmd = cmd.args(["--"]).arg(&file.path);
     } else {
         cmd = cmd.args(["HEAD", "--"]).arg(&file.path);
     }
     let out = cmd.run()?;
-    Ok(parse_raw_diff(&out.stdout))
+    if is_submodule {
+        return Ok(submodule_diff(
+            git,
+            workdir,
+            &file.path,
+            file.status.submodule_status.unwrap_or_default(),
+            file.status.kind,
+            &out.stdout,
+        ));
+    }
+    let diff = parse_raw_diff(&out.stdout);
+    Ok(match diff {
+        Diff::Binary => {
+            let previous_path = file.old_path.as_deref().unwrap_or(&file.path);
+            image_diff(
+                &file.path,
+                file.status.kind,
+                || std::fs::read(workdir.join(&file.path)).ok(),
+                || blob_bytes(git.clone(), workdir, "HEAD", previous_path).ok(),
+            )
+        }
+        other => other,
+    })
+}
+
+/// GHD `getImageDiff`: a binary change of a known image type becomes an
+/// image diff; anything else stays `Binary`.
+pub fn image_diff(
+    path: &str,
+    kind: FileStatusKind,
+    current: impl FnOnce() -> Option<Vec<u8>>,
+    previous: impl FnOnce() -> Option<Vec<u8>>,
+) -> Diff {
+    let Some(media_type) = image_media_type(path) else {
+        return Diff::Binary;
+    };
+    let blob = |bytes: Vec<u8>| ImageBlob {
+        bytes,
+        media_type: media_type.to_string(),
+    };
+    let current = (kind != FileStatusKind::Deleted)
+        .then(current)
+        .flatten()
+        .map(blob);
+    let previous = (!kind.is_new_or_untracked())
+        .then(previous)
+        .flatten()
+        .map(blob);
+    if current.is_none() && previous.is_none() {
+        return Diff::Binary;
+    }
+    Diff::Image { previous, current }
+}
+
+/// GHD `buildSubmoduleDiff`: the `Subproject commit` lines of the patch plus
+/// `submodule.<path>.url` from the repository config.
+pub fn submodule_diff(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    path: &str,
+    status: SubmoduleStatus,
+    kind: FileStatusKind,
+    patch: &[u8],
+) -> Diff {
+    let url = crate::config::local_config_value(git, workdir, &format!("submodule.{path}.url"));
+    let (mut old_sha, mut new_sha) = (None, None);
+    if status.commit_changed || kind == FileStatusKind::New || kind == FileStatusKind::Deleted {
+        let text = String::from_utf8_lossy(patch);
+        let sha = |rest: &str| rest.trim_end().trim_end_matches("-dirty").to_string();
+        for line in text.lines() {
+            if let Some(rest) = line.strip_prefix("-Subproject commit ") {
+                old_sha.get_or_insert_with(|| sha(rest));
+            } else if let Some(rest) = line.strip_prefix("+Subproject commit ") {
+                new_sha.get_or_insert_with(|| sha(rest));
+            }
+        }
+    }
+    Diff::Submodule(SubmoduleDiff {
+        path: path.to_string(),
+        full_path: workdir.join(path),
+        url,
+        old_sha,
+        new_sha,
+        status,
+    })
+}
+
+/// `git show <commitish>:<path>` - the raw bytes of a blob (`getBlobContents`).
+pub fn blob_bytes(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    commitish: &str,
+    path: &str,
+) -> Result<Vec<u8>> {
+    let out = GitCommand::new(git)
+        .args(["show", &format!("{commitish}:{path}")])
+        .current_dir(workdir)
+        .run()?;
+    Ok(out.stdout)
+}
+
+/// File contents as lines for hunk expansion; a trailing newline does not
+/// produce an empty last line.
+pub fn file_lines(bytes: &[u8]) -> Vec<String> {
+    let text = String::from_utf8_lossy(bytes);
+    let mut lines: Vec<String> = text
+        .split('\n')
+        .map(|l| l.strip_suffix('\r').unwrap_or(l).to_string())
+        .collect();
+    if text.ends_with('\n') {
+        lines.pop();
+    }
+    lines
+}
+
+/// The working copy of `path` as lines (`None` when unreadable, e.g. deleted).
+pub fn working_file_lines(workdir: &Path, path: &str) -> Option<Vec<String>> {
+    std::fs::read(workdir.join(path))
+        .ok()
+        .map(|b| file_lines(&b))
+}
+
+/// A committed blob as lines (`None` when the path is not in that commit).
+pub fn blob_lines(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    commitish: &str,
+    path: &str,
+) -> Option<Vec<String>> {
+    blob_bytes(git, workdir, commitish, path)
+        .ok()
+        .map(|b| file_lines(&b))
 }
 
 /// Parse `--patch-with-raw -z` output: skip the raw header block, then the
 /// unified diff. Handles binary and oversize diffs.
 pub fn parse_raw_diff(stdout: &[u8]) -> Diff {
-    if stdout.len() > MAX_DIFF_BYTES {
+    if stdout.len() > UNRENDERABLE_BYTES {
         return Diff::TooLarge;
     }
     let text = String::from_utf8_lossy(stdout);
@@ -62,7 +200,10 @@ pub fn parse_raw_diff(stdout: &[u8]) -> Diff {
     if patch.contains("\nBinary files ") || patch.starts_with("Binary files ") {
         return Diff::Binary;
     }
-    parse_unified(patch)
+    match parse_unified(patch) {
+        Diff::Text { hunks } if stdout.len() > MAX_DIFF_BYTES => Diff::LargeText { hunks },
+        other => other,
+    }
 }
 
 fn parse_hunk_header(line: &str) -> Option<(u32, u32, u32, u32)> {
@@ -167,8 +308,10 @@ pub fn parse_unified(patch: &str) -> Diff {
     }
     if hunks.is_empty() {
         Diff::Empty
+    } else if truncated {
+        Diff::LargeText { hunks }
     } else {
-        Diff::Text { hunks, truncated }
+        Diff::Text { hunks }
     }
 }
 
@@ -181,10 +324,9 @@ mod tests {
     #[test]
     fn parses_hunks_and_line_numbers() {
         let diff = parse_unified(SAMPLE);
-        let Diff::Text { hunks, truncated } = diff else {
+        let Diff::Text { hunks } = diff else {
             panic!("expected text diff")
         };
-        assert!(!truncated);
         assert_eq!(hunks.len(), 1);
         let h = &hunks[0];
         assert_eq!(
@@ -249,7 +391,7 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         for file in &status.files {
-            let diff = working_directory_diff(git.clone(), path, file).unwrap();
+            let diff = working_directory_diff(git.clone(), path, file, false).unwrap();
             let Diff::Text { hunks, .. } = diff else {
                 panic!("text diff for {}", file.path)
             };

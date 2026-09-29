@@ -211,6 +211,7 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
                 FileStatusKind::Conflicted => GitStatusEntry::Unmerged,
                 _ => GitStatusEntry::Modified,
             };
+            let is_submodule = raw.starts_with("160000") || raw.split(' ').nth(1) == Some("160000");
             data.files.push(CommittedFileChange {
                 path,
                 old_path,
@@ -220,7 +221,12 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
                     working_tree: GitStatusEntry::Unchanged,
                     score,
                     code: letter.to_string(),
-                    submodule: raw.starts_with("160000") || raw.split(' ').nth(1) == Some("160000"),
+                    submodule: is_submodule,
+                    // committed submodule entries only ever record a commit change
+                    submodule_status: is_submodule.then_some(corvane_models::SubmoduleStatus {
+                        commit_changed: true,
+                        ..Default::default()
+                    }),
                     conflict_markers: None,
                 },
                 commitish: sha.to_string(),
@@ -293,22 +299,16 @@ pub fn commit_range_file_diff(
     file: &CommittedFileChange,
     oldest: &str,
     newest: &str,
+    hide_whitespace: bool,
 ) -> Result<Diff> {
-    if file.status.submodule {
-        return Ok(Diff::Submodule);
-    }
     let run = |base: &str| {
+        let mut args = vec!["diff", base, newest];
+        if hide_whitespace {
+            args.push("-w");
+        }
+        args.extend(["--patch-with-raw", "--format=", "-z", "--no-color", "--"]);
         let mut cmd = GitCommand::new(git.clone())
-            .args([
-                "diff",
-                base,
-                newest,
-                "--patch-with-raw",
-                "--format=",
-                "-z",
-                "--no-color",
-                "--",
-            ])
+            .args(args)
             .current_dir(workdir)
             .arg(&file.path);
         if let Some(old) = &file.old_path {
@@ -321,7 +321,48 @@ pub fn commit_range_file_diff(
         Err(err) if is_bad_revision(&err) => run(NULL_TREE_SHA)?,
         Err(err) => return Err(err),
     };
-    Ok(crate::diff::parse_raw_diff(&out.stdout))
+    Ok(finish_committed_diff(
+        git,
+        workdir,
+        file,
+        newest,
+        &format!("{oldest}^"),
+        &out.stdout,
+    ))
+}
+
+/// Shared tail of the committed-diff loaders: submodule and image diffs need
+/// the blobs on both sides (`getImageDiff`, `buildSubmoduleDiff`).
+fn finish_committed_diff(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    file: &CommittedFileChange,
+    newest: &str,
+    base: &str,
+    patch: &[u8],
+) -> Diff {
+    if file.status.submodule {
+        return crate::diff::submodule_diff(
+            git,
+            workdir,
+            &file.path,
+            file.status.submodule_status.unwrap_or_default(),
+            file.status.kind,
+            patch,
+        );
+    }
+    match crate::diff::parse_raw_diff(patch) {
+        Diff::Binary => {
+            let previous_path = file.old_path.as_deref().unwrap_or(&file.path);
+            crate::diff::image_diff(
+                &file.path,
+                file.status.kind,
+                || crate::diff::blob_bytes(git.clone(), workdir, newest, &file.path).ok(),
+                || crate::diff::blob_bytes(git.clone(), workdir, base, previous_path).ok(),
+            )
+        }
+        other => other,
+    }
 }
 
 /// `getCommitDiff`: the patch for one file of a commit.
@@ -329,31 +370,39 @@ pub fn commit_file_diff(
     git: Arc<GitBinary>,
     workdir: &Path,
     file: &CommittedFileChange,
+    hide_whitespace: bool,
 ) -> Result<Diff> {
-    if file.status.submodule {
-        return Ok(Diff::Submodule);
+    let mut args = vec!["log", file.commitish.as_str()];
+    if hide_whitespace {
+        args.push("-w");
     }
-    let mut cmd = GitCommand::new(git)
-        .args([
-            "log",
-            &file.commitish,
-            "-m",
-            "-1",
-            "--first-parent",
-            "--no-show-signature",
-            "--patch-with-raw",
-            "-z",
-            "--no-color",
-            "--format=format:",
-            "--",
-        ])
+    args.extend([
+        "-m",
+        "-1",
+        "--first-parent",
+        "--no-show-signature",
+        "--patch-with-raw",
+        "-z",
+        "--no-color",
+        "--format=format:",
+        "--",
+    ]);
+    let mut cmd = GitCommand::new(git.clone())
+        .args(args)
         .current_dir(workdir)
         .arg(&file.path);
     if let Some(old) = &file.old_path {
         cmd = cmd.arg(old);
     }
     let out = cmd.run()?;
-    Ok(crate::diff::parse_raw_diff(&out.stdout))
+    Ok(finish_committed_diff(
+        git,
+        workdir,
+        file,
+        &file.commitish,
+        &format!("{}^", file.commitish),
+        &out.stdout,
+    ))
 }
 
 #[cfg(test)]
@@ -421,7 +470,7 @@ mod tests {
         assert_eq!(paths, vec!["a.txt", "b.txt"]);
         assert_eq!(data.files[1].status.kind, FileStatusKind::New);
         assert_eq!((data.lines_added, data.lines_deleted), (3, 1));
-        let diff = commit_file_diff(git, dir.path(), &data.files[0]).unwrap();
+        let diff = commit_file_diff(git, dir.path(), &data.files[0], false).unwrap();
         let Diff::Text { hunks, .. } = diff else {
             panic!("text diff expected")
         };

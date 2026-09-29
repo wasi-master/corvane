@@ -13,12 +13,14 @@ pub mod cloning_view;
 pub mod context_menu;
 pub mod dialog;
 pub mod dialogs;
+pub mod diff_expansion;
 pub mod diff_view;
 pub mod diff_view_rows;
 pub mod foldout;
 pub mod format;
 pub mod history;
 pub mod icons;
+pub mod image_diff;
 pub mod keymap;
 #[cfg(target_os = "macos")]
 pub mod native_menu;

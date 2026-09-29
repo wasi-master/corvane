@@ -428,6 +428,9 @@ pub struct FileStatus {
     /// Two-letter porcelain code (`.M`, `UU`, `??`), kept for conflict handling.
     pub code: String,
     pub submodule: bool,
+    /// Porcelain v2 `S<c><m><u>` flags for submodules (GHD `SubmoduleStatus`).
+    #[serde(default)]
+    pub submodule_status: Option<SubmoduleStatus>,
     /// Conflicted text files: number of leftover `<<<<<<<`/`=======`/`>>>>>>>`
     /// markers (0 once resolved in an editor). `None` for binary / delete
     /// conflicts that need a manual "use ours / theirs" choice
@@ -921,25 +924,99 @@ pub struct DiffHunk {
     pub lines: Vec<DiffLine>,
 }
 
+/// GHD `SubmoduleStatus`: what changed inside a submodule.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubmoduleStatus {
+    pub commit_changed: bool,
+    pub modified_changes: bool,
+    pub untracked_changes: bool,
+}
+
+/// GHD `Image`: the bytes of one side of an image diff.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImageBlob {
+    pub bytes: Vec<u8>,
+    /// `image/png`, `image/jpg`, …
+    pub media_type: String,
+}
+
+/// GHD `ISubmoduleDiff`.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubmoduleDiff {
+    pub path: String,
+    pub full_path: PathBuf,
+    /// `submodule.<path>.url` from the repository config.
+    pub url: Option<String>,
+    pub old_sha: Option<String>,
+    pub new_sha: Option<String>,
+    pub status: SubmoduleStatus,
+}
+
+/// GHD `ImageDiffType` (the tabs of a modified-image diff).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum ImageDiffType {
+    #[default]
+    TwoUp,
+    Swipe,
+    OnionSkin,
+    Difference,
+}
+
+/// GHD `imageFileExtensions` + `getMediaType`: `Some` when a binary file
+/// can be shown as an image.
+pub fn image_media_type(path: &str) -> Option<&'static str> {
+    let ext = path.rsplit('.').next()?.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpg",
+        "gif" => "image/gif",
+        "ico" => "image/x-icon",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        "avif" => "image/avif",
+        _ => return None,
+    })
+}
+
+/// GHD `IDiff` (`DiffType`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Diff {
     Text {
         hunks: Vec<DiffHunk>,
-        /// Diff was truncated because it exceeded the size limit.
-        truncated: bool,
+    },
+    /// `LargeText`: shown only after "Show Diff" (performance).
+    LargeText {
+        hunks: Vec<DiffHunk>,
     },
     Binary,
+    /// `Image`: `previous` is missing for new files, `current` for deleted ones.
+    Image {
+        previous: Option<ImageBlob>,
+        current: Option<ImageBlob>,
+    },
     /// Nothing to show (e.g. empty file, mode-only change).
     Empty,
+    /// `Unrenderable`: beyond what git would even hand over.
     TooLarge,
-    Submodule,
+    Submodule(SubmoduleDiff),
 }
 
 impl Diff {
     pub fn line_count(&self) -> usize {
         match self {
-            Diff::Text { hunks, .. } => hunks.iter().map(|h| h.lines.len() + 1).sum(),
+            Diff::Text { hunks } | Diff::LargeText { hunks } => {
+                hunks.iter().map(|h| h.lines.len() + 1).sum()
+            }
             _ => 0,
+        }
+    }
+
+    /// The hunks of a text diff (large ones included).
+    pub fn hunks(&self) -> Option<&[DiffHunk]> {
+        match self {
+            Diff::Text { hunks } | Diff::LargeText { hunks } => Some(hunks),
+            _ => None,
         }
     }
 }

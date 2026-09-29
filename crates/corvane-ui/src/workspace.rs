@@ -257,7 +257,12 @@ impl Workspace {
                     .flex()
                     .flex_col()
                     .min_h_0()
-                    .child(diff_header(&file.path, file.status.kind, cx))
+                    .child(diff_header(
+                        &file.path,
+                        file.status.kind,
+                        &self.diff_view,
+                        cx,
+                    ))
                     .child(self.diff_view.clone())
                     .into_any_element()
             }

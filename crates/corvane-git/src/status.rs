@@ -193,6 +193,15 @@ pub fn map_status(code: &str, sub: &str, score: Option<u8>) -> Option<FileStatus
     let index = entry(x);
     let working_tree = entry(y);
     let submodule = sub.starts_with('S');
+    // `S<c><m><u>`: commit changed / modified tracked files / untracked files
+    let submodule_status = submodule.then(|| {
+        let flag = |ix: usize, ch: char| sub.chars().nth(ix) == Some(ch);
+        corvane_models::SubmoduleStatus {
+            commit_changed: flag(1, 'C'),
+            modified_changes: flag(2, 'M'),
+            untracked_changes: flag(3, 'U'),
+        }
+    });
 
     let kind = if code == "??" {
         FileStatusKind::Untracked
@@ -216,6 +225,7 @@ pub fn map_status(code: &str, sub: &str, score: Option<u8>) -> Option<FileStatus
         score,
         code: code.to_string(),
         submodule,
+        submodule_status,
         conflict_markers: None,
     })
 }
