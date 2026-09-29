@@ -1,0 +1,10 @@
+0 0 5 m-perl comment
+1 0 2 m-perl def
+1 3 2 m-perl variable
+1 6 1 m-perl operator
+1 8 5 m-perl string
+1 15 2 m-perl variable
+1 18 2 m-perl operator
+1 21 5 m-perl string-2
+1 26 3 m-perl string-2
+1 31 4 m-perl string

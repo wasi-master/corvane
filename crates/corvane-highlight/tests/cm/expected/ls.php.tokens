@@ -1,0 +1,7 @@
+0 0 5 m-xml meta
+1 0 5 m-clike comment
+1 5 2 m-clike meta
+4 13 1 m-xml tag bracket
+4 14 2 m-xml tag bracket tag error
+4 16 1 m-xml tag
+6 0 2 m-xml attribute

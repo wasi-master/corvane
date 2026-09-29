@@ -102,6 +102,8 @@ fn is_space(c: char) -> bool {
 struct Lexer<'a> {
     chars: &'a [char],
     i: usize,
+    /// a line terminator was skipped since the last token (ASI)
+    nl: bool,
 }
 
 impl Lexer<'_> {
@@ -113,9 +115,15 @@ impl Lexer<'_> {
     fn skip_trivia(&mut self) -> Result<(), ()> {
         loop {
             match (self.peek(0), self.peek(1)) {
-                (Some(c), _) if is_space(c) => self.i += 1,
+                (Some(c), _) if is_space(c) => {
+                    self.nl |= crate::cm::is_js_line_terminator(c);
+                    self.i += 1;
+                }
                 (Some('/'), Some('/')) => {
-                    while self.peek(0).is_some_and(|c| c != '\n') {
+                    while self
+                        .peek(0)
+                        .is_some_and(|c| !crate::cm::is_js_line_terminator(c))
+                    {
                         self.i += 1;
                     }
                 }
@@ -127,7 +135,10 @@ impl Lexer<'_> {
                                 self.i += 2;
                                 break;
                             }
-                            (Some(_), _) => self.i += 1,
+                            (Some(c), _) => {
+                                self.nl |= crate::cm::is_js_line_terminator(c);
+                                self.i += 1;
+                            }
                             (None, _) => return Err(()),
                         }
                     }
@@ -167,7 +178,11 @@ impl Lexer<'_> {
                 Some('$') if self.peek(1) == Some('{') => {
                     self.i += 2;
                     let toks = self.tokens_until_brace()?;
-                    let mut p = Parser { toks: &toks, i: 0 };
+                    let mut p = Parser {
+                        toks: &toks,
+                        nl: &[],
+                        i: 0,
+                    };
                     p.expression()?;
                     if p.i != toks.len() {
                         return Err(());
@@ -206,7 +221,7 @@ impl Lexer<'_> {
         let mut class = false;
         loop {
             match self.peek(0) {
-                None | Some('\n' | '\r') => return Err(()),
+                None | Some('\n' | '\r' | '\u{2028}' | '\u{2029}') => return Err(()),
                 Some('\\') => self.i += 2,
                 Some('[') => {
                     class = true;
@@ -319,18 +334,23 @@ impl Lexer<'_> {
     }
 }
 
-fn lex(src: &str) -> Result<Vec<T>, ()> {
+/// The tokens, and for each whether a line terminator precedes it.
+fn lex(src: &str) -> Result<(Vec<T>, Vec<bool>), ()> {
     let chars: Vec<char> = src.chars().collect();
     let mut lx = Lexer {
         chars: &chars,
         i: 0,
+        nl: false,
     };
     let mut out = Vec::new();
+    let mut nl = Vec::new();
     loop {
+        lx.nl = false;
         lx.skip_trivia()?;
         if lx.peek(0).is_none() {
-            return Ok(out);
+            return Ok((out, nl));
         }
+        nl.push(lx.nl);
         let t = lx.token(out.last())?;
         out.push(t);
     }
@@ -340,6 +360,8 @@ type R = Result<(), ()>;
 
 struct Parser<'a> {
     toks: &'a [T],
+    /// a line terminator before `toks[i]` (empty inside template parts)
+    nl: &'a [bool],
     i: usize,
 }
 
@@ -766,10 +788,14 @@ impl Parser<'_> {
 
 /// `Function('', 'var x ' + rest)` would not throw a `SyntaxError`.
 pub fn var_x_parses(rest: &str) -> bool {
-    let Ok(toks) = lex(rest) else {
+    let Ok((toks, nl)) = lex(rest) else {
         return false;
     };
-    let mut p = Parser { toks: &toks, i: 0 };
+    let mut p = Parser {
+        toks: &toks,
+        nl: &nl,
+        i: 0,
+    };
     let ok = (|| -> R {
         // var x [= init] (, name [= init])* [;]
         loop {
@@ -784,8 +810,21 @@ pub fn var_x_parses(rest: &str) -> bool {
             }
             p.i += 1;
         }
-        p.eat(";");
-        if p.i == toks.len() { Ok(()) } else { Err(()) }
+        // then expression statements: a line terminator (U+2028 / U+2029
+        // inside a pug line) before a token that cannot continue the
+        // statement inserts the `;` (ASI)
+        loop {
+            if p.i == toks.len() {
+                return Ok(());
+            }
+            if !p.eat(";") && !p.nl.get(p.i).copied().unwrap_or(false) {
+                return Err(());
+            }
+            if p.i == toks.len() || is_punct(p.peek(), ";") {
+                continue;
+            }
+            p.expression()?;
+        }
     })();
     ok.is_ok()
 }

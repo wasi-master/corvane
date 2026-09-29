@@ -606,7 +606,7 @@ impl Markdown {
             && s.list == List::False
             && s.code == 0
             && !is_hr
-            && !re!(r"^\s*\[[^\]]+?\]:[^\n\r\x{2028}\x{2029}]*$")
+            && !re!(r"^\s*\[[^\]]+?\]:.*$")
                 .is_match(stream.string())
                 .unwrap_or(false)
         {
@@ -807,7 +807,7 @@ impl Markdown {
             let pattern = format!(r"^\s*(?:[^{escaped}\\]+|\\\\|\\.){escaped}");
             // built per link title like the JS; rare (a footnote URL ending
             // its line, then an inline special char)
-            if let Ok(re) = Regex::new(&pattern)
+            if let Ok(re) = Regex::new(&crate::cm::js_pattern(&pattern))
                 && stream.matches(&re)
             {
                 return Some("string".into());
@@ -849,12 +849,7 @@ impl Markdown {
         if ch == '['
             && s.image_marker
             && stream
-                .match_re(
-                    re!(
-                        r"^[^\]]*\](\([^\n\r\x{2028}\x{2029}]*?\)| ?\[[^\n\r\x{2028}\x{2029}]*?\])"
-                    ),
-                    false,
-                )
+                .match_re(re!(r"^[^\]]*\](\(.*?\)| ?\[.*?\])"), false)
                 .is_some()
         {
             s.image_marker = false;
@@ -872,7 +867,7 @@ impl Markdown {
         }
 
         if ch == '[' && !s.image {
-            if s.link_text && stream.matches(re!(r"^[^\n\r\x{2028}\x{2029}]*?\]")) {
+            if s.link_text && stream.matches(re!(r"^.*?\]")) {
                 return Self::get_type(s);
             }
             s.link_text = true;
@@ -883,10 +878,7 @@ impl Markdown {
             let t = Self::get_type(s);
             s.link_text = false;
             let f = if stream
-                .match_re(
-                    re!(r"^(?:\([^\n\r\x{2028}\x{2029}]*?\)| ?\[[^\n\r\x{2028}\x{2029}]*?\])"),
-                    false,
-                )
+                .match_re(re!(r"^(?:\(.*?\)| ?\[.*?\])"), false)
                 .is_some()
             {
                 F::LinkHref
@@ -900,10 +892,7 @@ impl Markdown {
 
         if ch == '<'
             && stream
-                .match_re(
-                    re!(r"^(https?|ftps?)://(?:[^\\>]|\\[^\n\r\x{2028}\x{2029}])+>"),
-                    false,
-                )
+                .match_re(re!(r"^(https?|ftps?)://(?:[^\\>]|\\.)+>"), false)
                 .is_some()
         {
             s.f = F::LinkInline;
@@ -916,10 +905,7 @@ impl Markdown {
 
         if ch == '<'
             && stream
-                .match_re(
-                    re!(r"^[^> \\]+@(?:[^\\>]|\\[^\n\r\x{2028}\x{2029}])+>"),
-                    false,
-                )
+                .match_re(re!(r"^[^> \\]+@(?:[^\\>]|\\.)+>"), false)
                 .is_some()
         {
             s.f = F::LinkInline;
@@ -1089,9 +1075,9 @@ impl Markdown {
         }
         // linkRE[endChar]
         if end == ')' {
-            stream.matches(re!(r"^(?:[^\\\(\)]|\\[^\n\r\x{2028}\x{2029}]|\((?:[^\\\(\)]|\\[^\n\r\x{2028}\x{2029}])*\))*?(?=\))"));
+            stream.matches(re!(r"^(?:[^\\\(\)]|\\.|\((?:[^\\\(\)]|\\.)*\))*?(?=\))"));
         } else {
-            stream.matches(re!(r"^(?:[^\\\[\]]|\\[^\n\r\x{2028}\x{2029}]|\[(?:[^\\\[\]]|\\[^\n\r\x{2028}\x{2029}])*\])*?(?=\])"));
+            stream.matches(re!(r"^(?:[^\\\[\]]|\\.|\[(?:[^\\\[\]]|\\.)*\])*?(?=\])"));
         }
         s.link_href = true;
         Self::get_type(s)
@@ -1099,10 +1085,7 @@ impl Markdown {
 
     /// `footnoteLink`
     fn footnote_link(&self, stream: &mut StringStream, s: &mut MarkdownState) -> Option<String> {
-        if stream
-            .match_re(re!(r"^([^\]\\]|\\[^\n\r\x{2028}\x{2029}])*\]:"), false)
-            .is_some()
-        {
+        if stream.match_re(re!(r"^([^\]\\]|\\.)*\]:"), false).is_some() {
             s.f = F::FootnoteLinkInside;
             stream.next(); // Consume [
             s.link_text = true;
@@ -1120,7 +1103,7 @@ impl Markdown {
             s.link_text = false;
             return t;
         }
-        stream.matches(re!(r"^([^\]\\]|\\[^\n\r\x{2028}\x{2029}])+"));
+        stream.matches(re!(r"^([^\]\\]|\\.)+"));
         Some("link".into())
     }
 

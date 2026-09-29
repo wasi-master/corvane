@@ -1,0 +1,8 @@
+0 0 4 m-coffeescript comment
+1 0 1 m-coffeescript variable
+1 2 1 m-coffeescript punctuation
+1 4 8 m-coffeescript string
+1 13 9 m-coffeescript comment
+2 0 1 m-coffeescript operator
+2 1 2 m-coffeescript variable
+2 4 1 m-coffeescript operator
