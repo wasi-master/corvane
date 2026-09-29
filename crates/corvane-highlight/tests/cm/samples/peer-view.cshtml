@@ -1,0 +1,23 @@
+@model IEnumerable<WebApp.Models.Repository>
+@{
+    ViewData["Title"] = "Repositories";
+    Layout = "_Layout";
+}
+<h2>@ViewData["Title"]</h2>
+<p><a asp-action="Create" class="btn btn-primary">Create new</a></p>
+<table class="table">
+    <thead><tr><th>@Html.DisplayNameFor(m => m.Name)</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var repo in Model) {
+        <tr class="@(repo.IsPrivate ? "private" : "public")">
+            <td>@repo.Name <%-- legacy comment --%></td>
+            <td><a asp-action="Edit" asp-route-id="@repo.Id">Edit</a> | <%= repo.Stars %> ⭐</td>
+        </tr>
+    }
+    </tbody>
+</table>
+@section Scripts {
+    <script>
+        $(function () { $(".table").DataTable({ paging: true }); });
+    </script>
+}

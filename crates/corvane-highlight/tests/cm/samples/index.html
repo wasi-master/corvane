@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-theme=dark>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corvane &mdash; a native Git client &#x1F426; &#169; &bogus &amp</title>
+  <link rel="stylesheet" href="/styles/main.css" />
+  <!-- a comment
+       spanning <b>several</b> lines -->
+  <style>
+    :root { --accent: #0969da; --radius: 6px; }
+    body {
+      margin: 0;
+      font: 14px/1.5 -apple-system, "Segoe UI", sans-serif;
+      background: rgba(13, 17, 23, .95) url("bg.png") no-repeat;
+    }
+    .sidebar > ul li:hover::after { content: "→"; color: var(--accent) !important; }
+    @media (max-width: 600px) and (prefers-color-scheme: dark) {
+      .sidebar { display: none }
+    }
+    /* unterminated comment
+       ends here */ a[href^="https"] { text-decoration: underline dotted; }
+  </style>
+  <style media="print" type="text/css">h1 { page-break-before: always }</style>
+  <style type="text/less">@color: red; .x { color: @color }</style>
+  <script>
+    // plain script
+    const repos = ["corvane", 'ghd', `tmpl ${1 + 2}`];
+    function greet(name = "world") {
+      if (name.length > 10 && !/^\d+$/.test(name)) return `Hi, ${name}!`;
+      return "<b>" + name + "</b>"; // markup inside a string
+    }
+    document.addEventListener("DOMContentLoaded", () => greet());
+  </script>
+  <script type="module">
+    import { render } from "./app.js";
+    export default async function main() { await render(document.body, { debug: false }); }
+  </script>
+  <script type="text/template" id="row">
+    <li class="row">{{ name }} <span>{{ count }}</span></li>
+  </script>
+  <script type="application/json">{"name": "corvane", "version": 1, "tags": ["git", null, true]}</script>
+  <script type="application/ld+json">
+    { "@context": "https://schema.org", "@type": "SoftwareApplication" }
+  </script>
+  <script lang="babel">let x = <div />;</script>
+  <script src="/vendor/analytics.js" async defer></script>
+  <script src="/vendor/self-closed.js" />
+  <p>swallowed by the null mode until the end tag</p>
+  </script>
+  <script>
+    /* </script> in a comment ends it */ var after = 1;
+    let lt = a <b; let lt2 = x </
+  </script>
+  <script type=module defer>console.log("unquoted type with another attribute")</script>
+  <SCRIPT TYPE="TEXT/JAVASCRIPT">var shout = 1 < 2 ? "yes" : 'no';</SCRIPT >
+</head>
+<body class="app  dark" onload="init({ fast: true })" hidden>
+  <header id=top>
+    <h1 title='It&apos;s "quoted"'>Hello, 世界 👋 &lt;tag&gt;</h1>
+    <nav>
+      <a href="#one" onclick="event.preventDefault(); go('one')">One</a> |
+      <a href=/two data-x=1>Two</a>
+    </nav>
+  </header>
+  <main>
+    <p>Paragraph with <em>emphasis</em>, <strong>strong</strong> and a<br>break.
+    <p>Implicitly closed paragraph
+    <ul>
+      <li>one
+      <li>two <img src="x.png" alt="">
+    </ul>
+    <table>
+      <tr><td>a<td>b</tr>
+    </table>
+    <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" fill="none" stroke="currentColor"/>
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+    <textarea name="msg" rows=3>raw <b>text</b> here</textarea>
+    <input type="checkbox" checked disabled>
+    <div
+      class="multi-line"
+      data-value="spans
+      two lines"
+      style="color: red; margin: 0 auto"
+    >content</div>
+    <![CDATA[ some <cdata> content ]]>
+    <?processing instruction?>
+    <span>mismatched</div>
+    </span>
+    <custom-element some-attr="1"></custom-element>
+    <p>stray < less-than and & ampersand</p>
+  </main>
+  <script>
+    const html = "</script>";
+    alert("after the early end tag");
+  </script>
+  <script>
+    let unterminated = {
+      a: 1,
+      b: [2, 3],
+    /* a comment that
+       spans lines */
+    };
+  </script>
+  <style>
+    .never-closed {
+      color: blue;
+</body>
+</html>

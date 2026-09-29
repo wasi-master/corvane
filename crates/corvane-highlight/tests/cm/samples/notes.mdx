@@ -1,0 +1,109 @@
+---
+title: Release notes
+tags: [desktop, rust]
+---
+
+import { Callout } from '../components/Callout'
+export const meta = { version: '0.4.0' }
+
+# Release notes 🎉
+
+<Callout type="warning">
+  Breaking changes ahead: **read carefully**.
+</Callout>
+
+## v0.4.0 — 2026-09-30
+
+### Added
+
+- Diff highlighting now uses CodeMirror modes ported to Rust ✨
+- `Cmd+Shift+P` opens the command palette (see <kbd>Cmd</kbd>)
+- Emoji in commit messages: 👩‍💻 🧑🏽‍🚀 🇯🇵 render correctly
+  - positions are UTF-16 units, so `😀` counts as two
+  - *emphasis after emoji 😀* and **strong 🚀** and _under 🎉_
+  - 😀*star after emoji*😀 and 🎉_underscore_🎉
+
+### Fixed
+
+1. Crash when a repository path contains `日本語`.
+2. **Bold** at the start of an item.
+3. `code` at the start of an item.
+4. [Link](https://example.com/issues/42) at the start of an item.
+
+```markdown
+# nested markdown fence
+- with a list
+<b>and html</b>
+```
+
+```text/html
+<section>raw MIME info string</section>
+```
+
+```image/svg+xml
+<svg viewBox="0 0 10 10"><circle r="4"/></svg>
+```
+
+```XHTML
+<br/>
+```
+
+~~~~ rust title="main.rs"
+fn main() { println!("not highlighted"); }
+~~~
+still in the fence (closing run too short)
+~~~~~
+
+```js {1,3}
+console.log("info string with attributes");
+```
+
+> [!NOTE]
+> GitHub-style alert syntax is just a quote with a link-ish marker.
+
+> [!WARNING]
+> Second alert.
+
+<div align="center">
+  <img src="docs/screenshot.png" width="600" alt="Screenshot">
+</div>
+
+<p align="center"><a href="https://example.com">Website</a> ·
+<a href="https://example.com/docs">Docs</a></p>
+
+Mixed: <Component prop={value} /> and {expression} and <></> fragments.
+
+| Shortcut | Action |
+|----------|--------|
+| `⌘N`     | New repository |
+| `⌘⇧N`    | New branch |
+| `⌘\|`    | Escaped pipe |
+
+Term
+: Definition list style (not in CommonMark)
+
+Horizontal rules of every kind:
+
+___
+
+- - - -
+
+* * *
+
++ + +
+
+Line ending with backslash\
+and next.
+
+Hard break with spaces  
+next.
+
+  1. indented ordered
+  2. second
+     continuation
+10. double digit
+11) paren double digit
+
+    code after list?
+
+End of notes. ⚠️
