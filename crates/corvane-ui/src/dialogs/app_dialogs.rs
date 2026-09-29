@@ -73,12 +73,11 @@ impl Render for AboutDialog {
                     .items_center()
                     .gap(SPACING)
                     .child(
-                        link_button("about-license", "License", cx).on_click(|_, _, cx| {
-                            Dispatcher::open_url(
-                                "https://github.com/wasi-master/corvane/blob/main/LICENSE",
-                                cx,
-                            )
-                        }),
+                        // GHD `onShowAcknowledgements`
+                        link_button("about-license", "License and Open Source Notices", cx)
+                            .on_click(|_, _, cx| {
+                                Dispatcher::show_popup(Popup::Acknowledgements, cx)
+                            }),
                     )
                     .child(div().text_color(t.text_secondary).child("·"))
                     .child(

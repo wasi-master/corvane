@@ -1,6 +1,7 @@
 //! Application state and the dispatcher that drives backends.
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
+pub mod acknowledgements;
 pub mod autocomplete;
 pub mod avatars;
 pub mod clone_info;

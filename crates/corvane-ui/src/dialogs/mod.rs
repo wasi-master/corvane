@@ -1,6 +1,7 @@
 //! Dialog host: turns `AppState::popup` into a live dialog view, recreating
 //! it only when the popup value changes.
 
+mod acknowledgements;
 mod add_existing;
 mod app_dialogs;
 pub(crate) mod branch_dialogs;
@@ -354,6 +355,7 @@ impl DialogHost {
                 .new(|_| ConfirmRemoveRepositoryDialog::new(state, *repo))
                 .into(),
             Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
+            Popup::Acknowledgements => cx.new(acknowledgements::AcknowledgementsDialog::new).into(),
             Popup::ReleaseNotes { summary } => cx
                 .new(|_| release_notes::ReleaseNotesDialog::new(summary.clone()))
                 .into(),

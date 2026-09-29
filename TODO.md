@@ -56,7 +56,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] **[INFRA]** Developer ID signing + notarization — not planned (hobby project, no paid Apple Developer account). If it ever happens: `rcodesign` notarize step in release CI, drop `--no-quarantine` from cask docs
 - [ ] **[INFRA]** Velopack or Sparkle — rejected for now (both assume signed + notarized bundles); custom self-updater in M7 instead
-- [ ] **[INFRA]** `About` › Acknowledgements generated from `cargo about`
 - [ ] **[INFRA]** Crash reporting (opt-in, local `.crash` capture only — no telemetry, ever)
 - [ ] **[INFRA]** Screenshot-regression CI job on `macos-15` runner
 - [ ] **[INFRA]** `cargo vendor` snapshot of `gpui-pre`/`gpui-kit` in release builds

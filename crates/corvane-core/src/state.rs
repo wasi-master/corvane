@@ -69,6 +69,8 @@ pub enum Popup {
     CreateFork {
         repo: u64,
     },
+    /// `Acknowledgements`: License and Open Source Notices.
+    Acknowledgements,
     /// `ReleaseNotes`: what's new in the running version.
     ReleaseNotes {
         summary: crate::release_notes::ReleaseSummary,

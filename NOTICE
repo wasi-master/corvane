@@ -15,3 +15,7 @@ Colour scale values are from GitHub's Primer design system
 
 GPUI and gpui-kit are Copyright (c) Zed Industries and Longbridge,
 licensed under the Apache License 2.0.
+
+The licenses of the Rust crates compiled into Corvane are listed in
+About › License and Open Source Notices (assets/acknowledgements.json,
+generated with cargo-about by packaging/acknowledgements.sh).
