@@ -5,6 +5,7 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod clike;
+pub mod coffeescript;
 pub mod css;
 pub mod dart;
 pub mod diff;
@@ -236,6 +237,9 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/xml" | "application/xml" => Some(xml()),
         "text/jsx" => Some(jsx()),
         "text/markdown" | "text/x-markdown" => Some(markdown()),
+        "application/vnd.coffeescript" | "text/x-coffeescript" | "text/coffeescript" => {
+            Some(cached!(coffeescript::CoffeeScript))
+        }
         "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }
