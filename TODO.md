@@ -7,7 +7,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 ## GitHub layer
 
 - [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`) that open the built `PullRequestReview` / `PullRequestComment` / `PullRequestChecksFailed` dialogs; Settings › Notifications is persisted but nothing emits notifications yet
-- [ ] **[GH]** Repository `permissions` from the API (`hasWritePermission`): the "You don't have write access… create a fork?" commit warning and the fork suggestion on push
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
 - [ ] **[GH]** Issue creation with template picker (v1 opens `/issues/new` in browser)
