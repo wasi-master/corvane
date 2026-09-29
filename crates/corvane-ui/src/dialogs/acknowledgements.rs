@@ -3,7 +3,7 @@
 //! distributed library with a link to its repository and its license text in
 //! monospace. The notices come from the embedded `acknowledgements.json`
 //! (`corvane_core::acknowledgements`); hundreds of entries render through a
-//! virtualized `list`.
+//! virtualized `list` whose rows are all measured up front.
 //!
 //! Deviation: the license text is not selectable (GPUI's static text has no
 //! selection; GHD sets `user-select: text`).
@@ -44,7 +44,10 @@ impl AcknowledgementsDialog {
         let rows = HEAD_ROWS + notices.as_ref().map_or(0, |n| n.libraries.len());
         Self {
             notices,
-            list: ListState::new(rows, ListAlignment::Top, px(300.)),
+            // every row is measured on the first layout so the scrollbar
+            // reflects the whole text (estimated heights made the thumb
+            // shrink and jump while scrolling)
+            list: ListState::new(rows, ListAlignment::Top, px(300.)).measure_all(),
         }
     }
 }
