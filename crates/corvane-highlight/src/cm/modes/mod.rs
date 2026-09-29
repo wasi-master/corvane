@@ -1,0 +1,255 @@
+//! Ported CodeMirror modes and GHD's file → MIME tables
+//! (`app/src/highlighter/index.ts` `extensionModes`, `guessMimeType`).
+//!
+//! To port a mode: add `<name>.rs` exposing a constructor, list its MIME
+//! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
+
+use std::sync::{Arc, OnceLock};
+
+use super::Mode;
+use super::simple::{SimpleMode, r, r0, rg};
+
+/// `extensionMIMEMap` (lower-cased extension with the dot).
+pub fn mime_for_extension(ext: &str) -> Option<&'static str> {
+    Some(match ext {
+        ".ts" => "text/typescript",
+        ".mts" => "text/typescript",
+        ".cts" => "text/typescript",
+        ".js" => "text/javascript",
+        ".mjs" => "text/javascript",
+        ".cjs" => "text/javascript",
+        ".json" => "application/json",
+        ".coffee" => "text/x-coffeescript",
+        ".tsx" => "text/typescript-jsx",
+        ".mtsx" => "text/typescript-jsx",
+        ".ctsx" => "text/typescript-jsx",
+        ".jsx" => "text/jsx",
+        ".mjsx" => "text/jsx",
+        ".cjsx" => "text/jsx",
+        ".html" => "text/html",
+        ".htm" => "text/html",
+        ".astro" => "text/html",
+        ".aspx" => "application/x-aspx",
+        ".cshtml" => "application/x-aspx",
+        ".jsp" => "application/x-jsp",
+        ".css" => "text/css",
+        ".scss" => "text/x-scss",
+        ".less" => "text/x-less",
+        ".vue" => "text/x-vue",
+        ".markdown" => "text/x-markdown",
+        ".md" => "text/x-markdown",
+        ".mdx" => "text/x-markdown",
+        ".yaml" => "text/yaml",
+        ".yml" => "text/yaml",
+        ".xml" => "text/xml",
+        ".xaml" => "text/xml",
+        ".xsd" => "text/xml",
+        ".csproj" => "text/xml",
+        ".fsproj" => "text/xml",
+        ".vcxproj" => "text/xml",
+        ".vbproj" => "text/xml",
+        ".svg" => "text/xml",
+        ".resx" => "text/xml",
+        ".props" => "text/xml",
+        ".targets" => "text/xml",
+        ".diff" => "text/x-diff",
+        ".patch" => "text/x-diff",
+        ".m" => "text/x-objectivec",
+        ".scala" => "text/x-scala",
+        ".sc" => "text/x-scala",
+        ".cs" => "text/x-csharp",
+        ".cake" => "text/x-csharp",
+        ".java" => "text/x-java",
+        ".c" => "text/x-c",
+        ".h" => "text/x-c",
+        ".cpp" => "text/x-c++src",
+        ".hpp" => "text/x-c++src",
+        ".cc" => "text/x-c++src",
+        ".hh" => "text/x-c++src",
+        ".hxx" => "text/x-c++src",
+        ".cxx" => "text/x-c++src",
+        ".ino" => "text/x-c++src",
+        ".kt" => "text/x-kotlin",
+        ".ml" => "text/x-ocaml",
+        ".fs" => "text/x-fsharp",
+        ".fsx" => "text/x-fsharp",
+        ".fsi" => "text/x-fsharp",
+        ".swift" => "text/x-swift",
+        ".sh" => "text/x-sh",
+        ".sql" => "text/x-sql",
+        ".cql" => "application/x-cypher-query",
+        ".go" => "text/x-go",
+        ".pl" => "text/x-perl",
+        ".php" => "application/x-httpd-php",
+        ".py" => "text/x-python",
+        ".pyi" => "text/x-python",
+        ".vpy" => "text/x-python",
+        ".rb" => "text/x-ruby",
+        ".clj" => "text/x-clojure",
+        ".cljc" => "text/x-clojure",
+        ".cljs" => "text/x-clojure",
+        ".edn" => "text/x-clojure",
+        ".rs" => "text/x-rustsrc",
+        ".ex" => "text/x-elixir",
+        ".exs" => "text/x-elixir",
+        ".hx" => "text/x-haxe",
+        ".r" => "text/x-rsrc",
+        ".ps1" => "application/x-powershell",
+        ".vb" => "text/x-vb",
+        ".f" => "text/x-fortran",
+        ".f90" => "text/x-fortran",
+        ".lua" => "text/x-lua",
+        ".luau" => "text/x-luau",
+        ".cr" => "text/x-crystal",
+        ".jl" => "text/x-julia",
+        ".tex" => "text/x-stex",
+        ".rq" => "application/sparql-query",
+        ".styl" => "text/x-styl",
+        ".soy" => "text/x-soy",
+        ".st" => "text/x-stsrc",
+        ".slim" => "application/x-slim",
+        ".haml" => "text/x-haml",
+        ".sieve" => "application/sieve",
+        ".ss" => "text/x-scheme",
+        ".sls" => "text/x-scheme",
+        ".scm" => "text/x-scheme",
+        ".rst" => "text/x-rst",
+        ".rpm" => "text/x-rpm-spec",
+        ".q" => "text/x-q",
+        ".pp" => "text/x-puppet",
+        ".pug" => "text/x-pug",
+        ".proto" => "text/x-protobuf",
+        ".properties" => "text/x-properties",
+        ".gitattributes" => "text/x-properties",
+        ".gitignore" => "text/x-properties",
+        ".editorconfig" => "text/x-properties",
+        ".ini" => "text/x-ini",
+        ".pig" => "text/x-pig",
+        ".pgp" => "application/pgp",
+        ".oz" => "text/x-oz",
+        ".pas" => "text/x-pascal",
+        ".toml" => "text/x-toml",
+        ".dart" => "application/dart",
+        ".zig" => "text/x-zig",
+        ".cmake" => "text/x-cmake",
+        _ => return None,
+    })
+}
+
+/// `basenameMIMEMap` (lower-cased file name).
+pub fn mime_for_basename(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "cargo.lock" => "text/x-toml",
+        "dockerfile" => "text/x-dockerfile",
+        _ => return None,
+    })
+}
+
+/// `guessMimeType`: `<?xml`, or a shebang naming ts-node / node / sh / bash
+/// / python (`/^#!.*?(ts-node|node|bash|sh|python(?:[\d.]+)?)/`).
+pub fn guess_mime(first_line: &str) -> Option<&'static str> {
+    if first_line.starts_with("<?xml") {
+        return Some("text/xml");
+    }
+    let rest = first_line.strip_prefix("#!")?;
+    // the lazy `.*?` takes the earliest position; the alternation order
+    // decides between words starting there
+    for (i, _) in rest.char_indices() {
+        for word in ["ts-node", "node", "bash", "sh", "python"] {
+            if rest[i..].starts_with(word) {
+                return Some(match word {
+                    "ts-node" => "text/typescript",
+                    "node" => "text/javascript",
+                    "bash" | "sh" => "text/x-sh",
+                    _ => "text/x-python",
+                });
+            }
+        }
+    }
+    None
+}
+
+/// The ported mode for a MIME type (`CodeMirror.getMode({}, mime)`).
+pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
+    match mime {
+        "text/x-rustsrc" | "text/rust" => Some(rust()),
+        _ => None,
+    }
+}
+
+/// `codemirror/mode/rust/rust.js`
+pub fn rust() -> Arc<dyn Mode> {
+    static MODE: OnceLock<Arc<dyn Mode>> = OnceLock::new();
+    MODE.get_or_init(|| {
+        Arc::new(SimpleMode::new(
+            "rust",
+            vec![
+                (
+                    "start",
+                    vec![
+                        r(r##"b?""##, "string").next("string"),
+                        r(r##"b?r""##, "string").next("string_raw"),
+                        r(r##"b?r#+""##, "string").next("string_raw_hash"),
+                        r(
+                            r##"'(?:[^'\\]|\\(?:[nrt0'"]|x[\da-fA-F]{2}|u\{[\da-fA-F]{6}\}))'"##,
+                            "string-2",
+                        ),
+                        r(r##"b'(?:[^']|\\(?:['\\nrt0]|x[\da-fA-F]{2}))'"##, "string-2"),
+                        r(
+                            r"(?:(?:[0-9][0-9_]*)(?:(?:[Ee][+-]?[0-9_]+)|\.[0-9_]+(?:[Ee][+-]?[0-9_]+)?)(?:f32|f64)?)|(?:0(?:b[01_]+|(?:o[0-7_]+)|(?:x[0-9a-fA-F_]+))|(?:[0-9][0-9_]*))(?:u8|u16|u32|u64|i8|i16|i32|i64|isize|usize)?",
+                            "number",
+                        ),
+                        rg(
+                            r"(let(?:\s+mut)?|fn|enum|mod|struct|type|union)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)",
+                            &[Some("keyword"), None, Some("def")],
+                        ),
+                        r(
+                            r"(?:abstract|alignof|as|async|await|box|break|continue|const|crate|do|dyn|else|enum|extern|fn|for|final|if|impl|in|loop|macro|match|mod|move|offsetof|override|priv|proc|pub|pure|ref|return|self|sizeof|static|struct|super|trait|type|typeof|union|unsafe|unsized|use|virtual|where|while|yield)\b",
+                            "keyword",
+                        ),
+                        r(
+                            r"\b(?:Self|isize|usize|char|bool|u8|u16|u32|u64|f16|f32|f64|i8|i16|i32|i64|str|Option)\b",
+                            "atom",
+                        ),
+                        r(r"\b(?:true|false|Some|None|Ok|Err)\b", "builtin"),
+                        rg(
+                            r"\b(fn)(\s+)([a-zA-Z_][a-zA-Z0-9_]*)",
+                            &[Some("keyword"), None, Some("def")],
+                        ),
+                        r(r"#!?\[.*\]", "meta"),
+                        r(r"\/\/.*", "comment"),
+                        r(r"\/\*", "comment").next("comment"),
+                        r(r"[-+\/*=<>!]+", "operator"),
+                        r(r"[a-zA-Z_]\w*!", "variable-3"),
+                        r(r"[a-zA-Z_]\w*", "variable"),
+                        r0(r"[\{\[\(]"),
+                        r0(r"[\}\]\)]"),
+                    ],
+                ),
+                (
+                    "string",
+                    vec![
+                        r(r##"""##, "string").next("start"),
+                        r(r##"(?:[^\\"]|\\(?:.|$))*"##, "string"),
+                    ],
+                ),
+                (
+                    "string_raw",
+                    vec![r(r##"""##, "string").next("start"), r(r##"[^"]*"##, "string")],
+                ),
+                (
+                    "string_raw_hash",
+                    vec![
+                        r(r##""#+"##, "string").next("start"),
+                        r(r##"(?:[^"]|"(?!#))*"##, "string"),
+                    ],
+                ),
+                (
+                    "comment",
+                    vec![r(r".*?\*\/", "comment").next("start"), r(r".*", "comment")],
+                ),
+            ],
+        ))
+    })
+    .clone()
+}
