@@ -1,6 +1,9 @@
 //! Forks - GHD `ui/forks/create-fork-dialog.tsx` (`CreateFork` popup),
 //! `app-store.ts#_convertRepositoryToFork`, `_updateRepositoryWorkflowPreferences`,
-//! `git-store.ts#addUpstreamRemoteIfNeeded` / `ensureUpstreamRemoteURL`.
+//! `git-store.ts#addUpstreamRemoteIfNeeded` / `ensureUpstreamRemoteURL` /
+//! `updateExistingUpstreamRemote`, and the `UpstreamAlreadyExists` popup's
+//! Update / Ignore (`app-store.ts#_updateExistingUpstreamRemote`,
+//! `_ignoreExistingUpstreamRemote`).
 //!
 //! Deviation: GHD decides the fork suggestion from the repository's API
 //! `permissions`; Corvane offers the fork when a push is refused with
@@ -17,6 +20,12 @@ use crate::state::Popup;
 
 /// `UpstreamRemoteName`
 pub const UPSTREAM_REMOTE_NAME: &str = "upstream";
+
+/// GHD `getIgnoreExistingUpstreamRemoteKey` (a localStorage key there, a
+/// store key here).
+fn ignore_existing_upstream_key(id: u64) -> String {
+    format!("repository/{id}/ignoreExistingUpstreamRemote")
+}
 
 impl Dispatcher {
     /// `_showCreateForkDialog`: only with an account for the repository.
@@ -131,6 +140,17 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
+        // `getIgnoreExistingUpstreamRemote`: the user picked Ignore once
+        let ignored = Self::state(cx)
+            .read(cx)
+            .store
+            .get::<bool>(&ignore_existing_upstream_key(id))
+            .ok()
+            .flatten()
+            .unwrap_or(false);
+        if ignored {
+            return;
+        }
         let (parent_url, remotes) = {
             let s = Self::state(cx).read(cx);
             let Some(parent) = s
@@ -161,10 +181,14 @@ impl Dispatcher {
         {
             return;
         }
-        if remotes.iter().any(|r| r.name == UPSTREAM_REMOTE_NAME) {
-            warn!(
-                id,
-                "a remote named upstream already exists and does not point at the parent"
+        if let Some(existing) = remotes.iter().find(|r| r.name == UPSTREAM_REMOTE_NAME) {
+            // `UpstreamAlreadyExistsError` → `upstreamAlreadyExistsHandler`
+            Self::show_popup(
+                Popup::UpstreamAlreadyExists {
+                    repo: id,
+                    existing_url: existing.url.clone(),
+                },
+                cx,
             );
             return;
         }
@@ -176,5 +200,43 @@ impl Dispatcher {
                 Err(err) => warn!(id, %err, "could not add the upstream remote"),
             },
         );
+    }
+
+    /// `UpstreamAlreadyExists` › Update (`updateExistingUpstreamRemote`):
+    /// point `upstream` at the parent's clone URL.
+    pub fn update_existing_upstream_remote(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let Some(parent_url) = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.github.as_ref())
+            .and_then(|gh| gh.parent.as_ref())
+            .map(|p| p.clone_url.clone())
+        else {
+            return;
+        };
+        spawn_bg(
+            cx,
+            move || corvane_git::set_remote_url(git, &workdir, UPSTREAM_REMOTE_NAME, &parent_url),
+            move |result, cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not update the upstream remote", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
+    /// `UpstreamAlreadyExists` › Ignore: never check this repository again.
+    pub fn ignore_existing_upstream_remote(id: u64, cx: &mut App) {
+        let result = Self::state(cx)
+            .read(cx)
+            .store
+            .set(&ignore_existing_upstream_key(id), &true);
+        if let Err(err) = result {
+            warn!(id, %err, "could not remember to ignore the upstream remote");
+        }
     }
 }

@@ -153,7 +153,8 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), None, cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url> opens a dialog at
+        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|
+        // upstream-already-exists opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
@@ -183,6 +184,40 @@ fn main() {
                         }
                         ("clone", _) => {
                             Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+                        }
+                        // GHD `showFakeUpstreamAlreadyExists` (test UI components):
+                        // an in-memory fork of desktop/desktop whose `upstream`
+                        // points elsewhere
+                        ("upstream-already-exists", Some(id)) => {
+                            let parent = corvane_core::GitHubRepository {
+                                endpoint: "https://api.github.com".into(),
+                                owner: "desktop".into(),
+                                name: "desktop".into(),
+                                html_url: "https://github.com/desktop/desktop".into(),
+                                clone_url: "https://github.com/desktop/desktop.git".into(),
+                                default_branch: Some("development".into()),
+                                private: false,
+                                fork: false,
+                                parent: None,
+                                archived: false,
+                            };
+                            corvane_core::AppState::global(cx).update(cx, |s, _| {
+                                if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
+                                    let mut fork = parent.clone();
+                                    fork.owner = "octocat".into();
+                                    fork.fork = true;
+                                    fork.parent = Some(Box::new(parent));
+                                    r.github = Some(fork);
+                                }
+                            });
+                            Dispatcher::show_popup(
+                                Popup::UpstreamAlreadyExists {
+                                    repo: id,
+                                    existing_url: "https://github.com/someone-else/desktop.git"
+                                        .into(),
+                                },
+                                cx,
+                            )
                         }
                         // `clone:<url>` opens the URL tab pre-filled
                         (other, _) if other.starts_with("clone:") => Dispatcher::show_popup(

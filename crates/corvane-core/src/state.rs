@@ -69,6 +69,11 @@ pub enum Popup {
     CreateFork {
         repo: u64,
     },
+    /// `UpstreamAlreadyExists`: the fork's `upstream` remote points elsewhere.
+    UpstreamAlreadyExists {
+        repo: u64,
+        existing_url: String,
+    },
     /// `ChooseForkSettings`: "How are you planning to use this fork?"
     ChooseForkSettings {
         repo: u64,
