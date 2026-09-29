@@ -53,5 +53,4 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Full keyboard navigation audit vs GHD (`docs/technical/keyboard-navigation.md` in desktop/desktop)
 - [ ] Full VoiceOver walkthrough (list containers own their rows, banners and the Expand/Contract Active Resizable announcement are live regions, icon-only buttons and dialogs are labelled)
-- [ ] High-contrast theme (GHD has none; nice-to-have)
 - [ ] Windows Narrator support once Windows lands (GPUI AccessKit gap on Windows)
