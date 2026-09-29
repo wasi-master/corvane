@@ -167,6 +167,9 @@ impl Workspace {
     pub fn set_section(&mut self, section: Section, cx: &mut Context<Self>) {
         if self.section != section {
             self.section = section;
+            if let Some(id) = self.state.read(cx).selected {
+                Dispatcher::show_section(id, section, cx);
+            }
             cx.notify();
         }
     }
@@ -339,6 +342,14 @@ impl Workspace {
 
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // The section is per repository (`repositoryState.selectedSection`), so
+        // dispatcher-driven switches (Amend Commit…, undo) and repository
+        // changes land here.
+        if let Some(section) = self.state.read(cx).selected_state().map(|rs| rs.section)
+            && section != self.section
+        {
+            self.section = section;
+        }
         let t = cx.ghd();
         let welcome_done = self.state.read(cx).settings.welcome_completed;
         if welcome_done {

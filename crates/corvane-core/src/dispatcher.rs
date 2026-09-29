@@ -1909,6 +1909,18 @@ impl Dispatcher {
                     let rs = s.repo_state_mut(id);
                     rs.committing = false;
                     if let Ok(sha) = &result {
+                        // GHD `_addBranchToForcePushList`: an amended tip
+                        // makes "Force push" the recommended action.
+                        if amend {
+                            let branch = rs
+                                .info
+                                .as_ref()
+                                .and_then(|i| i.current_branch())
+                                .map(|b| b.name_without_remote().to_string());
+                            if let Some(branch) = branch {
+                                rs.force_push_branches.insert(branch, sha.clone());
+                            }
+                        }
                         // GHD: no undo bar after an amend
                         rs.last_commit = (!amend).then(|| LastCommit {
                             sha: sha.clone(),
