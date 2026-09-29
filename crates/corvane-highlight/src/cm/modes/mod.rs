@@ -4,11 +4,13 @@
 //! To port a mode: add `<name>.rs` exposing a constructor, list its MIME
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
+pub mod asciiarmor;
 pub mod clike;
 pub mod clojure;
 pub mod cmake;
 pub mod crystal;
 pub mod css;
+pub mod cypher;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
@@ -24,17 +26,26 @@ pub mod julia;
 pub mod luau;
 pub mod mllike;
 pub mod multiplex;
+pub mod oz;
 pub mod pascal;
 pub mod perl;
 pub mod php;
+pub mod pig;
 pub mod powershell;
 pub mod properties;
 pub mod protobuf;
+pub mod puppet;
 pub mod python;
+pub mod q;
 pub mod r;
+pub mod rpm;
+pub mod rst;
 pub mod ruby;
 pub mod scheme;
 pub mod shell;
+pub mod sieve;
+pub mod smalltalk;
+pub mod sparql;
 pub mod sql;
 pub mod stex;
 pub mod swift;
@@ -242,6 +253,21 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
         "text/x-scheme" => Some(Arc::new(scheme::Scheme)),
+        "text/x-puppet" => Some(Arc::new(puppet::Puppet)),
+        "application/sparql-query" => Some(Arc::new(sparql::Sparql)),
+        "application/x-cypher-query" => Some(Arc::new(cypher::Cypher)),
+        "text/x-stsrc" => Some(Arc::new(smalltalk::Smalltalk)),
+        "text/x-q" => Some(Arc::new(q::Q)),
+        "text/x-pig" => Some(Arc::new(pig::Pig)),
+        "application/sieve" => Some(Arc::new(sieve::Sieve)),
+        "text/x-rpm-spec" => Some(Arc::new(rpm::RpmSpec)),
+        "text/x-rpm-changes" => Some(Arc::new(rpm::RpmChanges)),
+        "text/x-oz" => Some(Arc::new(oz::Oz)),
+        "text/x-rst" => Some(cached!(rst::Rst::new())),
+        "application/pgp"
+        | "application/pgp-encrypted"
+        | "application/pgp-keys"
+        | "application/pgp-signature" => Some(Arc::new(asciiarmor::AsciiArmor)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
