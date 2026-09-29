@@ -8,7 +8,7 @@ use corvane_core::{Banner, Dispatcher};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::widgets::IconButtonA11y;
+use crate::widgets::{IconButtonA11y, ListRowA11y};
 
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
@@ -25,94 +25,132 @@ fn plural(count: usize) -> &'static str {
     if count == 1 { "commit" } else { "commits" }
 }
 
-/// The message line as a row of text runs (bold runs for branch names).
-fn message(banner: &Banner) -> Div {
-    let row = div().flex().flex_row().items_center().whitespace_nowrap();
+/// The message as text runs (`true` = bold, for branch names).
+fn parts(banner: &Banner) -> Vec<(String, bool)> {
+    let t = |s: &str| (s.to_string(), false);
+    let b = |s: &String| (s.clone(), true);
     match banner {
         Banner::SuccessfulMerge {
             our_branch,
             their_branch,
         } => match their_branch {
-            Some(their) => row
-                .child("Successfully merged\u{a0}")
-                .child(strong(their.clone()))
-                .child("\u{a0}into\u{a0}")
-                .child(strong(our_branch.clone())),
-            None => row
-                .child("Successfully merged into\u{a0}")
-                .child(strong(our_branch.clone())),
+            Some(their) => vec![
+                t("Successfully merged\u{a0}"),
+                b(their),
+                t("\u{a0}into\u{a0}"),
+                b(our_branch),
+            ],
+            None => vec![t("Successfully merged into\u{a0}"), b(our_branch)],
         },
         Banner::SuccessfulRebase {
             target_branch,
             base_branch,
         } => match base_branch {
-            Some(base) => row
-                .child("Successfully rebased\u{a0}")
-                .child(strong(target_branch.clone()))
-                .child("\u{a0}onto\u{a0}")
-                .child(strong(base.clone())),
-            None => row
-                .child("Successfully rebased\u{a0}")
-                .child(strong(target_branch.clone())),
+            Some(base) => vec![
+                t("Successfully rebased\u{a0}"),
+                b(target_branch),
+                t("\u{a0}onto\u{a0}"),
+                b(base),
+            ],
+            None => vec![t("Successfully rebased\u{a0}"), b(target_branch)],
         },
         Banner::BranchAlreadyUpToDate {
             our_branch,
             their_branch,
         } => match their_branch {
-            Some(their) => row
-                .child(strong(our_branch.clone()))
-                .child("\u{a0}is already up to date with\u{a0}")
-                .child(strong(their.clone())),
-            None => row
-                .child(strong(our_branch.clone()))
-                .child("\u{a0}is already up to date"),
+            Some(their) => vec![
+                b(our_branch),
+                t("\u{a0}is already up to date with\u{a0}"),
+                b(their),
+            ],
+            None => vec![b(our_branch), t("\u{a0}is already up to date")],
         },
         Banner::SuccessfulCherryPick {
             target_branch,
             count,
             ..
-        } => row
-            .child(format!(
-                "Successfully copied {count} {} to\u{a0}",
-                plural(*count)
-            ))
-            .child(strong(target_branch.clone()))
-            .child("."),
+        } => vec![
+            (
+                format!("Successfully copied {count} {} to\u{a0}", plural(*count)),
+                false,
+            ),
+            b(target_branch),
+            t("."),
+        ],
         Banner::CherryPickUndone {
             target_branch,
             count,
-        } => row
-            .child(format!(
-                "Cherry-pick undone. Successfully removed the {count} copied {} from\u{a0}",
-                plural(*count)
-            ))
-            .child(strong(target_branch.clone()))
-            .child("."),
-        Banner::SuccessfulSquash { count, .. } => {
-            row.child(format!("Successfully squashed {count} {}.", plural(*count)))
-        }
-        Banner::SquashUndone { count } => {
-            row.child(format!("Squash of {count} {} undone.", plural(*count)))
-        }
-        Banner::SuccessfulReorder { count, .. } => row.child(format!(
-            "Successfully reordered {count} {}.",
-            plural(*count)
-        )),
-        Banner::ReorderUndone { count } => {
-            row.child(format!("Reorder of {count} {} undone.", plural(*count)))
-        }
+        } => vec![
+            (
+                format!(
+                    "Cherry-pick undone. Successfully removed the {count} copied {} from\u{a0}",
+                    plural(*count)
+                ),
+                false,
+            ),
+            b(target_branch),
+            t("."),
+        ],
+        Banner::SuccessfulSquash { count, .. } => vec![(
+            format!("Successfully squashed {count} {}.", plural(*count)),
+            false,
+        )],
+        Banner::SquashUndone { count } => vec![(
+            format!("Squash of {count} {} undone.", plural(*count)),
+            false,
+        )],
+        Banner::SuccessfulReorder { count, .. } => vec![(
+            format!("Successfully reordered {count} {}.", plural(*count)),
+            false,
+        )],
+        Banner::ReorderUndone { count } => vec![(
+            format!("Reorder of {count} {} undone.", plural(*count)),
+            false,
+        )],
         Banner::ConflictsFound {
             description,
             branch,
             ..
         } => match branch {
-            Some(branch) => row
-                .child(format!("Resolve conflicts to continue {description}\u{a0}"))
-                .child(strong(branch.clone()))
-                .child("."),
-            None => row.child(format!("Resolve conflicts to continue {description}.")),
+            Some(branch) => vec![
+                (
+                    format!("Resolve conflicts to continue {description}\u{a0}"),
+                    false,
+                ),
+                b(branch),
+                t("."),
+            ],
+            None => vec![(
+                format!("Resolve conflicts to continue {description}."),
+                false,
+            )],
         },
     }
+}
+
+/// The message line as a row of text runs (bold runs for branch names).
+fn message(banner: &Banner) -> Div {
+    div()
+        .flex()
+        .flex_row()
+        .items_center()
+        .whitespace_nowrap()
+        .children(parts(banner).into_iter().map(|(text, bold)| {
+            if bold {
+                strong(text).into_any_element()
+            } else {
+                div().child(text).into_any_element()
+            }
+        }))
+}
+
+/// The message as VoiceOver announces it.
+fn plain_message(banner: &Banner) -> String {
+    parts(banner)
+        .into_iter()
+        .map(|(text, _)| text)
+        .collect::<String>()
+        .replace('\u{a0}', " ")
 }
 
 /// `renderBanner`
@@ -154,6 +192,8 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
     let close_hover = t.text;
     div()
         .id("banner")
+        // announced when it appears (GHD renders banners in an aria-live region)
+        .a11y_live(plain_message(banner))
         .w_full()
         .h(BANNER_HEIGHT)
         .flex_none()

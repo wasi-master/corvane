@@ -35,6 +35,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::{button, text_box};
 
 /// `.branches-container { width: 365px }`
@@ -444,6 +445,13 @@ impl BranchFoldout {
         let branch_name_for_target = branch.name.clone();
         div()
             .id(SharedString::from(format!("branch-{}", branch.full_name)))
+            .a11y_row(
+                match &date {
+                    Some(date) => format!("{}, {date}", branch.name),
+                    None => branch.name.clone(),
+                },
+                current,
+            )
             .h(ROW_HEIGHT)
             .w_full()
             .flex()

@@ -10,6 +10,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::{button, text_box};
 
 pub struct RepositoryFoldout {
@@ -116,8 +117,17 @@ impl RepositoryFoldout {
                 .unwrap_or(false);
             (ab, changes)
         };
+        // GHD `RepositoryListItem` aria label: name, changes, ahead/behind
+        let mut label = repo.name();
+        if has_changes {
+            label.push_str(", uncommitted changes");
+        }
+        if let Some(ab) = ahead_behind {
+            label.push_str(&format!(", {} ahead, {} behind", ab.ahead, ab.behind));
+        }
         div()
             .id(("repo-row", id))
+            .a11y_row(label, selected)
             .h(ROW_HEIGHT)
             .w_full()
             .flex()

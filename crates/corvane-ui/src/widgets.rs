@@ -765,6 +765,47 @@ pub trait IconButtonA11y: StatefulInteractiveElement + Sized {
 
 impl<E: StatefulInteractiveElement> IconButtonA11y for E {}
 
+/// VoiceOver for list rows and banners (GHD `List` rows are `role="option"`
+/// with `aria-selected`; `AriaLiveContainer` for banners).
+pub trait ListRowA11y: StatefulInteractiveElement + Sized {
+    /// A `Row` node (macOS `AXRow`, which carries the selection) named
+    /// `label`, with its selected state.
+    fn a11y_row(self, label: impl Into<SharedString>, selected: bool) -> Self {
+        self.role(Role::Row)
+            .aria_label(label)
+            .aria_selected(selected)
+    }
+
+    /// A polite live region: VoiceOver announces `text` when the element
+    /// appears or the text changes.
+    fn a11y_live(self, text: impl Into<SharedString>) -> Self {
+        let text: SharedString = text.into();
+        let value = text.to_string();
+        self.role(Role::Status)
+            .aria_label(text)
+            .a11y_synthetic_children(move |tree| {
+                let node = tree.parent_node();
+                node.set_live(accesskit::Live::Polite);
+                node.set_value(value);
+            })
+    }
+}
+
+impl<E: StatefulInteractiveElement> ListRowA11y for E {}
+
+/// A file status as VoiceOver reads it (GHD `mapStatus`).
+pub fn status_label(kind: corvane_core::FileStatusKind) -> &'static str {
+    use corvane_core::FileStatusKind::*;
+    match kind {
+        New | Untracked => "New",
+        Modified => "Modified",
+        Deleted => "Deleted",
+        Copied => "Copied",
+        Renamed => "Renamed",
+        Conflicted => "Conflicted",
+    }
+}
+
 /// A `.tooltip(...)` builder with GHD's caption look.
 pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
     let text: SharedString = text.into();

@@ -14,6 +14,7 @@ use crate::icons::octicon;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::{button, primary_button};
 
 const FILE_LIST_MIN: Pixels = px(100.);
@@ -92,6 +93,14 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
     let path = file.path.clone();
     div()
         .id(SharedString::from(format!("stash-file-{}", file.path)))
+        .a11y_row(
+            format!(
+                "{}, {}",
+                file.path,
+                crate::widgets::status_label(file.status.kind)
+            ),
+            is_selected,
+        )
         .w_full()
         .h(ROW_HEIGHT)
         .flex_none()

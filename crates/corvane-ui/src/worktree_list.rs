@@ -15,6 +15,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::{button, text_box};
 
 /// GHD `RowHeight` of the worktree list.
@@ -202,6 +203,7 @@ impl WorktreeFoldout {
         };
         div()
             .id(SharedString::from(format!("worktree-{}", path.display())))
+            .a11y_row(format!("{name}, {description}"), current)
             .h(WORKTREE_ROW_HEIGHT)
             .w_full()
             .flex()
