@@ -6,7 +6,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** Pull request quick view on hover (`ui/pull-request-quick-view/`, `enablePullRequestQuickView`) and "Checkout in New Worktree…" in the PR context menu (`pull-request-list-item-context-menu.tsx`)
 - [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`) that open the built `PullRequestReview` / `PullRequestComment` / `PullRequestChecksFailed` dialogs; Settings › Notifications is persisted but nothing emits notifications yet
 - [ ] **[GH]** Repository `permissions` from the API (`hasWritePermission`): the "You don't have write access… create a fork?" commit warning and the fork suggestion on push
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
