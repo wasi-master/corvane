@@ -1,34 +1,30 @@
 # TODO — deferred features
 
-Everything GitHub Desktop 3.6.6 has that Corvane v1 (core parity) intentionally skips. Each entry names the GHD source location so the port has a reference. Move an item to `PLAN.md` milestones when scheduled.
+Everything GitHub Desktop 3.6.6 has that Corvane does not, with the GHD source location. Move an item to `PLAN.md` milestones when scheduled. Features that exist but differ from GHD in detail live in `docs/reference/deviations.md`, not here.
 
 Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform work · **[INFRA]** build/release
 
 ## GitHub layer
 
-- [ ] **[GH]** Pull Requests tab: no quick view on hover (`enablePullRequestQuickView` feature flag) and no "Checkout in New Worktree…" context-menu item; the 30-minute updater runs whether or not the window is focused
-- [ ] **[GH]** CI check runs: GHES version gating (`lib/endpoint-capabilities.ts`) is reduced to dotcom-vs-enterprise, the loading spinner does not spin, and the popover subscribes by "touching" rendered rows instead of component mount/unmount
-- [ ] **[GH]** Preview Pull Request: the Diff Settings gear sits in the selected file's header (GHD: in the "Showing changes from all commits" row); no `PushBranchCommits` prompt (an unpublished branch is pushed automatically before the compare page opens)
-- [ ] **[GH]** PR quick view / review / comment popups (`PullRequestReview`, `PullRequestComment`, `PullRequestChecksFailed`)
-- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications › "Enable notifications" is persisted (with the permission hint) but nothing emits notifications yet
-- [ ] **[GH]** Forks: the fork suggestion follows a push refused with "Permission denied" (GHD reads the repository's API `permissions`); the "You don't have write access" commit warning needs those permissions too; `UpstreamAlreadyExists` only logs
-- [ ] **[GH]** Repo rules: GHD skips the rules API for free-plan private repositories (`useRepoRulesLogic`); the commit-message check formats summary + description without the `Co-Authored-By` trailers; committer-email rules are fetched but not checked
-- [ ] **[GH]** Re-auth flows (`workflow` scope, SAML SSO, invalidated token) open the device-flow sign-in; GHD's browser flow retries the push automatically after signing in
+- [ ] **[GH]** Pull request quick view on hover (`ui/pull-request-quick-view/`, `enablePullRequestQuickView`) and "Checkout in New Worktree…" in the PR context menu (`pull-request-list-item-context-menu.tsx`)
+- [ ] **[GH]** PR review / comment / checks-failed popups (`PullRequestReview`, `PullRequestComment`, `PullRequestChecksFailed`)
+- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications is persisted but nothing emits notifications yet
+- [ ] **[GH]** Repository `permissions` from the API (`hasWritePermission`): the "You don't have write access… create a fork?" commit warning and the fork suggestion on push
+- [ ] **[GH]** `UpstreamAlreadyExists` popup when a fork's `upstream` remote points elsewhere (Corvane only logs)
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
-- [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
-- [ ] **[GH]** Clone dialog: the list is cached in redb per endpoint and filtered locally like GHD; no server-side search
+- [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`); would also let re-auth flows retry the push automatically
 - [ ] **[GH]** Issue creation with template picker (v1 opens `/issues/new` in browser)
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 
 ## Copilot (omitted by design)
 
-- [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab). Not planned; keep menu/tab out of Corvane to avoid dead UI.
+- [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab, Prompts › "Overriding commit message with generated message"). Not planned; keep menu/tab out of Corvane to avoid dead UI.
 
 ## Worktrees (GHD 3.6 feature flag)
 
 - [ ] Resizable worktree / branch toolbar buttons (`enableResizingToolbarButtons`, `worktreeDropdownWidth`)
 - [ ] `mainWorktreePath` bookkeeping for unsafe (untrusted) repositories and worktrees whose git dir disappeared
-- [ ] Branch autocompletion inside the Add Worktree "Branch Name" box (`BranchAutocompletionProvider`); v1 accepts any name and shows the existing-branch hint
+- [ ] Branch autocompletion inside the Add Worktree "Branch Name" box (`BranchAutocompletionProvider`)
 
 ## Tutorial + onboarding extras
 
@@ -43,7 +39,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## History
 
-- [ ] Cherry-pick by dropping commits on a pull request (needs the Pull Requests tab)
+- [ ] Cherry-pick by dropping commits on a pull request in the Pull Requests tab (`onDropOntoPullRequest`)
 
 ## Changes list
 
@@ -51,33 +47,22 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Editor / commit form
 
-- [ ] Co-author tokens are one line (GHD's `AuthorInput` is a CodeMirror field that wraps); the field grows only with the kit input's single line
-- [ ] Spellcheck language follows `NSSpellChecker`'s automatic identification (no per-language picker); Chromium's "Ignore" item is not offered either
-- [ ] Copilot-free "commit length warning" is in v1; per-repo commit message templates are not
+- [ ] Per-repository commit message templates
 
 ## Diff viewer
 
 - [ ] Text selection + "Copy" in the diff context menu (GPUI's static text is not selectable; needs a custom selection layer across the virtualized rows)
-- [ ] Overlaid image modes letterbox both images with `ObjectFit::Contain` (GHD top-left aligns them); the "Difference" blend is computed on the CPU
-- [ ] Split mode always pairs deletions with additions per block like GHD; GHD's word-wrap of long lines inside a column is not replicated (rows keep one line)
 - [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
-
-## Settings (`ui/preferences/`)
-
-- [ ] Prompts › "Overriding commit message with generated message" (Copilot, omitted by design)
-- [ ] Editor detection on Windows/Linux (`lib/editors/win32.ts`, `linux.ts`); macOS uses LaunchServices (`NSWorkspace URLForApplicationWithBundleIdentifier`)
-- [ ] Notifications permission is only meaningful from the signed `.app` bundle (`UNUserNotificationCenter` needs a bundle); the hint shows nothing when run as a bare binary
 
 ## View menu
 
 - [ ] Zoom levels (`Reset Zoom` ⌘0, `Zoom In` ⌘=, `Zoom Out` ⌘-, `#window-zoom-info` overlay, 0.67…2.0 steps): GPUI has no page-zoom; Corvane's layout is in absolute pixels, so this needs a rem-based size pass first. Items stay disabled
 - [ ] `Expand Active Resizable` ⌘9 / `Contract Active Resizable` ⌘8 (GHD nudges the focused resizable sidebar); items stay disabled
-- [ ] `Window › Close Window` ⌘W hides the app (GPUI has no per-window hide with a Dock relaunch); GHD hides just the window
 
 ## Platform
 
-- [ ] **[PLAT]** Windows: in-app menu bar (`ui/app-menu/`), 28 px custom title bar, `x-github-desktop-auth` style protocol registration, Credential Manager, NSIS via Velopack
-- [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak
+- [ ] **[PLAT]** Windows: in-app menu bar (`ui/app-menu/`), 28 px custom title bar, `x-github-desktop-auth` style protocol registration, Credential Manager, NSIS via Velopack, editor/shell detection (`lib/editors/win32.ts`)
+- [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak, editor/shell detection (`lib/editors/linux.ts`)
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
 - [ ] **[PLAT]** OS notifications (`ui/notifications/`), `TestNotifications` popup
 - [ ] **[PLAT]** `Install Command Line Tool…` (`github` CLI shim → `corvane` shim), Finder Services "Open in Corvane"

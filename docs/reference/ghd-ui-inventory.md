@@ -8,7 +8,7 @@ Source: `desktop/desktop` at `release-3.6.6` (published 2026-09-21), plus live s
 window (hiddenInset title bar, 32 px on macOS 26 "Tahoe"; 22/26 on older)
 ├─ #desktop-app-toolbar  50 px, full width
 │   ├─ Repository dropdown   (fills sidebar width, resizable with sidebar)   octicon: repo
-│   ├─ [Worktree dropdown]   230 px  (feature-flagged; see TODO.md)          octicon: file-directory
+│   ├─ [Worktree dropdown]   230 px  (shown with linked worktrees)          octicon: file-directory
 │   ├─ Branch dropdown       230 px  (resize handle 6 px between buttons)    octicon: git-branch
 │   └─ Push/Pull button      230 px  + 39 px arrow dropdown                  octicon: sync / arrow-up / arrow-down / upload
 ├─ Banner row (optional: merge success/conflicts, update available, …)
@@ -49,7 +49,7 @@ Overlays: #foldout-container (z 17) anchored under toolbar buttons; <dialog> pop
 ### Observed screens (2026-09-28)
 
 - **Repository foldout**: `[🔍 Filter                ][Add ▾]`; groups `Recent`, then per-account (`wasi-master`), `Other`; row = octicon (repo / lock / fork / device-desktop for local), name, right-aligned ahead/behind arrows badge or blue dot (uncommitted changes). Selected row highlighted.
-- **Branch foldout**: `[🔍 Filter      ][New Branch]`; groups `Default Branch`, `Recent Branches`, `Other Branches`; row = check mark when current, name, right-aligned relative date; footer button `⑂ Choose a branch to merge into <current>` spanning width. (Pull Requests tab appears only for GitHub repos — TODO.md.)
+- **Branch foldout**: `[🔍 Filter      ][New Branch]`; groups `Default Branch`, `Recent Branches`, `Other Branches`; row = check mark when current, name, right-aligned relative date; footer button `⑂ Choose a branch to merge into <current>` spanning width. (Pull Requests tab appears only for GitHub repos.)
 - **Worktree foldout** (flagged): `[🔍 Filter][New Worktree]`; `Main Worktree` / `Linked Worktrees`; row = check, name, right-aligned branch.
 - **NoChanges blankslate**: title "No local changes", subtitle, right-side illustration; suggested-action cards: "Pull N commit(s) from the origin remote" (primary, blue tint) / "Open the repository in your external editor" / "View the files of your repository in Finder" / "Open the repository page on GitHub in your browser" — each with description, keyboard hint (`Repository menu or ⌘⇧A`) and right-aligned button.
 - **Changes list row**: checkbox 13 px, path with directory dimmed and filename bold, right octicon status square (yellow dot = modified, green + = added, red − = deleted, blue → = renamed, orange ! = conflicted).
