@@ -5,6 +5,7 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod clike;
+pub mod clojure;
 pub mod css;
 pub mod dart;
 pub mod diff;
@@ -225,6 +226,9 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/x-clojure" | "text/x-clojurescript" | "application/edn" => {
+            Some(cached!(clojure::Clojure::new()))
+        }
         "text/x-elixir" => Some(cached!(elixir::Elixir)),
         "text/x-lua" | "text/x-luau" => Some(cached!(luau::Luau)),
         "text/javascript"
