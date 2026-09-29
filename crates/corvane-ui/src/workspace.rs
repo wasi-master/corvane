@@ -10,7 +10,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::banner::banner_bar;
+use crate::banner::{banner_bar, update_banner};
 use crate::branch_list::BranchFoldout;
 use crate::changes::ChangesSidebar;
 use crate::ci_check_popover::CiCheckPopover;
@@ -478,6 +478,22 @@ impl Render for Workspace {
                 ))
             })
         };
+        let update_available = {
+            let state = self.state.read(cx);
+            if state.update.banner_visible {
+                state.update.status.available().cloned().map(|u| {
+                    (
+                        u,
+                        matches!(
+                            state.update.status,
+                            corvane_core::UpdateStatus::AvailableViaHomebrew { .. }
+                        ),
+                    )
+                })
+            } else {
+                None
+            }
+        };
         let (
             buttons,
             foldout,
@@ -533,6 +549,12 @@ impl Render for Workspace {
             })
             .when(self.welcome.is_none(), |d| {
                 d.when_some(banner.as_ref(), |d, banner| d.child(banner_bar(banner, cx)))
+            })
+            // GHD shows the update banner only while no other banner is up
+            .when(self.welcome.is_none() && banner.is_none(), |d| {
+                d.when_some(update_available.as_ref(), |d, (update, homebrew)| {
+                    d.child(update_banner(update, *homebrew, cx))
+                })
             })
             .when(self.welcome.is_none(), |d| {
                 d.child(if let Some(clone) = cloning.as_ref() {

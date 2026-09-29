@@ -96,6 +96,7 @@ impl Dispatcher {
             global_git: None,
             repo_settings: None,
             pending_open_in_desktop: None,
+            update: crate::updater::UpdateState::default(),
         });
         AppState::install(state.clone(), cx);
         Self::detect_integrations(cx);

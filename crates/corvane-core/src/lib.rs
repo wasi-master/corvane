@@ -31,6 +31,7 @@ pub mod state;
 pub mod templates;
 pub mod toolbar_widths;
 pub mod tutorial;
+pub mod updater;
 pub mod watcher;
 pub mod worktrees;
 
@@ -67,3 +68,4 @@ pub use state::{
     RepositorySettingsTab, RepositoryState, RetryAction, SignInState, SignInStep,
     UnreachableCommitsTab,
 };
+pub use updater::{AvailableUpdate, UpdateState, UpdateStatus};

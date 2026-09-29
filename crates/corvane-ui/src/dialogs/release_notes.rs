@@ -5,11 +5,12 @@
 //!
 //! Deviations: entries are plain text (GHD's `RichText` renders emoji, links
 //! and `#123` references); the pretext goes through `crate::markdown` instead
-//! of GHD's sandboxed Markdown webview. There is no "Install and Restart" button: the notes
-//! are always the running version's (the self-updater is not built yet).
+//! of GHD's sandboxed Markdown webview. "Install and Restart" appears when
+//! the notes are those of the update the self-updater has ready (GHD: when
+//! the version differs from the running one).
 
-use corvane_core::Dispatcher;
 use corvane_core::release_notes::{RELEASE_NOTES_URL, ReleaseNote, ReleaseSummary};
+use corvane_core::{AppState, Dispatcher, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -19,7 +20,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{link_button, primary_button};
+use crate::widgets::{button, link_button, primary_button};
 
 /// `--spacing-triple`
 const SPACING_TRIPLE: Pixels = px(30.);
@@ -28,12 +29,14 @@ const HEADER_HEIGHT: Pixels = px(100.);
 const ART_HEIGHT: Pixels = px(90.);
 
 pub struct ReleaseNotesDialog {
+    state: Entity<AppState>,
     summary: ReleaseSummary,
 }
 
 impl ReleaseNotesDialog {
-    pub fn new(summary: ReleaseSummary) -> Self {
-        Self { summary }
+    pub fn new(state: Entity<AppState>, summary: ReleaseSummary, cx: &mut Context<Self>) -> Self {
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        Self { state, summary }
     }
 }
 
@@ -108,6 +111,12 @@ impl Render for ReleaseNotesDialog {
             )
         });
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        // `renderButtons`: the ready update's notes get "Install and Restart"
+        // (GHD's destructive OkCancelButtonGroup: Close stays the default)
+        let can_install = matches!(
+            &self.state.read(cx).update.status,
+            UpdateStatus::Ready { update, .. } if update.version == r.latest_version
+        );
         deferred(
             anchored().position(point(px(0.), px(0.))).child(
                 div()
@@ -240,9 +249,33 @@ impl Render for ReleaseNotesDialog {
                                         .on_click(|_, _, cx| cx.open_url(RELEASE_NOTES_URL)),
                                     )
                                     .child(
-                                        primary_button("release-notes-ok", "Close", false, cx)
-                                            .min_w(px(120.))
-                                            .on_click(move |_, window, cx| close(window, cx)),
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .items_center()
+                                            .gap(SPACING)
+                                            .child(
+                                                primary_button(
+                                                    "release-notes-ok",
+                                                    "Close",
+                                                    false,
+                                                    cx,
+                                                )
+                                                .min_w(px(120.))
+                                                .on_click(move |_, window, cx| close(window, cx)),
+                                            )
+                                            .when(can_install, |d| {
+                                                d.child(
+                                                    button(
+                                                        "release-notes-install",
+                                                        "Install and Restart",
+                                                        cx,
+                                                    )
+                                                    .on_click(|_, _, cx| {
+                                                        Dispatcher::install_update(cx)
+                                                    }),
+                                                )
+                                            }),
                                     ),
                             ),
                     ),

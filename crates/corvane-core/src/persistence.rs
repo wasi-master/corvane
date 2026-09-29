@@ -24,6 +24,9 @@ pub struct Settings {
     /// When Corvane last started (seconds since the epoch): crash reports
     /// newer than this are from the previous session.
     pub last_launched_at: Option<u64>,
+    /// GHD `last-successful-update-check` (seconds since the epoch).
+    #[serde(default)]
+    pub last_successful_update_check: Option<u64>,
     /// Tutorial assessor state (GHD `tutorial-install-editor-skipped`,
     /// `tutorial-pull-request-step-complete`, `tutorial-paused`).
     pub tutorial_install_editor_skipped: bool,
@@ -247,6 +250,7 @@ impl Default for Settings {
             worktree_dropdown_width: None,
             save_crash_reports: false,
             last_launched_at: None,
+            last_successful_update_check: None,
             tutorial_install_editor_skipped: false,
             tutorial_pull_request_step_complete: false,
             tutorial_paused: false,

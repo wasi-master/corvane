@@ -781,6 +781,8 @@ pub struct AppState {
     /// `resolveOpenInDesktop`: an `x-corvane://openRepo` action waiting for
     /// the clone it opened.
     pub pending_open_in_desktop: Option<crate::app_url::PendingOpenInDesktop>,
+    /// `UpdateStore` state + `isUpdateAvailableBannerVisible`.
+    pub update: crate::updater::UpdateState,
 }
 
 struct AppStateHandle(Entity<AppState>);

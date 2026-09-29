@@ -95,11 +95,20 @@ pub fn move_to_applications_folder(bundle: &Path) -> Result<PathBuf, String> {
 }
 
 /// Open `bundle` once process `pid` has exited (the store lock is released
-/// by then), from a detached shell so it outlives this process.
+/// by then), from a detached shell so it outlives this process. `open`
+/// hands its environment to the new app, so Corvane's own `CORVANE_*`
+/// variables (dev hooks, a `CORVANE_UPDATE_INSTALL=1` test run) are dropped:
+/// the relaunch starts as clean as a Dock launch.
 pub fn relaunch_after_exit(bundle: &Path, pid: u32) -> Result<(), String> {
     let script =
         "while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open -n \"$2\"";
-    std::process::Command::new("/bin/sh")
+    let mut command = std::process::Command::new("/bin/sh");
+    for (key, _) in std::env::vars_os() {
+        if key.to_string_lossy().starts_with("CORVANE_") {
+            command.env_remove(&key);
+        }
+    }
+    command
         .arg("-c")
         .arg(script)
         .arg("sh")

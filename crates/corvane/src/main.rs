@@ -235,6 +235,9 @@ fn main() {
         //   review / comment / checks-failed notifications; needs the .app bundle)
         //   notification-click:review|comment|checks-failed (what clicking such a
         //   notification does: its userInfo payload goes through the click handler)
+        //   update-available[:brew][:about|:notes] (a sample update in the ready /
+        //   Homebrew state: the banner, plus About or the Release Notes with
+        //   "Install and Restart")
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -391,6 +394,20 @@ fn main() {
                             let notification = corvane_core::samples::notification(kind, id, cx);
                             if let Some(payload) = Dispatcher::notification_payload(&notification) {
                                 Dispatcher::notification_payload_clicked(&payload, cx);
+                            }
+                        }
+                        (other, _) if other.starts_with("update-available") => {
+                            let flags: Vec<&str> = other.split(':').skip(1).collect();
+                            Dispatcher::install_sample_update(flags.contains(&"brew"), cx);
+                            if flags.contains(&"about") {
+                                Dispatcher::show_popup(
+                                    Popup::About {
+                                        version: env!("CARGO_PKG_VERSION").to_string(),
+                                    },
+                                    cx,
+                                );
+                            } else if flags.contains(&"notes") {
+                                Dispatcher::show_update_release_notes(cx);
                             }
                         }
                         ("test-notifications", Some(id)) => {
@@ -815,6 +832,8 @@ fn main() {
         Dispatcher::start_commit_status_refresh(cx);
         // GHD `componentDidMount`: offer the move to /Applications
         Dispatcher::check_move_to_applications_folder(cx);
+        // `checkForUpdates(true)` at launch and every four hours (release builds)
+        Dispatcher::start_update_checks(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::start_rebase_flow(id, cx);

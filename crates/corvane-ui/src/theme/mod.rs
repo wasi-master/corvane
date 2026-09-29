@@ -182,6 +182,11 @@ pub struct GhdTheme {
     pub dialog_banner_success_background: Hsla,
     pub dialog_banner_success_border: Hsla,
     pub dialog_banner_success_text: Hsla,
+    /// `--banner-warning-*`: the update banner (`#update-available`).
+    pub banner_warning_background: Hsla,
+    pub banner_warning_text: Hsla,
+    pub banner_warning_link: Hsla,
+    pub banner_warning_icon: Hsla,
     pub status_pending: Hsla,
     pub status_error: Hsla,
     pub status_success: Hsla,
