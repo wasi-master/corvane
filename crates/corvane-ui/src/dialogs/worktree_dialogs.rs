@@ -1,13 +1,19 @@
 //! Worktree dialogs (GHD `ui/worktrees/*-dialog.tsx`): Add Worktree,
 //! Rename Worktree, Delete Worktree and Delete Worktree Failed.
+//! The Add Worktree "Branch Name" box autocompletes branch names
+//! (`ui/autocompletion/branch-autocompletion-provider.tsx`).
 
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use corvane_core::{AppState, BranchKind, Dispatcher};
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{
+    Enter, Escape, IndentInline, InputEvent, InputState, MoveDown, MoveUp,
+};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::autocompletion::{self, Autocompletion, PickHandler};
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::dialogs::branch_dialogs::{ref_chip, sanitize_ref_name};
 use crate::scrollbar::ScrollbarExt;
@@ -39,6 +45,11 @@ pub struct AddWorktreeDialog {
     path: Entity<InputState>,
     branch: Entity<InputState>,
     creating: bool,
+    /// Branch-name autocompletion popup (`AutocompletingTextInput`).
+    autocomplete: Option<Autocompletion>,
+    /// The text just inserted from the popup; its own change event must not
+    /// reopen the popup.
+    completed: Option<String>,
 }
 
 impl AddWorktreeDialog {
@@ -59,6 +70,15 @@ impl AddWorktreeDialog {
         for e in [&name, &path, &branch] {
             cx.observe(e, |_, _, cx| cx.notify()).detach();
         }
+        cx.subscribe(&branch, |this, _, ev: &InputEvent, cx| match ev {
+            InputEvent::Change => this.open_autocomplete(cx),
+            InputEvent::Blur => {
+                this.autocomplete = None;
+                cx.notify();
+            }
+            _ => {}
+        })
+        .detach();
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
         Self {
@@ -68,7 +88,69 @@ impl AddWorktreeDialog {
             path,
             branch,
             creating: false,
+            autocomplete: None,
+            completed: None,
         }
+    }
+
+    /// Every local and remote branch name (`allBranches`).
+    fn branch_names(&self, cx: &App) -> Vec<String> {
+        self.state
+            .read(cx)
+            .repo_states
+            .get(&self.repo)
+            .and_then(|rs| rs.info.as_ref())
+            .map(|i| i.branches.iter().map(|b| b.name.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    /// GHD `onChange` → `open`: filter the branches by the whole input.
+    fn open_autocomplete(&mut self, cx: &mut Context<Self>) {
+        let text = self.branch.read(cx).value().to_string();
+        if self.completed.take().is_some_and(|c| c == text) {
+            self.autocomplete = None;
+        } else {
+            self.autocomplete = autocompletion::attempt_branch(&text, &self.branch_names(cx));
+        }
+        cx.notify();
+    }
+
+    fn autocomplete_move(&mut self, delta: i64, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_mut() {
+            Some(ac) => {
+                ac.move_selection(delta);
+                cx.notify();
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// Enter / Tab with a selected row inserts it (GHD `insertCompletion`).
+    fn autocomplete_accept(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_ref().and_then(|ac| ac.selected) {
+            Some(ix) => {
+                self.autocomplete_insert(ix, window, cx);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn autocomplete_insert(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(ac) = self.autocomplete.take() else {
+            return;
+        };
+        let Some(hit) = ac.hits.get(ix) else {
+            return;
+        };
+        let text = hit.completion_text();
+        self.completed = Some(text.clone());
+        self.branch
+            .update(cx, |s, cx| s.set_value(text, window, cx));
+        let handle = self.branch.read(cx).focus_handle(cx);
+        window.focus(&handle, cx);
+        cx.notify();
     }
 
     fn full_path(&self, cx: &App) -> Option<PathBuf> {
@@ -143,6 +225,17 @@ impl Render for AddWorktreeDialog {
         };
         let disabled = full.is_none() || self.creating || effective.is_empty();
         let this = cx.entity();
+        // autocompletion popup at the caret's bottom-left
+        let popup = self.autocomplete.as_ref().and_then(|ac| {
+            let (bounds, line_height) = self.branch.read(cx).cursor_layout()?;
+            let anchor = point(bounds.origin.x, bounds.origin.y + line_height);
+            let weak = cx.weak_entity();
+            let on_pick: PickHandler = Rc::new(move |ix, window, cx| {
+                weak.update(cx, |this, cx| this.autocomplete_insert(ix, window, cx))
+                    .ok();
+            });
+            Some(autocompletion::dialog_popup(ac, anchor, on_pick, cx))
+        });
         let branch_hint = existing.map(|kind| {
             let verb = match kind {
                 BranchKind::Remote => "Will check out remote branch ",
@@ -196,15 +289,43 @@ impl Render for AddWorktreeDialog {
                                 ),
                         ),
                 )
-                .child(labeled(
-                    "Branch Name",
-                    {
-                        // GHD `RefNameTextBox` with the sanitized name as placeholder
-                        let _ = &branch_placeholder;
-                        text_box("worktree-branch", &self.branch, None, window, cx)
-                    },
-                    cx,
-                ))
+                .child(
+                    // popup keys win over the field's own bindings (GHD `onKeyDown`)
+                    div()
+                        .key_context("AutocompletingTextInput")
+                        .capture_action(cx.listener(|this, _: &MoveUp, _, cx| {
+                            if this.autocomplete_move(-1, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &MoveDown, _, cx| {
+                            if this.autocomplete_move(1, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &Enter, window, cx| {
+                            if this.autocomplete_accept(window, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &IndentInline, window, cx| {
+                            if this.autocomplete_accept(window, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &Escape, _, cx| {
+                            if this.autocomplete.take().is_some() {
+                                cx.notify();
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .child(labeled(
+                            "Branch Name",
+                            text_box("worktree-branch", &self.branch, None, window, cx),
+                            cx,
+                        ))
+                        .children(popup),
+                )
                 .when(
                     !branch_placeholder.is_empty() && self.branch.read(cx).value().is_empty(),
                     |d| {
