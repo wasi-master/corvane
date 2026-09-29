@@ -12,7 +12,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[GH]** Repository `permissions` from the API (`hasWritePermission`): the "You don't have write access… create a fork?" commit warning and the fork suggestion on push
 - [ ] **[GH]** `UpstreamAlreadyExists` popup when a fork's `upstream` remote points elsewhere (Corvane only logs)
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
-- [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`); would also let re-auth flows retry the push automatically
+- [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
 - [ ] **[GH]** Issue creation with template picker (v1 opens `/issues/new` in browser)
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 
