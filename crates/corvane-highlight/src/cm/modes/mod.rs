@@ -12,6 +12,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod perl;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -204,6 +205,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-python" => Some(cached!(python::Python::new())),
         "text/x-cython" => Some(cached!(python::Python::cython())),
         "text/x-ruby" => Some(cached!(ruby::Ruby)),
+        "text/x-perl" => Some(cached!(perl::Perl)),
         "text/x-sh" | "application/x-sh" => Some(cached!(shell::Shell)),
         "text/x-go" => Some(Arc::new(go::Go)),
         "text/x-swift" => Some(Arc::new(swift::Swift)),
