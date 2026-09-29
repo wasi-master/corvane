@@ -47,6 +47,8 @@ pub struct ApiRepository {
     pub owner: ApiOwner,
     pub html_url: String,
     pub clone_url: String,
+    #[serde(default)]
+    pub ssh_url: Option<String>,
     pub default_branch: Option<String>,
     #[serde(default)]
     pub private: bool,
@@ -57,6 +59,13 @@ pub struct ApiRepository {
     pub pushed_at: Option<String>,
     #[serde(default)]
     pub archived: bool,
+}
+
+/// GHD `IAPIRepositoryCloneInfo`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RepositoryCloneInfo {
+    pub url: String,
+    pub default_branch: Option<String>,
 }
 
 /// `state` filter for [`Client::issues`].
@@ -450,13 +459,16 @@ impl Client {
     ) -> Result<T> {
         let url = self.endpoint.api(path);
         debug!(%url, "GET");
-        let mut response = self
+        let mut request = self
             .agent
             .get(&url)
             .header("Accept", accept)
-            .header("Authorization", &format!("Bearer {}", self.token))
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .call()?;
+            .header("X-GitHub-Api-Version", "2022-11-28");
+        // an empty token is GHD's `Account.anonymous()`: no Authorization
+        if !self.token.is_empty() {
+            request = request.header("Authorization", &format!("Bearer {}", self.token));
+        }
+        let mut response = request.call()?;
         let status = response.status().as_u16();
         if status == 401 {
             return Err(GitHubError::Auth("token rejected".into()));
@@ -601,6 +613,33 @@ impl Client {
     pub fn repository(&self, owner: &str, name: &str) -> Result<GitHubRepository> {
         let repo: ApiRepository = self.get_json(&format!("repos/{owner}/{name}"))?;
         Ok(self.convert(repo))
+    }
+
+    /// `fetchRepositoryCloneInfo`: the clone URL (SSH when `ssh`) and default
+    /// branch of `owner/name`, `None` when the repository is not found (404,
+    /// which GitHub also answers for private repositories the token can't see).
+    pub fn repository_clone_info(
+        &self,
+        owner: &str,
+        name: &str,
+        ssh: bool,
+    ) -> Result<Option<RepositoryCloneInfo>> {
+        let path = format!(
+            "repos/{}/{}",
+            encode_path_component(owner),
+            encode_path_component(name)
+        );
+        match self.get_json::<ApiRepository>(&path) {
+            Ok(repo) => Ok(Some(RepositoryCloneInfo {
+                url: match (ssh, repo.ssh_url) {
+                    (true, Some(ssh_url)) => ssh_url,
+                    _ => repo.clone_url,
+                },
+                default_branch: repo.default_branch,
+            })),
+            Err(GitHubError::Api { status: 404, .. }) => Ok(None),
+            Err(err) => Err(err),
+        }
     }
 
     /// `GET /user/repos` (all pages, newest pushed first) for the Clone dialog.

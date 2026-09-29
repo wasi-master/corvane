@@ -9,7 +9,7 @@ pub mod error;
 pub use api::{
     ApiCheckSuite, ApiIdentity, ApiIssue, ApiMentionableUser, ApiPullRequest, ApiPushControl,
     ApiRefCheckRun, ApiRefStatus, ApiRepoRule, ApiRepoRuleset, ApiWorkflowJob, ApiWorkflowRun,
-    Client, IssueState, encode_path_component,
+    Client, IssueState, RepositoryCloneInfo, encode_path_component,
 };
 pub use endpoint::Endpoint;
 pub use error::{GitHubError, Result};

@@ -1963,7 +1963,12 @@ impl Dispatcher {
 
     /// GHD `cloneRepository`: streams progress into `AppState::cloning`,
     /// adds the repository when done.
-    pub fn clone_repository(url: String, path: PathBuf, cx: &mut App) {
+    pub fn clone_repository(
+        url: String,
+        path: PathBuf,
+        default_branch: Option<String>,
+        cx: &mut App,
+    ) {
         let state = Self::state(cx);
         let Some(git) = state.read(cx).git.clone() else {
             Self::show_error("Git is not available", "Install git and retry.", cx);
@@ -1984,9 +1989,15 @@ impl Dispatcher {
         let clone_path = path.clone();
         let clone_url = url.clone();
         let task = cx.background_executor().spawn(async move {
-            corvane_git::clone(git, &clone_url, &clone_path, |p| {
-                let _ = tx.send(p);
-            })
+            corvane_git::clone(
+                git,
+                &clone_url,
+                &clone_path,
+                default_branch.as_deref(),
+                |p| {
+                    let _ = tx.send(p);
+                },
+            )
         });
         // Progress pump: poll the channel on the foreground at ~30 Hz while cloning.
         let pump_state = state.clone();
