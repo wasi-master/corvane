@@ -10,6 +10,7 @@ pub mod dart;
 pub mod diff;
 pub mod dockerfile;
 pub mod go;
+pub mod haxe;
 pub mod javascript;
 pub mod jsx;
 pub mod mllike;
@@ -229,6 +230,8 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-fsharp" => Some(cached!(mllike::MlLike::new(mllike::Dialect::FSharp))),
         "text/x-sml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::Sml))),
         "text/x-vb" => Some(cached!(vb::Vb)),
+        "text/x-haxe" => Some(cached!(haxe::Haxe)),
+        "text/x-hxml" => Some(cached!(haxe::Hxml)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
