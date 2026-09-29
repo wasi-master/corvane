@@ -22,6 +22,19 @@ pub fn button(id: impl Into<ElementId>, label: impl Into<SharedString>, cx: &App
         .child(label.into())
 }
 
+/// `.button-component.small-button` - the secondary button at 21 px, 11 px
+/// text, 5 px side padding (Undo in the changes sidebar, list row actions).
+pub fn small_button(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    cx: &App,
+) -> Stateful<Div> {
+    button(id, label, cx)
+        .h(zpx(21.))
+        .px(SPACING_HALF())
+        .text_size(FONT_SIZE_SM())
+}
+
 /// `.button-component-primary` - blue primary button. Disabled = 60 % opacity.
 pub fn primary_button(
     id: impl Into<ElementId>,

@@ -27,3 +27,22 @@ pub fn title_bar(_cx: &App) -> impl IntoElement {
             }
         })
 }
+
+/// `#desktop-app-title-bar.light-title-bar` (welcome flow and the
+/// no-repositories blank slate on macOS): transparent, no border,
+/// `position: fixed` over the content, still a window drag area.
+pub fn light_title_bar() -> impl IntoElement {
+    div()
+        .id("light-title-bar")
+        .absolute()
+        .top_0()
+        .left_0()
+        .w_full()
+        .h(TITLE_BAR_HEIGHT())
+        .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
+        .on_click(|event, window, _| {
+            if event.click_count() == 2 {
+                window.titlebar_double_click();
+            }
+        })
+}

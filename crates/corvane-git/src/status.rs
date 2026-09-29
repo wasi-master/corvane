@@ -49,6 +49,12 @@ pub fn get_status(
             }
         }
     }
+    // GHD `updateChangedFiles` (lib/stores/updates/changes-state.ts) lists
+    // files by `caseInsensitiveCompare` of their paths, not in git's order
+    // (tracked before untracked, bytewise)
+    status
+        .files
+        .sort_by_cached_key(|file| file.path.to_lowercase());
     Ok(status)
 }
 

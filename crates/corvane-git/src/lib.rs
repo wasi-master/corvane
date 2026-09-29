@@ -54,7 +54,8 @@ pub use ignore::{
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
     get_commit_range_changed_files, get_commits, get_commits_in_range, merge_base,
-    merge_base_changed_files, merge_base_file_diff, parse_raw_log_with_numstat,
+    merge_base_changed_files, merge_base_file_diff, most_recent_local_commit,
+    parse_raw_log_with_numstat,
 };
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
