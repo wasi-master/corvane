@@ -21,8 +21,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Tutorial + onboarding extras
 
-- [ ] Tutorial repository + right-hand `TutorialPanel` (`ui/tutorial-panel/`, `TutorialStep`), `CreateTutorialRepository`, `ConfirmExitTutorial`
-- [ ] Welcome "Create a tutorial repository" card
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
 
 ## History
