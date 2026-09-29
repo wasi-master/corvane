@@ -75,3 +75,34 @@ impl Dispatcher {
         );
     }
 }
+
+impl Dispatcher {
+    /// `installDarwinCLI` (GHD `install-cli.ts`): link the bundle's
+    /// `corvane` script into `/usr/local/bin`, asking for administrator
+    /// rights when needed, then `CLIInstalled`; a failure is a plain error.
+    pub fn install_cli(cx: &mut App) {
+        let Some(packaged) = corvane_platform::cli::packaged_path() else {
+            Self::show_error(
+                "Could not install the command line tool",
+                "The command line tool is only available when Corvane runs from Corvane.app.",
+                cx,
+            );
+            return;
+        };
+        let installed = corvane_platform::cli::install_path();
+        let target = installed.clone();
+        spawn_bg(
+            cx,
+            move || corvane_platform::cli::install(&packaged, &target),
+            move |result, cx| match result {
+                Ok(()) => {
+                    info!(path = %installed.display(), "installed the command line tool");
+                    Self::show_popup(Popup::CLIInstalled { path: installed }, cx);
+                }
+                Err(message) => {
+                    Self::show_error("Could not install the command line tool", message, cx)
+                }
+            },
+        );
+    }
+}

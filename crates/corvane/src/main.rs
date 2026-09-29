@@ -121,6 +121,7 @@ fn main() {
         cx.on_action(|_: &Hide, cx| cx.hide());
         cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
         cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
+        cx.on_action(|_: &InstallCli, cx| Dispatcher::install_cli(cx));
         cx.on_action(|_: &AddLocalRepository, cx| {
             Dispatcher::show_popup(Popup::AddExistingRepository { path: None }, cx)
         });
@@ -154,6 +155,11 @@ fn main() {
         // CORVANE_ADD_REPO=/path adds a repository at launch (dev/testing convenience).
         if let Ok(path) = std::env::var("CORVANE_ADD_REPO") {
             Dispatcher::add_repository(std::path::PathBuf::from(path), cx);
+        }
+        // `corvane <path>` (the command line tool) launches with
+        // `--open-repo <path>`: add the repository, or select it when known.
+        if let Some(path) = open_repo_argument(std::env::args()) {
+            Dispatcher::add_repository(path, cx);
         }
         // CORVANE_CLONE="<url>|<path>" clones at launch (dev/testing convenience).
         if let Ok(spec) = std::env::var("CORVANE_CLONE")
@@ -770,4 +776,39 @@ fn phase(started: Instant, what: &str) {
         elapsed_ms = started.elapsed().as_millis(),
         "startup: {what}"
     );
+}
+
+/// `--open-repo <path>` (or `--open-repo=<path>`) from the command line tool.
+fn open_repo_argument(args: impl IntoIterator<Item = String>) -> Option<std::path::PathBuf> {
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        if arg == "--open-repo" {
+            return args.next().map(std::path::PathBuf::from);
+        }
+        if let Some(path) = arg.strip_prefix("--open-repo=") {
+            return Some(std::path::PathBuf::from(path));
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::open_repo_argument;
+
+    // `gpui_kit::*` brings GPUI's `test` macro into scope; use the std one.
+    #[::core::prelude::v1::test]
+    fn open_repo_argument_forms() {
+        let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            open_repo_argument(args(&["corvane", "--open-repo", "/tmp/repo"])),
+            Some("/tmp/repo".into())
+        );
+        assert_eq!(
+            open_repo_argument(args(&["corvane", "-psn_0_123", "--open-repo=/a b"])),
+            Some("/a b".into())
+        );
+        assert_eq!(open_repo_argument(args(&["corvane"])), None);
+        assert_eq!(open_repo_argument(args(&["corvane", "--open-repo"])), None);
+    }
 }

@@ -89,7 +89,7 @@ impl DialogHost {
     fn build(&self, popup: &Popup, window: &mut Window, cx: &mut Context<Self>) -> AnyView {
         let state = self.state.clone();
         match popup {
-            Popup::Error { .. } | Popup::InstallGit { .. } => {
+            Popup::Error { .. } | Popup::InstallGit { .. } | Popup::CLIInstalled { .. } => {
                 cx.new(|_| SimpleDialog::new(popup.clone())).into()
             }
             Popup::AddExistingRepository { path } => cx

@@ -49,6 +49,8 @@ if [[ -f "$ROOT/assets/Corvane.icns" ]]; then
   cp "$ROOT/assets/Corvane.icns" "$APP/Contents/Resources/Corvane.icns"
 fi
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+# Command line tool (Install Command Line Tool… symlinks it into /usr/local/bin)
+install -m 755 "$ROOT/packaging/corvane.sh" "$APP/Contents/Resources/corvane"
 
 # Ad-hoc signature so the bundle launches locally; Gatekeeper still quarantines downloads.
 codesign --force --sign - --timestamp=none "$APP" >/dev/null
