@@ -5,9 +5,14 @@
 //! Update / Ignore (`app-store.ts#_updateExistingUpstreamRemote`,
 //! `_ignoreExistingUpstreamRemote`).
 //!
-//! Deviation: GHD decides the fork suggestion from the repository's API
-//! `permissions`; Corvane offers the fork when a push is refused with
-//! "Permission denied" for a GitHub repository the user is signed in to.
+//! The repository's API record, with the user's `permissions`, is refreshed
+//! on selection and after signing in (`repositoryWithRefreshedGitHubRepository`)
+//! and persisted with the repository. Without write access the commit form
+//! suggests a fork and a push opens `CreateFork` before git runs (GHD runs the
+//! push and offers the fork when it fails authentication,
+//! `insufficientGitHubRepoPermissions`). Repositories whose permissions are
+//! still unknown fall back to offering the fork after a push refused with
+//! "Permission denied".
 
 use corvane_github::Client;
 use corvane_models::{ForkContributionTarget, GitHubRepository, url_matches_remote};
@@ -28,6 +33,48 @@ fn ignore_existing_upstream_key(id: u64) -> String {
 }
 
 impl Dispatcher {
+    /// `repositoryWithRefreshedGitHubRepository`: re-read the repository's
+    /// API record (parent, default branch, `permissions`) with the account
+    /// for its endpoint and persist it. A failed request keeps what is stored.
+    pub fn refresh_github_repository(id: u64, cx: &mut App) {
+        let Some(github) = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.github.clone())
+        else {
+            return;
+        };
+        let Some((endpoint, token, _)) = Self::api_for(&github, cx) else {
+            return;
+        };
+        let (owner, name) = (github.owner.clone(), github.name.clone());
+        spawn_bg(
+            cx,
+            move || Client::new(endpoint, token).repository(&owner, &name),
+            move |result, cx| match result {
+                Ok(fresh) => {
+                    let changed = Self::state(cx).update(cx, |s, cx| {
+                        let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) else {
+                            return false;
+                        };
+                        if repo.github.as_ref() == Some(&fresh) {
+                            return false;
+                        }
+                        info!(id, permissions = ?fresh.permissions, "refreshed GitHub repository");
+                        repo.github = Some(fresh);
+                        crate::dispatcher::persist_repositories(s);
+                        cx.notify();
+                        true
+                    });
+                    if changed {
+                        Self::refresh_branch_protection(id, cx);
+                    }
+                }
+                Err(err) => warn!(id, %err, "could not refresh the GitHub repository"),
+            },
+        );
+    }
+
     /// `_showCreateForkDialog`: only with an account for the repository.
     pub fn show_create_fork_dialog(id: u64, cx: &mut App) {
         let ok = {

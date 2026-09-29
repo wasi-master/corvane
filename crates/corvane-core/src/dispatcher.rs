@@ -328,6 +328,7 @@ impl Dispatcher {
             Self::start_watching(id, cx);
             Self::check_lfs(id, cx);
             Self::ensure_pull_requests(id, cx);
+            Self::refresh_github_repository(id, cx);
             Self::restart_pull_request_updater(cx);
         }
     }
@@ -2626,6 +2627,10 @@ impl Dispatcher {
                         cx.notify();
                         s.retry_after_sign_in.take()
                     });
+                    // `refreshSelectedRepositoryAfterAccountChange`
+                    if let Some(id) = Self::state(cx).read(cx).selected {
+                        Self::refresh_github_repository(id, cx);
+                    }
                     if let Some((id, retry)) = retry {
                         Self::perform_retry(id, retry, cx);
                     }

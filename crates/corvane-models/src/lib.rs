@@ -93,11 +93,30 @@ pub struct GitHubRepository {
     /// Shown as an "Archived" badge in the clone list.
     #[serde(default)]
     pub archived: bool,
+    /// The signed-in user's permission (`GitHubRepositoryPermission`), from
+    /// `GET /repos/{owner}/{name}`; `None` when unknown.
+    #[serde(default)]
+    pub permissions: Option<RepositoryPermission>,
+}
+
+/// GHD `GitHubRepositoryPermission`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RepositoryPermission {
+    Read,
+    Write,
+    Admin,
 }
 
 impl GitHubRepository {
     pub fn full_name(&self) -> String {
         format!("{}/{}", self.owner, self.name)
+    }
+
+    /// `hasWritePermission`: can the user push? Unknown permissions count
+    /// as writable.
+    pub fn has_write_permission(&self) -> bool {
+        self.permissions != Some(RepositoryPermission::Read)
     }
 }
 
@@ -322,6 +341,7 @@ pub fn github_from_remote(url: &str, ghes_hosts: &[String]) -> Option<GitHubRepo
         fork: false,
         parent: None,
         archived: false,
+        permissions: None,
     })
 }
 

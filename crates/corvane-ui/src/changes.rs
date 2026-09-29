@@ -2010,6 +2010,47 @@ impl ChangesSidebar {
             .into_any_element()
     }
 
+    /// `showNoWriteAccess` (with changed files): "You don't have write access
+    /// to <repo>. Want to create a fork?", shown before any branch warning.
+    fn no_write_access_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let (id, name) = {
+            let s = self.state.read(cx);
+            let id = s.selected?;
+            let repo = s.repository(id)?;
+            let github = repo.github.as_ref()?;
+            let files = s.selected_state()?.status.as_ref()?.files.len();
+            if github.has_write_permission() || files == 0 {
+                return None;
+            }
+            (id, repo.name())
+        };
+        Some(
+            self.commit_warning(
+                Octicon::Alert,
+                t.dialog_warning,
+                crate::widgets::paragraph(vec![
+                    "You don't have write access to ".into(),
+                    div()
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .text_color(t.text)
+                        .child(name)
+                        .into_any_element()
+                        .into(),
+                    ". Want to ".into(),
+                    crate::widgets::link_button("commit-warning-create-fork", "create a fork", cx)
+                        .on_click(move |_, _, cx| Dispatcher::show_create_fork_dialog(id, cx))
+                        .into_any_element()
+                        .into(),
+                    "?".into(),
+                ])
+                .justify_center()
+                .into_any_element(),
+                cx,
+            ),
+        )
+    }
+
     /// `renderBranchProtectionsRepoRulesCommitWarning`
     fn branch_protection_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -2767,7 +2808,10 @@ impl ChangesSidebar {
                 d.child(div().mb(SPACING).child(self.co_author_input(window, cx)))
             })
             .children(self.amend_notice(cx))
-            .children(self.branch_protection_warning(cx))
+            .children(
+                self.no_write_access_warning(cx)
+                    .or_else(|| self.branch_protection_warning(cx)),
+            )
             .children(
                 self.rule_failure_popover_open
                     .then(|| self.rule_failure_popover(window, cx))

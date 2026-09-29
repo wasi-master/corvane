@@ -164,6 +164,8 @@ fn main() {
         //   pr-review[:approved|:commented] (changes requested by default)
         //   pr-comment | pr-checks-failed
         //   pr-list (sample pull requests in the branch foldout's Pull Requests tab)
+        //   no-write-access (the repository becomes a read-only GitHub repository;
+        //   add CORVANE_DEV_ACCOUNTS=login@https://api.github.com for the fork dialog)
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -208,6 +210,7 @@ fn main() {
                                 fork: false,
                                 parent: None,
                                 archived: false,
+                                permissions: None,
                             };
                             corvane_core::AppState::global(cx).update(cx, |s, _| {
                                 if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
@@ -276,6 +279,7 @@ fn main() {
                                 cx,
                             )
                         }
+                        ("no-write-access", Some(id)) => dev_samples::make_read_only(id, cx),
                         ("pr-list", Some(id)) => {
                             dev_samples::install_pull_requests(id, cx);
                             Dispatcher::change_branches_tab(

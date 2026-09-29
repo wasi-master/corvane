@@ -201,6 +201,18 @@ impl Dispatcher {
             let Some(gh) = s.repository(id).and_then(|r| r.github.clone()) else {
                 return;
             };
+            // without write access the branch rules don't matter: the
+            // commit form shows the fork suggestion instead (GHD skips the
+            // API calls the same way)
+            if !gh.has_write_permission() {
+                Self::state(cx).update(cx, |s, cx| {
+                    let rs = s.repo_state_mut(id);
+                    rs.current_branch_protected = false;
+                    rs.repo_rules = RepoRulesInfo::default();
+                    cx.notify();
+                });
+                return;
+            }
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
             };

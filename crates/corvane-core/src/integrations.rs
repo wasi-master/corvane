@@ -760,6 +760,7 @@ mod tests {
             fork: parent,
             parent: None,
             archived: false,
+            permissions: None,
         };
         if parent {
             GitHubRepository {
