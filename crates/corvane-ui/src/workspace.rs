@@ -28,7 +28,9 @@ use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::title_bar::title_bar;
-use crate::toolbar::{toolbar, toolbar_models, worktree_button_visible};
+use crate::toolbar::{
+    ToolbarResize, toolbar, toolbar_models, toolbar_widths, worktree_button_visible,
+};
 use crate::welcome::WelcomeView;
 use crate::worktree_list::WorktreeFoldout;
 
@@ -50,6 +52,8 @@ pub struct Workspace {
     welcome: Option<Entity<WelcomeView>>,
     /// The branch button's PR badge rectangle (anchor of the CI popover).
     pr_badge_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// Resize handles of the worktree and branch buttons.
+    toolbar_resize: Rc<ToolbarResize>,
     ci_popover: Entity<CiCheckPopover>,
 }
 
@@ -126,6 +130,7 @@ impl Workspace {
             branch_foldout,
             worktree_foldout,
             pr_badge_bounds,
+            toolbar_resize: Rc::new(ToolbarResize::default()),
             ci_popover,
             dialogs,
             diff_view,
@@ -397,10 +402,26 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
-        let (buttons, foldout, popup, has_repos, cloning, banner, worktree_button, ci_popover) = {
+        let (
+            buttons,
+            foldout,
+            popup,
+            has_repos,
+            cloning,
+            banner,
+            worktree_button,
+            ci_popover,
+            (_, worktree_width, branch_width),
+        ) = {
             let state = self.state.read(cx);
+            let widths = toolbar_widths(
+                state,
+                window.viewport_size().width,
+                self.sidebar_width,
+                &self.toolbar_resize,
+            );
             (
-                toolbar_models(state, self.sidebar_width, &self.pr_badge_bounds),
+                toolbar_models(state, self.sidebar_width, widths, &self.pr_badge_bounds),
                 state.foldout,
                 state.popup.is_some(),
                 !state.repositories.is_empty(),
@@ -411,6 +432,7 @@ impl Render for Workspace {
                     && state
                         .selected
                         .is_some_and(|id| state.current_pull_request(id).is_some()),
+                widths,
             )
         };
 
@@ -430,7 +452,9 @@ impl Render for Workspace {
             .when_some(self.welcome.clone(), |d, welcome| {
                 d.child(div().flex_1().min_h_0().w_full().child(welcome))
             })
-            .when(self.welcome.is_none(), |d| d.child(toolbar(buttons, cx)))
+            .when(self.welcome.is_none(), |d| {
+                d.child(toolbar(buttons, &self.toolbar_resize, cx))
+            })
             .when(self.welcome.is_none(), |d| {
                 d.when_some(banner.as_ref(), |d, banner| d.child(banner_bar(banner, cx)))
             })
@@ -460,16 +484,23 @@ impl Render for Workspace {
             .when_some(foldout, |d, foldout| {
                 // the worktree button sits between the repository and branch buttons
                 let shift = if worktree_button {
-                    TOOLBAR_BUTTON_WIDTH
+                    worktree_width
                 } else {
                     px(0.)
                 };
+                // `foldoutStyleOverrides`: as wide as the resized button,
+                // at least 365 px
+                let foldout_width = |width: Pixels| width.max(px(365.));
                 let (x, width) = match foldout {
                     corvane_core::Foldout::Repository => (px(0.), self.sidebar_width),
-                    corvane_core::Foldout::Worktree => (self.sidebar_width, px(365.)),
-                    corvane_core::Foldout::Branch => (self.sidebar_width + shift, px(365.)),
+                    corvane_core::Foldout::Worktree => {
+                        (self.sidebar_width, foldout_width(worktree_width))
+                    }
+                    corvane_core::Foldout::Branch => {
+                        (self.sidebar_width + shift, foldout_width(branch_width))
+                    }
                     corvane_core::Foldout::PushPull => (
-                        self.sidebar_width + shift + TOOLBAR_BUTTON_WIDTH,
+                        self.sidebar_width + shift + branch_width,
                         TOOLBAR_BUTTON_WIDTH,
                     ),
                 };
