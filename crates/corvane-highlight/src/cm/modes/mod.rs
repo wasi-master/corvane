@@ -4,6 +4,7 @@
 //! To port a mode: add `<name>.rs` exposing a constructor, list its MIME
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
+pub mod asciiarmor;
 pub mod clike;
 pub mod css;
 pub mod cypher;
@@ -228,6 +229,10 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-rpm-spec" => Some(Arc::new(rpm::RpmSpec)),
         "text/x-rpm-changes" => Some(Arc::new(rpm::RpmChanges)),
         "text/x-oz" => Some(Arc::new(oz::Oz)),
+        "application/pgp"
+        | "application/pgp-encrypted"
+        | "application/pgp-keys"
+        | "application/pgp-signature" => Some(Arc::new(asciiarmor::AsciiArmor)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
