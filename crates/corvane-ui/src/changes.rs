@@ -74,6 +74,8 @@ pub struct ChangesSidebar {
     state: Entity<AppState>,
     seen_commit_nonce: u64,
     seen_amend_nonce: u64,
+    /// Repository and `commit.template` text the form was last prefilled for.
+    seen_template: (Option<u64>, Option<String>),
     context_menu: Option<Entity<ContextMenu>>,
     /// GHD `ChangesListFilterOptions` popover.
     filter_popover_open: bool,
@@ -140,7 +142,23 @@ impl ChangesSidebar {
                 this.summary_misspelled.clear();
                 this.description_misspelled.clear();
                 this.autocomplete = None;
+                // the next commit starts from the template again
+                let template = this.seen_template.1.clone();
+                this.apply_commit_template(None, template, window, cx);
                 cx.notify();
+            }
+            let template = {
+                let s = state.read(cx);
+                (
+                    s.selected,
+                    s.selected_state()
+                        .and_then(|rs| rs.info.as_ref())
+                        .and_then(|i| i.commit_template.clone()),
+                )
+            };
+            if template != this.seen_template {
+                let previous = std::mem::replace(&mut this.seen_template, template.clone()).1;
+                this.apply_commit_template(previous, template.1, window, cx);
             }
             // GHD `prepareToAmendCommit`: load the commit's message into the form.
             let (amend_nonce, to_amend) = state
@@ -194,6 +212,7 @@ impl ChangesSidebar {
             state,
             seen_commit_nonce: 0,
             seen_amend_nonce: 0,
+            seen_template: (None, None),
             context_menu: None,
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
@@ -939,6 +958,35 @@ impl ChangesSidebar {
     }
 
     /// View › Go to Summary.
+    /// Prefill the description with the repository's `commit.template`
+    /// (`corvane_git::commit_template`) while the form is untouched: summary
+    /// empty and the description empty or still holding the `previous`
+    /// template text.
+    fn apply_commit_template(
+        &mut self,
+        previous: Option<String>,
+        template: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if !self.summary.read(cx).value().is_empty() {
+            return;
+        }
+        let description = self.description.read(cx).value().to_string();
+        let untouched = description.is_empty() || previous.as_deref() == Some(description.as_str());
+        if !untouched {
+            return;
+        }
+        let text = template.unwrap_or_default();
+        if text == description {
+            return;
+        }
+        self.description
+            .update(cx, |s, cx| s.set_value(text, window, cx));
+        self.refresh_spelling(CommitField::Description, cx);
+        cx.notify();
+    }
+
     pub fn focus_summary(&self, window: &mut Window, cx: &mut Context<Self>) {
         let handle = self.summary.read(cx).focus_handle(cx);
         handle.focus(window, cx);

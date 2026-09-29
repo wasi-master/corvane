@@ -3,6 +3,7 @@
 
 pub mod branch_ops;
 pub mod commit;
+pub mod commit_template;
 pub mod config;
 pub mod detect;
 pub mod diff;
