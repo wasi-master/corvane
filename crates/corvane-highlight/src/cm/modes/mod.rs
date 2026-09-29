@@ -12,6 +12,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod luau;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -223,6 +224,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/x-lua" | "text/x-luau" => Some(cached!(luau::Luau)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
