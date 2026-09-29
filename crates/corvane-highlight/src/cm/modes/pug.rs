@@ -4,7 +4,8 @@
 //! pug.js requires javascript, css and htmlmixed, so filters, `script.` /
 //! `style.` blocks and inline `<html>` lines resolve through
 //! [`super::html_modes`]; any other name falls back to the `null` mode
-//! (the block becomes a plain `string`).
+//! (the block becomes a plain `string`). A worker that loads more modes
+//! (vue) builds it with [`Pug::with_resolver`].
 //!
 //! Quirks of the JS kept on purpose:
 //! - The mode has no `innerMode`, so every token (inner ones included)
@@ -25,6 +26,7 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use super::super::{Mode, ModeState, StringStream, js_len, state};
+use super::htmlmixed::Resolver;
 use super::javascript::{JsConfig, JsMode, JsState};
 use super::js_syntax::var_x_parses;
 use crate::re;
@@ -74,6 +76,8 @@ struct PugState {
 
 pub struct Pug {
     js: JsMode,
+    /// `CodeMirror.getMode` over the modes loaded next to pug
+    resolve: Resolver,
 }
 
 impl Default for Pug {
@@ -91,8 +95,15 @@ enum Spec<'a> {
 
 impl Pug {
     pub fn new() -> Self {
+        Self::with_resolver(super::html_modes)
+    }
+
+    /// pug whose filters and blocks look modes up with `resolve` (the
+    /// modes loaded in the worker, e.g. vue's).
+    pub fn with_resolver(resolve: Resolver) -> Self {
         Self {
             js: JsMode::new(JsConfig::default()),
+            resolve,
         }
     }
 
@@ -171,9 +182,9 @@ impl Pug {
     }
 
     /// `includeFilteredContinued`
-    fn include_filtered_continued(stream: &mut StringStream, s: &mut PugState) -> Tok {
+    fn include_filtered_continued(&self, stream: &mut StringStream, s: &mut PugState) -> Tok {
         if s.is_include_filtered {
-            let tok = Self::filter(stream, s);
+            let tok = self.filter(stream, s);
             s.is_include_filtered = false;
             s.rest_of_line = Some("string");
             return tok;
@@ -254,15 +265,15 @@ impl Pug {
     }
 
     /// `filter`
-    fn filter(stream: &mut StringStream, s: &mut PugState) -> Tok {
+    fn filter(&self, stream: &mut StringStream, s: &mut PugState) -> Tok {
         if let Some(m) = stream.match_re(re!(r"^:([A-Za-z0-9_\-]+)"), true) {
             // getMode(config, name), then setInnerMode with the mode object
             let name = m.group(1).unwrap_or("");
-            let spec = match super::html_modes(name) {
+            let spec = match (self.resolve)(name) {
                 Some(mode) => Spec::Mode(mode),
                 None => Spec::Null,
             };
-            Self::set_inner_mode(stream, s, spec);
+            self.set_inner_mode(stream, s, spec);
             return style("atom");
         }
         None
@@ -349,13 +360,13 @@ impl Pug {
     }
 
     /// `text`
-    fn text(stream: &mut StringStream, s: &mut PugState) -> Tok {
+    fn text(&self, stream: &mut StringStream, s: &mut PugState) -> Tok {
         if stream.matches(re!(r"^(?:\| ?| )([^\n]+)")) {
             return style("string");
         }
         if stream.match_re(re!(r"^(<[^\n]*)"), false).is_some() {
             // html string
-            Self::set_inner_mode(stream, s, Spec::Name("htmlmixed"));
+            self.set_inner_mode(stream, s, Spec::Name("htmlmixed"));
             s.inner_mode_for_line = true;
             return Self::inner_mode(stream, s, true);
         }
@@ -363,7 +374,7 @@ impl Pug {
     }
 
     /// `dot`
-    fn dot(stream: &mut StringStream, s: &mut PugState) -> Tok {
+    fn dot(&self, stream: &mut StringStream, s: &mut PugState) -> Tok {
         if stream.eat('.').is_some() {
             let script = s.script_type.to_lowercase();
             let inner = if s.last_tag == "script" && script.contains("javascript") {
@@ -374,8 +385,8 @@ impl Pug {
                 None
             };
             match &inner {
-                Some(name) => Self::set_inner_mode(stream, s, Spec::Name(name)),
-                None => Self::set_inner_mode(stream, s, Spec::Null),
+                Some(name) => self.set_inner_mode(stream, s, Spec::Name(name)),
+                None => self.set_inner_mode(stream, s, Spec::Null),
             }
             return style("dot");
         }
@@ -383,10 +394,10 @@ impl Pug {
     }
 
     /// `setInnerMode`
-    fn set_inner_mode(stream: &mut StringStream, s: &mut PugState, spec: Spec) {
+    fn set_inner_mode(&self, stream: &mut StringStream, s: &mut PugState, spec: Spec) {
         // mimeModes lookups + getMode, limited to the modes pug.js loads
         let mode = match spec {
-            Spec::Name(name) => super::html_modes(name),
+            Spec::Name(name) => (self.resolve)(name),
             Spec::Mode(mode) => Some(mode),
             Spec::Null => None,
         };
@@ -442,7 +453,7 @@ impl Pug {
             Self::inner_mode(stream, s, false),
             Self::rest_of_line(stream, s),
             self.interpolation_continued(stream, s),
-            Self::include_filtered_continued(stream, s),
+            self.include_filtered_continued(stream, s),
             Self::each_continued(stream, s),
             self.attrs_continued(stream, s),
             self.java_script(stream, s),
@@ -511,7 +522,7 @@ impl Pug {
             // whileStatement
             Self::js_line_keyword(stream, s, re!(r"^while(?![A-Za-z0-9_])"), false),
             Self::tag(stream, s),
-            Self::filter(stream, s),
+            self.filter(stream, s),
             // code
             if stream.matches(re!(r"^(!?=|-)")) {
                 s.java_script_line = true;
@@ -531,7 +542,7 @@ impl Pug {
             Self::attributes_block(stream, s),
             // indent
             (stream.sol() && stream.eat_space()).then_some(Some(Cow::Borrowed("indent"))),
-            Self::text(stream, s),
+            self.text(stream, s),
             // comment
             if stream.matches(re!(r"^ *\/\/(-)?([^\n]*)")) {
                 s.indent_of = Some(stream.indentation());
@@ -544,7 +555,7 @@ impl Pug {
             stream
                 .matches(re!(r"^: *"))
                 .then_some(Some(Cow::Borrowed("colon"))),
-            Self::dot(stream, s),
+            self.dot(stream, s),
             // fail
             {
                 stream.next();
