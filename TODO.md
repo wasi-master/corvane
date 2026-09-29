@@ -27,8 +27,9 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Worktrees (GHD 3.6 feature flag)
 
-- [ ] **[UI]** Fourth toolbar button "Current Worktree" + Worktree foldout (Main Worktree / Linked Worktrees, filter, New Worktree)
-- [ ] `AddWorktree`, `RenameWorktree`, `DeleteWorktree`, `DeleteWorktreeFailed` popups; `Repository › New Worktree…` ⇧⌘W; `View › Show Worktrees List` ⌥⌘W
+- [ ] Resizable worktree / branch toolbar buttons (`enableResizingToolbarButtons`, `worktreeDropdownWidth`)
+- [ ] `mainWorktreePath` bookkeeping for unsafe (untrusted) repositories and worktrees whose git dir disappeared
+- [ ] Branch autocompletion inside the Add Worktree "Branch Name" box (`BranchAutocompletionProvider`); v1 accepts any name and shows the existing-branch hint
 
 ## Tutorial + onboarding extras
 
