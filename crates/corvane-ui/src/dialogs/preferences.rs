@@ -331,14 +331,14 @@ impl PreferencesDialog {
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(SPACING)
-                .mb(SPACING)
+                .gap(SPACING())
+                .mb(SPACING())
                 .child(crate::widgets::avatar_image(
                     account
                         .avatar_url
                         .as_deref()
                         .and_then(|u| crate::widgets::avatar_lookup_url(u, cx)),
-                    px(34.),
+                    zpx(34.),
                     cx,
                 ))
                 .child(
@@ -378,7 +378,7 @@ impl PreferencesDialog {
                     |_, cx| Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx),
                     cx,
                 )
-                .mb(SPACING)
+                .mb(SPACING())
                 .into_any_element(),
             })
             .child(section_heading("GitHub Enterprise", cx))
@@ -441,23 +441,23 @@ impl PreferencesDialog {
                 .flex()
                 .flex_row()
                 .items_center()
-                .gap(SPACING_HALF)
-                .text_size(FONT_SIZE_SM)
+                .gap(SPACING_HALF())
+                .text_size(FONT_SIZE_SM())
                 .text_color(t.form_error_text)
-                .child(crate::icons::octicon(Octicon::Alert, t.input_icon_error).size(px(12.)))
+                .child(crate::icons::octicon(Octicon::Alert, t.input_icon_error).size(zpx(12.)))
                 .child(message)
         };
         let path_for_choose = path.clone();
         div()
             .flex()
             .flex_col()
-            .gap(SPACING_HALF)
+            .gap(SPACING_HALF())
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .items_end()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(labeled(
                         "Path",
                         text_box(
@@ -591,7 +591,7 @@ impl PreferencesDialog {
         div()
             .flex()
             .flex_col()
-            .gap(SPACING)
+            .gap(SPACING())
             .child(labeled(
                 "External Editor",
                 select_button(
@@ -704,14 +704,14 @@ impl PreferencesDialog {
                     "edit your global Git config file",
                     cx,
                 )
-                .text_size(FONT_SIZE_SM)
+                .text_size(FONT_SIZE_SM())
                 .on_click(|_, _, cx| Dispatcher::edit_global_git_config(cx))
                 .into_any_element()
                 .into(),
                 ".".into(),
             ])
-            .mt(SPACING)
-            .text_size(FONT_SIZE_SM)
+            .mt(SPACING())
+            .text_size(FONT_SIZE_SM())
             .text_color(t.text_secondary)
         };
         let body = match self.git_tab {
@@ -750,7 +750,7 @@ impl PreferencesDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(labeled(
                         "Name",
                         text_box("prefs-git-name", &self.name, None, window, cx),
@@ -792,7 +792,7 @@ impl PreferencesDialog {
                             paragraph(vec![
                                 "This email address doesn't match your GitHub account, so your commits will be wrongly attributed. ".into(),
                                 link_button("prefs-email-learn-more", "Learn more", cx)
-                                    .text_size(FONT_SIZE_SM)
+                                    .text_size(FONT_SIZE_SM())
                                     .on_click(|_, _, cx| {
                                         Dispatcher::open_url(
                                             "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/setting-your-commit-email-address",
@@ -802,7 +802,7 @@ impl PreferencesDialog {
                                     .into_any_element()
                                     .into(),
                             ])
-                            .text_size(FONT_SIZE_SM)
+                            .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary),
                         )
                     })
@@ -828,8 +828,8 @@ impl PreferencesDialog {
                     .when_some(warning, |d, warning| {
                         d.child(
                             div()
-                                .mt(SPACING_THIRD)
-                                .text_size(FONT_SIZE_SM)
+                                .mt(SPACING_THIRD())
+                                .text_size(FONT_SIZE_SM())
                                 .text_color(t.text_secondary)
                                 .child(warning),
                         )
@@ -842,8 +842,8 @@ impl PreferencesDialog {
                             code_ref("master", cx).into_any_element().into(),
                             ".".into(),
                         ])
-                        .mt(SPACING)
-                        .text_size(FONT_SIZE_SM)
+                        .mt(SPACING())
+                        .text_size(FONT_SIZE_SM())
                         .text_color(t.text_secondary),
                     )
                     .child(edit_config(cx))
@@ -857,11 +857,11 @@ impl PreferencesDialog {
         // `.dialog-content.git-preferences { padding: 0 }`: the sub tab bar is
         // flush with the tab container; its content gets the 20 px padding back.
         div()
-            .m(px(-20.))
+            .m(zpx(-20.))
             .flex()
             .flex_col()
             .child(tabs)
-            .child(div().p(SPACING_DOUBLE).child(body))
+            .child(div().p(SPACING_DOUBLE()).child(body))
             .into_any_element()
     }
 
@@ -882,7 +882,7 @@ impl PreferencesDialog {
                 "When enabled, Corvane will attempt to load environment variables from your shell when executing Git hooks. This is useful if your Git hooks depend on environment variables set in your shell configuration files, a common practice for version managers such as nvm, rbenv, asdf, etc.",
             ))
             .when(enabled, |d| {
-                d.child(div().mt(SPACING).child(checkbox_row(
+                d.child(div().mt(SPACING()).child(checkbox_row(
                     "prefs-hook-env-cache",
                     self.draft.cache_git_hook_env,
                     "Cache Git hook environment variables",
@@ -953,7 +953,7 @@ impl PreferencesDialog {
             ix.and_then(|i| options.get(i).cloned()).unwrap_or_default()
         };
         div()
-            .mt(SPACING)
+            .mt(SPACING())
             .flex()
             .flex_col()
             .child(section_heading("Formatting", cx))
@@ -961,8 +961,8 @@ impl PreferencesDialog {
                 div()
                     .flex()
                     .flex_row()
-                    .gap(SPACING)
-                    .mb(SPACING)
+                    .gap(SPACING())
+                    .mb(SPACING())
                     .child(labeled(
                         "Date Format",
                         select_button(
@@ -1003,7 +1003,7 @@ impl PreferencesDialog {
                 ),
                 cx,
             ))
-            .child(div().my(SPACING).child(checkbox_row(
+            .child(div().my(SPACING()).child(checkbox_row(
                 "prefs-absolute-dates",
                 self.draft.prefer_absolute_dates,
                 "Prefer absolute dates over relative",
@@ -1025,7 +1025,7 @@ impl PreferencesDialog {
         let swatches = div()
             .flex()
             .flex_row()
-            .mx(px(-5.))
+            .mx(zpx(-5.))
             .children(themes.iter().map(|(theme, label)| {
                 let theme = *theme;
                 let is_selected = theme == selected;
@@ -1040,7 +1040,7 @@ impl PreferencesDialog {
                 let image = |path: &'static str| {
                     img(path)
                         .w_full()
-                        .h(px(60.))
+                        .h(zpx(60.))
                         .object_fit(ObjectFit::Cover)
                         .border_b_1()
                         .border_color(t.box_border)
@@ -1049,7 +1049,7 @@ impl PreferencesDialog {
                     .id(id)
                     .flex_1()
                     .min_w_0()
-                    .p(SPACING_HALF)
+                    .p(SPACING_HALF())
                     .cursor_pointer()
                     .on_click(move |_, _, cx| {
                         weak.update(cx, |this, cx| {
@@ -1065,7 +1065,7 @@ impl PreferencesDialog {
                             .h_full()
                             .flex()
                             .flex_col()
-                            .rounded(BORDER_RADIUS)
+                            .rounded(BORDER_RADIUS())
                             .border_1()
                             .border_color(if is_selected {
                                 t.box_selected_active_background
@@ -1073,7 +1073,7 @@ impl PreferencesDialog {
                                 t.box_border
                             })
                             .overflow_hidden()
-                            .pb(SPACING_HALF)
+                            .pb(SPACING_HALF())
                             .child(match theme {
                                 ThemeSetting::Light => {
                                     image("illustrations/ghd_light.svg").into_any_element()
@@ -1088,7 +1088,7 @@ impl PreferencesDialog {
                                 ThemeSetting::System => div()
                                     .relative()
                                     .w_full()
-                                    .h(px(60.))
+                                    .h(zpx(60.))
                                     .border_b_1()
                                     .border_color(t.box_border)
                                     .overflow_hidden()
@@ -1096,7 +1096,7 @@ impl PreferencesDialog {
                                         div().absolute().inset_0().child(
                                             img("illustrations/ghd_light.svg")
                                                 .w_full()
-                                                .h(px(60.))
+                                                .h(zpx(60.))
                                                 .object_fit(ObjectFit::Cover),
                                         ),
                                     )
@@ -1114,11 +1114,11 @@ impl PreferencesDialog {
                                                     .top_0()
                                                     .bottom_0()
                                                     .right_0()
-                                                    .w(px(230.))
+                                                    .w(zpx(230.))
                                                     .child(
                                                         img("illustrations/ghd_dark.svg")
                                                             .w_full()
-                                                            .h(px(60.))
+                                                            .h(zpx(60.))
                                                             .object_fit(ObjectFit::Cover),
                                                     ),
                                             ),
@@ -1127,20 +1127,20 @@ impl PreferencesDialog {
                             })
                             .child(
                                 div()
-                                    .mt(SPACING_HALF)
+                                    .mt(SPACING_HALF())
                                     // the fourth swatch's two-line label needs the room
-                                    .px(if compact { px(3.) } else { SPACING })
+                                    .px(if compact { zpx(3.) } else { SPACING() })
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(if compact { px(3.) } else { SPACING_HALF })
+                                    .gap(if compact { zpx(3.) } else { SPACING_HALF() })
                                     .child(radio(
                                         ElementId::from(SharedString::from(format!("{id}-radio"))),
                                         is_selected,
                                         cx,
                                     ))
                                     .child(if compact {
-                                        div().min_w_0().line_height(px(14.)).child(*label)
+                                        div().min_w_0().line_height(zpx(14.)).child(*label)
                                     } else {
                                         div().whitespace_nowrap().child(*label)
                                     }),
@@ -1175,7 +1175,7 @@ impl PreferencesDialog {
             .child(section_heading("Theme", cx))
             .child(swatches)
             .child(self.formatting_section(cx))
-            .child(div().mt(SPACING).child(section_heading("Diff", cx)))
+            .child(div().mt(SPACING()).child(section_heading("Diff", cx)))
             .child(labeled(
                 "Tab Size",
                 select_button(
@@ -1232,7 +1232,7 @@ impl PreferencesDialog {
             Some(NotificationPermission::Denied) => {
                 // `.setting-hint-warning`
                 warning = Some(
-                    div().mt(SPACING).child(paragraph(vec![
+                    div().mt(SPACING()).child(paragraph(vec![
                         Inline::Element(
                             div()
                                 .text_color(t.dialog_warning)
@@ -1269,7 +1269,7 @@ impl PreferencesDialog {
             ))
             .child(
                 settings_description(cx)
-                    .child(paragraph(parts).line_height(px(16.)))
+                    .child(paragraph(parts).line_height(zpx(16.)))
                     .children(warning),
             )
             .into_any_element()
@@ -1303,7 +1303,7 @@ impl PreferencesDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .child(checkbox_row(
                         "prefs-confirm-remove",
                         d.confirm_repository_removal,
@@ -1368,7 +1368,7 @@ impl PreferencesDialog {
                         cx,
                     )),
             )
-            .child(div().mt(SPACING).child(section_heading(
+            .child(div().mt(SPACING()).child(section_heading(
                 "If I have changes and I switch branches...",
                 cx,
             )))
@@ -1376,7 +1376,7 @@ impl PreferencesDialog {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF)
+                    .gap(SPACING_HALF())
                     .children(strategies.iter().map(|(value, id, label)| {
                         let value = *value;
                         let weak = cx.weak_entity();
@@ -1397,7 +1397,7 @@ impl PreferencesDialog {
             )
             .child(
                 div()
-                    .mt(SPACING)
+                    .mt(SPACING())
                     .child(section_heading("Commit Length", cx)),
             )
             .child(checkbox_row(
@@ -1427,7 +1427,7 @@ impl PreferencesDialog {
                 settings_description(cx)
                     .flex()
                     .flex_col()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(
                         "These icons indicate which repositories have local or remote changes, and require the periodic fetching of repositories that are not currently selected.",
                     )
@@ -1435,7 +1435,7 @@ impl PreferencesDialog {
                         "Turning this off will not stop the periodic fetching of your currently selected repository, but may improve overall app performance for users with many repositories.",
                     ),
             )
-            .child(div().mt(SPACING).child(section_heading("Network and credentials", cx)))
+            .child(div().mt(SPACING()).child(section_heading("Network and credentials", cx)))
             .child(checkbox_row(
                 "prefs-credential-manager",
                 self.draft.use_external_credential_helper,
@@ -1447,18 +1447,18 @@ impl PreferencesDialog {
                 paragraph(vec![
                     "Use ".into(),
                     link_button("prefs-gcm-link", "Git Credential Manager", cx)
-                        .text_size(FONT_SIZE_SM)
+                        .text_size(FONT_SIZE_SM())
                         .on_click(|_, _, cx| Dispatcher::open_url("https://gh.io/gcm", cx))
                         .into_any_element()
                         .into(),
                     " for private repositories outside of GitHub.com. This feature is experimental and subject to change.".into(),
                 ])
-                .mt(SPACING)
-                .text_size(FONT_SIZE_SM)
+                .mt(SPACING())
+                .text_size(FONT_SIZE_SM())
                 .text_color(t.text_secondary),
             )
             // Corvane addition in place of GHD's Usage section (no telemetry)
-            .child(div().mt(SPACING).child(section_heading("Crash reports", cx)))
+            .child(div().mt(SPACING()).child(section_heading("Crash reports", cx)))
             .child(checkbox_row(
                 "prefs-save-crash-reports",
                 self.draft.save_crash_reports,
@@ -1474,7 +1474,7 @@ impl PreferencesDialog {
                 ),
             )
             // Corvane addition: on-demand packs
-            .child(div().mt(SPACING).child(section_heading("Optional components", cx)))
+            .child(div().mt(SPACING()).child(section_heading("Optional components", cx)))
             .children(
                 corvane_core::OFFERED_PACKS
                     .iter()
@@ -1528,7 +1528,7 @@ impl PreferencesDialog {
                 ),
                 None => format!("Installed (version {}).", installed.version),
             };
-            let mut actions = div().flex().flex_row().items_center().gap(SPACING);
+            let mut actions = div().flex().flex_row().items_center().gap(SPACING());
             if entry
                 .as_ref()
                 .is_some_and(|e| e.version != installed.version)
@@ -1576,17 +1576,17 @@ impl PreferencesDialog {
         div()
             .flex()
             .flex_col()
-            .mt(SPACING)
+            .mt(SPACING())
             .child(div().font_weight(FontWeight::SEMIBOLD).child(kind.title()))
-            .child(settings_description(cx).mt(px(2.)).child(description))
+            .child(settings_description(cx).mt(zpx(2.)).child(description))
             .child(
                 div()
-                    .mt(SPACING)
+                    .mt(SPACING())
                     .flex()
                     .flex_row()
                     .items_center()
                     .justify_between()
-                    .gap(SPACING)
+                    .gap(SPACING())
                     .child(
                         div()
                             .id(match kind {
@@ -1595,15 +1595,17 @@ impl PreferencesDialog {
                                 PackKind::GitLfs => "prefs-pack-status-lfs",
                             })
                             .a11y_live(status.clone())
-                            .text_size(FONT_SIZE_SM)
+                            .flex_1()
+                            .min_w_0()
+                            .text_size(FONT_SIZE_SM())
                             .child(status),
                     )
-                    .children(action),
+                    .children(action.map(|a| div().flex_none().child(a))),
             )
             .children(error.map(|e| {
                 div()
-                    .mt(SPACING_HALF)
-                    .text_size(FONT_SIZE_SM)
+                    .mt(SPACING_HALF())
+                    .text_size(FONT_SIZE_SM())
                     .text_color(t.error)
                     .child(e)
             }))
@@ -1635,11 +1637,11 @@ impl PreferencesDialog {
                         .into_any_element()
                         .into(),
                 ])
-                .mt(SPACING)
-                .text_size(FONT_SIZE_SM)
+                .mt(SPACING())
+                .text_size(FONT_SIZE_SM())
                 .text_color(t.text_secondary),
             )
-            .child(div().mt(SPACING).child(checkbox_row(
+            .child(div().mt(SPACING()).child(checkbox_row(
                 "prefs-diff-check-marks",
                 self.draft.show_diff_check_marks,
                 "Show check marks in the diff",
@@ -1738,22 +1740,22 @@ impl Render for PreferencesDialog {
         let name_valid = corvane_core::git_author_name_is_valid(self.name.read(cx).value().trim());
         let error = (!name_valid).then_some(corvane_core::INVALID_GIT_AUTHOR_NAME_MESSAGE);
         let content = div()
-            .w(px(560.))
-            .mx(px(-20.))
-            .my(px(-20.))
+            .w(zpx(560.))
+            .mx(zpx(-20.))
+            .my(zpx(-20.))
             .flex()
             .flex_col()
             .when_some(error, |d, message| {
                 d.child(
                     crate::widgets::dialog_error_banner(message, cx)
-                        .mx(px(0.))
-                        .mt(px(0.))
-                        .mb(px(0.)),
+                        .mx(zpx(0.))
+                        .mt(zpx(0.))
+                        .mb(zpx(0.)),
                 )
             })
             .child(
                 div()
-                    .min_h(px(360.))
+                    .min_h(zpx(360.))
                     .flex()
                     .flex_row()
                     .items_stretch()
@@ -1764,7 +1766,7 @@ impl Render for PreferencesDialog {
                             .min_w_0()
                             .border_l_1()
                             .border_color(t.box_border)
-                            .p(SPACING_DOUBLE)
+                            .p(SPACING_DOUBLE())
                             .child(body),
                     ),
             );
