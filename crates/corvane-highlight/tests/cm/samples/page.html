@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<!--
+  Landing page for the Corvane docs site.
+  Multi-line comment with <b>markup</b> & "quotes" inside.
+-->
+<html lang="en" data-theme='dark'>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Corvane &mdash; a native Git client &#8212; ünïcødé &#x2014; 日本語</title>
+	<link rel="stylesheet" href="/assets/site.css?v=3" media="screen and (min-width: 40em)">
+	<link rel=icon href=/favicon.ico type=image/x-icon>
+	<base href="https://example.com/">
+	<style>
+		:root { --accent: #0969da; --radius: 6px; }
+		html, body { margin: 0; padding: 0; font: 14px/1.5 -apple-system, "Segoe UI", sans-serif; }
+		@media (prefers-color-scheme: dark) {
+			body { background: #0d1117; color: rgba(230, 237, 243, .9); }
+		}
+		a:hover > .icon::before { content: "→ </b>"; transform: rotate(45deg) !important; }
+		/* a comment that spans
+		   two lines inside the style block */
+		.card { border: 1px solid var(--accent); border-radius: calc(var(--radius) * 2); }
+	</style>
+	<style type="text/css" media="print">
+		@page { size: A4; margin: 2cm }
+		nav, .no-print { display: none }
+	</style>
+	<style type="text/less">.mixin(@a) { width: @a }</style>
+	<style lang="scss">$gap: 4px; .grid { gap: $gap; }</style>
+	<STYLE>P { COLOR: RED }</STYLE>
+	<script>
+		'use strict';
+		const answer = 42, pi = 3.14159, hex = 0xff, big = 10n;
+		let greeting = `Hello, ${name.trim()}!`;
+		function greet(who = "world") {
+			// a line comment with </div> inside
+			if (who.length > 3 && !done) return `hi ${who}`;
+			/* block comment
+			   across lines */
+			return null;
+		}
+		class Widget extends HTMLElement {
+			static observed = ['open'];
+			#secret = 1;
+			connectedCallback() { this.innerHTML = "<p>ready</p>"; }
+		}
+		customElements.define("x-widget", Widget);
+		const re = /<\/?[a-z]+>/gi;
+		document.querySelectorAll('a[href^="http"]').forEach(a => a.target = "_blank");
+	</script>
+	<script type="text/javascript" src="/js/vendor.js" defer></script>
+	<script type="module">
+		import { render } from "./app.js";
+		export default async function main() { await render(document.body); }
+	</script>
+	<script type="application/ecmascript">var legacy = true;</script>
+	<script type="text/x-template" id="row-template">
+		<tr><td>{{ name }}</td><td>{{ value | money }}</td></tr>
+	</script>
+	<script type="application/json" id="config">{"debug": false, "items": [1, 2, 3]}</script>
+	<script type=text/babel>const el = <div className="x">hi</div>;</script>
+	<script lang="babel">const arrow = (a, b) => a + b;</script>
+	<script
+		type="text/javascript"
+		async
+		crossorigin="anonymous">
+		window.dataLayer = window.dataLayer || [];
+	</script>
+	<script>var s = "</script>"; var after = 1;</script>
+	<script>document.write("<scr" + "ipt>1</scr" + "ipt>");</script >
+	<SCRIPT LANGUAGE="JavaScript">alert('shouting');</SCRIPT>
+	<script src="/inline-self-close.js" />
+	<p>after self-closing script</p>
+	<script></script>
+</head>
+<body class="home page" onload="init({ debug: true })" style="color: red; margin: 0">
+	<header id=top>
+		<nav>
+			<ul>
+				<li><a href="#intro">Intro</a>
+				<li><a href="#features" title='Features &amp; more'>Features</a>
+				<li class=active><a href=#faq>FAQ</a>
+			</ul>
+		</nav>
+	</header>
+	<main>
+		<h1>Welcome to Corvane 🚀</h1>
+		<p>Plain text with an &amp; entity, a broken &entity and a bad &#xZZ; one.
+		<p>Second paragraph closes the first implicitly.</p>
+		<img src="logo.png" alt="Logo" width=64 height=64>
+		<br/>
+		<input type="checkbox" checked disabled>
+		<table>
+			<thead><tr><th>Key<th>Value</thead>
+			<tbody>
+				<tr><td>a<td>1
+				<tr><td>b<td>2
+			</tbody>
+		</table>
+		<pre><code>fn main() { println!("&lt;hi&gt;"); }</code></pre>
+		<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 2L2 22h20z"/></svg>
+		<![CDATA[ not really valid in html ]]>
+		<div data-json='{"a": 1}' aria-label="Ünïcode — label">Mismatched</span></div>
+		<textarea name=notes rows="3">
+			Some <b>text</b> here
+		</textarea>
+		<button type="submit" onclick="event.preventDefault(); save();">Save</button>
+	</main>
+	<footer>
+		<p>&copy; 2026 Corvane · <a href="mailto:hi@example.com">hi@example.com</a></p>
+	</footer>
+	<script>
+		window.addEventListener("load", () => {
+			console.log("loaded", performance.now());
+		});
+	</script>
+</body>
+</html>

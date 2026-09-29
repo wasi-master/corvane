@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!doctype html public "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Layout</title>
+<style type="text/stylesheet">body { color: black }</style>
+<style type="x-css">h1 { font-size: 2em }</style>
+<style type="text/sass">.a
+  color: red</style>
+<style media="all" lang="CSS">
+  .x { background: url("data:image/png;base64,AAAA") no-repeat; }
+  .y { width: 100% } </style><p>right after</p>
+<style>
+  .unterminated { content: "open string
+  color: blue;
+</style>
+<script type="text/ecmascript">
+  var a = 1 < 2, b = a <
+  3;
+  if (a </script>
+<script type="text/vbscript">MsgBox "Hello"</script>
+<script type="">let empty = true</script>
+<script lang="javascript" type="text/plain">looksLike(js)</script>
+<script type="TEXT/JAVASCRIPT">upper()</script>
+<script data-type="text/plain">notATypeAttr()</script>
+<script type = "text/javascript"  >spaced()</script>
+<script type='module'
+>nextLineClose()</script>
+</head>
+<body>
+<div
+  class="multi
+  line attr"
+  id=x>
+  Text with <em>emphasis</em>, <strong>strong</strong>, and a stray < sign.
+  A lone ampersand & and &#123; &#x7b; &nbsp; entities.
+</div>
+<div><span>unclosed span</div>
+<ul><li>one<li>two</ul>
+<select><option>A<option selected>B<optgroup label=g><option>C</select>
+<dl><dt>Term<dd>Definition<dt>Other<dd>More</dl>
+<p>Before a heading<h2>Heading closes p</h2>
+<a href="javascript:void(0)" onclick='go("x")'>link</a>
+<ruby>漢<rp>(</rp><rt>kan</rt><rp>)</rp>字</ruby>
+<input value="unterminated attr
+  continues here" name=x>
+<script>
+  function tail() {
+    return "eof";

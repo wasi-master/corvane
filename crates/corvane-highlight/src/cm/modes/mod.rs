@@ -16,13 +16,19 @@ pub mod elixir;
 pub mod fortran;
 pub mod go;
 pub mod haxe;
+pub mod htmlembedded;
+pub mod htmlmixed;
 pub mod javascript;
+pub mod javascript;
+pub mod jsx;
 pub mod jsx;
 pub mod julia;
 pub mod luau;
 pub mod mllike;
+pub mod multiplex;
 pub mod pascal;
 pub mod perl;
+pub mod php;
 pub mod powershell;
 pub mod properties;
 pub mod protobuf;
@@ -274,7 +280,14 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "application/json" | "application/x-json" | "application/manifest+json" => Some(json()),
         "application/ld+json" => Some(jsonld()),
         "text/typescript" | "application/typescript" => Some(typescript()),
-        // text/html is htmlmixed in GHD (htmlmixed.js redefines the MIME)
+        // htmlmixed.js redefines xml.js's text/html
+        "text/html" => Some(htmlmixed()),
+        "application/x-ejs" | "application/x-aspx" | "application/x-jsp" | "application/x-erb" => {
+            htmlembedded::for_mime(mime)
+        }
+        "application/x-httpd-php" => Some(php::php()),
+        "application/x-httpd-php-open" => Some(php::php_open()),
+        "text/x-php" => Some(php::x_php()),
         "text/xml" | "application/xml" => Some(xml()),
         "text/jsx" => Some(jsx()),
         "text/typescript-jsx" => Some(typescript_jsx()),
@@ -327,11 +340,45 @@ shared_mode!(
     xml::XmlMode::new(xml::XmlConfig::xml())
 );
 shared_mode!(
-    /// `{name: "xml", htmlMode: true}` (the `text/html` definition in
-    /// xml.js, which htmlmixed replaces in GHD)
-    xml_html,
-    xml::XmlMode::new(xml::XmlConfig::html())
+    /// `codemirror/mode/htmlmixed/htmlmixed.js` (`text/html`)
+    htmlmixed,
+    htmlmixed::HtmlMixed::new(Default::default(), html_modes)
 );
+
+/// `getMode` for a spec nested in HTML when the worker loaded htmlmixed.js
+/// and what it requires: xml, javascript and css (plus core's `null`).
+pub fn html_modes(spec: &str) -> Option<Arc<dyn Mode>> {
+    match spec {
+        "javascript"
+        | "text/javascript"
+        | "text/ecmascript"
+        | "application/javascript"
+        | "application/x-javascript"
+        | "application/ecmascript" => Some(javascript()),
+        "application/json" | "application/x-json" | "application/manifest+json" => Some(json()),
+        "application/ld+json" => Some(jsonld()),
+        "text/typescript" | "application/typescript" => Some(typescript()),
+        "css" | "text/css" | "text/x-scss" | "text/x-less" | "text/x-gss" => {
+            css::css_for_mime(if spec == "css" { "text/css" } else { spec })
+        }
+        "xml" | "text/xml" | "application/xml" => Some(xml()),
+        "htmlmixed" | "text/html" => Some(htmlmixed()),
+        // resolveMode's `+xml` / `+json` fallbacks
+        _ if crate::re!(r"^[A-Za-z0-9_\-]+\/[A-Za-z0-9_\-]+\+xml$")
+            .is_match(spec)
+            .unwrap_or(false) =>
+        {
+            Some(xml())
+        }
+        _ if crate::re!(r"^[A-Za-z0-9_\-]+\/[A-Za-z0-9_\-]+\+json$")
+            .is_match(spec)
+            .unwrap_or(false) =>
+        {
+            Some(json())
+        }
+        _ => None,
+    }
+}
 shared_mode!(
     /// `codemirror/mode/jsx/jsx.js` (`text/jsx`)
     jsx,
