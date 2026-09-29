@@ -121,6 +121,8 @@ fn main() {
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
+            // accounts or Settings › Notifications changed: (un)subscribe
+            Dispatcher::sync_alive_subscriptions(cx);
             let (theme, labels) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
@@ -248,6 +250,8 @@ fn main() {
         //   notification-click:review|comment|checks-failed (what clicking such a
         //   notification does: its userInfo payload goes through the click handler)
         //   zoom-in | zoom-out | zoom-reset (View › Zoom, with the zoom overlay)
+        //   alive:review|comment|checks-failed[:api] (an Alive event for the sample
+        //   pull requests through the notification handler; sample data unless :api)
         //   update-available[:brew][:about|:notes] (a sample update in the ready /
         //   Homebrew state: the banner, plus About or the Release Notes with
         //   "Install and Restart")
@@ -426,6 +430,23 @@ fn main() {
                         ("zoom-in", _) => cx.dispatch_action(&ZoomIn),
                         ("zoom-out", _) => cx.dispatch_action(&ZoomOut),
                         ("zoom-reset", _) => cx.dispatch_action(&ResetZoom),
+                        // GHD `simulateAliveEvent`: an Alive event through the real handler
+                        (other, Some(id)) if other.starts_with("alive:") => {
+                            use corvane_core::notifications::TestNotificationType as Kind;
+                            let parts: Vec<&str> = other.split(':').collect();
+                            let kind = match parts.get(1).copied() {
+                                Some("comment") => Kind::PullRequestComment,
+                                Some("checks-failed") => Kind::ChecksFailed,
+                                _ => Kind::PullRequestReview,
+                            };
+                            let data = if parts.contains(&"api") {
+                                corvane_core::AliveEventData::Api
+                            } else {
+                                corvane_core::AliveEventData::Sample
+                            };
+                            dev_samples::install_pull_requests(id, cx);
+                            Dispatcher::simulate_alive_event(id, kind, data, cx);
+                        }
                         ("test-notifications", Some(id)) => {
                             Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
                         }
@@ -851,6 +872,8 @@ fn main() {
         });
         Dispatcher::start_background_tasks(cx);
         Dispatcher::refresh_accounts(cx);
+        // Alive subscriptions for pull request notifications (GHD AliveStore)
+        Dispatcher::start_alive(cx);
         Dispatcher::start_pull_request_updater(cx);
         Dispatcher::start_commit_status_refresh(cx);
         // GHD `componentDidMount`: offer the move to /Applications

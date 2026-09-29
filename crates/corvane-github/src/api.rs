@@ -733,6 +733,81 @@ impl Client {
         }
     }
 
+    /// `fetchPullRequestReview`: `GET /repos/{owner}/{name}/pulls/{number}/reviews/{id}`.
+    pub fn pull_request_review(
+        &self,
+        owner: &str,
+        name: &str,
+        number: u64,
+        review_id: &str,
+    ) -> Result<Option<ApiPullRequestReview>> {
+        self.get_json_opt(
+            &format!(
+                "repos/{}/{}/pulls/{number}/reviews/{}",
+                encode_path_component(owner),
+                encode_path_component(name),
+                encode_path_component(review_id)
+            ),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `fetchIssueComment`: `GET /repos/{owner}/{name}/issues/comments/{id}`.
+    pub fn issue_comment(
+        &self,
+        owner: &str,
+        name: &str,
+        comment_id: &str,
+    ) -> Result<Option<ApiIssueComment>> {
+        self.get_json_opt(
+            &format!(
+                "repos/{}/{}/issues/comments/{}",
+                encode_path_component(owner),
+                encode_path_component(name),
+                encode_path_component(comment_id)
+            ),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `fetchPullRequestReviewComment`: `GET /repos/{owner}/{name}/pulls/comments/{id}`.
+    pub fn pull_request_review_comment(
+        &self,
+        owner: &str,
+        name: &str,
+        comment_id: &str,
+    ) -> Result<Option<ApiIssueComment>> {
+        self.get_json_opt(
+            &format!(
+                "repos/{}/{}/pulls/comments/{}",
+                encode_path_component(owner),
+                encode_path_component(name),
+                encode_path_component(comment_id)
+            ),
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `getAliveDesktopChannel`: `GET /desktop_internal/alive-channel`;
+    /// `None` when the endpoint has no Alive service.
+    pub fn alive_desktop_channel(&self) -> Result<Option<crate::alive::AliveChannel>> {
+        self.get_json_opt(
+            "desktop_internal/alive-channel",
+            "application/vnd.github+json",
+        )
+    }
+
+    /// `getAliveWebSocketURL`: `GET /alive_internal/websocket-url`; `None`
+    /// on 404 (Alive disabled for the endpoint).
+    pub fn alive_websocket_url(&self) -> Result<Option<String>> {
+        Ok(self
+            .get_json_opt::<crate::alive::AliveWebSocket>(
+                "alive_internal/websocket-url",
+                "application/vnd.github+json",
+            )?
+            .map(|ws| ws.url))
+    }
+
     /// `GET /repos/{owner}/{name}/releases/tags/{tag}`; `None` when there is
     /// no such release.
     pub fn release_by_tag(&self, owner: &str, name: &str, tag: &str) -> Result<Option<ApiRelease>> {

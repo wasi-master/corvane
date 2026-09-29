@@ -68,6 +68,47 @@ pub fn status_key(gh: &GitHubRepository, git_ref: &str) -> String {
     )
 }
 
+/// `getChecksForRef` (statuses + the latest check run of each name);
+/// `None` when neither call answered. Also reports an authentication failure.
+fn fetch_ref_checks_inner(
+    client: &Client,
+    owner: &str,
+    name: &str,
+    git_ref: &str,
+) -> (Option<Vec<RefCheck>>, bool) {
+    let statuses = client.combined_ref_status(owner, name, git_ref);
+    let check_runs = client.ref_check_runs(owner, name, git_ref);
+    let auth_failed = matches!(&statuses, Err(corvane_github::GitHubError::Auth(_)))
+        || matches!(&check_runs, Err(corvane_github::GitHubError::Auth(_)));
+    let statuses = statuses.ok().flatten();
+    let check_runs = check_runs.ok().flatten();
+    if statuses.is_none() && check_runs.is_none() {
+        return (None, auth_failed);
+    }
+    let mut checks: Vec<RefCheck> = Vec::new();
+    if let Some(statuses) = statuses {
+        checks.extend(statuses.statuses.into_iter().map(status_to_check));
+    }
+    if let Some(runs) = check_runs {
+        checks.extend(
+            latest_check_runs(runs.check_runs)
+                .into_iter()
+                .map(check_run_to_check),
+        );
+    }
+    (Some(checks), auth_failed)
+}
+
+/// The checks of `git_ref` for the notification path (`getChecksForRef`).
+pub(crate) fn fetch_ref_checks(
+    client: &Client,
+    owner: &str,
+    name: &str,
+    git_ref: &str,
+) -> Option<Vec<RefCheck>> {
+    fetch_ref_checks_inner(client, owner, name, git_ref).0
+}
+
 /// `apiStatusToRefCheck`
 fn status_to_check(item: corvane_github::api::ApiRefStatusItem) -> RefCheck {
     let (status, conclusion) = match item.state.as_str() {
@@ -411,26 +452,10 @@ impl Dispatcher {
             move || {
                 let client = Client::new(endpoint, token);
                 let (owner, name, git_ref) = (&sub.owner, &sub.name, &sub.git_ref);
-                let statuses = client.combined_ref_status(owner, name, git_ref);
-                let check_runs = client.ref_check_runs(owner, name, git_ref);
-                let auth_failed = matches!(&statuses, Err(corvane_github::GitHubError::Auth(_)))
-                    || matches!(&check_runs, Err(corvane_github::GitHubError::Auth(_)));
-                let statuses = statuses.ok().flatten();
-                let check_runs = check_runs.ok().flatten();
-                if statuses.is_none() && check_runs.is_none() {
+                let (checks, auth_failed) = fetch_ref_checks_inner(&client, owner, name, git_ref);
+                let Some(mut checks) = checks else {
                     return (None, auth_failed, false);
-                }
-                let mut checks: Vec<RefCheck> = Vec::new();
-                if let Some(statuses) = statuses {
-                    checks.extend(statuses.statuses.into_iter().map(status_to_check));
-                }
-                if let Some(runs) = check_runs {
-                    checks.extend(
-                        latest_check_runs(runs.check_runs)
-                            .into_iter()
-                            .map(check_run_to_check),
-                    );
-                }
+                };
                 if sub.branch_name.is_some() {
                     checks = with_actions_workflows(&client, owner, name, checks, &previous);
                 }
