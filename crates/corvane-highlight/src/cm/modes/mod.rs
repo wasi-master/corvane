@@ -18,6 +18,7 @@ pub mod python;
 pub mod ruby;
 pub mod shell;
 pub mod sql;
+pub mod stylus;
 pub mod swift;
 pub mod toml;
 pub mod xml;
@@ -240,6 +241,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "application/vnd.coffeescript" | "text/x-coffeescript" | "text/coffeescript" => {
             Some(cached!(coffeescript::CoffeeScript))
         }
+        "text/x-styl" => Some(cached!(stylus::Stylus)),
         "text/typescript-jsx" => Some(typescript_jsx()),
         _ => None,
     }
