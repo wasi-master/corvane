@@ -4,7 +4,9 @@
 //! To port a mode: add `<name>.rs` exposing a constructor, list its MIME
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
+pub mod clike;
 pub mod css;
+pub mod dart;
 pub mod diff;
 pub mod dockerfile;
 pub mod go;
@@ -205,6 +207,19 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-diff" => Some(Arc::new(diff::Diff)),
         "text/x-dockerfile" => Some(dockerfile::dockerfile()),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
+        "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
+        "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
+        "text/x-java" => Some(clike::java()),
+        "text/x-csharp" => Some(clike::csharp()),
+        "text/x-scala" => Some(clike::scala()),
+        "text/x-kotlin" => Some(clike::kotlin()),
+        "x-shader/x-vertex" | "x-shader/x-fragment" => Some(clike::shader()),
+        "text/x-nesc" => Some(clike::nesc()),
+        "text/x-objectivec" => Some(clike::objectivec()),
+        "text/x-objectivec++" => Some(clike::objectivecpp()),
+        "text/x-squirrel" => Some(clike::squirrel()),
+        "text/x-ceylon" => Some(clike::ceylon()),
+        "application/dart" => Some(dart::dart()),
         _ => None,
     }
 }
