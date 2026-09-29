@@ -6,7 +6,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** Browser OAuth web flow with loopback / `x-corvane-auth://` as alternative to device flow (`docs/technical/oauth.md`)
 - [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 
