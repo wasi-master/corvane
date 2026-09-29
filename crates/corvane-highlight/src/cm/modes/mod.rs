@@ -44,6 +44,7 @@ pub mod r;
 pub mod rpm;
 pub mod rst;
 pub mod ruby;
+pub mod sass;
 pub mod scheme;
 pub mod shell;
 pub mod sieve;
@@ -258,6 +259,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-haml" => Some(haml::haml()),
         "text/x-slim" | "application/x-slim" => Some(slim::slim()),
         "text/x-soy" => Some(soy::soy()),
+        "text/x-sass" => Some(Arc::new(sass::Sass)),
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
