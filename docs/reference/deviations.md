@@ -19,6 +19,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Co-author tokens stay on one line (GHD's `AuthorInput` is a wrapping CodeMirror field); the row does not grow.
 - Spellcheck language follows `NSSpellChecker`'s automatic identification; there is no per-language picker and no Chromium-style "Ignore" item.
 - The "commit summary is long" warning is the Copilot-free variant.
+- Commit message templates (Corvane addition; GHD 3.6.6 ignores `commit.template`): the repository's resolved `commit.template` file, comment lines (`core.commentChar`) and outer blank lines stripped, prefills the description while the summary is empty and the description is empty or still the template; it comes back after every commit (`corvane_git::commit_template`).
 
 ## Diff viewer
 
