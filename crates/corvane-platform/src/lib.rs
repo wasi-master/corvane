@@ -6,6 +6,7 @@ pub mod custom_integration;
 pub mod editors;
 pub mod keychain;
 pub mod shells;
+pub mod spell;
 pub mod trash;
 
 pub mod paths {

@@ -80,6 +80,8 @@ impl Dispatcher {
             drag_target: None,
             api_repositories: std::collections::HashMap::new(),
             api_repositories_loading: std::collections::HashSet::new(),
+            issues: std::collections::HashMap::new(),
+            mentionables: std::collections::HashMap::new(),
             editors: Vec::new(),
             shells: Vec::new(),
             global_git: None,

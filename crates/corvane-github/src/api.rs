@@ -49,6 +49,48 @@ pub struct ApiRepository {
     pub archived: bool,
 }
 
+/// `state` filter for [`Client::issues`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IssueState {
+    Open,
+    Closed,
+    All,
+}
+
+impl IssueState {
+    fn as_str(self) -> &'static str {
+        match self {
+            IssueState::Open => "open",
+            IssueState::Closed => "closed",
+            IssueState::All => "all",
+        }
+    }
+}
+
+/// `IAPIIssue` (+ the `pull_request` marker used to filter PRs out).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiIssue {
+    pub number: u64,
+    pub title: String,
+    /// `open` | `closed`
+    pub state: String,
+    pub updated_at: String,
+    #[serde(default)]
+    pub pull_request: Option<serde_json::Value>,
+}
+
+/// `IAPIMentionableUser`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiMentionableUser {
+    pub login: String,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub email: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ApiOwner {
     pub login: String,
@@ -212,6 +254,69 @@ impl Client {
             }
         }
         Ok(out)
+    }
+
+    /// `fetchIssues`: `GET /repos/{owner}/{name}/issues` (all pages). PRs are
+    /// issues too, so anything carrying a `pull_request` key is dropped.
+    /// `since` is an ISO-8601 timestamp; with it the API returns every issue
+    /// updated at or after that moment (closed ones included, so callers can
+    /// prune them).
+    pub fn issues(
+        &self,
+        owner: &str,
+        name: &str,
+        state: IssueState,
+        since: Option<&str>,
+    ) -> Result<Vec<ApiIssue>> {
+        let mut out = Vec::new();
+        for page in 1..=20u32 {
+            let mut path = format!(
+                "repos/{owner}/{name}/issues?state={}&per_page=100&page={page}",
+                state.as_str()
+            );
+            if let Some(since) = since {
+                path.push_str("&since=");
+                path.push_str(since);
+            }
+            let batch: Vec<ApiIssue> = self.get_json(&path)?;
+            let done = batch.len() < 100;
+            out.extend(batch.into_iter().filter(|i| i.pull_request.is_none()));
+            if done {
+                break;
+            }
+        }
+        Ok(out)
+    }
+
+    /// `fetchMentionables`: `GET /repos/{owner}/{name}/mentionables/users`
+    /// (preview API; needs its own `Accept`). `None` when the repository has
+    /// no mentionables endpoint (404 for repositories the token can't see).
+    pub fn mentionables(&self, owner: &str, name: &str) -> Result<Option<Vec<ApiMentionableUser>>> {
+        let url = self
+            .endpoint
+            .api(&format!("repos/{owner}/{name}/mentionables/users"));
+        debug!(%url, "GET");
+        let mut response = self
+            .agent
+            .get(&url)
+            .header("Accept", "application/vnd.github.jerry-maguire-preview")
+            .header("Authorization", &format!("Bearer {}", self.token))
+            .call()?;
+        let status = response.status().as_u16();
+        match status {
+            404 => Ok(None),
+            401 => Err(GitHubError::Auth("token rejected".into())),
+            200..=299 => Ok(Some(response.body_mut().read_json()?)),
+            _ => {
+                let message = response
+                    .body_mut()
+                    .read_json::<ApiError>()
+                    .ok()
+                    .and_then(|e| e.message)
+                    .unwrap_or_else(|| "request failed".into());
+                Err(GitHubError::Api { status, message })
+            }
+        }
     }
 
     fn convert(&self, repo: ApiRepository) -> GitHubRepository {

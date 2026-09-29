@@ -7,6 +7,14 @@ gpui_kit::actions!(
         SelectNextFile,
         SelectPreviousFile,
         SelectAllFiles,
+        // Commit form context menu (spelling suggestions are picked by index)
+        SpellSuggestion0,
+        SpellSuggestion1,
+        SpellSuggestion2,
+        SpellSuggestion3,
+        SpellSuggestion4,
+        SpellAddToDictionary,
+        ToggleCommitSpellcheck,
         // Compare-to-branch filter box
         CompareSelect,
         CompareClear,

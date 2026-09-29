@@ -1,9 +1,11 @@
 //! Application state and the dispatcher that drives backends.
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
+pub mod autocomplete;
 pub mod avatars;
 pub mod compare;
 pub mod dispatcher;
+pub mod emoji;
 pub mod filter;
 pub mod integrations;
 pub mod mco;
@@ -13,6 +15,10 @@ pub mod state;
 pub mod templates;
 pub mod watcher;
 
+pub use autocomplete::{
+    DEFAULT_MAX_HITS, Issue, IssueCache, IssueHit, MentionableCache, MentionableUser, Trigger,
+    TriggerKind, find_trigger, issues_matching, users_matching,
+};
 pub use avatars::{AvatarEntry, avatar_for_email, avatar_for_url};
 pub use compare::{CompareForm, CompareState, ComparisonMode};
 pub use corvane_models::*;

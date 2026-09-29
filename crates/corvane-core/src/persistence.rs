@@ -53,6 +53,8 @@ pub struct Settings {
     /// GHD `showCommitLengthWarning`.
     #[serde(default = "default_true")]
     pub show_commit_length_warning: bool,
+    /// GHD `commitSpellcheckEnabled` (toggled from the commit form's context menu).
+    pub commit_spellcheck_enabled: bool,
     /// GHD `repositoryIndicatorsEnabled` (Advanced › Background updates).
     #[serde(default = "default_true")]
     pub repository_indicators_enabled: bool,
@@ -164,6 +166,7 @@ impl Default for Settings {
             confirm_discard_changes_permanently: true,
             confirm_commit_filtered_changes: true,
             show_commit_length_warning: true,
+            commit_spellcheck_enabled: true,
             repository_indicators_enabled: true,
             use_external_credential_helper: false,
             underline_links: false,

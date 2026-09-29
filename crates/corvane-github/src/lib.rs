@@ -6,7 +6,7 @@ pub mod auth;
 pub mod endpoint;
 pub mod error;
 
-pub use api::Client;
+pub use api::{ApiIssue, ApiMentionableUser, Client, IssueState};
 pub use endpoint::Endpoint;
 pub use error::{GitHubError, Result};
 
