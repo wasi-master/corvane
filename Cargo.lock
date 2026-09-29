@@ -1419,6 +1419,7 @@ dependencies = [
 name = "corvane-highlight"
 version = "0.1.0"
 dependencies = [
+ "fancy-regex",
  "syntect",
  "two-face",
 ]

@@ -4,6 +4,7 @@
 //! (`styles/ui/_diff.scss` `.cm-s-default`) so the UI can colour them with
 //! the `--syntax-*-color` tokens. Grammars load lazily on first use.
 
+pub mod cm;
 pub mod syntaxes;
 
 use std::ops::Range;
@@ -122,6 +123,20 @@ pub fn highlight_lines<'a>(
 ) -> Option<Vec<Vec<Span>>> {
     let mut lines = lines.into_iter().peekable();
     let first = lines.peek().copied().unwrap_or("");
+    // languages whose CodeMirror mode is ported run GHD's own tokenizer
+    let cm_mode = cm::mode_for_path(path).or_else(|| {
+        let name = path.rsplit('/').next().unwrap_or(path).to_lowercase();
+        let has_known_ext = name
+            .rfind('.')
+            .is_some_and(|i| cm::modes::mime_for_extension(&name[i..]).is_some());
+        (!has_known_ext && cm::modes::mime_for_basename(&name).is_none())
+            .then(|| cm::modes::guess_mime(first).and_then(cm::modes::mode_for_mime))
+            .flatten()
+    });
+    if let Some(mode) = cm_mode {
+        let lines: Vec<&str> = lines.collect();
+        return Some(cm::highlight(&*mode, &lines, MAX_HIGHLIGHT_BYTES));
+    }
     let ss = syntax_set();
     let syntax = syntax_for(&ss, path, first)?;
     let ss = &*ss;
