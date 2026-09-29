@@ -551,6 +551,9 @@ pub struct RepositoryState {
     /// The new side of the selected file as lines, for hunk expansion
     /// (GHD `fileContents.newContents`); `None` when it cannot be expanded.
     pub diff_contents: Option<Arc<Vec<String>>>,
+    /// The old side (`HEAD:<old path>`), for syntax highlighting like GHD
+    /// (`fileContents.oldContents`); `None` for new files.
+    pub diff_old_contents: Option<Arc<Vec<String>>>,
     /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
     pub last_commit: Option<LastCommit>,
     /// Incremented after every successful commit so the form can clear itself.
@@ -585,6 +588,8 @@ pub struct RepositoryState {
     pub commit_diff: Option<Diff>,
     pub commit_diff_generation: u64,
     pub commit_diff_contents: Option<Arc<Vec<String>>>,
+    /// `<oldest selected>^:<old path>` (`parentCommitish`), for highlighting.
+    pub commit_diff_old_contents: Option<Arc<Vec<String>>>,
     /// `isExpanded` of the expandable commit summary.
     pub commit_summary_expanded: bool,
     /// `commitToAmend`: the commit form rewrites HEAD instead of adding a commit.
@@ -654,6 +659,8 @@ pub struct RepositoryState {
     pub stash_diff: Option<Diff>,
     pub stash_diff_generation: u64,
     pub stash_diff_contents: Option<Arc<Vec<String>>>,
+    /// `<stash>^:<old path>`, for highlighting.
+    pub stash_diff_old_contents: Option<Arc<Vec<String>>>,
 }
 
 /// GHD `IFileListFilterState` option flags; the text lives in the text box.

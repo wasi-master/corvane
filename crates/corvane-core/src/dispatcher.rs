@@ -857,16 +857,27 @@ impl Dispatcher {
             s.repo_state_mut(id).diff_loading = true;
             cx.notify();
         });
+        let git_for_old = git.clone();
         let work = cx.background_executor().spawn(async move {
             let diff = corvane_git::working_directory_diff(git, &workdir, &file, hide_whitespace);
             // GHD `fileContents.newContents`: the working copy, for hunk expansion.
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
                 .then(|| corvane_git::working_file_lines(&workdir, &file.path))
                 .flatten();
-            (diff, contents)
+            // GHD `getOldFileContent`: what is committed (`HEAD`), not the index
+            let old = (!matches!(
+                file.status.kind,
+                corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
+            ))
+            .then(|| {
+                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
+                corvane_git::blob_lines(git_for_old, &workdir, "HEAD", old_path)
+            })
+            .flatten();
+            (diff, (contents, old))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, contents) = work.await;
+            let (result, (contents, old)) = work.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -876,6 +887,7 @@ impl Dispatcher {
                     }
                     rs.diff_loading = false;
                     rs.diff_contents = contents.map(Arc::new);
+                    rs.diff_old_contents = old.map(Arc::new);
                     match result {
                         Ok(diff) => rs.diff = Some(diff),
                         Err(err) => {
@@ -1207,6 +1219,10 @@ impl Dispatcher {
             .read(cx)
             .settings
             .hide_whitespace_in_history_diff;
+        let oldest_sha = ordered
+            .first()
+            .cloned()
+            .unwrap_or_else(|| file.commitish.clone());
         let task = cx.background_executor().spawn(async move {
             let (newest, diff) = match (ordered.first(), ordered.last()) {
                 (Some(oldest), Some(newest)) if ordered.len() > 1 => (
@@ -1226,12 +1242,23 @@ impl Dispatcher {
                 ),
             };
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
-                .then(|| corvane_git::blob_lines(git, &workdir, &newest, &file.path))
+                .then(|| corvane_git::blob_lines(git.clone(), &workdir, &newest, &file.path))
                 .flatten();
-            (diff, contents)
+            // GHD `parentCommitish`: the parent of the oldest selected commit
+            let old = (!matches!(
+                file.status.kind,
+                corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
+            ))
+            .then(|| {
+                let parent = format!("{}^", oldest_sha);
+                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
+                corvane_git::blob_lines(git, &workdir, &parent, old_path)
+            })
+            .flatten();
+            (diff, (contents, old))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, contents) = task.await;
+            let (result, (contents, old)) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -1241,6 +1268,7 @@ impl Dispatcher {
                         return;
                     }
                     rs.commit_diff_contents = contents.map(Arc::new);
+                    rs.commit_diff_old_contents = old.map(Arc::new);
                     rs.commit_diff = Some(match result {
                         Ok(diff) => diff,
                         Err(err) => {
@@ -1846,12 +1874,24 @@ impl Dispatcher {
         let task = cx.background_executor().spawn(async move {
             let diff = corvane_git::commit_file_diff(git.clone(), &workdir, &file, hide_whitespace);
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
-                .then(|| corvane_git::blob_lines(git, &workdir, &file.commitish, &file.path))
+                .then(|| {
+                    corvane_git::blob_lines(git.clone(), &workdir, &file.commitish, &file.path)
+                })
                 .flatten();
-            (diff, contents)
+            let old = (!matches!(
+                file.status.kind,
+                corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
+            ))
+            .then(|| {
+                let parent = format!("{}^", file.commitish);
+                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
+                corvane_git::blob_lines(git, &workdir, &parent, old_path)
+            })
+            .flatten();
+            (diff, (contents, old))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, contents) = task.await;
+            let (result, (contents, old)) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
@@ -1861,6 +1901,7 @@ impl Dispatcher {
                         return;
                     }
                     rs.stash_diff_contents = contents.map(Arc::new);
+                    rs.stash_diff_old_contents = old.map(Arc::new);
                     rs.stash_diff = Some(match result {
                         Ok(diff) => diff,
                         Err(err) => {

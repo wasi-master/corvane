@@ -17,6 +17,7 @@ steps:
   - snap: initial-commit-selected
   - key: up
     wait: 400
+  - dump: keyboard-up
   - snap: keyboard-up
   - click: [132, 130]
   - snap: branch-filter-focused

@@ -266,13 +266,21 @@ impl SelectedCommitView {
                             // `--box-alt-background-color`, 5 px above the meta row
                             d.child(
                                 div().pb(SPACING_HALF()).child(
+                                    // `.ecs-description-scroll-view`: 30–80 px
+                                    // while collapsed
                                     div()
-                                        .p(SPACING_HALF())
-                                        .bg(t.box_alt_background)
-                                        .font_family(mono_font())
-                                        .text_size(FONT_SIZE_SM())
-                                        .line_height(zpx(16.5))
-                                        .child(description),
+                                        .when(!expanded, |d| {
+                                            d.min_h(zpx(30.)).max_h(zpx(80.)).overflow_hidden()
+                                        })
+                                        .child(
+                                            div()
+                                                .p(SPACING_HALF())
+                                                .bg(t.box_alt_background)
+                                                .font_family(mono_font())
+                                                .text_size(FONT_SIZE_SM())
+                                                .line_height(zpx(16.5))
+                                                .child(description),
+                                        ),
                                 ),
                             )
                         })
@@ -485,6 +493,9 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
         .items_center()
         .gap(SPACING_HALF())
         .px(SPACING())
+        // `.list-item { border-bottom: 1px solid var(--box-border-color) }`
+        .border_b_1()
+        .border_color(t.box_border)
         .cursor_pointer()
         .when(is_selected, |d| {
             d.bg(t.box_selected_background)
@@ -505,7 +516,12 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
                     div()
                         .min_w_0()
                         .truncate()
-                        .text_color(t.text_secondary)
+                        // `.list-item.selected .dirname` inherits the row colour
+                        .text_color(if is_selected {
+                            t.box_selected_text
+                        } else {
+                            t.text_secondary
+                        })
                         .child(file.directory().to_string()),
                 )
                 .child(
