@@ -374,6 +374,12 @@ impl Dispatcher {
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
             )
         };
+        // GHD `_refreshRepository`: a path that is gone may be a deleted
+        // linked worktree; fall back to its main worktree before giving up
+        if !path.exists() {
+            Self::recover_missing_worktree(id, path, cx);
+            return;
+        }
         let already_running = state.update(cx, |s, cx| {
             let rs = s.repo_state_mut(id);
             if rs.loading {
@@ -468,6 +474,7 @@ impl Dispatcher {
                     repo_state.loading = false;
                     repo_state.last_refresh = Some(Instant::now());
                     let mut selected = None;
+                    let mut main_worktree = None;
                     match result {
                         Ok((info, ahead_behind, status, extras)) => {
                             repo_state.info = Some(info);
@@ -481,6 +488,13 @@ impl Dispatcher {
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 repo_state.worktrees = extras.worktrees;
+                                // `mainWorktreePath` bookkeeping for the
+                                // missing-worktree fallback (applied below)
+                                main_worktree = repo_state
+                                    .worktrees
+                                    .iter()
+                                    .find(|w| w.kind == corvane_models::WorktreeType::Main)
+                                    .map(|w| w.path.clone());
                                 if repo_state.stash.is_none() {
                                     repo_state.showing_stash = false;
                                     repo_state.stash_files = None;
@@ -528,6 +542,13 @@ impl Dispatcher {
                             warn!(id, %err, "refresh failed");
                             repo_state.error = Some(err.to_string());
                         }
+                    }
+                    if let Some(main) = main_worktree
+                        && let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id)
+                        && repo.main_worktree_path.as_ref() != Some(&main)
+                    {
+                        repo.main_worktree_path = Some(main);
+                        persist_repositories(s);
                     }
                     cx.notify();
                     selected

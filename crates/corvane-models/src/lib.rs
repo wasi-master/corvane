@@ -27,6 +27,10 @@ pub struct Repository {
     /// Fork Behavior); `None` = the GHD default (contribute to the parent).
     #[serde(default)]
     pub fork_contribution_target: Option<ForkContributionTarget>,
+    /// GHD `mainWorktreePath`: the main worktree of the repository this
+    /// entry belongs to, so a deleted linked worktree falls back to it.
+    #[serde(default)]
+    pub main_worktree_path: Option<PathBuf>,
 }
 
 /// GHD `ICommitOptions`: `skipCommitHooks`, `signOffCommits`, `allowEmptyCommit`.
@@ -47,6 +51,7 @@ impl Repository {
             missing: false,
             commit_options: RepoCommitOptions::default(),
             fork_contribution_target: None,
+            main_worktree_path: None,
         }
     }
 

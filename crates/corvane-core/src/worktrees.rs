@@ -1,6 +1,14 @@
 //! Worktrees (GHD `app-store.ts` `_switchWorktree`, `_deleteWorktree`,
-//! `_moveWorktree`, `_requestDeleteWorktree`): a repository entry keeps its
-//! id and follows the worktree path it is switched to.
+//! `_moveWorktree`, `_requestDeleteWorktree`, `recoverMissingWorktree`): a
+//! repository entry keeps its id and follows the worktree path it is switched
+//! to, and remembers its main worktree (`mainWorktreePath`) so that when the
+//! linked worktree it points at is deleted outside Corvane it falls back to
+//! the main worktree instead of showing a stale repository.
+//!
+//! Deviation: GHD records `mainWorktreePath` when it switches worktrees and
+//! otherwise asks the worktree's git dir; Corvane also records it on every
+//! refresh (from `git worktree list`), since `git worktree remove` deletes the
+//! git dir metadata GHD's fallback reads.
 
 use std::path::{Path, PathBuf};
 
@@ -45,6 +53,11 @@ impl Dispatcher {
     /// Repoint the repository entry (persisted) and refresh + rewatch it.
     fn apply_worktree_path(id: u64, path: PathBuf, cx: &mut App) {
         let changed = Self::state(cx).update(cx, |s, cx| {
+            let main = s
+                .repo_states
+                .get(&id)
+                .and_then(|rs| rs.worktrees.iter().find(|w| w.kind == WorktreeType::Main))
+                .map(|w| w.path.clone());
             let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) else {
                 return false;
             };
@@ -52,6 +65,10 @@ impl Dispatcher {
                 return false;
             }
             info!(id, path = %path.display(), "switching worktree");
+            if let Some(main) = main {
+                repo.main_worktree_path = Some(main);
+            }
+            repo.missing = false;
             repo.path = path;
             if let Err(err) = s.store.save_repositories(&s.repositories) {
                 warn!(%err, "could not persist repository path");
@@ -222,6 +239,79 @@ impl Dispatcher {
                 Err(err) => Self::show_error("Could not rename worktree", err, cx),
             },
         );
+    }
+}
+
+impl Dispatcher {
+    /// GHD `recoverMissingWorktree`, run by `refresh_repository` when the
+    /// repository's path no longer exists: switch the entry to its main
+    /// worktree (the recorded `main_worktree_path`, else the main worktree of
+    /// the last `git worktree list`), or select the repository entry that
+    /// already points there. With no main worktree to go to, the repository
+    /// is marked missing as before.
+    pub(crate) fn recover_missing_worktree(id: u64, missing_path: PathBuf, cx: &mut App) {
+        let (main, existing) = {
+            let s = Self::state(cx).read(cx);
+            let listed = s
+                .repo_states
+                .get(&id)
+                .and_then(|rs| rs.worktrees.iter().find(|w| w.kind == WorktreeType::Main))
+                .map(|w| w.path.clone());
+            let main = s
+                .repository(id)
+                .and_then(|r| r.main_worktree_path.clone())
+                .into_iter()
+                .chain(listed)
+                .find(|p| *p != missing_path && p.exists());
+            let existing = main.as_ref().and_then(|main| {
+                s.repositories
+                    .iter()
+                    .find(|r| r.id != id && same_path(&r.path, main))
+                    .map(|r| r.id)
+            });
+            (main, existing)
+        };
+        let Some(main) = main else {
+            Self::mark_missing(id, cx);
+            return;
+        };
+        let probe = main.clone();
+        spawn_bg(
+            cx,
+            move || open_repository(&probe).map(|_| ()),
+            move |result, cx| {
+                if result.is_err() {
+                    Self::mark_missing(id, cx);
+                    return;
+                }
+                info!(
+                    id,
+                    from = %missing_path.display(),
+                    to = %main.display(),
+                    "worktree is gone, falling back to the main worktree"
+                );
+                match existing {
+                    // `switchWorktree` found the main worktree already listed
+                    Some(other) => {
+                        if Self::state(cx).read(cx).selected == Some(id) {
+                            Self::select_repository(other, cx);
+                        }
+                    }
+                    None => Self::apply_worktree_path(id, main, cx),
+                }
+            },
+        );
+    }
+
+    /// `_updateRepositoryMissing(repository, true)`.
+    fn mark_missing(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).error = Some("repository is missing".into());
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                repo.missing = true;
+            }
+            cx.notify();
+        });
     }
 }
 
