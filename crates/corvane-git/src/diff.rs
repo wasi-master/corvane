@@ -198,10 +198,7 @@ pub fn parse_line_endings_warning(stderr: &str) -> Option<LineEndingsChange> {
             _ => rest,
         };
         let (from, tail) = rest.split_once(" will be replaced by ")?;
-        let to = tail
-            .split([' ', '.'])
-            .next()
-            .unwrap_or("");
+        let to = tail.split([' ', '.']).next().unwrap_or("");
         let valid = |s: &str| matches!(s, "CRLF" | "LF" | "CR");
         if valid(from) && valid(to) {
             return Some(LineEndingsChange {

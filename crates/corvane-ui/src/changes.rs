@@ -8,13 +8,13 @@ use std::rc::Rc;
 
 use corvane_core::filter::{filtered_files, no_results_message, option_count};
 use corvane_core::{
-    AppState, DiffSelectionType, Dispatcher, FileListFilter, FileStatusKind, FilterOption, Tip,
-    WorkingDirectoryFileChange,
+    AppState, Author, DiffSelectionType, Dispatcher, FileListFilter, FileStatusKind, FilterOption,
+    Popup, Tip, UnknownAuthorState, WorkingDirectoryFileChange, legacy_stealth_email,
 };
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{
-    Copy, Cut, Enter, Escape, IndentInline, InputEvent, InputState, MoveDown, MoveUp, Paste, Redo,
-    SelectAll, Textarea, TextareaState, Undo,
+    Copy, Cut, Enter, Escape, IndentInline, InlineToken, Input, InputEvent, InputState, MoveDown,
+    MoveUp, Paste, Redo, SelectAll, Textarea, TextareaState, Undo,
 };
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -22,9 +22,9 @@ use gpui_kit::*;
 use crate::actions::{
     Commit, SelectAllFiles, SelectNextFile, SelectPreviousFile, SpellAddToDictionary,
     SpellSuggestion0, SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4,
-    ToggleCommitSpellcheck,
+    ToggleCoAuthors, ToggleCommitSpellcheck,
 };
-use crate::autocompletion::{self, Autocompletion, PickHandler};
+use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
@@ -41,6 +41,8 @@ use crate::widgets::{
 enum CommitField {
     Summary,
     Description,
+    /// GHD `AuthorInput`: the co-author token field under the description.
+    CoAuthors,
 }
 
 /// Window-space rectangles of a field's misspellings (see `summary_rects`).
@@ -65,6 +67,8 @@ pub struct ChangesSidebar {
     filter: Entity<InputState>,
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
+    /// `AuthorInput`: authors are inline tokens (id = login, lower-cased).
+    co_authors: Entity<InputState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
     seen_amend_nonce: u64,
@@ -88,7 +92,11 @@ pub struct ChangesSidebar {
     description_rects: RectCache,
     summary_focus: FocusHandle,
     description_focus: FocusHandle,
+    co_authors_focus: FocusHandle,
     pending_spell: Option<PendingSpell>,
+    /// A handle typed with a trailing space, turned into a token on the next
+    /// render (needs a window).
+    pending_author: Option<(Range<usize>, Author)>,
 }
 
 impl ChangesSidebar {
@@ -105,6 +113,8 @@ impl ChangesSidebar {
                 this.seen_commit_nonce = nonce;
                 this.summary.update(cx, |s, cx| s.set_value("", window, cx));
                 this.description
+                    .update(cx, |s, cx| s.set_value("", window, cx));
+                this.co_authors
                     .update(cx, |s, cx| s.set_value("", window, cx));
                 this.summary_misspelled.clear();
                 this.description_misspelled.clear();
@@ -139,8 +149,14 @@ impl ChangesSidebar {
                 .rows(4)
                 .placeholder("Description")
         });
+        let co_authors = cx.new(|cx| InputState::new(window, cx).placeholder("@username"));
+        cx.subscribe(&co_authors, |this, _, ev: &InputEvent, cx| {
+            this.on_input_event(CommitField::CoAuthors, ev, cx)
+        })
+        .detach();
         let summary_focus = summary.read(cx).focus_handle(cx);
         let description_focus = description.read(cx).focus_handle(cx);
+        let co_authors_focus = co_authors.read(cx).focus_handle(cx);
         cx.subscribe(&summary, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::Summary, ev, cx)
         })
@@ -153,6 +169,7 @@ impl ChangesSidebar {
             filter,
             summary,
             description,
+            co_authors,
             state,
             seen_commit_nonce: 0,
             seen_amend_nonce: 0,
@@ -168,7 +185,9 @@ impl ChangesSidebar {
             description_rects: Rc::new(RefCell::new(Vec::new())),
             summary_focus,
             description_focus,
+            co_authors_focus,
             pending_spell: None,
+            pending_author: None,
         }
     }
 
@@ -176,6 +195,10 @@ impl ChangesSidebar {
 
     fn on_input_event(&mut self, field: CommitField, ev: &InputEvent, cx: &mut Context<Self>) {
         match ev {
+            InputEvent::Change if field == CommitField::CoAuthors => {
+                self.sync_co_authors(cx);
+                self.open_autocomplete(field, cx);
+            }
             InputEvent::Change => {
                 self.refresh_spelling(field, cx);
                 self.open_autocomplete(field, cx);
@@ -198,6 +221,10 @@ impl ChangesSidebar {
                 let s = self.description.read(cx);
                 (s.value().to_string(), s.cursor())
             }
+            CommitField::CoAuthors => {
+                let s = self.co_authors.read(cx);
+                (s.value().to_string(), s.cursor())
+            }
         }
     }
 
@@ -205,6 +232,7 @@ impl ChangesSidebar {
         match field {
             CommitField::Summary => self.summary_focus.clone(),
             CommitField::Description => self.description_focus.clone(),
+            CommitField::CoAuthors => self.co_authors_focus.clone(),
         }
     }
 
@@ -226,6 +254,10 @@ impl ChangesSidebar {
                 s.set_selected_range(range, cx);
                 s.replace(text, window, cx);
             }),
+            CommitField::CoAuthors => self.co_authors.update(cx, |s, cx| {
+                s.set_selected_range(range, cx);
+                s.replace(text, window, cx);
+            }),
         }
         let handle = self.field_focus_handle(field);
         window.focus(&handle, cx);
@@ -242,9 +274,312 @@ impl ChangesSidebar {
                 .and_then(|id| s.repository(id))
                 .and_then(|r| r.github.clone())
         };
+        if field == CommitField::CoAuthors {
+            // the free text after the last token, `@handle`, caret at the end
+            self.autocomplete = None;
+            let free_start = self.co_author_free_start(cx).min(text.len());
+            let free = &text[free_start..];
+            let trimmed = free.trim_start();
+            if let (Some(gh), Some(rest)) = (github.as_ref(), trimmed.strip_prefix('@'))
+                && caret == text.len()
+            {
+                let start = free_start + (free.len() - trimmed.len()) + 1;
+                let exclude = self.co_author_logins(cx);
+                let hits = autocompletion::co_author_hits(&rest.to_lowercase(), gh, &exclude, cx);
+                if !hits.is_empty() {
+                    self.autocomplete = Some((
+                        field,
+                        Autocompletion {
+                            kind: corvane_core::TriggerKind::User,
+                            range: start..text.len(),
+                            hits,
+                            selected: None,
+                            scroll: UniformListScrollHandle::new(),
+                        },
+                    ));
+                }
+            }
+            cx.notify();
+            return;
+        }
         self.autocomplete =
             autocompletion::attempt(&text, caret, github.as_ref(), cx).map(|ac| (field, ac));
         cx.notify();
+    }
+
+    // ---- co-authors (GHD `AuthorInput`) ----
+
+    /// Byte offset where the free text after the last author token starts.
+    fn co_author_free_start(&self, cx: &App) -> usize {
+        self.co_authors
+            .read(cx)
+            .tokens()
+            .last()
+            .map(|t| t.range().end)
+            .unwrap_or(0)
+    }
+
+    fn co_author_logins(&self, cx: &App) -> Vec<String> {
+        self.state
+            .read(cx)
+            .selected_state()
+            .map(|rs| {
+                rs.co_authors
+                    .iter()
+                    .filter_map(|a| a.username().map(|u| u.to_string()))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// GHD `onAuthorsUpdated` after the tokens changed (backspace removed one),
+    /// plus "Space at the end of the text adds the typed handle".
+    fn sync_co_authors(&mut self, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let ids: Vec<String> = self
+            .co_authors
+            .read(cx)
+            .tokens()
+            .iter()
+            .map(|t| t.token().id().to_string())
+            .collect();
+        let current = self
+            .state
+            .read(cx)
+            .selected_state()
+            .map(|rs| rs.co_authors.clone())
+            .unwrap_or_default();
+        let kept: Vec<Author> = ids
+            .iter()
+            .filter_map(|id| {
+                current
+                    .iter()
+                    .find(|a| a.username().is_some_and(|u| u.to_lowercase() == *id))
+                    .cloned()
+            })
+            .collect();
+        if kept != current {
+            Dispatcher::set_co_authors(id, kept, cx);
+        }
+        // `onInputKeyDown`: Space at the end turns the typed handle into an author
+        let (text, caret) = self.field_text_and_caret(CommitField::CoAuthors, cx);
+        let free_start = self.co_author_free_start(cx).min(text.len());
+        let free = &text[free_start..];
+        if caret == text.len() && free.ends_with(' ') {
+            let handle = free.trim().trim_start_matches('@').to_string();
+            if !handle.is_empty() && !handle.contains(char::is_whitespace) {
+                let author = Author::Unknown {
+                    username: handle,
+                    state: UnknownAuthorState::Searching,
+                };
+                self.pending_author = Some((free_start..text.len(), author));
+                cx.notify();
+            }
+        }
+    }
+
+    /// Add an author as a token replacing `range` (GHD `onAutocompleteItemSelected`).
+    fn add_co_author(
+        &mut self,
+        range: Range<usize>,
+        author: Author,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let Some(login) = author.username().map(|u| u.to_lowercase()) else {
+            return;
+        };
+        let already = self
+            .co_author_logins(cx)
+            .iter()
+            .any(|u| u.eq_ignore_ascii_case(&login));
+        let token = InlineToken::new(login.clone(), author.display_text())
+            .with_label(author.display_text());
+        let ok = self
+            .co_authors
+            .update(cx, |s, cx| {
+                s.replace_range_with_token(range, token, window, cx)
+            })
+            .is_ok();
+        if !ok || already {
+            return;
+        }
+        let mut authors = self
+            .state
+            .read(cx)
+            .selected_state()
+            .map(|rs| rs.co_authors.clone())
+            .unwrap_or_default();
+        authors.push(author.clone());
+        Dispatcher::set_co_authors(id, authors, cx);
+        if let (Author::Unknown { username, .. }, Some(gh)) = (
+            &author,
+            self.state
+                .read(cx)
+                .repository(id)
+                .and_then(|r| r.github.clone()),
+        ) {
+            Dispatcher::resolve_unknown_author(id, &gh, username.clone(), cx);
+        }
+        let handle = self.co_authors_focus.clone();
+        window.focus(&handle, cx);
+        cx.notify();
+    }
+
+    /// The "Add Co-Authors" / "Remove Co-Authors" toggle.
+    fn toggle_co_authors(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let show = self
+            .state
+            .read(cx)
+            .selected_state()
+            .is_some_and(|rs| rs.show_co_authored_by);
+        Dispatcher::set_show_co_authored_by(id, !show, cx);
+        if !show {
+            let handle = self.co_authors_focus.clone();
+            window.focus(&handle, cx);
+        }
+    }
+
+    /// Unknown handles still in the list (`onConfirmCommitWithUnknownCoAuthors`).
+    fn unknown_co_authors(&self, cx: &App) -> Vec<String> {
+        self.state
+            .read(cx)
+            .selected_state()
+            .filter(|rs| rs.show_co_authored_by)
+            .map(|rs| {
+                rs.co_authors
+                    .iter()
+                    .filter_map(|a| match a {
+                        Author::Unknown { username, .. } => Some(username.clone()),
+                        Author::Known { .. } => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// `.author-input-component`: the label, the author tokens and the
+    /// `@username` box, attached under the description container.
+    fn co_author_input(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
+        let authors: Rc<Vec<Author>> = Rc::new(
+            self.state
+                .read(cx)
+                .selected_state()
+                .map(|rs| rs.co_authors.clone())
+                .unwrap_or_default(),
+        );
+        let focused = self.co_authors_focus.is_focused(window);
+        let (tag_bg, tag_border, error_bg, error_border, error_text, sel_bg, sel_text, text) = (
+            t.co_author_tag_background,
+            t.co_author_tag_border,
+            t.form_error_background,
+            t.form_error_border,
+            t.form_error_text,
+            t.box_selected_active_background,
+            t.box_selected_active_text,
+            t.text,
+        );
+        div()
+            .id("co-author-input")
+            .flex()
+            .flex_row()
+            .items_center()
+            .min_h(TEXT_FIELD_HEIGHT)
+            .px(SPACING_HALF)
+            .py(px(2.))
+            .gap(px(2.))
+            .border_1()
+            .border_t_0()
+            .rounded_b(BORDER_RADIUS)
+            .bg(t.box_background)
+            .border_color(if focused {
+                t.focus
+            } else {
+                t.box_border_contrast
+            })
+            .cursor_text()
+            .text_size(FONT_SIZE)
+            .child(
+                div()
+                    .flex_none()
+                    .text_color(t.text_secondary)
+                    .child("Co-Authors "),
+            )
+            .child(
+                div().flex_1().min_w(px(80.)).child(
+                    Input::new(&self.co_authors)
+                        .appearance(false)
+                        .xsmall()
+                        .token(move |ctx, _window, cx| {
+                            // `.handle`: known / progress / error / focused
+                            let id = ctx.token().id().to_string();
+                            let author = authors
+                                .iter()
+                                .find(|a| a.username().is_some_and(|u| u.to_lowercase() == id));
+                            let unknown = match author {
+                                Some(Author::Unknown { state, .. }) => Some(*state),
+                                _ => None,
+                            };
+                            let (bg, border, fg) = if ctx.is_selected() {
+                                (sel_bg, tag_border, sel_text)
+                            } else {
+                                match unknown {
+                                    Some(UnknownAuthorState::Error) => {
+                                        (error_bg, error_border, error_text)
+                                    }
+                                    Some(UnknownAuthorState::Searching) => {
+                                        (gpui_kit::transparent_black(), tag_border, text)
+                                    }
+                                    None => (tag_bg, tag_border, text),
+                                }
+                            };
+                            let title = match unknown {
+                                Some(UnknownAuthorState::Error) => {
+                                    Some(format!("Could not find user with username {}", id))
+                                }
+                                Some(UnknownAuthorState::Searching) => {
+                                    Some(format!("Searching for @{id}"))
+                                }
+                                None => author.map(|a| a.full_text()),
+                            };
+                            let _ = cx;
+                            div()
+                                .id(SharedString::from(format!("co-author-{id}")))
+                                .flex()
+                                .flex_row()
+                                .items_center()
+                                .gap(px(3.))
+                                .px(px(2.))
+                                .mx(px(2.))
+                                .rounded(BORDER_RADIUS)
+                                .border_1()
+                                .border_color(border)
+                                .bg(bg)
+                                .text_color(fg)
+                                .cursor_pointer()
+                                .when_some(title, |d, title| {
+                                    d.tooltip(crate::widgets::tooltip(title))
+                                })
+                                .child(ctx.token().label().clone())
+                                .when(unknown == Some(UnknownAuthorState::Searching), |d| {
+                                    d.child(octicon(Octicon::Sync, fg).size(px(9.)))
+                                })
+                                .when(unknown == Some(UnknownAuthorState::Error), |d| {
+                                    d.child(octicon(Octicon::Alert, fg).size(px(9.)))
+                                })
+                        }),
+                ),
+            )
+            .into_any_element()
     }
 
     /// ↑/↓ while the popup is open; `false` lets the key reach the field.
@@ -280,6 +615,33 @@ impl ChangesSidebar {
         // The trigger character sits right before the filter text; GHD
         // appends its `completionSuffix` (a space).
         let range = ac.range.start.saturating_sub(1)..ac.range.end;
+        if field == CommitField::CoAuthors {
+            let endpoint = self
+                .state
+                .read(cx)
+                .selected
+                .and_then(|id| self.state.read(cx).repository(id).cloned())
+                .and_then(|r| r.github.map(|gh| gh.endpoint))
+                .unwrap_or_else(|| "https://api.github.com".to_string());
+            let author = match hit {
+                Hit::User(u) => Author::Known {
+                    name: u.name.clone().unwrap_or_else(|| u.login.clone()),
+                    email: u
+                        .email
+                        .clone()
+                        .filter(|e| !e.is_empty())
+                        .unwrap_or_else(|| legacy_stealth_email(&u.login, &endpoint)),
+                    username: Some(u.login.clone()),
+                },
+                Hit::UnknownUser(name) => Author::Unknown {
+                    username: name.clone(),
+                    state: UnknownAuthorState::Searching,
+                },
+                _ => return,
+            };
+            self.add_co_author(range, author, window, cx);
+            return;
+        }
         let text = format!("{} ", hit.completion_text());
         self.replace_range(field, range, text, window, cx);
     }
@@ -307,6 +669,7 @@ impl ChangesSidebar {
                 self.description_misspelled = items;
                 self.description_rects.borrow_mut().clear();
             }
+            CommitField::CoAuthors => {}
         }
         cx.notify();
     }
@@ -327,6 +690,7 @@ impl ChangesSidebar {
                 let s = self.description.read(cx);
                 (s.range_to_bounds(range)?, s.scroll_offset())
             }
+            CommitField::CoAuthors => return None,
         };
         Some(Bounds {
             origin: point(bounds.origin.x + scroll.x, bounds.origin.y),
@@ -347,6 +711,7 @@ impl ChangesSidebar {
                 &self.description_misspelled,
                 self.description_rects.borrow(),
             ),
+            CommitField::CoAuthors => return None,
         };
         items
             .iter()
@@ -372,6 +737,7 @@ impl ChangesSidebar {
                     .collect(),
                 self.description_rects.clone(),
             ),
+            CommitField::CoAuthors => return None,
         };
         if ranges.is_empty() {
             return None;
@@ -428,17 +794,36 @@ impl ChangesSidebar {
         Rc::new(move |mut menu, window, cx| {
             let mut suggestions: Option<Vec<String>> = None;
             let mut enabled = true;
+            let mut co_authors: Option<(&'static str, bool)> = None;
             // the menu's actions dispatch through the focused element
             window.focus(&focus, cx);
             let updated = weak.update(cx, |this, cx| {
                 this.pending_spell = None;
                 enabled = this.state.read(cx).settings.commit_spellcheck_enabled;
+                // `getAddRemoveCoAuthorsMenuItem`
+                let s = this.state.read(cx);
+                if let Some(id) = s.selected
+                    && s.repository(id).is_some_and(|r| r.github.is_some())
+                {
+                    let rs = s.selected_state();
+                    let show = rs.is_some_and(|rs| rs.show_co_authored_by);
+                    let committing = rs.is_some_and(|rs| rs.committing);
+                    co_authors = Some((
+                        if show {
+                            "Remove Co-Authors"
+                        } else {
+                            "Add Co-Authors"
+                        },
+                        !committing,
+                    ));
+                }
                 let position = window.mouse_position();
                 tracing::debug!(
                     ?position,
                     rects = ?match field {
                         CommitField::Summary => this.summary_rects.borrow().clone(),
                         CommitField::Description => this.description_rects.borrow().clone(),
+                        CommitField::CoAuthors => Vec::new(),
                     },
                     "commit input context menu"
                 );
@@ -455,6 +840,11 @@ impl ChangesSidebar {
             });
             if updated.is_err() {
                 tracing::warn!("commit input context menu: sidebar entity unavailable");
+            }
+            if let Some((label, enabled)) = co_authors {
+                menu = menu
+                    .menu_with_disabled(label, !enabled, Box::new(ToggleCoAuthors))
+                    .separator();
             }
             if let Some(guesses) = suggestions {
                 if guesses.is_empty() {
@@ -1069,6 +1459,19 @@ impl ChangesSidebar {
         };
         let summary = self.summary.read(cx).value().to_string();
         let description = self.description.read(cx).value().to_string();
+        let unknown = self.unknown_co_authors(cx);
+        if !unknown.is_empty() {
+            Dispatcher::show_popup(
+                Popup::UnknownAuthors {
+                    repo: id,
+                    usernames: unknown,
+                    summary,
+                    description,
+                },
+                cx,
+            );
+            return;
+        }
         Dispatcher::commit(id, summary, description, cx);
     }
 
@@ -1566,11 +1969,21 @@ impl ChangesSidebar {
             .and_then(|rs| rs.info.as_ref())
             .and_then(|i| i.identity.email.as_deref())
             .and_then(|email| avatar_lookup(email, cx));
+        let (is_github, co_authors_visible) = {
+            let s = self.state.read(cx);
+            let is_github = s
+                .selected
+                .and_then(|id| s.repository(id))
+                .is_some_and(|r| r.github.is_some());
+            let show = s.selected_state().is_some_and(|rs| rs.show_co_authored_by);
+            (is_github, is_github && show)
+        };
         // Autocompletion popup anchored at the caret's bottom-left.
         let popup = self.autocomplete.as_ref().and_then(|(field, ac)| {
             let (bounds, line_height) = match field {
                 CommitField::Summary => self.summary.read(cx).cursor_layout()?,
                 CommitField::Description => self.description.read(cx).cursor_layout()?,
+                CommitField::CoAuthors => self.co_authors.read(cx).cursor_layout()?,
             };
             let anchor = point(bounds.origin.x, bounds.origin.y + line_height);
             let weak = cx.weak_entity();
@@ -1636,6 +2049,9 @@ impl ChangesSidebar {
             .on_action(
                 cx.listener(|this, _: &ToggleCommitSpellcheck, _, cx| this.toggle_spellcheck(cx)),
             )
+            .on_action(cx.listener(|this, _: &ToggleCoAuthors, window, cx| {
+                this.toggle_co_authors(window, cx)
+            }))
             .children(popup)
             .flex_none()
             .flex()
@@ -1671,10 +2087,11 @@ impl ChangesSidebar {
                 div()
                     .flex()
                     .flex_col()
-                    .mb(SPACING)
+                    .when(!co_authors_visible, |d| d.mb(SPACING))
                     .border_1()
                     .border_color(t.box_border_contrast)
-                    .rounded(BORDER_RADIUS)
+                    .rounded_t(BORDER_RADIUS)
+                    .when(!co_authors_visible, |d| d.rounded_b(BORDER_RADIUS))
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child({
@@ -1700,8 +2117,41 @@ impl ChangesSidebar {
                             .gap(SPACING_HALF)
                             .px(SPACING)
                             .pb(px(8.))
-                            .child(octicon(Octicon::PersonAdd, t.text_secondary))
-                            .child(div().w(px(1.)).h(px(16.)).bg(t.box_border_contrast))
+                            .when(is_github, |d| {
+                                // `.co-authors-toggle`
+                                let toggle_label = if co_authors_visible {
+                                    "Remove Co-Authors"
+                                } else {
+                                    "Add Co-Authors"
+                                };
+                                let color = if co_authors_visible {
+                                    t.link
+                                } else {
+                                    t.text_secondary
+                                };
+                                let hover = if co_authors_visible {
+                                    t.link_hover
+                                } else {
+                                    t.text
+                                };
+                                d.child(
+                                    div()
+                                        .id("co-authors-toggle")
+                                        .size(px(18.))
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .cursor_pointer()
+                                        .text_color(color)
+                                        .hover(move |s| s.text_color(hover))
+                                        .tooltip(crate::widgets::tooltip(toggle_label))
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            this.toggle_co_authors(window, cx)
+                                        }))
+                                        .child(octicon(Octicon::PersonAdd, color)),
+                                )
+                                .child(div().w(px(1.)).h(px(16.)).bg(t.box_border_contrast))
+                            })
                             .child(
                                 div()
                                     .id("commit-options-button")
@@ -1717,6 +2167,9 @@ impl ChangesSidebar {
                             ),
                     ),
             )
+            .when(co_authors_visible, |d| {
+                d.child(div().mb(SPACING).child(self.co_author_input(window, cx)))
+            })
             .children(self.amend_notice(cx))
             .child({
                 let (amending, committing) = self
@@ -1761,6 +2214,9 @@ impl ChangesSidebar {
 
 impl Render for ChangesSidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some((range, author)) = self.pending_author.take() {
+            self.add_co_author(range, author, window, cx);
+        }
         // `CommitMessageAvatar`: the committer's avatar next to the summary.
         let identity_email = self
             .state

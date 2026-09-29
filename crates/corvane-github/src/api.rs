@@ -79,6 +79,19 @@ pub struct ApiIssue {
     pub pull_request: Option<serde_json::Value>,
 }
 
+/// `IAPIFullIdentity` (`GET /users/{login}`).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ApiIdentity {
+    pub id: u64,
+    pub login: String,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub email: Option<String>,
+    #[serde(default)]
+    pub avatar_url: Option<String>,
+}
+
 /// `IAPIMentionableUser`.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ApiMentionableUser {
@@ -286,6 +299,15 @@ impl Client {
             }
         }
         Ok(out)
+    }
+
+    /// `fetchUser`: `GET /users/{login}`; `None` when there is no such user.
+    pub fn user(&self, login: &str) -> Result<Option<ApiIdentity>> {
+        match self.get_json::<ApiIdentity>(&format!("users/{login}")) {
+            Ok(user) => Ok(Some(user)),
+            Err(GitHubError::Api { status: 404, .. }) => Ok(None),
+            Err(err) => Err(err),
+        }
     }
 
     /// `fetchMentionables`: `GET /repos/{owner}/{name}/mentionables/users`

@@ -10,6 +10,8 @@ gpui_kit::actions!(
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
+        // Commit form: "Add Co-Authors" / "Remove Co-Authors"
+        ToggleCoAuthors,
         // Commit form context menu (spelling suggestions are picked by index)
         SpellSuggestion0,
         SpellSuggestion1,

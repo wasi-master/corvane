@@ -123,17 +123,73 @@ fn default_date_format() -> String {
     DEFAULT_DATE_FORMAT.to_string()
 }
 fn default_time_format() -> String {
-    DEFAULT_TIME_FORMAT.to_string()
+    default_time_format_for(locale_country().as_deref())
 }
 fn default_number_format() -> String {
-    DEFAULT_NUMBER_FORMAT.to_string()
+    default_number_format_for(locale_country().as_deref())
 }
 
-/// GHD `defaultDateFormat` / `defaultTimeFormat` / `defaultNumberFormat`
-/// (the en-US branch of GHD's locale detection).
+/// The OS locale's country, read once.
+fn locale_country() -> Option<String> {
+    static COUNTRY: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    COUNTRY
+        .get_or_init(corvane_platform::locale::country_code)
+        .clone()
+}
+
+/// GHD `defaultDateFormat`: the same everywhere.
 pub const DEFAULT_DATE_FORMAT: &str = "MMM d, yyyy";
+/// GHD's en-US defaults (used when the locale is unknown).
 pub const DEFAULT_TIME_FORMAT: &str = "h:mm aaa";
 pub const DEFAULT_NUMBER_FORMAT: &str = ",|.";
+
+/// GHD `twelveHourCountries`.
+const TWELVE_HOUR_COUNTRIES: &[&str] = &[
+    "GB", "IE", "US", "CA", "AU", "NZ", "ZA", "IN", "PK", "BD", "PH", "MX", "CO",
+];
+/// GHD `decimalPointCountries`.
+const DECIMAL_POINT_COUNTRIES: &[&str] = &[
+    "AU", "BS", "BD", "BW", "AI", "AG", "BB", "BM", "VG", "KY", "DM", "GD", "JM", "MS", "KN", "LC",
+    "VC", "TT", "TC", "GY", "BZ", "KH", "CA", "CN", "CY", "DO", "EG", "SV", "ET", "GH", "GT", "HN",
+    "HK", "IN", "IE", "IL", "JP", "JO", "KE", "KP", "KR", "LY", "LI", "MO", "MY", "MV", "MT", "MX",
+    "MM", "NA", "NP", "NZ", "NI", "NG", "PK", "PA", "PH", "RW", "QA", "SA", "SG", "SO", "LK", "CH",
+    "SY", "TW", "TZ", "TH", "UG", "AE", "GB", "US",
+];
+const COMMA_GROUPING_COUNTRIES: &[&str] = &["US", "GB", "TH"];
+const SPACE_GROUPING_COUNTRIES: &[&str] = &["CA", "DK", "FI", "SE", "FR", "DE"];
+const DOT_GROUPING_COUNTRIES: &[&str] = &["IT", "NO", "ES"];
+
+/// GHD `defaultTimeFormat`: 12-hour in the countries that use it (and when
+/// the locale is unknown), 24-hour elsewhere.
+pub fn default_time_format_for(country: Option<&str>) -> String {
+    match country {
+        None => DEFAULT_TIME_FORMAT.to_string(),
+        Some(c) if TWELVE_HOUR_COUNTRIES.contains(&c) => DEFAULT_TIME_FORMAT.to_string(),
+        Some(_) => "HH:mm".to_string(),
+    }
+}
+
+/// GHD `defaultNumberFormat` (`thousands|decimal`).
+pub fn default_number_format_for(country: Option<&str>) -> String {
+    let Some(c) = country else {
+        return DEFAULT_NUMBER_FORMAT.to_string();
+    };
+    let decimal = if DECIMAL_POINT_COUNTRIES.contains(&c) {
+        "."
+    } else {
+        ","
+    };
+    let thousands = if COMMA_GROUPING_COUNTRIES.contains(&c) {
+        ","
+    } else if SPACE_GROUPING_COUNTRIES.contains(&c) {
+        " "
+    } else if DOT_GROUPING_COUNTRIES.contains(&c) {
+        "."
+    } else {
+        ""
+    };
+    format!("{thousands}|{decimal}")
+}
 
 fn default_tab_size() -> u32 {
     TAB_SIZE_DEFAULT
@@ -324,5 +380,17 @@ mod tests {
         assert_eq!(store.recent_repositories().unwrap(), vec![2, 1]);
         store.save_selected_repository(Some(2)).unwrap();
         assert_eq!(store.selected_repository().unwrap(), Some(2));
+    }
+
+    #[test]
+    fn formatting_defaults_follow_the_country() {
+        assert_eq!(default_time_format_for(None), "h:mm aaa");
+        assert_eq!(default_time_format_for(Some("US")), "h:mm aaa");
+        assert_eq!(default_time_format_for(Some("DE")), "HH:mm");
+        assert_eq!(default_number_format_for(None), ",|.");
+        assert_eq!(default_number_format_for(Some("US")), ",|.");
+        assert_eq!(default_number_format_for(Some("DE")), " |,");
+        assert_eq!(default_number_format_for(Some("IT")), ".|,");
+        assert_eq!(default_number_format_for(Some("BR")), "|,");
     }
 }

@@ -3,7 +3,7 @@
 
 use tracing::debug;
 
-const SERVICE: &str = "com.wasimaster.corvane";
+const SERVICE: &str = crate::BUNDLE_ID;
 
 #[derive(Debug, thiserror::Error)]
 pub enum KeychainError {

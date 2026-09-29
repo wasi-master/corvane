@@ -66,6 +66,7 @@ fn main() {
         corvane_ui::init(cx, theme);
         let sidebar_width = px(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
+        Dispatcher::load_custom_emoji(cx);
         {
             let s = state.read(cx);
             menus::install(cx, &s.editor_label(), &s.shell_label());
@@ -275,7 +276,7 @@ fn main() {
                 cx,
             ))),
             window_min_size: Some(size(px(960.), px(660.))),
-            app_id: Some("com.wasimaster.corvane".into()),
+            app_id: Some(corvane_platform::BUNDLE_ID.into()),
             ..Default::default()
         };
 

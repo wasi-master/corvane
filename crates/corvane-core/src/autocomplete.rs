@@ -10,8 +10,9 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::time::{Duration, Instant};
 
-use corvane_models::GitHubRepository;
+use corvane_models::{Author, GitHubRepository, UnknownAuthorState};
 use gpui_kit::App;
+use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::dispatcher::Dispatcher;
@@ -101,7 +102,7 @@ fn is_tail(b: u8, kind: TriggerKind) -> bool {
 // ---- issues ----
 
 /// GHD `IIssue` (open issues only; closed ones are pruned on refresh).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Issue {
     pub number: u64,
     pub title: String,
@@ -121,6 +122,29 @@ pub struct IssueCache {
     pub issues: Vec<Issue>,
     pub refreshed_at: Option<Instant>,
     pub loading: bool,
+    /// The redb copy was consulted (GHD: IndexedDB `IssuesDatabase`).
+    pub loaded: bool,
+}
+
+/// What redb keeps between launches (`issues:<html_url>`).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct PersistedIssues {
+    pub issues: Vec<Issue>,
+}
+
+/// `mentionables:<html_url>`, with the fetch time so the ten-minute
+/// throttle survives a restart (GHD `MaxFetchFrequency`).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct PersistedMentionables {
+    pub users: Vec<MentionableUser>,
+    pub fetched_at_secs: u64,
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 /// GHD `getIssuesMatching`: newest first for an empty filter, otherwise a
@@ -165,7 +189,7 @@ pub fn issues_matching(issues: &[Issue], text: &str, max_hits: usize) -> Vec<Iss
 // ---- mentionable users ----
 
 /// GHD `IMentionableUser`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MentionableUser {
     pub login: String,
     pub name: Option<String>,
@@ -178,6 +202,7 @@ pub struct MentionableCache {
     pub users: Vec<MentionableUser>,
     pub refreshed_at: Option<Instant>,
     pub loading: bool,
+    pub loaded: bool,
 }
 
 /// GHD `matchMentionableUsers` + the provider's "dotcom doesn't let you
@@ -238,7 +263,16 @@ impl Dispatcher {
             let mut skip = false;
             let mut since = None;
             Self::state(cx).update(cx, |s, cx| {
+                let store = s.store.clone();
                 let cache = s.issues.entry(key.clone()).or_default();
+                if !cache.loaded {
+                    cache.loaded = true;
+                    if let Ok(Some(persisted)) =
+                        store.get::<PersistedIssues>(&format!("issues:{key}"))
+                    {
+                        cache.issues = persisted.issues;
+                    }
+                }
                 if cache.loading
                     || cache
                         .refreshed_at
@@ -279,7 +313,7 @@ impl Dispatcher {
             },
             move |result, cx| {
                 Self::state(cx).update(cx, |s, cx| {
-                    let cache = s.issues.entry(key).or_default();
+                    let cache = s.issues.entry(key.clone()).or_default();
                     cache.loading = false;
                     match result {
                         Ok(fetched) => {
@@ -295,6 +329,12 @@ impl Dispatcher {
                                 }
                             }
                             cache.issues.sort_by_key(|i| std::cmp::Reverse(i.number));
+                            let persisted = PersistedIssues {
+                                issues: cache.issues.clone(),
+                            };
+                            if let Err(err) = s.store.set(&format!("issues:{key}"), &persisted) {
+                                warn!(%err, "could not persist issues");
+                            }
                         }
                         Err(err) => warn!(%err, "could not refresh issues"),
                     }
@@ -308,7 +348,20 @@ impl Dispatcher {
     pub fn refresh_mentionables(github: &GitHubRepository, cx: &mut App) {
         let key = cache_key(github);
         let skip = Self::state(cx).update(cx, |s, cx| {
+            let store = s.store.clone();
             let cache = s.mentionables.entry(key.clone()).or_default();
+            if !cache.loaded {
+                cache.loaded = true;
+                if let Ok(Some(persisted)) =
+                    store.get::<PersistedMentionables>(&format!("mentionables:{key}"))
+                {
+                    cache.users = persisted.users;
+                    let age = now_secs().saturating_sub(persisted.fetched_at_secs);
+                    if age < MENTIONABLES_REFRESH_INTERVAL.as_secs() {
+                        cache.refreshed_at = Instant::now().checked_sub(Duration::from_secs(age));
+                    }
+                }
+            }
             if cache.loading
                 || cache
                     .refreshed_at
@@ -341,7 +394,7 @@ impl Dispatcher {
             },
             move |result, cx| {
                 Self::state(cx).update(cx, |s, cx| {
-                    let cache = s.mentionables.entry(key).or_default();
+                    let cache = s.mentionables.entry(key.clone()).or_default();
                     cache.loading = false;
                     match result {
                         Ok(Some(users)) => {
@@ -355,12 +408,106 @@ impl Dispatcher {
                                     avatar_url: u.avatar_url,
                                 })
                                 .collect();
+                            let persisted = PersistedMentionables {
+                                users: cache.users.clone(),
+                                fetched_at_secs: now_secs(),
+                            };
+                            if let Err(err) =
+                                s.store.set(&format!("mentionables:{key}"), &persisted)
+                            {
+                                warn!(%err, "could not persist mentionable users");
+                            }
                         }
                         Ok(None) => cache.refreshed_at = Some(Instant::now()),
                         Err(err) => warn!(%err, "could not refresh mentionable users"),
                     }
                     cx.notify();
                 });
+            },
+        );
+    }
+
+    /// GHD `_setShowCoAuthoredBy` (the "Add Co-Authors" toggle, per repository).
+    pub fn set_show_co_authored_by(id: u64, show: bool, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).show_co_authored_by = show;
+            cx.notify();
+        });
+    }
+
+    /// GHD `_setCoAuthors`.
+    pub fn set_co_authors(id: u64, authors: Vec<Author>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).co_authors = authors;
+            cx.notify();
+        });
+    }
+
+    /// GHD `AuthorInput.attemptUnknownAuthorSearch`: look a typed handle up
+    /// (`GET /users/{login}`) and turn it into a known author, or mark it as
+    /// not found. Without a signed-in account the handle stays unknown.
+    pub fn resolve_unknown_author(
+        id: u64,
+        github: &GitHubRepository,
+        username: String,
+        cx: &mut App,
+    ) {
+        fn mark_error(id: u64, username: &str, cx: &mut App) {
+            Dispatcher::state(cx).update(cx, |s, cx| {
+                for a in &mut s.repo_state_mut(id).co_authors {
+                    if let Author::Unknown { username: u, state } = a
+                        && u.eq_ignore_ascii_case(username)
+                    {
+                        *state = UnknownAuthorState::Error;
+                    }
+                }
+                cx.notify();
+            });
+        }
+        let Some((endpoint, token, _)) = Self::api_for(github, cx) else {
+            mark_error(id, &username, cx);
+            return;
+        };
+        let api_base = github.endpoint.clone();
+        let login = username.clone();
+        spawn_bg(
+            cx,
+            move || {
+                corvane_github::Client::new(endpoint, token)
+                    .user(&login)
+                    .map_err(|e| e.to_string())
+            },
+            move |result, cx| match result {
+                Ok(Some(user)) => {
+                    let email = user
+                        .email
+                        .clone()
+                        .filter(|e| !e.is_empty())
+                        .unwrap_or_else(|| {
+                            corvane_models::stealth_email(user.id, &user.login, &api_base)
+                        });
+                    let known = Author::Known {
+                        name: user.name.clone().unwrap_or_else(|| user.login.clone()),
+                        email,
+                        username: Some(user.login.clone()),
+                    };
+                    Self::state(cx).update(cx, |s, cx| {
+                        for a in &mut s.repo_state_mut(id).co_authors {
+                            if a.username()
+                                .is_some_and(|u| u.eq_ignore_ascii_case(&username))
+                                && matches!(a, Author::Unknown { .. })
+                            {
+                                *a = known.clone();
+                            }
+                        }
+                        cx.notify();
+                    });
+                }
+                Ok(None) => mark_error(id, &username, cx),
+                Err(err) => {
+                    warn!(%err, "could not look up co-author");
+                    mark_error(id, &username, cx);
+                }
             },
         );
     }
