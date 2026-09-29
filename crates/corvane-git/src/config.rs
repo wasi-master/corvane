@@ -55,6 +55,16 @@ pub fn set_global_config_value(git: Arc<GitBinary>, key: &str, value: &str) -> R
     Ok(())
 }
 
+/// GHD `addSafeDirectory`: `git config --global --add safe.directory <path>`
+/// ("Trust Repository" for a repository git considers unsafe).
+pub fn add_safe_directory(git: Arc<GitBinary>, path: &Path) -> Result<()> {
+    GitCommand::new(git)
+        .args(["config", "--global", "--add", "safe.directory"])
+        .arg(path.to_string_lossy().as_ref())
+        .run()?;
+    Ok(())
+}
+
 /// `git config --local --unset <key>`; a missing key (exit 5) is not an error.
 pub fn remove_local_config_value(git: Arc<GitBinary>, workdir: &Path, key: &str) -> Result<()> {
     GitCommand::new(git)

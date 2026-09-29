@@ -34,8 +34,8 @@ pub use commit::{
     stage_files, undo_last_commit, unstage_all,
 };
 pub use config::{
-    global_config_value, local_config_value, remove_local_config_value, set_default_branch,
-    set_global_config_value, set_local_config_value,
+    add_safe_directory, global_config_value, local_config_value, remove_local_config_value,
+    set_default_branch, set_global_config_value, set_local_config_value,
 };
 pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{
@@ -43,7 +43,7 @@ pub use diff::{
     parse_line_endings_warning, parse_raw_diff, parse_raw_diff_with_warnings, parse_unified,
     submodule_diff, working_directory_diff, working_file_lines,
 };
-pub use error::GitError;
+pub use error::{GitError, dubious_ownership_path};
 pub use history_ops::{
     ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
 };
@@ -83,7 +83,8 @@ pub use remote_ops::{
     set_remote_url, update_remote_head,
 };
 pub use repo::{
-    ahead_behind, open_repository, symmetric_ahead_behind, top_level_working_directory,
+    ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,
+    top_level_working_directory,
 };
 pub use status::{get_status, map_status, parse_porcelain_v2};
 pub use worktree::{

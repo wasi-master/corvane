@@ -18,6 +18,22 @@ pub fn top_level_working_directory(path: &Path) -> Option<PathBuf> {
     repo.workdir().map(Path::to_path_buf)
 }
 
+/// The main worktree of the repository at `path` (itself unless it is a
+/// linked worktree), read by gitoxide from the common git dir so it works
+/// where the git CLI refuses to run (unsafe repositories).
+pub fn main_worktree_path(path: &Path) -> Option<PathBuf> {
+    let repo = gix::open(path).ok()?;
+    let common = repo.common_dir();
+    let common = common
+        .canonicalize()
+        .unwrap_or_else(|_| common.to_path_buf());
+    if common.file_name().is_some_and(|n| n == ".git") {
+        common.parent().map(Path::to_path_buf)
+    } else {
+        repo.workdir().map(Path::to_path_buf)
+    }
+}
+
 /// Open `path` (a worktree or `.git` dir) and collect tip, branches, remotes
 /// and identity. Cheap enough to run on every refresh.
 pub fn open_repository(path: &Path) -> Result<RepositoryInfo> {
@@ -337,6 +353,59 @@ mod tests {
                 ahead: 1,
                 behind: 0
             }
+        );
+    }
+}
+
+#[cfg(test)]
+mod unsafe_repository_tests {
+    use std::process::Command;
+
+    use super::*;
+
+    fn git(dir: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "user.name=T",
+                "-c",
+                "user.email=t@e.com",
+            ])
+            .args(args)
+            .current_dir(dir)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .status()
+            .unwrap();
+        assert!(status.success(), "git {args:?}");
+    }
+
+    #[test]
+    fn main_worktree_of_linked_worktree_and_subdirectory() {
+        let dir = tempfile::tempdir().unwrap();
+        let main = dir.path().join("main");
+        std::fs::create_dir_all(main.join("src/deep")).unwrap();
+        git(&main, &["init", "-q", "-b", "main"]);
+        git(&main, &["commit", "-q", "--allow-empty", "-m", "init"]);
+        let linked = dir.path().join("linked");
+        git(
+            &main,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                linked.to_str().unwrap(),
+                "-b",
+                "feature",
+            ],
+        );
+        let main = main.canonicalize().unwrap();
+        assert_eq!(main_worktree_path(&main), Some(main.clone()));
+        assert_eq!(main_worktree_path(&linked), Some(main.clone()));
+        assert_eq!(
+            top_level_working_directory(&main.join("src/deep")).map(|p| p.canonicalize().unwrap()),
+            Some(main)
         );
     }
 }
