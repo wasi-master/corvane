@@ -20,7 +20,7 @@ corvane-core = { path = "crates/corvane-core" }
 corvane-git = { path = "crates/corvane-git" }
 corvane-github = { path = "crates/corvane-github" }
 corvane-highlight = { path = "crates/corvane-highlight" }
-syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy", "dump-load"] }
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy", "dump-load", "default-syntaxes"] }
 two-face = { version = "0.4", default-features = false, features = ["syntect-fancy"] }
 corvane-models = { path = "crates/corvane-models" }
 corvane-packs = { path = "crates/corvane-packs" }

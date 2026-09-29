@@ -19,6 +19,7 @@ pub mod list_selection;
 pub mod markdown;
 pub mod mco;
 pub mod notifications;
+pub mod packs;
 pub mod persistence;
 pub mod pull_request_preview;
 pub mod pull_requests;
@@ -51,6 +52,7 @@ pub use mco::{
     Banner, ConflictKind, ConflictState, McoConflicts, McoDetail, McoStep, McoUndo, MergePreview,
     MultiCommitOperation, RebasePreview, conflicted_files, resolved_files, unmerged_files,
 };
+pub use packs::{OFFERED_PACKS, PackProgress, PacksState};
 pub use persistence::{
     CustomIntegration, DEFAULT_DATE_FORMAT, DEFAULT_NUMBER_FORMAT, DEFAULT_TIME_FORMAT, Settings,
     StoreExt, TAB_SIZE_DEFAULT, UncommittedChangesStrategy,

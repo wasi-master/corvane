@@ -7,6 +7,8 @@ description = "Corvane application state, models and dispatcher"
 
 [dependencies]
 corvane-git.workspace = true
+corvane-highlight.workspace = true
+corvane-packs.workspace = true
 corvane-github.workspace = true
 corvane-models.workspace = true
 corvane-platform.workspace = true
