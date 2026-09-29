@@ -244,12 +244,77 @@ impl Dispatcher {
     }
 
     pub fn show_error(title: impl Into<String>, message: impl Into<String>, cx: &mut App) {
+        let message = message.into();
+        // any git call refused for an unsafe repository switches that
+        // repository to the "Trust Repository" view instead
+        if let Some(path) = corvane_git::dubious_ownership_path(&message)
+            && Self::mark_unsafe_repository(path, cx)
+        {
+            return;
+        }
         Self::show_popup(
             Popup::Error {
                 title: title.into(),
-                message: message.into(),
+                message,
             },
             cx,
+        );
+    }
+
+    /// The repository git named as unsafe (by path, else the selected one)
+    /// shows the unsafe view; `false` when there is no such repository.
+    fn mark_unsafe_repository(path: PathBuf, cx: &mut App) -> bool {
+        Self::state(cx).update(cx, |s, cx| {
+            let id = s
+                .repositories
+                .iter()
+                .find(|r| same_path(&r.path, &path) || path.starts_with(&r.path))
+                .map(|r| r.id)
+                .or(s.selected);
+            let Some(id) = id else {
+                return false;
+            };
+            info!(id, path = %path.display(), "git considers the repository unsafe");
+            s.repo_state_mut(id).unsafe_path = Some(path);
+            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                repo.missing = true;
+            }
+            cx.notify();
+            true
+        })
+    }
+
+    /// GHD `MissingRepository.onTrustDirectory`: `addSafeDirectory` for the
+    /// path git named, then look at the repository again.
+    pub fn trust_repository(id: u64, cx: &mut App) {
+        let state = Self::state(cx);
+        let (git, path) = {
+            let s = state.read(cx);
+            (
+                s.git.clone(),
+                s.repo_states.get(&id).and_then(|rs| rs.unsafe_path.clone()),
+            )
+        };
+        let (Some(git), Some(path)) = (git, path) else {
+            return;
+        };
+        state.update(cx, |s, cx| {
+            s.repo_state_mut(id).trusting_path = true;
+            cx.notify();
+        });
+        crate::remote::spawn_bg(
+            cx,
+            move || corvane_git::add_safe_directory(git, &path),
+            move |result, cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).trusting_path = false;
+                    cx.notify();
+                });
+                if let Err(err) = result {
+                    Self::show_error("Could not trust the repository", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            },
         );
     }
 
@@ -411,75 +476,87 @@ impl Dispatcher {
             return;
         }
         let work = cx.background_executor().spawn(async move {
-            let info = open_repository(&path)?;
-            let (ahead_behind, status) = match &git {
-                Some(git) => {
-                    let ab = info.current_branch().and_then(|b| {
-                        corvane_git::ahead_behind(git.clone(), &info.workdir, b)
-                            .ok()
-                            .flatten()
-                    });
-                    let status = corvane_git::get_status(
-                        git.clone(),
-                        &info.workdir,
-                        previous_status.as_ref(),
-                    )?;
-                    (ab, Some(status))
-                }
-                None => (None, None),
-            };
-            let extras = git.as_ref().map(|git| {
-                let recent =
-                    corvane_git::recent_branches(git.clone(), &info.workdir, 5).unwrap_or_default();
-                let remote = info
-                    .remotes
-                    .iter()
-                    .find(|r| r.name == "origin")
-                    .or_else(|| info.remotes.first())
-                    .map(|r| r.name.clone());
-                let head = remote
-                    .as_deref()
-                    .and_then(|r| corvane_git::remote_head(git.clone(), &info.workdir, r).ok())
-                    .flatten();
-                let configured = corvane_git::configured_default_branch(git.clone());
-                let default_branch = corvane_git::find_default_branch(
-                    &info.branches,
-                    remote.as_deref(),
-                    head.as_deref(),
-                    &configured,
-                )
-                .map(|b| b.name.clone());
-                let (stashes, stash_count) =
-                    corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
-                let current = info.current_branch().map(|b| b.name.clone());
-                let stash = stashes
-                    .into_iter()
-                    .find(|s| s.branch.is_some() && s.branch == current);
-                let rebase_snapshot = status
-                    .as_ref()
-                    .filter(|st| st.rebase_internal_state.is_some())
-                    .and_then(|_| corvane_git::rebase_snapshot(git.clone(), &info.workdir));
-                let cherry_pick_snapshot = status
-                    .as_ref()
-                    .filter(|st| st.cherry_pick_head_found)
-                    .and_then(|_| corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir));
-                RefreshExtras {
-                    recent_branches: recent,
-                    default_branch,
-                    stash,
-                    stash_count,
-                    rebase_snapshot,
-                    cherry_pick_snapshot,
-                    last_fetched: corvane_git::last_fetched(&info.workdir),
-                    pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
-                    worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
-                        .unwrap_or_default(),
-                }
-            });
-            Ok::<_, GitError>((info, ahead_behind, status, extras))
+            let result = (|| {
+                let info = open_repository(&path)?;
+                let (ahead_behind, status) = match &git {
+                    Some(git) => {
+                        let ab = info.current_branch().and_then(|b| {
+                            corvane_git::ahead_behind(git.clone(), &info.workdir, b)
+                                .ok()
+                                .flatten()
+                        });
+                        let status = corvane_git::get_status(
+                            git.clone(),
+                            &info.workdir,
+                            previous_status.as_ref(),
+                        )?;
+                        (ab, Some(status))
+                    }
+                    None => (None, None),
+                };
+                let extras = git.as_ref().map(|git| {
+                    let recent = corvane_git::recent_branches(git.clone(), &info.workdir, 5)
+                        .unwrap_or_default();
+                    let remote = info
+                        .remotes
+                        .iter()
+                        .find(|r| r.name == "origin")
+                        .or_else(|| info.remotes.first())
+                        .map(|r| r.name.clone());
+                    let head = remote
+                        .as_deref()
+                        .and_then(|r| corvane_git::remote_head(git.clone(), &info.workdir, r).ok())
+                        .flatten();
+                    let configured = corvane_git::configured_default_branch(git.clone());
+                    let default_branch = corvane_git::find_default_branch(
+                        &info.branches,
+                        remote.as_deref(),
+                        head.as_deref(),
+                        &configured,
+                    )
+                    .map(|b| b.name.clone());
+                    let (stashes, stash_count) =
+                        corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
+                    let current = info.current_branch().map(|b| b.name.clone());
+                    let stash = stashes
+                        .into_iter()
+                        .find(|s| s.branch.is_some() && s.branch == current);
+                    let rebase_snapshot = status
+                        .as_ref()
+                        .filter(|st| st.rebase_internal_state.is_some())
+                        .and_then(|_| corvane_git::rebase_snapshot(git.clone(), &info.workdir));
+                    let cherry_pick_snapshot = status
+                        .as_ref()
+                        .filter(|st| st.cherry_pick_head_found)
+                        .and_then(|_| {
+                            corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
+                        });
+                    RefreshExtras {
+                        recent_branches: recent,
+                        default_branch,
+                        stash,
+                        stash_count,
+                        rebase_snapshot,
+                        cherry_pick_snapshot,
+                        last_fetched: corvane_git::last_fetched(&info.workdir),
+                        pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
+                        worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
+                            .unwrap_or_default(),
+                    }
+                });
+                Ok::<_, GitError>((info, ahead_behind, status, extras))
+            })();
+            // git refuses to run in an unsafe repository; gitoxide can still
+            // read where its main worktree is (GHD `mainWorktreePath`)
+            let unsafe_main = result
+                .as_ref()
+                .err()
+                .and_then(GitError::unsafe_repository_path)
+                .and_then(|_| corvane_git::main_worktree_path(&path));
+            (result, unsafe_main)
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = work.await;
+            let (result, unsafe_main) = work.await;
             cx.update(|cx| {
                 let snapshots = result
                     .as_ref()
@@ -545,9 +622,22 @@ impl Dispatcher {
                                 );
                                 repo_state.status = Some(status);
                             }
+                            repo_state.unsafe_path = None;
                             if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
                                 repo.missing = false;
                             }
+                        }
+                        // GHD `getRepositoryType` → `unsafe`: the repository is
+                        // shown as missing with the "Trust Repository" view
+                        Err(err) if err.unsafe_repository_path().is_some() => {
+                            let unsafe_path = err.unsafe_repository_path();
+                            info!(id, path = ?unsafe_path, "git considers the repository unsafe");
+                            repo_state.unsafe_path = unsafe_path;
+                            repo_state.error = Some(err.to_string());
+                            if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
+                                repo.missing = true;
+                            }
+                            main_worktree = unsafe_main;
                         }
                         Err(GitError::NotARepository(_)) => {
                             repo_state.error = Some("repository is missing".into());

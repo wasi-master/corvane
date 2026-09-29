@@ -515,6 +515,11 @@ pub struct RepositoryState {
     pub ahead_behind: Option<AheadBehind>,
     pub loading: bool,
     pub error: Option<String>,
+    /// GHD `RepositoryType` `unsafe`: the directory git named as having
+    /// dubious ownership ("Trust Repository" view).
+    pub unsafe_path: Option<PathBuf>,
+    /// `isTrustingPath`: `safe.directory` is being added.
+    pub trusting_path: bool,
     pub last_refresh: Option<Instant>,
     pub section: Section,
     /// `git status` result (`IChangesState.workingDirectory`).

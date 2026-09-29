@@ -33,3 +33,42 @@ impl From<gix::Error> for GitError {
 }
 
 pub type Result<T> = std::result::Result<T, GitError>;
+
+/// GHD `getRepositoryType`'s `unsafe` case: the directory named by git's
+/// "fatal: detected dubious ownership in repository at '<path>'".
+pub fn dubious_ownership_path(stderr: &str) -> Option<PathBuf> {
+    const MARKER: &str = "detected dubious ownership in repository at '";
+    let start = stderr.find(MARKER)? + MARKER.len();
+    let rest = &stderr[start..];
+    // the path is quoted up to the end of the line
+    let line = rest.lines().next()?;
+    let end = line.rfind('\'')?;
+    Some(PathBuf::from(&line[..end]))
+}
+
+impl GitError {
+    /// The unsafe directory when git refused to run because of its owner.
+    pub fn unsafe_repository_path(&self) -> Option<PathBuf> {
+        match self {
+            GitError::Failed { stderr, .. } => dubious_ownership_path(stderr),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_dubious_ownership() {
+        let stderr = "fatal: detected dubious ownership in repository at '/Users/o'brien/repo'\n\
+                      To add an exception for this directory, call:\n\n\
+                      \tgit config --global --add safe.directory '/Users/o'brien/repo'\n";
+        assert_eq!(
+            dubious_ownership_path(stderr),
+            Some(PathBuf::from("/Users/o'brien/repo"))
+        );
+        assert_eq!(dubious_ownership_path("fatal: not a git repository"), None);
+    }
+}

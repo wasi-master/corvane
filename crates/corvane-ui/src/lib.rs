@@ -26,6 +26,7 @@ pub mod icons;
 pub mod image_diff;
 pub mod keymap;
 pub mod markdown;
+pub mod missing_repository;
 #[cfg(target_os = "macos")]
 pub mod native_menu;
 #[cfg(target_os = "macos")]

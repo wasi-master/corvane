@@ -462,6 +462,18 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
+        let unsafe_repository = {
+            let state = self.state.read(cx);
+            state.selected_repository().and_then(|repo| {
+                let rs = state.repo_states.get(&repo.id)?;
+                Some((
+                    repo.id,
+                    repo.name(),
+                    rs.unsafe_path.clone()?,
+                    rs.trusting_path,
+                ))
+            })
+        };
         let (
             buttons,
             foldout,
@@ -527,6 +539,19 @@ impl Render for Workspace {
                         .border_t_1()
                         .border_color(t.box_border)
                         .child(cloning_view(clone, cx))
+                        .into_any_element()
+                } else if let Some((id, name, path, trusting)) = unsafe_repository.as_ref() {
+                    // GHD `SelectionType.MissingRepository` replaces the
+                    // whole repository view
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .w_full()
+                        .border_t_1()
+                        .border_color(t.box_border)
+                        .child(crate::missing_repository::unsafe_repository_view(
+                            *id, name, path, *trusting, cx,
+                        ))
                         .into_any_element()
                 } else if has_repos && !tutorial_paused {
                     self.repository_view_with_tutorial(cx)
