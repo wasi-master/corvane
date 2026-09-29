@@ -12,6 +12,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod mllike;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -223,6 +224,9 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/x-ocaml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::OCaml))),
+        "text/x-fsharp" => Some(cached!(mllike::MlLike::new(mllike::Dialect::FSharp))),
+        "text/x-sml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::Sml))),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
