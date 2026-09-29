@@ -41,10 +41,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Cherry-pick by dropping commits on a pull request in the Pull Requests tab (`onDropOntoPullRequest`)
 
-## Changes list
-
-- [ ] Range selection via ⇧-arrow keys (`list.tsx` `handleKeyDown` with `shiftKey` in multi-selection mode); ⌘/⇧-click and ⌘A are in v1
-
 ## Editor / commit form
 
 - [ ] Per-repository commit message templates
