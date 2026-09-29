@@ -83,6 +83,12 @@ pub struct InitOptions {
     pub default_branch: Option<String>,
     pub description: Option<String>,
     pub readme: bool,
+    /// `.gitignore` contents (a bundled template).
+    pub gitignore: Option<String>,
+    /// `LICENSE` contents (a rendered bundled template).
+    pub license: Option<String>,
+    /// `.gitattributes` contents; GHD always writes one when missing.
+    pub git_attributes: Option<String>,
 }
 
 /// `git init` (+ README + initial commit when requested). Returns the workdir.
@@ -100,6 +106,7 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
     if let Some(desc) = &opts.description {
         let _ = std::fs::write(opts.path.join(".git/description"), format!("{desc}\n"));
     }
+    let mut wrote_files = false;
     if opts.readme {
         let name = opts
             .path
@@ -108,12 +115,32 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
             .unwrap_or_default();
         let mut readme = format!("# {name}\n");
         if let Some(desc) = opts.description.as_deref().filter(|d| !d.trim().is_empty()) {
-            readme.push_str(&format!("\n{desc}\n"));
+            readme.push_str(&format!("{desc}\n"));
         }
         std::fs::write(opts.path.join("README.md"), readme)
             .map_err(crate::error::GitError::Spawn)?;
+        wrote_files = true;
+    }
+    if let Some(text) = &opts.gitignore {
+        std::fs::write(opts.path.join(".gitignore"), text)
+            .map_err(crate::error::GitError::Spawn)?;
+        wrote_files = true;
+    }
+    if let Some(text) = &opts.license {
+        std::fs::write(opts.path.join("LICENSE"), text).map_err(crate::error::GitError::Spawn)?;
+        wrote_files = true;
+    }
+    if let Some(text) = &opts.git_attributes
+        && !opts.path.join(".gitattributes").exists()
+    {
+        std::fs::write(opts.path.join(".gitattributes"), text)
+            .map_err(crate::error::GitError::Spawn)?;
+        wrote_files = true;
+    }
+    // GHD `createRepository`: everything written above goes into "Initial commit".
+    if wrote_files {
         GitCommand::new(git.clone())
-            .args(["add", "--", "README.md"])
+            .args(["add", "-A", "--"])
             .current_dir(&opts.path)
             .run()?;
         GitCommand::new(git)
@@ -300,6 +327,9 @@ mod tests {
                 default_branch: Some("main".into()),
                 description: Some("desc".into()),
                 readme: true,
+                gitignore: None,
+                license: None,
+                git_attributes: None,
             },
         )
         .unwrap();

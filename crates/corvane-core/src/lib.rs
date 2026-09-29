@@ -9,6 +9,7 @@ pub mod mco;
 pub mod persistence;
 pub mod remote;
 pub mod state;
+pub mod templates;
 pub mod watcher;
 
 pub use compare::{CompareForm, CompareState, ComparisonMode};

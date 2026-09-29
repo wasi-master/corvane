@@ -80,6 +80,9 @@ pub struct GitHubRepository {
     pub fork: bool,
     #[serde(default)]
     pub parent: Option<Box<GitHubRepository>>,
+    /// Shown as an "Archived" badge in the clone list.
+    #[serde(default)]
+    pub archived: bool,
 }
 
 impl GitHubRepository {
@@ -288,6 +291,7 @@ pub fn github_from_remote(url: &str, ghes_hosts: &[String]) -> Option<GitHubRepo
         private: false,
         fork: false,
         parent: None,
+        archived: false,
     })
 }
 

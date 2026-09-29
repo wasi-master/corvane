@@ -45,6 +45,8 @@ pub struct ApiRepository {
     pub parent: Option<Box<ApiRepository>>,
     #[serde(default)]
     pub pushed_at: Option<String>,
+    #[serde(default)]
+    pub archived: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -223,6 +225,7 @@ impl Client {
             private: repo.private,
             fork: repo.fork,
             parent: repo.parent.map(|p| Box::new(self.convert(*p))),
+            archived: repo.archived,
         }
     }
 }

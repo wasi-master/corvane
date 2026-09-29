@@ -1359,6 +1359,7 @@ dependencies = [
  "corvane-store",
  "gpui-kit",
  "notify",
+ "rust-embed",
  "serde",
  "serde_json",
  "smol",

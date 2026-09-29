@@ -930,6 +930,55 @@ impl Dispatcher {
         );
     }
 
+    /// Clone dialog: fetch the account's repositories (`ApiRepositoriesStore.loadRepositories`).
+    pub fn load_api_repositories(account: Account, cx: &mut App) {
+        let endpoint = account.endpoint.clone();
+        let already = Self::state(cx).update(cx, |s, cx| {
+            if s.api_repositories_loading.contains(&endpoint) {
+                return true;
+            }
+            s.api_repositories_loading.insert(endpoint.clone());
+            cx.notify();
+            false
+        });
+        if already {
+            return;
+        }
+        let Some(token) = corvane_platform::keychain::token(&account.host(), &account.login)
+            .ok()
+            .flatten()
+        else {
+            Self::state(cx).update(cx, |s, cx| {
+                s.api_repositories_loading.remove(&endpoint);
+                cx.notify();
+            });
+            return;
+        };
+        let api = corvane_github::Endpoint::from_api_base(&endpoint);
+        let endpoint_for_result = endpoint.clone();
+        spawn_bg(
+            cx,
+            move || {
+                corvane_github::Client::new(api, token)
+                    .user_repositories()
+                    .map_err(|e| e.to_string())
+            },
+            move |result, cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.api_repositories_loading.remove(&endpoint_for_result);
+                    match result {
+                        Ok(repos) => {
+                            s.api_repositories
+                                .insert(endpoint_for_result.clone(), repos);
+                        }
+                        Err(err) => warn!(%err, "could not load repositories"),
+                    }
+                    cx.notify();
+                });
+            },
+        );
+    }
+
     /// GHD `CreateFork` is out of scope; a plain "no write access" hint.
     pub fn remote_url_host(url: &str) -> String {
         host_of(url)

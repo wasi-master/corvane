@@ -76,6 +76,8 @@ impl Dispatcher {
             banner_nonce: 0,
             indicators: std::collections::HashMap::new(),
             generic_logins,
+            api_repositories: std::collections::HashMap::new(),
+            api_repositories_loading: std::collections::HashSet::new(),
             editors: Vec::new(),
             shells: Vec::new(),
             global_git: None,
@@ -1704,8 +1706,11 @@ impl Dispatcher {
     /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
     pub fn create_repository(
         path: PathBuf,
+        name: String,
         description: Option<String>,
         readme: bool,
+        gitignore: Option<String>,
+        license: Option<String>,
         cx: &mut App,
     ) {
         let state = Self::state(cx);
@@ -1714,14 +1719,44 @@ impl Dispatcher {
             return;
         };
         Self::close_popup(cx);
+        let gitignore_text = gitignore
+            .as_deref()
+            .and_then(crate::templates::gitignore_text);
+        let license_body = license.as_deref().and_then(|name| {
+            crate::templates::licenses()
+                .into_iter()
+                .find(|l| l.name == name)
+                .map(|l| l.body)
+        });
         let task = cx.background_executor().spawn(async move {
+            let default_branch = corvane_git::configured_default_branch(git.clone());
+            let license_text = license_body.map(|body| {
+                let identity = corvane_git::global_identity(git.clone());
+                let year = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| 1970 + d.as_secs() / 31_556_952)
+                    .unwrap_or(1970);
+                crate::templates::render_license(
+                    &body,
+                    &crate::templates::LicenseFields {
+                        fullname: identity.name.unwrap_or_default(),
+                        email: identity.email.unwrap_or_default(),
+                        project: name.clone(),
+                        description: String::new(),
+                        year: year.to_string(),
+                    },
+                )
+            });
             corvane_git::init_repository(
                 git,
                 InitOptions {
                     path,
-                    default_branch: Some("main".into()),
+                    default_branch: Some(default_branch),
                     description,
                     readme,
+                    gitignore: gitignore_text,
+                    license: license_text,
+                    git_attributes: Some(crate::templates::GIT_ATTRIBUTES.to_string()),
                 },
             )
         });
