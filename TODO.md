@@ -51,8 +51,10 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Editor / commit form
 
-- [ ] Spellcheck in commit summary/description (Electron built-in in GHD; needs native `NSSpellChecker` via objc2 on macOS)
-- [ ] Emoji autocomplete `:smile:` and issue `#123` autocomplete (co-author `@` autocomplete is in v1)
+- [ ] Co-authors: `AuthorInput` token field + "Add Co-Authors" toggle (`ui/lib/author-input/`, `Co-Authored-By:` trailers); the `@user` autocompletion inside summary/description is in v1
+- [ ] GitHub custom emoji (`:shipit:`, `:octocat:`, …) from the `/emojis` API with cached images; v1 bundles the Unicode gemoji table only (`assets/emoji/gemoji.json`)
+- [ ] Issue and mentionable-user caches persisted in redb (GHD: IndexedDB); v1 caches them in memory per session
+- [ ] Spellcheck language follows `NSSpellChecker`'s automatic identification (no per-language picker); Chromium's "Ignore" item is not offered either
 - [ ] Copilot-free "commit length warning" is in v1; per-repo commit message templates are not
 
 ## Diff viewer
