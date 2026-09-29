@@ -1,0 +1,126 @@
+//- layout.pug — shared page chrome
+   Multi-line comment body is indented
+   and keeps going until the dedent.
+doctype html
+extends ../base/root
+include ../partials/head.pug
+include:markdown-it ../docs/intro.md
+
+block prepend scripts
+  script(src="/js/vendor.js")
+block append styles
+append head
+prepend footer
+block content
+
+mixin card(title, body, options = {})
+  .card(class=options.variant, data-id=options.id)&attributes(attributes)
+    h3.card__title= title
+    if block
+      block
+    else
+      p.card__body!= body
+
+mixin list(items)
+  ul
+    each item, index in items
+      li(class={active: index === 0, odd: index % 2})= item.name
+
+- var user = { name: "Zoë Ångström", roles: ['admin', 'editor'] }
+- var count = 3
+- const greeting = `Hello, ${user.name}!`
+-
+  var multi = [1, 2, 3]
+    .map(n => n * 2)
+
+html(lang="en" dir='ltr')
+  head
+    meta(charset="utf-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    title= pageTitle || "Untitled"
+    link(rel='stylesheet', href='/css/app.css', media=print ? 'print' : 'all')
+    script.
+      window.config = { debug: false, locale: "fr-FR" };
+      function boot(el) {
+        return el && el.dataset.ready !== "yes";
+      }
+    script(type="text/javascript").
+      var ready = /complete|loaded/.test(document.readyState);
+    script(type="text/x-template" id="tpl").
+      <div class="tpl">{{ message }}</div>
+    style.
+      .card { border: 1px solid #ccc; padding: 0.5em 1em; }
+      .card__title:hover { color: rebeccapurple !important; }
+  body#main.layout.layout--wide(data-theme=theme, class=["a", "b"])
+    header.site-header
+      nav
+        a.logo(href="/") Home
+        a(href=url('/about'), title="About us", target="_blank") About
+        a(href="/contact" disabled) Contact
+        input(type="checkbox" checked=false name='agree')
+        input(type='text', value=user.name.toUpperCase(), placeholder="Your name…")
+        button(
+          type="submit"
+          onclick="send()"
+          class=classes.join(' ')
+        ) Send
+    main
+      h1 Welcome, #{user.name}!
+      p.lead Some #[strong bold] and #[em italic] text with \#{not interpolated}.
+      p
+        | Piped text line one
+        | and line two with ünïcödé and 中文.
+        |	tab after pipe
+      #{tagName}.dynamic Dynamic tag
+      +card("First", "<b>html</b>", {variant: 'primary', id: 42})
+      +card('Second', body)(class="extra")
+      +list(user.roles)
+      +#{mixinName}(1, 2)
+      +icon(name="star")
+      case count
+        when 0
+          p None
+        when 1: p One
+        default
+          p= count + " items"
+      if user.roles.indexOf('admin') > -1
+        span.badge Admin
+      else if user.name
+        span.badge User
+      unless user.banned
+        p Welcome back
+      while count-- > 0
+        p= count
+      for n in multi
+        span= n
+      - for (var i = 0; i < 3; i++)
+        li= i
+      each val, key in {a: 1, b: 2}
+        dt= key
+        dd= val
+      :javascript
+        console.log("filtered js", 1 + 2);
+      :css
+        body { margin: 0 }
+      :markdown
+        # Heading
+        Some *markdown* text
+      :coffee(bare=true)
+        square = (x) -> x * x
+      .footer-note: a(href="#top") Back to top
+      p(title="unterminated
+      yield
+      p: strong nested
+      div(style={color: 'red', 'font-size': '12px'}) styled
+      div(class!=raw ? "raw" : '') unescaped attr
+    footer
+      // visible comment
+        continued comment line
+      p &copy; 2026 Corvane
+<!-- inline html comment -->
+p after html
+  span= value
+  | text line
+- var afterHtml = 1
+if afterHtml
+  p Done #{afterHtml}

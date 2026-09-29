@@ -367,7 +367,10 @@ impl JsMode {
 
     /// `tokenBase`
     fn token_base(&self, stream: &mut StringStream, s: &mut JsState) -> Option<&'static str> {
-        let ch = stream.next()?;
+        // at the end of the line (a nesting mode calling in after skipping
+        // the rest) JS tests `undefined` as the string "undefined": only
+        // the word test matches, and the word is the current token text
+        let ch = stream.next().unwrap_or('u');
         if ch == '"' || ch == '\'' {
             s.tokenize = Tokenize::String(ch);
             return self.token_string(ch, stream, s);
