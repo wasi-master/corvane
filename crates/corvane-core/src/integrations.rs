@@ -39,6 +39,11 @@ pub struct RepositorySettingsSave {
     pub git_config: Option<(GitConfigLocation, String, String)>,
 }
 
+/// `openIssueCreationPage`: GitHub's issue template chooser.
+pub fn issue_creation_url(html_url: &str) -> String {
+    format!("{html_url}/issues/new/choose")
+}
+
 /// `encodeURIComponent` for branch names in GitHub URLs.
 pub fn encode_component(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -322,10 +327,20 @@ impl Dispatcher {
         }
     }
 
-    /// Repository › Create Issue on GitHub (`_openIssueCreationPage`).
+    /// Repository › Create Issue on GitHub (`openIssueCreationPage`): the
+    /// template chooser of the repository contributions go to (the parent of
+    /// a fork unless the fork is set up for its own work,
+    /// `getNonForkGitHubRepository`). GitHub answers `/issues/new/choose`
+    /// with the plain new-issue form when the repository has no templates,
+    /// so, as in GHD, nothing is checked locally.
     pub fn create_issue(id: u64, cx: &mut App) {
-        if let Some((gh, _)) = Self::github_and_branch(id, cx) {
-            Self::open_url(&format!("{}/issues/new/choose", gh.html_url), cx);
+        let url = Self::state(cx)
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.non_fork_github())
+            .map(|gh| issue_creation_url(&gh.html_url));
+        if let Some(url) = url {
+            Self::open_url(&url, cx);
         }
     }
 
@@ -772,6 +787,28 @@ mod tests {
         } else {
             base
         }
+    }
+
+    #[test]
+    fn issues_are_created_on_the_contribution_target() {
+        let mut repo = corvane_models::Repository::new(1, std::path::PathBuf::from("/tmp/hello"));
+        repo.github = Some(gh(false));
+        let url = repo
+            .non_fork_github()
+            .map(|g| issue_creation_url(&g.html_url));
+        assert_eq!(
+            url.as_deref(),
+            Some("https://github.com/octocat/hello/issues/new/choose")
+        );
+        // a fork files issues on its parent by default (GHD #9232)
+        repo.github = Some(gh(true));
+        let url = repo
+            .non_fork_github()
+            .map(|g| issue_creation_url(&g.html_url));
+        assert_eq!(
+            url.as_deref(),
+            Some("https://github.com/octocat/hello/issues/new/choose")
+        );
     }
 
     #[test]
