@@ -1,6 +1,7 @@
 //! GitHub API + OAuth device flow. Blocking `ureq` calls;
 //! run them on a background thread.
 
+pub mod alive;
 pub mod api;
 pub mod auth;
 pub mod endpoint;

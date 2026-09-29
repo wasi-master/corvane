@@ -2,6 +2,7 @@
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
 pub mod acknowledgements;
+pub mod alive;
 pub mod app_location;
 pub mod app_url;
 pub mod autocomplete;
@@ -36,6 +37,7 @@ pub mod updater;
 pub mod watcher;
 pub mod worktrees;
 
+pub use alive::{AliveEventData, AliveState};
 pub use autocomplete::{
     DEFAULT_MAX_HITS, Issue, IssueCache, IssueHit, MentionableCache, MentionableUser, Trigger,
     TriggerKind, find_trigger, issues_matching, users_matching,

@@ -785,6 +785,8 @@ pub struct AppState {
     pub update: crate::updater::UpdateState,
     /// On-demand packs.
     pub packs: crate::packs::PacksState,
+    /// Alive subscriptions (`AliveStore`) and notification dedup state.
+    pub alive: crate::alive::AliveState,
 }
 
 struct AppStateHandle(Entity<AppState>);
