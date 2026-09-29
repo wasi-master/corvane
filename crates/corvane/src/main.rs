@@ -83,6 +83,23 @@ fn main() {
         let state = Dispatcher::init(store, settings, cx);
         Dispatcher::load_custom_emoji(cx);
         Dispatcher::check_crash_reports(cx);
+        // a notification click brings the (possibly hidden) window forward
+        // and opens its dialog; installed before the first frame so a click
+        // that launched Corvane is delivered too
+        Dispatcher::listen_for_notification_clicks(
+            |cx| {
+                cx.activate(true);
+                #[cfg(target_os = "macos")]
+                for handle in cx.windows() {
+                    handle
+                        .update(cx, |_, window, cx| {
+                            corvane_ui::native_window::show_window(window, cx)
+                        })
+                        .ok();
+                }
+            },
+            cx,
+        );
         {
             let s = state.read(cx);
             menus::install(cx, &s.editor_label(), &s.shell_label());
@@ -183,6 +200,10 @@ fn main() {
         //   next launch shows "Corvane quit unexpectedly last time")
         //   no-write-access (the repository becomes a read-only GitHub repository;
         //   add CORVANE_DEV_ACCOUNTS=login@https://api.github.com for the fork dialog)
+        //   test-notifications (Help › Show Test Notifications: posts sample
+        //   review / comment / checks-failed notifications; needs the .app bundle)
+        //   notification-click:review|comment|checks-failed (what clicking such a
+        //   notification does: its userInfo payload goes through the click handler)
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -318,6 +339,21 @@ fn main() {
                             panic!("CORVANE_POPUP=crash-report: deliberate crash");
                         }
                         ("no-write-access", Some(id)) => dev_samples::make_read_only(id, cx),
+                        (other, Some(id)) if other.starts_with("notification-click:") => {
+                            use corvane_core::notifications::TestNotificationType as Kind;
+                            let kind = match &other["notification-click:".len()..] {
+                                "comment" => Kind::PullRequestComment,
+                                "checks-failed" => Kind::ChecksFailed,
+                                _ => Kind::PullRequestReview,
+                            };
+                            let notification = corvane_core::samples::notification(kind, id, cx);
+                            if let Some(payload) = Dispatcher::notification_payload(&notification) {
+                                Dispatcher::notification_payload_clicked(&payload, cx);
+                            }
+                        }
+                        ("test-notifications", Some(id)) => {
+                            Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
+                        }
                         ("pr-list", Some(id)) => {
                             dev_samples::install_pull_requests(id, cx);
                             Dispatcher::change_branches_tab(
@@ -446,6 +482,13 @@ fn main() {
             Dispatcher::open_url("https://github.com/wasi-master/corvane/discussions", cx)
         });
         cx.on_action(|_: &ShowReleaseNotes, cx| Dispatcher::show_release_notes(cx));
+        // GHD test menu "Show notification" (`testShowNotification`)
+        #[cfg(debug_assertions)]
+        cx.on_action(|_: &ShowTestNotifications, cx| {
+            if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
+                Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx);
+            }
+        });
         cx.on_action(|_: &ShowUserGuides, cx| {
             Dispatcher::open_url("https://docs.github.com/en/desktop", cx)
         });

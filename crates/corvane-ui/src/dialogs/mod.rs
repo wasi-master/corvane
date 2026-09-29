@@ -26,6 +26,7 @@ mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
 mod simple;
+mod test_notifications;
 mod tutorial_dialogs;
 mod unknown_authors;
 mod worktree_dialogs;
@@ -440,6 +441,9 @@ impl DialogHost {
                 .into(),
             Popup::ConfirmExitTutorial => cx
                 .new(|_| tutorial_dialogs::ConfirmExitTutorialDialog)
+                .into(),
+            Popup::TestNotifications { repo } => cx
+                .new(|cx| test_notifications::TestNotificationsDialog::new(*repo, cx))
                 .into(),
             Popup::CrashReportFound { reports } => cx
                 .new(|_| crash_report_found::CrashReportFoundDialog::new(reports.clone()))

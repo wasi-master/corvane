@@ -129,6 +129,11 @@ pub enum Popup {
     },
     /// `ConfirmExitTutorial`
     ConfirmExitTutorial,
+    /// `TestNotifications`: post sample pull request notifications for
+    /// `repo` (debug builds).
+    TestNotifications {
+        repo: u64,
+    },
     /// `CICheckRunRerun`: re-run (failed) checks of the PR head ref.
     CICheckRunRerun {
         repo: u64,

@@ -108,14 +108,27 @@ pub fn install(cx: &mut App, editor: &str, shell: &str) {
             MenuItem::separator(),
             MenuItem::action("Bring All to Front", BringAllToFront),
         ]),
-        Menu::new("Help").items([
-            MenuItem::action("Report Issue…", ReportIssue),
-            MenuItem::action("Contact GitHub Support…", ContactSupport),
-            MenuItem::action("Show User Guides", ShowUserGuides),
-            MenuItem::action("Show Keyboard Shortcuts", ShowKeyboardShortcuts),
-            MenuItem::action("Show Logs in Finder", ShowLogs),
-            MenuItem::separator(),
-            MenuItem::action("Show Release Notes", ShowReleaseNotes),
-        ]),
+        Menu::new("Help").items(help_items()),
     ]);
+}
+
+/// Help menu; debug builds append GHD's test items (`buildTestMenu`, only
+/// "Show notification" so far, as "Show Test Notifications").
+fn help_items() -> Vec<MenuItem> {
+    #[allow(unused_mut)]
+    let mut items = vec![
+        MenuItem::action("Report Issue…", ReportIssue),
+        MenuItem::action("Contact GitHub Support…", ContactSupport),
+        MenuItem::action("Show User Guides", ShowUserGuides),
+        MenuItem::action("Show Keyboard Shortcuts", ShowKeyboardShortcuts),
+        MenuItem::action("Show Logs in Finder", ShowLogs),
+        MenuItem::separator(),
+        MenuItem::action("Show Release Notes", ShowReleaseNotes),
+    ];
+    #[cfg(debug_assertions)]
+    items.extend([
+        MenuItem::separator(),
+        MenuItem::action("Show Test Notifications", ShowTestNotifications),
+    ]);
+    items
 }

@@ -102,6 +102,8 @@ gpui_kit::actions!(
         ContactSupport,
         ShowUserGuides,
         ShowReleaseNotes,
+        // Help › Show Test Notifications (debug builds; GHD test menu "Show notification")
+        ShowTestNotifications,
         ShowKeyboardShortcuts,
         ShowLogs,
         // In-app
