@@ -145,6 +145,11 @@ pub fn recorded_menu() -> Vec<String> {
     out
 }
 
+/// Forget the last recorded menu (before an action that may open one).
+pub fn clear_recorded() {
+    RECORDED.with(|r| r.borrow_mut().clear());
+}
+
 /// Run the recorded menu's item with this label (a click on it).
 pub fn pick_recorded(label: &str, window: &mut Window, cx: &mut App) -> bool {
     fn find(items: &[MenuItem], label: &str) -> Option<MenuAction> {

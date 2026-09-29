@@ -85,6 +85,7 @@ steps:
   - release: [365, 56]
   - click: {text: "Integrations", within: "dialog"}   # also clicks: 2, mods: cmd-shift
   - dblclick: [120, 214]
+  - rclick: [120, 214]                   # right-click (then `context_menu` to compare the menus)
   - drag: {from: [249, 400], to: [320, 400]}
   - scroll: {at: [124, 300], dy: 200}
   - key: cmd-a backspace                 # GPUI keystroke syntax, space separated
@@ -114,7 +115,7 @@ each should carry a `note` pointing at `docs/reference/deviations.md`.
   `CORVANE_MENU_HOLD_MS` (default 1500) so the control loop is only held
   briefly (`context_menu` / `context_menu_pick` steps). Pixel comparisons of
   popped menus need a screen capture: do them as a visual pass with a
-  screen-capable tool. Right-click steps are still not offered.
+  screen-capable tool.
 - GHD keyboard shortcuts that are menu accelerators never reach the renderer
   through CDP; use `menu:` steps. Plain keys (arrows, Enter, Escape, Space,
   typing, ⌘A in text fields) work as keys in both.

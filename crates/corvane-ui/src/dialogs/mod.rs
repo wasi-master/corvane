@@ -5,6 +5,7 @@ mod acknowledgements;
 mod add_existing;
 mod app_dialogs;
 pub(crate) mod branch_dialogs;
+mod change_repository_alias;
 mod ci_check_run_rerun;
 mod clone_repository;
 mod crash_report_found;
@@ -293,6 +294,13 @@ impl DialogHost {
                 .into(),
             Popup::RenameBranch { repo, name } => cx
                 .new(|cx| RenameBranchDialog::new(state, *repo, name.clone(), window, cx))
+                .into(),
+            Popup::ChangeRepositoryAlias { repo } => cx
+                .new(|cx| {
+                    change_repository_alias::ChangeRepositoryAliasDialog::new(
+                        state, *repo, window, cx,
+                    )
+                })
                 .into(),
             Popup::AddWorktree {
                 repo,

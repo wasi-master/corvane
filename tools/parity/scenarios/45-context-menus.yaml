@@ -1,0 +1,29 @@
+# Contextual menus compared as item lists (labels, separators, disabled and
+# checked items) plus the row state a right-click leaves behind.
+name: context-menus
+description: Right-click menus of a changed file, a commit, a branch and a repository
+setup: repo
+steps:
+  - rclick: [120, 214]
+  - context_menu: changed-file
+  - snap: file-row-right-clicked
+  - click: [187, 97]
+    wait: 600
+  - rclick: [124, 225]
+  - context_menu: commit-with-tag
+  - snap: commit-row-right-clicked
+  - rclick: [124, 275]
+  - context_menu: commit
+  - rclick: {css: "#history .file-list .list-item"}
+  - context_menu: committed-file
+  - snap: committed-file-right-clicked
+  - click: [365, 56]
+    wait: 500
+  - rclick: [432, 231]
+  - context_menu: branch
+  - snap: branch-row-right-clicked
+  - key: escape
+  - click: [125, 56]
+    wait: 500
+  - rclick: {text: "parity-fixture", within: ".foldout"}
+  - context_menu: repository

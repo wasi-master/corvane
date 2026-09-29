@@ -212,6 +212,10 @@ pub enum Popup {
         repo: u64,
         name: String,
     },
+    /// GHD `ChangeRepositoryAlias` (repository list context menu).
+    ChangeRepositoryAlias {
+        repo: u64,
+    },
     /// Worktrees (GHD 3.6 `enableWorktreeSupport`).
     AddWorktree {
         repo: u64,

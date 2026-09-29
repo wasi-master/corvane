@@ -25,6 +25,7 @@ setup: repo
 steps:
   - click: [365, 56]
     wait: 500
+  - dump: {name: open, root: ".foldout"}
   - snap: open
   - hover: [432, 231]
   - snap: row-hover

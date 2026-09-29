@@ -470,13 +470,97 @@ impl SelectedCommitView {
 }
 
 /// History `FileList` row: dimmed directory + name, status icon (no checkbox).
+/// GHD `SelectedCommits.onContextMenu`: open / reveal, copy paths, View on
+/// GitHub; a file gone from disk gets a single disabled item.
+fn open_commit_file_menu(
+    id: u64,
+    path: &str,
+    position: Point<Pixels>,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    use crate::context_menu::MenuItem;
+    let state = AppState::global(cx).read(cx);
+    let Some(repo) = state.repository(id) else {
+        return;
+    };
+    let full = repo.path.join(path);
+    let editor_label = state.editor_label();
+    let rs = state.repo_states.get(&id);
+    let selected: Vec<String> = rs.map(|r| r.selected_commits.clone()).unwrap_or_default();
+    // `localCommitSHAs`: here the newest unpushed commit is known
+    let local = rs
+        .and_then(|r| r.last_commit.as_ref())
+        .is_some_and(|c| selected.first() == Some(&c.sha));
+    let github = repo.github.clone();
+    let items = if !full.exists() {
+        vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)]
+    } else {
+        let (reveal, editor, default, copy_full) =
+            (full.clone(), full.clone(), full.clone(), full.clone());
+        let relative = path.to_string();
+        let view_label = match &github {
+            Some(gh) if gh.endpoint != "https://api.github.com" => "View on GitHub Enterprise",
+            _ => "View on GitHub",
+        };
+        let view_url = github.as_ref().and_then(|gh| {
+            selected
+                .first()
+                .map(|sha| format!("{}/blob/{sha}/{path}", gh.html_url))
+        });
+        vec![
+            MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal)),
+            MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
+                Dispatcher::open_in_editor(editor.clone(), cx)
+            }),
+            // `isSafeFileExtension` is always true on macOS
+            MenuItem::new("Open with Default Program", move |_, cx| {
+                cx.open_with_system(&default)
+            }),
+            MenuItem::separator(),
+            MenuItem::new("Copy File Path", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(
+                    copy_full.to_string_lossy().to_string(),
+                ))
+            }),
+            MenuItem::new("Copy Relative File Path", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
+            }),
+            MenuItem::separator(),
+            MenuItem::new(view_label, move |_, cx| {
+                if let Some(url) = &view_url {
+                    Dispatcher::open_url(url, cx)
+                }
+            })
+            .enabled(selected.len() == 1 && !local && github.is_some()),
+        ]
+    };
+    #[cfg(target_os = "macos")]
+    crate::native_menu::show_context_menu(items, position, window, cx);
+    #[cfg(not(target_os = "macos"))]
+    let _ = (items, position, window);
+}
+
 fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &App) -> AnyElement {
     let t = cx.ghd();
     let hover_bg = t.list_item_hover_background;
     let (icon, color) = status_icon(file.status.kind, t);
     let path = file.path.clone();
+    let menu_path = file.path.clone();
     div()
         .id(SharedString::from(format!("commit-file-{}", file.path)))
+        // GHD `SelectedCommits.onContextMenu`
+        .on_mouse_down(
+            MouseButton::Right,
+            move |ev: &MouseDownEvent, window, cx| {
+                cx.stop_propagation();
+                // a right-click selects the file first (`List.onRowMouseDown`)
+                if !is_selected {
+                    Dispatcher::select_commit_file(id, menu_path.clone(), cx);
+                }
+                open_commit_file_menu(id, &menu_path, ev.position, window, cx);
+            },
+        )
         .a11y_row(
             format!(
                 "{}, {}",

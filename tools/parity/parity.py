@@ -182,7 +182,8 @@ class Run:
             # both apps' last contextual menu, compared as item lists
             name = step["context_menu"] if isinstance(step["context_menu"], str) else f"menu{i}"
             g, c = ghd.menu_items(), cv.menu_items() if not self.args.ghd_only else []
-            ok = self.args.ghd_only or g == c
+            # an empty GHD menu means the right-click missed: never a pass
+            ok = bool(g) and (self.args.ghd_only or g == c)
             result.setdefault("menus", []).append({"name": name, "ghd": g, "corvane": c, "pass": ok})
             if not ok:
                 result["snaps"].append({"name": f"menu: {name}", "stem": "", "note": "native menu items differ",
@@ -190,6 +191,8 @@ class Run:
                                         "size_mismatch": "", "ghd": "", "corvane": "", "diff": "", "regions": [],
                                         "menu": {"ghd": g, "corvane": c}})
             print(f"    {'ok  ' if ok else 'FAIL'} menu {name}: {len(g)} GHD / {len(c)} Corvane items", flush=True)
+            # Corvane's real menu held its main thread; let queued work land
+            time.sleep((wait if wait is not None else cfg["settle"]) / 1000)
             return
         if "context_menu_pick" in step:
             label = step["context_menu_pick"]
@@ -213,7 +216,7 @@ class Run:
             return
         # targets resolve in GHD's DOM; both apps get the same point
         resolved = {}
-        for key in ("hover", "click", "dblclick", "press", "release"):
+        for key in ("hover", "click", "dblclick", "rclick", "press", "release"):
             if key in step:
                 resolved[key] = ghd.resolve(step[key])
         for app, drv in (("ghd", ghd), ("corvane", cv)):
@@ -232,6 +235,12 @@ class Run:
             drv.click(*pt("click"), clicks=action.get("clicks", 1), mods=mods)
         if "dblclick" in action:
             drv.click(*pt("dblclick"), clicks=2, mods=mods)
+        if "rclick" in action:
+            # opens a contextual menu: GHD's is recorded, Corvane's pops,
+            # is recorded and closes itself (compare with `context_menu`)
+            if drv.name == "ghd":
+                drv.eval("window.__parityMenu=null")
+            drv.click(*pt("rclick"), button="right", mods=mods)
         if "press" in action:
             drv.down(*pt("press"), mods=mods)
         if "release" in action:
