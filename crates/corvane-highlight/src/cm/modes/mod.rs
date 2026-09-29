@@ -5,6 +5,7 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod clike;
+pub mod crystal;
 pub mod css;
 pub mod dart;
 pub mod diff;
@@ -232,6 +233,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-vb" => Some(cached!(vb::Vb)),
         "text/x-haxe" => Some(cached!(haxe::Haxe)),
         "text/x-hxml" => Some(cached!(haxe::Hxml)),
+        "text/x-crystal" => Some(cached!(crystal::Crystal)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
