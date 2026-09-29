@@ -2,7 +2,7 @@
 //! `ui/checkout/confirm-checkout-commit.tsx`, `ui/create-tag/create-tag-dialog.tsx`,
 //! `ui/undo/warn-local-changes-before-undo.tsx`.
 
-use corvane_core::Dispatcher;
+use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -377,6 +377,143 @@ impl Render for ConfirmDiscardStashDialog {
                     }),
                 },
             ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+/// `UnreachableCommitsDialog` ("Commit Reachability"): which of the selected
+/// commits the range diff includes (Reachable) and which it cannot
+/// (Unreachable), with the commits listed like history rows.
+pub struct UnreachableCommitsDialog {
+    state: Entity<AppState>,
+    repo: u64,
+    tab: UnreachableCommitsTab,
+}
+
+impl UnreachableCommitsDialog {
+    pub fn new(state: Entity<AppState>, repo: u64, tab: UnreachableCommitsTab) -> Self {
+        Self { state, repo, tab }
+    }
+}
+
+impl Render for UnreachableCommitsDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.ghd();
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (commits, is_unreachable) = {
+            let s = self.state.read(cx);
+            let rs = s.repo_states.get(&self.repo);
+            let unreachable = self.tab == UnreachableCommitsTab::Unreachable;
+            let commits: Vec<corvane_core::Commit> = rs
+                .map(|rs| {
+                    rs.selected_commits
+                        .iter()
+                        .filter(|sha| rs.shas_in_diff.contains(sha) != unreachable)
+                        .filter_map(|sha| rs.commits.iter().find(|c| &c.sha == sha).cloned())
+                        .collect()
+                })
+                .unwrap_or_default();
+            (commits, unreachable)
+        };
+        let count = commits.len();
+        let not = if is_unreachable { "not " } else { "" };
+        let message = crate::widgets::paragraph(vec![
+            format!(
+                "You will {not}see changes from the following {} because {} {not}in the ancestry path of the most recent commit in your selection. ",
+                if count > 1 { "commits" } else { "commit" },
+                if count > 1 { "they're" } else { "it's" }
+            )
+            .into(),
+            crate::widgets::link_button("unreachable-learn-more", "Learn more about unreachable commits.", cx)
+                .on_click(|_, _, cx| {
+                    Dispatcher::open_url(
+                        "https://github.com/desktop/desktop/blob/development/docs/learn-more/unreachable-commits.md",
+                        cx,
+                    )
+                })
+                .into_any_element()
+                .into(),
+        ]);
+        let weak = cx.weak_entity();
+        let tabs = crate::tab_bar::tab_bar(
+            vec![
+                crate::tab_bar::TabModel {
+                    id: "unreachable-tab-unreachable",
+                    label: "Unreachable".into(),
+                    count: None,
+                },
+                crate::tab_bar::TabModel {
+                    id: "unreachable-tab-reachable",
+                    label: "Reachable".into(),
+                    count: None,
+                },
+            ],
+            if is_unreachable { 0 } else { 1 },
+            move |ix, _, cx| {
+                weak.update(cx, |this, cx| {
+                    this.tab = if ix == 0 {
+                        UnreachableCommitsTab::Unreachable
+                    } else {
+                        UnreachableCommitsTab::Reachable
+                    };
+                    cx.notify();
+                })
+                .ok();
+            },
+            cx,
+        );
+        // `.unreachable-commits { max-width: 400px }`, list ≥ 160 px
+        let content = div()
+            .w(px(400.))
+            .mx(px(-20.))
+            .my(px(-20.))
+            .flex()
+            .flex_col()
+            .child(tabs)
+            .child(
+                div()
+                    .p(SPACING)
+                    .border_b_1()
+                    .border_color(t.box_border)
+                    .text_size(FONT_SIZE)
+                    .child(message),
+            )
+            .child(
+                div()
+                    .id("unreachable-commit-list")
+                    .min_h(px(160.))
+                    .max_h(px(300.))
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .children(commits.iter().map(|commit| {
+                        div()
+                            .h(px(50.))
+                            .flex_none()
+                            .border_b_1()
+                            .border_color(t.box_border)
+                            .child(crate::history::commit_row_contents(
+                                commit,
+                                t.text,
+                                t.text_secondary,
+                                cx,
+                            ))
+                    })),
+            );
+        dialog(
+            "dialog-unreachable-commits",
+            "Commit Reachability",
+            content,
+            vec![DialogButton {
+                id: "unreachable-ok",
+                label: "OK".into(),
+                primary: true,
+                disabled: false,
+                on_click: Box::new(close),
+            }],
             close,
             window,
             cx,

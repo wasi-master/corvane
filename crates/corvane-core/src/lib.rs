@@ -28,7 +28,8 @@ pub use persistence::{
 };
 pub use remote::{ForcePushState, PushPullKind, PushPullProgress, RepoIndicator, host_of};
 pub use state::{
-    AppState, CloneState, FileListFilter, FilterOption, Foldout, GitConfigLocation,
+    AppState, CloneState, DropTarget, FileListFilter, FilterOption, Foldout, GitConfigLocation,
     GlobalGitConfig, LastCommit, Popup, PreferencesTab, RepositorySettingsData,
     RepositorySettingsTab, RepositoryState, RetryAction, SignInState, SignInStep,
+    UnreachableCommitsTab,
 };

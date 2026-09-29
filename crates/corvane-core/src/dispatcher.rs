@@ -77,6 +77,7 @@ impl Dispatcher {
             indicators: std::collections::HashMap::new(),
             generic_logins,
             avatars: std::collections::HashMap::new(),
+            drag_target: None,
             api_repositories: std::collections::HashMap::new(),
             api_repositories_loading: std::collections::HashSet::new(),
             editors: Vec::new(),
@@ -2340,6 +2341,27 @@ impl Dispatcher {
 
     pub fn complete_welcome(cx: &mut App) {
         Self::update_settings(cx, |s| s.welcome_completed = true);
+    }
+
+    /// `onHighlightShas`: dim every history row except `shas` (empty = none).
+    pub fn set_highlighted_shas(id: u64, shas: Vec<String>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if rs.highlighted_shas != shas {
+                rs.highlighted_shas = shas;
+                cx.notify();
+            }
+        });
+    }
+
+    /// `dragAndDropManager.emitEnterDropTarget` / `emitLeaveDropTarget`.
+    pub fn set_drag_target(target: Option<crate::state::DropTarget>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            if s.drag_target != target {
+                s.drag_target = target;
+                cx.notify();
+            }
+        });
     }
 
     // ---- settings ----

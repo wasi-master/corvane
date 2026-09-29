@@ -14,7 +14,8 @@
 use std::rc::Rc;
 
 use corvane_core::{
-    AppState, Commit, ComparisonMode, Dispatcher, Mergeability, MultiCommitOperationKind, Popup,
+    AppState, Commit, ComparisonMode, Dispatcher, DropTarget, Mergeability,
+    MultiCommitOperationKind, Popup,
 };
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
@@ -50,17 +51,79 @@ pub struct CommitDrag {
 /// badge for multi-commit drags.
 pub struct CommitDragElement {
     drag: CommitDrag,
+    state: Entity<AppState>,
+}
+
+impl CommitDragElement {
+    fn new(drag: CommitDrag, cx: &mut Context<Self>) -> Self {
+        let state = AppState::global(cx);
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        Self { drag, state }
+    }
+
+    /// `renderDragToolTip`: what a drop would do at the current target.
+    fn tooltip(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let target = self.state.read(cx).drag_target.clone()?;
+        let content: AnyElement = match target {
+            DropTarget::Branch(name) => div()
+                .flex()
+                .flex_row()
+                .child("Copy to")
+                .child(
+                    div()
+                        .ml(SPACING_THIRD)
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(name),
+                )
+                .into_any_element(),
+            DropTarget::Commit => div()
+                .child(format!("Squash {} commits", self.drag.shas.len() + 1))
+                .into_any_element(),
+            DropTarget::InsertionPoint { count } => div()
+                .child(format!(
+                    "Move {} here",
+                    if count == 1 { "commit" } else { "commits" }
+                ))
+                .into_any_element(),
+        };
+        Some(
+            // `.tool-tip-contents` (darwin): title-tooltip look under the box
+            div()
+                .absolute()
+                .left_0()
+                .bottom(px(-25.))
+                .px(SPACING_THIRD)
+                .py(px(1.))
+                .rounded(px(1.))
+                .bg(t.tooltip_background)
+                .text_color(t.tooltip_text)
+                .text_size(FONT_SIZE_SM)
+                .whitespace_nowrap()
+                .shadow(vec![BoxShadow {
+                    color: t.shadow,
+                    offset: point(px(0.), px(1.)),
+                    blur_radius: px(3.),
+                    spread_radius: px(0.),
+                    inset: false,
+                }])
+                .child(content)
+                .into_any_element(),
+        )
+    }
 }
 
 impl Render for CommitDragElement {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let count = self.drag.shas.len();
+        let tooltip = self.tooltip(cx);
         div()
             .relative()
             .w(px(300.))
             .h(COMMIT_ROW_HEIGHT)
             .mt(px(22.))
+            .children(tooltip)
             .child(
                 div()
                     .size_full()
@@ -1076,6 +1139,8 @@ impl HistorySidebar {
             Rc::new(rs.map(|r| r.visible_commits().clone()).unwrap_or_default());
         let selected: Rc<Vec<String>> =
             Rc::new(rs.map(|r| r.selected_commits.clone()).unwrap_or_default());
+        let highlighted: Rc<Vec<String>> =
+            Rc::new(rs.map(|r| r.highlighted_shas.clone()).unwrap_or_default());
         let exhausted = comparing || rs.map(|r| r.commits_exhausted).unwrap_or(true);
         let loaded = rs.map(|r| r.info.is_some()).unwrap_or(false);
         let draggable = rs.is_some_and(|r| r.mco.is_none()) && self.reorder.is_none() && !comparing;
@@ -1158,6 +1223,8 @@ impl HistorySidebar {
                         .map(|ix| {
                             let commit = &commits[ix];
                             let is_selected = selected.contains(&commit.sha);
+                            let dimmed =
+                                !highlighted.is_empty() && !highlighted.contains(&commit.sha);
                             Dispatcher::request_avatar_for_email(&commit.author.email, cx);
                             let insertion_here = match (&reorder, drop_hint) {
                                 (Some((_, at)), _) => Some(*at),
@@ -1179,6 +1246,7 @@ impl HistorySidebar {
                                 draggable,
                                 selected.clone(),
                                 row_hint,
+                                dimmed,
                                 weak.clone(),
                                 list_focus.clone(),
                                 cx,
@@ -1226,6 +1294,7 @@ impl HistorySidebar {
     /// Drop on a row: squash or reorder, per the last hint.
     fn drop_on_row(&mut self, id: u64, row: usize, drag: &CommitDrag, cx: &mut Context<Self>) {
         let hint = self.drop_hint.take();
+        Dispatcher::set_drag_target(None, cx);
         cx.notify();
         if drag.repo != id {
             return;
@@ -1260,7 +1329,7 @@ struct RowHint {
 }
 
 /// `.commit .info` + tag indicators, shared with the drag element.
-fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, cx: &App) -> Div {
+pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, cx: &App) -> Div {
     let t = cx.ghd();
     let summary = if commit.summary.is_empty() {
         "Empty commit message".to_string()
@@ -1369,6 +1438,7 @@ fn commit_row(
     draggable: bool,
     selection: Rc<Vec<String>>,
     hint: RowHint,
+    dimmed: bool,
     weak: WeakEntity<HistorySidebar>,
     list_focus: FocusHandle,
     cx: &App,
@@ -1415,6 +1485,8 @@ fn commit_row(
         .h(COMMIT_ROW_HEIGHT)
         .flex_none()
         .bg(bg)
+        // `.has-highlighted-commits .list-item:not(.highlighted) { opacity: 30% }`
+        .when(dimmed, |d| d.opacity(0.3))
         .border_b_1()
         .border_color(t.box_border)
         .cursor_pointer()
@@ -1459,7 +1531,7 @@ fn commit_row(
                 },
                 |drag, _, _, cx| {
                     let drag = drag.clone();
-                    cx.new(|_| CommitDragElement { drag })
+                    cx.new(|cx| CommitDragElement::new(drag, cx))
                 },
             )
         })
@@ -1479,6 +1551,14 @@ fn commit_row(
                 None
             };
             if hint.is_some() {
+                let target = match hint {
+                    Some(DropHint::Squash(_)) => Some(DropTarget::Commit),
+                    Some(DropHint::InsertAt(_)) => Some(DropTarget::InsertionPoint {
+                        count: ev.drag(cx).shas.len(),
+                    }),
+                    None => None,
+                };
+                Dispatcher::set_drag_target(target, cx);
                 weak_for_move
                     .update(cx, |this, cx| this.update_drop_hint(hint, cx))
                     .ok();
@@ -1518,8 +1598,13 @@ fn commit_row(
 impl Render for HistorySidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // drop hints only live while a drag is in flight
-        if self.drop_hint.is_some() && !cx.has_active_drag() {
-            self.drop_hint = None;
+        if !cx.has_active_drag() {
+            if self.drop_hint.is_some() {
+                self.drop_hint = None;
+            }
+            if self.state.read(cx).drag_target.is_some() {
+                Dispatcher::set_drag_target(None, cx);
+            }
         }
         let (id, show_list, form, merge_status) = {
             let s = self.state.read(cx);

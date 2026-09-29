@@ -4,7 +4,7 @@
 //! title + expander, description, meta row (author, sha + copy, +adds −dels,
 //! tags), then a resizable 250 px file list next to the commit's diff.
 
-use corvane_core::{AppState, CommittedFileChange, Dispatcher};
+use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
 };
@@ -15,7 +15,7 @@ use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, MONO_FONT};
-use crate::widgets::{avatar_image, avatar_lookup};
+use crate::widgets::{avatar_image, avatar_lookup, link_button};
 
 /// `commitSummaryWidth` constraints (GHD `constrain(250, 100, 600)`).
 const FILE_LIST_MIN: Pixels = px(100.);
@@ -62,12 +62,25 @@ impl SelectedCommitView {
         if selected <= 1 {
             return None;
         }
-        let not_in_diff = rs
+        let shas_in_diff: Vec<String> = rs.shas_in_diff.clone();
+        let shas_not_in_diff: Vec<String> = rs
             .selected_commits
             .iter()
             .filter(|sha| !rs.shas_in_diff.contains(sha))
-            .count();
+            .cloned()
+            .collect();
+        let not_in_diff = shas_not_in_diff.len();
         let in_diff = selected - not_in_diff;
+        // `onHighlightShas`: hovering either count dims the other rows.
+        let highlight = |shas: Vec<String>| {
+            move |hovered: &bool, _: &mut Window, cx: &mut App| {
+                Dispatcher::set_highlighted_shas(
+                    id,
+                    if *hovered { shas.clone() } else { Vec::new() },
+                    cx,
+                )
+            }
+        };
         Some(
             div()
                 .id("expandable-commit-summary")
@@ -78,19 +91,21 @@ impl SelectedCommitView {
                 .border_color(t.box_border)
                 .child(
                     div()
+                        .id("commits-in-diff")
                         .pt(SPACING)
                         .px(SPACING)
                         .pb(SPACING_HALF)
                         .text_size(FONT_SIZE_MD)
                         .font_weight(FontWeight::SEMIBOLD)
                         .line_height(px(16.))
+                        .on_hover(highlight(shas_in_diff))
                         .child(format!(
                             "Showing changes from {in_diff} {}",
                             if in_diff == 1 { "commit" } else { "commits" }
                         )),
                 )
                 .when(not_in_diff > 0, |d| {
-                    // `renderCommitsNotReachable` (the reachability dialog is not built yet)
+                    // `renderCommitsNotReachable` (`.commit-unreachable-info`)
                     d.child(
                         div()
                             .px(SPACING)
@@ -102,14 +117,33 @@ impl SelectedCommitView {
                             .text_size(FONT_SIZE_SM)
                             .text_color(t.text_secondary)
                             .child(octicon(Octicon::Info, t.text_secondary))
-                            .child(format!(
-                                "{not_in_diff} unreachable {} not included.",
-                                if not_in_diff == 1 {
-                                    "commit"
-                                } else {
-                                    "commits"
-                                }
-                            )),
+                            .child(
+                                link_button(
+                                    "commits-not-in-diff",
+                                    format!(
+                                        "{not_in_diff} unreachable {}",
+                                        if not_in_diff == 1 {
+                                            "commit"
+                                        } else {
+                                            "commits"
+                                        }
+                                    ),
+                                    cx,
+                                )
+                                .text_size(FONT_SIZE_SM)
+                                .on_hover(highlight(shas_not_in_diff))
+                                .on_click(move |_, _, cx| {
+                                    Dispatcher::set_highlighted_shas(id, Vec::new(), cx);
+                                    Dispatcher::show_popup(
+                                        Popup::UnreachableCommits {
+                                            repo: id,
+                                            tab: UnreachableCommitsTab::Unreachable,
+                                        },
+                                        cx,
+                                    )
+                                }),
+                            )
+                            .child("not included."),
                     )
                 })
                 .into_any_element(),
