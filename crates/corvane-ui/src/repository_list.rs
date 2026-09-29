@@ -316,8 +316,12 @@ impl Render for RepositoryFoldout {
                                 .child("Sorry, I can't find that repository"),
                         )
                     })
-                    .children(groups.into_iter().map(|group| {
+                    .children(groups.into_iter().enumerate().map(|(group_ix, group)| {
+                        // a repository can be listed under Recent and its
+                        // owner: the group id keeps the rows' ids (and a11y
+                        // nodes) unique
                         div()
+                            .id(("repo-group", group_ix))
                             .flex()
                             .flex_col()
                             .child(
