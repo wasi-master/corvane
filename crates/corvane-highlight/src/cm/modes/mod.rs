@@ -13,6 +13,7 @@ pub mod go;
 pub mod javascript;
 pub mod jsx;
 pub mod perl;
+pub mod powershell;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -206,6 +207,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-cython" => Some(cached!(python::Python::cython())),
         "text/x-ruby" => Some(cached!(ruby::Ruby)),
         "text/x-perl" => Some(cached!(perl::Perl)),
+        "application/x-powershell" => Some(cached!(powershell::PowerShell)),
         "text/x-sh" | "application/x-sh" => Some(cached!(shell::Shell)),
         "text/x-go" => Some(Arc::new(go::Go)),
         "text/x-swift" => Some(Arc::new(swift::Swift)),
