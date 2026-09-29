@@ -200,6 +200,15 @@ impl<'a> StringStream<'a> {
     pub fn char_at(&self, i: usize) -> Option<char> {
         self.chars.get(i).copied()
     }
+    /// The UTF-16 code unit at an index (`stream.string.charCodeAt(i)`), so
+    /// a mode can tell the two halves of a surrogate pair apart like JS.
+    pub fn char_code_at(&self, i: usize) -> Option<u16> {
+        let c = *self.chars.get(i)?;
+        let mut buf = [0u16; 2];
+        let enc = c.encode_utf16(&mut buf);
+        let second = enc.len() == 2 && i > 0 && self.bytes[i - 1] == self.bytes[i];
+        Some(enc[usize::from(second)])
+    }
     /// `stream.string.slice(from, to)` in chars.
     pub fn slice(&self, from: usize, to: usize) -> &str {
         let to = to.min(self.chars.len());
