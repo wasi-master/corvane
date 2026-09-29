@@ -9,6 +9,7 @@ pub mod css;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
+pub mod elixir;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
@@ -224,6 +225,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/x-elixir" => Some(cached!(elixir::Elixir)),
         "text/x-lua" | "text/x-luau" => Some(cached!(luau::Luau)),
         "text/javascript"
         | "text/ecmascript"
