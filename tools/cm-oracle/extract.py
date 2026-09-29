@@ -48,6 +48,18 @@ def main():
         p = out / stub
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text("// replaced by runmode.node.js's require-cache shim\n")
+    # the codemirror-mode-* packages are ES modules. cmtok.js evaluates
+    # index.js ones (luau, zig) itself; codemirror-mode-elixir only ships a
+    # minified dist/*.m.js (`import e from"codemirror";…`) that node loads by
+    # package.json `main`, with "codemirror" resolving to the shimmed lib
+    mains = {"codemirror": "lib/codemirror.js"}
+    for pkg in sorted((out / "node_modules").glob("codemirror-mode-*")):
+        entry = pkg / "index.js"
+        if not entry.exists():
+            entry = next(iter(sorted(pkg.glob("dist/*.m.js"))), entry)
+        mains[pkg.name] = entry.relative_to(pkg).as_posix()
+    for pkg, main in mains.items():
+        (out / "node_modules" / pkg / "package.json").write_text(json.dumps({"name": pkg, "main": main}) + "\n")
     print(f"{n} files → {out}")
 
 

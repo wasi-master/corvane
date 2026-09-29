@@ -5,17 +5,21 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod clike;
+pub mod clojure;
 pub mod cmake;
 pub mod crystal;
 pub mod css;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
+pub mod elixir;
 pub mod fortran;
 pub mod go;
 pub mod haxe;
 pub mod javascript;
 pub mod jsx;
+pub mod julia;
+pub mod luau;
 pub mod mllike;
 pub mod pascal;
 pub mod perl;
@@ -256,6 +260,12 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-hxml" => Some(cached!(haxe::Hxml)),
         "text/x-crystal" => Some(cached!(crystal::Crystal)),
         "text/x-fortran" => Some(cached!(fortran::Fortran)),
+        "text/x-clojure" | "text/x-clojurescript" | "application/edn" => {
+            Some(cached!(clojure::Clojure::new()))
+        }
+        "text/x-elixir" => Some(cached!(elixir::Elixir)),
+        "text/x-julia" => Some(cached!(julia::Julia)),
+        "text/x-lua" | "text/x-luau" => Some(cached!(luau::Luau)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
