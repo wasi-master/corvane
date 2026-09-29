@@ -17,6 +17,7 @@ pub mod pig;
 pub mod puppet;
 pub mod python;
 pub mod q;
+pub mod rpm;
 pub mod ruby;
 pub mod shell;
 pub mod sieve;
@@ -223,6 +224,8 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-q" => Some(Arc::new(q::Q)),
         "text/x-pig" => Some(Arc::new(pig::Pig)),
         "application/sieve" => Some(Arc::new(sieve::Sieve)),
+        "text/x-rpm-spec" => Some(Arc::new(rpm::RpmSpec)),
+        "text/x-rpm-changes" => Some(Arc::new(rpm::RpmChanges)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
