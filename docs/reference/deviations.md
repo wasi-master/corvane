@@ -37,6 +37,8 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 ## Settings
 
+- Settings › Appearance › High Contrast (Corvane addition; GitHub Desktop has no high contrast theme): GHD's dark tokens in Primer's `dark_high_contrast` palette (`crates/corvane-ui/src/theme/ghd_high_contrast.rs`, table in `ghd-theme-tokens.md`). With the System theme, macOS's "Increase contrast" switches to it; the option is read when the system appearance changes and when Corvane's window becomes active. The fourth swatch's label wraps onto two lines.
+
 - Notifications › permission hint only means something from the signed `.app` bundle (`UNUserNotificationCenter` needs a bundle); a bare binary shows no hint and posts nothing.
 - Settings › Advanced › "Save crash reports locally" (Corvane addition, off by default) replaces GHD's crash reporter: a panic hook writes `~/Library/Logs/Corvane/crashes/<timestamp>.txt`, and the next launch lists those and macOS's `corvane*.ips` reports newer than the previous launch in "Corvane quit unexpectedly last time" (Reveal in Finder / Dismiss). Nothing is uploaded and the reports' contents are never read.
 - Settings › Copilot tab, Git › Hooks sub-tab, Advanced › Usage and the Git Credential Manager toggle are omitted (see the module doc of `dialogs/preferences.rs`).
