@@ -7,6 +7,7 @@ mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod ci_check_run_rerun;
 mod clone_repository;
+mod crash_report_found;
 mod create_repository;
 mod discard_changes;
 mod discard_selection;
@@ -428,6 +429,9 @@ impl DialogHost {
                 .new(|_| move_to_applications_folder::MoveToApplicationsFolderDialog::new())
                 .into(),
             Popup::Acknowledgements => cx.new(acknowledgements::AcknowledgementsDialog::new).into(),
+            Popup::CrashReportFound { reports } => cx
+                .new(|_| crash_report_found::CrashReportFoundDialog::new(reports.clone()))
+                .into(),
             Popup::ReleaseNotes { summary } => cx
                 .new(|_| release_notes::ReleaseNotesDialog::new(summary.clone()))
                 .into(),

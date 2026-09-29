@@ -3,7 +3,8 @@
 //!
 //! Deviations from GHD 3.6.6: no Copilot tab, no Hooks sub-tab under Git
 //! (hook environment loading is not implemented), no Usage section under
-//! Advanced (no telemetry), no Git Credential Manager toggle and no
+//! Advanced (no telemetry; "Save crash reports locally" sits there instead),
+//! no Git Credential Manager toggle and no
 //! Formatting section (behind a feature flag in GHD).
 
 use std::path::Path;
@@ -1430,6 +1431,22 @@ impl PreferencesDialog {
                 .mt(SPACING)
                 .text_size(FONT_SIZE_SM)
                 .text_color(t.text_secondary),
+            )
+            // Corvane addition in place of GHD's Usage section (no telemetry)
+            .child(div().mt(SPACING).child(section_heading("Crash reports", cx)))
+            .child(checkbox_row(
+                "prefs-save-crash-reports",
+                self.draft.save_crash_reports,
+                "Save crash reports locally",
+                self.edit(cx, |s, v| s.save_crash_reports = v),
+                cx,
+            ))
+            .child(
+                settings_description(cx).child(
+                    "When Corvane crashes, a report is saved in ~/Library/Logs/Corvane/crashes \
+                     and pointed out at the next launch, together with macOS's own crash \
+                     reports. Reports never leave this Mac.",
+                ),
             )
             .into_any_element()
     }

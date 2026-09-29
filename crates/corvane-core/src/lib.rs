@@ -8,6 +8,7 @@ pub mod avatars;
 pub mod clone_info;
 pub mod commit_status;
 pub mod compare;
+pub mod crash_reports;
 pub mod dispatcher;
 pub mod emoji;
 pub mod filter;
