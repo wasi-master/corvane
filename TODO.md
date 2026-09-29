@@ -23,7 +23,8 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Diff viewer
 
-- [ ] tree-sitter grammar packs as an alternative highlighter (dylib packs; codesign implications)
+- [ ] Port the rest of GHD's CodeMirror 5 modes (`/Applications/GitHub Desktop.app/Contents/Resources/app/highlighter/{mode,ext}/*.js.map` carry the sources; extension map in `app/src/highlighter/index.ts`) so diff colours match GHD in every language, not just Rust (`corvane-highlight/src/cm_simple.rs`, the simple-mode engine). Simple-mode tables port as data; hand-written modes need Rust state machines: asciiarmor clike clojure cmake coffeescript crystal css cypher dart diff dockerfile elixir fortran go haml handlebars haxe htmlembedded htmlmixed javascript jsx julia luau markdown mllike oz pascal perl php pig powershell properties protobuf pug puppet python q r rpm rst ruby sass scheme shell sieve slim smalltalk soy sparql sql stex stylus swift toml vb vue xml yaml zig. Until then syntect covers them (scopes mapped onto the same classes).
+- [ ] Tree-sitter as an opt-in highlighter (decided 2026-09-30): Settings › Appearance › Syntax highlighting "GitHub Desktop" (default: the CodeMirror ports + syntect fallback, GHD-exact) | "Tree-sitter" (Zed-style highlight queries mapped onto the same `--syntax-*` colours). Grammars ship in an on-demand pack so the default binary does not grow (compiled grammars are native code: dylib pack loaded by an ad-hoc signed app without hardened runtime, or WASM via tree-sitter's wasm store; pick one). Record the non-GHD mode in `docs/reference/deviations.md`; the parity harness keeps running in the default mode.
 
 ## Platform
 
