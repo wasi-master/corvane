@@ -488,5 +488,10 @@ impl Render for Workspace {
             })
             .when(ci_popover, |d| d.child(self.ci_popover.clone()))
             .when(popup, |d| d.child(self.dialogs.clone()))
+            // the open dialog's title is the window title (`dialog.rs`);
+            // without one it is the app's again
+            .when(!popup, |d| {
+                d.child(crate::dialog::window_title(crate::dialog::APP_WINDOW_TITLE))
+            })
     }
 }

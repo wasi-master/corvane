@@ -16,6 +16,8 @@ use corvane_core::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::ci_status::{ci_status, color_for, effective_conclusion, symbol_for_log_step};
 use crate::context_menu::MenuItem;
 use crate::icons::{Octicon, octicon, spin};
@@ -572,7 +574,7 @@ fn icon_button(
         .border_color(t.box_alt_background)
         .cursor_pointer()
         .hover(move |s| s.bg(hover_bg).border_color(hover_border))
-        .tooltip(crate::widgets::tooltip(tooltip))
+        .icon_button_label(tooltip)
         .child(octicon(icon, t.text_secondary))
 }
 

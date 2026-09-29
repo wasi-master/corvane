@@ -11,6 +11,8 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -215,6 +217,16 @@ impl SelectedCommitView {
                         .child(
                             div()
                                 .id("commit-summary-expander")
+                                .a11y_button(if expanded {
+                                    "Collapse commit details"
+                                } else {
+                                    "Expand commit details"
+                                })
+                                .tooltip(crate::widgets::tooltip(if expanded {
+                                    "Collapse"
+                                } else {
+                                    "Expand"
+                                }))
                                 .ml(SPACING)
                                 .flex_none()
                                 .cursor_pointer()
@@ -279,6 +291,7 @@ impl SelectedCommitView {
                                             let sha = commit.sha.clone();
                                             div()
                                                 .id("copy-sha")
+                                                .icon_button_label("Copy the full SHA")
                                                 .ml(SPACING_HALF)
                                                 .cursor_pointer()
                                                 .on_click(move |_, _, cx| {

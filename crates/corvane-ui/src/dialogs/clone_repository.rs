@@ -20,6 +20,8 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::dialog::{DialogButton, dialog_loading};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -612,7 +614,7 @@ impl CloneRepositoryDialog {
                                         div()
                                             .id("clone-account-close")
                                             .cursor_pointer()
-                                            .tooltip(crate::widgets::tooltip("Close"))
+                                            .icon_button_label("Close")
                                             .on_click(close)
                                             .child(octicon(Octicon::X, t.text_secondary)),
                                     ),
@@ -928,6 +930,7 @@ impl CloneRepositoryDialog {
                     ))
                     .child(
                         button("clone-refresh", "", cx)
+                            .icon_button_label("Refresh the list of repositories")
                             .flex_none()
                             .px(SPACING_HALF)
                             .when(loading, |d| d.opacity(0.6))
