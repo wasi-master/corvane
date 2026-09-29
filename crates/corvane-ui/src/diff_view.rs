@@ -189,6 +189,8 @@ struct Snapshot {
     selection: DiffSelection,
     diff: Diff,
     contents: Option<Arc<Vec<String>>>,
+    /// Old-side lines for highlighting (`fileContents.oldContents`).
+    old_contents: Option<Arc<Vec<String>>>,
     key: (u64, String, u64),
     hide_whitespace: bool,
     confirm_discard: bool,
@@ -261,6 +263,8 @@ pub struct DiffView {
     split_mode: bool,
     /// New-side file lines for expansion (`fileContents.newContents`).
     contents: Option<Arc<Vec<String>>>,
+    /// Old-side file lines, highlighted for deleted rows like GHD.
+    old_contents: Option<Arc<Vec<String>>>,
     /// GHD `diffToRestore !== null`: "Collapse Expanded Lines" is available.
     expanded: bool,
     /// GHD `forceShowLargeDiff`.
@@ -301,6 +305,7 @@ impl DiffView {
             unified_to_split: Rc::new(Vec::new()),
             split_mode: false,
             contents: None,
+            old_contents: None,
             expanded: false,
             show_large: false,
             searching: false,
@@ -322,75 +327,81 @@ impl DiffView {
         let id = s.selected?;
         let rs = s.repo_states.get(&id)?;
         let repo_path = s.repository(id)?.path.clone();
-        let (path, kind, selection, diff, generation, contents, hide_whitespace) = match self.source
-        {
-            DiffSource::WorkingDirectory => {
-                let file = rs.selected_file.as_ref().and_then(|p| {
-                    rs.status
-                        .as_ref()
-                        .and_then(|st| st.files.iter().find(|f| &f.path == p))
-                })?;
-                (
-                    file.path.clone(),
-                    file.status.kind,
-                    file.selection.clone(),
-                    rs.diff.clone()?,
-                    rs.diff_generation,
-                    rs.diff_contents.clone(),
-                    s.settings.hide_whitespace_in_changes_diff,
-                )
-            }
-            DiffSource::Commit => {
-                let file = rs.commit_selected_file.as_ref().and_then(|p| {
-                    rs.changeset
-                        .as_ref()
-                        .and_then(|c| c.files.iter().find(|f| &f.path == p))
-                })?;
-                (
-                    file.path.clone(),
-                    file.status.kind,
-                    DiffSelection::all(),
-                    rs.commit_diff.clone()?,
-                    rs.commit_diff_generation,
-                    rs.commit_diff_contents.clone(),
-                    s.settings.hide_whitespace_in_history_diff,
-                )
-            }
-            DiffSource::Stash => {
-                let file = rs.stash_selected_file.as_ref().and_then(|p| {
-                    rs.stash_files
-                        .as_ref()
-                        .and_then(|files| files.iter().find(|f| &f.path == p))
-                })?;
-                (
-                    file.path.clone(),
-                    file.status.kind,
-                    DiffSelection::all(),
-                    rs.stash_diff.clone()?,
-                    rs.stash_diff_generation,
-                    rs.stash_diff_contents.clone(),
-                    s.settings.hide_whitespace_in_history_diff,
-                )
-            }
-            DiffSource::PullRequest => {
-                let preview = rs.pull_request_preview.as_ref()?;
-                let file = preview.file.as_ref().and_then(|p| {
-                    preview
-                        .changeset
-                        .as_ref()
-                        .and_then(|c| c.files.iter().find(|f| &f.path == p))
-                })?;
-                (
-                    file.path.clone(),
-                    file.status.kind,
-                    DiffSelection::all(),
-                    preview.diff.clone()?,
-                    preview.diff_generation,
-                    preview.diff_contents.clone(),
-                    s.settings.hide_whitespace_in_pull_request_diff,
-                )
-            }
-        };
+        let (path, kind, selection, diff, generation, (contents, old_contents), hide_whitespace) =
+            match self.source {
+                DiffSource::WorkingDirectory => {
+                    let file = rs.selected_file.as_ref().and_then(|p| {
+                        rs.status
+                            .as_ref()
+                            .and_then(|st| st.files.iter().find(|f| &f.path == p))
+                    })?;
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        file.selection.clone(),
+                        rs.diff.clone()?,
+                        rs.diff_generation,
+                        (rs.diff_contents.clone(), rs.diff_old_contents.clone()),
+                        s.settings.hide_whitespace_in_changes_diff,
+                    )
+                }
+                DiffSource::Commit => {
+                    let file = rs.commit_selected_file.as_ref().and_then(|p| {
+                        rs.changeset
+                            .as_ref()
+                            .and_then(|c| c.files.iter().find(|f| &f.path == p))
+                    })?;
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        DiffSelection::all(),
+                        rs.commit_diff.clone()?,
+                        rs.commit_diff_generation,
+                        (
+                            rs.commit_diff_contents.clone(),
+                            rs.commit_diff_old_contents.clone(),
+                        ),
+                        s.settings.hide_whitespace_in_history_diff,
+                    )
+                }
+                DiffSource::Stash => {
+                    let file = rs.stash_selected_file.as_ref().and_then(|p| {
+                        rs.stash_files
+                            .as_ref()
+                            .and_then(|files| files.iter().find(|f| &f.path == p))
+                    })?;
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        DiffSelection::all(),
+                        rs.stash_diff.clone()?,
+                        rs.stash_diff_generation,
+                        (
+                            rs.stash_diff_contents.clone(),
+                            rs.stash_diff_old_contents.clone(),
+                        ),
+                        s.settings.hide_whitespace_in_history_diff,
+                    )
+                }
+                DiffSource::PullRequest => {
+                    let preview = rs.pull_request_preview.as_ref()?;
+                    let file = preview.file.as_ref().and_then(|p| {
+                        preview
+                            .changeset
+                            .as_ref()
+                            .and_then(|c| c.files.iter().find(|f| &f.path == p))
+                    })?;
+                    (
+                        file.path.clone(),
+                        file.status.kind,
+                        DiffSelection::all(),
+                        preview.diff.clone()?,
+                        preview.diff_generation,
+                        (preview.diff_contents.clone(), None),
+                        s.settings.hide_whitespace_in_pull_request_diff,
+                    )
+                }
+            };
         Some(Snapshot {
             repo: id,
             repo_path,
@@ -400,25 +411,92 @@ impl DiffView {
             selection,
             diff,
             contents,
+            old_contents,
             hide_whitespace,
             confirm_discard: s.settings.confirm_discard_changes,
         })
     }
 
     /// Tokenize the rows off the main thread (GHD: highlighter web worker).
+    ///
+    /// Like GHD (`highlightContents` + `SideBySideDiff.createFullRow`), the
+    /// whole old and new files are tokenized, so parser state comes from the
+    /// real file; deleted rows take old-file tokens, added rows new-file
+    /// tokens and context rows old-file tokens unless the diff only adds
+    /// lines (`getLineFilters`). Without file contents the rows themselves
+    /// are tokenized in order.
     fn highlight(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         self.tokens = None;
         let path = key.1.clone();
-        let lines: Vec<Option<String>> = self
+        let rows: Vec<(corvane_core::DiffLineKind, Option<u32>, Option<u32>, String)> = self
             .rows
             .iter()
-            .map(|r| (r.kind != corvane_core::DiffLineKind::Hunk).then(|| r.text.clone()))
+            .map(|r| (r.kind, r.old, r.new, r.text.clone()))
             .collect();
+        let old = self.old_contents.clone();
+        let new = self.contents.clone();
         let generation = self.rows.len();
         let task = cx.background_executor().spawn(async move {
-            // hunk header rows are fed as empty lines so parser state and indices line up
-            let texts: Vec<&str> = lines.iter().map(|l| l.as_deref().unwrap_or("")).collect();
-            corvane_highlight::highlight_lines(&path, texts)
+            use corvane_core::DiffLineKind as K;
+            if old.is_none() && new.is_none() {
+                // hunk header rows are fed as empty lines so parser state and indices line up
+                let texts: Vec<&str> = rows
+                    .iter()
+                    .map(|(kind, _, _, text)| if *kind == K::Hunk { "" } else { text.as_str() })
+                    .collect();
+                return corvane_highlight::highlight_lines(&path, texts);
+            }
+            // `getPartialBlobContents(…, MaxHighlightContentLength)`
+            let tokenize = |lines: &Option<Arc<Vec<String>>>| {
+                let lines = lines.as_ref()?;
+                let mut budget = corvane_highlight::MAX_HIGHLIGHT_BYTES;
+                let texts: Vec<&str> = lines
+                    .iter()
+                    .take_while(|l| {
+                        let fits = l.len() < budget;
+                        budget = budget.saturating_sub(l.len() + 1);
+                        fits
+                    })
+                    .map(String::as_str)
+                    .collect();
+                corvane_highlight::highlight_lines(&path, texts)
+            };
+            let old_tokens = tokenize(&old);
+            let new_tokens = tokenize(&new);
+            if old_tokens.is_none() && new_tokens.is_none() {
+                return None;
+            }
+            let any_added = rows.iter().any(|r| r.0 == K::Add);
+            let any_deleted = rows.iter().any(|r| r.0 == K::Delete);
+            let pick = |tokens: &Option<Vec<Vec<corvane_highlight::Span>>>, line: Option<u32>| {
+                let ix = line?.checked_sub(1)? as usize;
+                tokens.as_ref()?.get(ix).cloned()
+            };
+            Some(
+                rows.iter()
+                    .map(|(kind, old_line, new_line, text)| {
+                        let spans = match kind {
+                            K::Add => pick(&new_tokens, *new_line),
+                            K::Delete => pick(&old_tokens, *old_line),
+                            K::Context if any_added && !any_deleted => pick(&new_tokens, *new_line),
+                            K::Context => pick(&old_tokens, *old_line)
+                                .or_else(|| pick(&new_tokens, *new_line)),
+                            _ => None,
+                        };
+                        // tokens belong to the file line; keep only spans that
+                        // fit the row's text
+                        spans
+                            .unwrap_or_default()
+                            .into_iter()
+                            .filter(|s| {
+                                s.range.end <= text.len()
+                                    && text.is_char_boundary(s.range.start)
+                                    && text.is_char_boundary(s.range.end)
+                            })
+                            .collect()
+                    })
+                    .collect(),
+            )
         });
         cx.spawn(async move |this, cx| {
             let result = task.await;
@@ -487,6 +565,7 @@ impl DiffView {
         self.show_large = false;
         self.whitespace_hint = None;
         self.contents = snap.contents.clone();
+        self.old_contents = snap.old_contents.clone();
         self.hunks = Rc::new(match snap.diff.hunks() {
             Some(hunks) => from_hunks(hunks, self.contents.as_ref().map(|c| c.len())),
             None => Vec::new(),
