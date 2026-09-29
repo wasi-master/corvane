@@ -102,10 +102,45 @@ impl Dispatcher {
 
     /// Repository › Open in <Editor> (`_openInExternalEditor`).
     pub fn open_in_editor(path: PathBuf, cx: &mut App) {
-        let (editors, selected) = {
+        let (editors, selected, custom) = {
             let s = Self::state(cx).read(cx);
-            (s.editors.clone(), s.settings.external_editor.clone())
+            (
+                s.editors.clone(),
+                s.settings.external_editor.clone(),
+                s.settings
+                    .use_custom_editor
+                    .then(|| s.settings.custom_editor.clone())
+                    .flatten(),
+            )
         };
+        if let Some(custom) = custom {
+            // `launchCustomExternalEditor`
+            spawn_bg(
+                cx,
+                move || {
+                    corvane_platform::custom_integration::launch(
+                        &custom.path,
+                        &custom.arguments,
+                        &path,
+                    )
+                },
+                |result, cx| {
+                    if let Err(message) = result {
+                        Self::show_editor_error(
+                            editors::EditorError {
+                                message: format!(
+                                    "{message} Please open Settings and check your custom editor."
+                                ),
+                                suggest_default_editor: false,
+                                open_preferences: true,
+                            },
+                            cx,
+                        );
+                    }
+                },
+            );
+            return;
+        }
         let editor = match editors::find_editor_or_default(&editors, selected.as_deref()) {
             Ok(Some(editor)) => editor.clone(),
             Ok(None) => {
@@ -142,10 +177,44 @@ impl Dispatcher {
 
     /// Repository › Open in <Shell> (`_openShell`).
     pub fn open_in_shell(path: &Path, cx: &mut App) {
-        let (shells, selected) = {
+        let (shells, selected, custom) = {
             let s = Self::state(cx).read(cx);
-            (s.shells.clone(), s.shell_label())
+            (
+                s.shells.clone(),
+                s.shell_label(),
+                s.settings
+                    .use_custom_shell
+                    .then(|| s.settings.custom_shell.clone())
+                    .flatten(),
+            )
         };
+        if let Some(custom) = custom {
+            // `launchCustomShell`
+            let path = path.to_path_buf();
+            spawn_bg(
+                cx,
+                move || {
+                    corvane_platform::custom_integration::launch(
+                        &custom.path,
+                        &custom.arguments,
+                        &path,
+                    )
+                },
+                |result, cx| {
+                    if let Err(message) = result {
+                        Self::show_popup(
+                            Popup::ShellError {
+                                message: format!(
+                                    "{message} Please open Settings and check your custom shell."
+                                ),
+                            },
+                            cx,
+                        );
+                    }
+                },
+            );
+            return;
+        }
         let wanted = shells::Shell::parse(&selected);
         let Some(found) = shells
             .iter()
@@ -286,6 +355,33 @@ impl Dispatcher {
         Self::open_url(&pull_request_url(&gh, &branch), cx);
     }
 
+    /// Settings › Git › Hooks: (re)load the login-shell environment for git
+    /// subprocesses, or drop it when the option is off.
+    pub fn refresh_hook_env(cx: &mut App) {
+        let (enabled, cache) = {
+            let s = Self::state(cx).read(cx).settings.clone();
+            (s.enable_git_hook_env, s.cache_git_hook_env)
+        };
+        if !enabled {
+            corvane_git::hook_env::clear_hook_env();
+            return;
+        }
+        spawn_bg(
+            cx,
+            corvane_git::hook_env::load_shell_env,
+            move |result, _| match result {
+                Ok(env) => {
+                    info!(
+                        vars = env.len(),
+                        "loaded git hook environment from the shell"
+                    );
+                    corvane_git::hook_env::set_hook_env(env, cache);
+                }
+                Err(err) => warn!(%err, "could not load the shell environment for git hooks"),
+            },
+        );
+    }
+
     // ---- Settings (`Preferences` popup) ----
 
     /// Show Settings on `tab`, refresh the installed editors/shells and read the
@@ -336,6 +432,7 @@ impl Dispatcher {
         Self::update_settings(cx, |s| *s = settings);
         Self::close_popup(cx);
         Self::refresh_indicators(cx);
+        Self::refresh_hook_env(cx);
         let Some(git) = git else { return };
         let name_changed = name.trim() != previous.name.clone().unwrap_or_default().trim();
         let email_changed = email.trim() != previous.email.clone().unwrap_or_default().trim();

@@ -3,6 +3,10 @@
 use std::time::SystemTime;
 
 pub fn relative(from: SystemTime) -> String {
+    // Settings › Appearance › "Prefer absolute dates over relative".
+    if crate::format::prefer_absolute_dates() {
+        return crate::format::format_date(from);
+    }
     let secs = SystemTime::now()
         .duration_since(from)
         .map(|d| d.as_secs())

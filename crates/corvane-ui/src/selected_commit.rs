@@ -15,7 +15,7 @@ use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, MONO_FONT};
-use crate::widgets::avatar_placeholder;
+use crate::widgets::{avatar_image, avatar_lookup};
 
 /// `commitSummaryWidth` constraints (GHD `constrain(250, 100, 600)`).
 const FILE_LIST_MIN: Pixels = px(100.);
@@ -222,7 +222,11 @@ impl SelectedCommitView {
                                 .child(
                                     meta_item(div())
                                         .gap(px(4.))
-                                        .child(avatar_placeholder(px(16.), cx))
+                                        .child(avatar_image(
+                                            avatar_lookup(&commit.author.email, cx),
+                                            px(16.),
+                                            cx,
+                                        ))
                                         .child(commit.author.name.clone()),
                                 )
                                 .child(
@@ -261,9 +265,15 @@ impl SelectedCommitView {
                                                     .pr(SPACING_HALF)
                                                     .text_color(t.color_new)
                                                     .child(if expanded {
-                                                        format!("{added} added lines")
+                                                        format!(
+                                                            "{} added lines",
+                                                            crate::format::format_count(added)
+                                                        )
                                                     } else {
-                                                        format!("+{added}")
+                                                        format!(
+                                                            "+{}",
+                                                            crate::format::format_count(added)
+                                                        )
                                                     }),
                                             )
                                             .child(
@@ -338,7 +348,10 @@ impl SelectedCommitView {
                     .child(if count == 1 {
                         "1 changed file".to_string()
                     } else {
-                        format!("{count} changed files")
+                        format!(
+                            "{} changed files",
+                            crate::format::format_count(count as u64)
+                        )
                     }),
             )
             .child(
@@ -411,6 +424,16 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
 
 impl Render for SelectedCommitView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let author_email = self.state.read(cx).selected_state().and_then(|rs| {
+            let sha = rs.selected_commit.as_ref()?;
+            rs.commits
+                .iter()
+                .find(|c| &c.sha == sha)
+                .map(|c| c.author.email.clone())
+        });
+        if let Some(email) = author_email {
+            Dispatcher::request_avatar_for_email(&email, cx);
+        }
         let t = cx.ghd();
         let (id, has_commit, selected_file, non_contiguous) = {
             let s = self.state.read(cx);

@@ -76,6 +76,7 @@ impl Dispatcher {
             banner_nonce: 0,
             indicators: std::collections::HashMap::new(),
             generic_logins,
+            avatars: std::collections::HashMap::new(),
             api_repositories: std::collections::HashMap::new(),
             api_repositories_loading: std::collections::HashSet::new(),
             editors: Vec::new(),
@@ -85,6 +86,7 @@ impl Dispatcher {
         });
         AppState::install(state.clone(), cx);
         Self::detect_integrations(cx);
+        Self::refresh_hook_env(cx);
 
         if let Some(id) = state.read(cx).selected {
             Self::refresh_repository(id, cx);
@@ -1922,6 +1924,7 @@ impl Dispatcher {
         let message = corvane_git::format_message(&summary, &description);
         let summary_for_bar = summary.trim().to_string();
         let task = cx.background_executor().spawn(async move {
+            corvane_git::hook_env::reload_if_uncached();
             corvane_git::unstage_all(git.clone(), &workdir)?;
             corvane_git::stage_files(git.clone(), &workdir, &files)?;
             corvane_git::stage_partial_files(git.clone(), &workdir, &files)?;

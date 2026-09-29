@@ -68,7 +68,60 @@ pub struct Settings {
     /// GHD `tabSize` for diffs (Appearance › Diff).
     #[serde(default = "default_tab_size")]
     pub tab_size: u32,
+    /// Appearance › Formatting (`dateFormat`, date-fns pattern).
+    #[serde(default = "default_date_format")]
+    pub date_format: String,
+    /// `timeFormat`
+    #[serde(default = "default_time_format")]
+    pub time_format: String,
+    /// `numberFormat` key: `<thousands separator>|<decimal separator>`.
+    #[serde(default = "default_number_format")]
+    pub number_format: String,
+    /// `preferAbsoluteDates`
+    #[serde(default)]
+    pub prefer_absolute_dates: bool,
+    /// Git › Hooks: `enableGitHookEnv` / `cacheGitHookEnv`.
+    #[serde(default)]
+    pub enable_git_hook_env: bool,
+    #[serde(default = "default_true")]
+    pub cache_git_hook_env: bool,
+    /// Integrations › custom editor / shell (`customEditor`, `useCustomEditor`…).
+    #[serde(default)]
+    pub custom_editor: Option<CustomIntegration>,
+    #[serde(default)]
+    pub use_custom_editor: bool,
+    #[serde(default)]
+    pub custom_shell: Option<CustomIntegration>,
+    #[serde(default)]
+    pub use_custom_shell: bool,
 }
+
+/// GHD `ICustomIntegration`: an executable (or macOS app bundle) plus its
+/// arguments; `%TARGET_PATH%` in the arguments is replaced by the repository path.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CustomIntegration {
+    pub path: String,
+    pub arguments: String,
+    /// Set when `path` is a `.app` bundle (launched through `open -b`).
+    #[serde(default)]
+    pub bundle_id: Option<String>,
+}
+
+fn default_date_format() -> String {
+    DEFAULT_DATE_FORMAT.to_string()
+}
+fn default_time_format() -> String {
+    DEFAULT_TIME_FORMAT.to_string()
+}
+fn default_number_format() -> String {
+    DEFAULT_NUMBER_FORMAT.to_string()
+}
+
+/// GHD `defaultDateFormat` / `defaultTimeFormat` / `defaultNumberFormat`
+/// (the en-US branch of GHD's locale detection).
+pub const DEFAULT_DATE_FORMAT: &str = "MMM d, yyyy";
+pub const DEFAULT_TIME_FORMAT: &str = "h:mm aaa";
+pub const DEFAULT_NUMBER_FORMAT: &str = ",|.";
 
 fn default_tab_size() -> u32 {
     TAB_SIZE_DEFAULT
@@ -116,6 +169,16 @@ impl Default for Settings {
             underline_links: false,
             show_diff_check_marks: true,
             tab_size: TAB_SIZE_DEFAULT,
+            date_format: default_date_format(),
+            time_format: default_time_format(),
+            number_format: default_number_format(),
+            prefer_absolute_dates: false,
+            enable_git_hook_env: false,
+            cache_git_hook_env: true,
+            custom_editor: None,
+            use_custom_editor: false,
+            custom_shell: None,
+            use_custom_shell: false,
         }
     }
 }

@@ -524,6 +524,8 @@ pub struct AppState {
     pub indicators: HashMap<u64, crate::remote::RepoIndicator>,
     /// Generic git server logins (host → username) for the askpass helper.
     pub generic_logins: HashMap<String, String>,
+    /// Avatar cache (`crate::avatars`).
+    pub avatars: crate::avatars::Avatars,
     /// Clone dialog: `GET /user/repos` per account endpoint (`ApiRepositoriesStore`).
     pub api_repositories: HashMap<String, Vec<corvane_models::GitHubRepository>>,
     pub api_repositories_loading: std::collections::HashSet<String>,
@@ -557,6 +559,9 @@ impl AppState {
     /// The editor "Open in …" menu items name: the selected editor, else the
     /// first installed one, else GHD's generic "External Editor".
     pub fn editor_label(&self) -> String {
+        if self.settings.use_custom_editor && self.settings.custom_editor.is_some() {
+            return "Custom Editor".to_string();
+        }
         self.settings
             .external_editor
             .clone()
@@ -566,6 +571,9 @@ impl AppState {
 
     /// The shell "Open in …" menu items name (`Terminal` by default).
     pub fn shell_label(&self) -> String {
+        if self.settings.use_custom_shell && self.settings.custom_shell.is_some() {
+            return "Custom Shell".to_string();
+        }
         self.settings
             .shell
             .clone()

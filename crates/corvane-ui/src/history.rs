@@ -30,7 +30,7 @@ use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{avatar_placeholder, kbd, primary_button, text_box};
+use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button, text_box};
 
 /// `RowHeight` in `commit-list.tsx`
 pub const COMMIT_ROW_HEIGHT: Pixels = px(50.);
@@ -1158,6 +1158,7 @@ impl HistorySidebar {
                         .map(|ix| {
                             let commit = &commits[ix];
                             let is_selected = selected.contains(&commit.sha);
+                            Dispatcher::request_avatar_for_email(&commit.author.email, cx);
                             let insertion_here = match (&reorder, drop_hint) {
                                 (Some((_, at)), _) => Some(*at),
                                 (None, Some(DropHint::InsertAt(at))) => Some(at),
@@ -1301,7 +1302,11 @@ fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, cx: &App) -
                         .flex_row()
                         .items_center()
                         .gap(SPACING_HALF)
-                        .child(avatar_placeholder(px(16.), cx))
+                        .child(avatar_image(
+                            avatar_lookup(&commit.author.email, cx),
+                            px(16.),
+                            cx,
+                        ))
                         .child(
                             div()
                                 .flex_1()

@@ -79,9 +79,11 @@ fn main() {
             let s = state.read(cx);
             (s.editor_label(), s.shell_label())
         };
+        corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
             let (theme, labels) = {
                 let s = state.read(cx);
+                corvane_ui::format::sync(&s.settings);
                 (s.settings.theme, (s.editor_label(), s.shell_label()))
             };
             if labels != last_labels {

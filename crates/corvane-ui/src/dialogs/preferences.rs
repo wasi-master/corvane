@@ -22,9 +22,8 @@ use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    SelectHandler, avatar_placeholder, button, call_to_action, checkbox_row, code_ref, labeled,
-    link_button, paragraph, radio, radio_row, section_heading, select_button, settings_description,
-    text_box,
+    SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled, link_button, paragraph,
+    radio, radio_row, section_heading, select_button, settings_description, text_box,
 };
 
 const TABS: [PreferencesTab; 8] = [
@@ -45,6 +44,7 @@ const TAB_SIZES: [u32; 9] = [1, 2, 3, 4, 5, 6, 8, 10, 12];
 enum GitTab {
     Author,
     DefaultBranch,
+    Hooks,
 }
 
 /// `OtherEmailSelectValue`
@@ -63,6 +63,11 @@ pub struct PreferencesDialog {
     email_choice: Option<String>,
     /// The git config arrived and the fields were filled from it.
     git_loaded: bool,
+    /// `CustomIntegrationForm` inputs (Integrations tab).
+    custom_editor_path: Entity<InputState>,
+    custom_editor_args: Entity<InputState>,
+    custom_shell_path: Entity<InputState>,
+    custom_shell_args: Entity<InputState>,
 }
 
 impl PreferencesDialog {
@@ -79,6 +84,42 @@ impl PreferencesDialog {
         for input in [&name, &email, &default_branch] {
             cx.observe(input, |_, _, cx| cx.notify()).detach();
         }
+        let mut custom_input =
+            |placeholder: &'static str, value: String, cx: &mut Context<Self>| {
+                cx.new(|cx| {
+                    InputState::new(window, cx)
+                        .placeholder(placeholder)
+                        .default_value(value)
+                })
+            };
+        let editor = draft.custom_editor.clone().unwrap_or_default();
+        let shell = draft.custom_shell.clone().unwrap_or_default();
+        let custom_editor_path = custom_input("Path to executable", editor.path, cx);
+        let custom_editor_args = custom_input("Command line arguments", editor.arguments, cx);
+        let custom_shell_path = custom_input("Path to executable", shell.path, cx);
+        let custom_shell_args = custom_input("Command line arguments", shell.arguments, cx);
+        for input in [&custom_editor_path, &custom_editor_args] {
+            cx.observe(input, |this, _, cx| {
+                this.draft.custom_editor = Some(corvane_core::CustomIntegration {
+                    path: this.custom_editor_path.read(cx).value().trim().to_string(),
+                    arguments: this.custom_editor_args.read(cx).value().trim().to_string(),
+                    bundle_id: None,
+                });
+                cx.notify();
+            })
+            .detach();
+        }
+        for input in [&custom_shell_path, &custom_shell_args] {
+            cx.observe(input, |this, _, cx| {
+                this.draft.custom_shell = Some(corvane_core::CustomIntegration {
+                    path: this.custom_shell_path.read(cx).value().trim().to_string(),
+                    arguments: this.custom_shell_args.read(cx).value().trim().to_string(),
+                    bundle_id: None,
+                });
+                cx.notify();
+            })
+            .detach();
+        }
         cx.observe_in(&state, window, |this, state, window, cx| {
             this.fill_from_git_config(&state, window, cx);
             cx.notify();
@@ -94,6 +135,10 @@ impl PreferencesDialog {
             default_branch,
             email_choice: None,
             git_loaded: false,
+            custom_editor_path,
+            custom_editor_args,
+            custom_shell_path,
+            custom_shell_args,
         };
         this.fill_from_git_config(&state, window, cx);
         this
@@ -209,7 +254,14 @@ impl PreferencesDialog {
                 .items_center()
                 .gap(SPACING)
                 .mb(SPACING)
-                .child(avatar_placeholder(px(34.), cx))
+                .child(crate::widgets::avatar_image(
+                    account
+                        .avatar_url
+                        .as_deref()
+                        .and_then(|u| crate::widgets::avatar_lookup_url(u, cx)),
+                    px(34.),
+                    cx,
+                ))
                 .child(
                     div()
                         .flex_1()
@@ -275,7 +327,114 @@ impl PreferencesDialog {
             .into_any_element()
     }
 
-    fn integrations_tab(&self, cx: &Context<Self>) -> AnyElement {
+    /// `CustomIntegrationForm`: Path + Choose…, Arguments, validation messages.
+    fn custom_form(
+        &self,
+        id: &'static str,
+        path: &Entity<InputState>,
+        args: &Entity<InputState>,
+        window: &Window,
+        cx: &Context<Self>,
+    ) -> Div {
+        let t = cx.ghd();
+        let path_text = path.read(cx).value().trim().to_string();
+        let args_text = args.read(cx).value().trim().to_string();
+        let path_error = (!path_text.is_empty()
+            && !corvane_platform::custom_integration::path_looks_valid(&path_text))
+        .then_some("This path does not appear to be a valid executable.");
+        let args_error = if args_text.is_empty() {
+            None
+        } else {
+            match corvane_platform::custom_integration::parse_arguments(&args_text) {
+                None => Some("These arguments are not valid.".to_string()),
+                Some(argv) if !corvane_platform::custom_integration::has_target_path(&argv) => {
+                    Some(format!(
+                        "Arguments must include the target path placeholder ({}).",
+                        corvane_platform::custom_integration::TARGET_PATH_ARGUMENT
+                    ))
+                }
+                Some(_) => None,
+            }
+        };
+        let input_error = |message: String| {
+            // `.input-description.input-description-error`
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(SPACING_HALF)
+                .text_size(FONT_SIZE_SM)
+                .text_color(t.form_error_text)
+                .child(crate::icons::octicon(Octicon::Alert, t.input_icon_error).size(px(12.)))
+                .child(message)
+        };
+        let path_for_choose = path.clone();
+        div()
+            .flex()
+            .flex_col()
+            .gap(SPACING_HALF)
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_end()
+                    .gap(SPACING)
+                    .child(labeled(
+                        "Path",
+                        text_box(
+                            SharedString::from(format!("{id}-path")),
+                            path,
+                            None,
+                            window,
+                            cx,
+                        ),
+                        cx,
+                    ))
+                    .child(
+                        button(SharedString::from(format!("{id}-choose")), "Choose…", cx)
+                            .flex_none()
+                            .on_click(move |_, window, cx| {
+                                // apps are directories on macOS, so allow both
+                                let receiver = cx.prompt_for_paths(PathPromptOptions {
+                                    files: true,
+                                    directories: true,
+                                    multiple: false,
+                                    prompt: Some("Choose".into()),
+                                });
+                                let path = path_for_choose.clone();
+                                window
+                                    .spawn(cx, async move |cx| {
+                                        if let Ok(Ok(Some(paths))) = receiver.await
+                                            && let Some(p) = paths.into_iter().next()
+                                        {
+                                            path.update_in(cx, |s, window, cx| {
+                                                s.set_value(p.display().to_string(), window, cx)
+                                            })
+                                            .ok();
+                                        }
+                                    })
+                                    .detach();
+                            }),
+                    ),
+            )
+            .when_some(path_error, |d, message| {
+                d.child(input_error(message.to_string()))
+            })
+            .child(labeled(
+                "Arguments",
+                text_box(
+                    SharedString::from(format!("{id}-args")),
+                    args,
+                    None,
+                    window,
+                    cx,
+                ),
+                cx,
+            ))
+            .when_some(args_error, |d, message| d.child(input_error(message)))
+    }
+
+    fn integrations_tab(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let s = self.state.read(cx);
         let editors: Vec<SharedString> = s.editors.iter().map(|e| e.name.clone().into()).collect();
@@ -284,22 +443,52 @@ impl PreferencesDialog {
             .iter()
             .map(|s| SharedString::from(s.shell.label()))
             .collect();
-        let editor_value = self
-            .draft
-            .external_editor
-            .clone()
-            .or_else(|| s.editors.first().map(|e| e.name.clone()));
-        let editor_ix = editor_value
-            .as_ref()
-            .and_then(|v| editors.iter().position(|e| e.as_ref() == v));
-        let shell_value = s.shell_label();
-        let shell_ix = shells.iter().position(|e| e.as_ref() == shell_value);
+        let use_custom_editor = self.draft.use_custom_editor;
+        let use_custom_shell = self.draft.use_custom_shell;
+        // `CustomIntegrationValue`: the last option configures a custom integration.
+        let mut editor_options = editors.clone();
+        editor_options.push("Configure Custom Editor…".into());
+        let editor_value = if use_custom_editor {
+            "Configure Custom Editor…".to_string()
+        } else {
+            self.draft
+                .external_editor
+                .clone()
+                .or_else(|| s.editors.first().map(|e| e.name.clone()))
+                .unwrap_or_default()
+        };
+        let editor_ix = if use_custom_editor {
+            Some(editors.len())
+        } else {
+            editors.iter().position(|e| e.as_ref() == editor_value)
+        };
+        let mut shell_options = shells.clone();
+        shell_options.push("Configure Custom Shell…".into());
+        let shell_value = if use_custom_shell {
+            "Configure Custom Shell…".to_string()
+        } else {
+            self.draft
+                .shell
+                .clone()
+                .unwrap_or_else(|| corvane_platform::shells::DEFAULT_SHELL.label().to_string())
+        };
+        let shell_ix = if use_custom_shell {
+            Some(shells.len())
+        } else {
+            shells.iter().position(|e| e.as_ref() == shell_value)
+        };
         let weak = cx.weak_entity();
         let editor_names = editors.clone();
         let on_editor: SelectHandler = Rc::new(move |ix, _, cx| {
             let name = editor_names.get(ix).map(|n| n.to_string());
+            let custom = ix == editor_names.len();
             weak.update(cx, |this, cx| {
-                this.draft.external_editor = name;
+                this.draft.use_custom_editor = custom;
+                if !custom {
+                    this.draft.external_editor = name;
+                } else if this.draft.custom_editor.is_none() {
+                    this.draft.custom_editor = Some(corvane_core::CustomIntegration::default());
+                }
                 cx.notify();
             })
             .ok();
@@ -308,8 +497,14 @@ impl PreferencesDialog {
         let shell_names = shells.clone();
         let on_shell: SelectHandler = Rc::new(move |ix, _, cx| {
             let name = shell_names.get(ix).map(|n| n.to_string());
+            let custom = ix == shell_names.len();
             weak.update(cx, |this, cx| {
-                this.draft.shell = name;
+                this.draft.use_custom_shell = custom;
+                if !custom {
+                    this.draft.shell = name;
+                } else if this.draft.custom_shell.is_none() {
+                    this.draft.custom_shell = Some(corvane_core::CustomIntegration::default());
+                }
                 cx.notify();
             })
             .ok();
@@ -318,51 +513,52 @@ impl PreferencesDialog {
             .flex()
             .flex_col()
             .gap(SPACING)
-            .child(if editors.is_empty() {
-                // `.select-component.no-options-found`
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(SPACING_THIRD)
-                    .child("External Editor")
-                    .child(
-                        paragraph(vec![
-                            "No editors found. ".into(),
-                            link_button("prefs-install-editor", "Install Visual Studio Code?", cx)
-                                .on_click(|_, _, cx| {
-                                    Dispatcher::open_url(
-                                        corvane_platform::editors::SUGGESTED_EDITOR_URL,
-                                        cx,
-                                    )
-                                })
-                                .into_any_element()
-                                .into(),
-                        ])
-                        .text_color(t.text_secondary),
-                    )
-                    .into_any_element()
-            } else {
-                labeled(
-                    "External Editor",
-                    select_button(
-                        "prefs-editor",
-                        editor_value.unwrap_or_default(),
-                        editors,
-                        editor_ix,
-                        false,
-                        on_editor,
-                        cx,
-                    ),
+            .child(labeled(
+                "External Editor",
+                select_button(
+                    "prefs-editor",
+                    editor_value,
+                    editor_options,
+                    editor_ix,
+                    false,
+                    on_editor,
                     cx,
+                ),
+                cx,
+            ))
+            .when(editors.is_empty(), |d| {
+                // `renderNoExternalEditorHint`
+                d.child(
+                    paragraph(vec![
+                        "No other editors found. ".into(),
+                        link_button("prefs-install-editor", "Install Visual Studio Code?", cx)
+                            .on_click(|_, _, cx| {
+                                Dispatcher::open_url(
+                                    corvane_platform::editors::SUGGESTED_EDITOR_URL,
+                                    cx,
+                                )
+                            })
+                            .into_any_element()
+                            .into(),
+                    ])
+                    .text_color(t.text_secondary),
                 )
-                .into_any_element()
+            })
+            .when(use_custom_editor, |d| {
+                d.child(self.custom_form(
+                    "custom-editor",
+                    &self.custom_editor_path,
+                    &self.custom_editor_args,
+                    window,
+                    cx,
+                ))
             })
             .child(labeled(
                 "Shell",
                 select_button(
                     "prefs-shell",
                     shell_value,
-                    shells,
+                    shell_options,
                     shell_ix,
                     false,
                     on_shell,
@@ -370,6 +566,15 @@ impl PreferencesDialog {
                 ),
                 cx,
             ))
+            .when(use_custom_shell, |d| {
+                d.child(self.custom_form(
+                    "custom-shell",
+                    &self.custom_shell_path,
+                    &self.custom_shell_args,
+                    window,
+                    cx,
+                ))
+            })
             .into_any_element()
     }
 
@@ -388,17 +593,23 @@ impl PreferencesDialog {
                     label: "Default branch".into(),
                     count: None,
                 },
+                TabModel {
+                    id: "prefs-git-hooks",
+                    label: "Hooks".into(),
+                    count: None,
+                },
             ],
             match self.git_tab {
                 GitTab::Author => 0,
                 GitTab::DefaultBranch => 1,
+                GitTab::Hooks => 2,
             },
             move |ix, _, cx| {
                 weak.update(cx, |this, cx| {
-                    this.git_tab = if ix == 0 {
-                        GitTab::Author
-                    } else {
-                        GitTab::DefaultBranch
+                    this.git_tab = match ix {
+                        0 => GitTab::Author,
+                        1 => GitTab::DefaultBranch,
+                        _ => GitTab::Hooks,
                     };
                     cx.notify();
                 })
@@ -425,6 +636,7 @@ impl PreferencesDialog {
             .text_color(t.text_secondary)
         };
         let body = match self.git_tab {
+            GitTab::Hooks => div().into_any_element(),
             GitTab::Author => {
                 let emails = self.account_emails(cx);
                 let mut options: Vec<SharedString> = emails
@@ -559,6 +771,10 @@ impl PreferencesDialog {
                     .into_any_element()
             }
         };
+        let body = match self.git_tab {
+            GitTab::Hooks => self.hooks_tab(cx),
+            _ => body,
+        };
         // `.dialog-content.git-preferences { padding: 0 }`: the sub tab bar is
         // flush with the tab container; its content gets the 20 px padding back.
         div()
@@ -568,6 +784,153 @@ impl PreferencesDialog {
             .child(tabs)
             .child(div().p(SPACING_DOUBLE).child(body))
             .into_any_element()
+    }
+
+    /// `renderHooksSettings`
+    fn hooks_tab(&self, cx: &Context<Self>) -> AnyElement {
+        let enabled = self.draft.enable_git_hook_env;
+        div()
+            .flex()
+            .flex_col()
+            .child(checkbox_row(
+                "prefs-hook-env",
+                enabled,
+                "Load Git hook environment variables from shell",
+                self.edit(cx, |s, v| s.enable_git_hook_env = v),
+                cx,
+            ))
+            .child(settings_description(cx).child(
+                "When enabled, Corvane will attempt to load environment variables from your shell when executing Git hooks. This is useful if your Git hooks depend on environment variables set in your shell configuration files, a common practice for version managers such as nvm, rbenv, asdf, etc.",
+            ))
+            .when(enabled, |d| {
+                d.child(div().mt(SPACING).child(checkbox_row(
+                    "prefs-hook-env-cache",
+                    self.draft.cache_git_hook_env,
+                    "Cache Git hook environment variables",
+                    self.edit(cx, |s, v| s.cache_git_hook_env = v),
+                    cx,
+                )))
+                .child(settings_description(cx).child(
+                    "Cache hook environment variables to improve performance. Disable if your hooks rely on frequently changing environment variables.",
+                ))
+            })
+            .into_any_element()
+    }
+
+    /// `renderFormatting`: Date / Time / Number format + absolute dates.
+    fn formatting_section(&self, cx: &Context<Self>) -> Div {
+        let date_options: Vec<SharedString> = crate::format::DATE_FORMATS
+            .iter()
+            .map(|p| format!("{} ({p})", crate::format::date_example(p)).into())
+            .collect();
+        let date_ix = crate::format::DATE_FORMATS
+            .iter()
+            .position(|p| *p == self.draft.date_format);
+        let weak = cx.weak_entity();
+        let on_date: SelectHandler = Rc::new(move |ix, _, cx| {
+            if let Some(p) = crate::format::DATE_FORMATS.get(ix) {
+                weak.update(cx, |this, cx| {
+                    this.draft.date_format = p.to_string();
+                    cx.notify();
+                })
+                .ok();
+            }
+        });
+        let time_options: Vec<SharedString> = crate::format::TIME_FORMATS
+            .iter()
+            .map(|p| format!("{} ({p})", crate::format::time_example(p)).into())
+            .collect();
+        let time_ix = crate::format::TIME_FORMATS
+            .iter()
+            .position(|p| *p == self.draft.time_format);
+        let weak = cx.weak_entity();
+        let on_time: SelectHandler = Rc::new(move |ix, _, cx| {
+            if let Some(p) = crate::format::TIME_FORMATS.get(ix) {
+                weak.update(cx, |this, cx| {
+                    this.draft.time_format = p.to_string();
+                    cx.notify();
+                })
+                .ok();
+            }
+        });
+        let number_options: Vec<SharedString> = crate::format::NUMBER_FORMATS
+            .iter()
+            .map(|k| crate::format::number_example(k).into())
+            .collect();
+        let number_ix = crate::format::NUMBER_FORMATS
+            .iter()
+            .position(|k| *k == self.draft.number_format);
+        let weak = cx.weak_entity();
+        let on_number: SelectHandler = Rc::new(move |ix, _, cx| {
+            if let Some(k) = crate::format::NUMBER_FORMATS.get(ix) {
+                weak.update(cx, |this, cx| {
+                    this.draft.number_format = k.to_string();
+                    cx.notify();
+                })
+                .ok();
+            }
+        });
+        let pick = |options: &[SharedString], ix: Option<usize>| {
+            ix.and_then(|i| options.get(i).cloned()).unwrap_or_default()
+        };
+        div()
+            .mt(SPACING)
+            .flex()
+            .flex_col()
+            .child(section_heading("Formatting", cx))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap(SPACING)
+                    .mb(SPACING)
+                    .child(labeled(
+                        "Date Format",
+                        select_button(
+                            "prefs-date-format",
+                            pick(&date_options, date_ix),
+                            date_options.clone(),
+                            date_ix,
+                            false,
+                            on_date,
+                            cx,
+                        ),
+                        cx,
+                    ))
+                    .child(labeled(
+                        "Time Format",
+                        select_button(
+                            "prefs-time-format",
+                            pick(&time_options, time_ix),
+                            time_options.clone(),
+                            time_ix,
+                            false,
+                            on_time,
+                            cx,
+                        ),
+                        cx,
+                    )),
+            )
+            .child(labeled(
+                "Number Format",
+                select_button(
+                    "prefs-number-format",
+                    pick(&number_options, number_ix),
+                    number_options.clone(),
+                    number_ix,
+                    false,
+                    on_number,
+                    cx,
+                ),
+                cx,
+            ))
+            .child(div().my(SPACING).child(checkbox_row(
+                "prefs-absolute-dates",
+                self.draft.prefer_absolute_dates,
+                "Prefer absolute dates over relative",
+                self.edit(cx, |s, v| s.prefer_absolute_dates = v),
+                cx,
+            )))
     }
 
     fn appearance_tab(&self, cx: &Context<Self>) -> AnyElement {
@@ -718,6 +1081,7 @@ impl PreferencesDialog {
             .flex_col()
             .child(section_heading("Theme", cx))
             .child(swatches)
+            .child(self.formatting_section(cx))
             .child(div().mt(SPACING).child(section_heading("Diff", cx)))
             .child(labeled(
                 "Tab Size",
@@ -885,6 +1249,7 @@ impl PreferencesDialog {
     }
 
     fn advanced_tab(&self, cx: &Context<Self>) -> AnyElement {
+        let t = cx.ghd();
         div()
             .flex()
             .flex_col()
@@ -907,6 +1272,28 @@ impl PreferencesDialog {
                     .child(
                         "Turning this off will not stop the periodic fetching of your currently selected repository, but may improve overall app performance for users with many repositories.",
                     ),
+            )
+            .child(div().mt(SPACING).child(section_heading("Network and credentials", cx)))
+            .child(checkbox_row(
+                "prefs-credential-manager",
+                self.draft.use_external_credential_helper,
+                "Use Git Credential Manager",
+                self.edit(cx, |s, v| s.use_external_credential_helper = v),
+                cx,
+            ))
+            .child(
+                paragraph(vec![
+                    "Use ".into(),
+                    link_button("prefs-gcm-link", "Git Credential Manager", cx)
+                        .text_size(FONT_SIZE_SM)
+                        .on_click(|_, _, cx| Dispatcher::open_url("https://gh.io/gcm", cx))
+                        .into_any_element()
+                        .into(),
+                    " for private repositories outside of GitHub.com. This feature is experimental and subject to change.".into(),
+                ])
+                .mt(SPACING)
+                .text_size(FONT_SIZE_SM)
+                .text_color(t.text_secondary),
             )
             .into_any_element()
     }
@@ -956,6 +1343,16 @@ impl PreferencesDialog {
 
 impl Render for PreferencesDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let avatar_urls: Vec<String> = self
+            .state
+            .read(cx)
+            .accounts
+            .iter()
+            .filter_map(|a| a.avatar_url.clone())
+            .collect();
+        for url in avatar_urls {
+            Dispatcher::request_avatar_url(&url, cx);
+        }
         let t = cx.ghd();
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let selected = TABS.iter().position(|t| *t == self.tab).unwrap_or(0);
@@ -1015,7 +1412,7 @@ impl Render for PreferencesDialog {
         );
         let body = match self.tab {
             PreferencesTab::Accounts => self.accounts_tab(cx),
-            PreferencesTab::Integrations => self.integrations_tab(cx),
+            PreferencesTab::Integrations => self.integrations_tab(window, cx),
             PreferencesTab::Git => self.git_tab(window, cx),
             PreferencesTab::Appearance => self.appearance_tab(cx),
             PreferencesTab::Notifications => self.notifications_tab(cx),
@@ -1025,23 +1422,39 @@ impl Render for PreferencesDialog {
         };
         // `.preferences-container`: nav | bordered tab container. The dialog
         // content's 20 px padding is cancelled so the nav sits flush.
+        // `renderErrors`: an invalid author name blocks saving (`gitAuthorNameIsValid`).
+        let name_valid = corvane_core::git_author_name_is_valid(self.name.read(cx).value().trim());
+        let error = (!name_valid).then_some(corvane_core::INVALID_GIT_AUTHOR_NAME_MESSAGE);
         let content = div()
             .w(px(560.))
             .mx(px(-20.))
             .my(px(-20.))
-            .min_h(px(360.))
             .flex()
-            .flex_row()
-            .items_stretch()
-            .child(nav)
+            .flex_col()
+            .when_some(error, |d, message| {
+                d.child(
+                    crate::widgets::dialog_error_banner(message, cx)
+                        .mx(px(0.))
+                        .mt(px(0.))
+                        .mb(px(0.)),
+                )
+            })
             .child(
                 div()
-                    .flex_1()
-                    .min_w_0()
-                    .border_l_1()
-                    .border_color(t.box_border)
-                    .p(SPACING_DOUBLE)
-                    .child(body),
+                    .min_h(px(360.))
+                    .flex()
+                    .flex_row()
+                    .items_stretch()
+                    .child(nav)
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .border_l_1()
+                            .border_color(t.box_border)
+                            .p(SPACING_DOUBLE)
+                            .child(body),
+                    ),
             );
         let weak = cx.weak_entity();
         dialog(
@@ -1060,7 +1473,7 @@ impl Render for PreferencesDialog {
                     id: "prefs-save",
                     label: "Save".into(),
                     primary: true,
-                    disabled: false,
+                    disabled: !name_valid,
                     on_click: Box::new(move |_, cx| {
                         weak.update(cx, |this, cx| this.save(cx)).ok();
                     }),

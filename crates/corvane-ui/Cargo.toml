@@ -13,6 +13,7 @@ corvane-git.workspace = true
 corvane-github.workspace = true
 corvane-platform.workspace = true
 tracing.workspace = true
+libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

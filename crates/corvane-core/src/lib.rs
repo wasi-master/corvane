@@ -1,6 +1,7 @@
 //! Application state and the dispatcher that drives backends.
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
+pub mod avatars;
 pub mod compare;
 pub mod dispatcher;
 pub mod filter;
@@ -12,6 +13,7 @@ pub mod state;
 pub mod templates;
 pub mod watcher;
 
+pub use avatars::{AvatarEntry, avatar_for_email, avatar_for_url};
 pub use compare::{CompareForm, CompareState, ComparisonMode};
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
@@ -20,7 +22,10 @@ pub use mco::{
     Banner, ConflictKind, ConflictState, McoConflicts, McoDetail, McoStep, McoUndo, MergePreview,
     MultiCommitOperation, RebasePreview, conflicted_files, resolved_files, unmerged_files,
 };
-pub use persistence::{Settings, StoreExt, TAB_SIZE_DEFAULT, UncommittedChangesStrategy};
+pub use persistence::{
+    CustomIntegration, DEFAULT_DATE_FORMAT, DEFAULT_NUMBER_FORMAT, DEFAULT_TIME_FORMAT, Settings,
+    StoreExt, TAB_SIZE_DEFAULT, UncommittedChangesStrategy,
+};
 pub use remote::{ForcePushState, PushPullKind, PushPullProgress, RepoIndicator, host_of};
 pub use state::{
     AppState, CloneState, FileListFilter, FilterOption, Foldout, GitConfigLocation,

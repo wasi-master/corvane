@@ -69,6 +69,15 @@ pub(crate) fn spawn_bg<T: Send + 'static>(
 impl Dispatcher {
     // ---- helpers ----
 
+    /// Settings › Advanced › Use Git Credential Manager: only for remotes that
+    /// are not GitHub (GHD `useExternalCredentialHelper`).
+    fn arm_credential_helper(remote_url: &str, cx: &App) {
+        let s = Self::state(cx).read(cx);
+        let host = host_of(remote_url);
+        let github = host == "github.com" || s.accounts.iter().any(|a| a.host() == host);
+        corvane_git::set_credential_helper(s.settings.use_external_credential_helper && !github);
+    }
+
     /// `GIT_ASKPASS` environment: one login per host from the signed-in
     /// accounts and the generic credentials the user saved.
     fn askpass_env(cx: &App) -> Option<AskpassEnv> {
@@ -244,6 +253,7 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return;
         }
+        Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Fetching {}", remote.name);
         Self::set_progress(
@@ -339,6 +349,7 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return;
         }
+        Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Pulling {}", remote.name);
         Self::set_progress(
@@ -471,6 +482,7 @@ impl Dispatcher {
                     .remove(branch.name_without_remote());
             });
         }
+        Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let remote_name = branch
             .upstream_remote_name()

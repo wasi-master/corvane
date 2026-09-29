@@ -584,6 +584,31 @@ pub fn labeled(label: impl Into<SharedString>, field: impl IntoElement, cx: &App
         .child(field)
 }
 
+/// `Avatar`: the cached image when resolved, else the grey placeholder.
+pub fn avatar_image(path: Option<std::path::PathBuf>, size: Pixels, cx: &App) -> AnyElement {
+    match path {
+        Some(path) => img(path)
+            .size(size)
+            .flex_none()
+            .rounded_full()
+            .into_any_element(),
+        None => avatar_placeholder(size, cx).into_any_element(),
+    }
+}
+
+/// Cached avatar for a commit e-mail (request it with
+/// `Dispatcher::request_avatar_for_email` from a render with `&mut App`).
+pub fn avatar_lookup(email: &str, cx: &App) -> Option<std::path::PathBuf> {
+    corvane_core::AppState::try_global(cx)
+        .and_then(|s| corvane_core::avatar_for_email(&s.read(cx).avatars, email))
+}
+
+/// Cached avatar for an account `avatar_url`.
+pub fn avatar_lookup_url(url: &str, cx: &App) -> Option<std::path::PathBuf> {
+    corvane_core::AppState::try_global(cx)
+        .and_then(|s| corvane_core::avatar_for_url(&s.read(cx).avatars, url))
+}
+
 /// Round avatar placeholder (`.avatar`), 25 px unless overridden.
 pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
     let t = cx.ghd();
