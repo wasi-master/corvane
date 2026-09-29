@@ -1125,21 +1125,14 @@ fn split_content(
         .into_any_element()
 }
 
-/// The centre strip of a split row: the block toggle for changed rows, a
-/// plain divider for context rows (`.editable .row.context` borders).
-fn split_handle(ctx: &RowContext, row: Option<&Row>, width: f32, cx: &App) -> AnyElement {
+/// `.hunk-handle`: the block toggle laid over a changed split row's
+/// place holder (context rows get borders instead).
+fn split_handle(ctx: &RowContext, row: &Row, width: f32, cx: &App) -> AnyElement {
     let t = cx.ghd();
-    let Some(row) = row.filter(|r| r.group.is_some()) else {
-        return div()
-            .absolute()
-            .top_0()
-            .bottom_0()
-            .left(gpui_kit::relative(0.5))
-            .ml(px(-width / 2.))
-            .w(px(width))
-            .bg(t.diff_border)
-            .into_any_element();
-    };
+    // without a selectable group only the place holder shows
+    if row.group.is_none() {
+        return div().into_any_element();
+    }
     let (start, len) = row.group.unwrap_or((0, 0));
     let group_type = row.group_type.unwrap_or(RangeType::Mixed);
     let kind = ctx
@@ -1297,13 +1290,24 @@ pub fn render_split_row(
                 let ln = split_line_number(ctx, r, number, column, false, false, cx);
                 let content = split_content(ctx, r, "     ", None, cx);
                 let mut d = div()
-                    .w(gpui_kit::relative(0.5))
+                    .flex_1()
                     .min_w_0()
                     .flex()
                     .flex_row()
                     .items_stretch()
                     .bg(t.background)
-                    .text_color(t.diff_text);
+                    .text_color(t.diff_text)
+                    // `.editable .row.context .before/.after`: half the
+                    // handle width as a border on each side of the centre
+                    .when(selectable, |d| {
+                        let half = px(handle_width / 2.);
+                        let d = d.border_color(t.diff_border);
+                        if column == Column::Before {
+                            d.border_r(half)
+                        } else {
+                            d.border_l(half)
+                        }
+                    });
                 // `.editable .row .before { flex-direction: row-reverse }`
                 if selectable && column == Column::Before {
                     d = d.child(content).child(ln);
@@ -1314,9 +1318,6 @@ pub fn render_split_row(
             };
             base.child(side(Column::Before))
                 .child(side(Column::After))
-                .when(selectable, |d| {
-                    d.child(split_handle(ctx, None, handle_width, cx))
-                })
                 .into_any_element()
         }
         SplitRow::Added { .. } | SplitRow::Deleted { .. } | SplitRow::Modified { .. } => {
@@ -1337,7 +1338,7 @@ pub fn render_split_row(
                     (true, Column::After) => (t.diff_add_background, t.diff_add_text),
                 };
                 let mut d = div()
-                    .w(gpui_kit::relative(0.5))
+                    .flex_1()
                     .min_w_0()
                     .flex()
                     .flex_row()
@@ -1392,10 +1393,20 @@ pub fn render_split_row(
                 }
                 d
             };
+            // `.hunk-handle-place-holder` keeps the handle's width in the
+            // flow; the interactive handle is laid over it
             base.child(side(Column::Before, before))
+                .when(selectable, |d| {
+                    d.child(
+                        div()
+                            .flex_none()
+                            .w(px(handle_width))
+                            .bg(t.diff_empty_hunk_handle),
+                    )
+                })
                 .child(side(Column::After, after))
                 .when(selectable, |d| {
-                    d.child(split_handle(ctx, Some(group_row), handle_width, cx))
+                    d.child(split_handle(ctx, group_row, handle_width, cx))
                 })
                 .into_any_element()
         }

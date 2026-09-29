@@ -13,7 +13,8 @@ use tracing::{error, info, warn};
 
 use crate::persistence::{Settings, StoreExt, UncommittedChangesStrategy};
 use crate::state::{
-    AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, SignInState, SignInStep,
+    AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, RetryAction, SignInState,
+    SignInStep,
 };
 use corvane_models::{Account, DiffSelectionType, Repository, Section, github_from_remote};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -70,6 +71,7 @@ impl Dispatcher {
             popup,
             cloning: None,
             sign_in: None,
+            retry_after_sign_in: None,
             watcher: None,
             watched_repo: None,
             banner: None,
@@ -220,9 +222,21 @@ impl Dispatcher {
 
     pub fn close_popup(cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
-            if s.popup.take().is_some() {
+            if let Some(popup) = s.popup.take() {
+                if matches!(popup, Popup::SignIn { .. }) {
+                    s.retry_after_sign_in = None;
+                }
                 cx.notify();
             }
+        });
+    }
+
+    /// The re-authorization prompts' "Sign in" / "Continue in browser": open
+    /// the sign-in dialog and run `retry` in repository `id` once it succeeds.
+    pub fn sign_in_then_retry(enterprise: bool, id: u64, retry: Option<RetryAction>, cx: &mut App) {
+        Self::show_popup(Popup::SignIn { enterprise }, cx);
+        Self::state(cx).update(cx, |s, _| {
+            s.retry_after_sign_in = retry.map(|retry| (id, retry));
         });
     }
 
@@ -314,6 +328,7 @@ impl Dispatcher {
             Self::start_watching(id, cx);
             Self::check_lfs(id, cx);
             Self::ensure_pull_requests(id, cx);
+            Self::restart_pull_request_updater(cx);
         }
     }
 
@@ -341,6 +356,7 @@ impl Dispatcher {
         if let Some(next) = next {
             Self::refresh_repository(next, cx);
         }
+        Self::restart_pull_request_updater(cx);
     }
 
     /// GHD `_refreshRepository`: re-read tip/branches/remotes, ahead/behind
@@ -2565,7 +2581,7 @@ impl Dispatcher {
             cx.update(|cx| match result {
                 Ok(account) => {
                     info!(login = %account.login, endpoint = %account.endpoint, "signed in");
-                    Self::state(cx).update(cx, |s, cx| {
+                    let retry = Self::state(cx).update(cx, |s, cx| {
                         s.accounts.retain(|a| a.endpoint != account.endpoint);
                         s.accounts.push(account);
                         if let Err(err) = s.store.save_accounts(&s.accounts) {
@@ -2576,12 +2592,61 @@ impl Dispatcher {
                             s.popup = None;
                         }
                         cx.notify();
+                        s.retry_after_sign_in.take()
                     });
+                    if let Some((id, retry)) = retry {
+                        Self::perform_retry(id, retry, cx);
+                    }
                 }
                 Err(err) => Self::set_sign_in_step(SignInStep::Error(err.to_string()), cx),
             });
         })
         .detach();
+    }
+
+    /// `AccountsStore.refresh` at launch: re-read every account's profile
+    /// (name, avatar, e-mails, plan). A failure keeps the stored account.
+    pub fn refresh_accounts(cx: &mut App) {
+        let accounts = Self::state(cx).read(cx).accounts.clone();
+        for account in accounts {
+            let task = cx.background_executor().spawn(async move {
+                let token = corvane_platform::keychain::token(&account.host(), &account.login)
+                    .ok()
+                    .flatten()?;
+                let endpoint = corvane_github::Endpoint::from_api_base(&account.endpoint);
+                let client = corvane_github::Client::new(endpoint, token);
+                match client.current_user(account.scopes.clone()) {
+                    Ok(updated) if updated.login == account.login => Some(updated),
+                    Ok(_) => None,
+                    Err(err) => {
+                        warn!(%err, login = %account.login, "could not refresh account");
+                        None
+                    }
+                }
+            });
+            cx.spawn(async move |cx: &mut AsyncApp| {
+                let Some(updated) = task.await else {
+                    return;
+                };
+                cx.update(|cx| {
+                    Self::state(cx).update(cx, |s, cx| {
+                        let Some(slot) = s
+                            .accounts
+                            .iter_mut()
+                            .find(|a| a.endpoint == updated.endpoint && a.login == updated.login)
+                        else {
+                            return;
+                        };
+                        *slot = updated;
+                        if let Err(err) = s.store.save_accounts(&s.accounts) {
+                            error!(?err, "could not save accounts");
+                        }
+                        cx.notify();
+                    });
+                });
+            })
+            .detach();
+        }
     }
 
     pub fn cancel_sign_in(cx: &mut App) {

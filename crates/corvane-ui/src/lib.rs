@@ -26,6 +26,8 @@ pub mod image_diff;
 pub mod keymap;
 #[cfg(target_os = "macos")]
 pub mod native_menu;
+#[cfg(target_os = "macos")]
+pub mod native_window;
 pub mod no_changes;
 pub mod no_repositories;
 pub mod pull_request_list;

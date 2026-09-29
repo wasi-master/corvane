@@ -15,7 +15,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::icons::{Octicon, octicon};
+use crate::icons::{Octicon, octicon, spin};
 use crate::pull_request_list::{matches_filter, no_pull_requests, pull_request_row};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
@@ -207,7 +207,14 @@ impl BranchFoldout {
                                     Dispatcher::refresh_pull_requests(id, true, cx)
                                 }
                             })
-                            .child(octicon(Octicon::Sync, t.secondary_button_text)),
+                            .child({
+                                let icon = octicon(Octicon::SyncClockwise, t.secondary_button_text);
+                                if loading {
+                                    spin(icon, "pull-request-refresh-spin")
+                                } else {
+                                    icon.into_any_element()
+                                }
+                            }),
                     ),
             )
             .child(if rows.is_empty() {

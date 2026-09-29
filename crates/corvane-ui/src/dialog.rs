@@ -4,7 +4,7 @@
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::icons::{Octicon, octicon};
+use crate::icons::{Octicon, loading as loading_icon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, GhdTheme};
 
@@ -93,6 +93,33 @@ pub fn dialog_with_kind(
     dialog_impl(
         id,
         kind,
+        false,
+        div().child(title).into_any_element(),
+        content,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// `Dialog loading={…}`: a spinner in the header while the dialog works.
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_loading(
+    id: &'static str,
+    title: impl Into<SharedString>,
+    loading: bool,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    let title: SharedString = title.into();
+    dialog_impl(
+        id,
+        DialogKind::Normal,
+        loading,
         div().child(title).into_any_element(),
         content,
         buttons,
@@ -116,6 +143,7 @@ pub fn dialog_with_title_element(
     dialog_impl(
         id,
         DialogKind::Normal,
+        false,
         title.into_any_element(),
         content,
         buttons,
@@ -129,6 +157,7 @@ pub fn dialog_with_title_element(
 fn dialog_impl(
     id: &'static str,
     kind: DialogKind,
+    loading: bool,
     title: AnyElement,
     content: impl IntoElement,
     buttons: Vec<DialogButton>,
@@ -190,6 +219,15 @@ fn dialog_impl(
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child(title),
                                 )
+                                // `loading`: a spinning `syncClockwise` before the close button
+                                .when(loading, |d| {
+                                    d.child(
+                                        div().flex_none().mr(SPACING).child(loading_icon(
+                                            "dialog-loading",
+                                            t.text_secondary,
+                                        )),
+                                    )
+                                })
                                 .child({
                                     let on_close = on_close.clone();
                                     div()

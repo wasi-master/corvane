@@ -484,7 +484,8 @@ impl Dispatcher {
                     .map_err(|e| e.to_string())
             },
             move |result, cx| match result {
-                Ok(Some(user)) => {
+                // `getByLogin`: only users can co-author (not organizations or bots)
+                Ok(Some(user)) if user.kind.as_deref() == Some("User") => {
                     let email = user
                         .email
                         .clone()
@@ -509,7 +510,7 @@ impl Dispatcher {
                         cx.notify();
                     });
                 }
-                Ok(None) => mark_error(id, &username, cx),
+                Ok(_) => mark_error(id, &username, cx),
                 Err(err) => {
                     warn!(%err, "could not look up co-author");
                     mark_error(id, &username, cx);

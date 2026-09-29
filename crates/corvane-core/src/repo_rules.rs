@@ -2,16 +2,16 @@
 //! `app-store.ts#refreshBranchProtectionState`, `lib/helpers/repo-rules.ts`
 //! (`parseRepoRules`, the metadata matchers) and `models/repo-rules.ts`.
 //!
-//! Deviation: GHD skips the rules API for private repositories of free
-//! accounts (`useRepoRulesLogic`) using the account plan; Corvane always
-//! asks and treats "not found" as "no rules".
+//! Deviation: an account stored before Corvane read the plan (`plan: None`)
+//! is treated as paid until the launch refresh fills it in; GHD's accounts
+//! always carry it.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use corvane_github::{ApiRepoRule, Client};
 use corvane_models::{
-    GitHubRepository, RepoRuleEnforced, RepoRulesInfo, RepoRulesMetadataFailure,
+    Account, GitHubRepository, RepoRuleEnforced, RepoRulesInfo, RepoRulesMetadataFailure,
     RepoRulesMetadataFailures, RepoRulesMetadataRule, RuleOperator, Tip,
 };
 use gpui_kit::App;
@@ -22,6 +22,64 @@ use crate::remote::spawn_bg;
 
 /// Rules are re-fetched for the same branch at most this often.
 const RULES_MAX_AGE: Duration = Duration::from_secs(5 * 60);
+
+/// What `git interpret-trailers --no-divider --trailer k=v` makes of
+/// `message` (GHD `mergeTrailers`), without spawning git, so the commit form
+/// can check the message rules on every keystroke. The trailers join the
+/// last paragraph when it already is a trailer block (never the subject
+/// paragraph), otherwise they follow a blank line.
+pub fn append_trailers(message: &str, trailers: &[(String, String)]) -> String {
+    if trailers.is_empty() {
+        return message.to_string();
+    }
+    let body = message.trim_end_matches('\n');
+    let mut out = body.to_string();
+    let last_paragraph = body.rsplit_once("\n\n").map(|(_, p)| p);
+    if !last_paragraph.is_some_and(is_trailer_block) {
+        out.push('\n');
+    }
+    if !out.is_empty() {
+        out.push('\n');
+    }
+    for (token, value) in trailers {
+        out.push_str(&format!("{token}: {value}\n"));
+    }
+    out
+}
+
+/// `find_trailer_block_start`: every line is a trailer (or a continuation),
+/// or at least a quarter are and one of them is git-generated.
+fn is_trailer_block(paragraph: &str) -> bool {
+    let is_trailer = |line: &str| {
+        line.split_once(':').is_some_and(|(token, _)| {
+            let token = token.trim_end();
+            !token.is_empty() && token.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        })
+    };
+    let (mut trailers, mut others, mut generated) = (0, 0, false);
+    for line in paragraph.lines() {
+        if line.starts_with([' ', '\t']) {
+            continue;
+        }
+        if line.starts_with("Signed-off-by: ") || line.starts_with("(cherry picked from commit ") {
+            generated = true;
+            trailers += 1;
+        } else if is_trailer(line) {
+            trailers += 1;
+        } else {
+            others += 1;
+        }
+    }
+    trailers > 0 && (others == 0 || (generated && trailers * 3 >= others))
+}
+
+/// `useRepoRulesLogic`: rulesets need a paid plan for private repositories.
+/// Only the signed-in user's own plan is known, so a repository owned by
+/// someone else is always asked about.
+pub fn use_repo_rules_logic(account: &Account, repo: &GitHubRepository) -> bool {
+    let free = account.plan.as_deref().is_some_and(|plan| plan == "free");
+    !(repo.private && free && account.login.eq_ignore_ascii_case(&repo.owner))
+}
 
 /// `toMatcher`: does `text` satisfy the rule (negation included)?
 pub fn rule_matches(rule: &RepoRulesMetadataRule, text: &str) -> bool {
@@ -138,7 +196,7 @@ impl Dispatcher {
     /// `refreshBranchProtectionState`: push control + rulesets + branch
     /// rules for the current branch, throttled per branch.
     pub(crate) fn refresh_branch_protection(id: u64, cx: &mut App) {
-        let (github, branch, remote_url, prior_rulesets) = {
+        let (github, branch, remote_url, prior_rulesets, rules_enabled) = {
             let s = Self::state(cx).read(cx);
             let Some(gh) = s.repository(id).and_then(|r| r.github.clone()) else {
                 return;
@@ -160,7 +218,16 @@ impl Dispatcher {
             {
                 return;
             }
-            (gh, branch, remote_url, s.repo_rulesets.clone())
+            let rules_enabled = s
+                .account_for(&gh.endpoint)
+                .is_some_and(|account| use_repo_rules_logic(account, &gh));
+            (
+                gh,
+                branch,
+                remote_url,
+                s.repo_rulesets.clone(),
+                rules_enabled,
+            )
         };
         let Some((endpoint, token, _)) = Self::api_for(&github, cx) else {
             return;
@@ -187,7 +254,7 @@ impl Dispatcher {
                     .unwrap_or(false);
                 let mut rulesets = prior_rulesets;
                 let mut info = RepoRulesInfo::default();
-                if dotcom {
+                if dotcom && rules_enabled {
                     if let Ok(Some(slim)) = client.repo_rulesets(&owner, &name) {
                         for r in slim {
                             if rulesets.contains_key(&r.id) {
@@ -269,6 +336,29 @@ mod tests {
         let failures = failed_rules(&[starts.clone(), regex], "fix: y");
         assert_eq!(failures.failed.len(), 1);
         assert_eq!(failures.failed[0].description, "must start with \"feat\"");
+    }
+
+    #[test]
+    fn appends_trailers_like_interpret_trailers() {
+        let co = [("Co-Authored-By".to_string(), "A <a@x>".to_string())];
+        assert_eq!(
+            append_trailers("feat: x\n", &co),
+            "feat: x\n\nCo-Authored-By: A <a@x>\n"
+        );
+        assert_eq!(
+            append_trailers("feat: x\n\nbody text\n", &co),
+            "feat: x\n\nbody text\n\nCo-Authored-By: A <a@x>\n"
+        );
+        assert_eq!(
+            append_trailers("feat: x\n\nRefs: #1\n", &co),
+            "feat: x\n\nRefs: #1\nCo-Authored-By: A <a@x>\n"
+        );
+        // the subject is never a trailer block
+        assert_eq!(
+            append_trailers("Refs: #1\n", &co),
+            "Refs: #1\n\nCo-Authored-By: A <a@x>\n"
+        );
+        assert_eq!(append_trailers("feat: x\n", &[]), "feat: x\n");
     }
 
     #[test]

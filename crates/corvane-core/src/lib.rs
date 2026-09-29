@@ -49,7 +49,7 @@ pub use pull_requests::{
     find_associated_pull_request, fork_pull_request_remote_name,
 };
 pub use remote::{ForcePushState, PushPullKind, PushPullProgress, RepoIndicator, host_of};
-pub use repo_rules::{failed_rules, rule_matches};
+pub use repo_rules::{append_trailers, failed_rules, rule_matches};
 pub use state::{
     AppState, CloneState, DropTarget, FileListFilter, FilterOption, Foldout, GitConfigLocation,
     GlobalGitConfig, LastCommit, Popup, PreferencesTab, RepositorySettingsData,

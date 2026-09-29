@@ -210,6 +210,10 @@ pub struct Account {
     /// OAuth scopes granted to the token.
     #[serde(default)]
     pub scopes: Vec<String>,
+    /// `plan.name` of `/user` (`free`, `pro`, …); `None` until the account
+    /// has been read from the API since this field was added.
+    #[serde(default)]
+    pub plan: Option<String>,
 }
 
 impl Account {

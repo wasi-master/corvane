@@ -5,10 +5,6 @@
 //! 80 px on every side; header "Merge N commits into [base ▾] from
 //! <current>." with the lines added/removed, a resizable file list next to
 //! the merge-base diff, the mergeability in the footer.
-//!
-//! Deviation: the Diff Settings gear lives in the diff header of the
-//! selected file (as on the Changes tab) rather than in the
-//! "Showing changes from all commits" row.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -24,7 +20,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::branch_list::group_branches;
-use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
+use crate::diff_view::{DiffSource, DiffView, diff_options_button, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
@@ -148,12 +144,13 @@ impl OpenPullRequestDialog {
             .read(cx)
             .current_pull_request(self.repo)
             .is_some();
+        // close first: `PushBranchCommits` may replace this dialog
+        self.close(cx);
         if has_pr {
             Dispatcher::show_pull_request(self.repo, cx);
         } else {
             Dispatcher::create_pull_request_with_base(self.repo, preview.base_branch.clone(), cx);
         }
-        self.close(cx);
     }
 
     /// `BranchSelect` button + its popover.
@@ -532,13 +529,6 @@ impl Render for OpenPullRequestDialog {
             .map(|c| (c.lines_added, c.lines_deleted))
             .unwrap_or((0, 0));
         let ok_disabled = preview.commit_shas.as_ref().is_none_or(|s| s.is_empty());
-        let selected_file = preview.file.as_ref().and_then(|p| {
-            preview
-                .changeset
-                .as_ref()
-                .and_then(|c| c.files.iter().find(|f| &f.path == p))
-                .map(|f| (f.path.clone(), f.status.kind))
-        });
         // `renderContent`: no base branch / no changes / files + diff
         let content: AnyElement = if preview.base_branch.is_none() {
             self.message(
@@ -595,20 +585,18 @@ impl Render for OpenPullRequestDialog {
                 .flex_col()
                 .min_h_0()
                 .child(
-                    // `.files-changed-header`
+                    // `.files-changed-header`: the summary and `DiffOptions`
                     div()
                         .flex_none()
-                        .h(px(30.))
                         .flex()
                         .items_center()
-                        .px(SPACING)
-                        .bg(t.box_alt_background)
+                        .p(SPACING)
                         .border_1()
                         .border_color(t.box_border)
                         .rounded_t(BORDER_RADIUS)
                         .text_size(FONT_SIZE)
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child("Showing changes from all commits"),
+                        .child(div().flex_1().child("Showing changes from all commits"))
+                        .child(diff_options_button(&self.diff, cx)),
                 )
                 .child(
                     div()
@@ -638,9 +626,6 @@ impl Render for OpenPullRequestDialog {
                                             .flex()
                                             .flex_col()
                                             .min_h_0()
-                                            .when_some(selected_file, |d, (path, kind)| {
-                                                d.child(diff_header(&path, kind, &self.diff, cx))
-                                            })
                                             .child(self.diff.clone()),
                                     ),
                                 ),

@@ -360,8 +360,69 @@ impl Dispatcher {
         Self::create_pull_request_with_base(id, None, cx);
     }
 
-    /// `_createPullRequest(repository, baseBranch)`
+    /// `_createPullRequest(repository, baseBranch)`: an unpublished branch
+    /// or unpushed commits ask `PushBranchCommits` first.
     pub fn create_pull_request_with_base(id: u64, base: Option<String>, cx: &mut App) {
+        let Some((_, Some(branch))) = Self::github_and_branch(id, cx) else {
+            return;
+        };
+        let ahead_behind = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| rs.ahead_behind);
+        match ahead_behind {
+            None => Self::show_popup(
+                Popup::PushBranchCommits {
+                    repo: id,
+                    branch,
+                    unpushed: None,
+                    base,
+                },
+                cx,
+            ),
+            Some(ab) if ab.ahead > 0 => Self::show_popup(
+                Popup::PushBranchCommits {
+                    repo: id,
+                    branch,
+                    unpushed: Some(ab.ahead),
+                    base,
+                },
+                cx,
+            ),
+            Some(_) => Self::open_create_pull_request_in_browser(id, base, cx),
+        }
+    }
+
+    /// `PushBranchCommits.onSubmit`: push (or publish) the current branch,
+    /// then open the compare page.
+    pub fn push_branch_commits_and_create_pull_request(
+        id: u64,
+        base: Option<String>,
+        cx: &mut App,
+    ) {
+        Self::push_then(
+            id,
+            false,
+            None,
+            move |pushed, cx| {
+                // an error dialog may have replaced the prompt
+                if matches!(
+                    Self::state(cx).read(cx).popup,
+                    Some(Popup::PushBranchCommits { .. })
+                ) {
+                    Self::close_popup(cx);
+                }
+                if pushed {
+                    Self::open_create_pull_request_in_browser(id, base, cx);
+                }
+            },
+            cx,
+        );
+    }
+
+    /// `_openCreatePullRequestInBrowser`
+    pub fn open_create_pull_request_in_browser(id: u64, base: Option<String>, cx: &mut App) {
         let Some((gh, Some(branch))) = Self::github_and_branch(id, cx) else {
             return;
         };
@@ -369,16 +430,6 @@ impl Dispatcher {
             .read(cx)
             .repository(id)
             .is_some_and(|r| r.is_fork_contributing_to_parent());
-        let published = Self::state(cx)
-            .read(cx)
-            .repo_states
-            .get(&id)
-            .and_then(|rs| rs.info.as_ref())
-            .and_then(|info| info.current_branch())
-            .is_some_and(|b| b.upstream.is_some());
-        if !published {
-            Self::push(id, false, None, cx);
-        }
         // the base is a remote branch name in the dialog; GitHub wants it bare
         let base = base.map(|b| {
             b.split_once('/')

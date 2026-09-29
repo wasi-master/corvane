@@ -14,6 +14,7 @@ mod history_dialogs;
 mod mco_dialogs;
 mod open_pull_request;
 mod preferences;
+mod push_branch_commits;
 mod push_protection;
 mod reauth_dialogs;
 mod remote_dialogs;
@@ -46,6 +47,7 @@ pub use history_dialogs::{
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use open_pull_request::OpenPullRequestDialog;
 pub use preferences::PreferencesDialog;
+pub use push_branch_commits::PushBranchCommitsDialog;
 pub use push_protection::{BypassPushProtectionDialog, PushProtectionErrorDialog};
 pub use reauth_dialogs::{
     InvalidatedTokenDialog, SamlReauthRequiredDialog, WorkflowPushRejectedDialog,
@@ -131,15 +133,26 @@ impl DialogHost {
                     )
                 })
                 .into(),
-            Popup::PushRejectedDueToMissingWorkflowScope { rejected_path, .. } => cx
-                .new(|_| WorkflowPushRejectedDialog::new(rejected_path.clone()))
+            Popup::PushRejectedDueToMissingWorkflowScope {
+                repo,
+                rejected_path,
+            } => cx
+                .new(|_| WorkflowPushRejectedDialog::new(*repo, rejected_path.clone()))
                 .into(),
             Popup::SAMLReauthRequired {
+                repo,
                 organization,
                 endpoint,
-                ..
+                retry,
             } => cx
-                .new(|_| SamlReauthRequiredDialog::new(organization.clone(), endpoint.clone()))
+                .new(|_| {
+                    SamlReauthRequiredDialog::new(
+                        *repo,
+                        organization.clone(),
+                        endpoint.clone(),
+                        retry.clone(),
+                    )
+                })
                 .into(),
             Popup::CICheckRunRerun {
                 github,
@@ -254,6 +267,16 @@ impl DialogHost {
                 .new(|cx| PublishRepositoryDialog::new(state, *repo, window, cx))
                 .into(),
             Popup::PushNeedsPull { repo } => cx.new(|_| PushNeedsPullDialog::new(*repo)).into(),
+            Popup::PushBranchCommits {
+                repo,
+                branch,
+                unpushed,
+                base,
+            } => cx
+                .new(|_| {
+                    PushBranchCommitsDialog::new(*repo, branch.clone(), *unpushed, base.clone())
+                })
+                .into(),
             Popup::ConfirmForcePush {
                 repo,
                 upstream_branch,

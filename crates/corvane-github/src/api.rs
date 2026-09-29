@@ -25,6 +25,13 @@ struct ApiUser {
     login: String,
     name: Option<String>,
     avatar_url: Option<String>,
+    #[serde(default)]
+    plan: Option<ApiPlan>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ApiPlan {
+    name: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,6 +100,9 @@ pub struct ApiIdentity {
     pub email: Option<String>,
     #[serde(default)]
     pub avatar_url: Option<String>,
+    /// `type`: `User`, `Organization` or `Bot`.
+    #[serde(rename = "type", default)]
+    pub kind: Option<String>,
 }
 
 /// `IAPIMentionableUser`.
@@ -485,6 +495,7 @@ impl Client {
             avatar_url: user.avatar_url,
             emails,
             scopes,
+            plan: user.plan.map(|p| p.name),
         })
     }
 

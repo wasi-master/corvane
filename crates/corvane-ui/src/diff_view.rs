@@ -74,9 +74,6 @@ pub fn diff_header(
         Some(i) => (&path[..=i], &path[i + 1..]),
         None => ("", path),
     };
-    let gear_bounds = view.read(cx).gear_bounds.clone();
-    let view = view.clone();
-    let hover = t.text_secondary;
     div()
         .h(ROW_HEIGHT)
         .flex_none()
@@ -110,27 +107,34 @@ pub fn diff_header(
                         ),
                 ),
         )
-        .child(
-            // `.diff-options-component > button`
-            div()
-                .id("diff-options-button")
-                .relative()
-                .flex()
-                .items_center()
-                .cursor_pointer()
-                .text_color(t.text)
-                .hover(move |s| s.text_color(hover))
-                .child(
-                    canvas(move |bounds, _, _| gear_bounds.set(bounds), |_, _, _, _| {})
-                        .absolute()
-                        .inset_0(),
-                )
-                .child(octicon(Octicon::Gear, t.text_secondary))
-                .on_click(move |_, _, cx| {
-                    view.update(cx, |this, cx| this.toggle_options(cx));
-                }),
-        )
+        .child(diff_options_button(view, cx))
         .child(octicon(icon, color))
+}
+
+/// `DiffOptions`' gear (`.diff-options-component > button`); opens `view`'s
+/// Diff Settings popover under it.
+pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElement {
+    let t = cx.ghd();
+    let gear_bounds = view.read(cx).gear_bounds.clone();
+    let view = view.clone();
+    let hover = t.text_secondary;
+    div()
+        .id("diff-options-button")
+        .relative()
+        .flex()
+        .items_center()
+        .cursor_pointer()
+        .text_color(t.text)
+        .hover(move |s| s.text_color(hover))
+        .child(
+            canvas(move |bounds, _, _| gear_bounds.set(bounds), |_, _, _, _| {})
+                .absolute()
+                .inset_0(),
+        )
+        .child(octicon(Octicon::Gear, t.text_secondary))
+        .on_click(move |_, _, cx| {
+            view.update(cx, |this, cx| this.toggle_options(cx));
+        })
 }
 
 /// Which diff of the repository state the view shows.

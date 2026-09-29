@@ -207,6 +207,14 @@ pub enum Popup {
         retry: RetryAction,
         files: Vec<String>,
     },
+    /// `PushBranchCommits`: the branch must be published (`unpushed: None`)
+    /// or has local commits to push before its pull request is created.
+    PushBranchCommits {
+        repo: u64,
+        branch: String,
+        unpushed: Option<u32>,
+        base: Option<String>,
+    },
     /// `PublishRepository`
     PublishRepository {
         repo: u64,
@@ -655,6 +663,9 @@ pub struct AppState {
     pub popup: Option<Popup>,
     pub cloning: Option<CloneState>,
     pub sign_in: Option<SignInState>,
+    /// What to retry once the sign-in dialog opened by a re-authorization
+    /// prompt succeeds (`beginBrowserBasedSignIn` → `performRetry`).
+    pub retry_after_sign_in: Option<(u64, RetryAction)>,
     /// Watcher for the selected repository's worktree.
     pub watcher: Option<crate::watcher::RepoWatcher>,
     pub watched_repo: Option<u64>,
