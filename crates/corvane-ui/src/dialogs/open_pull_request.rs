@@ -19,7 +19,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::widgets::IconButtonA11y;
+use crate::widgets::{IconButtonA11y, ListRowA11y};
 
 use crate::branch_list::group_branches;
 use crate::diff_view::{DiffSource, DiffView, diff_options_button, status_icon};
@@ -372,6 +372,14 @@ impl OpenPullRequestDialog {
                         let path = file.path.clone();
                         div()
                             .id(SharedString::from(format!("pr-file-{}", file.path)))
+                            .a11y_row(
+                                format!(
+                                    "{}, {}",
+                                    file.path,
+                                    crate::widgets::status_label(file.status.kind)
+                                ),
+                                is_selected,
+                            )
                             .w_full()
                             .h(ROW_HEIGHT)
                             .flex_none()

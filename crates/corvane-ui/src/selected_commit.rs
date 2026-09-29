@@ -12,6 +12,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::widgets::IconButtonA11y;
+use crate::widgets::ListRowA11y;
 
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
@@ -432,6 +433,14 @@ fn commit_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &
     let path = file.path.clone();
     div()
         .id(SharedString::from(format!("commit-file-{}", file.path)))
+        .a11y_row(
+            format!(
+                "{}, {}",
+                file.path,
+                crate::widgets::status_label(file.status.kind)
+            ),
+            is_selected,
+        )
         .w_full()
         .h(ROW_HEIGHT)
         .flex_none()

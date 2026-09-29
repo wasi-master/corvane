@@ -21,6 +21,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::widgets::IconButtonA11y;
+use crate::widgets::ListRowA11y;
 
 use crate::actions::{
     Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectNextFile,
@@ -2951,6 +2952,19 @@ fn file_row(
     let file_for_menu = file.clone();
     div()
         .id(SharedString::from(format!("file-{}", file.path)))
+        .a11y_row(
+            format!(
+                "{}, {}{}",
+                file.path,
+                crate::widgets::status_label(file.status.kind),
+                match include_value {
+                    Some(true) => "",
+                    Some(false) => ", not included",
+                    None => ", partially included",
+                }
+            ),
+            is_selected,
+        )
         .w_full()
         .h(ROW_HEIGHT)
         .flex_none()

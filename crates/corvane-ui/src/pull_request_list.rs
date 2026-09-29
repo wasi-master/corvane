@@ -29,6 +29,7 @@ use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::code_ref;
 
 /// `RowHeight`
@@ -93,6 +94,7 @@ pub fn pull_request_row(
     let pr_for_menu = pr.clone();
     div()
         .id(SharedString::from(format!("pull-request-{}", pr.number)))
+        .a11y_row(format!("{}, {}", pr.title, subtitle(pr)), selected)
         .h(PR_ROW_HEIGHT)
         .w_full()
         .flex()

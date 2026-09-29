@@ -32,6 +32,7 @@ use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::ListRowA11y;
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button, text_box};
 
 /// `RowHeight` in `commit-list.tsx`
@@ -1483,6 +1484,19 @@ fn commit_row(
     let line = t.box_selected_active_background;
     div()
         .id(SharedString::from(format!("commit-{}", commit.sha)))
+        .a11y_row(
+            format!(
+                "{}, {}, {}",
+                if commit.summary.is_empty() {
+                    "Empty commit message"
+                } else {
+                    commit.summary.as_str()
+                },
+                commit.author.name,
+                relative(commit.author.date())
+            ),
+            is_selected,
+        )
         .relative()
         .w_full()
         .h(COMMIT_ROW_HEIGHT)
