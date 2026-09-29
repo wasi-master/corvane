@@ -1017,15 +1017,34 @@ pub fn image_media_type(path: &str) -> Option<&'static str> {
     })
 }
 
+/// GHD `LineEndingsChange`: git's "CRLF will be replaced by LF" warning.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LineEndingsChange {
+    pub from: String,
+    pub to: String,
+}
+
+/// Warnings shown above a text diff (`DiffContentsWarning`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiffWarnings {
+    /// GHD `hasHiddenBidiChars`: U+202A–U+202E / U+2066–U+2069 in the text.
+    pub hidden_bidi: bool,
+    pub line_endings: Option<LineEndingsChange>,
+}
+
 /// GHD `IDiff` (`DiffType`).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Diff {
     Text {
         hunks: Vec<DiffHunk>,
+        #[serde(default)]
+        warnings: DiffWarnings,
     },
     /// `LargeText`: shown only after "Show Diff" (performance).
     LargeText {
         hunks: Vec<DiffHunk>,
+        #[serde(default)]
+        warnings: DiffWarnings,
     },
     Binary,
     /// `Image`: `previous` is missing for new files, `current` for deleted ones.
@@ -1043,7 +1062,7 @@ pub enum Diff {
 impl Diff {
     pub fn line_count(&self) -> usize {
         match self {
-            Diff::Text { hunks } | Diff::LargeText { hunks } => {
+            Diff::Text { hunks, .. } | Diff::LargeText { hunks, .. } => {
                 hunks.iter().map(|h| h.lines.len() + 1).sum()
             }
             _ => 0,
@@ -1053,7 +1072,15 @@ impl Diff {
     /// The hunks of a text diff (large ones included).
     pub fn hunks(&self) -> Option<&[DiffHunk]> {
         match self {
-            Diff::Text { hunks } | Diff::LargeText { hunks } => Some(hunks),
+            Diff::Text { hunks, .. } | Diff::LargeText { hunks, .. } => Some(hunks),
+            _ => None,
+        }
+    }
+
+    /// The warnings of a text diff.
+    pub fn warnings(&self) -> Option<&DiffWarnings> {
+        match self {
+            Diff::Text { warnings, .. } | Diff::LargeText { warnings, .. } => Some(warnings),
             _ => None,
         }
     }

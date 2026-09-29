@@ -31,8 +31,8 @@ use crate::diff_expansion::{
     expand_whole, from_hunks,
 };
 use crate::diff_view_rows::{
-    RangeType, Row, RowContext, SearchHit, SearchIndex, TempSelection, build_rows, render_row,
-    search_rows,
+    RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection, build_rows,
+    build_split_rows, render_row, render_split_row, search_rows, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -169,6 +169,11 @@ pub struct DiffView {
     tokens: Option<Rc<Vec<Vec<corvane_highlight::Span>>>>,
     /// The hunks as shown (expanded copies of the model's).
     hunks: Rc<Vec<XHunk>>,
+    /// Side-by-side rows built from `rows` (`showSideBySideDiff`).
+    split_rows: Rc<Vec<SplitRow>>,
+    unified_to_split: Rc<Vec<usize>>,
+    /// Whether the list currently shows `split_rows`.
+    split_mode: bool,
     /// New-side file lines for expansion (`fileContents.newContents`).
     contents: Option<Arc<Vec<String>>>,
     /// GHD `diffToRestore !== null`: "Collapse Expanded Lines" is available.
@@ -204,6 +209,9 @@ impl DiffView {
             rows_key: None,
             tokens: None,
             hunks: Rc::new(Vec::new()),
+            split_rows: Rc::new(Vec::new()),
+            unified_to_split: Rc::new(Vec::new()),
+            split_mode: false,
             contents: None,
             expanded: false,
             show_large: false,
@@ -324,12 +332,36 @@ impl DiffView {
 
     /// Rebuild rows after the hunks changed (new diff or expansion).
     fn rebuild_rows(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
-        let old_len = self.rows.len();
+        let old_len = self.row_count();
         self.rows = Rc::new(build_rows(&self.hunks));
+        self.rebuild_split_rows();
         self.rows_key = Some(key.clone());
-        self.list_state.splice(0..old_len, self.rows.len());
+        self.list_state.splice(0..old_len, self.row_count());
         self.refresh_search();
         self.highlight(key, cx);
+    }
+
+    fn rebuild_split_rows(&mut self) {
+        let split = build_split_rows(&self.rows);
+        self.unified_to_split = Rc::new(unified_to_split(&split, self.rows.len()));
+        self.split_rows = Rc::new(split);
+    }
+
+    /// Rows in the list for the current display mode.
+    fn row_count(&self) -> usize {
+        if self.split_mode {
+            self.split_rows.len()
+        } else {
+            self.rows.len()
+        }
+    }
+
+    /// Diff Settings › Diff display changed: swap the row set.
+    fn set_split_mode(&mut self, split: bool) {
+        if self.split_mode != split {
+            self.split_mode = split;
+            self.list_state.reset(self.row_count());
+        }
     }
 
     /// A different diff arrived: start over (`componentDidUpdate` in GHD).
@@ -351,11 +383,10 @@ impl DiffView {
             }
             _ => None,
         };
-        let old_len = self.rows.len();
         self.rows = Rc::new(build_rows(&self.hunks));
+        self.rebuild_split_rows();
         self.rows_key = Some(snap.key.clone());
-        self.list_state.reset(self.rows.len());
-        let _ = old_len;
+        self.list_state.reset(self.row_count());
         self.refresh_search();
         self.highlight(snap.key.clone(), cx);
     }
@@ -634,7 +665,15 @@ impl DiffView {
             });
         }
         if let Some(hit) = self.selected_hit.and_then(|ix| self.hits.get(ix)) {
-            self.list_state.scroll_to_reveal_item(hit.row);
+            let row = if self.split_mode {
+                self.unified_to_split
+                    .get(hit.row)
+                    .copied()
+                    .unwrap_or(hit.row)
+            } else {
+                hit.row
+            };
+            self.list_state.scroll_to_reveal_item(row);
         }
         cx.notify();
     }
@@ -768,11 +807,13 @@ impl DiffView {
                                     |_, cx| Dispatcher::set_show_side_by_side_diff(false, cx),
                                     cx,
                                 ))
-                                .child(
-                                    radio_row("diff-display-split", split, "Split", |_, _| {}, cx)
-                                        .opacity(0.6)
-                                        .cursor_default(),
-                                ),
+                                .child(radio_row(
+                                    "diff-display-split",
+                                    split,
+                                    "Split",
+                                    |_, cx| Dispatcher::set_show_side_by_side_diff(true, cx),
+                                    cx,
+                                )),
                         ),
                 ),
         )
@@ -1138,6 +1179,8 @@ impl Render for DiffView {
         if self.rows_key.as_ref() != Some(&snap.key) {
             self.load(&snap, cx);
         }
+        let split = self.state.read(cx).settings.show_side_by_side_diff;
+        self.set_split_mode(split);
         let background = cx.ghd().background;
         let options = self
             .options_open
@@ -1201,6 +1244,90 @@ impl Render for DiffView {
 }
 
 impl DiffView {
+    /// GHD `DiffContentsWarning`: bidi characters / line-endings notices.
+    fn warnings(&self, snap: &Snapshot, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let warnings = snap.diff.warnings()?;
+        let mut items: Vec<AnyElement> = Vec::new();
+        if warnings.hidden_bidi {
+            items.push(
+                paragraph(vec![
+                    "This diff contains bidirectional Unicode text that may be interpreted or \
+                     compiled differently than what appears below. To review, open the file in \
+                     an editor that reveals hidden Unicode characters."
+                        .into(),
+                    Inline::Element(
+                        link_button(
+                            "bidi-learn-more",
+                            "Learn more about bidirectional Unicode characters",
+                            cx,
+                        )
+                        .on_click(|_, _, cx| cx.open_url("https://github.co/hiddenchars"))
+                        .into_any_element(),
+                    ),
+                ])
+                .into_any_element(),
+            );
+        }
+        if let Some(change) = &warnings.line_endings {
+            items.push(
+                paragraph(vec![
+                    format!("This file uses '{}' line endings, but", change.from).into(),
+                    Inline::Element(
+                        link_button("line-endings-docs", "Git is configured to convert them", cx)
+                            .on_click(|_, _, cx| {
+                                cx.open_url(
+                                    "https://docs.github.com/get-started/git-basics/configuring-git-to-handle-line-endings",
+                                )
+                            })
+                            .into_any_element(),
+                    ),
+                    format!("to '{}' the next time the file is checked out.", change.to).into(),
+                ])
+                .into_any_element(),
+            );
+        }
+        if items.is_empty() {
+            return None;
+        }
+        let count = items.len();
+        Some(
+            div()
+                .flex_none()
+                .flex()
+                .flex_col()
+                .px(SPACING_DOUBLE)
+                .py(SPACING)
+                .bg(t.file_warning_background)
+                .border_b_1()
+                .border_color(t.file_warning_border)
+                .font_family(crate::theme::UI_FONT)
+                .text_size(FONT_SIZE)
+                .text_color(t.text)
+                .children(items.into_iter().enumerate().map(|(ix, body)| {
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_start()
+                        .gap(SPACING)
+                        .when(ix + 1 < count, |d| {
+                            d.mb(SPACING)
+                                .pb(SPACING)
+                                .border_b_1()
+                                .border_color(t.file_warning_border)
+                        })
+                        .child(
+                            div()
+                                .flex_none()
+                                .pt(px(2.))
+                                .child(octicon(Octicon::Alert, t.file_warning)),
+                        )
+                        .child(div().flex_1().min_w_0().child(body))
+                }))
+                .into_any_element(),
+        )
+    }
+
     /// The virtualized rows plus the search box (`DiffSearchInput`).
     fn text_diff(
         &mut self,
@@ -1236,6 +1363,9 @@ impl DiffView {
                 .is_none_or(|s| s.read(cx).settings.show_diff_check_marks),
         });
         let rows = self.rows.clone();
+        let split_rows = self.split_rows.clone();
+        let split_mode = self.split_mode;
+        let warnings = self.warnings(snap, cx);
         let search = self
             .search_input
             .clone()
@@ -1273,11 +1403,26 @@ impl DiffView {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.end_selection(cx)),
             )
+            .flex()
+            .flex_col()
+            .children(warnings)
             .child(
                 list(self.list_state.clone(), move |ix, _window, cx| {
-                    render_row(&ctx, ix, &rows[ix], cx)
+                    if split_mode {
+                        match split_rows.get(ix) {
+                            Some(row) => render_split_row(&ctx, ix, row, &rows, cx),
+                            None => div().into_any_element(),
+                        }
+                    } else {
+                        match rows.get(ix) {
+                            Some(row) => render_row(&ctx, ix, row, cx),
+                            None => div().into_any_element(),
+                        }
+                    }
                 })
-                .size_full(),
+                .flex_1()
+                .min_h_0()
+                .w_full(),
             )
             .children(search)
             .into_any_element()

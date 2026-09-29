@@ -238,7 +238,7 @@ pub fn apply_patch_to_index(
             .run()?;
     }
     let hunks = match diff {
-        Diff::Text { hunks } | Diff::LargeText { hunks } => hunks,
+        Diff::Text { hunks, .. } | Diff::LargeText { hunks, .. } => hunks,
         Diff::Binary | Diff::Image { .. } | Diff::Submodule(_) => {
             return Err(GitError::Gix(format!(
                 "Can't create partial commit in binary file: {}",

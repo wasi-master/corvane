@@ -242,11 +242,13 @@ pub fn is_selected(sel: &DiffSelection, temp: Option<TempSelection>, line: u32) 
     }
 }
 
-/// Syntax colours and search backgrounds as one sorted, non-overlapping
+/// Syntax colours, search backgrounds and the intra-line change range
+/// (`diff-add-inner` / `diff-delete-inner`) as one sorted, non-overlapping
 /// highlight list for `StyledText`.
 fn merge_highlights(
     spans: &[Span],
     hits: &[(Range<usize>, bool)],
+    inner: Option<(Range<usize>, Hsla)>,
     len: usize,
     t: &GhdTheme,
 ) -> Vec<(Range<usize>, HighlightStyle)> {
@@ -256,6 +258,10 @@ fn merge_highlights(
         cuts.push(s.range.end.min(len));
     }
     for (r, _) in hits {
+        cuts.push(r.start.min(len));
+        cuts.push(r.end.min(len));
+    }
+    if let Some((r, _)) = &inner {
         cuts.push(r.start.min(len));
         cuts.push(r.end.min(len));
     }
@@ -272,7 +278,11 @@ fn merge_highlights(
             .find(|s| s.range.start <= a && s.range.end >= b)
             .map(|s| token_color(s.class, t));
         let hit = hits.iter().find(|(r, _)| r.start <= a && r.end >= b);
-        if color.is_none() && hit.is_none() {
+        let inner_bg = inner
+            .as_ref()
+            .filter(|(r, _)| r.start <= a && r.end >= b)
+            .map(|(_, c)| *c);
+        if color.is_none() && hit.is_none() && inner_bg.is_none() {
             continue;
         }
         let (background, fg) = match hit {
@@ -283,7 +293,7 @@ fn merge_highlights(
             ),
             // `.cm-search-result`: rgba(255, 255, 0, 0.4)
             Some((_, false)) => (Some(hsla(1. / 6., 1., 0.5, 0.4)), None),
-            None => (None, None),
+            None => (inner_bg, None),
         };
         out.push((
             a..b,
@@ -431,7 +441,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
             if spans.is_empty() && hits.is_empty() {
                 text.into_any_element()
             } else {
-                let highlights = merge_highlights(spans, hits, row.text.len(), t);
+                let highlights = merge_highlights(spans, hits, None, row.text.len(), t);
                 StyledText::new(text)
                     .with_highlights(highlights)
                     .into_any_element()
@@ -709,10 +719,666 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
     el.into_any_element()
 }
 
+// ---- split (side-by-side) rows ----
+
+/// GHD `MaxIntraLineDiffStringLength`.
+pub const MAX_INTRA_LINE_DIFF_LEN: usize = 1024;
+
+/// GHD `relativeChanges`: the byte ranges of `a` and `b` that remain once the
+/// common prefix and suffix are stripped.
+pub fn relative_changes(a: &str, b: &str) -> (Range<usize>, Range<usize>) {
+    let ac: Vec<(usize, char)> = a.char_indices().collect();
+    let bc: Vec<(usize, char)> = b.char_indices().collect();
+    let max = ac.len().min(bc.len());
+    let mut prefix = 0;
+    while prefix < max && ac[prefix].1 == bc[prefix].1 {
+        prefix += 1;
+    }
+    let remaining = max - prefix;
+    let mut suffix = 0;
+    while suffix < remaining && ac[ac.len() - 1 - suffix].1 == bc[bc.len() - 1 - suffix].1 {
+        suffix += 1;
+    }
+    let range = |chars: &[(usize, char)], text: &str| {
+        let start = chars.get(prefix).map(|c| c.0).unwrap_or(text.len());
+        let end = if suffix == 0 {
+            text.len()
+        } else {
+            chars[chars.len() - suffix].0
+        };
+        start..end.max(start)
+    };
+    (range(&ac, a), range(&bc, b))
+}
+
+/// One side of a split row: the unified row it shows and, for paired
+/// modified lines, the changed range highlighted with the inner colour.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SplitSide {
+    pub unified: usize,
+    pub inner: Option<Range<usize>>,
+}
+
+/// GHD `DiffRow` in side-by-side mode (`getDiffRowsFromHunk` / `getModifiedRows`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SplitRow {
+    Hunk { unified: usize },
+    Context { unified: usize },
+    Added { after: SplitSide },
+    Deleted { before: SplitSide },
+    Modified { before: SplitSide, after: SplitSide },
+}
+
+impl SplitRow {
+    /// The unified rows this split row shows (before, after).
+    pub fn unified_rows(&self) -> (Option<usize>, Option<usize>) {
+        match self {
+            SplitRow::Hunk { unified } | SplitRow::Context { unified } => {
+                (Some(*unified), Some(*unified))
+            }
+            SplitRow::Added { after } => (None, Some(after.unified)),
+            SplitRow::Deleted { before } => (Some(before.unified), None),
+            SplitRow::Modified { before, after } => (Some(before.unified), Some(after.unified)),
+        }
+    }
+}
+
+/// Pair the added and deleted lines of every block of changes: paired lines
+/// become `Modified` rows (with intra-line ranges when the block has as many
+/// additions as deletions), the rest stay on their own side.
+pub fn build_split_rows(rows: &[Row]) -> Vec<SplitRow> {
+    let mut out = Vec::with_capacity(rows.len());
+    let mut i = 0;
+    while i < rows.len() {
+        match rows[i].kind {
+            DiffLineKind::Hunk => {
+                out.push(SplitRow::Hunk { unified: i });
+                i += 1;
+            }
+            DiffLineKind::Context => {
+                out.push(SplitRow::Context { unified: i });
+                i += 1;
+            }
+            DiffLineKind::Add | DiffLineKind::Delete => {
+                let start = i;
+                while i < rows.len()
+                    && matches!(rows[i].kind, DiffLineKind::Add | DiffLineKind::Delete)
+                {
+                    i += 1;
+                }
+                let added: Vec<usize> = (start..i)
+                    .filter(|&ix| rows[ix].kind == DiffLineKind::Add)
+                    .collect();
+                let deleted: Vec<usize> = (start..i)
+                    .filter(|&ix| rows[ix].kind == DiffLineKind::Delete)
+                    .collect();
+                let with_tokens = added.len() == deleted.len();
+                let pairs = added.len().min(deleted.len());
+                for k in 0..pairs {
+                    let (d, a) = (deleted[k], added[k]);
+                    let (before_inner, after_inner) = if with_tokens
+                        && rows[d].text.len() < MAX_INTRA_LINE_DIFF_LEN
+                        && rows[a].text.len() < MAX_INTRA_LINE_DIFF_LEN
+                    {
+                        let (b, af) = relative_changes(&rows[d].text, &rows[a].text);
+                        (Some(b), Some(af))
+                    } else {
+                        (None, None)
+                    };
+                    out.push(SplitRow::Modified {
+                        before: SplitSide {
+                            unified: d,
+                            inner: before_inner,
+                        },
+                        after: SplitSide {
+                            unified: a,
+                            inner: after_inner,
+                        },
+                    });
+                }
+                for &d in &deleted[pairs..] {
+                    out.push(SplitRow::Deleted {
+                        before: SplitSide {
+                            unified: d,
+                            inner: None,
+                        },
+                    });
+                }
+                for &a in &added[pairs..] {
+                    out.push(SplitRow::Added {
+                        after: SplitSide {
+                            unified: a,
+                            inner: None,
+                        },
+                    });
+                }
+            }
+        }
+    }
+    out
+}
+
+/// For each unified row, the split row that shows it.
+pub fn unified_to_split(split: &[SplitRow], unified_len: usize) -> Vec<usize> {
+    let mut map = vec![0; unified_len];
+    for (ix, row) in split.iter().enumerate() {
+        let (b, a) = row.unified_rows();
+        for u in [b, a].into_iter().flatten() {
+            if u < unified_len {
+                map[u] = ix;
+            }
+        }
+    }
+    map
+}
+
+/// Which column of a split row a side belongs to (`DiffColumn`).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Column {
+    Before,
+    After,
+}
+
+/// `.line-number` of one side: `[check][number]`, selectable when the line
+/// is a change (`renderLineNumber`).
+#[allow(clippy::too_many_arguments)]
+fn split_line_number(
+    ctx: &RowContext,
+    row: &Row,
+    number: Option<u32>,
+    column: Column,
+    changed: bool,
+    empty: bool,
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let selectable = ctx.selectable;
+    let check_width = if selectable && ctx.show_check_marks {
+        CHECK_WIDTH
+    } else {
+        0.
+    };
+    let original = row.original.unwrap_or(row.abs);
+    let selected = selectable && changed && is_selected(&ctx.selection, ctx.temp, original);
+    let group_hover = selectable
+        && row
+            .group
+            .map(|(s, _)| ctx.hovered_group == Some(s))
+            .unwrap_or(false);
+    let (gutter_bg, gutter_border, text) = if empty {
+        (
+            t.diff_empty_row_gutter_background,
+            t.diff_border,
+            t.diff_line_number,
+        )
+    } else {
+        match (changed, column) {
+            (true, Column::Before) => (
+                t.diff_delete_gutter_background,
+                t.diff_delete_border,
+                t.diff_line_number,
+            ),
+            (true, Column::After) => (
+                t.diff_add_gutter_background,
+                t.diff_add_border,
+                t.diff_line_number,
+            ),
+            (false, _) => (t.diff_gutter_background, t.diff_border, t.diff_line_number),
+        }
+    };
+    let normal = if selected {
+        (
+            t.diff_selected_background,
+            t.diff_selected_border,
+            t.diff_selected_text,
+        )
+    } else {
+        (gutter_bg, gutter_border, text)
+    };
+    let hover = if selected {
+        (
+            t.diff_hover_background,
+            t.diff_hover_border,
+            t.diff_hover_text,
+        )
+    } else if column == Column::After {
+        (
+            t.diff_add_hover_background,
+            t.diff_add_hover_border,
+            t.diff_add_hover_text,
+        )
+    } else {
+        (
+            t.diff_delete_hover_background,
+            t.diff_delete_hover_border,
+            t.diff_delete_hover_text,
+        )
+    };
+    let (bg, border, fg) = if group_hover && changed {
+        hover
+    } else {
+        normal
+    };
+    let stored_selected = ctx.selection.is_selected(original);
+    let view_for_down = ctx.view.clone();
+    let view_for_menu = ctx.view.clone();
+    let hide_whitespace = ctx.hide_whitespace;
+    let group_type = row.group_type;
+    let side = if column == Column::Before { 0 } else { 1 };
+    div()
+        .id(("split-gutter", row.abs as usize * 2 + side))
+        .w(px(LINE_NUMBER_WIDTH + check_width))
+        .flex_none()
+        .flex()
+        .flex_row()
+        .items_stretch()
+        .bg(bg)
+        .when(column == Column::Before, |d| d.border_l_1())
+        .when(column == Column::After, |d| d.border_r_1())
+        .border_color(border)
+        .text_color(fg)
+        .when(selectable && changed, |d| {
+            d.cursor_pointer()
+                .hover(move |s| s.bg(hover.0).border_color(hover.1).text_color(hover.2))
+                .on_mouse_down(MouseButton::Left, move |ev, _, cx| {
+                    view_for_down
+                        .update(cx, |this, cx| {
+                            if hide_whitespace {
+                                this.show_whitespace_hint(ev.position, cx);
+                                return;
+                            }
+                            this.start_selection(
+                                TempSelection {
+                                    from: original,
+                                    to: original,
+                                    selected: !stored_selected,
+                                },
+                                cx,
+                            )
+                        })
+                        .ok();
+                })
+                .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
+                    if hide_whitespace {
+                        return;
+                    }
+                    if let Some(group_type) = group_type {
+                        view_for_menu
+                            .update(cx, |this, cx| {
+                                this.line_menu(original, group_type, ev.position, window, cx)
+                            })
+                            .ok();
+                    }
+                })
+        })
+        .when(check_width > 0., |d| {
+            d.child(
+                div()
+                    .w(px(CHECK_WIDTH))
+                    .flex_none()
+                    .flex()
+                    .justify_center()
+                    .items_center()
+                    .when(selected, |d| {
+                        d.child(octicon(Octicon::DiffCheck, fg).size(px(12.)))
+                    }),
+            )
+        })
+        .child(
+            div()
+                .flex_1()
+                .flex()
+                .justify_end()
+                .items_center()
+                .px(SPACING_HALF)
+                .child(number.map(|n| n.to_string()).unwrap_or_default()),
+        )
+        .into_any_element()
+}
+
+/// `.content` of one side: prefix + text with syntax, search and inner-change
+/// highlights (`renderContent`).
+fn split_content(
+    ctx: &RowContext,
+    row: &Row,
+    prefix: &'static str,
+    inner: Option<(Range<usize>, Hsla)>,
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let unified = row.abs as usize;
+    let spans: &[Span] = ctx
+        .tokens
+        .as_ref()
+        .and_then(|tk| tk.get(unified))
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
+    let hits: &[(Range<usize>, bool)] = ctx
+        .search
+        .as_ref()
+        .and_then(|s| s.by_row.get(&unified))
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
+    let text = SharedString::from(row.text.clone());
+    let body: AnyElement = if spans.is_empty() && hits.is_empty() && inner.is_none() {
+        text.into_any_element()
+    } else {
+        let highlights = merge_highlights(spans, hits, inner, row.text.len(), t);
+        StyledText::new(text)
+            .with_highlights(highlights)
+            .into_any_element()
+    };
+    let view_for_menu = ctx.view.clone();
+    div()
+        .id(("split-text", unified))
+        .flex_1()
+        .min_w_0()
+        .flex()
+        .flex_row()
+        .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
+            view_for_menu
+                .update(cx, |this, cx| this.expand_menu(ev.position, window, cx))
+                .ok();
+        })
+        .child(div().flex_none().whitespace_nowrap().child(prefix))
+        .child(div().flex_1().min_w_0().child(body))
+        .when(row.no_newline, |d| {
+            d.child(
+                div()
+                    .flex_none()
+                    .italic()
+                    .ml(px(4.))
+                    .text_color(t.diff_alt_text)
+                    .child("No newline at end of file"),
+            )
+        })
+        .into_any_element()
+}
+
+/// The centre strip of a split row: the block toggle for changed rows, a
+/// plain divider for context rows (`.editable .row.context` borders).
+fn split_handle(ctx: &RowContext, row: Option<&Row>, width: f32, cx: &App) -> AnyElement {
+    let t = cx.ghd();
+    let Some(row) = row.filter(|r| r.group.is_some()) else {
+        return div()
+            .absolute()
+            .top_0()
+            .bottom_0()
+            .left(gpui_kit::relative(0.5))
+            .ml(px(-width / 2.))
+            .w(px(width))
+            .bg(t.diff_border)
+            .into_any_element();
+    };
+    let (start, len) = row.group.unwrap_or((0, 0));
+    let group_type = row.group_type.unwrap_or(RangeType::Mixed);
+    let kind = ctx
+        .groups
+        .get(&start)
+        .copied()
+        .unwrap_or(DiffSelectionType::None);
+    let bg = if kind != DiffSelectionType::None {
+        t.diff_selected_border
+    } else {
+        t.diff_empty_hunk_handle
+    };
+    let repo = ctx.repo;
+    let path_for_click = ctx.path.clone();
+    let view = ctx.view.clone();
+    let view_for_menu = ctx.view.clone();
+    let view_for_hint = ctx.view.clone();
+    let hide_whitespace = ctx.hide_whitespace;
+    div()
+        .id(("split-hunk-handle", row.abs as usize))
+        .absolute()
+        .top_0()
+        .bottom_0()
+        .left(gpui_kit::relative(0.5))
+        .ml(px(-width / 2.))
+        .w(px(width))
+        .bg(bg)
+        .cursor_pointer()
+        .on_hover(move |hovered: &bool, _, cx| {
+            let next = if *hovered { Some(start) } else { None };
+            view.update(cx, |this, cx| this.set_hovered_group(next, cx))
+                .ok();
+        })
+        .on_click(move |ev: &ClickEvent, _, cx| {
+            if hide_whitespace {
+                view_for_hint
+                    .update(cx, |this, cx| this.show_whitespace_hint(ev.position(), cx))
+                    .ok();
+                return;
+            }
+            Dispatcher::set_diff_lines(
+                repo,
+                path_for_click.clone(),
+                start,
+                len,
+                kind != DiffSelectionType::All,
+                cx,
+            )
+        })
+        .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
+            view_for_menu
+                .update(cx, |this, cx| {
+                    this.hunk_menu(start, len, group_type, ev.position, window, cx)
+                })
+                .ok();
+        })
+        .when(
+            row.original == Some(start) && len > 1 && ctx.show_check_marks,
+            |d| {
+                d.flex().justify_center().items_start().pt(px(3.)).children(
+                    match kind {
+                        DiffSelectionType::All => Some(Octicon::DiffCheck),
+                        DiffSelectionType::Partial => Some(Octicon::DiffDash),
+                        DiffSelectionType::None => None,
+                    }
+                    .map(|icon| octicon(icon, white()).size(px(12.))),
+                )
+            },
+        )
+        .into_any_element()
+}
+
+/// GHD `SideBySideDiffRow` in split mode.
+pub fn render_split_row(
+    ctx: &RowContext,
+    ix: usize,
+    row: &SplitRow,
+    rows: &[Row],
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let selectable = ctx.selectable;
+    // `--hunk-handle-width`: 4 px, 16 px with the check-all control
+    let handle_width = if selectable && ctx.show_check_marks {
+        HANDLE_WIDTH
+    } else {
+        4.
+    };
+    let base = div()
+        .id(("split-row", ix))
+        .relative()
+        .min_h(DIFF_LINE_HEIGHT)
+        .w_full()
+        .flex_none()
+        .flex()
+        .flex_row()
+        .items_stretch();
+
+    match row {
+        SplitRow::Hunk { unified } => {
+            let r = &rows[*unified];
+            let check = if selectable && ctx.show_check_marks {
+                CHECK_WIDTH
+            } else {
+                0.
+            };
+            let width = LINE_NUMBER_WIDTH + check;
+            let height = r.height();
+            let gutter: AnyElement = match r.expansion {
+                HunkExpansionType::Both => div()
+                    .flex_none()
+                    .flex()
+                    .flex_col()
+                    .child(expansion_handle(
+                        ctx,
+                        r,
+                        HunkExpansionType::Down,
+                        width,
+                        DIFF_LINE_HEIGHT,
+                        cx,
+                    ))
+                    .child(expansion_handle(
+                        ctx,
+                        r,
+                        HunkExpansionType::Up,
+                        width,
+                        DIFF_LINE_HEIGHT,
+                        cx,
+                    ))
+                    .into_any_element(),
+                kind => expansion_handle(ctx, r, kind, width, height, cx),
+            };
+            base.min_h(height)
+                .bg(t.diff_hunk_background)
+                .text_color(t.diff_hunk_text)
+                .child(gutter)
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .items_center()
+                        .child(split_content(ctx, r, "     ", None, cx)),
+                )
+                .into_any_element()
+        }
+        SplitRow::Context { unified } => {
+            let r = &rows[*unified];
+            let side = |column: Column| {
+                let number = if column == Column::Before {
+                    r.old
+                } else {
+                    r.new
+                };
+                let ln = split_line_number(ctx, r, number, column, false, false, cx);
+                let content = split_content(ctx, r, "     ", None, cx);
+                let mut d = div()
+                    .w(gpui_kit::relative(0.5))
+                    .min_w_0()
+                    .flex()
+                    .flex_row()
+                    .items_stretch()
+                    .bg(t.background)
+                    .text_color(t.diff_text);
+                // `.editable .row .before { flex-direction: row-reverse }`
+                if selectable && column == Column::Before {
+                    d = d.child(content).child(ln);
+                } else {
+                    d = d.child(ln).child(content);
+                }
+                d
+            };
+            base.child(side(Column::Before))
+                .child(side(Column::After))
+                .when(selectable, |d| {
+                    d.child(split_handle(ctx, None, handle_width, cx))
+                })
+                .into_any_element()
+        }
+        SplitRow::Added { .. } | SplitRow::Deleted { .. } | SplitRow::Modified { .. } => {
+            let (before, after) = match row {
+                SplitRow::Added { after } => (None, Some(after)),
+                SplitRow::Deleted { before } => (Some(before), None),
+                SplitRow::Modified { before, after } => (Some(before), Some(after)),
+                _ => (None, None),
+            };
+            let group_row = before
+                .or(after)
+                .map(|s| &rows[s.unified])
+                .expect("a changed split row has a side");
+            let side = |column: Column, side: Option<&SplitSide>| {
+                let (bg, fg) = match (side.is_some(), column) {
+                    (false, _) => (t.diff_empty_row_background, t.diff_text),
+                    (true, Column::Before) => (t.diff_delete_background, t.diff_delete_text),
+                    (true, Column::After) => (t.diff_add_background, t.diff_add_text),
+                };
+                let mut d = div()
+                    .w(gpui_kit::relative(0.5))
+                    .min_w_0()
+                    .flex()
+                    .flex_row()
+                    .items_stretch()
+                    .bg(bg)
+                    .text_color(fg);
+                let (ln, content): (AnyElement, AnyElement) = match side {
+                    Some(s) => {
+                        let r = &rows[s.unified];
+                        let number = if column == Column::Before {
+                            r.old
+                        } else {
+                            r.new
+                        };
+                        let inner_color = if column == Column::Before {
+                            t.diff_delete_inner_background
+                        } else {
+                            t.diff_add_inner_background
+                        };
+                        let inner = s.inner.clone().map(|r| (r, inner_color));
+                        let prefix = if column == Column::Before {
+                            "  -  "
+                        } else {
+                            "  +  "
+                        };
+                        (
+                            split_line_number(ctx, r, number, column, true, false, cx),
+                            split_content(ctx, r, prefix, inner, cx),
+                        )
+                    }
+                    None => (
+                        split_line_number(ctx, group_row, None, column, false, true, cx),
+                        div().flex_1().into_any_element(),
+                    ),
+                };
+                if selectable && column == Column::Before {
+                    d = d.child(content).child(ln);
+                } else {
+                    d = d.child(ln).child(content);
+                }
+                if let Some(s) = side.filter(|_| selectable) {
+                    // extend the drag as the pointer crosses changed rows
+                    let original = rows[s.unified].original.unwrap_or(rows[s.unified].abs);
+                    let view = ctx.view.clone();
+                    let hide_whitespace = ctx.hide_whitespace;
+                    d = d.on_mouse_move(move |_, _, cx| {
+                        if !hide_whitespace {
+                            view.update(cx, |this, cx| this.extend_selection(original, cx))
+                                .ok();
+                        }
+                    });
+                }
+                d
+            };
+            base.child(side(Column::Before, before))
+                .child(side(Column::After, after))
+                .when(selectable, |d| {
+                    d.child(split_handle(ctx, Some(group_row), handle_width, cx))
+                })
+                .into_any_element()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // explicit imports: `gpui_kit::*` would shadow `#[test]` with GPUI's macro
-    use super::{RangeType, SearchHit, build_rows, search_rows};
+    use super::{
+        RangeType, SearchHit, SplitRow, build_rows, build_split_rows, relative_changes,
+        search_rows, unified_to_split,
+    };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
     fn hunk() -> DiffHunk {
@@ -787,5 +1453,37 @@ mod tests {
             RangeType::Deletions.discard_label(2, true),
             "Discard Removed Lines…"
         );
+    }
+
+    #[test]
+    fn relative_changes_trim_common_ends() {
+        assert_eq!(
+            relative_changes("hello world", "hello there world"),
+            (6..6, 6..12)
+        );
+        assert_eq!(relative_changes("abc", "abc"), (3..3, 3..3));
+        assert_eq!(relative_changes("café x", "café y"), (6..7, 6..7));
+        assert_eq!(relative_changes("", "new"), (0..0, 0..3));
+    }
+
+    #[test]
+    fn split_rows_pair_changes() {
+        let x = crate::diff_expansion::from_hunks(&[hunk()], None);
+        let rows = build_rows(&x);
+        let split = build_split_rows(&rows);
+        // hunk, context, modified(beta/Beta), added(gamma), context
+        assert_eq!(split.len(), 5);
+        match &split[2] {
+            SplitRow::Modified { before, after } => {
+                assert_eq!((before.unified, after.unified), (2, 3));
+                // counts differ (1 deleted, 2 added) → no intra-line ranges
+                assert_eq!(before.inner, None);
+            }
+            other => panic!("unexpected {other:?}"),
+        }
+        assert!(matches!(split[3], SplitRow::Added { .. }));
+        let map = unified_to_split(&split, rows.len());
+        assert_eq!(map[3], 2);
+        assert_eq!(map[4], 3);
     }
 }
