@@ -20,6 +20,7 @@ pub mod puppet;
 pub mod python;
 pub mod q;
 pub mod rpm;
+pub mod rst;
 pub mod ruby;
 pub mod shell;
 pub mod sieve;
@@ -230,6 +231,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-rpm-spec" => Some(Arc::new(rpm::RpmSpec)),
         "text/x-rpm-changes" => Some(Arc::new(rpm::RpmChanges)),
         "text/x-oz" => Some(Arc::new(oz::Oz)),
+        "text/x-rst" => Some(cached!(rst::Rst::new())),
         "application/pgp"
         | "application/pgp-encrypted"
         | "application/pgp-keys"
