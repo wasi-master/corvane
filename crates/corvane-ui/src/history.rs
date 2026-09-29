@@ -224,6 +224,21 @@ impl HistorySidebar {
     }
 
     /// Escape / clear (`handleEscape`): back to the history.
+    /// GHD `onBranchFilterBlur`: hide the list; an empty filter with nothing
+    /// chosen drops back to the plain history.
+    fn compare_blur(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        self.focused_branch = None;
+        Dispatcher::set_compare_branch_list_visible(id, false, cx);
+        if self.compare_query(cx).is_empty() {
+            Dispatcher::exit_compare(id, cx);
+        }
+        window.blur(cx);
+        cx.notify();
+    }
+
     fn compare_clear(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(id) = self.state.read(cx).selected else {
             return;
@@ -1550,6 +1565,12 @@ impl Render for HistorySidebar {
             .flex()
             .flex_col()
             .min_h_0()
+            // `onBranchFilterBlur`: clicking anywhere else closes the branch list.
+            .when(show_list, |d| {
+                d.on_mouse_down_out(
+                    cx.listener(|this, _, window, cx| this.compare_blur(window, cx)),
+                )
+            })
             .child(
                 // `#compare-view .compare-form`
                 div()
