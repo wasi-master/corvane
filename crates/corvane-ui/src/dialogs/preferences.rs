@@ -25,9 +25,20 @@ use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    Inline, SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled, link_button,
-    paragraph, radio, radio_row, section_heading, select_button, settings_description, text_box,
+    Inline, ListRowA11y, SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled,
+    link_button, paragraph, radio, radio_row, section_heading, select_button, settings_description,
+    text_box,
 };
+
+/// Error messages start lowercase (they follow "could not …"); a sentence
+/// of their own starts with a capital.
+fn capitalize(text: &str) -> String {
+    let mut chars = text.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
+}
 
 /// `isValidCustomIntegration`: the bundle id of a `.app` path (kept when the
 /// path did not change, `mdls` is a subprocess).
@@ -1462,6 +1473,140 @@ impl PreferencesDialog {
                      reports. Reports never leave this Mac.",
                 ),
             )
+            // Corvane addition: on-demand packs
+            .child(div().mt(SPACING).child(section_heading("Optional components", cx)))
+            .children(
+                corvane_core::OFFERED_PACKS
+                    .iter()
+                    .map(|kind| self.pack_row(*kind, cx)),
+            )
+            .into_any_element()
+    }
+
+    /// One on-demand pack: its state (compiled in / installed / downloading /
+    /// not installed) and the Download / Remove action.
+    fn pack_row(&self, kind: corvane_packs::PackKind, cx: &Context<Self>) -> AnyElement {
+        use corvane_packs::PackKind;
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let packs = &s.packs;
+        let entry = packs
+            .manifest
+            .as_ref()
+            .and_then(|m| m.entry_for(kind, env!("CARGO_PKG_VERSION")).cloned());
+        let description = match kind {
+            PackKind::SyntaxExtended => {
+                "Syntax highlighting for the languages beyond the built-in set \
+                 (two-face's full grammar collection). Downloaded from Corvane's \
+                 GitHub releases and verified before use."
+            }
+            PackKind::GitPortable => "A private copy of Git for machines without one.",
+            PackKind::GitLfs => "Git Large File Storage for repositories that use it.",
+        };
+        let size_mb = |bytes: u64| format!("{:.1} MB", bytes as f64 / 1_048_576.0);
+        let (status, action): (String, Option<AnyElement>) = if packs.bundled(kind) {
+            ("Included in this build.".to_string(), None)
+        } else if let Some(progress) = packs.progress.get(&kind) {
+            let text = match progress.total {
+                Some(total) if total > 0 => format!(
+                    "Downloading… {}%",
+                    (progress.received * 100 / total).min(100)
+                ),
+                _ if packs.manifest_loading => "Checking what is available…".to_string(),
+                _ => "Downloading…".to_string(),
+            };
+            (text, None)
+        } else if let Some(installed) = packs.installed.get(&kind) {
+            let newer = entry
+                .as_ref()
+                .filter(|e| e.version != installed.version)
+                .map(|e| e.version.clone());
+            let text = match newer {
+                Some(v) => format!(
+                    "Installed (version {}; {v} is available).",
+                    installed.version
+                ),
+                None => format!("Installed (version {}).", installed.version),
+            };
+            let mut actions = div().flex().flex_row().items_center().gap(SPACING);
+            if entry
+                .as_ref()
+                .is_some_and(|e| e.version != installed.version)
+            {
+                actions = actions.child(
+                    button("prefs-pack-update", "Update", cx)
+                        .on_click(move |_, _, cx| Dispatcher::install_pack(kind, cx)),
+                );
+            }
+            actions = actions.child(
+                button("prefs-pack-remove", "Remove", cx)
+                    .on_click(move |_, _, cx| Dispatcher::uninstall_pack(kind, cx)),
+            );
+            (text, Some(actions.into_any_element()))
+        } else {
+            let label = match &entry {
+                Some(e) if e.size > 0 => format!("Download ({})", size_mb(e.size)),
+                _ => "Download".to_string(),
+            };
+            let text = match (&entry, &packs.manifest_error, packs.manifest_loading) {
+                (Some(_), _, _) => "Not installed.".to_string(),
+                (None, _, true) => "Not installed. Checking what is available…".to_string(),
+                (None, Some(err), _) => format!("Not installed. {}", capitalize(err)),
+                (None, None, _) if packs.manifest.is_some() => {
+                    "Not installed. No version for this Corvane is published.".to_string()
+                }
+                (None, None, _) => "Not installed.".to_string(),
+            };
+            let enabled = entry.is_some();
+            (
+                text,
+                Some(
+                    button("prefs-pack-download", label, cx)
+                        .when(!enabled, |d| d.opacity(0.6))
+                        .on_click(move |_, _, cx| {
+                            if enabled {
+                                Dispatcher::install_pack(kind, cx);
+                            }
+                        })
+                        .into_any_element(),
+                ),
+            )
+        };
+        let error = packs.errors.get(&kind).map(|e| capitalize(e));
+        div()
+            .flex()
+            .flex_col()
+            .mt(SPACING)
+            .child(div().font_weight(FontWeight::SEMIBOLD).child(kind.title()))
+            .child(settings_description(cx).mt(px(2.)).child(description))
+            .child(
+                div()
+                    .mt(SPACING)
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_between()
+                    .gap(SPACING)
+                    .child(
+                        div()
+                            .id(match kind {
+                                PackKind::SyntaxExtended => "prefs-pack-status-syntax",
+                                PackKind::GitPortable => "prefs-pack-status-git",
+                                PackKind::GitLfs => "prefs-pack-status-lfs",
+                            })
+                            .a11y_live(status.clone())
+                            .text_size(FONT_SIZE_SM)
+                            .child(status),
+                    )
+                    .children(action),
+            )
+            .children(error.map(|e| {
+                div()
+                    .mt(SPACING_HALF)
+                    .text_size(FONT_SIZE_SM)
+                    .text_color(t.error)
+                    .child(e)
+            }))
             .into_any_element()
     }
 

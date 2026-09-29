@@ -783,6 +783,8 @@ pub struct AppState {
     pub pending_open_in_desktop: Option<crate::app_url::PendingOpenInDesktop>,
     /// `UpdateStore` state + `isUpdateAvailableBannerVisible`.
     pub update: crate::updater::UpdateState,
+    /// On-demand packs.
+    pub packs: crate::packs::PacksState,
 }
 
 struct AppStateHandle(Entity<AppState>);

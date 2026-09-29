@@ -5,6 +5,18 @@ edition.workspace = true
 license.workspace = true
 description = "Corvane diff syntax highlighting (syntect)"
 
+[features]
+# The "full" build: two-face's whole grammar collection compiled in instead
+# of the on-demand `syntax-extended` pack.
+bundled-syntax-extended = ["dep:two-face"]
+# `cargo run -p corvane-highlight --features pack-builder --example dump-extended <out>`
+# writes the pack's syntaxes.packdump (packaging/packs.sh).
+pack-builder = ["dep:two-face", "syntect/dump-create"]
+
 [dependencies]
 syntect.workspace = true
-two-face.workspace = true
+two-face = { workspace = true, optional = true }
+
+[[example]]
+name = "dump-extended"
+required-features = ["pack-builder"]

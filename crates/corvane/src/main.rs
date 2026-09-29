@@ -834,6 +834,8 @@ fn main() {
         Dispatcher::check_move_to_applications_folder(cx);
         // `checkForUpdates(true)` at launch and every four hours (release builds)
         Dispatcher::start_update_checks(cx);
+        // on-demand packs installed earlier (extended grammars)
+        Dispatcher::load_installed_packs(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
             if let Some((id, _)) = current_branch(cx) {
                 Dispatcher::start_rebase_flow(id, cx);

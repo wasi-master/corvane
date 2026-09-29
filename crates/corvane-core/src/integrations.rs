@@ -496,6 +496,10 @@ impl Dispatcher {
         });
         Self::show_popup(Popup::Preferences { tab }, cx);
         Self::detect_integrations(cx);
+        // Settings › Advanced lists the on-demand packs from the manifest
+        if Self::state(cx).read(cx).packs.manifest.is_none() {
+            Self::refresh_packs_manifest(cx);
+        }
         let Some(git) = Self::state(cx).read(cx).git.clone() else {
             return;
         };

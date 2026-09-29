@@ -1,11 +1,14 @@
 //! Line-stateful syntax highlighting for diffs: syntect parsing
-//! with the two-face grammar set, classified into GitHub Desktop's CodeMirror
-//! token classes (`styles/ui/_diff.scss` `.cm-s-default`) so the UI can colour
-//! them with the `--syntax-*-color` tokens. Grammars load lazily on first use.
+//! with the compiled-in grammar set or the `syntax-extended` pack
+//! (`syntaxes`), classified into GitHub Desktop's CodeMirror token classes
+//! (`styles/ui/_diff.scss` `.cm-s-default`) so the UI can colour them with
+//! the `--syntax-*-color` tokens. Grammars load lazily on first use.
+
+pub mod syntaxes;
 
 use std::ops::Range;
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use syntect::easy::ScopeRangeIterator;
 use syntect::highlighting::ScopeSelectors;
@@ -39,9 +42,8 @@ pub struct Span {
 /// Highlighting stops after this many bytes (GHD `MaxHighlightContentLength`).
 pub const MAX_HIGHLIGHT_BYTES: usize = 256 * 1024;
 
-fn syntax_set() -> &'static SyntaxSet {
-    static SET: OnceLock<SyntaxSet> = OnceLock::new();
-    SET.get_or_init(two_face::syntax::extra_newlines)
+fn syntax_set() -> Arc<SyntaxSet> {
+    syntaxes::current()
 }
 
 struct Classifier {
@@ -93,8 +95,7 @@ fn classifier() -> &'static Classifier {
 }
 
 /// Grammar for a path by extension, then by first line (shebang etc.).
-pub fn syntax_for(path: &str, first_line: &str) -> Option<&'static SyntaxReference> {
-    let ss = syntax_set();
+fn syntax_for<'a>(ss: &'a SyntaxSet, path: &str, first_line: &str) -> Option<&'a SyntaxReference> {
     let ext = std::path::Path::new(path)
         .extension()
         .and_then(|e| e.to_str())
@@ -117,8 +118,9 @@ pub fn highlight_lines<'a>(
 ) -> Option<Vec<Vec<Span>>> {
     let mut lines = lines.into_iter().peekable();
     let first = lines.peek().copied().unwrap_or("");
-    let syntax = syntax_for(path, first)?;
     let ss = syntax_set();
+    let syntax = syntax_for(&ss, path, first)?;
+    let ss = &*ss;
     let classes = classifier();
     let mut state = ParseState::new(syntax);
     let mut stack = ScopeStack::new();
