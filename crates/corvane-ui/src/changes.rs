@@ -2,7 +2,7 @@
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 
 use std::cell::Cell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use corvane_core::filter::{filtered_files, no_results_message, option_count};
@@ -15,7 +15,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::actions::{Commit, SelectNextFile, SelectPreviousFile};
+use crate::actions::{Commit, SelectAllFiles, SelectNextFile, SelectPreviousFile};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon};
@@ -401,8 +401,9 @@ impl ChangesSidebar {
         }
     }
 
-    /// GHD `getDefaultContextMenu` for one file (multi-select variants come
-    /// with multi-selection).
+    /// GHD `onItemContextMenu`: the default menu, or the reduced one while a
+    /// rebase is stopped on conflicts (`getRebaseContextMenu`). Right-clicking
+    /// inside the current selection applies the items to every selected file.
     fn open_file_menu(
         &mut self,
         file: WorkingDirectoryFileChange,
@@ -410,100 +411,194 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, repo_path) = {
+        let (id, confirm, repo_path, selected_files, rebase_conflict, status_files) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
-            if s.selected_state().map(|r| r.committing).unwrap_or(false) {
+            let Some(rs) = s.selected_state() else { return };
+            if rs.committing {
                 return;
             }
             let Some(repo) = s.repository(id) else { return };
-            (id, s.settings.confirm_discard_changes, repo.path.clone())
+            (
+                id,
+                s.settings.confirm_discard_changes,
+                repo.path.clone(),
+                rs.selected_files.clone(),
+                rs.conflict_state
+                    .as_ref()
+                    .is_some_and(|c| matches!(c.kind, corvane_core::ConflictKind::Rebase { .. })),
+                rs.status
+                    .as_ref()
+                    .map(|st| st.files.clone())
+                    .unwrap_or_default(),
+            )
         };
         let path = file.path.clone();
         let full = repo_path.join(&path);
         let deleted = file.status.kind == FileStatusKind::Deleted;
-        let is_gitignore = file.file_name() == ".gitignore";
-        let extension = Path::new(&path)
-            .extension()
-            .map(|e| format!(".{}", e.to_string_lossy()));
-        let parents: Vec<&str> = {
-            let mut components: Vec<&str> = path.split('/').collect();
-            components.pop();
-            components
-        };
-        let mut items = vec![
-            MenuItem::new(
-                if confirm {
-                    "Discard Changes…"
-                } else {
-                    "Discard Changes"
-                },
-                {
-                    let p = path.clone();
-                    move |_, cx| Dispatcher::request_discard_changes(id, vec![p.clone()], cx)
-                },
-            ),
-            MenuItem::separator(),
-            MenuItem::new("Ignore File (Add to .gitignore)", {
-                let p = path.clone();
-                move |_, cx| Dispatcher::ignore_files(id, vec![p.clone()], cx)
+        let editor_label = self.state.read(cx).editor_label();
+        let discard_item = |paths: Vec<String>| {
+            // `getDiscardChangesMenuItemLabel`
+            let label = match (paths.len(), confirm) {
+                (1, true) => "Discard Changes…".to_string(),
+                (1, false) => "Discard Changes".to_string(),
+                (n, true) => format!("Discard {n} Selected Changes…"),
+                (n, false) => format!("Discard {n} Selected Changes"),
+            };
+            MenuItem::new(label, move |_, cx| {
+                Dispatcher::request_discard_changes(id, paths.clone(), cx)
             })
-            .enabled(!is_gitignore),
-        ];
-        if !parents.is_empty() {
-            let folders: Vec<MenuItem> = (0..parents.len())
-                .map(|index| {
-                    let label = format!("/{}", parents[..parents.len() - index].join("/"));
-                    let pattern = label.clone();
-                    MenuItem::new(label, move |_, cx| {
-                        Dispatcher::ignore_files(id, vec![pattern.clone()], cx)
-                    })
+        };
+        let copy_items = |files: Vec<WorkingDirectoryFileChange>| {
+            let multi = files.len() > 1;
+            let absolute = files
+                .iter()
+                .map(|f| repo_path.join(&f.path).to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let relative = files
+                .iter()
+                .map(|f| f.path.clone())
+                .collect::<Vec<_>>()
+                .join("\n");
+            vec![
+                MenuItem::new(
+                    if multi {
+                        "Copy Paths"
+                    } else {
+                        "Copy File Path"
+                    },
+                    move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(absolute.clone())),
+                ),
+                MenuItem::new(
+                    if multi {
+                        "Copy Relative Paths"
+                    } else {
+                        "Copy Relative File Path"
+                    },
+                    move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(relative.clone())),
+                ),
+            ]
+        };
+        let open_items = |full: PathBuf, deleted: bool| {
+            let reveal = full.clone();
+            let editor = full.clone();
+            let default = full;
+            vec![
+                MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
+                    .enabled(!deleted),
+                MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
+                    Dispatcher::open_in_editor(editor.clone(), cx)
                 })
-                .collect();
+                .enabled(!deleted),
+                MenuItem::new("Open with Default Program", move |_, cx| {
+                    cx.open_with_system(&default)
+                })
+                .enabled(!deleted),
+            ]
+        };
+
+        if rebase_conflict {
+            let mut items = Vec::new();
+            if file.status.kind == FileStatusKind::Untracked {
+                items.push(discard_item(vec![path.clone()]));
+                items.push(MenuItem::separator());
+            }
+            items.extend(copy_items(vec![file.clone()]));
+            items.push(MenuItem::separator());
+            items.extend(open_items(full, deleted));
+            self.open_menu(items, position, window, cx);
+            return;
+        }
+
+        // `getDefaultContextMenu`
+        let targets: Vec<WorkingDirectoryFileChange> = if selected_files.contains(&path) {
+            status_files
+                .into_iter()
+                .filter(|f| selected_files.contains(&f.path))
+                .collect()
+        } else {
+            vec![file.clone()]
+        };
+        let paths: Vec<String> = targets.iter().map(|f| f.path.clone()).collect();
+        let mut items = vec![discard_item(paths.clone()), MenuItem::separator()];
+        if paths.len() == 1 {
+            let is_gitignore = file.file_name() == ".gitignore";
             items.push(
-                MenuItem::submenu("Ignore Folder (Add to .gitignore)", folders)
-                    .enabled(!is_gitignore),
+                MenuItem::new("Ignore File (Add to .gitignore)", {
+                    let p = path.clone();
+                    move |_, cx| Dispatcher::ignore_files(id, vec![p.clone()], cx)
+                })
+                .enabled(!is_gitignore),
+            );
+            let parents: Vec<&str> = {
+                let mut components: Vec<&str> = path.split('/').collect();
+                components.pop();
+                components
+            };
+            if !parents.is_empty() {
+                let folders: Vec<MenuItem> = (0..parents.len())
+                    .map(|index| {
+                        let label = format!("/{}", parents[..parents.len() - index].join("/"));
+                        let pattern = label.clone();
+                        MenuItem::new(label, move |_, cx| {
+                            Dispatcher::ignore_files(id, vec![pattern.clone()], cx)
+                        })
+                    })
+                    .collect();
+                items.push(
+                    MenuItem::submenu("Ignore Folder (Add to .gitignore)", folders)
+                        .enabled(!is_gitignore),
+                );
+            }
+        } else {
+            let ignorable: Vec<String> = paths
+                .iter()
+                .filter(|p| !p.ends_with(".gitignore"))
+                .cloned()
+                .collect();
+            let enabled = !ignorable.is_empty();
+            items.push(
+                MenuItem::new(
+                    format!("Ignore {} Selected Files (Add to .gitignore)", paths.len()),
+                    move |_, cx| Dispatcher::ignore_files(id, ignorable.clone(), cx),
+                )
+                .enabled(enabled),
             );
         }
-        if let Some(ext) = extension {
+        // "Five menu items should be enough for everyone"
+        let mut extensions: Vec<String> = Vec::new();
+        for p in &paths {
+            if let Some(ext) = Path::new(p)
+                .extension()
+                .map(|e| format!(".{}", e.to_string_lossy()))
+                && !extensions.contains(&ext)
+            {
+                extensions.push(ext);
+            }
+        }
+        for ext in extensions.into_iter().take(5) {
             let pattern = format!("*{ext}");
             items.push(MenuItem::new(
                 format!("Ignore All {ext} Files (Add to .gitignore)"),
                 move |_, cx| Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx),
             ));
         }
+        if paths.len() > 1 {
+            items.push(MenuItem::separator());
+            let include = paths.clone();
+            items.push(MenuItem::new("Include Selected Files", move |_, cx| {
+                Dispatcher::set_files_included(id, include.clone(), true, cx)
+            }));
+            let exclude = paths.clone();
+            items.push(MenuItem::new("Exclude Selected Files", move |_, cx| {
+                Dispatcher::set_files_included(id, exclude.clone(), false, cx)
+            }));
+        }
         items.push(MenuItem::separator());
-        items.push(MenuItem::new("Copy File Path", {
-            let text = full.to_string_lossy().into_owned();
-            move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(text.clone()))
-        }));
-        items.push(MenuItem::new("Copy Relative File Path", {
-            let p = path.clone();
-            move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(p.clone()))
-        }));
+        items.extend(copy_items(targets));
         items.push(MenuItem::separator());
-        items.push(
-            MenuItem::new("Reveal in Finder", {
-                let f = full.clone();
-                move |_, cx| cx.reveal_path(&f)
-            })
-            .enabled(!deleted),
-        );
-        let editor_label = self.state.read(cx).editor_label();
-        items.push(
-            MenuItem::new(format!("Open in {editor_label}"), {
-                let f = full.clone();
-                move |_, cx| Dispatcher::open_in_editor(f.clone(), cx)
-            })
-            .enabled(!deleted),
-        );
-        items.push(
-            MenuItem::new("Open with Default Program", {
-                let f = full.clone();
-                move |_, cx| cx.open_with_system(&f)
-            })
-            .enabled(!deleted),
-        );
+        items.extend(open_items(full, deleted));
         self.open_menu(items, position, window, cx);
     }
 
@@ -744,7 +839,9 @@ impl ChangesSidebar {
         } else {
             None
         };
-        let selected = rs.and_then(|r| r.selected_file.clone());
+        let selected: Rc<Vec<String>> =
+            Rc::new(rs.map(|r| r.selected_files.clone()).unwrap_or_default());
+        let order: Rc<Vec<String>> = Rc::new(files.iter().map(|f| f.path.clone()).collect());
         let files = Rc::new(files);
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
@@ -769,10 +866,11 @@ impl ChangesSidebar {
                     range
                         .map(|ix| {
                             let file = &files[ix];
-                            let is_selected = selected.as_deref() == Some(file.path.as_str());
+                            let is_selected = selected.contains(&file.path);
                             file_row(
                                 file,
                                 is_selected,
+                                order.clone(),
                                 repo_id,
                                 weak.clone(),
                                 list_focus.clone(),
@@ -1185,6 +1283,16 @@ impl Render for ChangesSidebar {
                     .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
                         this.select_relative(-1, cx)
                     }))
+                    .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
+                        let (files, _) = this.visible_files(cx);
+                        if let Some(id) = this.state.read(cx).selected {
+                            Dispatcher::select_all_files(
+                                id,
+                                files.into_iter().map(|f| f.path).collect(),
+                                cx,
+                            );
+                        }
+                    }))
                     .flex_1()
                     .min_h_0()
                     .flex()
@@ -1212,6 +1320,7 @@ impl Render for ChangesSidebar {
 fn file_row(
     file: &WorkingDirectoryFileChange,
     is_selected: bool,
+    order: Rc<Vec<String>>,
     repo_id: Option<u64>,
     weak: WeakEntity<ChangesSidebar>,
     list_focus: FocusHandle,
@@ -1257,9 +1366,22 @@ fn file_row(
         })
         .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
         .when_some(repo_id, move |d, id| {
-            d.on_click(move |_, window, cx| {
+            // ⌘-click toggles, ⇧-click extends (GHD `SelectionSource`)
+            d.on_click(move |ev: &ClickEvent, window, cx| {
                 window.focus(&list_focus, cx);
-                Dispatcher::select_file(id, path_for_select.clone(), cx)
+                let modifiers = ev.modifiers();
+                if modifiers.secondary() {
+                    Dispatcher::toggle_file_selection(id, path_for_select.clone(), cx)
+                } else if modifiers.shift {
+                    Dispatcher::extend_file_selection(
+                        id,
+                        path_for_select.clone(),
+                        order.as_ref().clone(),
+                        cx,
+                    )
+                } else {
+                    Dispatcher::select_file(id, path_for_select.clone(), cx)
+                }
             })
         })
         .child(

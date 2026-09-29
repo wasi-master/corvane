@@ -154,3 +154,25 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
                 .children(actions.into_iter().map(|a| card(a, cx))),
         )
 }
+
+/// GHD `MultipleSelection` (`.panel.blankslate`): "N files selected".
+pub fn multiple_selection(count: usize, cx: &App) -> impl IntoElement {
+    let t = cx.ghd();
+    div()
+        .id("multiple-selection")
+        .size_full()
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(SPACING_DOUBLE)
+        .bg(t.background)
+        .text_color(t.text_secondary)
+        .text_size(FONT_SIZE)
+        .child(
+            img("illustrations/multiple-files-selected.svg")
+                .w(px(200.))
+                .h(px(120.)),
+        )
+        .child(format!("{count} files selected"))
+}
