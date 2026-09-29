@@ -253,6 +253,13 @@ pub fn radio_row(
         .child(div().flex_1().min_w_0().text_size(FONT_SIZE).child(label))
 }
 
+/// An entry of a `select_button_items` popup.
+pub enum SelectItem {
+    Option(SharedString),
+    /// `<option disabled>────</option>`: a native menu separator.
+    Separator,
+}
+
 /// Native `<select>` as macOS renders it in GHD: a textboxish 25 px popup
 /// button showing the current value with a ▾ caret; clicking opens a native
 /// menu of `options` and calls `on_select(index)`.
@@ -260,6 +267,28 @@ pub fn select_button(
     id: impl Into<ElementId>,
     value: impl Into<SharedString>,
     options: Vec<SharedString>,
+    selected: Option<usize>,
+    disabled: bool,
+    on_select: SelectHandler,
+    cx: &App,
+) -> Stateful<Div> {
+    select_button_items(
+        id,
+        value,
+        options.into_iter().map(SelectItem::Option).collect(),
+        selected,
+        disabled,
+        on_select,
+        cx,
+    )
+}
+
+/// `select_button` with separators; `on_select` gets the index among the
+/// `Option` items only.
+pub fn select_button_items(
+    id: impl Into<ElementId>,
+    value: impl Into<SharedString>,
+    items: Vec<SelectItem>,
     selected: Option<usize>,
     disabled: bool,
     on_select: SelectHandler,
@@ -289,23 +318,28 @@ pub fn select_button(
         .when(!disabled, |d| {
             d.cursor_pointer().hover(move |s| s.bg(hover_bg)).on_click(
                 move |ev: &ClickEvent, window, cx| {
-                    let items: Vec<crate::context_menu::MenuItem> = options
+                    let mut option_ix = 0;
+                    let menu_items: Vec<crate::context_menu::MenuItem> = items
                         .iter()
-                        .enumerate()
-                        .map(|(ix, label)| {
-                            let on_select = on_select.clone();
-                            crate::context_menu::MenuItem::checkbox(
-                                label.clone(),
-                                selected == Some(ix),
-                                move |window, cx| on_select(ix, window, cx),
-                            )
+                        .map(|item| match item {
+                            SelectItem::Separator => crate::context_menu::MenuItem::separator(),
+                            SelectItem::Option(label) => {
+                                let on_select = on_select.clone();
+                                let ix = option_ix;
+                                option_ix += 1;
+                                crate::context_menu::MenuItem::checkbox(
+                                    label.clone(),
+                                    selected == Some(ix),
+                                    move |window, cx| on_select(ix, window, cx),
+                                )
+                            }
                         })
                         .collect();
                     let position = ev.mouse_position().unwrap_or_default();
                     #[cfg(target_os = "macos")]
-                    crate::native_menu::show_context_menu(items, position, window, cx);
+                    crate::native_menu::show_context_menu(menu_items, position, window, cx);
                     #[cfg(not(target_os = "macos"))]
-                    let _ = (items, position, window, cx);
+                    let _ = (menu_items, position, window, cx);
                 },
             )
         })
@@ -314,6 +348,27 @@ pub fn select_button(
             crate::icons::octicon(crate::icons::Octicon::TriangleDown, t.text_secondary)
                 .size(px(12.)),
         )
+}
+
+/// GHD `DialogError` (`.dialog-banner.dialog-error`): a full-width red band
+/// under the dialog header. It cancels the content padding itself so it can
+/// be the first child of any dialog content.
+pub fn dialog_error_banner(message: impl Into<SharedString>, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .mx(px(-20.))
+        .mt(px(-20.))
+        .mb(SPACING_DOUBLE)
+        .px(SPACING_DOUBLE)
+        .py(SPACING)
+        .bg(t.form_error_background)
+        .border_t_1()
+        .border_b_1()
+        .border_color(t.form_error_border)
+        .text_color(t.form_error_text)
+        .text_size(FONT_SIZE)
+        .line_height(px(18.))
+        .child(message.into())
 }
 
 /// GHD `CallToAction`: text on the left, a ≥120 px primary button on the right.

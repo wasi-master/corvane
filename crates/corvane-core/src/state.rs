@@ -524,6 +524,9 @@ pub struct AppState {
     pub indicators: HashMap<u64, crate::remote::RepoIndicator>,
     /// Generic git server logins (host → username) for the askpass helper.
     pub generic_logins: HashMap<String, String>,
+    /// Clone dialog: `GET /user/repos` per account endpoint (`ApiRepositoriesStore`).
+    pub api_repositories: HashMap<String, Vec<corvane_models::GitHubRepository>>,
+    pub api_repositories_loading: std::collections::HashSet<String>,
     /// Installed editors / shells (`getAvailableEditors` / `getAvailableShells`).
     pub editors: Vec<FoundEditor>,
     pub shells: Vec<FoundShell>,

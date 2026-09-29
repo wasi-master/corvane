@@ -1,6 +1,6 @@
-//! "Create a New Repository" (`ui/add-repository/create-repository.tsx`).
-//! Git-ignore and license templates are not bundled yet; the
-//! selects render with "None" so the layout matches.
+//! "Create a New Repository" (`ui/add-repository/create-repository.tsx`):
+//! name, description, path, README, and the bundled Git Ignore / License
+//! templates (`corvane_core::templates`).
 
 use std::path::PathBuf;
 
@@ -10,10 +10,11 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, dialog};
-use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{button, checkbox, labeled, text_box};
+use crate::widgets::{
+    SelectHandler, SelectItem, button, checkbox, labeled, select_button_items, text_box,
+};
 
 pub struct CreateRepositoryDialog {
     #[allow(dead_code)]
@@ -22,6 +23,12 @@ pub struct CreateRepositoryDialog {
     description: Entity<InputState>,
     path: Entity<InputState>,
     readme: bool,
+    /// Selected `.gitignore` template name (`NoGitIgnoreValue` = None).
+    gitignore: Option<String>,
+    /// Selected license name (`NoLicenseValue` = None).
+    license: Option<String>,
+    gitignore_names: Vec<String>,
+    licenses: Vec<corvane_core::templates::License>,
 }
 
 impl CreateRepositoryDialog {
@@ -68,6 +75,10 @@ impl CreateRepositoryDialog {
             description,
             path,
             readme: false,
+            gitignore: None,
+            license: None,
+            gitignore_names: corvane_core::templates::gitignore_names(),
+            licenses: corvane_core::templates::licenses(),
         }
     }
 
@@ -118,32 +129,93 @@ impl CreateRepositoryDialog {
             return;
         };
         let description = self.description.read(cx).value().trim().to_string();
+        let name = self.name.read(cx).value().trim().to_string();
         Dispatcher::create_repository(
             path,
+            name,
             (!description.is_empty()).then_some(description),
             self.readme,
+            self.gitignore.clone(),
+            self.license.clone(),
             cx,
         );
     }
-}
 
-fn select_placeholder(id: &'static str, value: &'static str, cx: &App) -> impl IntoElement {
-    let t = cx.ghd();
-    div()
-        .id(id)
-        .h(TEXT_FIELD_HEIGHT)
-        .w_full()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .px(SPACING_HALF)
-        .border_1()
-        .rounded(BORDER_RADIUS)
-        .bg(t.box_background)
-        .border_color(t.box_border_contrast)
-        .child(value)
-        .child(octicon(Octicon::TriangleDown, t.text_secondary).size(px(12.)))
+    /// `renderGitIgnores`: "None" + every bundled template.
+    fn gitignore_select(&self, cx: &Context<Self>) -> impl IntoElement {
+        let names = self.gitignore_names.clone();
+        let selected = self
+            .gitignore
+            .as_ref()
+            .and_then(|g| names.iter().position(|n| n == g))
+            .map(|ix| ix + 1)
+            .unwrap_or(0);
+        let mut items: Vec<SelectItem> = vec![SelectItem::Option("None".into())];
+        items.extend(names.iter().map(|n| SelectItem::Option(n.clone().into())));
+        let weak = cx.weak_entity();
+        let on_select: SelectHandler = std::rc::Rc::new(move |ix, _, cx| {
+            let pick = if ix == 0 {
+                None
+            } else {
+                names.get(ix - 1).cloned()
+            };
+            weak.update(cx, |this, cx| {
+                this.gitignore = pick;
+                cx.notify();
+            })
+            .ok();
+        });
+        select_button_items(
+            "create-gitignore",
+            self.gitignore.clone().unwrap_or_else(|| "None".to_string()),
+            items,
+            Some(selected),
+            false,
+            on_select,
+            cx,
+        )
+    }
+
+    /// `renderLicenses`: "None", the featured licenses, a separator, the rest.
+    fn license_select(&self, cx: &Context<Self>) -> impl IntoElement {
+        let names: Vec<String> = self.licenses.iter().map(|l| l.name.clone()).collect();
+        let featured = self.licenses.iter().filter(|l| l.featured).count();
+        let selected = self
+            .license
+            .as_ref()
+            .and_then(|l| names.iter().position(|n| n == l))
+            .map(|ix| ix + 1)
+            .unwrap_or(0);
+        let mut items: Vec<SelectItem> = vec![SelectItem::Option("None".into())];
+        for (ix, name) in names.iter().enumerate() {
+            if ix == featured && featured > 0 {
+                items.push(SelectItem::Separator);
+            }
+            items.push(SelectItem::Option(name.clone().into()));
+        }
+        let weak = cx.weak_entity();
+        let on_select: SelectHandler = std::rc::Rc::new(move |ix, _, cx| {
+            let pick = if ix == 0 {
+                None
+            } else {
+                names.get(ix - 1).cloned()
+            };
+            weak.update(cx, |this, cx| {
+                this.license = pick;
+                cx.notify();
+            })
+            .ok();
+        });
+        select_button_items(
+            "create-license",
+            self.license.clone().unwrap_or_else(|| "None".to_string()),
+            items,
+            Some(selected),
+            false,
+            on_select,
+            cx,
+        )
+    }
 }
 
 impl Render for CreateRepositoryDialog {
@@ -239,16 +311,8 @@ impl Render for CreateRepositoryDialog {
                         .child(checkbox("create-readme-box", readme, false, cx))
                         .child("Initialize this repository with a README"),
                 )
-                .child(labeled(
-                    "Git Ignore",
-                    select_placeholder("create-gitignore", "None", cx),
-                    cx,
-                ))
-                .child(labeled(
-                    "License",
-                    select_placeholder("create-license", "None", cx),
-                    cx,
-                )),
+                .child(labeled("Git Ignore", self.gitignore_select(cx), cx))
+                .child(labeled("License", self.license_select(cx), cx)),
             vec![
                 DialogButton {
                     id: "create-cancel",

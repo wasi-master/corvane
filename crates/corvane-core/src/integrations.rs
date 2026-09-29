@@ -575,6 +575,7 @@ mod tests {
             private: false,
             fork: parent,
             parent: None,
+            archived: false,
         };
         if parent {
             GitHubRepository {

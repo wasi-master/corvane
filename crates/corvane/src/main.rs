@@ -118,7 +118,7 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about opens a dialog at
+        // CORVANE_POPUP=preferences|repository-settings|about|create|clone opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
@@ -143,6 +143,12 @@ fn main() {
                             },
                             cx,
                         ),
+                        ("create", _) => {
+                            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
+                        }
+                        ("clone", _) => {
+                            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+                        }
                         _ => {}
                     }
                 });
