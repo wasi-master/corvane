@@ -41,7 +41,8 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Help › Show Release Notes (Corvane addition; GHD shows the dialog only after an update) opens the `ReleaseNotes` dialog for the running version from the GitHub Releases API. Release bodies are Markdown: `[Kind]` list items are classified as in GHD, untagged items by their `##` heading (GHD drops them), entries are plain text instead of `RichText`, and there is no "Install and Restart" button (`crates/corvane-core/src/release_notes.rs`).
 - View › Expand / Contract Active Resizable (⌘9 / ⌘8) resize the focused pane by GHD's 5 px without GHD's aria-live "width increased. Set to N%" announcement. The commit, stash and pull request file lists take keyboard focus when clicked so the items apply to them (`crates/corvane-ui/src/active_resizable.rs`).
 - A deleted linked worktree falls back to its main worktree as in GHD (`recoverMissingWorktree`), but Corvane records the main worktree path on every refresh rather than only on a worktree switch, because `git worktree remove` also deletes the metadata GHD's fallback reads. Repository entries saved before this cannot recover and show as missing (Locate…).
-- Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD, but the buttons are not resizable (TODO.md).
+- Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD.
+- Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move.
 
 ## Scrolling
 
