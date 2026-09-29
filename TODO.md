@@ -10,7 +10,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[GH]** CI check-run status in branch button + PR list + popover (`ui/branches/ci-status.tsx`, `ui/check-runs/`), `CICheckRunRerun` popup
 - [ ] **[GH]** Preview Pull Request dialog (`ui/open-pull-request/`, `PopupType.StartPullRequest`); the `Branch › Preview Pull Request` item stays disabled. "Create Pull Request" pushes an unpublished branch and opens `/pull/new/<branch>`
 - [ ] **[GH]** PR quick view / review / comment popups (`PullRequestReview`, `PullRequestComment`, `PullRequestChecksFailed`)
-- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications › "Enable notifications" is persisted but nothing emits notifications yet (no permission hint either)
+- [ ] **[GH]** Notifications: reviews, comments, failed checks via Alive websockets (`lib/stores/notifications-store.ts`, `alive-store.ts`); Settings › Notifications › "Enable notifications" is persisted (with the permission hint) but nothing emits notifications yet
 - [ ] **[GH]** Forks: `CreateFork`, `ChooseForkSettings`, Repository Settings › Fork Behavior tab, upstream remote handling (`lib/stores/app-store.ts` `_updateRepositoryFork…`)
 - [ ] **[GH]** Repo rules / protected-branch warnings in commit form (`ui/changes/commit-warning.tsx`, `lib/api.ts fetchRepoRulesForBranch`)
 - [ ] **[GH]** Secret-scanning push protection (`PushProtectionError`, `BypassPushProtection`)
@@ -52,9 +52,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Editor / commit form
 
-- [ ] Co-authors: `AuthorInput` token field + "Add Co-Authors" toggle (`ui/lib/author-input/`, `Co-Authored-By:` trailers); the `@user` autocompletion inside summary/description is in v1
-- [ ] GitHub custom emoji (`:shipit:`, `:octocat:`, …) from the `/emojis` API with cached images; v1 bundles the Unicode gemoji table only (`assets/emoji/gemoji.json`)
-- [ ] Issue and mentionable-user caches persisted in redb (GHD: IndexedDB); v1 caches them in memory per session
+- [ ] Co-author tokens are one line (GHD's `AuthorInput` is a CodeMirror field that wraps); the field grows only with the kit input's single line
 - [ ] Spellcheck language follows `NSSpellChecker`'s automatic identification (no per-language picker); Chromium's "Ignore" item is not offered either
 - [ ] Copilot-free "commit length warning" is in v1; per-repo commit message templates are not
 
@@ -68,10 +66,8 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 ## Settings (`ui/preferences/`)
 
 - [ ] Prompts › "Overriding commit message with generated message" (Copilot, omitted by design)
-- [ ] Notifications tab permission hint (`getNotificationsPermission`, macOS `UNUserNotificationCenter`)
 - [ ] Editor detection on Windows/Linux (`lib/editors/win32.ts`, `linux.ts`); macOS uses LaunchServices (`NSWorkspace URLForApplicationWithBundleIdentifier`)
-- [ ] Custom integration bundle ids are resolved at launch (`mdls`) rather than stored when the path is chosen
-- [ ] Formatting defaults follow GHD's en-US branch (`MMM d, yyyy`, `h:mm aaa`, `1,234.5`); GHD picks them from the OS locale country
+- [ ] Notifications permission is only meaningful from the signed `.app` bundle (`UNUserNotificationCenter` needs a bundle); the hint shows nothing when run as a bare binary
 
 ## View menu
 
