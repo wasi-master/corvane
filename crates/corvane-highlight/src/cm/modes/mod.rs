@@ -5,6 +5,7 @@
 //! types in [`mode_for_mime`] and add golden fixtures (`tools/cm-oracle`).
 
 pub mod clike;
+pub mod cmake;
 pub mod css;
 pub mod dart;
 pub mod diff;
@@ -211,6 +212,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-diff" => Some(Arc::new(diff::Diff)),
         "text/x-dockerfile" => Some(dockerfile::dockerfile()),
         "text/x-zig" => Some(Arc::new(zig::Zig)),
+        "text/x-cmake" => Some(Arc::new(cmake::Cmake)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
