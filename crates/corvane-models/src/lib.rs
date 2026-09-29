@@ -425,6 +425,8 @@ pub enum ThemeSetting {
     Dark,
     #[default]
     System,
+    /// Corvane addition (GHD has no high contrast theme).
+    HighContrast,
 }
 
 // ---- working directory status (`models/status.ts`) ----

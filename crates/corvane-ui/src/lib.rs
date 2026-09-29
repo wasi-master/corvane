@@ -52,7 +52,7 @@ pub mod worktree_list;
 use gpui_kit::App;
 
 /// Install the theme global and keymap. Call once after `gpui_kit::init`.
-pub fn init(cx: &mut App, appearance: theme::Appearance) {
-    theme::init(cx, appearance);
+pub fn init(cx: &mut App, theme: theme::GhdTheme) {
+    theme::init(cx, theme);
     keymap::install(cx);
 }

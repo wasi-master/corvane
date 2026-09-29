@@ -1007,6 +1007,8 @@ impl PreferencesDialog {
             (ThemeSetting::Light, "Light"),
             (ThemeSetting::Dark, "Dark"),
             (ThemeSetting::System, "System"),
+            // Corvane addition (GHD has no high contrast theme)
+            (ThemeSetting::HighContrast, "High Contrast"),
         ];
         let selected = self.draft.theme;
         let swatches = div()
@@ -1016,11 +1018,13 @@ impl PreferencesDialog {
             .children(themes.iter().map(|(theme, label)| {
                 let theme = *theme;
                 let is_selected = theme == selected;
+                let compact = theme == ThemeSetting::HighContrast;
                 let weak = cx.weak_entity();
                 let id: &'static str = match theme {
                     ThemeSetting::Light => "prefs-theme-light",
                     ThemeSetting::Dark => "prefs-theme-dark",
                     ThemeSetting::System => "prefs-theme-system",
+                    ThemeSetting::HighContrast => "prefs-theme-high-contrast",
                 };
                 let image = |path: &'static str| {
                     img(path)
@@ -1046,6 +1050,8 @@ impl PreferencesDialog {
                     .child(
                         div()
                             .w_full()
+                            // as tall as the two-line High Contrast swatch
+                            .h_full()
                             .flex()
                             .flex_col()
                             .rounded(BORDER_RADIUS)
@@ -1063,6 +1069,9 @@ impl PreferencesDialog {
                                 }
                                 ThemeSetting::Dark => {
                                     image("illustrations/ghd_dark.svg").into_any_element()
+                                }
+                                ThemeSetting::HighContrast => {
+                                    image("illustrations/ghd_high_contrast.svg").into_any_element()
                                 }
                                 // `.system-theme-swatch`: light on the left half, dark on the right.
                                 ThemeSetting::System => div()
@@ -1108,17 +1117,22 @@ impl PreferencesDialog {
                             .child(
                                 div()
                                     .mt(SPACING_HALF)
-                                    .px(SPACING)
+                                    // the fourth swatch's two-line label needs the room
+                                    .px(if compact { px(3.) } else { SPACING })
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .gap(SPACING_HALF)
+                                    .gap(if compact { px(3.) } else { SPACING_HALF })
                                     .child(radio(
                                         ElementId::from(SharedString::from(format!("{id}-radio"))),
                                         is_selected,
                                         cx,
                                     ))
-                                    .child(*label),
+                                    .child(if compact {
+                                        div().min_w_0().line_height(px(14.)).child(*label)
+                                    } else {
+                                        div().whitespace_nowrap().child(*label)
+                                    }),
                             ),
                     )
             }));

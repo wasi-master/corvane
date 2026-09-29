@@ -5,6 +5,7 @@
 //! `.docs/ghd-theme-tokens.md`.
 
 mod ghd_dark;
+mod ghd_high_contrast;
 mod ghd_light;
 pub mod primer;
 
@@ -287,10 +288,33 @@ impl GhdTheme {
         ghd_dark::theme()
     }
 
+    /// Corvane addition: GHD's dark tokens in Primer's high contrast palette.
+    pub fn high_contrast() -> Self {
+        ghd_high_contrast::theme()
+    }
+
     pub fn for_appearance(appearance: Appearance) -> Self {
         match appearance {
             Appearance::Light => Self::light(),
             Appearance::Dark => Self::dark(),
+        }
+    }
+
+    /// The palette for Settings › Appearance › Theme: System follows the
+    /// system appearance, and "Increase contrast" picks High Contrast.
+    pub fn for_setting(
+        setting: corvane_core::ThemeSetting,
+        system_dark: bool,
+        increase_contrast: bool,
+    ) -> Self {
+        use corvane_core::ThemeSetting;
+        match setting {
+            ThemeSetting::Light => Self::light(),
+            ThemeSetting::Dark => Self::dark(),
+            ThemeSetting::HighContrast => Self::high_contrast(),
+            ThemeSetting::System if increase_contrast => Self::high_contrast(),
+            ThemeSetting::System if system_dark => Self::dark(),
+            ThemeSetting::System => Self::light(),
         }
     }
 
@@ -325,8 +349,7 @@ pub fn preseed_kit_theme(cx: &mut App) {
 
 /// Install the theme global and align gpui-kit's theme (used by Input,
 /// Textarea, Scrollbar, Popover…) with GHD's palette, fonts and radius.
-pub fn init(cx: &mut App, appearance: Appearance) {
-    let theme = GhdTheme::for_appearance(appearance);
+pub fn init(cx: &mut App, theme: GhdTheme) {
     apply(theme, cx);
 }
 
@@ -423,4 +446,30 @@ pub(crate) fn ca(hex: u32, alpha: f32) -> Hsla {
 #[allow(dead_code)]
 pub(crate) const fn p(v: f32) -> Pixels {
     px(v)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use corvane_core::ThemeSetting;
+
+    #[test]
+    fn system_follows_increase_contrast() {
+        let name = |setting, dark, contrast| GhdTheme::for_setting(setting, dark, contrast).name;
+        assert_eq!(
+            name(ThemeSetting::System, false, false),
+            GhdTheme::light().name
+        );
+        assert_eq!(
+            name(ThemeSetting::System, true, false),
+            GhdTheme::dark().name
+        );
+        assert_eq!(name(ThemeSetting::System, false, true), "High Contrast");
+        assert_eq!(name(ThemeSetting::Dark, true, true), GhdTheme::dark().name);
+        assert_eq!(
+            name(ThemeSetting::HighContrast, false, false),
+            "High Contrast"
+        );
+        assert!(GhdTheme::high_contrast().is_dark());
+    }
 }
