@@ -19,6 +19,7 @@ pub mod rebase_ops;
 pub mod remote_ops;
 pub mod repo;
 pub mod status;
+pub mod worktree;
 
 pub use branch_ops::{
     DESKTOP_STASH_MARKER, MergeOutcome, abort_merge, checkout_branch, checkout_new_branch,
@@ -80,3 +81,6 @@ pub use remote_ops::{
 };
 pub use repo::{ahead_behind, open_repository, symmetric_ahead_behind};
 pub use status::{get_status, map_status, parse_porcelain_v2};
+pub use worktree::{
+    add_worktree, list_worktrees, move_worktree, parse_worktree_porcelain, remove_worktree,
+};

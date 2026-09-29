@@ -13,7 +13,7 @@ use crate::changes::ChangesSidebar;
 use crate::cloning_view::cloning_view;
 use crate::dialogs::DialogHost;
 use crate::diff_view::{DiffSource, DiffView, diff_header};
-use crate::foldout::foldout_layer;
+use crate::foldout::{FoldoutPanels, foldout_layer};
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
 use crate::no_repositories::no_repositories;
@@ -24,8 +24,9 @@ use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::title_bar::title_bar;
-use crate::toolbar::{toolbar, toolbar_models};
+use crate::toolbar::{toolbar, toolbar_models, worktree_button_visible};
 use crate::welcome::WelcomeView;
+use crate::worktree_list::WorktreeFoldout;
 
 pub struct Workspace {
     focus_handle: FocusHandle,
@@ -39,6 +40,7 @@ pub struct Workspace {
     stash_view: Entity<StashDiffViewer>,
     repository_foldout: Entity<RepositoryFoldout>,
     branch_foldout: Entity<BranchFoldout>,
+    worktree_foldout: Entity<WorktreeFoldout>,
     dialogs: Entity<DialogHost>,
     diff_view: Entity<DiffView>,
     welcome: Option<Entity<WelcomeView>>,
@@ -90,6 +92,7 @@ impl Workspace {
         let stash_view = cx.new(|cx| StashDiffViewer::new(state.clone(), cx));
         let repository_foldout = cx.new(|cx| RepositoryFoldout::new(state.clone(), window, cx));
         let branch_foldout = cx.new(|cx| BranchFoldout::new(state.clone(), window, cx));
+        let worktree_foldout = cx.new(|cx| WorktreeFoldout::new(state.clone(), window, cx));
         let diff_view = cx.new(|cx| DiffView::new(state.clone(), DiffSource::WorkingDirectory, cx));
         let dialogs = cx.new(|cx| DialogHost::new(state.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
@@ -108,6 +111,7 @@ impl Workspace {
             stash_view,
             repository_foldout,
             branch_foldout,
+            worktree_foldout,
             dialogs,
             diff_view,
             welcome,
@@ -153,6 +157,15 @@ impl Workspace {
         Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
         if self.state.read(cx).foldout == Some(corvane_core::Foldout::Branch) {
             self.branch_foldout
+                .update(cx, |f, cx| f.focus_filter(window, cx));
+        }
+    }
+
+    /// `View › Show Worktrees List` (⌥⌘W): open the foldout and focus its filter.
+    pub fn show_worktrees_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        Dispatcher::toggle_foldout(corvane_core::Foldout::Worktree, cx);
+        if self.state.read(cx).foldout == Some(corvane_core::Foldout::Worktree) {
+            self.worktree_foldout
                 .update(cx, |f, cx| f.focus_filter(window, cx));
         }
     }
@@ -364,7 +377,7 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
-        let (buttons, foldout, popup, has_repos, cloning, banner) = {
+        let (buttons, foldout, popup, has_repos, cloning, banner, worktree_button) = {
             let state = self.state.read(cx);
             (
                 toolbar_models(state, self.sidebar_width),
@@ -373,6 +386,7 @@ impl Render for Workspace {
                 !state.repositories.is_empty(),
                 state.cloning.clone(),
                 state.banner.clone(),
+                worktree_button_visible(state),
             )
         };
 
@@ -420,11 +434,18 @@ impl Render for Workspace {
                 })
             })
             .when_some(foldout, |d, foldout| {
+                // the worktree button sits between the repository and branch buttons
+                let shift = if worktree_button {
+                    TOOLBAR_BUTTON_WIDTH
+                } else {
+                    px(0.)
+                };
                 let (x, width) = match foldout {
                     corvane_core::Foldout::Repository => (px(0.), self.sidebar_width),
-                    corvane_core::Foldout::Branch => (self.sidebar_width, px(365.)),
+                    corvane_core::Foldout::Worktree => (self.sidebar_width, px(365.)),
+                    corvane_core::Foldout::Branch => (self.sidebar_width + shift, px(365.)),
                     corvane_core::Foldout::PushPull => (
-                        self.sidebar_width + TOOLBAR_BUTTON_WIDTH,
+                        self.sidebar_width + shift + TOOLBAR_BUTTON_WIDTH,
                         TOOLBAR_BUTTON_WIDTH,
                     ),
                 };
@@ -432,8 +453,11 @@ impl Render for Workspace {
                     foldout,
                     x,
                     width,
-                    &self.repository_foldout,
-                    &self.branch_foldout,
+                    FoldoutPanels {
+                        repository: &self.repository_foldout,
+                        branch: &self.branch_foldout,
+                        worktree: &self.worktree_foldout,
+                    },
                     window,
                     cx,
                 ))

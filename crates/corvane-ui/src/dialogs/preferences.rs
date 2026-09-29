@@ -1199,6 +1199,13 @@ impl PreferencesDialog {
                         cx,
                     ))
                     .child(checkbox_row(
+                        "prefs-confirm-worktree-removal",
+                        d.confirm_worktree_removal,
+                        "Removing worktrees",
+                        self.edit(cx, |s, v| s.confirm_worktree_removal = v),
+                        cx,
+                    ))
+                    .child(checkbox_row(
                         "prefs-confirm-filtered",
                         d.confirm_commit_filtered_changes,
                         "Committing changes hidden by filter",

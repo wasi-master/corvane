@@ -15,6 +15,7 @@ mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
 mod simple;
+mod worktree_dialogs;
 
 use corvane_core::{AppState, Popup};
 use gpui_kit::prelude::*;
@@ -43,6 +44,9 @@ pub use remote_dialogs::{
 pub use repository_settings::RepositorySettingsDialog;
 pub use sign_in::SignInDialog;
 pub use simple::SimpleDialog;
+pub use worktree_dialogs::{
+    AddWorktreeDialog, DeleteWorktreeDialog, DeleteWorktreeFailedDialog, RenameWorktreeDialog,
+};
 
 pub struct DialogHost {
     state: Entity<AppState>,
@@ -116,6 +120,30 @@ impl DialogHost {
                 .into(),
             Popup::RenameBranch { repo, name } => cx
                 .new(|cx| RenameBranchDialog::new(state, *repo, name.clone(), window, cx))
+                .into(),
+            Popup::AddWorktree { repo } => cx
+                .new(|cx| AddWorktreeDialog::new(state, *repo, window, cx))
+                .into(),
+            Popup::RenameWorktree { repo, path } => cx
+                .new(|cx| RenameWorktreeDialog::new(*repo, path.clone(), window, cx))
+                .into(),
+            Popup::DeleteWorktree { repo, path } => cx
+                .new(|_| DeleteWorktreeDialog::new(*repo, path.clone()))
+                .into(),
+            Popup::DeleteWorktreeFailed {
+                repo,
+                path,
+                error,
+                original,
+            } => cx
+                .new(|_| {
+                    DeleteWorktreeFailedDialog::new(
+                        *repo,
+                        path.clone(),
+                        error.clone(),
+                        original.clone(),
+                    )
+                })
                 .into(),
             Popup::DeleteBranch { repo, name } => cx
                 .new(|_| DeleteBranchDialog::new(state, *repo, name.clone()))

@@ -14,6 +14,7 @@ pub mod remote;
 pub mod state;
 pub mod templates;
 pub mod watcher;
+pub mod worktrees;
 
 pub use autocomplete::{
     DEFAULT_MAX_HITS, Issue, IssueCache, IssueHit, MentionableCache, MentionableUser, Trigger,

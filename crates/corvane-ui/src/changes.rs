@@ -430,10 +430,19 @@ impl ChangesSidebar {
             let mut enabled = true;
             // the menu's actions dispatch through the focused element
             window.focus(&focus, cx);
-            weak.update(cx, |this, cx| {
+            let updated = weak.update(cx, |this, cx| {
                 this.pending_spell = None;
                 enabled = this.state.read(cx).settings.commit_spellcheck_enabled;
-                if let Some((range, word)) = this.misspelled_at(field, window.mouse_position()) {
+                let position = window.mouse_position();
+                tracing::debug!(
+                    ?position,
+                    rects = ?match field {
+                        CommitField::Summary => this.summary_rects.borrow().clone(),
+                        CommitField::Description => this.description_rects.borrow().clone(),
+                    },
+                    "commit input context menu"
+                );
+                if let Some((range, word)) = this.misspelled_at(field, position) {
                     let guesses = corvane_platform::spell::guesses(&word);
                     this.pending_spell = Some(PendingSpell {
                         field,
@@ -443,8 +452,10 @@ impl ChangesSidebar {
                     });
                     suggestions = Some(guesses);
                 }
-            })
-            .ok();
+            });
+            if updated.is_err() {
+                tracing::warn!("commit input context menu: sidebar entity unavailable");
+            }
             if let Some(guesses) = suggestions {
                 if guesses.is_empty() {
                     menu = menu.menu_with_disabled(
