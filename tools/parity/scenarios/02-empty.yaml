@@ -3,6 +3,7 @@ description: Welcome done, no repositories ("Let's get started"), action buttons
 setup: empty
 steps:
   - wait: 600
+  - dump: blank-slate
   - snap: blank-slate
   - hover: {contains: "Clone a Repository from the Internet"}
   - snap: clone-hover

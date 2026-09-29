@@ -82,7 +82,14 @@ fn main() {
             Ok("high-contrast") => ThemeSetting::HighContrast,
             _ => settings.theme,
         };
-        APPLIED_THEME.with(|t| t.set(theme_setting));
+        // GHD `App.render`: the welcome flow is always drawn in the light theme
+        let welcome_done = settings.welcome_completed;
+        let shown_theme = if welcome_done {
+            theme_setting
+        } else {
+            ThemeSetting::Light
+        };
+        APPLIED_THEME.with(|t| t.set(shown_theme));
         // View › Zoom: every size in corvane-ui scales by this factor
         // (CORVANE_ZOOM=<factor> overrides the saved one for a session)
         let zoom = std::env::var("CORVANE_ZOOM")
@@ -91,7 +98,7 @@ fn main() {
             .unwrap_or(settings.window_zoom_factor);
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
         info!(zoom, "window zoom factor");
-        corvane_ui::init(cx, resolve_theme(theme_setting, cx));
+        corvane_ui::init(cx, resolve_theme(shown_theme, cx));
         let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, cx);
         Dispatcher::load_custom_emoji(cx);
@@ -116,6 +123,8 @@ fn main() {
         // compared with the stored setting, so a CORVANE_THEME override holds
         // until the user picks a theme
         let mut last_theme = stored_theme;
+        let mut chosen_theme = theme_setting;
+        let mut last_welcome_done = welcome_done;
         let mut last_labels = {
             let s = state.read(cx);
             (s.editor_label(), s.shell_label())
@@ -125,18 +134,34 @@ fn main() {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, labels) = {
+            let (theme, welcome_done, labels) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
-                (s.settings.theme, (s.editor_label(), s.shell_label()))
+                (
+                    s.settings.theme,
+                    s.settings.welcome_completed,
+                    (s.editor_label(), s.shell_label()),
+                )
             };
             if labels != last_labels {
                 last_labels = labels;
                 menus::install(cx, &last_labels.0, &last_labels.1);
             }
-            if theme != last_theme {
+            let theme_changed = theme != last_theme;
+            if theme_changed {
                 last_theme = theme;
-                apply_theme(theme, cx);
+                chosen_theme = theme;
+            }
+            if theme_changed || welcome_done != last_welcome_done {
+                last_welcome_done = welcome_done;
+                apply_theme(
+                    if welcome_done {
+                        chosen_theme
+                    } else {
+                        ThemeSetting::Light
+                    },
+                    cx,
+                );
             }
         })
         .detach();

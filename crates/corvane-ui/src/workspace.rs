@@ -27,7 +27,7 @@ use crate::stash_view::StashDiffViewer;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::title_bar::title_bar;
+use crate::title_bar::{light_title_bar, title_bar};
 use crate::toolbar::{
     ToolbarResize, toolbar, toolbar_models, toolbar_widths, worktree_button_visible,
 };
@@ -607,6 +607,11 @@ impl Render for Workspace {
             )
         };
 
+        // GHD `inNoRepositoriesViewState` (repositories.length === 0, or a
+        // paused tutorial): no toolbar (`renderToolbar`) and, like the welcome
+        // flow, the transparent `light-title-bar` laid over the content
+        let blank_slate = tutorial_paused || (!has_repos && cloning.is_none());
+        let bare = self.welcome.is_some() || blank_slate;
         div()
             .id("workspace")
             .key_context("Workspace")
@@ -619,11 +624,11 @@ impl Render for Workspace {
             .text_color(t.text)
             .text_size(FONT_SIZE())
             .font_family(crate::theme::UI_FONT)
-            .child(title_bar(cx))
+            .when(!bare, |d| d.child(title_bar(cx)))
             .when_some(self.welcome.clone(), |d, welcome| {
                 d.child(div().flex_1().min_h_0().w_full().child(welcome))
             })
-            .when(self.welcome.is_none(), |d| {
+            .when(!bare, |d| {
                 d.child(toolbar(buttons, &self.toolbar_resize, cx))
             })
             .when(self.welcome.is_none(), |d| {
@@ -665,12 +670,11 @@ impl Render for Workspace {
                         .flex_1()
                         .min_h_0()
                         .w_full()
-                        .border_t_1()
-                        .border_color(t.box_border)
                         .child(no_repositories(cx))
                         .into_any_element()
                 })
             })
+            .when(bare, |d| d.child(light_title_bar()))
             .when_some(foldout, |d, foldout| {
                 // the worktree button sits between the repository and branch buttons
                 let shift = if worktree_button {

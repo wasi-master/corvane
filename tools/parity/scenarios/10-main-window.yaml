@@ -3,6 +3,7 @@ description: Changes view with the fixture's four working-tree changes, no inter
 setup: repo
 steps:
   - wait: 600
+  - dump: initial
   - snap: initial
 ---
 name: toolbar-states
@@ -41,6 +42,7 @@ steps:
   - click: [148, 129]
   - snap: filter-focused
   - type: "read"
+  - dump: filter-typed
   - snap: filter-typed
   - key: escape
   - hover: [120, 214]

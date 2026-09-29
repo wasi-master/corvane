@@ -510,30 +510,28 @@ pub fn toolbar_button(
         } else {
             octicon(model.icon, text).mr(SPACING()).into_any_element()
         })
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .flex_1()
-                .min_w_0()
-                .mr(SPACING())
-                .child(
-                    div()
-                        .text_size(FONT_SIZE_SM())
-                        .line_height(zpx(14.))
-                        .text_color(secondary)
-                        .truncate()
-                        .child(model.description),
-                )
-                .child(
-                    div()
-                        .text_size(FONT_SIZE())
-                        .line_height(zpx(15.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .truncate()
-                        .child(model.title),
-                ),
-        )
+        .child({
+            let description = div()
+                .text_size(FONT_SIZE_SM())
+                .line_height(zpx(14.))
+                .text_color(secondary)
+                .truncate()
+                .child(model.description);
+            let title = div()
+                .text_size(FONT_SIZE())
+                .line_height(zpx(15.))
+                .font_weight(FontWeight::SEMIBOLD)
+                .truncate()
+                .child(model.title);
+            let text = div().flex().flex_col().flex_1().min_w_0().mr(SPACING());
+            // GHD `ToolbarButtonStyle.Subtitle` (push-pull button): title
+            // first; `Standard` (the dropdowns): description first
+            if model.push_pull {
+                text.child(title).child(description)
+            } else {
+                text.child(description).child(title)
+            }
+        })
         .when_some(model.pr_badge, |d, badge| {
             // `.pr-badge`: 22 px tall, `#N` + the CI status; clickable once
             // a status is known (opens the check-run popover)

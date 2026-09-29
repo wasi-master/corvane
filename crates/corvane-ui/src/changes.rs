@@ -185,7 +185,11 @@ impl ChangesSidebar {
         })
         .detach();
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
-        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
+        cx.observe(&filter, |this, _, cx| {
+            this.select_first_visible_if_hidden(cx);
+            cx.notify()
+        })
+        .detach();
         let summary = cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         let description = cx.new(|cx| {
             TextareaState::new(window, cx)
@@ -1173,6 +1177,26 @@ impl ChangesSidebar {
         (visible, status.files.len())
     }
 
+    /// GHD `createStateUpdate` (augmented-filter-list.tsx): when a non-empty
+    /// filter hides every selected file, the first visible file is selected.
+    fn select_first_visible_if_hidden(&self, cx: &mut App) {
+        if self.filter.read(cx).value().trim().is_empty() {
+            return;
+        }
+        let (visible, _) = self.visible_files(cx);
+        let s = self.state.read(cx);
+        let (Some(id), Some(rs)) = (s.selected, s.selected_state()) else {
+            return;
+        };
+        let hidden = !rs
+            .selected_files
+            .iter()
+            .any(|p| visible.iter().any(|f| &f.path == p));
+        if hidden && let Some(first) = visible.first() {
+            Dispatcher::select_file(id, first.path.clone(), cx);
+        }
+    }
+
     fn filter_options(&self, cx: &App) -> FileListFilter {
         self.state
             .read(cx)
@@ -1715,13 +1739,15 @@ impl ChangesSidebar {
                 )
             })
             .child(
-                // "☑ N changed files"
+                // "☑ N changed files": `.checkbox-container` 18 px tall, 5 px
+                // below the filter row; the box's `margin-right: 7px`
                 div()
-                    .h(ROW_HEIGHT())
+                    .h(zpx(18.))
+                    .when(self.filter_visible, |d| d.mt(SPACING_HALF()))
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(SPACING_HALF())
+                    .gap(zpx(7.))
                     // GHD shows the include-all box checked but disabled when there is nothing to commit.
                     .child({
                         let (visible, total, include_all, repo_id) = self.header_state(cx);
@@ -2540,6 +2566,7 @@ impl ChangesSidebar {
                         .pl(SPACING())
                         .pr(SPACING_HALF())
                         .text_size(FONT_SIZE_SM())
+                        .line_height(zpx(16.5))
                         .child(
                             div()
                                 .text_color(t.text_secondary)
@@ -2550,7 +2577,7 @@ impl ChangesSidebar {
                 )
                 .child(
                     div().p(SPACING()).pl(zpx(0.)).child(
-                        button("undo-commit", "Undo", cx)
+                        crate::widgets::small_button("undo-commit", "Undo", cx)
                             .on_click(move |_, _, cx| Dispatcher::undo_commit(id, cx)),
                     ),
                 ),
@@ -2779,8 +2806,8 @@ impl ChangesSidebar {
                             .flex_row()
                             .items_center()
                             .gap(SPACING_HALF())
-                            .px(SPACING())
-                            .pb(zpx(8.))
+                            // `.action-bar { padding: var(--spacing) }`
+                            .p(SPACING())
                             .when(is_github, |d| {
                                 // `.co-authors-toggle`
                                 let toggle_label = if co_authors_visible {
@@ -2821,7 +2848,8 @@ impl ChangesSidebar {
                                 div()
                                     .id("commit-options-button")
                                     .icon_button_label("Configure commit options")
-                                    .size(zpx(18.))
+                                    .w(zpx(18.))
+                                    .h(zpx(17.))
                                     .flex()
                                     .items_center()
                                     .justify_center()
@@ -2847,12 +2875,26 @@ impl ChangesSidebar {
                     .flatten(),
             )
             .child({
-                let (amending, committing) = self
+                let (amending, committing, included) = self
                     .state
                     .read(cx)
                     .selected_state()
-                    .map(|r| (r.commit_to_amend.is_some(), r.committing))
-                    .unwrap_or((false, false));
+                    .map(|r| {
+                        let included = r.status.as_ref().map_or(0, |st| {
+                            st.files
+                                .iter()
+                                .filter(|f| f.selection.kind() != DiffSelectionType::None)
+                                .count()
+                        });
+                        (r.commit_to_amend.is_some(), r.committing, included)
+                    })
+                    .unwrap_or((false, false, 0));
+                // GHD `getFilesToBeCommittedButtonText`: "Commit 4 files to main"
+                let files = match included {
+                    0 => String::new(),
+                    1 => "1 file ".to_string(),
+                    n => format!("{n} files "),
+                };
                 let label = if amending {
                     div().flex().flex_row().child(if committing {
                         "Amending last commit"
@@ -2865,9 +2907,9 @@ impl ChangesSidebar {
                         .flex_row()
                         .gap(zpx(4.))
                         .child(if committing {
-                            "Committing to"
+                            format!("Committing {files}to")
                         } else {
-                            "Commit to"
+                            format!("Commit {files}to")
                         })
                         .child(
                             div()
@@ -3012,6 +3054,9 @@ fn file_row(
         .items_center()
         .gap(SPACING_HALF())
         .px(SPACING())
+        // `.list-item { border-bottom: 1px solid var(--box-border-color) }`
+        .border_b_1()
+        .border_color(t.box_border)
         .cursor_pointer()
         .on_mouse_down(
             MouseButton::Right,
@@ -3050,18 +3095,22 @@ fn file_row(
             })
         })
         .child(
-            checkbox_tristate(
-                SharedString::from(format!("include-{}", file.path)),
-                include_value,
-                false,
-                cx,
-            )
-            .when_some(repo_id, move |d, id| {
-                d.on_click(move |_, _, cx| {
-                    cx.stop_propagation();
-                    Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
-                })
-            }),
+            // `.checkbox-component`: 13 px box + 7 px margin, the label
+            // starts 20 px after it (the row's 5 px gap is taken back)
+            div().w(zpx(15.)).flex_none().child(
+                checkbox_tristate(
+                    SharedString::from(format!("include-{}", file.path)),
+                    include_value,
+                    false,
+                    cx,
+                )
+                .when_some(repo_id, move |d, id| {
+                    d.on_click(move |_, _, cx| {
+                        cx.stop_propagation();
+                        Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
+                    })
+                }),
+            ),
         )
         .child(
             // GHD `PathText` keeps the file name visible and truncates the
@@ -3076,7 +3125,12 @@ fn file_row(
                     div()
                         .min_w_0()
                         .truncate()
-                        .text_color(t.text_secondary)
+                        // `.list-item.selected .dirname` inherits the row colour
+                        .text_color(if is_selected {
+                            t.box_selected_text
+                        } else {
+                            t.text_secondary
+                        })
                         .child(file.directory().to_string()),
                 )
                 .child(

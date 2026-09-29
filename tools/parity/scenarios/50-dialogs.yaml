@@ -93,9 +93,9 @@ steps:
   - menu: show-repository-settings
     wait: 600
   - snap: remote
-  - click: {text: "Ignored files", within: "dialog"}
+  - click: {text: "Ignored Files", within: "dialog"}
   - snap: ignored-files
-  - click: {text: "Git config", within: "dialog"}
+  - click: {text: "Git Config", within: "dialog"}
   - snap: git-config
 ---
 name: confirmations

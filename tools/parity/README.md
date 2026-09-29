@@ -12,6 +12,7 @@ cargo build -p corvane --features snapshots
 python3 tools/parity/parity.py                  # all scenarios, dark + light
 python3 tools/parity/parity.py 'branch-*' preferences --themes dark
 python3 tools/parity/parity.py --list
+python3 tools/parity/parity.py no-repositories --ghd-only   # GHD alone: captures + `dump` specs
 open target/parity/latest/index.html
 ```
 
@@ -94,6 +95,7 @@ steps:
   - wait: 500                            # alone: sleep; on a step: settle time after it (default 350ms)
   - ghd: {eval: "…"}                     # app-specific step (either side can be `{skip: true}`)
     corvane: {hook: {name: popup, arg: about}}
+  - dump: open                           # GHD DOM boxes + computed styles as JSON ({name, root: css})
   - snap: open                           # or {name, threshold, tolerance, edge_tolerance, radius, mask: [[x,y,w,h]…], region: [x,y,w,h], note}
 ```
 

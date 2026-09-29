@@ -42,6 +42,16 @@ import imgdiff  # noqa: E402
 import report  # noqa: E402
 from drivers import Corvane, Ghd  # noqa: E402
 
+
+class Absent:
+    """Stands in for Corvane under `--ghd-only` (spec extraction runs)."""
+
+    name = "corvane"
+    scale = 2.0
+
+    def __getattr__(self, _name):
+        return lambda *args, **kwargs: {"w": 0, "h": 0}
+
 DEFAULTS = {
     "width": 1367,
     "height": 814,
@@ -109,7 +119,7 @@ class Run:
         repo_c = fixture.build(work / "corvane-repo") if setup == "repo" else None
 
         ghd = Ghd(work / "ghd-profile", work / "logs" / "ghd.log")
-        cv = Corvane(self.binary, work / "corvane-data", work / "logs" / "corvane.log", theme)
+        cv = Absent() if self.args.ghd_only else Corvane(self.binary, work / "corvane-data", work / "logs" / "corvane.log", theme)
         result = {"name": sc["name"], "theme": theme, "file": sc["_file"], "description": sc.get("description", ""), "snaps": [], "error": None, "notes": []}
         started = time.time()
         try:
@@ -129,13 +139,14 @@ class Run:
 
             def setup_cv():
                 info = cv.resize(cfg["width"], cfg["height"])
-                if int(info["w"]) != cfg["width"] or int(info["h"]) != cfg["height"]:
+                if not self.args.ghd_only and (int(info["w"]) != cfg["width"] or int(info["h"]) != cfg["height"]):
                     result["notes"].append(f"Corvane viewport is {info['w']}x{info['h']}")
                 if setup != "welcome":
                     cv.hook("complete-welcome")
                 if repo_c:
                     cv.hook("add-repo", str(repo_c))
-                time.sleep(2.0)
+                if not self.args.ghd_only:
+                    time.sleep(2.0)
 
             both(setup_ghd, setup_cv)
             for i, step in enumerate(sc.get("steps", [])):
@@ -162,6 +173,13 @@ class Run:
         per_app = {"ghd": step.pop("ghd", None), "corvane": step.pop("corvane", None)}
         if "snap" in step:
             self.snap(step["snap"], i, ghd, cv, cfg, shots, result)
+            return
+        if "dump" in step:
+            d = step["dump"]
+            d = {"name": d} if isinstance(d, str) else d
+            path = shots / f"{i:02d}-{d['name']}-ghd-dom.json"
+            path.write_text(json.dumps(ghd.dump(d.get("root", "body")), indent=1))
+            result.setdefault("dumps", []).append(path.name)
             return
         if not step and not any(per_app.values()) and wait is not None:
             time.sleep(wait / 1000)
@@ -231,6 +249,13 @@ class Run:
         name = spec.get("name", f"step{i}")
         stem = f"{i:02d}-{name}"
         pg, pc = shots / f"{stem}-ghd.png", shots / f"{stem}-corvane.png"
+        if self.args.ghd_only:
+            ghd.snap(pg)
+            result["snaps"].append({"name": name, "stem": stem, "note": spec.get("note", ""), "ghd_only": True,
+                                    "percent": 0.0, "coverage": 0.0, "threshold": 0, "pass": True, "size_mismatch": "",
+                                    "ghd": pg.name, "corvane": "", "diff": "", "regions": []})
+            print(f"    snap {name}", flush=True)
+            return
         both(lambda: ghd.snap(pg), lambda: cv.snap(pc))
         threshold = spec.get("threshold", cfg["threshold"])
         res = imgdiff.compare(
@@ -293,6 +318,7 @@ def main():
     ap.add_argument("--fail-fast", action="store_true")
     ap.add_argument("--keep-open", action="store_true", help="pause before closing the apps")
     ap.add_argument("--keep-work", action="store_true", help="keep profiles / data dirs")
+    ap.add_argument("--ghd-only", action="store_true", help="drive GHD alone: captures and DOM dumps, no comparison")
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args()
 
@@ -306,12 +332,21 @@ def main():
         return 2
     if args.build:
         subprocess.run(["cargo", "build", "-p", "corvane", "--features", "snapshots"], cwd=ROOT, check=True)
-    if not Path(args.corvane).exists():
+    if not args.ghd_only and not Path(args.corvane).exists():
         print(f"{args.corvane} missing: cargo build -p corvane --features snapshots (or --build)", file=sys.stderr)
         return 2
 
     run = Run(args)
     run.out.mkdir(parents=True, exist_ok=True)
+    # one run at a time: two runs fight over focus, ports and GHD's shared helpers
+    import fcntl
+
+    lock = open(run.out.parent / ".lock", "w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("another parity run is in progress", file=sys.stderr)
+        return 2
     latest = run.out.parent / "latest"
     if latest.is_symlink() or latest.exists():
         latest.unlink()

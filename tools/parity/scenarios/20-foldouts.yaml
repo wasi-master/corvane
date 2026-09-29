@@ -29,6 +29,7 @@ steps:
   - release: [432, 231]
   - wait: 600
   - snap: after-switch-click
+  - key: escape
   - click: [365, 56]
     wait: 500
   - type: "feat"

@@ -6,6 +6,7 @@ description: Welcome flow start page, button hover / press, then "Skip this step
 setup: welcome
 steps:
   - wait: 600
+  - dump: start
   - snap: start
   - hover: {text: "Sign in to GitHub.com", within: "#welcome"}
   - snap: sign-in-hover
@@ -18,6 +19,7 @@ steps:
   - snap: skip-hover
   - click: {text: "Skip this step", within: "#welcome"}
     wait: 800
+  - dump: configure-git
   - snap: configure-git
   - hover: {text: "Finish", within: "#welcome"}
   - snap: finish-hover

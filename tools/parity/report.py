@@ -76,7 +76,12 @@ def write(out: Path, results: list[dict], defaults: dict):
         if r["error"]:
             body.append(f'<div class="card"><span class="b bad">error</span> {_e(r["error"])}<pre>{_e(r.get("traceback", ""))}</pre></div>')
         base = f'shots/{r["name"]}-{r["theme"]}/'
+        for dump in r.get("dumps", []):
+            body.append(f'<p class="muted">GHD DOM dump: <a href="{base + dump}">{_e(dump)}</a></p>')
         for s in r["snaps"]:
+            if s.get("ghd_only"):
+                body.append(f'<div class="card"><h3>{_e(s["name"])}</h3><img loading="lazy" style="max-width:100%" src="{base + s["ghd"]}"></div>')
+                continue
             badge = (f'<span class="b {"ok" if s["pass"] else "bad"}">{s["percent"]:.3f}% px / ≤{s["threshold"]}%</span>'
                      f'<span class="muted">{s.get("coverage", 0):.1f}% of 4pt blocks differ</span>')
             g, c, d = base + s["ghd"], base + s["corvane"], base + s["diff"]

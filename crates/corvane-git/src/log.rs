@@ -87,6 +87,67 @@ pub fn get_commits(
     Ok(out)
 }
 
+/// The newest commit on the current branch that no remote has (GHD
+/// `GitStore.loadLocalCommits`, first of `localCommitSHAs`): `upstream..branch`
+/// when the branch tracks one, else `HEAD --not --remotes`. Feeds the changes
+/// sidebar's "Committed … Undo" bar.
+pub fn most_recent_local_commit(
+    workdir: &Path,
+    branch: &str,
+    upstream: Option<&str>,
+) -> Result<Option<Commit>> {
+    if let Some(upstream) = upstream {
+        return Ok(get_commits_in_range(workdir, upstream, branch, 1)?
+            .into_iter()
+            .next());
+    }
+    let repo = gix::open(workdir)?;
+    let Ok(head) = repo.rev_parse_single("HEAD") else {
+        return Ok(None);
+    };
+    let mut hidden = Vec::new();
+    if let Ok(refs) = repo.references()
+        && let Ok(iter) = refs.remote_branches()
+    {
+        for r in iter.flatten() {
+            if let Ok(id) = r.into_fully_peeled_id() {
+                hidden.push(id.detach());
+            }
+        }
+    }
+    let walk = repo
+        .rev_walk([head.detach()])
+        .with_hidden(hidden)
+        .sorting(gix::revision::walk::Sorting::ByCommitTime(
+            gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
+        ))
+        .all()
+        .map_err(|e| GitError::Gix(e.to_string()))?;
+    let Some(info) = walk.take(1).next() else {
+        return Ok(None);
+    };
+    let info = info.map_err(|e| GitError::Gix(e.to_string()))?;
+    let commit = info.object().map_err(|e| GitError::Gix(e.to_string()))?;
+    let decoded = commit.decode().map_err(|e| GitError::Gix(e.to_string()))?;
+    let message = decoded.message();
+    Ok(Some(Commit {
+        sha: info.id.to_string(),
+        summary: message.summary().to_string(),
+        body: message
+            .body()
+            .map(|b| b.to_string().trim_end().to_string())
+            .unwrap_or_default(),
+        author: identity(commit.author().map_err(|e| GitError::Gix(e.to_string()))?),
+        committer: identity(
+            commit
+                .committer()
+                .map_err(|e| GitError::Gix(e.to_string()))?,
+        ),
+        parents: info.parent_ids.iter().map(|p| p.to_string()).collect(),
+        tags: Vec::new(),
+    }))
+}
+
 /// Commits reachable from `to` but not from `from` (`from..to`), newest
 /// first, at most `limit` (GHD `getCommits(repository, revRange(from, to))`).
 pub fn get_commits_in_range(

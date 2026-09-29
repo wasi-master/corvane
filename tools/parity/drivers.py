@@ -292,6 +292,38 @@ class Ghd:
             "out.unshift(s);e=e.parentElement}return out.join(' > ')})()" % (x, y)
         ) or ""
 
+    def dump(self, root: str = "body") -> list:
+        """Visible elements under `root` with their box and the styles that
+        decide how they look (a spec to implement against)."""
+        js = r"""
+(() => {
+  const props = ['color','backgroundColor','fontSize','fontWeight','lineHeight','fontFamily',
+    'paddingTop','paddingRight','paddingBottom','paddingLeft','marginTop','marginRight','marginBottom','marginLeft',
+    'borderTopWidth','borderTopColor','borderRightWidth','borderBottomWidth','borderBottomColor','borderLeftWidth',
+    'borderRadius','boxShadow','opacity','zoom','textAlign','letterSpacing'];
+  const root = document.querySelector(%s) || document.body;
+  const out = [];
+  const walk = (e, depth) => {
+    const r = e.getBoundingClientRect();
+    const cs = getComputedStyle(e);
+    if (r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none') {
+      const own = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join(' ').trim();
+      const st = {};
+      for (const p of props) {
+        const v = cs[p];
+        if (v && !['0px','none','normal','auto','rgba(0, 0, 0, 0)','1','start'].includes(v)) st[p] = v;
+      }
+      out.push({depth, tag: e.tagName.toLowerCase(), id: e.id || undefined,
+        cls: [...e.classList].join(' ') || undefined, text: own.slice(0, 80) || undefined,
+        rect: [r.x, r.y, r.width, r.height].map(v => Math.round(v * 100) / 100), style: st});
+    }
+    for (const c of e.children) walk(c, depth + 1);
+  };
+  walk(root, 0);
+  return out;
+})()""" % json.dumps(root)
+        return self.eval(js) or []
+
     # -- input -------------------------------------------------------------
     def _mouse(self, kind, x, y, button="left", clicks=1, mods="", buttons=0):
         self.call(

@@ -6,7 +6,7 @@ Core Text anti-alias glyphs differently and may land text on different
 subpixel positions, which should not fail a step, while a 1-point layout
 offset, a wrong colour or a missing element still does.
 
-Differences are grouped into regions (connected blocks). For each region the
+Differences are grouped into regions (8-connected 4pt blocks). For each region the
 report says whether it is a pure offset (the Corvane crop matches GHD after
 shifting by dx, dy points) or a colour / content difference (median colours of
 the differing pixels on both sides).
@@ -38,7 +38,8 @@ class Region:
     crop: str = ""
 
     def hint(self) -> str:
-        if self.shift and self.shift != (0, 0) and self.shift_gain > 0.6:
+        # a best shift at the search limit (±8pt) means no real alignment
+        if self.shift and self.shift != (0, 0) and self.shift_gain > 0.6 and max(map(abs, self.shift)) < 8:
             dx, dy = self.shift
             parts = []
             if dx:
@@ -104,7 +105,7 @@ def _label(grid: np.ndarray) -> list[list[tuple[int, int]]]:
     try:
         from scipy import ndimage  # optional, faster
 
-        labels, n = ndimage.label(grid)
+        labels, n = ndimage.label(grid, structure=np.ones((3, 3), dtype=int))
         return [list(zip(*np.nonzero(labels == i))) for i in range(1, n + 1)]
     except ImportError:
         pass
@@ -119,7 +120,7 @@ def _label(grid: np.ndarray) -> list[list[tuple[int, int]]]:
         while q:
             cy, cx = q.popleft()
             comp.append((cy, cx))
-            for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+            for ny, nx in ((cy + dy, cx + dx) for dy in (-1, 0, 1) for dx in (-1, 0, 1)):
                 if 0 <= ny < H and 0 <= nx < W and grid[ny, nx] and not seen[ny, nx]:
                     seen[ny, nx] = True
                     q.append((ny, nx))
@@ -194,7 +195,7 @@ def compare(
     total = int(valid.sum()) or 1
     percent = 100.0 * int(mism.sum()) / total
 
-    # regions on a 4pt block grid, dilated one block so nearby specks merge
+    # regions: 8-connected components on a 4pt block grid
     bs = max(1, int(4 * scale))
     gh, gw = (H + bs - 1) // bs, (W + bs - 1) // bs
     padded = np.zeros((gh * bs, gw * bs), dtype=np.int32)
@@ -205,13 +206,8 @@ def compare(
     vpad[:H, :W] = valid
     valid_blocks = int((vpad.reshape(gh, bs, gw, bs).sum(axis=(1, 3)) > 0).sum()) or 1
     coverage = 100.0 * int(hot.sum()) / valid_blocks
-    grown = hot.copy()
-    grown[1:] |= hot[:-1]
-    grown[:-1] |= hot[1:]
-    grown[:, 1:] |= hot[:, :-1]
-    grown[:, :-1] |= hot[:, 1:]
     regions: list[Region] = []
-    for comp in _label(grown):
+    for comp in _label(hot):
         ys = [c[0] for c in comp]
         xs = [c[1] for c in comp]
         y0, y1 = min(ys) * bs, min(H, (max(ys) + 1) * bs)

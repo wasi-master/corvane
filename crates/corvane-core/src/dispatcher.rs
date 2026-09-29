@@ -545,6 +545,25 @@ impl Dispatcher {
                         pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                         worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
                             .unwrap_or_default(),
+                        last_local_commit:
+                            info.current_branch()
+                                .and_then(|b| {
+                                    corvane_git::most_recent_local_commit(
+                                        &info.workdir,
+                                        &b.name,
+                                        b.upstream.as_deref(),
+                                    )
+                                    .ok()
+                                    .flatten()
+                                })
+                                .map(|c| crate::state::LastCommit {
+                                    at: std::time::UNIX_EPOCH
+                                        + std::time::Duration::from_secs(
+                                            c.author.seconds.max(0) as u64
+                                        ),
+                                    sha: c.sha,
+                                    summary: c.summary,
+                                }),
                     }
                 });
                 Ok::<_, GitError>((info, ahead_behind, status, extras))
@@ -585,6 +604,9 @@ impl Dispatcher {
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 repo_state.worktrees = extras.worktrees;
+                                // GHD `mostRecentLocalCommit`: the undo bar
+                                // follows the branch's unpushed commits
+                                repo_state.last_commit = extras.last_local_commit;
                                 // `mainWorktreePath` bookkeeping for the
                                 // missing-worktree fallback (applied below)
                                 main_worktree = repo_state
@@ -2910,4 +2932,5 @@ struct RefreshExtras {
     last_fetched: Option<std::time::SystemTime>,
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
+    last_local_commit: Option<crate::state::LastCommit>,
 }
