@@ -417,6 +417,41 @@ impl Dispatcher {
         }
     }
 
+    /// "Switch to Pull Request" in the notification dialogs: close the
+    /// dialog, `selectRepository`, then `checkoutPullRequest` once the
+    /// repository's branches and remotes are loaded.
+    pub fn switch_to_pull_request(id: u64, pr: PullRequest, cx: &mut App) {
+        Self::close_popup(cx);
+        Self::select_repository(id, cx);
+        let loaded = move |cx: &App| {
+            Self::state(cx)
+                .read(cx)
+                .repo_states
+                .get(&id)
+                .is_some_and(|rs| rs.info.is_some())
+        };
+        if loaded(cx) {
+            Self::checkout_pull_request(id, pr, cx);
+            return;
+        }
+        cx.spawn(async move |cx| {
+            for _ in 0..100 {
+                if cx.update(|cx| loaded(cx)) {
+                    break;
+                }
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(100))
+                    .await;
+            }
+            cx.update(|cx| {
+                if loaded(cx) {
+                    Self::checkout_pull_request(id, pr, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
     /// `_showPullRequest`: the current branch's pull request in the browser.
     pub fn show_pull_request(id: u64, cx: &mut App) {
         let pr = Self::state(cx).read(cx).current_pull_request(id).cloned();

@@ -2,6 +2,7 @@
 
 mod askpass;
 mod assets;
+mod dev_samples;
 mod logging;
 mod menus;
 
@@ -59,6 +60,7 @@ fn main() {
         phase(started, "gpui-kit initialised");
 
         // CORVANE_THEME=light|dark overrides the saved setting (dev convenience).
+        let stored_theme = settings.theme;
         let theme_setting = match std::env::var("CORVANE_THEME").as_deref() {
             Ok("light") => ThemeSetting::Light,
             Ok("dark") => ThemeSetting::Dark,
@@ -86,7 +88,9 @@ fn main() {
 
         // Settings › Appearance and Integrations feed back into the theme and
         // the "Open in …" menu labels; system appearance flips the System theme.
-        let mut last_theme = theme_setting;
+        // compared with the stored setting, so a CORVANE_THEME override holds
+        // until the user picks a theme
+        let mut last_theme = stored_theme;
         let mut last_labels = {
             let s = state.read(cx);
             (s.editor_label(), s.shell_label())
@@ -153,9 +157,12 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), None, cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|release-notes|move-to-applications|
-        // upstream-already-exists opens a dialog at
-        // launch (dev/testing convenience for headless smoke runs).
+        // CORVANE_POPUP=<name> opens a dialog at launch (dev/testing convenience
+        // for headless smoke runs; API-backed dialogs get sample data):
+        //   preferences | repository-settings | about | create | clone | clone:<url>
+        //   release-notes | move-to-applications | upstream-already-exists
+        //   pr-review[:approved|:commented] (changes requested by default)
+        //   pr-comment | pr-checks-failed
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -248,6 +255,45 @@ fn main() {
                                 cx,
                             )
                         }
+                        // GHD `TestNotifications`: the pull request notification
+                        // dialogs for the CORVANE_ADD_REPO repository
+                        (other, Some(id)) if other.starts_with("pr-review") => {
+                            use corvane_github::api::ApiPullRequestReviewState as State;
+                            let state = match other.strip_prefix("pr-review") {
+                                Some(":approved") => State::Approved,
+                                Some(":commented") => State::Commented,
+                                _ => State::ChangesRequested,
+                            };
+                            Dispatcher::show_popup(
+                                Popup::PullRequestReview {
+                                    repo: id,
+                                    pull_request: dev_samples::pull_request(id, cx),
+                                    review: dev_samples::review(state),
+                                    should_checkout_branch: true,
+                                    should_change_repository: false,
+                                },
+                                cx,
+                            )
+                        }
+                        ("pr-comment", Some(id)) => Dispatcher::show_popup(
+                            Popup::PullRequestComment {
+                                repo: id,
+                                pull_request: dev_samples::pull_request(id, cx),
+                                comment: dev_samples::comment(),
+                                should_checkout_branch: true,
+                                should_change_repository: false,
+                            },
+                            cx,
+                        ),
+                        ("pr-checks-failed", Some(id)) => Dispatcher::show_popup(
+                            Popup::PullRequestChecksFailed {
+                                repo: id,
+                                pull_request: dev_samples::pull_request(id, cx),
+                                checks: dev_samples::failed_checks(),
+                                should_change_repository: false,
+                            },
+                            cx,
+                        ),
                         // `clone:<url>` opens the URL tab pre-filled
                         (other, _) if other.starts_with("clone:") => Dispatcher::show_popup(
                             Popup::CloneRepository {

@@ -26,6 +26,11 @@ use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, c, primer};
 use crate::widgets::button;
 
+/// Re-runs the given checks (`failed_only` second).
+pub(crate) type RerunChecks = Rc<dyn Fn(Vec<RefCheck>, bool, &mut App)>;
+/// Re-runs one job.
+pub(crate) type RerunJob = Rc<dyn Fn(&mut App)>;
+
 /// `.ci-check-list-popover .popover-component { width: 440px }`
 const POPOVER_WIDTH: Pixels = px(440.);
 
@@ -193,9 +198,6 @@ impl CiCheckPopover {
         } else {
             donut(checks)
         };
-        let failed_exist = checks
-            .iter()
-            .any(|c| c.conclusion == Some(CheckConclusion::Failure));
         let can_rerun_failed = snap.dotcom;
         let rerun_disabled = checks.is_empty() || loading;
         let snap_for_menu = Snapshot {
@@ -244,80 +246,19 @@ impl CiCheckPopover {
                             .child(summary),
                     ),
             )
-            .child(
-                // `CICheckReRunButton`
-                button("ci-rerun", "", cx)
-                    .flex_none()
-                    .gap(SPACING_HALF)
-                    .when(rerun_disabled, |d| d.opacity(0.6))
-                    .child(octicon(Octicon::SyncClockwise, t.secondary_button_text))
-                    .child(if can_rerun_failed && failed_exist {
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .gap(px(2.))
-                            .child("Re-run")
-                            .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
-                            .into_any_element()
-                    } else {
-                        div().child("Re-run Checks").into_any_element()
-                    })
-                    .on_click(move |ev, window, cx| {
-                        if rerun_disabled {
-                            return;
-                        }
-                        if !(can_rerun_failed && failed_exist) {
-                            Self::rerun(&snap_for_menu, checks_for_menu.clone(), false, cx);
-                            return;
-                        }
-                        let (a, b) = (
-                            (
-                                snap_for_menu.repo,
-                                snap_for_menu.github.clone(),
-                                snap_for_menu.git_ref.clone(),
-                                checks_for_menu.clone(),
-                            ),
-                            (
-                                snap_for_menu.repo,
-                                snap_for_menu.github.clone(),
-                                snap_for_menu.git_ref.clone(),
-                                checks_for_menu.clone(),
-                            ),
-                        );
-                        crate::native_menu::show_context_menu(
-                            vec![
-                                MenuItem::new("Re-run Failed Checks", move |_, cx| {
-                                    Dispatcher::show_popup(
-                                        Popup::CICheckRunRerun {
-                                            repo: a.0,
-                                            github: a.1.clone(),
-                                            checks: a.3.clone(),
-                                            git_ref: a.2.clone(),
-                                            failed_only: true,
-                                        },
-                                        cx,
-                                    )
-                                }),
-                                MenuItem::new("Re-run All Checks", move |_, cx| {
-                                    Dispatcher::show_popup(
-                                        Popup::CICheckRunRerun {
-                                            repo: b.0,
-                                            github: b.1.clone(),
-                                            checks: b.3.clone(),
-                                            git_ref: b.2.clone(),
-                                            failed_only: false,
-                                        },
-                                        cx,
-                                    )
-                                }),
-                            ],
-                            ev.position(),
-                            window,
-                            cx,
-                        );
+            .child({
+                let snap = snap_for_menu;
+                rerun_button(
+                    "ci-rerun",
+                    &checks_for_menu,
+                    rerun_disabled,
+                    can_rerun_failed,
+                    Rc::new(move |checks, failed_only, cx| {
+                        Self::rerun(&snap, checks, failed_only, cx)
                     }),
-            )
+                    cx,
+                )
+            })
             .into_any_element()
     }
 
@@ -326,231 +267,335 @@ impl CiCheckPopover {
         let t = cx.ghd();
         let expanded = self.expanded == Some(check.id);
         let id = check.id;
-        let hover_bg = t.box_selected_background;
         let external_url = check
             .html_url
             .clone()
             .unwrap_or_else(|| format!("{}/pull/{}", snap.github.html_url, snap.pr_number));
-        let view_url = external_url.clone();
-        let row = div()
-            .id(SharedString::from(format!("check-run-{id}")))
-            .w_full()
-            .flex()
-            .flex_row()
-            .items_center()
-            .border_b_1()
-            .border_color(t.box_border)
-            .bg(t.background)
-            .cursor_pointer()
-            .hover(move |s| s.bg(hover_bg))
-            .on_click(cx.listener(move |this, _, _, cx| this.toggle(id, cx)))
-            .child(
-                div()
-                    .flex_none()
-                    .my(px(15.))
-                    .ml(SPACING)
-                    .child(ci_status(check.status, check.conclusion)),
-            )
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .mx(SPACING)
-                    .flex()
-                    .flex_col()
-                    .child(
-                        div()
-                            .truncate()
-                            .text_size(FONT_SIZE)
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .child(check.name.clone()),
-                    )
-                    .child(
-                        div()
-                            .truncate()
-                            .text_size(FONT_SIZE_SM)
-                            .text_color(t.text_secondary)
-                            .child(check.description.clone()),
-                    ),
-            )
-            .child(div().flex_none().mr(SPACING_HALF).child(octicon(
-                if expanded {
-                    Octicon::ChevronUp
-                } else {
-                    Octicon::ChevronDown
-                },
-                t.text_secondary,
-            )));
+        let entity = cx.entity().downgrade();
+        let row = check_run_row(check, false, expanded, cx).on_click(move |_, _, cx| {
+            entity.update(cx, |this, cx| this.toggle(id, cx)).ok();
+        });
         if !expanded {
             return row.into_any_element();
         }
-        // `.ci-steps-container`
-        let steps_region = match &check.job_steps {
-            Some(steps) => {
-                let conclusions: Vec<Option<CheckConclusion>> = steps
-                    .iter()
-                    .map(|s| effective_conclusion(s.status, s.conclusion))
-                    .collect();
-                let rerun_check = check.clone();
-                let snap_for_rerun = Snapshot {
-                    repo: snap.repo,
-                    github: snap.github.clone(),
-                    pr_number: snap.pr_number,
-                    git_ref: snap.git_ref.clone(),
-                    check: None,
-                    dotcom: snap.dotcom,
-                };
-                let header_url = external_url.clone();
-                div()
-                    .flex()
-                    .flex_col()
-                    .p(SPACING)
-                    .bg(t.box_alt_background)
-                    .border_b_1()
-                    .border_color(t.box_border)
-                    .child(
-                        // `CICheckRunStepListHeader`
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .border_b_1()
-                            .border_color(t.box_border)
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .mb(px(3.))
-                                    .text_size(FONT_SIZE)
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_color(t.text_secondary)
-                                    .child(combined_status_summary(&conclusions, "step")),
-                            )
-                            .when(snap.dotcom, |d| {
-                                d.child(
-                                    icon_button(
-                                        "check-rerun-job",
-                                        Octicon::SyncClockwise,
-                                        format!("Re-run {}", check.name),
-                                        cx,
-                                    )
-                                    .on_click(
-                                        move |_, _, cx| {
-                                            Self::rerun(
-                                                &snap_for_rerun,
-                                                vec![rerun_check.clone()],
-                                                false,
-                                                cx,
-                                            )
-                                        },
-                                    ),
-                                )
-                            })
-                            .child(
-                                icon_button(
-                                    "check-view-external",
-                                    Octicon::LinkExternal,
-                                    format!("View {} on GitHub", check.name),
-                                    cx,
-                                )
-                                .on_click(move |_, _, cx| cx.open_url(&header_url)),
-                            ),
-                    )
-                    .children(steps.iter().map(|step| {
-                        let step_url = format!("{}/#step:{}:1", external_url, step.number);
-                        let duration = corvane_core::check_duration_ms(
-                            step.started_at.as_deref(),
-                            step.completed_at.as_deref(),
-                        )
-                        .map(corvane_core::format_precise_duration)
-                        .unwrap_or_default();
-                        let conclusion = effective_conclusion(step.status, step.conclusion);
-                        div()
-                            .flex()
-                            .flex_row()
-                            .items_center()
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .py(SPACING_HALF)
-                                    .pr(SPACING)
-                                    .mt(px(2.))
-                                    .child(octicon(
-                                        symbol_for_log_step(step.status, step.conclusion),
-                                        color_for(conclusion),
-                                    )),
-                            )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .truncate()
-                                    .text_size(FONT_SIZE)
-                                    .child(step.name.clone()),
-                            )
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .py(SPACING_HALF)
-                                    .px(SPACING)
-                                    .text_size(FONT_SIZE)
-                                    .text_color(t.text_secondary)
-                                    .child(duration),
-                            )
-                            .child(
-                                icon_button(
-                                    SharedString::from(format!(
-                                        "step-{}-{}",
-                                        check.id, step.number
-                                    )),
-                                    Octicon::LinkExternal,
-                                    format!("View {} on GitHub", step.name),
-                                    cx,
-                                )
-                                .on_click(move |_, _, cx| cx.open_url(&step_url)),
-                            )
-                    }))
-                    .into_any_element()
-            }
-            None => div()
-                .h(px(150.))
-                .flex()
-                .flex_row()
-                .items_center()
-                .p(SPACING_DOUBLE)
-                .bg(t.box_alt_background)
-                .border_b_1()
-                .border_color(t.box_border)
-                .child(
-                    div()
-                        .flex_1()
-                        .flex()
-                        .flex_col()
-                        .text_size(FONT_SIZE)
-                        .child("There are no steps to display for this check.")
-                        .child(
-                            button("check-no-steps-view", "", cx)
-                                .mt(SPACING)
-                                .gap(SPACING_HALF)
-                                .child("View check details")
-                                .child(octicon(Octicon::LinkExternal, t.secondary_button_text))
-                                .on_click(move |_, _, cx| cx.open_url(&view_url)),
-                        ),
-                )
-                .child(
-                    img("illustrations/paper-stack.svg")
-                        .flex_1()
-                        .ml(SPACING_DOUBLE)
-                        .h(px(120.)),
-                )
-                .into_any_element(),
+        let rerun_check = check.clone();
+        let snap_for_rerun = Snapshot {
+            repo: snap.repo,
+            github: snap.github.clone(),
+            pr_number: snap.pr_number,
+            git_ref: snap.git_ref.clone(),
+            check: None,
+            dotcom: snap.dotcom,
         };
+        // `.ci-steps-container`
+        let steps_region = div()
+            .p(SPACING)
+            .bg(t.box_alt_background)
+            .border_b_1()
+            .border_color(t.box_border)
+            .when(check.job_steps.is_none(), |d| d.h(px(150.)).p(px(0.)))
+            .child(check_run_steps(
+                check,
+                external_url,
+                snap.dotcom.then(|| {
+                    Rc::new(move |cx: &mut App| {
+                        Self::rerun(&snap_for_rerun, vec![rerun_check.clone()], false, cx)
+                    }) as RerunJob
+                }),
+                cx,
+            ));
         div()
             .flex()
             .flex_col()
             .child(row)
             .child(steps_region)
             .into_any_element()
+    }
+}
+
+/// `CICheckReRunButton`: "Re-run Checks", or "Re-run ▾" with a Failed / All
+/// menu when failed checks can be re-run on their own. `on_rerun` gets the
+/// checks and `failed_only`.
+pub(crate) fn rerun_button(
+    id: &'static str,
+    checks: &[RefCheck],
+    disabled: bool,
+    can_rerun_failed: bool,
+    on_rerun: RerunChecks,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let failed_exist = checks
+        .iter()
+        .any(|c| c.conclusion == Some(CheckConclusion::Failure));
+    let menu = can_rerun_failed && failed_exist;
+    let checks = checks.to_vec();
+    button(id, "", cx)
+        .flex_none()
+        .gap(SPACING_HALF)
+        .when(disabled, |d| d.opacity(0.6))
+        .child(octicon(Octicon::SyncClockwise, t.secondary_button_text))
+        .child(if menu {
+            div()
+                .flex()
+                .flex_row()
+                .items_center()
+                .gap(px(2.))
+                .child("Re-run")
+                .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
+                .into_any_element()
+        } else {
+            div().child("Re-run Checks").into_any_element()
+        })
+        .on_click(move |ev, window, cx| {
+            if disabled {
+                return;
+            }
+            if !menu {
+                on_rerun(checks.clone(), false, cx);
+                return;
+            }
+            let (failed, all) = (on_rerun.clone(), on_rerun.clone());
+            let (failed_checks, all_checks) = (checks.clone(), checks.clone());
+            crate::native_menu::show_context_menu(
+                vec![
+                    MenuItem::new("Re-run Failed Checks", move |_, cx| {
+                        failed(failed_checks.clone(), true, cx)
+                    }),
+                    MenuItem::new("Re-run All Checks", move |_, cx| {
+                        all(all_checks.clone(), false, cx)
+                    }),
+                ],
+                ev.position(),
+                window,
+                cx,
+            );
+        })
+}
+
+/// `CICheckRunListItem`: status symbol, name + description, and the
+/// expansion chevron unless the list is `selectable` (then `active` means
+/// selected).
+pub(crate) fn check_run_row(
+    check: &RefCheck,
+    selectable: bool,
+    active: bool,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let hover_bg = t.box_selected_background;
+    div()
+        .id(SharedString::from(format!("check-run-{}", check.id)))
+        .w_full()
+        .flex()
+        .flex_row()
+        .items_center()
+        .border_b_1()
+        .border_color(t.box_border)
+        .bg(if selectable && active {
+            t.box_selected_background
+        } else {
+            t.background
+        })
+        .cursor_pointer()
+        .hover(move |s| s.bg(hover_bg))
+        .child(
+            div()
+                .flex_none()
+                .my(px(15.))
+                .ml(SPACING)
+                .child(ci_status(check.status, check.conclusion)),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .mx(SPACING)
+                .flex()
+                .flex_col()
+                .child(
+                    div()
+                        .truncate()
+                        .text_size(FONT_SIZE)
+                        .font_weight(FontWeight::SEMIBOLD)
+                        .child(check.name.clone()),
+                )
+                .child(
+                    div()
+                        .truncate()
+                        .text_size(FONT_SIZE_SM)
+                        .text_color(t.text_secondary)
+                        .child(check.description.clone()),
+                ),
+        )
+        .when(!selectable, |d| {
+            d.child(div().flex_none().mr(SPACING_HALF).child(octicon(
+                if active {
+                    Octicon::ChevronUp
+                } else {
+                    Octicon::ChevronDown
+                },
+                t.text_secondary,
+            )))
+        })
+}
+
+/// `.ci-check-run-list-group-header`
+pub(crate) fn check_run_group_header(name: String, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .px(SPACING)
+        .py(SPACING_HALF)
+        .bg(t.box_alt_background)
+        .border_b_1()
+        .border_color(t.box_border)
+        .truncate()
+        .text_size(FONT_SIZE)
+        .child(name)
+}
+
+/// A check's job steps (`CICheckRunStepListHeader` +
+/// `CICheckRunActionsJobStepList`), or `CICheckRunNoStepItem` when it has
+/// none. `on_rerun_job` is `None` where single jobs cannot be re-run.
+pub(crate) fn check_run_steps(
+    check: &RefCheck,
+    external_url: String,
+    on_rerun_job: Option<RerunJob>,
+    cx: &App,
+) -> AnyElement {
+    let t = cx.ghd();
+    let view_url = external_url.clone();
+    match &check.job_steps {
+        Some(steps) => {
+            let conclusions: Vec<Option<CheckConclusion>> = steps
+                .iter()
+                .map(|s| effective_conclusion(s.status, s.conclusion))
+                .collect();
+            let header_url = external_url.clone();
+            div()
+                .flex()
+                .flex_col()
+                .child(
+                    // `CICheckRunStepListHeader`
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .border_b_1()
+                        .border_color(t.box_border)
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .mb(px(3.))
+                                .text_size(FONT_SIZE)
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(t.text_secondary)
+                                .child(combined_status_summary(&conclusions, "step")),
+                        )
+                        .when_some(on_rerun_job, |d, rerun| {
+                            d.child(
+                                icon_button(
+                                    "check-rerun-job",
+                                    Octicon::SyncClockwise,
+                                    format!("Re-run {}", check.name),
+                                    cx,
+                                )
+                                .on_click(move |_, _, cx| rerun(cx)),
+                            )
+                        })
+                        .child(
+                            icon_button(
+                                "check-view-external",
+                                Octicon::LinkExternal,
+                                format!("View {} on GitHub", check.name),
+                                cx,
+                            )
+                            .on_click(move |_, _, cx| cx.open_url(&header_url)),
+                        ),
+                )
+                .children(steps.iter().map(|step| {
+                    let step_url = format!("{}/#step:{}:1", external_url, step.number);
+                    let duration = corvane_core::check_duration_ms(
+                        step.started_at.as_deref(),
+                        step.completed_at.as_deref(),
+                    )
+                    .map(corvane_core::format_precise_duration)
+                    .unwrap_or_default();
+                    let conclusion = effective_conclusion(step.status, step.conclusion);
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .child(
+                            div()
+                                .flex_none()
+                                .py(SPACING_HALF)
+                                .pr(SPACING)
+                                .mt(px(2.))
+                                .child(octicon(
+                                    symbol_for_log_step(step.status, step.conclusion),
+                                    color_for(conclusion),
+                                )),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_size(FONT_SIZE)
+                                .child(step.name.clone()),
+                        )
+                        .child(
+                            div()
+                                .flex_none()
+                                .py(SPACING_HALF)
+                                .px(SPACING)
+                                .text_size(FONT_SIZE)
+                                .text_color(t.text_secondary)
+                                .child(duration),
+                        )
+                        .child(
+                            icon_button(
+                                SharedString::from(format!("step-{}-{}", check.id, step.number)),
+                                Octicon::LinkExternal,
+                                format!("View {} on GitHub", step.name),
+                                cx,
+                            )
+                            .on_click(move |_, _, cx| cx.open_url(&step_url)),
+                        )
+                }))
+                .into_any_element()
+        }
+        None => div()
+            .size_full()
+            .flex()
+            .flex_row()
+            .items_center()
+            .p(SPACING_DOUBLE)
+            .child(
+                div()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .text_size(FONT_SIZE)
+                    .child("There are no steps to display for this check.")
+                    .child(
+                        button("check-no-steps-view", "", cx)
+                            .mt(SPACING)
+                            .gap(SPACING_HALF)
+                            .child("View check details")
+                            .child(octicon(Octicon::LinkExternal, t.secondary_button_text))
+                            .on_click(move |_, _, cx| cx.open_url(&view_url)),
+                    ),
+            )
+            .child(
+                img("illustrations/paper-stack.svg")
+                    .flex_1()
+                    .ml(SPACING_DOUBLE)
+                    .h(px(120.)),
+            )
+            .into_any_element(),
     }
 }
 
@@ -678,20 +723,7 @@ impl Render for CiCheckPopover {
                     div()
                         .flex()
                         .flex_col()
-                        .when(!single_other, |d| {
-                            d.child(
-                                // `.ci-check-run-list-group-header`
-                                div()
-                                    .px(SPACING)
-                                    .py(SPACING_HALF)
-                                    .bg(t.box_alt_background)
-                                    .border_b_1()
-                                    .border_color(t.box_border)
-                                    .truncate()
-                                    .text_size(FONT_SIZE)
-                                    .child(name),
-                            )
-                        })
+                        .when(!single_other, |d| d.child(check_run_group_header(name, cx)))
                         .children(items.iter().map(|check| self.check_item(&snap, check, cx)))
                 }))
                 .with_scrollbar()

@@ -16,6 +16,7 @@ mod mco_dialogs;
 mod move_to_applications_folder;
 mod open_pull_request;
 mod preferences;
+mod pull_request_notifications;
 mod push_branch_commits;
 mod push_protection;
 mod reauth_dialogs;
@@ -50,6 +51,9 @@ pub use history_dialogs::{
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use open_pull_request::OpenPullRequestDialog;
 pub use preferences::PreferencesDialog;
+pub use pull_request_notifications::{
+    PullRequestChecksFailedDialog, PullRequestCommentDialog, PullRequestReviewDialog,
+};
 pub use push_branch_commits::PushBranchCommitsDialog;
 pub use push_protection::{BypassPushProtectionDialog, PushProtectionErrorDialog};
 pub use reauth_dialogs::{
@@ -180,6 +184,57 @@ impl DialogHost {
                         git_ref.clone(),
                         *failed_only,
                         cx,
+                    )
+                })
+                .into(),
+            Popup::PullRequestReview {
+                repo,
+                pull_request,
+                review,
+                should_checkout_branch,
+                should_change_repository,
+            } => cx
+                .new(|cx| {
+                    PullRequestReviewDialog::new(
+                        *repo,
+                        pull_request.clone(),
+                        review.clone(),
+                        *should_checkout_branch,
+                        *should_change_repository,
+                        cx,
+                    )
+                })
+                .into(),
+            Popup::PullRequestComment {
+                repo,
+                pull_request,
+                comment,
+                should_checkout_branch,
+                should_change_repository,
+            } => cx
+                .new(|cx| {
+                    PullRequestCommentDialog::new(
+                        *repo,
+                        pull_request.clone(),
+                        comment.clone(),
+                        *should_checkout_branch,
+                        *should_change_repository,
+                        cx,
+                    )
+                })
+                .into(),
+            Popup::PullRequestChecksFailed {
+                repo,
+                pull_request,
+                checks,
+                should_change_repository,
+            } => cx
+                .new(|_| {
+                    PullRequestChecksFailedDialog::new(
+                        *repo,
+                        pull_request.clone(),
+                        checks.clone(),
+                        *should_change_repository,
                     )
                 })
                 .into(),

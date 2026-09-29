@@ -7,9 +7,10 @@ pub mod endpoint;
 pub mod error;
 
 pub use api::{
-    ApiCheckSuite, ApiIdentity, ApiIssue, ApiMentionableUser, ApiPullRequest, ApiPushControl,
-    ApiRefCheckRun, ApiRefStatus, ApiRelease, ApiRepoRule, ApiRepoRuleset, ApiWorkflowJob,
-    ApiWorkflowRun, Client, IssueState, RepositoryCloneInfo, encode_path_component,
+    ApiCheckSuite, ApiIdentity, ApiIssue, ApiIssueComment, ApiMentionableUser, ApiPullRequest,
+    ApiPullRequestReview, ApiPullRequestReviewState, ApiPushControl, ApiRefCheckRun, ApiRefStatus,
+    ApiRelease, ApiRepoRule, ApiRepoRuleset, ApiWorkflowJob, ApiWorkflowRun, Client, IssueState,
+    RepositoryCloneInfo, encode_path_component,
 };
 pub use endpoint::Endpoint;
 pub use error::{GitHubError, Result};

@@ -1335,6 +1335,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "corvane-core",
+ "corvane-github",
  "corvane-platform",
  "corvane-store",
  "corvane-ui",
