@@ -182,6 +182,9 @@ pub struct GhdTheme {
     pub dialog_banner_success_background: Hsla,
     pub dialog_banner_success_border: Hsla,
     pub dialog_banner_success_text: Hsla,
+    /// Selected diff text (the browser's `::selection` in GHD; macOS's
+    /// selectedTextBackgroundColor with the blue accent).
+    pub text_selection_background: Hsla,
     /// `--banner-warning-*`: the update banner (`#update-available`).
     pub banner_warning_background: Hsla,
     pub banner_warning_text: Hsla,

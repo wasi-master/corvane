@@ -4,6 +4,7 @@
 //! of `diff_expansion`; `Row::original` keeps the model's line index so
 //! selections and discard patches ignore expanded context.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use std::rc::Rc;
@@ -16,7 +17,7 @@ use gpui_kit::*;
 use crate::widgets::IconButtonA11y;
 
 use crate::diff_expansion::{ExpansionKind, HunkExpansionType, XHunk};
-use crate::diff_view::{DIFF_LINE_HEIGHT, DiffView};
+use crate::diff_view::{DIFF_LINE_HEIGHT, DiffView, TextSelectionSnapshot};
 use crate::icons::{Octicon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, GhdTheme};
@@ -140,6 +141,79 @@ pub struct RowContext {
     pub show_check_marks: bool,
     /// `lineNumberWidth`: one line-number column (`line_number_width`).
     pub line_number_width: f32,
+    /// The text selection (ordered), if any.
+    pub text_selection: Option<TextSelectionSnapshot>,
+    pub text_bounds: TextBounds,
+}
+
+impl RowContext {
+    /// The selected byte range of the text at (`list_ix`, `column`).
+    fn selection_range(&self, list_ix: usize, column: Column, len: usize) -> Option<Range<usize>> {
+        let sel = self.text_selection.as_ref()?;
+        if sel.column != column || list_ix < sel.start.row || list_ix > sel.end.row {
+            return None;
+        }
+        let start = if list_ix == sel.start.row {
+            sel.start.col.min(len)
+        } else {
+            0
+        };
+        let end = if list_ix == sel.end.row {
+            sel.end.col.min(len)
+        } else {
+            len
+        };
+        (start < end).then_some(start..end)
+    }
+}
+
+/// The selectable text of a row: records its bounds for hit-testing, starts
+/// a text selection on mouse down (shift extends) and paints the selection.
+fn selectable_text(
+    ctx: &RowContext,
+    list_ix: usize,
+    column: Column,
+    text: &str,
+    highlights: Vec<(Range<usize>, HighlightStyle)>,
+) -> Div {
+    let bounds = ctx.text_bounds.clone();
+    let view = ctx.view.clone();
+    let body: AnyElement = if highlights.is_empty() {
+        SharedString::from(text.to_string()).into_any_element()
+    } else {
+        StyledText::new(SharedString::from(text.to_string()))
+            .with_highlights(highlights)
+            .into_any_element()
+    };
+    div()
+        .flex_1()
+        .min_w_0()
+        .relative()
+        .cursor_text()
+        .child(
+            canvas(
+                move |b, _, _| {
+                    bounds.borrow_mut().insert((list_ix, column), b);
+                },
+                |_, _, _, _| {},
+            )
+            .absolute()
+            .inset_0(),
+        )
+        .child(body)
+        .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
+            view.update(cx, |this, cx| {
+                this.start_text_selection(
+                    list_ix,
+                    column,
+                    ev.position,
+                    ev.modifiers.shift,
+                    window,
+                    cx,
+                )
+            })
+            .ok();
+        })
 }
 
 /// `.cm-s-default` colours; classes that inherit are not emitted by the highlighter.
@@ -274,6 +348,7 @@ fn merge_highlights(
     spans: &[Span],
     hits: &[(Range<usize>, bool)],
     inner: Option<(Range<usize>, Hsla)>,
+    selection: Option<Range<usize>>,
     len: usize,
     t: &GhdTheme,
 ) -> Vec<(Range<usize>, HighlightStyle)> {
@@ -287,6 +362,10 @@ fn merge_highlights(
         cuts.push(r.end.min(len));
     }
     if let Some((r, _)) = &inner {
+        cuts.push(r.start.min(len));
+        cuts.push(r.end.min(len));
+    }
+    if let Some(r) = &selection {
         cuts.push(r.start.min(len));
         cuts.push(r.end.min(len));
     }
@@ -307,7 +386,10 @@ fn merge_highlights(
             .as_ref()
             .filter(|(r, _)| r.start <= a && r.end >= b)
             .map(|(_, c)| *c);
-        if color.is_none() && hit.is_none() && inner_bg.is_none() {
+        let selected = selection
+            .as_ref()
+            .is_some_and(|r| r.start <= a && r.end >= b);
+        if color.is_none() && hit.is_none() && inner_bg.is_none() && !selected {
             continue;
         }
         let (background, fg) = match hit {
@@ -319,6 +401,12 @@ fn merge_highlights(
             // `.cm-search-result`: rgba(255, 255, 0, 0.4)
             Some((_, false)) => (Some(hsla(1. / 6., 1., 0.5, 0.4)), None),
             None => (inner_bg, None),
+        };
+        // the text selection paints over everything else
+        let background = if selected {
+            Some(t.text_selection_background)
+        } else {
+            background
         };
         out.push((
             a..b,
@@ -446,11 +534,11 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
         .flex_row()
         .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
             view_for_text_menu
-                .update(cx, |this, cx| this.expand_menu(ev.position, window, cx))
+                .update(cx, |this, cx| this.text_menu(ev.position, window, cx))
                 .ok();
         })
         .child(div().flex_none().whitespace_nowrap().child(prefix))
-        .child(div().flex_1().min_w_0().child({
+        .child({
             let spans: &[Span] = ctx
                 .tokens
                 .as_ref()
@@ -463,16 +551,14 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                 .and_then(|s| s.by_row.get(&ix))
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
-            let text = SharedString::from(row.text.clone());
-            if spans.is_empty() && hits.is_empty() {
-                text.into_any_element()
+            let selection = ctx.selection_range(ix, Column::Before, row.text.len());
+            let highlights = if spans.is_empty() && hits.is_empty() && selection.is_none() {
+                Vec::new()
             } else {
-                let highlights = merge_highlights(spans, hits, None, row.text.len(), t);
-                StyledText::new(text)
-                    .with_highlights(highlights)
-                    .into_any_element()
-            }
-        }))
+                merge_highlights(spans, hits, None, selection, row.text.len(), t)
+            };
+            selectable_text(ctx, ix, Column::Before, &row.text, highlights)
+        })
         .when(row.no_newline, |d| {
             d.child(
                 div()
@@ -905,12 +991,17 @@ pub fn unified_to_split(split: &[SplitRow], unified_len: usize) -> Vec<usize> {
     map
 }
 
-/// Which column of a split row a side belongs to (`DiffColumn`).
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Column {
+/// Which column of a split row a side belongs to (`DiffColumn`); unified
+/// rows count as `Before`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Column {
     Before,
     After,
 }
+
+/// Where the text of every rendered row sits on screen, keyed by list index
+/// and column: filled while rows paint, read by the text-selection drag.
+pub type TextBounds = Rc<RefCell<HashMap<(usize, Column), Bounds<Pixels>>>>;
 
 /// `.line-number` of one side: `[check][number]`, selectable when the line
 /// is a change (`renderLineNumber`).
@@ -1073,6 +1164,8 @@ fn split_line_number(
 /// highlights (`renderContent`).
 fn split_content(
     ctx: &RowContext,
+    list_ix: usize,
+    column: Column,
     row: &Row,
     prefix: &'static str,
     inner: Option<(Range<usize>, Hsla)>,
@@ -1092,15 +1185,14 @@ fn split_content(
         .and_then(|s| s.by_row.get(&unified))
         .map(|v| v.as_slice())
         .unwrap_or(&[]);
-    let text = SharedString::from(row.text.clone());
-    let body: AnyElement = if spans.is_empty() && hits.is_empty() && inner.is_none() {
-        text.into_any_element()
-    } else {
-        let highlights = merge_highlights(spans, hits, inner, row.text.len(), t);
-        StyledText::new(text)
-            .with_highlights(highlights)
-            .into_any_element()
-    };
+    let selection = ctx.selection_range(list_ix, column, row.text.len());
+    let highlights =
+        if spans.is_empty() && hits.is_empty() && inner.is_none() && selection.is_none() {
+            Vec::new()
+        } else {
+            merge_highlights(spans, hits, inner, selection, row.text.len(), t)
+        };
+    let body = selectable_text(ctx, list_ix, column, &row.text, highlights);
     let view_for_menu = ctx.view.clone();
     div()
         .id(("split-text", unified))
@@ -1110,11 +1202,11 @@ fn split_content(
         .flex_row()
         .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
             view_for_menu
-                .update(cx, |this, cx| this.expand_menu(ev.position, window, cx))
+                .update(cx, |this, cx| this.text_menu(ev.position, window, cx))
                 .ok();
         })
         .child(div().flex_none().whitespace_nowrap().child(prefix))
-        .child(div().flex_1().min_w_0().child(body))
+        .child(body)
         .when(row.no_newline, |d| {
             d.child(
                 div()
@@ -1278,7 +1370,7 @@ pub fn render_split_row(
                         .min_w_0()
                         .flex()
                         .items_center()
-                        .child(split_content(ctx, r, "     ", None, cx)),
+                        .child(split_content(ctx, ix, Column::Before, r, "     ", None, cx)),
                 )
                 .into_any_element()
         }
@@ -1291,7 +1383,7 @@ pub fn render_split_row(
                     r.new
                 };
                 let ln = split_line_number(ctx, r, number, column, false, false, cx);
-                let content = split_content(ctx, r, "     ", None, cx);
+                let content = split_content(ctx, ix, column, r, "     ", None, cx);
                 let mut d = div()
                     .flex_1()
                     .min_w_0()
@@ -1369,7 +1461,7 @@ pub fn render_split_row(
                         };
                         (
                             split_line_number(ctx, r, number, column, true, false, cx),
-                            split_content(ctx, r, prefix, inner, cx),
+                            split_content(ctx, ix, column, r, prefix, inner, cx),
                         )
                     }
                     None => (

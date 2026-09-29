@@ -12,7 +12,7 @@
 //! Deviation: "Split" (side-by-side) rendering is not implemented; the radio
 //! button is shown disabled.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -26,16 +26,16 @@ use gpui_kit::*;
 
 use crate::widgets::IconButtonA11y;
 
-use crate::actions::Find;
+use crate::actions::{Copy, Find, SelectAll};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_expansion::{
     DEFAULT_DIFF_EXPANSION_STEP, ExpansionKind, HunkExpansionType, XHunk, expand_hunk,
     expand_whole, from_hunks,
 };
 use crate::diff_view_rows::{
-    RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection, build_rows,
-    build_split_rows, line_number_width, max_line_number, render_row, render_split_row,
-    search_rows, unified_to_split,
+    Column, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection,
+    TextBounds, build_rows, build_split_rows, line_number_width, max_line_number, render_row,
+    render_split_row, search_rows, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -178,11 +178,56 @@ struct Snapshot {
     confirm_discard: bool,
 }
 
+/// A position in the diff's text: a list row (unified or split index) and a
+/// byte offset into that row's text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TextPos {
+    pub row: usize,
+    pub col: usize,
+}
+
+/// GHD's browser text selection over the rows (`textSelectionStartRow` /
+/// `selectingTextInRow`): the anchor is where the mouse went down, the head
+/// follows the drag; in split mode the selection lives in one column.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextSelection {
+    pub anchor: TextPos,
+    pub head: TextPos,
+    pub column: Column,
+    pub dragging: bool,
+}
+
+/// The selection with `start <= end`, as the rows paint it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextSelectionSnapshot {
+    pub start: TextPos,
+    pub end: TextPos,
+    pub column: Column,
+}
+
+impl TextSelection {
+    fn snapshot(&self) -> TextSelectionSnapshot {
+        TextSelectionSnapshot {
+            start: self.anchor.min(self.head),
+            end: self.anchor.max(self.head),
+            column: self.column,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.anchor == self.head
+    }
+}
+
 pub struct DiffView {
     state: Entity<AppState>,
     source: DiffSource,
     temp: Option<TempSelection>,
     hovered_group: Option<u32>,
+    /// Text selection over the rows (see `TextSelection`).
+    text_selection: Option<TextSelection>,
+    /// Screen bounds of the rendered rows' text, for the selection drag.
+    text_bounds: TextBounds,
     list_state: ListState,
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
@@ -226,6 +271,8 @@ impl DiffView {
             source,
             temp: None,
             hovered_group: None,
+            text_selection: None,
+            text_bounds: Rc::new(RefCell::new(HashMap::new())),
             list_state: ListState::new(0, ListAlignment::Top, px(200.)),
             rows: Rc::new(Vec::new()),
             rows_key: None,
@@ -376,6 +423,7 @@ impl DiffView {
         self.rows = Rc::new(build_rows(&self.hunks));
         self.rebuild_split_rows();
         self.rows_key = Some(key.clone());
+        self.text_selection = None;
         self.list_state.splice(0..old_len, self.row_count());
         // Unmeasured rows count as 0 px, which grows the content (and shrinks
         // the scrollbar thumb) as rows get rendered; hint one line each.
@@ -406,6 +454,7 @@ impl DiffView {
     fn set_split_mode(&mut self, split: bool) {
         if self.split_mode != split {
             self.split_mode = split;
+            self.text_selection = None;
             self.list_state
                 .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
         }
@@ -433,6 +482,7 @@ impl DiffView {
         self.rows = Rc::new(build_rows(&self.hunks));
         self.rebuild_split_rows();
         self.rows_key = Some(snap.key.clone());
+        self.text_selection = None;
         self.list_state
             .reset_with_uniform_height(self.row_count(), DIFF_LINE_HEIGHT);
         self.refresh_search();
@@ -480,6 +530,240 @@ impl DiffView {
             Dispatcher::set_diff_lines(id, path, from, len, t.selected, cx);
         }
         cx.notify();
+    }
+
+    // ---- text selection (GHD: the browser's selection over the rows) ----
+
+    /// The text at a list row in `column`: the unified row's text, or the
+    /// split row's side (`None` when that side is empty, so copying one
+    /// column skips the other side's lines as GHD's `exclude` does).
+    fn row_text(&self, list_ix: usize, column: Column) -> Option<&str> {
+        if !self.split_mode {
+            return self.rows.get(list_ix).map(|r| r.text.as_str());
+        }
+        let (before, after) = self.split_rows.get(list_ix)?.unified_rows();
+        let unified = match column {
+            Column::Before => before,
+            Column::After => after,
+        }?;
+        self.rows.get(unified).map(|r| r.text.as_str())
+    }
+
+    /// The byte offset in the row's text under `x`, measured with the diff's
+    /// monospace font (the rows paint their text the same way).
+    fn column_at(&self, list_ix: usize, column: Column, x: Pixels, window: &Window) -> usize {
+        let Some(text) = self.row_text(list_ix, column) else {
+            return 0;
+        };
+        let Some(bounds) = self.text_bounds.borrow().get(&(list_ix, column)).copied() else {
+            return 0;
+        };
+        if text.is_empty() || x <= bounds.origin.x {
+            return 0;
+        }
+        let font = Font {
+            family: MONO_FONT.into(),
+            features: FontFeatures::default(),
+            fallbacks: None,
+            weight: FontWeight::NORMAL,
+            style: FontStyle::Normal,
+        };
+        let run = TextRun {
+            len: text.len(),
+            font,
+            color: black(),
+            background_color: None,
+            underline: None,
+            strikethrough: None,
+        };
+        let line = window.text_system().shape_line(
+            SharedString::from(text.to_string()),
+            FONT_SIZE_SM,
+            &[run],
+            None,
+        );
+        line.closest_index_for_x(x - bounds.origin.x)
+            .min(text.len())
+    }
+
+    /// Mouse down on a row's text: start a selection there, or extend the
+    /// existing one with shift (`selectingTextInRow` fixes the column).
+    pub fn start_text_selection(
+        &mut self,
+        list_ix: usize,
+        column: Column,
+        position: Point<Pixels>,
+        shift: bool,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) {
+        let pos = TextPos {
+            row: list_ix,
+            col: self.column_at(list_ix, column, position.x, window),
+        };
+        match self.text_selection.as_mut() {
+            Some(sel) if shift && sel.column == column => {
+                sel.head = pos;
+                sel.dragging = true;
+            }
+            _ => {
+                self.text_selection = Some(TextSelection {
+                    anchor: pos,
+                    head: pos,
+                    column,
+                    dragging: true,
+                });
+            }
+        }
+        cx.notify();
+    }
+
+    /// The pointer moved while a text selection is being dragged: the head
+    /// follows the row under it; past the visible rows it clamps to the first
+    /// or last one and scrolls the list a line (`list.scrollToRow`).
+    fn drag_text_selection(
+        &mut self,
+        position: Point<Pixels>,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(sel) = self.text_selection else {
+            return;
+        };
+        if !sel.dragging {
+            return;
+        }
+        let column = sel.column;
+        type RowHit = Option<(usize, Bounds<Pixels>)>;
+        let (rows_above, rows_below, hit): (RowHit, RowHit, RowHit) = {
+            let bounds = self.text_bounds.borrow();
+            let mut above: Option<(usize, Bounds<Pixels>)> = None;
+            let mut below: Option<(usize, Bounds<Pixels>)> = None;
+            let mut hit = None;
+            for (&(ix, col), &b) in bounds.iter() {
+                if col != column {
+                    continue;
+                }
+                if position.y >= b.origin.y && position.y < b.origin.y + b.size.height {
+                    hit = Some((ix, b));
+                } else if position.y < b.origin.y {
+                    if below.is_none_or(|(_, o)| b.origin.y < o.origin.y) {
+                        below = Some((ix, b));
+                    }
+                } else if above.is_none_or(|(_, o)| b.origin.y > o.origin.y) {
+                    above = Some((ix, b));
+                }
+            }
+            (above, below, hit)
+        };
+        let head = if let Some((ix, _)) = hit {
+            TextPos {
+                row: ix,
+                col: self.column_at(ix, column, position.x, window),
+            }
+        } else if let Some((ix, b)) = rows_below.filter(|_| rows_above.is_none()) {
+            // above every rendered row: select from the first visible one up
+            if position.y < b.origin.y - DIFF_LINE_HEIGHT / 2. {
+                self.list_state.scroll_by(-DIFF_LINE_HEIGHT);
+            }
+            TextPos { row: ix, col: 0 }
+        } else if let Some((ix, b)) = rows_above {
+            if position.y > b.origin.y + b.size.height + DIFF_LINE_HEIGHT / 2. {
+                self.list_state.scroll_by(DIFF_LINE_HEIGHT);
+            }
+            TextPos {
+                row: ix,
+                col: self.row_text(ix, column).map(str::len).unwrap_or(0),
+            }
+        } else {
+            return;
+        };
+        if let Some(sel) = self.text_selection.as_mut()
+            && sel.head != head
+        {
+            sel.head = head;
+            cx.notify();
+        }
+    }
+
+    /// Mouse up: the drag is over; a click without a drag leaves no selection.
+    fn end_text_selection(&mut self, cx: &mut Context<Self>) {
+        if let Some(sel) = self.text_selection.as_mut()
+            && sel.dragging
+        {
+            sel.dragging = false;
+            if sel.is_empty() {
+                self.text_selection = None;
+            }
+            cx.notify();
+        }
+    }
+
+    /// A left click outside any row's text drops the selection.
+    fn clear_text_selection_unless_on_text(
+        &mut self,
+        position: Point<Pixels>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.text_selection.is_none() {
+            return;
+        }
+        let on_text = self
+            .text_bounds
+            .borrow()
+            .values()
+            .any(|b| b.contains(&position));
+        if !on_text {
+            self.text_selection = None;
+            cx.notify();
+        }
+    }
+
+    fn text_selection_snapshot(&self) -> Option<TextSelectionSnapshot> {
+        self.text_selection
+            .filter(|s| !s.is_empty())
+            .map(|s| s.snapshot())
+    }
+
+    /// `onSelectAll` (`document.getSelection().selectAllChildren(diffContainer)`).
+    pub fn select_all_text(&mut self, cx: &mut Context<Self>) {
+        let count = self.row_count();
+        if count == 0 {
+            return;
+        }
+        let column = self
+            .text_selection
+            .map(|s| s.column)
+            .unwrap_or(Column::Before);
+        let last = count - 1;
+        self.text_selection = Some(TextSelection {
+            anchor: TextPos { row: 0, col: 0 },
+            head: TextPos {
+                row: last,
+                col: self.row_text(last, column).map(str::len).unwrap_or(0),
+            },
+            column,
+            dragging: false,
+        });
+        cx.notify();
+    }
+
+    /// The selected text, one line per row (rows without text in the
+    /// selected column are skipped), without line numbers or markers.
+    pub fn selected_text(&self) -> Option<String> {
+        let sel = self.text_selection_snapshot()?;
+        Some(join_selected_text(&sel, |ix| self.row_text(ix, sel.column)))
+    }
+
+    /// ⌘C / the context menu's Copy.
+    pub fn copy_text_selection(&mut self, cx: &mut Context<Self>) -> bool {
+        match self.selected_text() {
+            Some(text) => {
+                cx.write_to_clipboard(ClipboardItem::new_string(text));
+                true
+            }
+            None => false,
+        }
     }
 
     // ---- expansion ----
@@ -580,7 +864,7 @@ impl DiffView {
         })
     }
 
-    /// `onContextMenuExpandHunk` / `onContextMenuText`
+    /// `onContextMenuExpandHunk`
     pub fn expand_menu(
         &mut self,
         position: Point<Pixels>,
@@ -590,6 +874,37 @@ impl DiffView {
         if let Some(item) = self.expand_menu_item(cx) {
             self.open_menu(vec![item], position, window, cx);
         }
+    }
+
+    /// `onContextMenuText`: Copy (with a selection), Select All, then the
+    /// expansion item.
+    pub fn text_menu(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let weak = cx.weak_entity();
+        let has_selection = self.text_selection_snapshot().is_some();
+        let copy = {
+            let weak = weak.clone();
+            MenuItem::new("Copy", move |_, cx| {
+                weak.update(cx, |this, cx| {
+                    this.copy_text_selection(cx);
+                })
+                .ok();
+            })
+            .enabled(has_selection)
+        };
+        let select_all = MenuItem::new("Select All", move |_, cx| {
+            weak.update(cx, |this, cx| this.select_all_text(cx)).ok();
+        });
+        let mut items = vec![copy, select_all];
+        if let Some(item) = self.expand_menu_item(cx) {
+            items.push(MenuItem::separator());
+            items.push(item);
+        }
+        self.open_menu(items, position, window, cx);
     }
 
     /// `onContextMenuLine`: discard one changed line.
@@ -1254,6 +1569,15 @@ impl Render for DiffView {
                 this.show_search(window, cx);
                 cx.stop_propagation();
             }))
+            .on_action(cx.listener(|this, _: &SelectAll, _, cx| {
+                this.select_all_text(cx);
+                cx.stop_propagation();
+            }))
+            .on_action(cx.listener(|this, _: &Copy, _, cx| {
+                if this.copy_text_selection(cx) {
+                    cx.stop_propagation();
+                }
+            }))
             .capture_action(cx.listener(|this, _: &Escape, _, cx| {
                 if this.searching {
                     this.close_search(cx);
@@ -1269,12 +1593,18 @@ impl Render for DiffView {
             .bg(background)
             .on_mouse_down(
                 MouseButton::Left,
-                cx.listener(|this, _, window, cx| {
+                cx.listener(|this, ev: &MouseDownEvent, window, cx| {
                     if !this.focus_handle.contains_focused(window, cx) {
                         window.focus(&this.focus_handle, cx);
                     }
+                    this.clear_text_selection_unless_on_text(ev.position, cx);
                 }),
             )
+            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, window, cx| {
+                if ev.pressed_button == Some(MouseButton::Left) {
+                    this.drag_text_selection(ev.position, window, cx);
+                }
+            }))
             .child(body)
             .children(options)
             .children(
@@ -1405,6 +1735,12 @@ impl DiffView {
             show_check_marks: AppState::try_global(cx)
                 .is_none_or(|s| s.read(cx).settings.show_diff_check_marks),
             line_number_width: line_number_width(max_line_number(&self.rows)),
+            text_selection: self.text_selection_snapshot(),
+            text_bounds: {
+                // rows re-record their bounds as they paint
+                self.text_bounds.borrow_mut().clear();
+                self.text_bounds.clone()
+            },
         });
         let rows = self.rows.clone();
         let split_rows = self.split_rows.clone();
@@ -1441,11 +1777,17 @@ impl DiffView {
             .text_color(t.diff_text)
             .on_mouse_up(
                 MouseButton::Left,
-                cx.listener(|this, _, _, cx| this.end_selection(cx)),
+                cx.listener(|this, _, _, cx| {
+                    this.end_selection(cx);
+                    this.end_text_selection(cx);
+                }),
             )
             .on_mouse_up_out(
                 MouseButton::Left,
-                cx.listener(|this, _, _, cx| this.end_selection(cx)),
+                cx.listener(|this, _, _, cx| {
+                    this.end_selection(cx);
+                    this.end_text_selection(cx);
+                }),
             )
             .flex()
             .flex_col()
@@ -1472,5 +1814,83 @@ impl DiffView {
             .child(scrollbar("diff-scrollbar", self.list_state.clone()))
             .children(search)
             .into_any_element()
+    }
+}
+
+/// The selected lines joined with newlines: `row_text` gives a row's text in
+/// the selected column (`None` = nothing on that side, skipped), the first
+/// and last rows are cut at the selection's columns.
+pub(crate) fn join_selected_text<'a>(
+    sel: &TextSelectionSnapshot,
+    row_text: impl Fn(usize) -> Option<&'a str>,
+) -> String {
+    let mut lines: Vec<&str> = Vec::new();
+    for ix in sel.start.row..=sel.end.row {
+        let Some(text) = row_text(ix) else {
+            continue;
+        };
+        let start = if ix == sel.start.row {
+            sel.start.col.min(text.len())
+        } else {
+            0
+        };
+        let end = if ix == sel.end.row {
+            sel.end.col.min(text.len())
+        } else {
+            text.len()
+        };
+        // stay on char boundaries whatever the mouse math did
+        let start = floor_char_boundary(text, start);
+        let end = floor_char_boundary(text, end).max(start);
+        lines.push(&text[start..end]);
+    }
+    lines.join("\n")
+}
+
+/// The largest char boundary `<= index` (`str::floor_char_boundary` is unstable).
+fn floor_char_boundary(text: &str, index: usize) -> usize {
+    let mut i = index.min(text.len());
+    while i > 0 && !text.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+#[cfg(test)]
+mod tests {
+    #[::core::prelude::v1::test]
+    fn selected_text_cuts_first_and_last_rows_and_skips_empty_sides() {
+        use super::{Column, TextPos, TextSelectionSnapshot, join_selected_text};
+        let rows = ["@@ -1,3 +1,3 @@", "fn main() {", "    héllo();", "}"];
+        let text = |ix: usize| rows.get(ix).copied();
+        let sel = TextSelectionSnapshot {
+            start: TextPos { row: 1, col: 3 },
+            end: TextPos { row: 2, col: 9 },
+            column: Column::Before,
+        };
+        assert_eq!(join_selected_text(&sel, text), "main() {\n    héll");
+        // a column inside the two-byte "é" snaps back to its start
+        let sel = TextSelectionSnapshot {
+            start: TextPos { row: 2, col: 4 },
+            end: TextPos { row: 2, col: 6 },
+            column: Column::Before,
+        };
+        assert_eq!(join_selected_text(&sel, text), "h");
+        let sel = TextSelectionSnapshot {
+            start: TextPos { row: 0, col: 0 },
+            end: TextPos { row: 3, col: 1 },
+            column: Column::After,
+        };
+        let one_side = |ix: usize| if ix == 2 { None } else { rows.get(ix).copied() };
+        assert_eq!(
+            join_selected_text(&sel, one_side),
+            "@@ -1,3 +1,3 @@\nfn main() {\n}"
+        );
+        let sel = TextSelectionSnapshot {
+            start: TextPos { row: 0, col: 0 },
+            end: TextPos { row: 3, col: 99 },
+            column: Column::Before,
+        };
+        assert_eq!(join_selected_text(&sel, text), rows.join("\n"));
     }
 }
