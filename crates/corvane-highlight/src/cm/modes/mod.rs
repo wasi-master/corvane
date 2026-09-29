@@ -17,6 +17,7 @@ pub mod dockerfile;
 pub mod elixir;
 pub mod fortran;
 pub mod go;
+pub mod haml;
 pub mod haxe;
 pub mod htmlembedded;
 pub mod htmlmixed;
@@ -252,6 +253,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-cmake" => Some(Arc::new(cmake::Cmake)),
         "text/x-protobuf" => Some(Arc::new(protobuf::Protobuf)),
         "text/x-pug" | "text/x-jade" => Some(pug::pug()),
+        "text/x-haml" => Some(haml::haml()),
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
