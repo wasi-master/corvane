@@ -378,7 +378,22 @@ impl<'a> StringStream<'a> {
     /// `match(regex, consume)`: JS `slice(pos).match(re)`, null unless the
     /// match starts at `pos`.
     pub fn match_re(&mut self, re: &Regex, consume: bool) -> Option<Match> {
-        let rest = &self.string[self.bytes[self.pos.min(self.end)]..self.bytes[self.end]];
+        let pos = self.pos.min(self.end);
+        let rest = &self.string[self.bytes[pos]..self.bytes[self.end]];
+        // `next()` over a char outside the BMP leaves `pos` between its
+        // surrogates: JS then matches from the lone low surrogate. U+FFFD
+        // stands in for it (one unit, no letter / digit / space, matched by
+        // `.` and negated classes like the surrogate).
+        let spliced;
+        let rest = if pos > 0 && pos < self.end && self.bytes[pos] == self.bytes[pos - 1] {
+            spliced = format!(
+                "\u{fffd}{}",
+                &self.string[self.bytes[pos + 1]..self.bytes[self.end]]
+            );
+            spliced.as_str()
+        } else {
+            rest
+        };
         let caps = re.captures(rest).ok().flatten()?;
         let whole = caps.get(0)?;
         if whole.start() > 0 {
@@ -625,5 +640,13 @@ mod tests {
         assert_eq!(s.pos, 3);
         assert_eq!(s.current(), "a😀");
         assert_eq!(s.next(), Some('b'));
+
+        // after `next()` over the high surrogate, JS matches from the low one
+        let lines = ["😀ab"];
+        let mut s = StringStream::new(lines[0], 4, &lines, 0);
+        s.next();
+        assert!(s.match_re(re!(r"^[a-z]"), false).is_none());
+        assert!(s.match_re(re!(r"^[^\s]a"), true).is_some());
+        assert_eq!(s.pos, 3);
     }
 }
