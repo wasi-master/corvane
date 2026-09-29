@@ -15,9 +15,21 @@ path = "src/main.rs"
 # development builds. Release CI passes --no-default-features to precompile.
 default = ["runtime-shaders"]
 runtime-shaders = ["gpui-pre-apple/runtime_shaders"]
+# Offscreen window snapshots for visual checks without screen-recording rights:
+# `CORVANE_SNAPSHOT=<png> [CORVANE_SNAPSHOT_DELAY_MS=4000]` renders the window
+# after the delay, saves it and quits. Development only (pulls GPUI's test support).
+snapshots = [
+    "dep:gpui-pre",
+    "dep:gpui-pre-macos",
+    "dep:image",
+    "gpui-pre/test-support",
+    "gpui-pre-macos/test-support",
+]
 
 [dependencies]
 gpui-kit.workspace = true
+gpui-pre = { version = "=0.3.7", optional = true }
+image = { version = "0.25", optional = true, default-features = false, features = ["png"] }
 corvane-core.workspace = true
 corvane-github.workspace = true
 corvane-platform.workspace = true
@@ -31,3 +43,4 @@ rust-embed.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui-pre-apple = { workspace = true, optional = true }
+gpui-pre-macos = { version = "=0.3.7", optional = true }
