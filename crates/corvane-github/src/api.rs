@@ -6,7 +6,7 @@ use corvane_models::{
     Account, BypassReason, CheckConclusion, CheckStatus, GitHubRepository, RepoRuleEnforced,
     RepositoryPermission, RuleOperator,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 use crate::USER_AGENT;
@@ -145,7 +145,7 @@ pub struct ApiIssue {
 
 /// `IAPIFullIdentity` (`GET /users/{login}`), also the `IAPIIdentity` on
 /// reviews and comments.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ApiIdentity {
     pub id: u64,
     pub login: String,
@@ -164,7 +164,7 @@ pub struct ApiIdentity {
 }
 
 /// `IAPIPullRequestReview.state`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ApiPullRequestReviewState {
     Approved,
@@ -175,7 +175,7 @@ pub enum ApiPullRequestReviewState {
 }
 
 /// `IAPIPullRequestReview` (`GET /repos/{owner}/{repo}/pulls/{n}/reviews/{id}`).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ApiPullRequestReview {
     pub id: u64,
     pub user: ApiIdentity,
@@ -190,7 +190,7 @@ pub struct ApiPullRequestReview {
 /// `IAPIComment`: an issue comment on a pull request, or a review comment
 /// (`GET /repos/{owner}/{repo}/issues/comments/{id}`,
 /// `…/pulls/comments/{id}`).
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ApiIssueComment {
     pub id: u64,
     #[serde(default, deserialize_with = "null_as_empty")]

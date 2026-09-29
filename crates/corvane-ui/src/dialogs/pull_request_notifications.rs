@@ -15,9 +15,12 @@
 //! button in the header, the check list (40 %) next to the selected check's
 //! job steps (60 %), the question and "Switch to Pull Request" in the footer.
 //!
-//! Deviations: nothing opens these yet (GHD's Alive notifications are not
-//! ported; `CORVANE_POPUP=pr-review|pr-comment|pr-checks-failed` shows them
-//! with sample data). "Switch to Pull Request" closes the dialog and then
+//! Opened by a notification click (`corvane_core::notifications`); GHD's
+//! Alive events are not ported, so only Test Notifications posts them
+//! (`CORVANE_POPUP=pr-review|pr-comment|pr-checks-failed` shows them with
+//! sample data).
+//!
+//! Deviations: "Switch to Pull Request" closes the dialog and then
 //! switches, instead of spinning in the header until the checkout finished.
 //! The checks arrive with the job steps the commit status store already
 //! fetched, so there is no "Stand By" loading pane. Re-running replaces the
