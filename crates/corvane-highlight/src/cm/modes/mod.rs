@@ -49,6 +49,7 @@ pub mod shell;
 pub mod sieve;
 pub mod slim;
 pub mod smalltalk;
+pub mod soy;
 pub mod sparql;
 pub mod sql;
 pub mod stex;
@@ -256,6 +257,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-pug" | "text/x-jade" => Some(pug::pug()),
         "text/x-haml" => Some(haml::haml()),
         "text/x-slim" | "application/x-slim" => Some(slim::slim()),
+        "text/x-soy" => Some(soy::soy()),
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         "text/x-pascal" => Some(Arc::new(pascal::Pascal)),
