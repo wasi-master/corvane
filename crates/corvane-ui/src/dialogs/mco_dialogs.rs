@@ -190,6 +190,7 @@ impl McoDialog {
         dialog_with_title(
             "dialog-rebase-branch",
             title,
+            format!("Rebase {current}"),
             content,
             vec![DialogButton {
                 id: "rebase-start",
@@ -285,6 +286,7 @@ impl McoDialog {
         dialog_with_title(
             "dialog-cherry-pick",
             title,
+            format!("Cherry-pick {commit_count} {plural} to a branch"),
             content,
             vec![DialogButton {
                 id: "cherry-pick-ok",
@@ -654,13 +656,23 @@ impl McoDialog {
 fn dialog_with_title(
     id: &'static str,
     title: impl IntoElement,
+    plain_title: String,
     content: impl IntoElement,
     buttons: Vec<DialogButton>,
     on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
-    crate::dialog::dialog_with_title_element(id, title, content, buttons, on_close, window, cx)
+    crate::dialog::dialog_with_title_element(
+        id,
+        title,
+        plain_title,
+        content,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
 }
 
 /// `.green-circle` (22 px)

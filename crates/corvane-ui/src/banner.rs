@@ -8,6 +8,8 @@ use corvane_core::{Banner, Dispatcher};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -189,6 +191,7 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
             d.child(
                 div()
                     .id("banner-close")
+                    .icon_button_label("Dismiss this message")
                     .mx(SPACING)
                     .flex_none()
                     .size(px(16.))

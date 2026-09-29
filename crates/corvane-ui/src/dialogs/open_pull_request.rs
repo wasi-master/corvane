@@ -19,6 +19,8 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::branch_list::group_branches;
 use crate::diff_view::{DiffSource, DiffView, diff_options_button, status_icon};
 use crate::icons::{Octicon, octicon};
@@ -670,6 +672,9 @@ impl Render for OpenPullRequestDialog {
                     .child(
                         div()
                             .id("open-pull-request-box")
+                            .role(Role::Dialog)
+                            .aria_label("Open a Pull Request")
+                            .child(crate::dialog::window_title("Open a Pull Request"))
                             .w(viewport.width - DIALOG_MARGIN)
                             .h(viewport.height - DIALOG_MARGIN)
                             .flex()
@@ -713,6 +718,7 @@ impl Render for OpenPullRequestDialog {
                                             .child(
                                                 div()
                                                     .id("open-pull-request-close")
+                                                    .icon_button_label("Close")
                                                     .size(px(16.))
                                                     .cursor_pointer()
                                                     .on_click(close)

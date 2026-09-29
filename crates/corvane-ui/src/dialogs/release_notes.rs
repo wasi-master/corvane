@@ -13,6 +13,8 @@ use corvane_core::release_notes::{RELEASE_NOTES_URL, ReleaseNote, ReleaseSummary
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -113,6 +115,9 @@ impl Render for ReleaseNotesDialog {
                     .child(
                         div()
                             .id("release-notes")
+                            .role(Role::Dialog)
+                            .aria_label(format!("Release notes for version {}", r.latest_version))
+                            .child(crate::dialog::window_title("Release Notes"))
                             .min_w(px(550.))
                             .max_w(px(800.))
                             .max_h(px(500.))
@@ -187,7 +192,7 @@ impl Render for ReleaseNotesDialog {
                                             .right(SPACING)
                                             .size(px(16.))
                                             .cursor_pointer()
-                                            .tooltip(crate::widgets::tooltip("Close"))
+                                            .icon_button_label("Close")
                                             .on_click(move |_, window, cx| close(window, cx))
                                             .child(octicon(Octicon::X, t.text_secondary)),
                                     ),

@@ -742,6 +742,25 @@ impl Render for TextTooltip {
     }
 }
 
+/// Accessibility for icon-only controls, after GHD's `ariaLabel` +
+/// `tooltip` pairs: a `Button` node VoiceOver announces by `label`, and the
+/// caption tooltip.
+pub trait IconButtonA11y: StatefulInteractiveElement + Sized {
+    /// `Button` role, accessible name and tooltip.
+    fn icon_button_label(self, label: impl Into<SharedString>) -> Self {
+        let label: SharedString = label.into();
+        self.a11y_button(label.clone()).tooltip(tooltip(label))
+    }
+
+    /// `Button` role and accessible name only (the tooltip is set elsewhere
+    /// or differs from the name).
+    fn a11y_button(self, label: impl Into<SharedString>) -> Self {
+        self.role(Role::Button).aria_label(label)
+    }
+}
+
+impl<E: StatefulInteractiveElement> IconButtonA11y for E {}
+
 /// A `.tooltip(...)` builder with GHD's caption look.
 pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
     let text: SharedString = text.into();

@@ -15,6 +15,8 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::icons::{Octicon, octicon, spin};
 use crate::pull_request_list::{matches_filter, no_pull_requests, pull_request_row};
 use crate::relative_time::relative;
@@ -201,7 +203,7 @@ impl BranchFoldout {
                             .flex_none()
                             .px(SPACING_HALF)
                             .when(loading, |d| d.opacity(0.6))
-                            .tooltip(crate::widgets::tooltip("Refresh the list of pull requests"))
+                            .icon_button_label("Refresh the list of pull requests")
                             .on_click(move |_, _, cx| {
                                 if !loading {
                                     Dispatcher::refresh_pull_requests(id, true, cx)

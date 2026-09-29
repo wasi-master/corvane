@@ -1,14 +1,58 @@
 //! Modal dialog chrome (`styles/ui/_dialog.scss`): overlay, 400–600 px box,
 //! 50 px header with close button, 20 px padded content, footer buttons.
+//!
+//! Accessibility: the box is a `Dialog` node labelled with its title, and the
+//! open dialog's title becomes the window title (VoiceOver reads it as the
+//! `AXWindow` title; the title bar itself is hidden) until the dialog closes
+//! (`DialogHost` restores "Corvane").
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
+
+use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, loading as loading_icon, octicon};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, GhdTheme};
 
 pub type ClickHandler = Box<dyn Fn(&mut Window, &mut App) + 'static>;
+
+/// The window title when no dialog is open.
+pub const APP_WINDOW_TITLE: &str = "Corvane";
+
+thread_local! {
+    /// The title last handed to `set_window_title`, so it is set only on change.
+    static WINDOW_TITLE: std::cell::RefCell<SharedString> =
+        const { std::cell::RefCell::new(SharedString::new_static(APP_WINDOW_TITLE)) };
+}
+
+/// Set the window title unless it already is `title`.
+pub fn sync_window_title(title: &SharedString, window: &mut Window) {
+    let changed = WINDOW_TITLE.with(|current| {
+        let mut current = current.borrow_mut();
+        if *current == *title {
+            false
+        } else {
+            *current = title.clone();
+            true
+        }
+    });
+    if changed {
+        window.set_window_title(title);
+    }
+}
+
+/// A zero-size element that makes `title` the window title while it renders
+/// (dialog frames drawn outside `dialog()` add it themselves).
+pub fn window_title(title: impl Into<SharedString>) -> impl IntoElement {
+    let title: SharedString = title.into();
+    canvas(
+        move |_, window, _| sync_window_title(&title, window),
+        |_, _, _, _| {},
+    )
+    .absolute()
+    .size_0()
+}
 
 /// GHD `Dialog type`: warning/error dialogs show a 24 px icon left of the content.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,7 +138,8 @@ pub fn dialog_with_kind(
         id,
         kind,
         false,
-        div().child(title).into_any_element(),
+        div().child(title.clone()).into_any_element(),
+        Some(title),
         content,
         buttons,
         on_close,
@@ -120,7 +165,8 @@ pub fn dialog_loading(
         id,
         DialogKind::Normal,
         loading,
-        div().child(title).into_any_element(),
+        div().child(title.clone()).into_any_element(),
+        Some(title),
         content,
         buttons,
         on_close,
@@ -129,11 +175,13 @@ pub fn dialog_loading(
     )
 }
 
-/// A dialog whose title is an element (bold branch names inside the title).
+/// A dialog whose title is an element (bold branch names inside the title);
+/// `plain_title` is the same text for the window title and VoiceOver.
 #[allow(clippy::too_many_arguments)]
 pub fn dialog_with_title_element(
     id: &'static str,
     title: impl IntoElement,
+    plain_title: impl Into<SharedString>,
     content: impl IntoElement,
     buttons: Vec<DialogButton>,
     on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
@@ -145,6 +193,7 @@ pub fn dialog_with_title_element(
         DialogKind::Normal,
         false,
         title.into_any_element(),
+        Some(plain_title.into()),
         content,
         buttons,
         on_close,
@@ -159,6 +208,7 @@ fn dialog_impl(
     kind: DialogKind,
     loading: bool,
     title: AnyElement,
+    plain_title: Option<SharedString>,
     content: impl IntoElement,
     buttons: Vec<DialogButton>,
     on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
@@ -184,6 +234,9 @@ fn dialog_impl(
                 .child(
                     div()
                         .id("dialog-box")
+                        .role(Role::Dialog)
+                        .when_some(plain_title.clone(), |d, title| d.aria_label(title))
+                        .children(plain_title.map(window_title))
                         .min_w(px(400.))
                         .max_w(px(600.))
                         .flex()
@@ -232,6 +285,7 @@ fn dialog_impl(
                                     let on_close = on_close.clone();
                                     div()
                                         .id("dialog-close")
+                                        .icon_button_label("Close")
                                         .size(px(16.))
                                         .cursor_pointer()
                                         .on_click(move |_, window, cx| on_close(window, cx))

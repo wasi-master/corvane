@@ -13,6 +13,8 @@ use corvane_highlight::{Span, TokenClass};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::diff_expansion::{ExpansionKind, HunkExpansionType, XHunk};
 use crate::diff_view::{DIFF_LINE_HEIGHT, DiffView};
 use crate::icons::{Octicon, octicon};
@@ -384,6 +386,7 @@ fn expansion_handle(
         .text_color(t.diff_hunk_text)
         .cursor_pointer()
         .hover(move |s| s.bg(hover_bg).text_color(hover_text))
+        .a11y_button(title)
         .tooltip(crate::widgets::tooltip(title))
         .on_click(move |_, _, cx| {
             view.update(cx, |this, cx| this.expand(target, direction, cx))

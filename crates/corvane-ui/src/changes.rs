@@ -20,6 +20,8 @@ use gpui_kit::component::input::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::actions::{
     Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectNextFile,
     SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0, SpellSuggestion1, SpellSuggestion2,
@@ -1247,6 +1249,7 @@ impl ChangesSidebar {
                                         .child(
                                             div()
                                                 .id("filter-popover-close")
+                                                .icon_button_label("Close")
                                                 .size(px(16.))
                                                 .cursor_pointer()
                                                 .on_click(cx.listener(|this, _, _, cx| {
@@ -1607,10 +1610,18 @@ impl ChangesSidebar {
                         .items_center()
                         .h(TEXT_FIELD_HEIGHT)
                         .child({
-                            let active = self.filter_options(cx).count_active() > 0;
+                            let active_count = self.filter_options(cx).count_active();
+                            let active = active_count > 0;
+                            // `buttonTextLabel`
+                            let filter_label = if active {
+                                format!("Filter Options ({active_count} applied)")
+                            } else {
+                                "Filter Options".to_string()
+                            };
                             let bounds_cell = self.filter_button_bounds.clone();
                             div()
                                 .id("filter-options")
+                                .icon_button_label(filter_label)
                                 .relative()
                                 .h(TEXT_FIELD_HEIGHT)
                                 .w(px(48.))
@@ -2727,6 +2738,7 @@ impl ChangesSidebar {
                                         .cursor_pointer()
                                         .text_color(color)
                                         .hover(move |s| s.text_color(hover))
+                                        .a11y_button(toggle_label)
                                         .tooltip(crate::widgets::tooltip(toggle_label))
                                         .on_click(cx.listener(|this, _, window, cx| {
                                             this.toggle_co_authors(window, cx)
@@ -2738,6 +2750,7 @@ impl ChangesSidebar {
                             .child(
                                 div()
                                     .id("commit-options-button")
+                                    .icon_button_label("Configure commit options")
                                     .size(px(18.))
                                     .flex()
                                     .items_center()

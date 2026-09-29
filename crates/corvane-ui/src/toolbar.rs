@@ -8,6 +8,8 @@ use corvane_core::{AheadBehind, AppState, Dispatcher, Foldout, Tip};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::icons::{Octicon, octicon, spin};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
@@ -551,6 +553,7 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
         .child(
             div()
                 .id("toolbar-push-pull-arrow")
+                .icon_button_label("Push, pull, fetch options")
                 .h(TOOLBAR_BUTTON_HEIGHT)
                 .w(TOOLBAR_ARROW_WIDTH)
                 .flex_none()

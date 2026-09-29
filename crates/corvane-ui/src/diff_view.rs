@@ -24,6 +24,8 @@ use gpui_kit::component::input::{Escape, InputEvent, InputState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::IconButtonA11y;
+
 use crate::actions::Find;
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_expansion::{
@@ -120,6 +122,7 @@ pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElemen
     let hover = t.text_secondary;
     div()
         .id("diff-options-button")
+        .icon_button_label("Diff Settings")
         .relative()
         .flex()
         .items_center()
