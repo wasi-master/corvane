@@ -1257,21 +1257,27 @@ fn file_row(
             }),
         )
         .child(
+            // GHD `PathText` keeps the file name visible and truncates the
+            // directory part when the row is too narrow.
             div()
                 .flex_1()
                 .min_w_0()
-                .truncate()
+                .flex()
+                .flex_row()
                 .text_size(FONT_SIZE)
                 .child(
                     div()
-                        .flex()
-                        .flex_row()
-                        .child(
-                            div()
-                                .text_color(t.text_secondary)
-                                .child(file.directory().to_string()),
-                        )
-                        .child(div().child(file.file_name().to_string())),
+                        .min_w_0()
+                        .truncate()
+                        .text_color(t.text_secondary)
+                        .child(file.directory().to_string()),
+                )
+                .child(
+                    div()
+                        .flex_none()
+                        .max_w_full()
+                        .truncate()
+                        .child(file.file_name().to_string()),
                 ),
         )
         .child(octicon(icon, color))
