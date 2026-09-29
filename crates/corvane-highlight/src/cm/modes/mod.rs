@@ -19,6 +19,7 @@ pub mod python;
 pub mod ruby;
 pub mod shell;
 pub mod sql;
+pub mod stex;
 pub mod swift;
 pub mod toml;
 pub mod xml;
@@ -217,6 +218,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-cmake" => Some(Arc::new(cmake::Cmake)),
         "text/x-protobuf" => Some(Arc::new(protobuf::Protobuf)),
         "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
+        "text/x-stex" | "text/x-latex" => Some(Arc::new(stex::Stex::new())),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
