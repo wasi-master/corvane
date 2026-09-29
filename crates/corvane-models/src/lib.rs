@@ -249,6 +249,9 @@ pub struct RepositoryInfo {
     pub remotes: Vec<Remote>,
     pub identity: Identity,
     pub ahead_behind: Option<AheadBehind>,
+    /// `commit.template` contents with comment lines removed (`None` when
+    /// unset, unreadable or empty).
+    pub commit_template: Option<String>,
 }
 
 impl RepositoryInfo {

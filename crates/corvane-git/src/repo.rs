@@ -29,6 +29,7 @@ pub fn open_repository(path: &Path) -> Result<RepositoryInfo> {
     let branches = branches(&repo)?;
     let tip = tip(&repo, &branches)?;
     let identity = identity(&repo);
+    let commit_template = crate::commit_template::read(&repo, &workdir);
 
     Ok(RepositoryInfo {
         workdir,
@@ -37,6 +38,7 @@ pub fn open_repository(path: &Path) -> Result<RepositoryInfo> {
         remotes,
         identity,
         ahead_behind: None,
+        commit_template,
     })
 }
 
