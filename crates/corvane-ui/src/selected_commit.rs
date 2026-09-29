@@ -379,10 +379,7 @@ impl SelectedCommitView {
                                     d.child(
                                         meta_item(div())
                                             .min_w_0()
-                                            .child(
-                                                octicon(Octicon::Tag, t.text_secondary)
-                                                    .mr(SPACING_HALF()),
-                                            )
+                                            .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
                                             .child(div().truncate().child(commit.tags.join(", "))),
                                     )
                                 }),
@@ -557,6 +554,13 @@ fn commit_file_row(
     let t = cx.ghd();
     let hover_bg = t.list_item_hover_background;
     let (icon, color) = status_icon(file.status.kind, t);
+    // `.focus-within .list-item.selected` has no status fill: the icon
+    // takes the row's text colour
+    let color = if is_selected && list_focused {
+        t.box_selected_active_text
+    } else {
+        color
+    };
     let path = file.path.clone();
     let menu_path = file.path.clone();
     div()

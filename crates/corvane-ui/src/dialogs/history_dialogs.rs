@@ -500,6 +500,7 @@ impl Render for UnreachableCommitsDialog {
                                 commit,
                                 t.text,
                                 t.text_secondary,
+                                None,
                                 cx,
                             ))
                     }))

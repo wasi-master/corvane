@@ -150,6 +150,7 @@ impl Render for CommitDragElement {
                         &self.drag.commit,
                         t.text,
                         t.text_secondary,
+                        None,
                         cx,
                     )),
             )
@@ -1386,9 +1387,18 @@ struct RowHint {
     keyboard_selected: bool,
 }
 
-/// `.commit .info` + tag indicators, shared with the drag element.
-pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, cx: &App) -> Div {
+/// `.commit .info` + tag indicators, shared with the drag element. `badge`
+/// overrides the tag pill's (background, text) colours on selected rows.
+pub(crate) fn commit_row_contents(
+    commit: &Commit,
+    text: Hsla,
+    secondary: Hsla,
+    badge: Option<(Hsla, Hsla)>,
+    cx: &App,
+) -> Div {
     let t = cx.ghd();
+    let (badge_bg, badge_text) =
+        badge.unwrap_or((t.list_item_badge_background, t.list_item_badge_text));
     let summary = if commit.summary.is_empty() {
         "Empty commit message".to_string()
     } else {
@@ -1461,7 +1471,7 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                     .max_w(gpui_kit::relative(0.5))
                     .flex()
                     .flex_row()
-                    .text_color(t.list_item_badge_text)
+                    .text_color(badge_text)
                     .text_size(FONT_SIZE())
                     .line_height(zpx(16.))
                     .child(
@@ -1470,7 +1480,7 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                             .px(SPACING_HALF())
                             .h(zpx(16.))
                             .rounded(BORDER_RADIUS())
-                            .bg(t.list_item_badge_background)
+                            .bg(badge_bg)
                             .truncate()
                             .child(commit.tags[0].clone()),
                     )
@@ -1482,7 +1492,7 @@ pub(crate) fn commit_row_contents(commit: &Commit, text: Hsla, secondary: Hsla, 
                                 .ml(zpx(-5.))
                                 .h(zpx(16.))
                                 .rounded_r(BORDER_RADIUS())
-                                .bg(t.list_item_badge_background),
+                                .bg(badge_bg),
                         )
                     }),
             )
@@ -1529,6 +1539,18 @@ fn commit_row(
         (t.list_item_hover_background, t.text, t.text_secondary)
     } else {
         (t.background, t.text, t.text_secondary)
+    };
+    // `#commit-list .list-item.selected .commit .tag-name`
+    let badge = match (is_selected && !hint.keyboard_selected, list_focused) {
+        (true, true) => Some((
+            t.list_item_selected_active_badge_background,
+            t.list_item_selected_active_badge_text,
+        )),
+        (true, false) => Some((
+            t.list_item_selected_badge_background,
+            t.list_item_selected_badge_text,
+        )),
+        _ => None,
     };
     let commit_for_menu = commit.clone();
     let commit_for_drag = commit.clone();
@@ -1664,7 +1686,7 @@ fn commit_row(
                 .update(cx, |this, cx| this.drop_on_row(id, ix, drag, cx))
                 .ok();
         })
-        .child(commit_row_contents(commit, text, secondary, cx))
+        .child(commit_row_contents(commit, text, secondary, badge, cx))
         .when(hint.line_above, |d| {
             d.child(
                 div()
