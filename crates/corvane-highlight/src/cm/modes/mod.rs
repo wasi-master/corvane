@@ -19,6 +19,7 @@ pub mod shell;
 pub mod sql;
 pub mod swift;
 pub mod toml;
+pub mod vb;
 pub mod xml;
 pub mod yaml;
 
@@ -227,6 +228,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-ocaml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::OCaml))),
         "text/x-fsharp" => Some(cached!(mllike::MlLike::new(mllike::Dialect::FSharp))),
         "text/x-sml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::Sml))),
+        "text/x-vb" => Some(cached!(vb::Vb)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
