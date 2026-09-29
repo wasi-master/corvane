@@ -14,6 +14,7 @@ pub mod elixir;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod julia;
 pub mod luau;
 pub mod python;
 pub mod ruby;
@@ -230,6 +231,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
             Some(cached!(clojure::Clojure::new()))
         }
         "text/x-elixir" => Some(cached!(elixir::Elixir)),
+        "text/x-julia" => Some(cached!(julia::Julia)),
         "text/x-lua" | "text/x-luau" => Some(cached!(luau::Luau)),
         "text/javascript"
         | "text/ecmascript"
