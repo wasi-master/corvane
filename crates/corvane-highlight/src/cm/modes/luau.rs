@@ -7,7 +7,9 @@
 //! anchored one exists). JS `\b`, `\w` and `\d` are ASCII: `\w` is spelled
 //! `[A-Za-z0-9_]`, and a `\b` right after a word char becomes
 //! `(?![A-Za-z0-9_])`. A leading `\b` is always true at the start of the
-//! sliced string when the next char is a word char, so it is dropped.
+//! sliced string when the next char is a word char, so it is dropped; the
+//! keyword-list regexes (`\b(a|b|…)\b`) become a lookup of the word at
+//! the position ([`word_at`]).
 
 use super::super::{Mode, ModeState, StringStream, state};
 use crate::re;
@@ -73,6 +75,48 @@ fn tokenize(stream: &mut StringStream, state: &mut LuauState) -> Option<String> 
     }
 }
 
+/// Which of the mode's `\b(…)\b` word regexes match at the stream.
+#[derive(Clone, Copy, PartialEq)]
+enum Word {
+    /// `/\btype\b/`
+    Type,
+    /// `keywords`
+    Keyword,
+    /// `globals`
+    Global,
+    True,
+    False,
+    Other,
+}
+
+/// The word regexes as a lookup: a regex `^(?:w1|w2|…)\b` of plain ASCII
+/// words matches exactly when one of the words is the whole run of ASCII
+/// word chars at the position (the leading `\b` holds there). Returns the
+/// kind and the run's length.
+fn word_at(stream: &StringStream) -> (Word, usize) {
+    let mut end = stream.pos;
+    while stream
+        .char_at(end)
+        .is_some_and(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        end += 1;
+    }
+    let kind = match stream.slice(stream.pos, end) {
+        "type" => Word::Type,
+        "function" | "export" | "end" | "if" | "then" | "else" | "elseif" | "while" | "do"
+        | "for" | "in" | "repeat" | "until" | "return" | "local" | "not" | "and" | "or" => {
+            Word::Keyword
+        }
+        "print" | "math" | "table" | "string" | "coroutine" | "Vector2" | "Vector3" | "UDim"
+        | "UDim2" | "os" | "io" | "debug" | "package" | "require" | "_G" | "shared" | "game"
+        | "pairs" | "ipairs" | "setmetatable" | "getmetatable" | "newproxy" => Word::Global,
+        "true" => Word::True,
+        "false" => Word::False,
+        _ => Word::Other,
+    };
+    (kind, end - stream.pos)
+}
+
 const IDENT: &str = concat!("^[a-zA-Z_]", w!(), "*");
 
 impl Mode for Luau {
@@ -116,7 +160,9 @@ impl Mode for Luau {
         if stream.matches(re!(concat!(r"^[0-9]+(?:\.[0-9]+)?", b_end!()))) {
             return tok("number");
         }
-        if stream.matches(re!(concat!("^type", b_end!()))) {
+        let (word, word_len) = word_at(stream);
+        if word == Word::Type {
+            stream.pos += word_len;
             state.after_type_keyword = true;
             return tok("keyword");
         }
@@ -125,10 +171,8 @@ impl Mode for Luau {
             return tok("type");
         }
         // keywords
-        if stream.matches(re!(concat!(
-            "^(?:function|export|type|end|if|then|else|elseif|while|do|for|in|repeat|until|return|local|not|and|or)",
-            b_end!()
-        ))) {
+        if word == Word::Keyword {
+            stream.pos += word_len;
             return tok("keyword");
         }
         if stream.match_str("self", true, false) {
@@ -139,16 +183,16 @@ impl Mode for Luau {
             return tok("type");
         }
         // globals
-        if stream.matches(re!(concat!(
-            "^(?:print|math|table|string|coroutine|Vector2|Vector3|UDim|UDim2|os|io|debug|package|require|_G|shared|game|pairs|ipairs|setmetatable|getmetatable|newproxy)",
-            b_end!()
-        ))) {
+        if word == Word::Global {
+            stream.pos += word_len;
             return tok("builtin");
         }
-        if stream.matches(re!(concat!("^true", b_end!()))) {
+        if word == Word::True {
+            stream.pos += word_len;
             return tok("positive");
         }
-        if stream.matches(re!(concat!("^false", b_end!()))) {
+        if word == Word::False {
+            stream.pos += word_len;
             return tok("negative");
         }
         if stream.matches(re!(IDENT)) {
