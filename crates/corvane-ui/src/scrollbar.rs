@@ -28,9 +28,13 @@
 //!
 //! Deviations: Chromium only animates wheel ticks on macOS when
 //! `NSScrollAnimationEnabled` is set; Corvane always does (except under
-//! Reduce Motion). Track clicks page by 87.5 % of the viewport
-//! (`kMinFractionToStepWhenPaging`) regardless of "Click in the scroll bar
-//! to"; ⌥-click jumps to the clicked spot.
+//! Reduce Motion).
+//!
+//! Track clicks follow System Settings › "Click in the scroll bar to"
+//! (`AppleScrollerPagingBehavior`, Blink `ShouldCenterOnThumb`): "Jump to the
+//! next page" pages by 87.5 % of the viewport (`kMinFractionToStepWhenPaging`),
+//! "Jump to the spot that's clicked" centres the thumb there and drags; ⌥
+//! swaps the two.
 //!
 //! Usage: `.with_scrollbar()` on an `overflow_y_scroll` div or a
 //! `uniform_list` (it keeps the scroll handle and the legacy gutter). For a
@@ -120,6 +124,29 @@ fn legacy_scrollers() -> bool {
 
 #[cfg(not(target_os = "macos"))]
 fn legacy_scrollers() -> bool {
+    false
+}
+
+/// "Click in the scroll bar to: Jump to the spot that's clicked"
+/// (`AppleScrollerPagingBehavior`), read per click like Blink does.
+#[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)] // objc 0.2 macros check `cargo-clippy`
+fn jump_on_track_click() -> bool {
+    use objc::runtime::{BOOL, NO, Object};
+    use objc::{class, msg_send, sel, sel_impl};
+    unsafe {
+        let defaults: *mut Object = msg_send![class!(NSUserDefaults), standardUserDefaults];
+        let key: *mut Object = msg_send![
+            class!(NSString),
+            stringWithUTF8String: c"AppleScrollerPagingBehavior".as_ptr()
+        ];
+        let jump: BOOL = msg_send![defaults, boolForKey: key];
+        jump != NO
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn jump_on_track_click() -> bool {
     false
 }
 
@@ -1024,7 +1051,7 @@ fn paint_bar(
                 s.curve = None;
                 s.shown_at = Some(now);
             });
-        } else if event.modifiers.alt {
+        } else if event.modifiers.alt != jump_on_track_click() {
             // jump so the thumb centres on the pointer, then drag
             let grab = thumb_len / 2.;
             drag_to(&*handle, axis, pointer - grab, track_len, thumb_len, max);

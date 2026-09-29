@@ -505,12 +505,23 @@ impl Dispatcher {
 
     /// `_push` (+ `performPush`): publish the branch when it has no upstream.
     pub fn push(id: u64, force_with_lease: bool, branch: Option<String>, cx: &mut App) {
+        Self::push_then(id, force_with_lease, branch, |_, _| {}, cx);
+    }
+
+    /// `push`, then `then(pushed)` once it finished (or did not start).
+    pub fn push_then(
+        id: u64,
+        force_with_lease: bool,
+        branch: Option<String>,
+        then: impl FnOnce(bool, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
-            return;
+            return then(false, cx);
         };
         let Some(remote) = Self::current_remote(id, cx) else {
             Self::show_popup(Popup::PublishRepository { repo: id }, cx);
-            return;
+            return then(false, cx);
         };
         let (branch, tip_error) = {
             let s = Self::state(cx).read(cx);
@@ -533,13 +544,13 @@ impl Dispatcher {
         };
         if let Some(message) = tip_error {
             Self::show_error("Could not push", message, cx);
-            return;
+            return then(false, cx);
         }
         let Some(branch) = branch else {
-            return;
+            return then(false, cx);
         };
         if !Self::begin_network(id, cx) {
-            return;
+            return then(false, cx);
         }
         if force_with_lease {
             Self::state(cx).update(cx, |s, _| {
@@ -628,6 +639,7 @@ impl Dispatcher {
                 result
             },
             move |result, cx| {
+                let pushed = result.is_ok();
                 if let Err(err) = result {
                     Self::handle_remote_error(
                         id,
@@ -640,6 +652,7 @@ impl Dispatcher {
                     );
                 }
                 Self::refresh_repository(id, cx);
+                then(pushed, cx);
             },
         );
     }

@@ -4,9 +4,11 @@
 //!
 //! Deviation: GHD re-authorises through the browser OAuth flow; Corvane's
 //! sign-in is the device flow, so "Continue in Browser" opens the sign-in
-//! dialog (the device code is entered in the browser).
+//! dialog (the device code is entered in the browser). As in GHD, the push
+//! (workflow scope) or the failed action (SAML) is retried once signing in
+//! succeeds.
 
-use corvane_core::{Account, Dispatcher, Popup};
+use corvane_core::{Account, Dispatcher, Popup, RetryAction};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -66,18 +68,23 @@ impl Render for InvalidatedTokenDialog {
 
 /// `WorkflowPushRejectedDialog`
 pub struct WorkflowPushRejectedDialog {
+    repo: u64,
     rejected_path: String,
 }
 
 impl WorkflowPushRejectedDialog {
-    pub fn new(rejected_path: String) -> Self {
-        Self { rejected_path }
+    pub fn new(repo: u64, rejected_path: String) -> Self {
+        Self {
+            repo,
+            rejected_path,
+        }
     }
 }
 
 impl Render for WorkflowPushRejectedDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let repo = self.repo;
         let content = div()
             .w(px(460.))
             .flex()
@@ -112,9 +119,18 @@ impl Render for WorkflowPushRejectedDialog {
                     label: "Continue in Browser".into(),
                     primary: true,
                     disabled: false,
-                    on_click: Box::new(|_, cx| {
+                    on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
-                        Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx);
+                        // `onSignIn`: sign in, then `dispatcher.push(repository)`
+                        Dispatcher::sign_in_then_retry(
+                            false,
+                            repo,
+                            Some(RetryAction::Push {
+                                force_with_lease: false,
+                                branch: None,
+                            }),
+                            cx,
+                        );
                     }),
                 },
             ],
@@ -127,15 +143,24 @@ impl Render for WorkflowPushRejectedDialog {
 
 /// `SAMLReauthRequiredDialog`
 pub struct SamlReauthRequiredDialog {
+    repo: u64,
     organization: String,
     enterprise: bool,
+    retry: Option<RetryAction>,
 }
 
 impl SamlReauthRequiredDialog {
-    pub fn new(organization: String, endpoint: String) -> Self {
+    pub fn new(
+        repo: u64,
+        organization: String,
+        endpoint: String,
+        retry: Option<RetryAction>,
+    ) -> Self {
         Self {
+            repo,
             organization,
             enterprise: endpoint != "https://api.github.com",
+            retry,
         }
     }
 }
@@ -144,6 +169,7 @@ impl Render for SamlReauthRequiredDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let enterprise = self.enterprise;
+        let (repo, retry) = (self.repo, self.retry.clone());
         let content = div()
             .w(px(460.))
             .flex()
@@ -180,7 +206,8 @@ impl Render for SamlReauthRequiredDialog {
                     disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
-                        Dispatcher::show_popup(Popup::SignIn { enterprise }, cx);
+                        // `onSignIn`: sign in, then `performRetry(retryAction)`
+                        Dispatcher::sign_in_then_retry(enterprise, repo, retry.clone(), cx);
                     }),
                 },
             ],

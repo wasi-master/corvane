@@ -1,6 +1,11 @@
 //! Primer Octicons (16 px) bundled in `assets/octicons/`.
 
-use gpui_kit::{Hsla, Styled, Svg, svg};
+use std::time::Duration;
+
+use gpui_kit::{
+    Animation, AnimationExt, AnyElement, ElementId, Hsla, IntoElement, Styled, Svg, Transformation,
+    percentage, svg,
+};
 
 use crate::theme::sizes::ICON_SIZE;
 
@@ -17,6 +22,8 @@ pub enum Octicon {
     GitCompare,
     GitPullRequest,
     Sync,
+    /// GHD `syncClockwise`: `sync` flipped horizontally, used by `Loading`.
+    SyncClockwise,
     ArrowUp,
     ArrowDown,
     Upload,
@@ -102,6 +109,7 @@ impl Octicon {
             Octicon::GitCompare => "octicons/git-compare-16.svg",
             Octicon::GitPullRequest => "octicons/git-pull-request-16.svg",
             Octicon::Sync => "octicons/sync-16.svg",
+            Octicon::SyncClockwise => "octicons/sync-clockwise-16.svg",
             Octicon::ArrowUp => "octicons/arrow-up-16.svg",
             Octicon::ArrowDown => "octicons/arrow-down-16.svg",
             Octicon::Upload => "octicons/upload-16.svg",
@@ -181,4 +189,21 @@ pub fn octicon(icon: Octicon, color: Hsla) -> Svg {
         .size(ICON_SIZE)
         .flex_none()
         .text_color(color)
+}
+
+/// Spins `icon` like GHD's `.spin` class (`animation: spin 1s linear
+/// infinite`, `ui/toolbar/_toolbar.scss`). `id` keys the animation state and
+/// must be unique among its siblings.
+pub fn spin(icon: Svg, id: impl Into<ElementId>) -> AnyElement {
+    icon.with_animation(
+        id,
+        Animation::new(Duration::from_secs(1)).repeat(),
+        |icon, delta| icon.with_transformation(Transformation::rotate(percentage(delta))),
+    )
+    .into_any_element()
+}
+
+/// GHD `Loading` (`ui/lib/loading.tsx`): a spinning `syncClockwise`.
+pub fn loading(id: impl Into<ElementId>, color: Hsla) -> AnyElement {
+    spin(octicon(Octicon::SyncClockwise, color), id)
 }

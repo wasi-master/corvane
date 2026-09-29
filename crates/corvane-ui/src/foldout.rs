@@ -131,7 +131,7 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
         .flex_col()
         .child(item(
             "push-pull-fetch",
-            Octicon::Sync,
+            Octicon::SyncClockwise,
             format!("Fetch {remote}"),
             div()
                 .child(format!("Fetch the latest changes from {remote}"))

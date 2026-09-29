@@ -40,6 +40,17 @@ fn main() {
 
     let app = gpui_kit::application().with_assets(assets::Assets);
     phase(started, "application created");
+    // `app.on('activate')`: the Dock icon shows the hidden window again.
+    #[cfg(target_os = "macos")]
+    app.on_reopen(|cx| {
+        for handle in cx.windows() {
+            handle
+                .update(cx, |_, window, cx| {
+                    corvane_ui::native_window::show_window(window, cx)
+                })
+                .ok();
+        }
+    });
 
     app.run(move |cx| {
         phase(started, "platform ready");
@@ -261,8 +272,16 @@ fn main() {
         });
         // Window
         cx.on_action(|_: &CloseWindow, cx| {
-            // GHD keeps running with the window closed; GPUI has no per-window
-            // hide, so the app hides (⌘H) and comes back from the Dock.
+            // GHD hides the window and keeps running; the Dock brings it back.
+            #[cfg(target_os = "macos")]
+            if let Some(handle) = cx.active_window() {
+                handle
+                    .update(cx, |_, window, cx| {
+                        corvane_ui::native_window::hide_window(window, cx)
+                    })
+                    .ok();
+            }
+            #[cfg(not(target_os = "macos"))]
             cx.hide();
         });
         cx.on_action(|_: &BringAllToFront, cx| cx.activate(true));
@@ -305,7 +324,14 @@ fn main() {
         // System theme follows macOS light/dark switches (`supportsSystemThemeChanges`).
         if let Some(window) = cx.active_window() {
             window
-                .update(cx, |_, window, _cx| {
+                .update(cx, |_, window, cx| {
+                    // the red close button hides the window like ⌘W (GHD
+                    // `window.on('close')` → `hide()` unless quitting)
+                    #[cfg(target_os = "macos")]
+                    window.on_window_should_close(cx, |window, cx| {
+                        corvane_ui::native_window::hide_window(window, cx);
+                        false
+                    });
                     window
                         .observe_window_appearance(|_, cx| {
                             let theme = corvane_core::AppState::global(cx).read(cx).settings.theme;
@@ -487,6 +513,7 @@ fn main() {
             }
         });
         Dispatcher::start_background_tasks(cx);
+        Dispatcher::refresh_accounts(cx);
         Dispatcher::start_pull_request_updater(cx);
         Dispatcher::start_commit_status_refresh(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {

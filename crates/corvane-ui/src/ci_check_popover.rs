@@ -18,7 +18,7 @@ use gpui_kit::*;
 
 use crate::ci_status::{ci_status, color_for, effective_conclusion, symbol_for_log_step};
 use crate::context_menu::MenuItem;
-use crate::icons::{Octicon, octicon};
+use crate::icons::{Octicon, octicon, spin};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, c, primer};
@@ -176,9 +176,10 @@ impl CiCheckPopover {
         };
         // `renderCompletenessIndicator`: spinner, check, x or the donut
         let indicator: AnyElement = if loading {
-            octicon(Octicon::Sync, t.text_secondary)
-                .size(px(30.))
-                .into_any_element()
+            spin(
+                octicon(Octicon::SyncClockwise, t.text_secondary).size(px(30.)),
+                "ci-check-run-loading",
+            )
         } else if all_success {
             octicon(Octicon::CheckCircleFill, c(primer::GREEN_500))
                 .size(px(30.))
@@ -247,7 +248,7 @@ impl CiCheckPopover {
                     .flex_none()
                     .gap(SPACING_HALF)
                     .when(rerun_disabled, |d| d.opacity(0.6))
-                    .child(octicon(Octicon::Sync, t.secondary_button_text))
+                    .child(octicon(Octicon::SyncClockwise, t.secondary_button_text))
                     .child(if can_rerun_failed && failed_exist {
                         div()
                             .flex()
@@ -427,7 +428,7 @@ impl CiCheckPopover {
                                 d.child(
                                     icon_button(
                                         "check-rerun-job",
-                                        Octicon::Sync,
+                                        Octicon::SyncClockwise,
                                         format!("Re-run {}", check.name),
                                         cx,
                                     )

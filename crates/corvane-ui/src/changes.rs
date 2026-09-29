@@ -14,8 +14,8 @@ use corvane_core::{
 };
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{
-    Copy, Cut, Enter, Escape, IndentInline, InlineToken, Input, InputEvent, InputState, MoveDown,
-    MoveUp, Paste, Redo, SelectAll, Textarea, TextareaState, Undo,
+    Copy, Cut, Enter, Escape, IndentInline, InlineToken, InputEvent, InputState, MoveDown, MoveUp,
+    Paste, Redo, SelectAll, Textarea, TextareaState, Undo,
 };
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -28,7 +28,7 @@ use crate::actions::{
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::diff_view::status_icon;
-use crate::icons::{Octicon, octicon};
+use crate::icons::{Octicon, octicon, spin};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -70,7 +70,7 @@ pub struct ChangesSidebar {
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
     /// `AuthorInput`: authors are inline tokens (id = login, lower-cased).
-    co_authors: Entity<InputState>,
+    co_authors: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
     seen_amend_nonce: u64,
@@ -188,7 +188,12 @@ impl ChangesSidebar {
                 .rows(4)
                 .placeholder("Description")
         });
-        let co_authors = cx.new(|cx| InputState::new(window, cx).placeholder("@username"));
+        // `AuthorInput` wraps its tokens and grows with them
+        let co_authors = cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .auto_grow(1, 6)
+                .placeholder("@username")
+        });
         cx.subscribe(&co_authors, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::CoAuthors, ev, cx)
         })
@@ -535,7 +540,7 @@ impl ChangesSidebar {
             .id("co-author-input")
             .flex()
             .flex_row()
-            .items_center()
+            .items_start()
             .min_h(TEXT_FIELD_HEIGHT)
             .px(SPACING_HALF)
             .py(px(2.))
@@ -554,12 +559,15 @@ impl ChangesSidebar {
             .child(
                 div()
                     .flex_none()
+                    .h(TEXT_FIELD_HEIGHT - px(6.))
+                    .flex()
+                    .items_center()
                     .text_color(t.text_secondary)
                     .child("Co-Authors "),
             )
             .child(
                 div().flex_1().min_w(px(80.)).child(
-                    Input::new(&self.co_authors)
+                    Textarea::new(&self.co_authors)
                         .appearance(false)
                         .xsmall()
                         .token(move |ctx, _window, cx| {
@@ -614,10 +622,13 @@ impl ChangesSidebar {
                                 })
                                 .child(ctx.token().label().clone())
                                 .when(unknown == Some(UnknownAuthorState::Searching), |d| {
-                                    d.child(octicon(Octicon::Sync, fg).size(px(9.)))
+                                    d.child(spin(
+                                        octicon(Octicon::SyncClockwise, fg).size(px(9.)),
+                                        "co-author-searching",
+                                    ))
                                 })
                                 .when(unknown == Some(UnknownAuthorState::Error), |d| {
-                                    d.child(octicon(Octicon::Alert, fg).size(px(9.)))
+                                    d.child(octicon(Octicon::Stop, fg).size(px(9.)))
                                 })
                         }),
                 ),
@@ -1876,7 +1887,7 @@ impl ChangesSidebar {
             .as_ref()
             .and_then(|i| i.current_branch())
             .map(|b| b.name.clone());
-        // `formatCommitMessage`: summary, blank line, description
+        // `formatCommitMessage`: summary, blank line, description, trailers
         let summary = self.summary.read(cx).value().trim().to_string();
         let description = self.description.read(cx).value().trim().to_string();
         let message = if description.is_empty() {
@@ -1884,6 +1895,17 @@ impl ChangesSidebar {
         } else {
             format!("{summary}\n\n{description}\n")
         };
+        // `getCoAuthorTrailers`, merged like `mergeTrailers`
+        let trailers: Vec<(String, String)> = if rs.show_co_authored_by {
+            rs.co_authors
+                .iter()
+                .filter_map(|a| a.trailer_value())
+                .map(|v| ("Co-Authored-By".to_string(), v))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        let message = corvane_core::append_trailers(&message, &trailers);
         let message_failures = if summary.is_empty() {
             RepoRulesMetadataFailures::default()
         } else {
@@ -2571,6 +2593,9 @@ impl ChangesSidebar {
             }))
             .capture_action(cx.listener(|this, ev: &Enter, window, cx| {
                 if !ev.secondary && !ev.shift && this.autocomplete_accept(window, cx) {
+                    cx.stop_propagation();
+                } else if this.co_authors_focus.is_focused(window) {
+                    // the author field is one logical line, it only wraps
                     cx.stop_propagation();
                 }
             }))

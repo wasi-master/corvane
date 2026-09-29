@@ -1,9 +1,9 @@
 //! Image diffs (GHD `ui/diff/image-diffs/*` + `styles/ui/_diff.scss`
 //! `.panel.image`): a new or deleted image, or the modified-image switcher
 //! with 2-up, Swipe, Onion Skin and Difference. Images are decoded once for
-//! their dimensions; "Difference" is a CPU blend (GPUI has no `mix-blend-mode`).
-//! Deviation: overlaid images are letterboxed with `ObjectFit::Contain` inside
-//! the shared box rather than top-left aligned.
+//! their dimensions; "Difference" is a CPU blend (GPUI has no `mix-blend-mode`)
+//! of the two images at their on-screen relative scale, recomputed when that
+//! scale changes.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -61,6 +61,8 @@ pub struct ImageDiff {
     /// Measured size of the sizing container (one frame behind).
     container: Rc<Cell<Size<Pixels>>>,
     difference: Option<Arc<Image>>,
+    /// Display scales of (previous, current) the blend was computed for.
+    difference_scales: Option<(f32, f32)>,
     difference_pending: bool,
 }
 
@@ -98,6 +100,7 @@ impl ImageDiff {
             onion,
             container: Rc::new(Cell::new(Size::default())),
             difference: None,
+            difference_scales: None,
             difference_pending: false,
         }
     }
@@ -165,6 +168,42 @@ impl ImageDiff {
                     .border_color(border),
             )
             .into_any_element()
+    }
+
+    /// An overlaid image (`.image-diff-previous` / `.image-diff-current` inside
+    /// `.image-container`): absolutely positioned over the whole box, centered,
+    /// at most the box size (`maxSize`), transparent background.
+    fn overlay_image(side: &Side, box_size: Size<Pixels>, border: Option<Hsla>) -> AnyElement {
+        let fit = side
+            .size
+            .map(|s| Self::aspect_fit(s, box_size))
+            .unwrap_or(box_size);
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .w(box_size.width)
+            .h(box_size.height)
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                img(side.image.clone())
+                    .flex_none()
+                    .w(fit.width)
+                    .h(fit.height)
+                    .object_fit(ObjectFit::Contain)
+                    .when_some(border, |d, color| d.border_1().border_color(color)),
+            )
+            .into_any_element()
+    }
+
+    /// Display scale of `side` inside the overlay box (1 = natural size).
+    fn display_scale(side: &Side, box_size: Size<Pixels>) -> f32 {
+        match side.size {
+            Some((w, h)) if w > 0 => f32::from(Self::aspect_fit((w, h), box_size).width) / w as f32,
+            _ => 1.,
+        }
     }
 
     fn footer(side: &Side, cx: &App) -> AnyElement {
@@ -287,7 +326,7 @@ impl ImageDiff {
         let t = cx.ghd();
         let box_size = self.overlay_box(cx);
         let percentage = self.swipe.read(cx).value().start();
-        let swiper_width = box_size.width * (1. - percentage / 100.);
+        let swiper_width = (box_size.width * (1. - percentage / 100.)).floor();
         div()
             .size_full()
             .flex()
@@ -306,18 +345,22 @@ impl ImageDiff {
                     .relative()
                     .flex_1()
                     .w_full()
+                    .mb(SPACING_HALF)
                     .flex()
                     .justify_center()
                     .items_center()
                     .min_h_0()
                     .child(self.measure(cx))
                     .child(
+                        // `.image-container` with the checkerboard behind both
                         div()
                             .relative()
+                            .flex_none()
                             .w(box_size.width)
                             .h(box_size.height)
+                            .child(checkerboard())
                             .child(
-                                // previous: clipped on the right by the swiper
+                                // previous: `clip-path: inset(0 swiper 0 0)`
                                 div()
                                     .absolute()
                                     .top_0()
@@ -325,12 +368,14 @@ impl ImageDiff {
                                     .h(box_size.height)
                                     .w((box_size.width - swiper_width).max(px(0.)))
                                     .overflow_hidden()
-                                    .child(div().w(box_size.width).h(box_size.height).child(
-                                        Self::image_element(previous, box_size, t.color_deleted),
+                                    .child(Self::overlay_image(
+                                        previous,
+                                        box_size,
+                                        Some(t.color_deleted),
                                     )),
                             )
                             .child(
-                                // current: clipped on the left
+                                // current: `clip-path: inset(0 0 0 width - swiper)`
                                 div()
                                     .absolute()
                                     .top_0()
@@ -338,17 +383,17 @@ impl ImageDiff {
                                     .h(box_size.height)
                                     .w(swiper_width.max(px(0.)))
                                     .overflow_hidden()
-                                    .flex()
-                                    .justify_end()
                                     .child(
                                         div()
-                                            .flex_none()
+                                            .absolute()
+                                            .top_0()
+                                            .right_0()
                                             .w(box_size.width)
                                             .h(box_size.height)
-                                            .child(Self::image_element(
+                                            .child(Self::overlay_image(
                                                 current,
                                                 box_size,
-                                                t.color_new,
+                                                Some(t.color_new),
                                             )),
                                     ),
                             ),
@@ -380,6 +425,7 @@ impl ImageDiff {
                     .relative()
                     .flex_1()
                     .w_full()
+                    .mb(SPACING_HALF)
                     .flex()
                     .justify_center()
                     .items_center()
@@ -388,42 +434,53 @@ impl ImageDiff {
                     .child(
                         div()
                             .relative()
+                            .flex_none()
                             .w(box_size.width)
                             .h(box_size.height)
-                            .child(div().absolute().top_0().left_0().child(Self::image_element(
+                            .child(checkerboard())
+                            .child(Self::overlay_image(
                                 previous,
                                 box_size,
-                                t.color_deleted,
-                            )))
+                                Some(t.color_deleted),
+                            ))
                             .child(
-                                div()
-                                    .absolute()
-                                    .top_0()
-                                    .left_0()
-                                    .opacity(crossfade)
-                                    .child(Self::image_element(current, box_size, t.color_new)),
+                                div().absolute().inset_0().opacity(crossfade).child(
+                                    Self::overlay_image(current, box_size, Some(t.color_new)),
+                                ),
                             ),
                     ),
             )
             .into_any_element()
     }
 
-    /// `DifferenceBlend`: |current − previous| per pixel.
+    /// `DifferenceBlend`: the current image drawn over the previous one with
+    /// `mix-blend-mode: difference`, both centered at their display scale; no
+    /// borders, no checkerboard.
     fn difference(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let t = cx.ghd();
         let box_size = self.overlay_box(cx);
-        if self.difference.is_none() && !self.difference_pending {
+        let scales = match (&self.previous, &self.current) {
+            (Some(p), Some(c)) => (
+                Self::display_scale(p, box_size),
+                Self::display_scale(c, box_size),
+            ),
+            _ => (1., 1.),
+        };
+        let stale = self.difference_scales.is_none_or(|(p, c)| {
+            (p / c - scales.0 / scales.1).abs() > 0.005 * (scales.0 / scales.1)
+        });
+        if stale && !self.difference_pending && box_size.width > px(0.) {
             self.difference_pending = true;
             let a = self.previous.as_ref().map(|s| s.image.clone());
             let b = self.current.as_ref().map(|s| s.image.clone());
             let task = cx.background_executor().spawn(async move {
                 let (a, b) = (a?, b?);
-                difference_image(&a.bytes, &b.bytes)
+                difference_image(&a.bytes, &b.bytes, scales.0, scales.1)
             });
             cx.spawn(async move |this, cx| {
                 let result = task.await;
                 this.update(cx, |this, cx| {
                     this.difference_pending = false;
+                    this.difference_scales = Some(scales);
                     this.difference = result.map(Arc::new);
                     cx.notify();
                 })
@@ -442,20 +499,11 @@ impl ImageDiff {
             .child(self.measure(cx))
             .when_some(self.difference.clone(), |d, image| {
                 d.child(
-                    div()
-                        .relative()
+                    img(image)
+                        .flex_none()
                         .w(box_size.width)
                         .h(box_size.height)
-                        .child(checkerboard())
-                        .child(
-                            img(image)
-                                .absolute()
-                                .inset_0()
-                                .size_full()
-                                .object_fit(ObjectFit::Contain)
-                                .border_1()
-                                .border_color(t.color_modified),
-                        ),
+                        .object_fit(ObjectFit::Contain),
                 )
             })
             .into_any_element()
@@ -618,32 +666,42 @@ fn checkerboard() -> AnyElement {
     .into_any_element()
 }
 
-/// |a − b| per channel over the larger of the two sizes (the smaller image is
-/// resized to match), encoded as PNG for GPUI.
-fn difference_image(a: &[u8], b: &[u8]) -> Option<Image> {
+/// CSS `mix-blend-mode: difference` of `b` (current) over `a` (previous), each
+/// centered in the shared box at its display scale. Rendered at the larger of
+/// the two scales so that image keeps its natural resolution; encoded as PNG.
+fn difference_image(a: &[u8], b: &[u8], scale_a: f32, scale_b: f32) -> Option<Image> {
     use image::imageops::FilterType;
     let a = image::load_from_memory(a).ok()?.to_rgba8();
     let b = image::load_from_memory(b).ok()?.to_rgba8();
-    let width = a.width().max(b.width());
-    let height = a.height().max(b.height());
-    let fit = |img: image::RgbaImage| {
-        if img.width() == width && img.height() == height {
+    let top = scale_a.max(scale_b).max(f32::EPSILON);
+    let resize = |img: image::RgbaImage, scale: f32| {
+        let factor = scale / top;
+        let w = ((img.width() as f32 * factor).round() as u32).max(1);
+        let h = ((img.height() as f32 * factor).round() as u32).max(1);
+        if w == img.width() && h == img.height() {
             img
         } else {
-            image::imageops::resize(&img, width, height, FilterType::Triangle)
+            image::imageops::resize(&img, w, h, FilterType::Triangle)
         }
     };
-    let (a, b) = (fit(a), fit(b));
+    let (a, b) = (resize(a, scale_a), resize(b, scale_b));
+    let width = a.width().max(b.width());
+    let height = a.height().max(b.height());
+    let (ax, ay) = ((width - a.width()) / 2, (height - a.height()) / 2);
+    let (bx, by) = ((width - b.width()) / 2, (height - b.height()) / 2);
+    let sample = |img: &image::RgbaImage, ox: u32, oy: u32, x: u32, y: u32| {
+        if x >= ox && y >= oy && x - ox < img.width() && y - oy < img.height() {
+            img.get_pixel(x - ox, y - oy).0
+        } else {
+            [0; 4]
+        }
+    };
     let mut out = image::RgbaImage::new(width, height);
     for (x, y, px_out) in out.enumerate_pixels_mut() {
-        let pa = a.get_pixel(x, y).0;
-        let pb = b.get_pixel(x, y).0;
-        *px_out = image::Rgba([
-            pa[0].abs_diff(pb[0]),
-            pa[1].abs_diff(pb[1]),
-            pa[2].abs_diff(pb[2]),
-            255,
-        ]);
+        *px_out = image::Rgba(blend_difference(
+            sample(&a, ax, ay, x, y),
+            sample(&b, bx, by, x, y),
+        ));
     }
     let mut bytes = Vec::new();
     out.write_to(
@@ -652,4 +710,50 @@ fn difference_image(a: &[u8], b: &[u8]) -> Option<Image> {
     )
     .ok()?;
     Some(Image::from_bytes(ImageFormat::Png, bytes))
+}
+
+/// W3C compositing: `source` blended onto `backdrop` with the `difference`
+/// mode, then composited source-over (non-premultiplied RGBA8 in and out).
+fn blend_difference(backdrop: [u8; 4], source: [u8; 4]) -> [u8; 4] {
+    let ab = backdrop[3] as f32 / 255.;
+    let as_ = source[3] as f32 / 255.;
+    let ao = as_ + ab * (1. - as_);
+    if ao <= 0. {
+        return [0; 4];
+    }
+    let mut out = [0u8; 4];
+    for i in 0..3 {
+        let cb = backdrop[i] as f32 / 255.;
+        let cs = source[i] as f32 / 255.;
+        let mixed = (1. - ab) * cs + ab * (cb - cs).abs();
+        let co = as_ * mixed + (1. - as_) * ab * cb;
+        out[i] = ((co / ao) * 255.).round().clamp(0., 255.) as u8;
+    }
+    out[3] = (ao * 255.).round() as u8;
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::blend_difference;
+
+    #[test]
+    fn difference_blend_matches_css() {
+        // opaque over opaque: |b - s|
+        assert_eq!(
+            blend_difference([200, 100, 0, 255], [50, 100, 255, 255]),
+            [150, 0, 255, 255]
+        );
+        // nothing under the source: the source shows as is
+        assert_eq!(
+            blend_difference([0; 4], [10, 20, 30, 255]),
+            [10, 20, 30, 255]
+        );
+        // nothing over the backdrop: the backdrop shows as is
+        assert_eq!(
+            blend_difference([10, 20, 30, 255], [0; 4]),
+            [10, 20, 30, 255]
+        );
+        assert_eq!(blend_difference([0; 4], [0; 4]), [0; 4]);
+    }
 }

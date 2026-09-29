@@ -8,7 +8,7 @@ use corvane_core::{AheadBehind, AppState, Dispatcher, Foldout, Tip};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::icons::{Octicon, octicon};
+use crate::icons::{Octicon, octicon, spin};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -33,6 +33,8 @@ pub struct ToolbarButtonModel {
     pub arrow: bool,
     /// `progressValue`: fill the button background up to this fraction.
     pub progress: Option<f32>,
+    /// `iconClassName = 'spin'` (checkout / network action in progress).
+    pub spin: bool,
     /// `PullRequestBadge` on the branch button (`#N` + CI status).
     pub pr_badge: Option<PrBadge>,
 }
@@ -88,6 +90,7 @@ pub fn toolbar_models(
             push_pull: false,
             arrow: false,
             progress: None,
+            spin: false,
             pr_badge: None,
         }
     });
@@ -113,6 +116,7 @@ pub fn toolbar_models(
         push_pull: false,
         arrow: false,
         progress: None,
+        spin: false,
         pr_badge: None,
     };
 
@@ -144,10 +148,11 @@ pub fn toolbar_models(
         _ => (Octicon::GitBranch, "Current Branch", "".into()),
     };
     // `checkoutProgress`: title = target branch, description = "Switching to Branch"
-    let switching = repo_state.and_then(|s| s.checkout_target.clone());
-    let (branch_icon, branch_desc, branch_title) = match switching {
+    let switching_to = repo_state.and_then(|s| s.checkout_target.clone());
+    let switching = switching_to.is_some();
+    let (branch_icon, branch_desc, branch_title) = match switching_to {
         Some(target) => (
-            Octicon::Sync,
+            Octicon::SyncClockwise,
             "Switching to Branch",
             SharedString::from(target),
         ),
@@ -166,6 +171,7 @@ pub fn toolbar_models(
         push_pull: false,
         arrow: false,
         progress: None,
+        spin: switching,
         pr_badge,
     };
 
@@ -194,7 +200,7 @@ pub fn toolbar_models(
         .is_some_and(|st| st.rebase_in_progress);
     let base = ToolbarButtonModel {
         id: "toolbar-push-pull",
-        icon: Octicon::Sync,
+        icon: Octicon::SyncClockwise,
         description: "".into(),
         title: "".into(),
         width: Some(TOOLBAR_BUTTON_WIDTH),
@@ -205,6 +211,7 @@ pub fn toolbar_models(
         push_pull: true,
         arrow: false,
         progress: None,
+        spin: false,
         pr_badge: None,
     };
     let push_pull = if repo.is_none() {
@@ -214,7 +221,7 @@ pub fn toolbar_models(
         }
     } else if let Some(p) = progress {
         ToolbarButtonModel {
-            icon: Octicon::Sync,
+            icon: Octicon::SyncClockwise,
             description: p
                 .description
                 .clone()
@@ -223,6 +230,7 @@ pub fn toolbar_models(
             title: p.title.clone().into(),
             disabled: true,
             progress: Some(p.value),
+            spin: true,
             ..base
         }
     } else if !has_remote {
@@ -235,7 +243,7 @@ pub fn toolbar_models(
     } else {
         match info.map(|i| &i.tip) {
             Some(Tip::Unborn { .. }) => ToolbarButtonModel {
-                icon: Octicon::Sync,
+                icon: Octicon::SyncClockwise,
                 description: last_fetched,
                 title: format!("Fetch {remote_name}").into(),
                 ..base
@@ -266,7 +274,7 @@ pub fn toolbar_models(
                 let ab = ab.unwrap_or_default();
                 if ab.ahead == 0 && ab.behind == 0 {
                     ToolbarButtonModel {
-                        icon: Octicon::Sync,
+                        icon: Octicon::SyncClockwise,
                         description: last_fetched,
                         title: format!("Fetch {remote_name}").into(),
                         ..base
@@ -414,7 +422,15 @@ pub fn toolbar_button(model: ToolbarButtonModel, cx: &App) -> AnyElement {
         })
         .when_some(model.width, |d, w| d.w(w))
         .when(model.width.is_none(), |d| d.flex_1().min_w_0())
-        .child(octicon(model.icon, text).mr(SPACING))
+        .child(if model.spin {
+            div()
+                .flex_none()
+                .mr(SPACING)
+                .child(spin(octicon(model.icon, text), "toolbar-button-spin"))
+                .into_any_element()
+        } else {
+            octicon(model.icon, text).mr(SPACING).into_any_element()
+        })
         .child(
             div()
                 .flex()

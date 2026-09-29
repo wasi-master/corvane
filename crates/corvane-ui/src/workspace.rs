@@ -63,8 +63,11 @@ impl Workspace {
         let focus_handle = cx.focus_handle();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         // GHD: `ipcRenderer.on('focus')` → refreshRepository.
+        // `_setAppFocusState` pauses the pull request updater while blurred.
         cx.observe_window_activation(window, |_, window, cx| {
-            if window.is_window_active() {
+            let active = window.is_window_active();
+            Dispatcher::set_app_focus_state(active, cx);
+            if active {
                 Dispatcher::refresh_selected(cx);
             }
         })

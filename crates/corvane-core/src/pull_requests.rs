@@ -10,6 +10,7 @@
 //! `owner/name` and embeds the head/base repositories in each record.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use corvane_github::{ApiPullRequest, Client, GitHubError};
@@ -26,6 +27,10 @@ use crate::state::AppState;
 
 /// `PullRequestInterval`: check for new or updated pull requests every 30 minutes.
 const PULL_REQUEST_INTERVAL: Duration = Duration::from_secs(30 * 60);
+/// `appIsFocused`, as far as the pull request updater cares.
+static APP_FOCUSED: AtomicBool = AtomicBool::new(false);
+/// Bumped to stop the running updater (`stopPullRequestUpdater`).
+static UPDATER_GENERATION: AtomicU64 = AtomicU64::new(0);
 /// `MaxPullRequestRefreshFrequency`: never more often than every 2 minutes.
 const MAX_REFRESH_FREQUENCY: Duration = Duration::from_secs(2 * 60);
 /// `fetchUpdatedPullRequests(maxResults)`: past this many updated PRs the
@@ -330,37 +335,79 @@ impl Dispatcher {
         );
     }
 
-    /// `PullRequestUpdater`: while the app runs, refresh the selected
-    /// repository's pull requests every 30 minutes.
+    /// Launch: the window starts focused, so start the updater for the
+    /// selected repository.
     pub fn start_pull_request_updater(cx: &mut App) {
+        APP_FOCUSED.store(true, Ordering::Relaxed);
+        Self::restart_pull_request_updater(cx);
+    }
+
+    /// `_setAppFocusState`: the updater only runs while the app is focused.
+    pub fn set_app_focus_state(focused: bool, cx: &mut App) {
+        if APP_FOCUSED.swap(focused, Ordering::Relaxed) == focused {
+            return;
+        }
+        if focused {
+            Self::restart_pull_request_updater(cx);
+        } else {
+            UPDATER_GENERATION.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    /// `startPullRequestUpdater` / `PullRequestUpdater`: stops the running
+    /// updater and, while the app is focused, starts one for the selected
+    /// repository. The first tick comes once the last refresh is two
+    /// minutes old (`MaxPullRequestRefreshFrequency`), then every 30 minutes.
+    pub(crate) fn restart_pull_request_updater(cx: &mut App) {
+        let generation = UPDATER_GENERATION.fetch_add(1, Ordering::Relaxed) + 1;
+        if !APP_FOCUSED.load(Ordering::Relaxed) {
+            return;
+        }
+        let Some(id) = Self::state(cx).read(cx).selected else {
+            return;
+        };
+        if Self::pull_requests_last_refreshed(id, cx).is_none() {
+            return;
+        }
+        let running = move || UPDATER_GENERATION.load(Ordering::Relaxed) == generation;
         cx.spawn(async move |cx: &mut AsyncApp| {
+            let mut timeout = MAX_REFRESH_FREQUENCY;
             loop {
-                cx.background_executor()
-                    .timer(Duration::from_secs(60))
-                    .await;
-                cx.update(|cx| {
-                    let due = {
-                        let s = Self::state(cx).read(cx);
-                        s.selected.filter(|id| {
-                            let Some(repo) = s.repository(*id) else {
-                                return false;
-                            };
-                            let Some(gh) = repo.non_fork_github() else {
-                                return false;
-                            };
-                            s.pull_requests
-                                .get(&cache_key(gh))
-                                .and_then(|c| c.last_refreshed)
-                                .is_none_or(|t| t.elapsed() >= PULL_REQUEST_INTERVAL)
-                        })
-                    };
-                    if let Some(id) = due {
-                        Self::refresh_pull_requests(id, false, cx);
-                    }
-                });
+                // `scheduleTick`: due = timeout − time since the last refresh
+                let Some(last) = cx.update(|cx| Self::pull_requests_last_refreshed(id, cx)) else {
+                    return;
+                };
+                let since = last.map(|t| t.elapsed());
+                let due = since.map_or(Duration::ZERO, |since| timeout.saturating_sub(since));
+                cx.background_executor().timer(due).await;
+                if !running() {
+                    return;
+                }
+                // `tick`
+                let Some(last) = cx.update(|cx| Self::pull_requests_last_refreshed(id, cx)) else {
+                    return;
+                };
+                let since = last.map(|t| t.elapsed());
+                timeout = PULL_REQUEST_INTERVAL;
+                if since.is_some_and(|since| since < MAX_REFRESH_FREQUENCY) {
+                    continue;
+                }
+                cx.update(|cx| Self::refresh_pull_requests(id, false, cx));
             }
         })
         .detach();
+    }
+
+    /// `getLastRefreshed`: `None` when `id` has no GitHub repository,
+    /// `Some(None)` when its pull requests were never refreshed.
+    fn pull_requests_last_refreshed(id: u64, cx: &App) -> Option<Option<Instant>> {
+        let s = Self::state(cx).read(cx);
+        let gh = s.repository(id)?.non_fork_github()?;
+        Some(
+            s.pull_requests
+                .get(&cache_key(gh))
+                .and_then(|c| c.last_refreshed),
+        )
     }
 
     /// `_showPullRequestByPR`: the pull request page in the browser.
