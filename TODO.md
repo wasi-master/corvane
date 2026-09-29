@@ -44,7 +44,7 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak, editor/shell detection (`lib/editors/linux.ts`)
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
 - [ ] **[PLAT]** OS notifications (`ui/notifications/`), `TestNotifications` popup
-- [ ] **[PLAT]** `Install Command Line Tool…` (`github` CLI shim → `corvane` shim), Finder Services "Open in Corvane"
+- [ ] **[PLAT]** Finder Services "Open in Corvane"; `corvane` CLI subcommands beyond opening a path (GHD `cli/main.ts`: `open`, `clone`) and reaching an already running Corvane (URL scheme)
 
 ## Infra / release
 
