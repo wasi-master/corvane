@@ -13,6 +13,7 @@ pub mod go;
 pub mod htmlmixed;
 pub mod javascript;
 pub mod jsx;
+pub mod php;
 pub mod python;
 pub mod ruby;
 pub mod shell;
@@ -234,6 +235,9 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/typescript" | "application/typescript" => Some(typescript()),
         // htmlmixed.js redefines xml.js's text/html
         "text/html" => Some(htmlmixed()),
+        "application/x-httpd-php" => Some(php::php()),
+        "application/x-httpd-php-open" => Some(php::php_open()),
+        "text/x-php" => Some(php::x_php()),
         "text/xml" | "application/xml" => Some(xml()),
         "text/jsx" => Some(jsx()),
         "text/typescript-jsx" => Some(typescript_jsx()),
