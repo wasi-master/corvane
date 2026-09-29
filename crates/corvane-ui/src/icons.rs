@@ -93,6 +93,7 @@ pub enum Octicon {
     SquareFill,
     IssueReopened,
     ChevronUp,
+    ListUnordered,
 }
 
 impl Octicon {
@@ -165,6 +166,7 @@ impl Octicon {
             Octicon::Info => "octicons/info-16.svg",
             Octicon::IssueOpened => "octicons/issue-opened-16.svg",
             Octicon::LinkExternal => "octicons/link-external-16.svg",
+            Octicon::ListUnordered => "octicons/list-unordered-16.svg",
             Octicon::Terminal => "octicons/terminal-16.svg",
             Octicon::FileCode => "octicons/file-code-16.svg",
             Octicon::Pencil => "octicons/pencil-16.svg",

@@ -56,17 +56,29 @@ impl AddWorktreeDialog {
     pub fn new(
         state: Entity<AppState>,
         repo: u64,
+        initial_branch_name: Option<String>,
+        initial_worktree_name: Option<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
         let dir = crate::worktree_list::default_worktree_dir(state.read(cx));
-        let name = cx.new(|cx| InputState::new(window, cx).placeholder("worktree name"));
+        // `RepositoryPath initialName`: the worktree name, else the branch
+        let initial_name = initial_worktree_name
+            .or_else(|| initial_branch_name.clone())
+            .unwrap_or_default();
+        let name = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("worktree name")
+                .default_value(initial_name)
+        });
         let path = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder("worktree path")
                 .default_value(dir.display().to_string())
         });
-        let branch = cx.new(|cx| InputState::new(window, cx));
+        let branch = cx.new(|cx| {
+            InputState::new(window, cx).default_value(initial_branch_name.unwrap_or_default())
+        });
         for e in [&name, &path, &branch] {
             cx.observe(e, |_, _, cx| cx.notify()).detach();
         }

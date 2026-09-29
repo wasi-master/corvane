@@ -6,7 +6,15 @@
 //! the "Choose a branch to merge into <current>" footer. GitHub repositories
 //! get the Branches / Pull Requests tab bar (`branches-container.tsx`); the
 //! pull request rows come from `pull_request_list.rs`.
+//!
+//! Hovering a pull request row for 250 ms shows its quick view
+//! (`onMouseEnterPullRequestListItem`); leaving the row hides it after 500 ms
+//! unless the pointer reaches the quick view, and leaving the quick view
+//! hides it at once (`onMouseLeavePullRequestQuickView`).
 
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
+use std::rc::Rc;
 use std::time::{Duration, UNIX_EPOCH};
 
 use corvane_core::filter::fuzzy_score;
@@ -18,7 +26,10 @@ use gpui_kit::*;
 use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, octicon, spin};
-use crate::pull_request_list::{matches_filter, no_pull_requests, pull_request_row};
+use crate::pull_request_list::{
+    QUICK_VIEW_MAX_HEIGHT, matches_filter, no_pull_requests, pull_request_row, quick_view,
+    quick_view_top,
+};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
@@ -34,7 +45,32 @@ pub struct BranchFoldout {
     filter: Entity<InputState>,
     /// The Pull Requests tab has its own filter text (`PullRequestList.filterText`).
     pr_filter: Entity<InputState>,
+    /// `pullRequestBeingViewed`
+    quick_view: Option<QuickView>,
+    /// `pullRequestQuickViewTimerId` (dropping the task cancels it).
+    quick_view_timer: Option<Task<()>>,
+    /// Window-space bounds of the branches container and of each pull
+    /// request row (by number), recorded while painting.
+    container_bounds: Rc<Cell<Bounds<Pixels>>>,
+    row_bounds: Rc<RefCell<HashMap<u64, Bounds<Pixels>>>>,
+    /// The quick view card's height from the last paint (`quickViewHeight`).
+    quick_view_height: Rc<Cell<Pixels>>,
+    /// The pointer is over the quick view (GPUI may report entering it
+    /// before leaving the row, so the row's leave timer checks this).
+    quick_view_hovered: bool,
 }
+
+/// The pull request whose quick view is shown, its parsed body, and the
+/// hovered row's top.
+struct QuickView {
+    pr: corvane_core::PullRequest,
+    body: Vec<corvane_core::markdown::Block>,
+    row_top: Pixels,
+}
+
+/// `onMouseEnterPullRequestListItem` delay and the leave grace period.
+const QUICK_VIEW_SHOW_DELAY: Duration = Duration::from_millis(250);
+const QUICK_VIEW_HIDE_DELAY: Duration = Duration::from_millis(500);
 
 pub struct BranchGroup {
     pub title: &'static str,
@@ -115,7 +151,117 @@ impl BranchFoldout {
             state,
             filter,
             pr_filter,
+            quick_view: None,
+            quick_view_timer: None,
+            container_bounds: Rc::new(Cell::new(Bounds::default())),
+            row_bounds: Rc::new(RefCell::new(HashMap::new())),
+            quick_view_height: Rc::new(Cell::new(QUICK_VIEW_MAX_HEIGHT)),
+            quick_view_hovered: false,
         }
+    }
+
+    /// `onMouseEnterPullRequestListItem` / `onMouseLeavePullRequestListItem`
+    fn hover_pull_request(
+        &mut self,
+        pr: corvane_core::PullRequest,
+        hovered: bool,
+        cx: &mut Context<Self>,
+    ) {
+        self.quick_view_timer = None;
+        if hovered {
+            self.quick_view_hovered = false;
+            if self.quick_view.take().is_some() {
+                cx.notify();
+            }
+            let number = pr.number;
+            self.quick_view_timer = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(QUICK_VIEW_SHOW_DELAY).await;
+                this.update(cx, |this, cx| {
+                    let row_top = this
+                        .row_bounds
+                        .borrow()
+                        .get(&number)
+                        .map(|b| b.origin.y)
+                        .unwrap_or_default();
+                    let body = if pr.body.trim().is_empty() {
+                        "_No description provided._"
+                    } else {
+                        pr.body.as_str()
+                    };
+                    this.quick_view = Some(QuickView {
+                        body: corvane_core::markdown::parse(body),
+                        pr,
+                        row_top,
+                    });
+                    this.quick_view_timer = None;
+                    cx.notify();
+                })
+                .ok();
+            }));
+        } else if !self.quick_view_hovered {
+            self.quick_view_timer = Some(cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(QUICK_VIEW_HIDE_DELAY).await;
+                this.update(cx, |this, cx| {
+                    if this.quick_view_hovered {
+                        return;
+                    }
+                    this.quick_view = None;
+                    this.quick_view_timer = None;
+                    cx.notify();
+                })
+                .ok();
+            }));
+        }
+    }
+
+    /// `onMouseEnterPullRequestQuickView` / `onMouseLeavePullRequestQuickView`
+    fn hover_quick_view(&mut self, hovered: bool, cx: &mut Context<Self>) {
+        self.quick_view_timer = None;
+        self.quick_view_hovered = hovered;
+        if !hovered {
+            self.quick_view = None;
+            cx.notify();
+        }
+    }
+
+    /// The quick view, placed right of the foldout next to the hovered row.
+    fn render_quick_view(&self, window: &Window, cx: &Context<Self>) -> Option<AnyElement> {
+        let view = self.quick_view.as_ref()?;
+        let container = self.container_bounds.get();
+        let height = self.quick_view_height.get();
+        let top = quick_view_top(
+            view.row_top,
+            container.origin.y,
+            window.viewport_size().height,
+            height,
+        );
+        let pointer_top = view.row_top - container.origin.y - top
+            + crate::pull_request_list::PR_ROW_HEIGHT / 2.
+            + px(1.);
+        let status = self.state.read(cx).commit_status_summary(&view.pr);
+        let entity = cx.entity().downgrade();
+        Some(
+            div()
+                .absolute()
+                .left(container.size.width)
+                .top(top)
+                .child(
+                    quick_view(
+                        &view.pr,
+                        &view.body,
+                        status,
+                        pointer_top,
+                        self.quick_view_height.clone(),
+                        cx,
+                    )
+                    .on_hover(move |hovered, _, cx| {
+                        entity
+                            .update(cx, |this, cx| this.hover_quick_view(*hovered, cx))
+                            .ok();
+                    }),
+                )
+                .into_any_element(),
+        )
     }
 
     pub fn focus_filter(&self, window: &mut Window, cx: &mut Context<Self>) {
@@ -168,11 +314,41 @@ impl BranchFoldout {
             .filter(|pr| matches_filter(pr, &query))
             .cloned()
             .collect();
+        let local_name = s.repository(id).map(|r| r.name()).unwrap_or_default();
         let rows: Vec<AnyElement> = items
             .iter()
             .map(|pr| {
                 let status = s.commit_status_summary(pr);
-                pull_request_row(id, pr, current == Some(pr.number), status, cx)
+                let entity = cx.entity().downgrade();
+                let hovered_pr = pr.clone();
+                let row_bounds = self.row_bounds.clone();
+                let number = pr.number;
+                pull_request_row(
+                    id,
+                    pr,
+                    current == Some(pr.number),
+                    status,
+                    local_name.clone(),
+                    cx,
+                )
+                .relative()
+                .on_hover(move |hovered, _, cx| {
+                    let pr = hovered_pr.clone();
+                    entity
+                        .update(cx, |this, cx| this.hover_pull_request(pr, *hovered, cx))
+                        .ok();
+                })
+                .child(
+                    canvas(
+                        move |b, _, _| {
+                            row_bounds.borrow_mut().insert(number, b);
+                        },
+                        |_, _, _, _| {},
+                    )
+                    .absolute()
+                    .inset_0(),
+                )
+                .into_any_element()
             })
             .collect();
         div()
@@ -447,15 +623,23 @@ impl Render for BranchFoldout {
             for (base, git_ref) in refs {
                 Dispatcher::touch_commit_status(&base, &git_ref, None, cx);
             }
+            let container_bounds = self.container_bounds.clone();
             return div()
                 .id("branches-container")
+                .relative()
                 .size_full()
                 .flex()
                 .flex_col()
                 .min_h_0()
+                .child(
+                    canvas(move |b, _, _| container_bounds.set(b), |_, _, _, _| {})
+                        .absolute()
+                        .inset_0(),
+                )
                 .child(self.tab_bar(open_prs, tab, cx))
                 .child(self.pull_requests_tab(id, window, cx))
                 .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))
+                .children(self.render_quick_view(window, cx))
                 .into_any_element();
         }
         div()

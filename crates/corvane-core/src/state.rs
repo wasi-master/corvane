@@ -193,6 +193,10 @@ pub enum Popup {
     /// Worktrees (GHD 3.6 `enableWorktreeSupport`).
     AddWorktree {
         repo: u64,
+        /// `initialBranchName` / `initialWorktreeName` (checkout in a new
+        /// worktree from the pull request list).
+        initial_branch_name: Option<String>,
+        initial_worktree_name: Option<String>,
     },
     RenameWorktree {
         repo: u64,
