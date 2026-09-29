@@ -361,6 +361,8 @@ impl OpenPullRequestDialog {
             .child(
                 div()
                     .id("pr-file-rows")
+                    .role(Role::List)
+                    .aria_label("Changed files")
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
@@ -634,6 +636,10 @@ impl Render for OpenPullRequestDialog {
                                             "pr-file-list-resizable",
                                             &self.resizable,
                                             Some(&self.file_list_focus),
+                                            crate::active_resizable::ResizableDescription::new(
+                                                "Pull request file list",
+                                                FILE_LIST_MIN..FILE_LIST_MAX,
+                                            ),
                                             self.file_list(&preview, cx),
                                         )),
                                 )

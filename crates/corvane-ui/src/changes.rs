@@ -1709,20 +1709,10 @@ impl ChangesSidebar {
                     })
                     .child({
                         let (visible, total, _, _) = self.header_state(cx);
-                        // GHD: "3 of 10 changed files" while a filter hides some
-                        let prefix = if visible.len() != total {
-                            format!("{} of ", crate::format::format_count(visible.len() as u64))
-                        } else {
-                            String::new()
-                        };
-                        div().text_size(FONT_SIZE).truncate().child(if total == 1 {
-                            format!("{prefix}1 changed file")
-                        } else {
-                            format!(
-                                "{prefix}{} changed files",
-                                crate::format::format_count(total as u64)
-                            )
-                        })
+                        div()
+                            .text_size(FONT_SIZE)
+                            .truncate()
+                            .child(changed_files_label(visible.len(), total))
                     }),
             )
     }
@@ -1794,8 +1784,15 @@ impl ChangesSidebar {
         let files = Rc::new(files);
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
+        // `ariaLabelledBy="changes-list-check-all-label"`: the header's text
+        let label = {
+            let (visible, total, _, _) = self.header_state(cx);
+            changed_files_label(visible.len(), total)
+        };
         div()
             .id("changes-list")
+            .role(Role::List)
+            .aria_label(label)
             .flex_1()
             .min_h(px(100.))
             .bg(t.background)
@@ -3050,4 +3047,22 @@ fn file_row(
         )
         .child(octicon(icon, color))
         .into_any_element()
+}
+
+/// "N changed files", or GHD's "3 of 10 changed files" while a filter hides
+/// some.
+fn changed_files_label(visible: usize, total: usize) -> String {
+    let prefix = if visible != total {
+        format!("{} of ", crate::format::format_count(visible as u64))
+    } else {
+        String::new()
+    };
+    if total == 1 {
+        format!("{prefix}1 changed file")
+    } else {
+        format!(
+            "{prefix}{} changed files",
+            crate::format::format_count(total as u64)
+        )
+    }
 }

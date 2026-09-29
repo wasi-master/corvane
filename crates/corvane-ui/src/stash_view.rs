@@ -69,18 +69,30 @@ impl StashDiffViewer {
             .border_r_1()
             .border_color(t.box_border)
             .child(
-                uniform_list("stash-file-rows", count, move |range, _, cx| {
-                    range
-                        .map(|ix| {
-                            let file = &files[ix];
-                            let is_selected = selected.as_deref() == Some(file.path.as_str());
-                            stash_file_row(id, file, is_selected, cx)
+                // a `List` node owning the file rows
+                div()
+                    .id("stash-files")
+                    .role(Role::List)
+                    .aria_label("Changed files")
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        uniform_list("stash-file-rows", count, move |range, _, cx| {
+                            range
+                                .map(|ix| {
+                                    let file = &files[ix];
+                                    let is_selected =
+                                        selected.as_deref() == Some(file.path.as_str());
+                                    stash_file_row(id, file, is_selected, cx)
+                                })
+                                .collect()
                         })
-                        .collect()
-                })
-                .flex_1()
-                .min_h_0()
-                .with_scrollbar(),
+                        .flex_1()
+                        .min_h_0()
+                        .with_scrollbar(),
+                    ),
             )
             .into_any_element()
     }
@@ -230,6 +242,10 @@ impl Render for StashDiffViewer {
                                 "stash-file-list-resizable",
                                 &self.resizable,
                                 Some(&self.file_list_focus),
+                                crate::active_resizable::ResizableDescription::new(
+                                    "Stash file list",
+                                    FILE_LIST_MIN..FILE_LIST_MAX,
+                                ),
                                 self.file_list(id, cx),
                             )),
                     )

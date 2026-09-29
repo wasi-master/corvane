@@ -293,6 +293,9 @@ impl Render for RepositoryFoldout {
             .child(
                 div()
                     .id("repository-list-scroll")
+                    // a `List` node owning the repository rows
+                    .role(Role::List)
+                    .aria_label("Repositories")
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()

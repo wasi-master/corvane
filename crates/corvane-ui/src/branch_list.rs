@@ -408,6 +408,8 @@ impl BranchFoldout {
             } else {
                 div()
                     .id("pull-request-rows")
+                    .role(Role::List)
+                    .aria_label("Pull requests")
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
@@ -692,6 +694,8 @@ impl Render for BranchFoldout {
             } else {
                 div()
                     .id("branches-list")
+                    .role(Role::List)
+                    .aria_label("Branches")
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
