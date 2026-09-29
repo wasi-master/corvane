@@ -95,6 +95,8 @@ steps:
   - wait: 500                            # alone: sleep; on a step: settle time after it (default 350ms)
   - ghd: {eval: "…"}                     # app-specific step (either side can be `{skip: true}`)
     corvane: {hook: {name: popup, arg: about}}
+  - context_menu: add                    # compare both apps' last native menu (items, separators, disabled/checked)
+  - context_menu_pick: "Clone Repository…"   # choose an item in both (GHD: resolves its IPC; Corvane: menu-pick)
   - dump: open                           # GHD DOM boxes + computed styles as JSON ({name, root: css})
   - snap: open                           # or {name, threshold, tolerance, edge_tolerance, radius, mask: [[x,y,w,h]…], region: [x,y,w,h], note}
 ```
@@ -104,10 +106,15 @@ each should carry a `note` pointing at `docs/reference/deviations.md`.
 
 ## Limits
 
-- Native chrome is not captured by either side: context menus (both apps use
-  real `NSMenu`s, and a popped menu would block Corvane's control loop, so
-  right-clicks are not offered), the app menu bar, open/save panels, and
-  anything drawn by AppKit outside the web view / GPUI scene.
+- Native chrome is not captured as pixels by either side (context menus,
+  the app menu bar, open/save panels). Contextual menus are compared as
+  item lists instead: GHD's `show-contextual-menu` IPC is intercepted in the
+  renderer (GHD's menu is not popped: CDP cannot dismiss a main-process
+  menu), while Corvane pops its real `NSMenu`, records it and closes it after
+  `CORVANE_MENU_HOLD_MS` (default 1500) so the control loop is only held
+  briefly (`context_menu` / `context_menu_pick` steps). Pixel comparisons of
+  popped menus need a screen capture: do them as a visual pass with a
+  screen-capable tool. Right-click steps are still not offered.
 - GHD keyboard shortcuts that are menu accelerators never reach the renderer
   through CDP; use `menu:` steps. Plain keys (arrows, Enter, Escape, Space,
   typing, ⌘A in text fields) work as keys in both.

@@ -445,6 +445,8 @@ impl BranchFoldout {
             .tip_time
             .filter(|s| *s > 0)
             .map(|s| relative(UNIX_EPOCH + Duration::from_secs(s as u64)));
+        // `.list-item:hover`: `--list-item-hover-background-color`, text unchanged
+        let list_hover = t.list_item_hover_background;
         let hover_bg = t.box_selected_active_background;
         let hover_text = t.box_selected_active_text;
         let branch_name_for_target = branch.name.clone();
@@ -470,7 +472,7 @@ impl BranchFoldout {
             })
             .when(!current, move |d| {
                 let target_name = branch_name_for_target.clone();
-                d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                d.hover(move |s| s.bg(list_hover))
                     .drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
                         s.bg(hover_bg).text_color(hover_text)
                     })

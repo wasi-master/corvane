@@ -179,8 +179,8 @@ impl WorktreeFoldout {
         let t = cx.ghd();
         let name = worktree.display_name();
         let description = worktree.description();
-        let hover_bg = t.box_selected_active_background;
-        let hover_text = t.box_selected_active_text;
+        // `.list-item:hover`: `--list-item-hover-background-color`, text unchanged
+        let list_hover = t.list_item_hover_background;
         let path = worktree.path.clone();
         let for_menu = worktree.clone();
         let title: AnyElement = match (!query.is_empty())
@@ -215,7 +215,7 @@ impl WorktreeFoldout {
             .px(SPACING())
             .cursor_pointer()
             .text_size(FONT_SIZE())
-            .hover(move |s| s.bg(hover_bg).text_color(hover_text))
+            .hover(move |s| s.bg(list_hover))
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
                 Dispatcher::switch_worktree(repo, path.clone(), cx);

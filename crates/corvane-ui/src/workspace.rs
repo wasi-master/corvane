@@ -62,6 +62,9 @@ pub struct Workspace {
     /// Resize handles of the worktree and branch buttons.
     toolbar_resize: Rc<ToolbarResize>,
     ci_popover: Entity<CiCheckPopover>,
+    /// The open foldout as of the last state change (to focus its filter
+    /// once when it opens).
+    last_foldout: Option<corvane_core::Foldout>,
 }
 
 impl Workspace {
@@ -89,8 +92,26 @@ impl Workspace {
         cx.observe_in(&state, window, |this, state, window, cx| {
             let s = state.read(cx);
             let overlay_open = s.popup.is_some() || s.foldout.is_some();
+            let foldout = s.foldout;
             if !overlay_open && !this.focus_handle.contains_focused(window, cx) {
                 window.focus(&this.focus_handle, cx);
+            }
+            // GHD foldouts put the caret in their filter box when they open,
+            // however they were opened (`FilterList` autoFocus)
+            if foldout != this.last_foldout {
+                this.last_foldout = foldout;
+                match foldout {
+                    Some(corvane_core::Foldout::Repository) => this
+                        .repository_foldout
+                        .update(cx, |f, cx| f.focus_filter(window, cx)),
+                    Some(corvane_core::Foldout::Branch) => this
+                        .branch_foldout
+                        .update(cx, |f, cx| f.focus_filter(window, cx)),
+                    Some(corvane_core::Foldout::Worktree) => this
+                        .worktree_foldout
+                        .update(cx, |f, cx| f.focus_filter(window, cx)),
+                    _ => {}
+                }
             }
         })
         .detach();
@@ -144,6 +165,7 @@ impl Workspace {
             pr_badge_bounds,
             toolbar_resize: Rc::new(ToolbarResize::default()),
             ci_popover,
+            last_foldout: None,
             dialogs,
             diff_view,
             welcome,

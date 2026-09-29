@@ -76,9 +76,18 @@ def write(out: Path, results: list[dict], defaults: dict):
         if r["error"]:
             body.append(f'<div class="card"><span class="b bad">error</span> {_e(r["error"])}<pre>{_e(r.get("traceback", ""))}</pre></div>')
         base = f'shots/{r["name"]}-{r["theme"]}/'
+        for m in r.get("menus", []):
+            if m["pass"]:
+                body.append(f'<p><span class="b ok">menu</span> {_e(m["name"])}: <code>{_e(" | ".join(m["ghd"]))}</code></p>')
         for dump in r.get("dumps", []):
             body.append(f'<p class="muted">GHD DOM dump: <a href="{base + dump}">{_e(dump)}</a></p>')
         for s in r["snaps"]:
+            if s.get("menu"):
+                g, c = s["menu"]["ghd"], s["menu"]["corvane"]
+                body.append(f'<div class="card"><div class="snaphead"><h3>{_e(s["name"])}</h3><span class="b bad">items differ</span></div>'
+                            f'<div class="pair"><figure><pre>{_e(chr(10).join(g))}</pre><figcaption>GitHub Desktop</figcaption></figure>'
+                            f'<figure><pre>{_e(chr(10).join(c))}</pre><figcaption>Corvane</figcaption></figure></div></div>')
+                continue
             if s.get("ghd_only"):
                 body.append(f'<div class="card"><h3>{_e(s["name"])}</h3><img loading="lazy" style="max-width:100%" src="{base + s["ghd"]}"></div>')
                 continue

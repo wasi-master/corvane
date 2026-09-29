@@ -13,7 +13,11 @@ steps:
   - hover: {text: "Add", within: ".foldout"}
   - snap: add-hover
   - click: {text: "Add", within: ".foldout"}
+  - context_menu: add
   - snap: add-menu
+  - context_menu_pick: "Create New Repository…"
+    wait: 700
+  - snap: add-create-dialog
 ---
 name: branch-foldout
 description: Branch list foldout, row hover / press, filter, New Branch button

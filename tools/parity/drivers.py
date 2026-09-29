@@ -219,6 +219,7 @@ class Ghd:
             time.sleep(0.5)
             self.wait_for("document.readyState === 'complete' && !!document.querySelector('#desktop-app-container, #desktop-app')", 30)
         self.resize(width, height)
+        self.hook_context_menus()
         self.call("Emulation.setFocusEmulationEnabled", enabled=True)
         self.emit("focus", None)
         if freeze:
@@ -243,6 +244,59 @@ class Ghd:
                 return
             time.sleep(0.1)
         self.call("Emulation.setDeviceMetricsOverride", width=width, height=height, deviceScaleFactor=self.scale, mobile=False)
+
+    def hook_context_menus(self):
+        """Record `show-contextual-menu` IPC calls instead of letting the main
+        process pop a native menu; the promise stays pending until
+        `pick_menu` / `dismiss_menu` (GHD then runs the chosen action)."""
+        self.eval(
+            "(()=>{if(window.__parityMenuHook)return;window.__parityMenuHook=true;"
+            "const {ipcRenderer}=require('electron');const orig=ipcRenderer.invoke.bind(ipcRenderer);"
+            "window.__parityMenuPop=false;"
+            "ipcRenderer.invoke=(ch,...a)=>{if(ch==='show-contextual-menu'){window.__parityMenu=a[0];"
+            "if(window.__parityMenuPop)return orig(ch,...a);"
+            "return new Promise(r=>{window.__parityMenuResolve=r;});}return orig(ch,...a);};})()"
+        )
+
+    def set_menu_pop(self, pop: bool):
+        """Let GHD pop its real menus (visual passes; something on screen has
+        to dismiss them) instead of only recording them."""
+        self.eval(f"window.__parityMenuPop={'true' if pop else 'false'}")
+
+    def menu_items(self) -> list[str]:
+        items = self.eval("window.__parityMenu || null") or []
+
+        def walk(items, depth, out):
+            for it in items:
+                pad = "  " * depth
+                if it.get("type") == "separator":
+                    out.append(pad + "-")
+                    continue
+                line = pad + (it.get("label") or "")
+                if it.get("enabled") is False:
+                    line += " [disabled]"
+                if it.get("checked"):
+                    line += " [x]"
+                out.append(line)
+                if it.get("submenu"):
+                    walk(it["submenu"], depth + 1, out)
+        out: list[str] = []
+        walk(items, 0, out)
+        return out
+
+    def pick_menu(self, label: str):
+        found = self.eval(
+            "(()=>{const find=(items,path)=>{for(let i=0;i<items.length;i++){const it=items[i];"
+            "if(it.label===%s&&it.enabled!==false)return path.concat(i);"
+            "if(it.submenu){const r=find(it.submenu,path.concat(i));if(r)return r;}}return null;};"
+            "const p=find(window.__parityMenu||[],[]);if(p&&window.__parityMenuResolve){window.__parityMenuResolve(p);"
+            "window.__parityMenu=null;}return p;})()" % json.dumps(label)
+        )
+        if not found:
+            raise LookupError(f"GHD menu has no enabled item {label!r}")
+
+    def dismiss_menu(self):
+        self.eval("(()=>{if(window.__parityMenuResolve)window.__parityMenuResolve(null);window.__parityMenu=null;})()")
 
     def add_repository(self, path: Path) -> bool:
         """`cli-action open-repository` → Add Repository dialog → submit."""
@@ -524,6 +578,15 @@ class Corvane:
 
     def popup(self, name: str):
         self.hook("popup", name)
+
+    def menu_items(self) -> list[str]:
+        return self.cmd("menu").get("items", [])
+
+    def pick_menu(self, label: str):
+        self.cmd("menu-pick", label=label)
+
+    def dismiss_menu(self):
+        pass
 
     def snap(self, path: Path):
         self.cmd("snap", path=str(path))

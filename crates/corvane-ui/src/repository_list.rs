@@ -235,6 +235,24 @@ impl RepositoryFoldout {
     }
 }
 
+/// The Add button's items (`onNewRepositoryButtonClick`).
+#[cfg(target_os = "macos")]
+fn add_menu_items() -> Vec<crate::context_menu::MenuItem> {
+    use crate::context_menu::MenuItem;
+    vec![
+        MenuItem::new("Clone Repository…", |_, cx| {
+            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+        }),
+        MenuItem::new("Create New Repository…", |_, cx| {
+            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
+        }),
+        MenuItem::new("Add Existing Repository…", |_, cx| {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::prompt_add_repository(cx);
+        }),
+    ]
+}
+
 impl Render for RepositoryFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
@@ -283,10 +301,26 @@ impl Render for RepositoryFoldout {
                                 octicon(Octicon::TriangleDown, t.secondary_button_text)
                                     .size(zpx(12.)),
                             )
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.add_menu_open = !this.add_menu_open;
+                            .on_click(cx.listener(|this, ev: &ClickEvent, window, cx| {
                                 cx.stop_propagation();
-                                cx.notify();
+                                // GHD `onNewRepositoryButtonClick`: a native
+                                // contextual menu at the pointer
+                                #[cfg(target_os = "macos")]
+                                {
+                                    let _ = this;
+                                    crate::native_menu::show_context_menu(
+                                        add_menu_items(),
+                                        ev.position(),
+                                        window,
+                                        cx,
+                                    );
+                                }
+                                #[cfg(not(target_os = "macos"))]
+                                {
+                                    let _ = (ev, window);
+                                    this.add_menu_open = !this.add_menu_open;
+                                    cx.notify();
+                                }
                             })),
                     ),
             )

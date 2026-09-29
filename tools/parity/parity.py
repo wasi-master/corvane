@@ -159,6 +159,10 @@ class Run:
         finally:
             if self.args.keep_open:
                 input(f"[{slug}] both apps left open — press Enter to close them… ")
+            elif self.args.hold_open:
+                ghd.set_menu_pop(True)
+                print(f"    holding both apps open for {self.args.hold_open}s (GHD menus pop for real)", flush=True)
+                time.sleep(self.args.hold_open)
             both(ghd.stop, cv.stop)
             if not self.args.keep_work:
                 shutil.rmtree(work / "ghd-profile", ignore_errors=True)
@@ -173,6 +177,29 @@ class Run:
         per_app = {"ghd": step.pop("ghd", None), "corvane": step.pop("corvane", None)}
         if "snap" in step:
             self.snap(step["snap"], i, ghd, cv, cfg, shots, result)
+            return
+        if "context_menu" in step:
+            # both apps' last contextual menu, compared as item lists
+            name = step["context_menu"] if isinstance(step["context_menu"], str) else f"menu{i}"
+            g, c = ghd.menu_items(), cv.menu_items() if not self.args.ghd_only else []
+            ok = self.args.ghd_only or g == c
+            result.setdefault("menus", []).append({"name": name, "ghd": g, "corvane": c, "pass": ok})
+            if not ok:
+                result["snaps"].append({"name": f"menu: {name}", "stem": "", "note": "native menu items differ",
+                                        "percent": 100.0, "coverage": 0.0, "threshold": 0, "pass": False,
+                                        "size_mismatch": "", "ghd": "", "corvane": "", "diff": "", "regions": [],
+                                        "menu": {"ghd": g, "corvane": c}})
+            print(f"    {'ok  ' if ok else 'FAIL'} menu {name}: {len(g)} GHD / {len(c)} Corvane items", flush=True)
+            return
+        if "context_menu_pick" in step:
+            label = step["context_menu_pick"]
+            ghd.pick_menu(label)
+            if not self.args.ghd_only:
+                cv.pick_menu(label)
+            time.sleep((wait if wait is not None else cfg["settle"]) / 1000)
+            return
+        if "context_menu_dismiss" in step:
+            ghd.dismiss_menu()
             return
         if "dump" in step:
             d = step["dump"]
@@ -339,6 +366,8 @@ def main():
     ap.add_argument("--no-freeze", action="store_true", help="keep GHD CSS transitions")
     ap.add_argument("--fail-fast", action="store_true")
     ap.add_argument("--keep-open", action="store_true", help="pause before closing the apps")
+    ap.add_argument("--hold-open", type=int, default=0, metavar="SECONDS",
+                    help="keep both apps open this long after the steps (manual / screen-capture passes)")
     ap.add_argument("--keep-work", action="store_true", help="keep profiles / data dirs")
     ap.add_argument("--ghd-only", action="store_true", help="drive GHD alone: captures and DOM dumps, no comparison")
     ap.add_argument("--list", action="store_true")
