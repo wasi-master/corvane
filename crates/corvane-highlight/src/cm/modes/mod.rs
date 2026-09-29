@@ -6,13 +6,17 @@
 
 pub mod clike;
 pub mod cmake;
+pub mod crystal;
 pub mod css;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
+pub mod fortran;
 pub mod go;
+pub mod haxe;
 pub mod javascript;
 pub mod jsx;
+pub mod mllike;
 pub mod pascal;
 pub mod perl;
 pub mod powershell;
@@ -27,6 +31,7 @@ pub mod sql;
 pub mod stex;
 pub mod swift;
 pub mod toml;
+pub mod vb;
 pub mod xml;
 pub mod yaml;
 pub mod zig;
@@ -243,6 +248,14 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-squirrel" => Some(clike::squirrel()),
         "text/x-ceylon" => Some(clike::ceylon()),
         "application/dart" => Some(dart::dart()),
+        "text/x-ocaml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::OCaml))),
+        "text/x-fsharp" => Some(cached!(mllike::MlLike::new(mllike::Dialect::FSharp))),
+        "text/x-sml" => Some(cached!(mllike::MlLike::new(mllike::Dialect::Sml))),
+        "text/x-vb" => Some(cached!(vb::Vb)),
+        "text/x-haxe" => Some(cached!(haxe::Haxe)),
+        "text/x-hxml" => Some(cached!(haxe::Hxml)),
+        "text/x-crystal" => Some(cached!(crystal::Crystal)),
+        "text/x-fortran" => Some(cached!(fortran::Fortran)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
