@@ -3,7 +3,7 @@
 //! external editor error (`ui/editor/editor-error.tsx`) and the shell error
 //! (`ui/shell/shell-error.tsx`).
 
-use corvane_core::{AppState, Dispatcher, Popup, PreferencesTab};
+use corvane_core::{AppState, Dispatcher, Popup, PreferencesTab, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -11,15 +11,117 @@ use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{checkbox_row, link_button};
+use crate::widgets::{ListRowA11y, checkbox_row, link_button};
 
 pub struct AboutDialog {
+    state: Entity<AppState>,
     version: String,
 }
 
 impl AboutDialog {
-    pub fn new(version: String) -> Self {
-        Self { version }
+    pub fn new(state: Entity<AppState>, version: String, cx: &mut Context<Self>) -> Self {
+        cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        Self { state, version }
+    }
+
+    /// `renderUpdateDetails` + `renderUpdateButton`: what the updater is
+    /// doing, and "Check for Updates" / "Quit and Install Update".
+    fn update_section(&self, cx: &App) -> Div {
+        let t = cx.ghd();
+        let section = div().w_full().flex().flex_col().items_center().gap(SPACING);
+        if !corvane_core::updater::updates_enabled() {
+            return section.child(
+                div()
+                    .text_align(TextAlign::Center)
+                    .text_color(t.text_secondary)
+                    .child("Corvane is running in development and will not receive any updates."),
+            );
+        }
+        let (status, last_check) = {
+            let s = self.state.read(cx);
+            (s.update.status.clone(), s.update.last_successful_check)
+        };
+        let info = |text: String, loading: bool| {
+            div()
+                .id("about-update-status")
+                .a11y_live(text.clone())
+                .flex()
+                .flex_row()
+                .items_center()
+                .justify_center()
+                .gap(SPACING_HALF)
+                .text_align(TextAlign::Center)
+                .when(loading, |d| {
+                    d.child(crate::icons::loading("about-update-spinner", t.text))
+                })
+                .child(text)
+        };
+        let details: Option<AnyElement> = match &status {
+            UpdateStatus::Checking => {
+                Some(info("Checking for updates…".into(), true).into_any_element())
+            }
+            UpdateStatus::Downloading {
+                received, total, ..
+            } => {
+                let text = match total {
+                    Some(total) if *total > 0 => {
+                        format!("Downloading update… {}%", (received * 100 / total).min(100))
+                    }
+                    _ => "Downloading update…".to_string(),
+                };
+                Some(info(text, true).into_any_element())
+            }
+            UpdateStatus::Installing => {
+                Some(info("Installing update…".into(), true).into_any_element())
+            }
+            UpdateStatus::NotAvailable => last_check.map(|at| {
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .justify_center()
+                    .whitespace_nowrap()
+                    .child("You have the latest version (last checked\u{a0}")
+                    .child(crate::relative_time::relative(at))
+                    .child(")")
+                    .into_any_element()
+            }),
+            UpdateStatus::Ready { .. } => Some(
+                info(
+                    "An update has been downloaded and is ready to be installed.".into(),
+                    false,
+                )
+                .into_any_element(),
+            ),
+            UpdateStatus::AvailableViaHomebrew { update } => Some(
+                info(
+                    format!(
+                        "Corvane {} is available. Run brew upgrade corvane to install it.",
+                        update.version
+                    ),
+                    false,
+                )
+                .into_any_element(),
+            ),
+            UpdateStatus::NotChecked => None,
+        };
+        let button = match &status {
+            UpdateStatus::Ready { .. } => {
+                crate::widgets::button("about-install-update", "Quit and Install Update", cx)
+                    .on_click(|_, _, cx| Dispatcher::install_update(cx))
+            }
+            _ => {
+                let enabled = status.can_check();
+                crate::widgets::button("about-check-updates", "Check for Updates", cx)
+                    .when(!enabled, |d| d.opacity(0.6))
+                    .on_click(move |_, _, cx| {
+                        if enabled {
+                            Dispatcher::check_for_updates(true, cx);
+                        }
+                    })
+            }
+        };
+        section.children(details).child(button)
     }
 }
 
@@ -29,12 +131,22 @@ impl Render for AboutDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let version = self.version.clone();
         let version_for_copy = version.clone();
+        // `renderUpdateErrors`: no successful check on record yet
+        let no_check_yet = corvane_core::updater::updates_enabled()
+            && self.state.read(cx).update.last_successful_check.is_none();
         let content = div()
             .w(px(400.))
             .flex()
             .flex_col()
             .items_center()
             .gap(SPACING)
+            .when(no_check_yet, |d| {
+                d.child(crate::widgets::dialog_error_banner(
+                    "Couldn't determine the last time an update check was performed. You may be \
+                     running an old version. Please try manually checking for updates.",
+                    cx,
+                ))
+            })
             .child(img("icon/Corvane-256.png").size(px(64.)))
             .child(
                 div()
@@ -54,17 +166,15 @@ impl Render for AboutDialog {
                     .on_click(move |_, _, cx| {
                         cx.write_to_clipboard(ClipboardItem::new_string(version_for_copy.clone()))
                     })
-                    .child(format!("Version {version}"))
+                    .child(format!("Version {version} ({})", std::env::consts::ARCH))
                     .child(octicon(Octicon::Copy, t.text_secondary).size(px(12.))),
             )
             .child(
-                div()
-                    .text_align(TextAlign::Center)
-                    .text_color(t.text_secondary)
-                    .child(
-                        "A native GitHub Desktop, in Rust. Updates arrive with the first release.",
-                    ),
+                link_button("about-release-notes", "release notes", cx).on_click(|_, _, cx| {
+                    Dispatcher::open_url(corvane_core::release_notes::RELEASE_NOTES_URL, cx)
+                }),
             )
+            .child(self.update_section(cx))
             .child(
                 div()
                     .mt(SPACING)

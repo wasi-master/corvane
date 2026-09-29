@@ -19,6 +19,7 @@ pub mod services;
 pub mod shells;
 pub mod spell;
 pub mod trash;
+pub mod updater;
 
 pub mod paths {
     use std::path::PathBuf;

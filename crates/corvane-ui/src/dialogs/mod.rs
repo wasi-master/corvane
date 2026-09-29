@@ -426,7 +426,9 @@ impl DialogHost {
             Popup::ConfirmRemoveRepository { repo } => cx
                 .new(|_| ConfirmRemoveRepositoryDialog::new(state, *repo))
                 .into(),
-            Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
+            Popup::About { version } => cx
+                .new(|cx| AboutDialog::new(state, version.clone(), cx))
+                .into(),
             Popup::MoveToApplicationsFolder => cx
                 .new(|_| move_to_applications_folder::MoveToApplicationsFolderDialog::new())
                 .into(),
@@ -449,7 +451,7 @@ impl DialogHost {
                 .new(|_| crash_report_found::CrashReportFoundDialog::new(reports.clone()))
                 .into(),
             Popup::ReleaseNotes { summary } => cx
-                .new(|_| release_notes::ReleaseNotesDialog::new(summary.clone()))
+                .new(|cx| release_notes::ReleaseNotesDialog::new(state, summary.clone(), cx))
                 .into(),
             Popup::ExternalEditorError { .. } | Popup::ShellError { .. } => cx
                 .new(|_| IntegrationErrorDialog::new(popup.clone()))

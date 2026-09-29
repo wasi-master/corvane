@@ -8,8 +8,12 @@ description = "Corvane OS integration: paths, keychain, trash, editors, shells"
 [dependencies]
 dirs.workspace = true
 keyring.workspace = true
+minisign-verify = "0.3"
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+ureq.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
