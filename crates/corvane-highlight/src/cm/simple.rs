@@ -123,13 +123,15 @@ impl SimpleMode {
                     .map(|spec| {
                         let flags = if spec.case_insensitive { "(?i)" } else { "" };
                         Rule {
-                            re: Regex::new(&format!("{flags}^(?:{})", spec.regex))
-                                .expect("mode regex"),
-                            end: spec
-                                .local
-                                .as_ref()
-                                .and_then(|l| l.end)
-                                .map(|e| Regex::new(&format!("^(?:{e})")).expect("mode regex")),
+                            re: Regex::new(&format!(
+                                "{flags}^(?:{})",
+                                super::js_pattern(spec.regex)
+                            ))
+                            .expect("mode regex"),
+                            end: spec.local.as_ref().and_then(|l| l.end).map(|e| {
+                                Regex::new(&format!("^(?:{})", super::js_pattern(e)))
+                                    .expect("mode regex")
+                            }),
                             spec,
                         }
                     })

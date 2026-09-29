@@ -338,7 +338,8 @@ impl Python {
 
         // Handle Comments
         if !in_format && stream.peek() == Some('#') {
-            stream.skip_to_end();
+            // `match(/^#.*/)`
+            stream.skip_js_dots();
             return s("comment");
         }
 

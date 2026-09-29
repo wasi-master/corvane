@@ -1,0 +1,9 @@
+0 0 5 m-shell comment
+1 0 4 m-shell builtin
+1 5 5 m-shell string
+1 11 5 m-shell string
+1 17 6 m-shell quote
+2 0 3 m-shell builtin
+2 4 5 m-shell string-2
+3 0 2 m-shell string-2
+4 0 3 m-shell string-2

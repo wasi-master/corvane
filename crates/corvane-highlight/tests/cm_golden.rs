@@ -11,7 +11,11 @@ use corvane_highlight::cm;
 
 #[test]
 fn ported_modes_match_github_desktop() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/cm");
+    // CM_GOLDEN_DIR points the test at another samples/ + expected/ pair
+    // (e.g. generated fuzz variants)
+    let dir = std::env::var_os("CM_GOLDEN_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/cm"));
     let mut failures = Vec::new();
     let mut checked = 0;
     let mut entries: Vec<_> = fs::read_dir(dir.join("expected"))

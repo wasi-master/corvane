@@ -1,0 +1,11 @@
+0 0 3 m-javascript keyword
+0 4 1 m-javascript def
+0 7 6 m-javascript type
+0 14 1 m-javascript operator
+0 16 5 m-javascript string
+0 23 6 m-javascript comment
+1 0 4 m-javascript keyword
+1 5 1 m-javascript type
+1 7 1 m-javascript operator
+1 11 2 m-javascript property
+1 15 6 m-javascript type

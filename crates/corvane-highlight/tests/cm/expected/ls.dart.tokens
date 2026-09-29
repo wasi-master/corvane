@@ -1,0 +1,7 @@
+0 0 5 m-clike comment
+1 0 3 m-clike builtin
+1 4 1 m-clike variable
+1 6 1 m-clike operator
+1 8 3 m-clike string
+1 12 1 m-clike variable
+1 13 1 m-clike string

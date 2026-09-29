@@ -82,7 +82,7 @@ pub fn ascii_ci(pattern: &str) -> String {
 }
 
 fn compile(pattern: &str) -> Regex {
-    Regex::new(pattern).expect("htmlmixed regex")
+    crate::cm::js_regex(pattern)
 }
 
 /// One `[attr, regexp, mode]` entry of a tag's list.

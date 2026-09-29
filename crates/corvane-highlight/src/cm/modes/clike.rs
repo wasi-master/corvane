@@ -448,7 +448,13 @@ fn c_types(word: &str) -> bool {
     const BASIC: &[&str] = &[
         "int", "long", "char", "short", "double", "float", "unsigned", "signed", "void", "bool",
     ];
-    BASIC.contains(&word) || (word.ends_with("_t") && word.chars().nth(2).is_some())
+    // `.+` stops at JS line terminators: the char right before `_t` must be
+    // one `.` matches
+    BASIC.contains(&word)
+        || word
+            .strip_suffix("_t")
+            .and_then(|w| w.chars().next_back())
+            .is_some_and(|c| !crate::cm::is_js_line_terminator(c))
 }
 
 const BASIC_OBJC_TYPES: &[&str] = &["SEL", "instancetype", "id", "Class", "Protocol", "BOOL"];
@@ -569,7 +575,14 @@ fn token_raw_string(stream: &mut StringStream, state: &mut State) -> Style {
     // `stream.match(new RegExp(".*?\\)" + delim + '"'))`: the first
     // occurrence of the terminator
     let needle = format!("){}\"", state.cpp11_raw_string_delim);
-    if stream.skip_to_str(&needle) {
+    let from = stream.pos;
+    // `.*?` does not cross a JS line terminator
+    if stream.skip_to_str(&needle)
+        && !stream
+            .slice(from, stream.pos)
+            .chars()
+            .any(crate::cm::is_js_line_terminator)
+    {
         stream.pos += needle.chars().count();
         state.tokenize = Tokenize::Base;
     } else {

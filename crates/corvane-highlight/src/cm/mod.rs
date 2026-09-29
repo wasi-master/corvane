@@ -321,6 +321,11 @@ impl<'a> StringStream<'a> {
             None => false,
         }
     }
+    /// `match(/.*/)`: up to the next JS line terminator (`skip_to_end`
+    /// stops only at the line's end).
+    pub fn skip_js_dots(&mut self) {
+        self.eat_while_if(|c| !is_js_line_terminator(c));
+    }
     pub fn back_up(&mut self, n: usize) {
         self.pos = self.pos.saturating_sub(n);
     }
@@ -455,12 +460,69 @@ impl<'a> StringStream<'a> {
     }
 }
 
-/// Compile a regex once (`static` per call site).
+/// JS line terminators: the chars `.` does not match.
+pub fn is_js_line_terminator(c: char) -> bool {
+    matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+}
+
+/// JS `.`: any char but the line terminators `\n`, `\r`, U+2028 and
+/// U+2029 (Rust's `.` only excludes `\n`).
+const JS_DOT: &str = r"[^\n\r\x{2028}\x{2029}]";
+
+/// A JS regex source in fancy-regex syntax: every `.` outside a character
+/// class becomes [`JS_DOT`], so a U+2028 / U+2029 inside a line stops `.`
+/// like it does in GHD. Everything else is passed through unchanged.
+pub fn js_pattern(pattern: &str) -> std::borrow::Cow<'_, str> {
+    if !pattern.contains('.') {
+        return pattern.into();
+    }
+    let mut out = String::with_capacity(pattern.len() + 16);
+    let mut chars = pattern.chars().peekable();
+    // nesting depth of `[...]` (Rust classes nest: `[a&&[^b]]`)
+    let mut depth = 0usize;
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                out.push(c);
+                if let Some(n) = chars.next() {
+                    out.push(n);
+                }
+            }
+            '[' => {
+                out.push(c);
+                depth += 1;
+                // `]` right after `[` or `[^` is a literal
+                if chars.peek() == Some(&'^') {
+                    out.push('^');
+                    chars.next();
+                }
+                if chars.peek() == Some(&']') {
+                    out.push(']');
+                    chars.next();
+                }
+            }
+            ']' if depth > 0 => {
+                out.push(c);
+                depth -= 1;
+            }
+            '.' if depth == 0 => out.push_str(JS_DOT),
+            _ => out.push(c),
+        }
+    }
+    out.into()
+}
+
+/// Compile a JS regex source ([`js_pattern`]); constant patterns only.
+pub fn js_regex(pattern: &str) -> Regex {
+    Regex::new(&js_pattern(pattern)).expect("mode regex")
+}
+
+/// Compile a regex once (`static` per call site), with JS semantics for `.`.
 #[macro_export]
 macro_rules! re {
     ($pattern:expr) => {{
         static RE: std::sync::OnceLock<fancy_regex::Regex> = std::sync::OnceLock::new();
-        RE.get_or_init(|| fancy_regex::Regex::new($pattern).expect("mode regex"))
+        RE.get_or_init(|| $crate::cm::js_regex($pattern))
     }};
 }
 
@@ -667,5 +729,22 @@ mod tests {
         assert!(s.match_re(re!(r"^[a-z]"), false).is_none());
         assert!(s.match_re(re!(r"^[^\s]a"), true).is_some());
         assert_eq!(s.pos, 3);
+    }
+
+    #[test]
+    fn js_dot() {
+        assert_eq!(js_pattern(r"a.b"), r"a[^\n\r\x{2028}\x{2029}]b");
+        assert_eq!(js_pattern(r"\.[.][^.\]]"), r"\.[.][^.\]]");
+        assert_eq!(js_pattern(r"[].](.)"), r"[].]([^\n\r\x{2028}\x{2029}])");
+        assert_eq!(
+            js_pattern(r"[a&&[^.]]."),
+            r"[a&&[^.]][^\n\r\x{2028}\x{2029}]"
+        );
+        let lines = ["x\u{2028}y"];
+        let mut s = StringStream::new(lines[0], 4, &lines, 0);
+        assert_eq!(
+            s.match_re(re!(r".*"), true).map(|m| m.text),
+            Some("x".into())
+        );
     }
 }
