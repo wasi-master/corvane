@@ -13,6 +13,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod properties;
 pub mod protobuf;
 pub mod python;
 pub mod ruby;
@@ -215,6 +216,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-zig" => Some(Arc::new(zig::Zig)),
         "text/x-cmake" => Some(Arc::new(cmake::Cmake)),
         "text/x-protobuf" => Some(Arc::new(protobuf::Protobuf)),
+        "text/x-properties" | "text/x-ini" => Some(Arc::new(properties::Properties)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),

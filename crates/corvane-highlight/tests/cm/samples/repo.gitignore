@@ -1,0 +1,16 @@
+# Build output
+/target/
+*.rs.bk
+**/node_modules
+!keep.me
+\#not-a-comment
+
+# macOS
+.DS_Store
+._*
+[Tt]emp/
+*.log
+logs/**/debug-?.txt
+dir with spaces/
+naïve-ünïcode/
+a=b:c
