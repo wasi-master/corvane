@@ -42,11 +42,17 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak, editor/shell detection (`lib/editors/linux.ts`)
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
 
+## Packs (PLAN.md §3.7)
+
+- [ ] "Download extended highlighting (6 MB)?" banner on the first diff whose extension the built-in grammar set does not know; today the pack is only offered in Settings › Advanced › Optional components
+- [ ] `git-portable` (dugite-native git + lfs) and `git-lfs` packs: the manifest and downloader accept them, but nothing builds or offers them (`InstallGit` / `InitializeLFS` would offer the download)
+
 ## Infra / release
 
 - [ ] **[INFRA]** Developer ID signing + notarization — not planned (hobby project, no paid Apple Developer account). If it ever happens: `rcodesign` notarize step in release CI, drop `--no-quarantine` from cask docs
 - [ ] **[INFRA]** Velopack or Sparkle — rejected for now (both assume signed + notarized bundles); custom self-updater in M7 instead
-- [ ] **[INFRA]** Screenshot-regression CI job on `macos-15` runner
+- [ ] **[INFRA]** `.github/workflows/release.yml`: fmt/clippy/tests, two `--target` builds + `lipo`, `packaging/release.sh`, minisign with the repository secret, upload on tag (`packaging/release.md` has the signing step)
+- [ ] **[INFRA]** Screenshot-regression CI job on `macos-15` runner (`cargo build --features snapshots` + `CORVANE_SNAPSHOT=<png>` renders a window offscreen)
 - [ ] **[INFRA]** `cargo vendor` snapshot of `gpui-pre`/`gpui-kit` in release builds
 
 ## Accessibility
