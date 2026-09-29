@@ -38,9 +38,8 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## Create / clone dialogs
 
-- [ ] Git-ignore and license templates in "Create a New Repository" (GHD bundles `gitignore` + `choosealicense` data; the selects currently show "None")
-- [ ] Clone dialog GitHub.com / Enterprise tabs: repository list from the API with filter (`clone-github-repository.tsx`), needs avatar cache
-- [ ] Clone path validation messages (`.app` suffix, non-empty folder, file exists) before starting
+- [ ] Clone dialog account picker when several GitHub Enterprise accounts are signed in (`account-picker.tsx`); each tab uses its first account
+- [ ] Clone dialog: resolve `owner/name` shorthand through the API for the default branch and "repository not found" errors (`resolveCloneInfo`); v1 clones `https://github.com/owner/name`
 
 ## History
 
