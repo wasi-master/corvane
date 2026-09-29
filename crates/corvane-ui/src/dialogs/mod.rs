@@ -17,6 +17,7 @@ mod preferences;
 mod push_branch_commits;
 mod push_protection;
 mod reauth_dialogs;
+mod release_notes;
 mod remote_dialogs;
 mod repository_settings;
 mod sign_in;
@@ -353,6 +354,9 @@ impl DialogHost {
                 .new(|_| ConfirmRemoveRepositoryDialog::new(state, *repo))
                 .into(),
             Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
+            Popup::ReleaseNotes { summary } => cx
+                .new(|_| release_notes::ReleaseNotesDialog::new(summary.clone()))
+                .into(),
             Popup::ExternalEditorError { .. } | Popup::ShellError { .. } => cx
                 .new(|_| IntegrationErrorDialog::new(popup.clone()))
                 .into(),

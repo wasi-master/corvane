@@ -153,7 +153,7 @@ fn main() {
         {
             Dispatcher::clone_repository(url.to_string(), std::path::PathBuf::from(path), None, cx);
         }
-        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|
+        // CORVANE_POPUP=preferences|repository-settings|about|create|clone|clone:<url>|release-notes|
         // upstream-already-exists opens a dialog at
         // launch (dev/testing convenience for headless smoke runs).
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
@@ -215,6 +215,29 @@ fn main() {
                                     repo: id,
                                     existing_url: "https://github.com/someone-else/desktop.git"
                                         .into(),
+                                },
+                                cx,
+                            )
+                        }
+                        // GHD `showFakeReleaseNotes` (test UI components)
+                        ("release-notes", _) => {
+                            use corvane_core::release_notes::{
+                                parse_release_body, release_summary,
+                            };
+                            let body = "Corvane now reads more of GitHub Desktop's workflow.\n\n\
+                                - [New] Branch autocompletion in Add Worktree\n\
+                                - [Improved] Clone resolves owner/name through the API\n\
+                                - [Added] Commit message templates\n\
+                                - [Fixed] Arrow keys scroll the changes list. Thanks @octocat!\n\
+                                - [Fixed] Upstream remote conflicts are reported\n\
+                                - [Removed] Stale menu items";
+                            Dispatcher::show_popup(
+                                Popup::ReleaseNotes {
+                                    summary: release_summary(
+                                        env!("CARGO_PKG_VERSION"),
+                                        Some(std::time::SystemTime::now()),
+                                        parse_release_body(body),
+                                    ),
                                 },
                                 cx,
                             )
@@ -319,6 +342,7 @@ fn main() {
         cx.on_action(|_: &ContactSupport, cx| {
             Dispatcher::open_url("https://github.com/wasi-master/corvane/discussions", cx)
         });
+        cx.on_action(|_: &ShowReleaseNotes, cx| Dispatcher::show_release_notes(cx));
         cx.on_action(|_: &ShowUserGuides, cx| {
             Dispatcher::open_url("https://docs.github.com/en/desktop", cx)
         });
