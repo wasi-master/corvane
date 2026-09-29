@@ -64,6 +64,10 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD.
 - Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move.
 
+## Keyboard
+
+Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / `Dialog` key handling (2026-09-29). Every menu shortcut in the table has its binding (`crates/corvane-ui/src/keymap.rs`), including ⌘0 / ⌘= / ⌘- zoom and ⌘8 / ⌘9. Lists: ↑ / ↓ move, ⇧↑ / ⇧↓ extend the selection (changes and history), ⌘↑ / ⌘↓ and Home / End jump to the first / last row, Space includes or excludes the highlighted files, ⌘A selects every file, Escape closes foldouts and dialogs, ⌘F focuses the filter, ⌘Enter commits from the message. Differences: the repository, branch, pull request and worktree foldouts filter as you type but ↓ does not move into the list and Enter does not pick the single match (GHD `FilterList`); PageUp / PageDown do not page through lists; a dialog's default button is not triggered by Enter unless a text box handles it; Shift+F10 does not open the selected row's context menu; Tab does not walk the toolbar buttons and list rows (GPUI focus stays on the pane); ⌥⌘I (Developer Tools) has no equivalent.
+
 ## Accessibility
 
 - List rows (repositories, branches, pull requests, changes, history, stash and commit / pull request file lists, worktrees) are `Row` nodes (macOS `AXRow`) named with their visible text and status (`widgets::ListRowA11y`); GHD uses `role="option"` rows in a `listbox`. Each list is a `List` node (`AXList`) owning its rows, named after GHD's `ariaLabel` where it has one ("Commits", the "N changed files" header) and otherwise "Repositories", "Branches", "Pull requests", "Worktrees" or "Changed files". Banners are polite live regions announced when they appear.
