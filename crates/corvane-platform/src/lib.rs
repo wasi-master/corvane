@@ -5,6 +5,7 @@
 /// settings deep link, GPUI `app_id`).
 pub const BUNDLE_ID: &str = "com.wasimaster.corvane";
 
+pub mod app_location;
 pub mod apps;
 pub mod custom_integration;
 pub mod editors;

@@ -13,6 +13,7 @@ mod discard_selection;
 mod fork_dialogs;
 mod history_dialogs;
 mod mco_dialogs;
+mod move_to_applications_folder;
 mod open_pull_request;
 mod preferences;
 mod push_branch_commits;
@@ -355,6 +356,9 @@ impl DialogHost {
                 .new(|_| ConfirmRemoveRepositoryDialog::new(state, *repo))
                 .into(),
             Popup::About { version } => cx.new(|_| AboutDialog::new(version.clone())).into(),
+            Popup::MoveToApplicationsFolder => cx
+                .new(|_| move_to_applications_folder::MoveToApplicationsFolderDialog::new())
+                .into(),
             Popup::Acknowledgements => cx.new(acknowledgements::AcknowledgementsDialog::new).into(),
             Popup::ReleaseNotes { summary } => cx
                 .new(|_| release_notes::ReleaseNotesDialog::new(summary.clone()))

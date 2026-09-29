@@ -2,6 +2,7 @@
 //! Mirrors GitHub Desktop's `AppStore` / `Dispatcher` / `RepositoryStateCache`.
 
 pub mod acknowledgements;
+pub mod app_location;
 pub mod autocomplete;
 pub mod avatars;
 pub mod clone_info;

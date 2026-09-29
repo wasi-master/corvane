@@ -30,6 +30,9 @@ pub struct Settings {
     pub confirm_discard_stash: bool,
     /// GHD `confirmWorktreeRemoval` (Prompts › Removing worktrees).
     pub confirm_worktree_removal: bool,
+    /// GHD `askToMoveToApplicationsFolder` ("Do not show this message again"
+    /// in the Move to Applications prompt clears it).
+    pub ask_to_move_to_applications_folder: bool,
     /// GHD `askForConfirmationOnForcePush`.
     #[serde(default = "default_true")]
     pub confirm_force_push: bool,
@@ -235,6 +238,7 @@ impl Default for Settings {
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
             confirm_worktree_removal: true,
+            ask_to_move_to_applications_folder: true,
             confirm_force_push: true,
             external_editor: None,
             shell: None,
