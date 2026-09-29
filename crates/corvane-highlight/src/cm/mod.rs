@@ -67,7 +67,8 @@ pub fn state_ref<T: 'static>(s: &dyn ModeState) -> &T {
 
 /// A CodeMirror mode (`CodeMirror.defineMode` result).
 pub trait Mode: Send + Sync {
-    /// `mode.name` (the `m-<name>` class).
+    /// `mode.name` (the `m-<name>` class); `""` for an anonymous mode object
+    /// (multiplex.js inner modes), whose tokens get no `m-` class.
     fn name(&self) -> &'static str;
     fn start_state(&self) -> Box<dyn ModeState>;
     /// `mode.token`: consume at least one char and return the style
@@ -126,6 +127,9 @@ pub struct StringStream<'a> {
     /// byte offset of every unit (plus the end), for regex matching
     bytes: Vec<usize>,
     string: &'a str,
+    /// the visible length (`stream.string.length`), less than the line's
+    /// inside [`StringStream::with_end`]
+    end: usize,
     pub pos: usize,
     pub start: usize,
     tab_size: usize,
@@ -171,6 +175,7 @@ impl<'a> StringStream<'a> {
     pub fn new(string: &'a str, tab_size: usize, lines: &'a [&'a str], line: usize) -> Self {
         let (chars, bytes) = units(string);
         Self {
+            end: chars.len(),
             chars,
             bytes,
             string,
@@ -187,39 +192,49 @@ impl<'a> StringStream<'a> {
 
     /// Length of the line in UTF-16 units.
     pub fn len(&self) -> usize {
-        self.chars.len()
+        self.end
     }
     pub fn is_empty(&self) -> bool {
-        self.chars.is_empty()
+        self.end == 0
     }
     /// The whole line (`stream.string`).
     pub fn string(&self) -> &str {
-        self.string
+        &self.string[..self.bytes[self.end]]
+    }
+    /// Run `f` with the line cut at `end` (multiplex.js's
+    /// `stream.string = oldContent.slice(0, cutOff)` … `stream.string =
+    /// oldContent`): nothing past `end` is visible to `f`.
+    pub fn with_end<R>(&mut self, end: usize, f: impl FnOnce(&mut Self) -> R) -> R {
+        let whole = self.end;
+        self.end = end.min(whole);
+        let r = f(self);
+        self.end = whole;
+        r
     }
     /// Char at an index (`stream.string.charAt(i)`), `None` past the end.
     pub fn char_at(&self, i: usize) -> Option<char> {
-        self.chars.get(i).copied()
+        self.chars[..self.end].get(i).copied()
     }
     /// `stream.string.slice(from, to)` in chars.
     pub fn slice(&self, from: usize, to: usize) -> &str {
-        let to = to.min(self.chars.len());
+        let to = to.min(self.end);
         let from = from.min(to);
         &self.string[self.bytes[from]..self.bytes[to]]
     }
 
     pub fn eol(&self) -> bool {
-        self.pos >= self.chars.len()
+        self.pos >= self.end
     }
     pub fn sol(&self) -> bool {
         self.pos == self.line_start
     }
     pub fn peek(&self) -> Option<char> {
-        self.chars.get(self.pos).copied()
+        self.chars[..self.end].get(self.pos).copied()
     }
     // named after CodeMirror's `stream.next()` so ported modes read the same
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<char> {
-        let c = self.chars.get(self.pos).copied();
+        let c = self.chars[..self.end].get(self.pos).copied();
         if c.is_some() {
             self.pos += 1;
         }
@@ -231,7 +246,7 @@ impl<'a> StringStream<'a> {
     }
     /// `eat(fn)` / `eat(/re/)` with a char predicate.
     pub fn eat_if(&mut self, f: impl Fn(char) -> bool) -> Option<char> {
-        let c = self.chars.get(self.pos).copied()?;
+        let c = self.chars[..self.end].get(self.pos).copied()?;
         if f(c) {
             self.pos += 1;
             Some(c)
@@ -241,7 +256,7 @@ impl<'a> StringStream<'a> {
     }
     /// `eat(/re/)`: the regex tested against the single next char.
     pub fn eat_re(&mut self, re: &Regex) -> Option<char> {
-        let c = self.chars.get(self.pos).copied()?;
+        let c = self.chars[..self.end].get(self.pos).copied()?;
         let mut buf = [0u8; 4];
         if re.is_match(c.encode_utf8(&mut buf)).unwrap_or(false) {
             self.pos += 1;
@@ -267,11 +282,11 @@ impl<'a> StringStream<'a> {
         self.eat_while_if(|c| c.is_whitespace() || c == '\u{a0}')
     }
     pub fn skip_to_end(&mut self) {
-        self.pos = self.chars.len();
+        self.pos = self.end;
     }
     /// `skipTo(ch)`: move to the next occurrence (not past it).
     pub fn skip_to(&mut self, ch: char) -> bool {
-        match self.chars[self.pos.min(self.chars.len())..]
+        match self.chars[self.pos.min(self.end)..self.end]
             .iter()
             .position(|c| *c == ch)
         {
@@ -284,7 +299,7 @@ impl<'a> StringStream<'a> {
     }
     /// `skipTo(str)` for a multi-char needle.
     pub fn skip_to_str(&mut self, needle: &str) -> bool {
-        let rest = &self.string[self.bytes[self.pos.min(self.chars.len())]..];
+        let rest = &self.string[self.bytes[self.pos.min(self.end)]..self.bytes[self.end]];
         match rest.find(needle) {
             Some(b) => {
                 self.pos += js_len(&rest[..b]);
@@ -299,7 +314,7 @@ impl<'a> StringStream<'a> {
     pub fn column(&mut self) -> usize {
         if self.last_column_pos < self.start {
             self.last_column_value = count_column(
-                &self.chars,
+                &self.chars[..self.end],
                 Some(self.start),
                 self.tab_size,
                 self.last_column_pos,
@@ -309,15 +324,27 @@ impl<'a> StringStream<'a> {
         }
         self.last_column_value
             - if self.line_start > 0 {
-                count_column(&self.chars, Some(self.line_start), self.tab_size, 0, 0)
+                count_column(
+                    &self.chars[..self.end],
+                    Some(self.line_start),
+                    self.tab_size,
+                    0,
+                    0,
+                )
             } else {
                 0
             }
     }
     pub fn indentation(&self) -> usize {
-        count_column(&self.chars, None, self.tab_size, 0, 0)
+        count_column(&self.chars[..self.end], None, self.tab_size, 0, 0)
             - if self.line_start > 0 {
-                count_column(&self.chars, Some(self.line_start), self.tab_size, 0, 0)
+                count_column(
+                    &self.chars[..self.end],
+                    Some(self.line_start),
+                    self.tab_size,
+                    0,
+                    0,
+                )
             } else {
                 0
             }
@@ -325,7 +352,7 @@ impl<'a> StringStream<'a> {
     /// `match(string, consume, caseInsensitive)`
     pub fn match_str(&mut self, pattern: &str, consume: bool, case_insensitive: bool) -> bool {
         let n = js_len(pattern);
-        if self.pos + n > self.chars.len() {
+        if self.pos + n > self.end {
             return false;
         }
         let sub = self.slice(self.pos, self.pos + n);
@@ -342,7 +369,7 @@ impl<'a> StringStream<'a> {
     /// `match(regex, consume)`: JS `slice(pos).match(re)`, null unless the
     /// match starts at `pos`.
     pub fn match_re(&mut self, re: &Regex, consume: bool) -> Option<Match> {
-        let rest = &self.string[self.bytes[self.pos.min(self.chars.len())]..];
+        let rest = &self.string[self.bytes[self.pos.min(self.end)]..self.bytes[self.end]];
         let caps = re.captures(rest).ok().flatten()?;
         let whole = caps.get(0)?;
         if whole.start() > 0 {
@@ -410,7 +437,14 @@ pub fn run(mode: &dyn Mode, lines: &[&str], tab_size: usize) -> Vec<LineTokens> 
                 let inner = mode.inner_mode_name(&*state);
                 let t = mode.token(&mut stream, &mut *state);
                 if stream.pos > stream.start {
-                    token = t.map(|t| format!("m-{inner} {t}"));
+                    // a mode object without a `name` (`""`) adds no class
+                    token = t.map(|t| {
+                        if inner.is_empty() {
+                            t
+                        } else {
+                            format!("m-{inner} {t}")
+                        }
+                    });
                     advanced = true;
                     break;
                 }
@@ -550,6 +584,21 @@ mod tests {
         assert_eq!(s.current(), "  héllo");
         assert!(s.match_str(" WORLD", false, true));
         assert!(!s.match_str(" WORLD", false, false));
+    }
+
+    #[test]
+    fn with_end_hides_the_rest_of_the_line() {
+        let lines = ["ab<%cd"];
+        let mut s = StringStream::new(lines[0], 4, &lines, 0);
+        s.with_end(2, |s| {
+            s.skip_to_end();
+            assert!(s.eol());
+            assert_eq!(s.string(), "ab");
+            assert!(s.match_re(re!("<"), false).is_none());
+        });
+        assert_eq!(s.pos, 2);
+        assert!(!s.eol());
+        assert_eq!(s.string(), "ab<%cd");
     }
 
     #[test]

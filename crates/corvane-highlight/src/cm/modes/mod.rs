@@ -10,9 +10,11 @@ pub mod dart;
 pub mod diff;
 pub mod dockerfile;
 pub mod go;
+pub mod htmlembedded;
 pub mod htmlmixed;
 pub mod javascript;
 pub mod jsx;
+pub mod multiplex;
 pub mod php;
 pub mod python;
 pub mod ruby;
@@ -235,6 +237,9 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/typescript" | "application/typescript" => Some(typescript()),
         // htmlmixed.js redefines xml.js's text/html
         "text/html" => Some(htmlmixed()),
+        "application/x-ejs" | "application/x-aspx" | "application/x-jsp" | "application/x-erb" => {
+            htmlembedded::for_mime(mime)
+        }
         "application/x-httpd-php" => Some(php::php()),
         "application/x-httpd-php-open" => Some(php::php_open()),
         "text/x-php" => Some(php::x_php()),

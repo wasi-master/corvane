@@ -1,0 +1,45 @@
+@model IEnumerable<WebApp.Models.Product>
+@using WebApp.Helpers
+@{
+    ViewData["Title"] = "Products";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var total = Model.Sum(p => p.Price);
+}
+@* Razor comment with <b>markup</b> *@
+<h1>@ViewData["Title"] &mdash; Übersicht</h1>
+<p class="lead">Total: @total.ToString("C") for @Model.Count() items</p>
+<table class="table">
+    <thead>
+        <tr><th>@Html.DisplayNameFor(m => m.Name)</th><th>Price</th><th></th></tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr class="@(item.OnSale ? "sale" : "")">
+            <td>@item.Name</td>
+            <td>@item.Price.ToString("0.00")</td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+                <a asp-action="Delete" asp-route-id="@item.Id" onclick="return confirm('Sure?')">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+@if (User.IsInRole("Admin"))
+{
+    <text>Admin tools: </text><partial name="_AdminTools" model="Model" />
+}
+<% legacy = "WebForms-style block in a Razor view" %>
+<%-- a server comment --%>
+<script>
+    const products = @Html.Raw(Json.Serialize(Model));
+    document.querySelectorAll("tr.sale").forEach(r => r.classList.add("highlight"));
+</script>
+<style>
+    tr.sale { background: #fff8c5; }
+    tr.highlight td:first-child::before { content: "★ "; }
+</style>
+@section Scripts {
+    <script src="~/js/products.js" asp-append-version="true"></script>
+}
