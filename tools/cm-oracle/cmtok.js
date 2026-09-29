@@ -6,7 +6,18 @@ const ROOT = process.env.CM_ORACLE_DIR || path.join(__dirname, '..', '..', 'targ
 const fs = require('fs');
 const CM = require(path.join(ROOT, 'node_modules/codemirror/addon/runmode/runmode.node.js'));
 const [mime, modeModule, file] = process.argv.slice(2);
-require(modeModule.startsWith('codemirror-mode') ? path.join(ROOT, 'node_modules', modeModule) : path.join(ROOT, 'node_modules/codemirror/mode', modeModule));
+// codemirror-mode-{zig,luau} ship as ES modules (`import CodeMirror from
+// "codemirror"`), which GHD's bundler resolves to the CodeMirror it uses;
+// run their source with that same CodeMirror instead of `require`.
+const loadMode = modPath => {
+  const file = fs.existsSync(modPath) && fs.statSync(modPath).isDirectory() ? path.join(modPath, 'index.js') : modPath;
+  const src = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const esm = /^\s*import\s+(\w+)\s+from\s+["']codemirror["'];?\s*$/m;
+  const m = src.match(esm);
+  if (!m) return require(modPath);
+  new Function(m[1], src.replace(esm, ''))(CM);
+};
+loadMode(modeModule.startsWith('codemirror-mode') ? path.join(ROOT, 'node_modules', modeModule) : path.join(ROOT, 'node_modules/codemirror/mode', modeModule));
 const mode = CM.getMode({}, mime);
 const lines = fs.readFileSync(file, 'utf8').split(/\r?\n|\r/);
 const state = mode.startState ? mode.startState() : null;

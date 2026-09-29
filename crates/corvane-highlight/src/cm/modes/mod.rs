@@ -20,6 +20,7 @@ pub mod swift;
 pub mod toml;
 pub mod xml;
 pub mod yaml;
+pub mod zig;
 
 use std::sync::{Arc, OnceLock};
 
@@ -209,6 +210,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-swift" => Some(Arc::new(swift::Swift)),
         "text/x-diff" => Some(Arc::new(diff::Diff)),
         "text/x-dockerfile" => Some(dockerfile::dockerfile()),
+        "text/x-zig" => Some(Arc::new(zig::Zig)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
