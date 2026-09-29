@@ -47,7 +47,7 @@ pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
         .bg(t.box_alt_background)
         .border_1()
         .border_color(t.box_border)
-        .font_family(crate::theme::MONO_FONT)
+        .font_family(crate::theme::mono_font())
         .text_size(FONT_SIZE_SM())
         .child(name.into())
 }
@@ -1091,7 +1091,7 @@ pub fn branch_picker(
                 .pb(SPACING())
                 .border_b_1()
                 .border_color(t.box_border)
-                .child(text_box(
+                .child(crate::widgets::filter_text_box(
                     SharedString::from(format!("{id_prefix}-filter")),
                     filter,
                     Some(octicon(Octicon::Search, t.text_secondary)),

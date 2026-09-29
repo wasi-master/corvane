@@ -36,7 +36,7 @@ use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::ListRowA11y;
-use crate::widgets::{button, text_box};
+use crate::widgets::button;
 
 /// `.branches-container { width: 365px }`
 #[allow(non_snake_case)]
@@ -371,7 +371,7 @@ impl BranchFoldout {
                     .gap(SPACING())
                     .p(SPACING())
                     .pb(SPACING_HALF())
-                    .child(text_box(
+                    .child(crate::widgets::filter_text_box(
                         "pull-request-filter",
                         &self.pr_filter,
                         Some(octicon(Octicon::Search, t.text_secondary)),
@@ -671,7 +671,7 @@ impl Render for BranchFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
-                    .child(text_box(
+                    .child(crate::widgets::filter_text_box(
                         "branch-filter",
                         &self.filter,
                         Some(octicon(Octicon::Search, t.text_secondary)),

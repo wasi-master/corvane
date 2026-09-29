@@ -267,7 +267,7 @@ impl Render for ConfirmRemoveRepositoryDialog {
                     .child("The repository will be removed from Corvane:")
                     .child(
                         div()
-                            .font_family(crate::theme::MONO_FONT)
+                            .font_family(crate::theme::mono_font())
                             .px(zpx(3.))
                             .rounded(zpx(3.))
                             .bg(t.box_alt_background)

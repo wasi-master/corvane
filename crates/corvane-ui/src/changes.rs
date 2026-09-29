@@ -39,7 +39,7 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
     InputMenuBuilder, avatar_image, avatar_lookup, button, checkbox, checkbox_tristate,
-    primary_button, text_box, text_box_with_menu,
+    primary_button, text_box_with_menu,
 };
 
 /// Which commit-form field an autocompletion / spellcheck result belongs to.
@@ -1197,6 +1197,82 @@ impl ChangesSidebar {
         }
     }
 
+    /// GHD `isCommittingFileHiddenByFilter`: a text filter or filter option
+    /// is active, not every file is listed, and a file included in the
+    /// commit is among the hidden ones. Returns the included count.
+    fn committing_hidden_files(&self, cx: &App) -> Option<usize> {
+        let text_active = !self.filter.read(cx).value().trim().is_empty();
+        if !text_active && self.filter_options(cx).count_active() == 0 {
+            return None;
+        }
+        let (visible, total) = self.visible_files(cx);
+        if visible.len() == total {
+            return None;
+        }
+        let s = self.state.read(cx);
+        let status = s.selected_state()?.status.as_ref()?;
+        let included: Vec<&str> = status
+            .files
+            .iter()
+            .filter(|f| f.selection.kind() != DiffSelectionType::None)
+            .map(|f| f.path.as_str())
+            .collect();
+        let hidden = included.len() > visible.len()
+            || included
+                .iter()
+                .any(|p| !visible.iter().any(|f| f.path == *p));
+        hidden.then_some(included.len())
+    }
+
+    /// `.hidden-changes-warning` between the list and the commit form.
+    fn hidden_changes_warning(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        let count = self.committing_hidden_files(cx)?;
+        let id = self.state.read(cx).selected?;
+        let t = cx.ghd();
+        let filter = self.filter.clone();
+        Some(
+            div()
+                .id("hidden-changes-warning")
+                .flex_none()
+                .flex()
+                .flex_col()
+                .py(SPACING_HALF())
+                .px(SPACING())
+                .bg(t.file_warning_background)
+                .border_t_1()
+                .border_b_1()
+                .border_color(t.file_warning_border)
+                .text_size(FONT_SIZE())
+                .line_height(zpx(18.))
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .child(octicon(Octicon::Alert, t.file_warning).mr(SPACING_HALF()))
+                        .child("Hidden changes will be committed."),
+                )
+                .child(
+                    // `showFilesToBeCommitted`: clear the filters, then list
+                    // only what is included in the commit
+                    crate::widgets::link_button(
+                        "hidden-changes-adjust",
+                        format!("Adjust the filters to see all {count} changes"),
+                        cx,
+                    )
+                    .on_click(move |_, window, cx| {
+                        filter.update(cx, |input, cx| input.set_value("", window, cx));
+                        Dispatcher::clear_filter_options(id, cx);
+                        Dispatcher::toggle_filter_option(
+                            id,
+                            corvane_core::FilterOption::IncludedInCommit,
+                            cx,
+                        );
+                    }),
+                ),
+        )
+    }
+
     fn filter_options(&self, cx: &App) -> FileListFilter {
         self.state
             .read(cx)
@@ -1732,9 +1808,15 @@ impl ChangesSidebar {
                                 })
                         })
                         .child(
-                            text_box("changes-filter", &self.filter, None, window, cx)
-                                .rounded_l(zpx(0.))
-                                .border_l_0(),
+                            crate::widgets::filter_text_box(
+                                "changes-filter",
+                                &self.filter,
+                                None,
+                                window,
+                                cx,
+                            )
+                            .rounded_l(zpx(0.))
+                            .border_l_0(),
                         ),
                 )
             })
@@ -1823,8 +1905,10 @@ impl ChangesSidebar {
     /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name, status icon.
     /// `ChangesList`: 29 px rows - checkbox, dimmed directory + bold name,
     /// status icon. Virtualized with `uniform_list` (GHD uses react-virtualized).
-    fn list(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn list(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        // `.list:focus-within .list-item.selected`: the active selection colours
+        let list_focused = self.list_focus.is_focused(window);
         let s = self.state.read(cx);
         let repo_id = s.selected;
         let rs = s.selected_state();
@@ -1838,6 +1922,7 @@ impl ChangesSidebar {
             Rc::new(rs.map(|r| r.selected_files.clone()).unwrap_or_default());
         let order: Rc<Vec<String>> = Rc::new(files.iter().map(|f| f.path.clone()).collect());
         let files = Rc::new(files);
+        let query: SharedString = self.filter.read(cx).value().trim().to_string().into();
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
         // `ariaLabelledBy="changes-list-check-all-label"`: the header's text
@@ -1865,6 +1950,7 @@ impl ChangesSidebar {
             })
             .child(
                 uniform_list("changes-list-rows", files.len(), move |range, _, cx| {
+                    let query = query.clone();
                     range
                         .map(|ix| {
                             let file = &files[ix];
@@ -1872,6 +1958,8 @@ impl ChangesSidebar {
                             file_row(
                                 file,
                                 is_selected,
+                                list_focused,
+                                &query,
                                 order.clone(),
                                 repo_id,
                                 weak.clone(),
@@ -2748,8 +2836,11 @@ impl ChangesSidebar {
             .flex_col()
             .p(SPACING())
             .bg(t.box_alt_background)
-            .border_t_1()
-            .border_color(t.box_border)
+            // the hidden-changes warning overlaps this border
+            // (`margin-bottom: -1px; z-index: 1`)
+            .when(self.committing_hidden_files(cx).is_none(), |d| {
+                d.border_t_1().border_color(t.box_border)
+            })
             .child(
                 // `.summary`: avatar + summary field
                 div()
@@ -2792,7 +2883,13 @@ impl ChangesSidebar {
                             .child(
                                 Textarea::new(&self.description)
                                     .appearance(false)
-                                    .small()
+                                    // `textarea { padding: 5px }`: xsmall pads
+                                    // 4 px sideways and none vertically
+                                    .xsmall()
+                                    .pt(SPACING_HALF())
+                                    .pb(SPACING_HALF())
+                                    .pl(zpx(1.))
+                                    .pr(zpx(1.))
                                     .text_size(FONT_SIZE())
                                     .h(zpx(80.))
                                     .context_menu(move |m, window, cx| menu(m, window, cx)),
@@ -2998,9 +3095,10 @@ impl Render for ChangesSidebar {
                         }),
                     )
                     .child(self.header(window, cx))
-                    .child(self.list(cx))
+                    .child(self.list(window, cx))
                     .children(self.stash_button(cx)),
             )
+            .children(self.hidden_changes_warning(cx))
             .child(match self.continue_rebase(cx) {
                 Some(block) => block,
                 None => self.commit_form(window, cx).into_any_element(),
@@ -3011,9 +3109,12 @@ impl Render for ChangesSidebar {
 }
 
 /// One changes-list row (`ChangedFile`).
+#[allow(clippy::too_many_arguments)]
 fn file_row(
     file: &WorkingDirectoryFileChange,
     is_selected: bool,
+    list_focused: bool,
+    query: &str,
     order: Rc<Vec<String>>,
     repo_id: Option<u64>,
     weak: WeakEntity<ChangesSidebar>,
@@ -3031,6 +3132,21 @@ fn file_row(
         DiffSelectionType::Partial => None,
     };
     let file_for_menu = file.clone();
+    let checkbox_focus = list_focus.clone();
+    // `HighlightText`: the filter's fuzzy hits in bold (`<mark>`), split
+    // between the directory and the file name like `PathText`
+    let directory = file.directory().to_string();
+    let file_name = file.file_name().to_string();
+    let hits = corvane_core::filter::fuzzy_match(query, &file.path)
+        .map(|(_, hits)| hits)
+        .unwrap_or_default();
+    let dir_len = directory.chars().count();
+    let dir_hits: Vec<usize> = hits.iter().copied().filter(|&h| h < dir_len).collect();
+    let name_hits: Vec<usize> = hits
+        .iter()
+        .filter(|&&h| h >= dir_len)
+        .map(|&h| h - dir_len)
+        .collect();
     div()
         .id(SharedString::from(format!("file-{}", file.path)))
         .a11y_row(
@@ -3071,8 +3187,13 @@ fn file_row(
             },
         )
         .when(is_selected, |d| {
-            d.bg(t.box_selected_background)
-                .text_color(t.box_selected_text)
+            if list_focused {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
+            } else {
+                d.bg(t.box_selected_background)
+                    .text_color(t.box_selected_text)
+            }
         })
         .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
         .when_some(repo_id, move |d, id| {
@@ -3105,8 +3226,10 @@ fn file_row(
                     cx,
                 )
                 .when_some(repo_id, move |d, id| {
-                    d.on_click(move |_, _, cx| {
+                    d.on_click(move |_, window, cx| {
                         cx.stop_propagation();
+                        // the click lands inside the focusable row
+                        window.focus(&checkbox_focus, cx);
                         Dispatcher::toggle_file_included(id, path_for_toggle.clone(), cx)
                     })
                 }),
@@ -3126,19 +3249,19 @@ fn file_row(
                         .min_w_0()
                         .truncate()
                         // `.list-item.selected .dirname` inherits the row colour
-                        .text_color(if is_selected {
-                            t.box_selected_text
-                        } else {
-                            t.text_secondary
+                        .text_color(match (is_selected, list_focused) {
+                            (true, true) => t.box_selected_active_text,
+                            (true, false) => t.box_selected_text,
+                            _ => t.text_secondary,
                         })
-                        .child(file.directory().to_string()),
+                        .child(crate::autocompletion::highlighted(&directory, &dir_hits)),
                 )
                 .child(
                     div()
                         .flex_none()
                         .max_w_full()
                         .truncate()
-                        .child(file.file_name().to_string()),
+                        .child(crate::autocompletion::highlighted(&file_name, &name_hits)),
                 ),
         )
         .child(octicon(icon, color))

@@ -89,6 +89,10 @@ fn classifier() -> &'static Classifier {
                 rule("markup.underline.link", TokenClass::Link),
                 rule("markup.heading", TokenClass::Header),
                 rule("markup.quote", TokenClass::Quote),
+                // CodeMirror's markdown mode: list items are `variable-2`,
+                // their bullet `comment variable-2` (the comment colour wins)
+                rule("punctuation.definition.list_item", TokenClass::Comment),
+                rule("markup.list", TokenClass::AltVariable),
             ],
         }
     })

@@ -6,7 +6,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
-use crate::theme::MONO_FONT;
+use crate::theme::mono_font;
 use crate::theme::sizes::*;
 
 const MAX_AUTHORS_TO_LIST: usize = 10;
@@ -52,7 +52,7 @@ impl Render for UnknownAuthorsDialog {
                         .flex()
                         .flex_col()
                         .pl(SPACING_DOUBLE())
-                        .font_family(MONO_FONT)
+                        .font_family(mono_font())
                         .children(self.usernames.iter().map(|u| format!("• @{u}"))),
                 )
         };

@@ -86,8 +86,9 @@ pub struct Settings {
     /// GHD `useExternalCredentialHelper` (Git Credential Manager).
     #[serde(default)]
     pub use_external_credential_helper: bool,
-    /// GHD `underlineLinks` (Accessibility).
-    #[serde(default)]
+    /// GHD `underlineLinks` (Accessibility), on by default
+    /// (`underlineLinksDefault = true`).
+    #[serde(default = "default_true")]
     pub underline_links: bool,
     /// GHD `showDiffCheckMarks` (Accessibility).
     #[serde(default = "default_true")]
@@ -283,7 +284,7 @@ impl Default for Settings {
             commit_spellcheck_enabled: true,
             repository_indicators_enabled: true,
             use_external_credential_helper: false,
-            underline_links: false,
+            underline_links: true,
             show_diff_check_marks: true,
             hide_whitespace_in_changes_diff: false,
             hide_whitespace_in_history_diff: false,

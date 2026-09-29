@@ -13,7 +13,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::theme::{MONO_FONT, c, primer};
+use crate::theme::{c, mono_font, primer};
 use crate::widgets::{Inline, link_button, paragraph, segmented_option};
 
 pub struct PushProtectionErrorDialog {
@@ -55,7 +55,7 @@ impl PushProtectionErrorDialog {
                     .child(octicon(Octicon::GitCommit, t.text_secondary))
                     .child(
                         div()
-                            .font_family(MONO_FONT)
+                            .font_family(mono_font())
                             .child(location.commit_sha.chars().take(7).collect::<String>()),
                     )
                     .child(

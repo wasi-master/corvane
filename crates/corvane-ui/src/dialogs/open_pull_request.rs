@@ -27,7 +27,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, c, primer};
-use crate::widgets::{button, code_ref, primary_button, text_box};
+use crate::widgets::{button, code_ref, primary_button};
 
 /// `pullRequestFileListWidth` constraints (`constrain(250, 100, 600)`).
 #[allow(non_snake_case)]
@@ -266,13 +266,15 @@ impl OpenPullRequestDialog {
                             .shadow_lg()
                             .overflow_hidden()
                             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                            .child(div().flex_none().p(SPACING()).child(text_box(
-                                "pr-base-filter",
-                                &self.base_filter,
-                                Some(octicon(Octicon::Search, t.text_secondary)),
-                                window,
-                                cx,
-                            )))
+                            .child(div().flex_none().p(SPACING()).child(
+                                crate::widgets::filter_text_box(
+                                    "pr-base-filter",
+                                    &self.base_filter,
+                                    Some(octicon(Octicon::Search, t.text_secondary)),
+                                    window,
+                                    cx,
+                                ),
+                            ))
                             .child(if groups.is_empty() {
                                 // `noBranchesMessage`
                                 div()

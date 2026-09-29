@@ -41,10 +41,9 @@ use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
 use crate::scrollbar::{ScrollbarExt, gutter, scrollbar};
 use crate::theme::sizes::*;
-use crate::theme::{ActiveGhdTheme, GhdTheme, MONO_FONT};
+use crate::theme::{ActiveGhdTheme, GhdTheme, mono_font};
 use crate::widgets::{
     Inline, button, checkbox_row, code_ref, link_button, paragraph, primary_button, radio_row,
-    text_box,
 };
 
 #[allow(non_snake_case)]
@@ -79,17 +78,18 @@ pub fn diff_header(
         Some(i) => (&path[..=i], &path[i + 1..]),
         None => ("", path),
     };
+    // `.diff-container .header`: 5 px / 10 px padding around the 19 px
+    // options button, `--diff-border-color` underneath (30 px in all)
     div()
-        .h(ROW_HEIGHT())
+        .h(zpx(30.))
         .flex_none()
         .flex()
         .flex_row()
         .items_center()
         .px(SPACING())
-        .gap(SPACING())
         .bg(t.box_alt_background)
         .border_b_1()
-        .border_color(t.box_border)
+        .border_color(t.diff_border)
         .child(
             div()
                 .flex_1()
@@ -105,14 +105,17 @@ pub fn diff_header(
                                 .text_color(t.text_secondary)
                                 .child(directory.to_string()),
                         )
-                        .child(
-                            div()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .child(file_name.to_string()),
-                        ),
+                        .child(div().child(file_name.to_string())),
                 ),
         )
-        .child(diff_options_button(view, cx))
+        // `.path-label-component { margin-right: 5px }`,
+        // `.diff-options-component { margin-right: 5px }`
+        .child(
+            div()
+                .ml(SPACING_HALF())
+                .mr(SPACING_HALF())
+                .child(diff_options_button(view, cx)),
+        )
         .child(octicon(icon, color))
 }
 
@@ -123,21 +126,31 @@ pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElemen
     let gear_bounds = view.read(cx).gear_bounds.clone();
     let view = view.clone();
     let hover = t.text_secondary;
+    let text = t.text;
     div()
         .id("diff-options-button")
+        .group("diff-options-button")
         .icon_button_label("Diff Settings")
         .relative()
+        .h(zpx(19.))
         .flex()
+        .flex_row()
         .items_center()
         .cursor_pointer()
-        .text_color(t.text)
-        .hover(move |s| s.text_color(hover))
         .child(
             canvas(move |bounds, _, _| gear_bounds.set(bounds), |_, _, _, _| {})
                 .absolute()
                 .inset_0(),
         )
-        .child(octicon(Octicon::Gear, t.text_secondary))
+        // gear + ▾ in `--text-color`, `--text-secondary-color` on hover
+        .child(
+            octicon(Octicon::Gear, text)
+                .group_hover("diff-options-button", move |s| s.text_color(hover)),
+        )
+        .child(
+            octicon(Octicon::TriangleDown, text)
+                .group_hover("diff-options-button", move |s| s.text_color(hover)),
+        )
         .on_click(move |_, _, cx| {
             view.update(cx, |this, cx| this.toggle_options(cx));
         })
@@ -568,7 +581,7 @@ impl DiffView {
             return 0;
         }
         let font = Font {
-            family: MONO_FONT.into(),
+            family: mono_font().into(),
             features: FontFeatures::default(),
             fallbacks: None,
             weight: FontWeight::NORMAL,
@@ -1775,7 +1788,13 @@ impl DiffView {
                     .border_t_0()
                     .border_color(t.box_border)
                     .rounded_b(BORDER_RADIUS())
-                    .child(text_box("diff-search", &input, None, window, cx))
+                    .child(crate::widgets::filter_text_box(
+                        "diff-search",
+                        &input,
+                        None,
+                        window,
+                        cx,
+                    ))
             });
         div()
             .id("diff")
@@ -1783,7 +1802,7 @@ impl DiffView {
             .flex_1()
             .min_h_0()
             .w_full()
-            .font_family(MONO_FONT)
+            .font_family(mono_font())
             .text_size(FONT_SIZE_SM())
             .line_height(DIFF_LINE_HEIGHT())
             .text_color(t.diff_text)
@@ -1806,16 +1825,29 @@ impl DiffView {
             .children(warnings)
             .child(
                 list(self.list_state.clone(), move |ix, _window, cx| {
-                    if split_mode {
-                        match split_rows.get(ix) {
-                            Some(row) => render_split_row(&ctx, ix, row, &rows, cx),
-                            None => div().into_any_element(),
-                        }
+                    let (row, count) = if split_mode {
+                        (
+                            split_rows
+                                .get(ix)
+                                .map(|row| render_split_row(&ctx, ix, row, &rows, cx)),
+                            split_rows.len(),
+                        )
                     } else {
-                        match rows.get(ix) {
-                            Some(row) => render_row(&ctx, ix, row, cx),
-                            None => div().into_any_element(),
-                        }
+                        (
+                            rows.get(ix).map(|row| render_row(&ctx, ix, row, cx)),
+                            rows.len(),
+                        )
+                    };
+                    match row {
+                        // the grid's inner container ends in a 1 px
+                        // `--diff-border-color` line under the last row
+                        Some(row) if ix + 1 == count => div()
+                            .border_b_1()
+                            .border_color(cx.ghd().diff_border)
+                            .child(row)
+                            .into_any_element(),
+                        Some(row) => row,
+                        None => div().into_any_element(),
                     }
                 })
                 .flex_1()

@@ -16,7 +16,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::ListRowA11y;
-use crate::widgets::{button, text_box};
+use crate::widgets::button;
 
 /// GHD `RowHeight` of the worktree list.
 #[allow(non_snake_case)]
@@ -337,7 +337,7 @@ impl Render for WorktreeFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
-                    .child(text_box(
+                    .child(crate::widgets::filter_text_box(
                         "worktree-filter",
                         &self.filter,
                         Some(octicon(Octicon::Search, t.text_secondary)),

@@ -80,3 +80,27 @@ pub mod paths {
         out
     }
 }
+
+pub mod fonts {
+    /// The family GitHub Desktop's `--font-family-monospace` stack
+    /// (`SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace`)
+    /// resolves to: SF Mono only when it is installed as a regular font
+    /// (Apple's download puts `SF-Mono-*.otf` in a Fonts folder; the copy
+    /// inside Terminal.app is not visible to Chromium), otherwise Menlo.
+    pub fn ghd_monospace_family() -> &'static str {
+        let dirs = [
+            Some(std::path::PathBuf::from("/Library/Fonts")),
+            dirs::home_dir().map(|h| h.join("Library/Fonts")),
+        ];
+        let installed = dirs.iter().flatten().any(|dir| {
+            std::fs::read_dir(dir).is_ok_and(|entries| {
+                entries.flatten().any(|e| {
+                    let name = e.file_name();
+                    let name = name.to_string_lossy();
+                    name.starts_with("SF-Mono") || name.starts_with("SFMono")
+                })
+            })
+        });
+        if installed { "SF Mono" } else { "Menlo" }
+    }
+}

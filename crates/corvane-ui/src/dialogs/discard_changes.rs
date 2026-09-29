@@ -7,7 +7,7 @@ use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::scrollbar::ScrollbarExt;
-use crate::theme::MONO_FONT;
+use crate::theme::mono_font;
 use crate::theme::sizes::*;
 use crate::widgets::checkbox;
 
@@ -62,7 +62,7 @@ impl Render for DiscardChangesDialog {
                         .children(
                             self.paths
                                 .iter()
-                                .map(|p| div().font_family(MONO_FONT).child(p.clone())),
+                                .map(|p| div().font_family(mono_font()).child(p.clone())),
                         )
                         .with_scrollbar(),
                 )

@@ -280,7 +280,7 @@ pub fn update_banner(update: &AvailableUpdate, homebrew: bool, cx: &App) -> impl
                 d.child("Run\u{a0}")
                     .child(
                         div()
-                            .font_family(crate::theme::MONO_FONT)
+                            .font_family(crate::theme::mono_font())
                             .child("brew upgrade corvane"),
                     )
                     .child("\u{a0}to install it, or see\u{a0}")

@@ -203,10 +203,22 @@ pub const UI_FONT: &str = ".SystemUIFont";
 /// every installed font (≈1.5 s) when its theme font is left at the
 /// `.SystemUIFont` sentinel, so the kit theme is seeded with this instead.
 pub const KIT_UI_FONT: &str = ".AppleSystemUIFont";
-/// GHD asks for SF Mono first, then Menlo. The system monospace family name
-/// also differs from gpui-base's default ("Menlo"), which keeps the kit from
-/// enumerating installed fonts at startup.
-pub const MONO_FONT: &str = ".AppleSystemUIFontMonospaced";
+/// The kit's monospace family. Anything but gpui-base's default ("Menlo")
+/// keeps the kit from enumerating installed fonts at startup.
+pub const KIT_MONO_FONT: &str = ".AppleSystemUIFontMonospaced";
+
+static MONO_FAMILY: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+
+/// Diff and code text: what GHD's monospace stack resolves to on this Mac
+/// (`corvane_platform::fonts::ghd_monospace_family`, set by the binary at
+/// startup), Menlo until then.
+pub fn mono_font() -> &'static str {
+    MONO_FAMILY.get().copied().unwrap_or("Menlo")
+}
+
+pub fn set_mono_font(family: &'static str) {
+    let _ = MONO_FAMILY.set(family);
+}
 
 /// GitHub Desktop colour tokens.
 #[derive(Clone, Debug)]
@@ -497,7 +509,7 @@ pub fn preseed_kit_theme(cx: &mut App) {
     }
     let mut theme = KitTheme::default();
     theme.font_family = KIT_UI_FONT.into();
-    theme.mono_font_family = MONO_FONT.into();
+    theme.mono_font_family = KIT_MONO_FONT.into();
     cx.set_global(theme);
 }
 
@@ -518,7 +530,7 @@ pub fn apply(theme: GhdTheme, cx: &mut App) {
         let kit = KitTheme::global_mut(cx);
         kit.font_family = KIT_UI_FONT.into();
         kit.font_size = sizes::FONT_SIZE();
-        kit.mono_font_family = MONO_FONT.into();
+        kit.mono_font_family = KIT_MONO_FONT.into();
         kit.mono_font_size = sizes::FONT_SIZE();
         kit.radius = sizes::BORDER_RADIUS();
         kit.radius_lg = sizes::BORDER_RADIUS();

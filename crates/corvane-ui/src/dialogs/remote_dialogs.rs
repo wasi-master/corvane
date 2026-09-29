@@ -565,7 +565,7 @@ impl Render for GenericGitAuthDialog {
         let (repo, host, retry) = (self.repo, self.host.clone(), self.retry.clone());
         let mono = |text: String| {
             div()
-                .font_family(crate::theme::MONO_FONT)
+                .font_family(crate::theme::mono_font())
                 .px(zpx(3.))
                 .rounded(zpx(3.))
                 .bg(t.box_alt_background)
@@ -722,7 +722,7 @@ impl Render for InitializeLfsDialog {
                     .flex()
                     .flex_col()
                     .gap(zpx(2.))
-                    .font_family(crate::theme::MONO_FONT)
+                    .font_family(crate::theme::mono_font())
                     .text_size(FONT_SIZE_SM())
                     .text_color(t.text_secondary)
                     .children(paths.into_iter().map(|p| div().truncate().child(p))),

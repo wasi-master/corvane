@@ -167,7 +167,7 @@ impl SignInDialog {
                                     .border_1()
                                     .border_color(t.box_border_contrast)
                                     .bg(t.box_alt_background)
-                                    .font_family(crate::theme::MONO_FONT)
+                                    .font_family(crate::theme::mono_font())
                                     .text_size(zpx(28.))
                                     .line_height(zpx(34.))
                                     .child(user_code.clone()),

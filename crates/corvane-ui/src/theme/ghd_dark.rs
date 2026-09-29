@@ -36,8 +36,9 @@ pub fn theme() -> GhdTheme {
         secondary_button_hover_background: c(GRAY_800),
         secondary_button_hover_border: c(GRAY_300),
         secondary_button_text: c(GRAY_100),
-        link: c(LINK),
-        link_hover: c(BLUE_LIGHTEN_3),
+        // `$link-color: #2e8fff`, hover `lighten($link-color, 3%)` (_dark.scss)
+        link: c(0x2e8fff),
+        link_hover: c(0x3d97ff),
 
         toolbar_background: c(GRAY_900_DARKEN_3),
         toolbar_border: c(0x141414),

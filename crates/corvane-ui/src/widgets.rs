@@ -170,7 +170,7 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
 pub fn code_ref(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
-        .font_family(crate::theme::MONO_FONT)
+        .font_family(crate::theme::mono_font())
         .px(zpx(3.))
         .rounded(zpx(3.))
         .bg(t.box_alt_background)
@@ -542,6 +542,45 @@ pub fn text_box(
     text_box_with_menu(id, state, prefix, None, window, cx)
 }
 
+/// GHD `TextBox` with `displayClearButton` (filter lists, the changes
+/// filter, compare, diff search): the text stops 25 px before the end and a
+/// 25 px ✕ button (`button.clear-button`, `--text-color`) clears the value
+/// while there is one.
+pub fn filter_text_box(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    prefix: Option<Svg>,
+    window: &Window,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let has_value = !state.read(cx).value().is_empty();
+    let clear_state = state.clone();
+    text_box_with_menu(id, state, prefix, None, window, cx)
+        .relative()
+        // `padding-inline-end: var(--text-field-height)`, less the kit's 4 px
+        .pr(TEXT_FIELD_HEIGHT() - zpx(4.))
+        .when(has_value, |d| {
+            d.child(
+                div()
+                    .id("clear-button")
+                    .icon_button_label("Clear")
+                    .absolute()
+                    .right(zpx(0.))
+                    .top(zpx(-1.))
+                    .size(TEXT_FIELD_HEIGHT())
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .cursor_pointer()
+                    .child(crate::icons::octicon(crate::icons::Octicon::X, t.text))
+                    .on_click(move |_, window, cx| {
+                        clear_state.update(cx, |input, cx| input.set_value("", window, cx));
+                    }),
+            )
+        })
+}
+
 /// A custom right-click menu for an input (the kit's native edit menu is
 /// replaced wholesale, so builders add Cut/Copy/Paste themselves).
 pub type InputMenuBuilder = std::rc::Rc<dyn Fn(NativeMenu, &mut Window, &mut App) -> NativeMenu>;
@@ -566,7 +605,15 @@ pub fn text_box_with_menu(
         .flex_row()
         .items_center()
         .gap(SPACING_HALF())
-        .px(SPACING_HALF())
+        // `input { padding: 0 5px }`: the kit's xsmall input pads 4 px on
+        // each side itself, so the frame adds 1 px (and a prefix icon gets
+        // its own 5 px)
+        .pl(if prefix.is_some() {
+            SPACING_HALF()
+        } else {
+            zpx(1.)
+        })
+        .pr(zpx(1.))
         .border_1()
         .rounded(BORDER_RADIUS())
         .bg(t.box_background)

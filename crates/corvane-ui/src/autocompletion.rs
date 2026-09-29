@@ -461,7 +461,7 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
 }
 
 /// GHD `HighlightText`: the chars at `positions` in bold.
-fn highlighted(text: &str, positions: &[usize]) -> StyledText {
+pub(crate) fn highlighted(text: &str, positions: &[usize]) -> StyledText {
     let mut ranges: Vec<Range<usize>> = Vec::new();
     for (ci, (bi, c)) in text.char_indices().enumerate() {
         if !positions.contains(&ci) {

@@ -18,7 +18,7 @@ use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::dialogs::branch_dialogs::{ref_chip, sanitize_ref_name};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
-use crate::theme::MONO_FONT;
+use crate::theme::mono_font;
 use crate::theme::sizes::*;
 use crate::widgets::{Inline, button, checkbox, labeled, paragraph, text_box};
 
@@ -608,7 +608,7 @@ impl Render for DeleteWorktreeFailedDialog {
                     .bg(t.box_alt_background)
                     .border_1()
                     .border_color(t.box_border)
-                    .font_family(MONO_FONT)
+                    .font_family(mono_font())
                     .text_size(FONT_SIZE_SM())
                     .child(self.error.clone())
                     .with_scrollbar(),

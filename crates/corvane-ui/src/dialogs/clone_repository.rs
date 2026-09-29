@@ -437,7 +437,7 @@ impl CloneRepositoryDialog {
                                     .child("(")
                                     .child(
                                         div()
-                                            .font_family(crate::theme::MONO_FONT)
+                                            .font_family(crate::theme::mono_font())
                                             .px(zpx(3.))
                                             .rounded(zpx(3.))
                                             .bg(t.box_alt_background)
@@ -634,7 +634,7 @@ impl CloneRepositoryDialog {
                                     .mt(SPACING())
                                     .mx(SPACING())
                                     .mb(SPACING_HALF())
-                                    .child(text_box(
+                                    .child(crate::widgets::filter_text_box(
                                         "clone-account-filter",
                                         &self.account_filter,
                                         Some(octicon(Octicon::Search, t.text_secondary)),
@@ -780,7 +780,7 @@ impl CloneRepositoryDialog {
                     .child("Sorry, I can't find any repository matching\u{a0}")
                     .child(
                         div()
-                            .font_family(crate::theme::MONO_FONT)
+                            .font_family(crate::theme::mono_font())
                             .px(zpx(3.))
                             .rounded(zpx(3.))
                             .bg(t.box_alt_background)
@@ -792,7 +792,7 @@ impl CloneRepositoryDialog {
                 crate::widgets::paragraph(vec![
                     "Looks like there are no repositories for ".into(),
                     div()
-                        .font_family(crate::theme::MONO_FONT)
+                        .font_family(crate::theme::mono_font())
                         .px(zpx(3.))
                         .rounded(zpx(3.))
                         .bg(t.box_alt_background)
@@ -930,7 +930,7 @@ impl CloneRepositoryDialog {
                     .flex_row()
                     .items_center()
                     .gap(SPACING())
-                    .child(text_box(
+                    .child(crate::widgets::filter_text_box(
                         "clone-filter",
                         &self.filter,
                         Some(octicon(Octicon::Search, t.text_secondary)),
