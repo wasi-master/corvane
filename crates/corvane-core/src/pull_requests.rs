@@ -460,18 +460,50 @@ impl Dispatcher {
         }
     }
 
-    /// `_checkoutPullRequest` / `_findPullRequestBranch`: find the remote
-    /// that hosts the PR head (adding a `github-desktop-<owner>` remote for
-    /// forks), fetch it if the branch is unknown, create `pr/<n>` for fork
-    /// branches, then check the branch out like any other.
+    /// `_checkoutPullRequest`: find the pull request's branch
+    /// (`find_pull_request_branch`), then check it out like any other.
     pub fn checkout_pull_request(id: u64, pr: PullRequest, cx: &mut App) {
+        Self::find_pull_request_branch(id, pr, cx, move |result, cx| match result {
+            Ok(branch) => Self::checkout_branch(id, branch.name, None, cx),
+            Err(message) => Self::show_error("Could not check out the pull request", message, cx),
+        });
+    }
+
+    /// `startCherryPickWithPullRequest` (`onDropOntoPullRequest`): commits
+    /// dropped on a pull request in the Pull Requests tab are cherry-picked
+    /// onto its branch, found like a checkout would (fetching a fork remote
+    /// and creating `pr/<n>` when needed). GHD only logs when the branch
+    /// cannot be determined; Corvane also says so.
+    pub fn cherry_pick_to_pull_request(id: u64, pr: PullRequest, cx: &mut App) {
+        Self::find_pull_request_branch(id, pr, cx, move |result, cx| match result {
+            Ok(branch) => Self::cherry_pick_to_branch(id, branch.name, cx),
+            Err(message) => {
+                Self::end_mco(id, cx);
+                Self::show_error(
+                    "Could not cherry-pick onto the pull request",
+                    format!("Could not determine the pull request's branch: {message}"),
+                    cx,
+                );
+            }
+        });
+    }
+
+    /// `_findPullRequestBranch`: find the remote that hosts the PR head
+    /// (adding a `github-desktop-<owner>` remote for forks), fetch it if the
+    /// branch is unknown, create `pr/<n>` for fork branches, record the
+    /// branch in the repository state and hand it to `on_found`.
+    fn find_pull_request_branch(
+        id: u64,
+        pr: PullRequest,
+        cx: &mut App,
+        on_found: impl FnOnce(Result<Branch, String>, &mut App) + 'static,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
         let Some(head_repo) = pr.head.repository.clone() else {
-            Self::show_error(
-                "Could not check out the pull request",
-                "The pull request's head repository no longer exists.",
+            on_found(
+                Err("The pull request's head repository no longer exists.".to_string()),
                 cx,
             );
             return;
@@ -570,7 +602,7 @@ impl Dispatcher {
             },
             move |result, cx| match result {
                 Ok(found) => {
-                    let name = found.branch.name.clone();
+                    let branch = found.branch.clone();
                     Self::state(cx).update(cx, |s, cx| {
                         if let Some(info) = s.repo_state_mut(id).info.as_mut()
                             && !info
@@ -582,11 +614,9 @@ impl Dispatcher {
                             cx.notify();
                         }
                     });
-                    Self::checkout_branch(id, name, None, cx);
+                    on_found(Ok(branch), cx);
                 }
-                Err(message) => {
-                    Self::show_error("Could not check out the pull request", message, cx)
-                }
+                Err(message) => on_found(Err(message), cx),
             },
         );
     }

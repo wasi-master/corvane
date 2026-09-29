@@ -95,6 +95,8 @@ pub fn pull_request_row(
     };
     let pr_for_click = pr.clone();
     let pr_for_menu = pr.clone();
+    let pr_for_drop = pr.clone();
+    let pr_for_drop_target = pr.head.ref_name.clone();
     div()
         .id(SharedString::from(format!("pull-request-{}", pr.number)))
         .a11y_row(format!("{}, {}", pr.title, subtitle(pr)), selected)
@@ -111,6 +113,36 @@ pub fn pull_request_row(
         })
         .when(!selected, move |d| {
             d.hover(move |s| s.bg(hover_bg).text_color(hover_text))
+        })
+        // `PullRequestListItem` drop target: dragged commits are copied onto
+        // the pull request's branch (`emitEnterDropTarget({ type: Branch })`)
+        .when(!selected, |d| {
+            let target_name = pr_for_drop_target.clone();
+            d.drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
+                s.bg(hover_bg).text_color(hover_text)
+            })
+            .on_drag_move::<crate::history::CommitDrag>(move |ev, _, cx| {
+                if ev.bounds.contains(&ev.event.position) {
+                    Dispatcher::set_drag_target(
+                        Some(corvane_core::DropTarget::Branch(target_name.clone())),
+                        cx,
+                    );
+                }
+            })
+        })
+        .on_drop({
+            // `onDropOntoPullRequest`: the checked-out pull request counts as
+            // no target; anything else starts the cherry-pick onto its branch
+            let pr = pr_for_drop.clone();
+            move |drag: &crate::history::CommitDrag, _, cx| {
+                Dispatcher::set_drag_target(None, cx);
+                if selected || drag.repo != id {
+                    return;
+                }
+                Dispatcher::close_foldout(cx);
+                Dispatcher::start_cherry_pick_flow(id, drag.shas.clone(), cx);
+                Dispatcher::cherry_pick_to_pull_request(id, pr.clone(), cx);
+            }
         })
         .on_click(move |_, _, cx| {
             Dispatcher::close_foldout(cx);
