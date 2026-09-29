@@ -10,6 +10,7 @@ pub mod css;
 pub mod dart;
 pub mod diff;
 pub mod dockerfile;
+pub mod fortran;
 pub mod go;
 pub mod haxe;
 pub mod javascript;
@@ -234,6 +235,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "text/x-haxe" => Some(cached!(haxe::Haxe)),
         "text/x-hxml" => Some(cached!(haxe::Hxml)),
         "text/x-crystal" => Some(cached!(crystal::Crystal)),
+        "text/x-fortran" => Some(cached!(fortran::Fortran)),
         "text/javascript"
         | "text/ecmascript"
         | "application/javascript"
