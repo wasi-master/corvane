@@ -1,0 +1,187 @@
+0 0 6 m-javascript keyword
+0 7 1 m-javascript keyword
+0 9 2 m-javascript keyword
+0 12 5 m-javascript def
+0 18 4 m-javascript keyword
+0 23 7 m-javascript string
+1 0 6 m-javascript keyword
+1 7 4 m-javascript def
+1 14 2 m-javascript variable
+1 18 9 m-javascript variable
+1 30 4 m-javascript variable
+1 35 7 m-javascript string
+3 0 9 m-javascript keyword
+3 10 11 m-javascript def
+4 2 5 m-javascript property
+4 9 6 m-javascript type
+5 2 7 m-javascript property
+5 9 1 m-javascript operator
+5 13 5 m-javascript variable
+5 20 5 m-javascript type
+5 26 10 m-javascript type
+5 36 1 m-javascript operator
+5 37 17 m-javascript type
+5 54 1 m-javascript operator
+5 57 2 m-javascript operator
+5 60 4 m-javascript type
+6 2 8 m-javascript property
+6 10 1 m-javascript operator
+6 13 9 m-javascript type
+7 2 7 m-javascript property
+7 11 9 m-javascript string
+7 21 1 m-javascript operator
+7 23 11 m-javascript string
+10 0 4 m-javascript keyword
+10 5 5 m-javascript type
+10 11 1 m-javascript operator
+10 15 5 m-javascript property
+10 22 6 m-javascript type
+10 30 5 m-javascript property
+10 37 5 m-javascript type
+10 42 1 m-javascript operator
+10 43 6 m-javascript type
+10 49 1 m-javascript operator
+12 0 6 m-javascript keyword
+12 7 5 m-javascript keyword
+12 13 6 m-javascript def
+12 21 2 m-javascript type
+12 23 1 m-javascript operator
+12 24 11 m-javascript type
+12 35 1 m-javascript operator
+12 37 1 m-javascript operator
+12 42 5 m-javascript def
+12 49 7 m-javascript def
+12 58 8 m-javascript def
+12 68 7 m-javascript def
+12 76 1 m-javascript operator
+12 78 9 m-javascript string
+12 91 2 m-javascript operator
+13 2 5 m-javascript keyword
+13 9 5 m-javascript def
+13 16 8 m-javascript def
+13 26 1 m-javascript operator
+13 28 5 m-javascript variable
+13 34 8 m-javascript property
+13 42 1 m-javascript operator
+13 43 6 m-javascript type
+13 49 1 m-javascript operator
+13 51 1 m-javascript number
+14 2 5 m-javascript keyword
+14 8 3 m-javascript def
+14 12 1 m-javascript operator
+14 14 5 m-javascript variable
+14 20 6 m-javascript property
+14 26 1 m-javascript operator
+14 27 14 m-javascript type
+14 41 1 m-javascript operator
+14 43 4 m-javascript atom
+15 2 5 m-javascript keyword
+15 8 6 m-javascript def
+15 15 1 m-javascript operator
+15 18 1 m-javascript def
+15 21 5 m-javascript type
+15 27 10 m-javascript type
+15 37 1 m-javascript operator
+15 38 17 m-javascript type
+15 55 1 m-javascript operator
+15 59 4 m-javascript keyword
+15 64 2 m-javascript operator
+16 4 8 m-javascript variable-2
+16 13 1 m-javascript def
+16 15 2 m-javascript operator
+16 18 1 m-javascript variable-2
+16 20 1 m-javascript operator
+16 22 1 m-javascript number
+17 4 7 m-javascript variable-2
+17 14 1 m-javascript variable-2
+19 2 6 m-javascript keyword
+20 4 1 m-xml tag bracket
+20 5 3 m-xml tag
+20 9 3 m-xml attribute
+20 14 3 m-javascript variable
+20 19 9 m-xml attribute
+20 30 11 m-javascript string-2
+20 41 7 m-javascript variable
+20 48 1 m-javascript string-2
+20 49 1 m-javascript string-2
+20 51 1 m-xml tag bracket
+21 6 1 m-xml tag bracket
+21 7 6 m-xml tag
+21 14 4 m-xml attribute
+21 19 8 m-xml string
+21 28 7 m-xml attribute
+21 37 6 m-javascript variable
+21 45 10 m-xml attribute
+21 57 5 m-javascript variable
+21 63 1 m-xml tag bracket
+22 9 5 m-javascript variable
+22 18 5 m-javascript variable
+23 6 2 m-xml tag bracket
+23 8 6 m-xml tag
+23 14 1 m-xml tag bracket
+24 7 8 m-javascript variable
+25 7 5 m-javascript variable
+25 13 1 m-javascript operator
+25 15 1 m-javascript number
+25 17 2 m-javascript operator
+25 20 1 m-xml tag bracket
+25 21 5 m-xml tag
+25 26 1 m-xml tag bracket
+25 27 6 m-xml tag
+25 33 1 m-xml tag bracket
+25 42 5 m-javascript variable
+26 4 2 m-xml tag bracket
+26 6 3 m-xml tag error
+26 9 1 m-xml tag bracket error
+27 2 2 m-xml attribute
+28 0 2 m-xml attribute
+30 0 8 m-xml attribute
+30 9 8 m-xml attribute
+30 17 1 m-xml tag bracket
+30 18 2 m-xml tag
+30 20 1 m-xml tag bracket
+31 2 6 m-javascript keyword
+31 9 5 m-javascript variable
+33 16 1 m-xml tag bracket
+33 17 2 m-xml tag
+33 19 1 m-xml tag bracket
+36 44 1 m-xml tag bracket
+36 45 12 m-xml tag
+36 58 5 m-xml attribute
+36 63 1 m-xml tag bracket
+37 2 5 m-javascript variable
+37 9 5 m-javascript variable
+37 15 1 m-javascript operator
+37 19 5 m-javascript property
+37 26 1 m-javascript number
+37 29 5 m-javascript property
+38 2 7 m-javascript variable
+38 10 5 m-javascript variable
+38 15 1 m-javascript operator
+38 18 6 m-javascript variable
+39 2 6 m-javascript variable
+39 12 3 m-javascript variable
+39 16 7 m-javascript property
+40 4 5 m-javascript keyword
+40 12 5 m-javascript def
+40 20 1 m-javascript operator
+40 22 4 m-javascript keyword
+40 27 5 m-javascript property
+41 4 6 m-javascript keyword
+41 11 1 m-xml tag bracket
+41 12 4 m-xml tag
+41 17 5 m-xml attribute
+41 24 5 m-javascript variable
+41 30 1 m-xml tag bracket
+41 32 4 m-javascript keyword
+41 37 5 m-javascript property
+41 43 5 m-javascript property
+41 49 2 m-xml tag bracket
+41 51 4 m-xml tag
+41 55 1 m-xml tag bracket
+45 12 5 m-javascript variable
+45 18 1 m-javascript operator
+45 20 3 m-javascript string
+45 25 5 m-javascript variable
+45 31 1 m-javascript operator
+45 33 3 m-javascript string

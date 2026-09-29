@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE note SYSTEM "note.dtd" [
+  <!ELEMENT note (to,from,body)>
+  <!ENTITY writer "Donald Duck.">
+]>
+<!-- A comment spanning
+     multiple lines -->
+<?xml-stylesheet type="text/xsl" href="style.xsl"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>
+  <modelVersion>4.0.0</modelVersion>
+  <name>Café &amp; Crème &#233; &#xE9; &unknown; &broken</name>
+  <description><![CDATA[Some <b>raw</b> & unescaped text]]></description>
+  <script><![CDATA[
+    if (a < b && c > d) { run(); }
+  ]]></script>
+  <empty/>
+  <empty-with-space />
+  <self attr="1" other='two'/>
+  <ns:element ns:attr="value">text</ns:element>
+  <multi
+      line="attribute"
+      spans="lines"
+  >content</multi>
+  <string attr="multi
+line value">x</string>
+  <mismatch>text</wrong>
+  <unquoted attr=value>bad</unquoted>
+  <noval attr>bad</noval>
+  <a =broken>x</a>
+  <bad <nested>x</nested>
+	<tabbed>	tab content	</tabbed>
+  <日本語 属性="値">テキスト</日本語>
+  < spaced>x</spaced>
+  <!-- unterminated comment
+  still comment -->
+  <!notacomment>
+  <![notcdata>
+</project>
+<trailing>&lt;escaped&gt;</trailing>
+<!DOCTYPE html>
+<unterminated attr="open
