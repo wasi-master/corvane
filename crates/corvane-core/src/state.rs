@@ -120,6 +120,32 @@ pub enum Popup {
         git_ref: String,
         failed_only: bool,
     },
+    /// `PullRequestReview`: a review on one of the user's pull requests
+    /// (GHD shows it from a notification). `should_*` pick the OK button:
+    /// switch repository and/or check out the PR branch.
+    PullRequestReview {
+        repo: u64,
+        pull_request: corvane_models::PullRequest,
+        review: corvane_github::api::ApiPullRequestReview,
+        should_checkout_branch: bool,
+        should_change_repository: bool,
+    },
+    /// `PullRequestComment`: a comment on one of the user's pull requests.
+    PullRequestComment {
+        repo: u64,
+        pull_request: corvane_models::PullRequest,
+        comment: corvane_github::api::ApiIssueComment,
+        should_checkout_branch: bool,
+        should_change_repository: bool,
+    },
+    /// `PullRequestChecksFailed`: checks failed on one of the user's pull
+    /// requests.
+    PullRequestChecksFailed {
+        repo: u64,
+        pull_request: corvane_models::PullRequest,
+        checks: Vec<corvane_models::RefCheck>,
+        should_change_repository: bool,
+    },
     /// `UnknownAuthors`: co-author handles that could not be resolved;
     /// "Commit Anyway" commits with the known ones only.
     UnknownAuthors {

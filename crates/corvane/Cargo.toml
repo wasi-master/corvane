@@ -19,6 +19,7 @@ runtime-shaders = ["gpui-pre-apple/runtime_shaders"]
 [dependencies]
 gpui-kit.workspace = true
 corvane-core.workspace = true
+corvane-github.workspace = true
 corvane-platform.workspace = true
 corvane-store.workspace = true
 corvane-ui.workspace = true

@@ -112,11 +112,15 @@ pub struct ApiIssue {
     pub pull_request: Option<serde_json::Value>,
 }
 
-/// `IAPIFullIdentity` (`GET /users/{login}`).
-#[derive(Debug, Clone, Deserialize)]
+/// `IAPIFullIdentity` (`GET /users/{login}`), also the `IAPIIdentity` on
+/// reviews and comments.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ApiIdentity {
     pub id: u64,
     pub login: String,
+    /// The profile page (`IAPIIdentity.html_url`).
+    #[serde(default)]
+    pub html_url: Option<String>,
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
@@ -126,6 +130,48 @@ pub struct ApiIdentity {
     /// `type`: `User`, `Organization` or `Bot`.
     #[serde(rename = "type", default)]
     pub kind: Option<String>,
+}
+
+/// `IAPIPullRequestReview.state`
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ApiPullRequestReviewState {
+    Approved,
+    Dismissed,
+    Pending,
+    Commented,
+    ChangesRequested,
+}
+
+/// `IAPIPullRequestReview` (`GET /repos/{owner}/{repo}/pulls/{n}/reviews/{id}`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ApiPullRequestReview {
+    pub id: u64,
+    pub user: ApiIdentity,
+    /// Empty for a review without a summary comment.
+    #[serde(default, deserialize_with = "null_as_empty")]
+    pub body: String,
+    pub html_url: String,
+    pub submitted_at: String,
+    pub state: ApiPullRequestReviewState,
+}
+
+/// `IAPIComment`: an issue comment on a pull request, or a review comment
+/// (`GET /repos/{owner}/{repo}/issues/comments/{id}`,
+/// `…/pulls/comments/{id}`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ApiIssueComment {
+    pub id: u64,
+    #[serde(default, deserialize_with = "null_as_empty")]
+    pub body: String,
+    pub html_url: String,
+    pub user: ApiIdentity,
+    pub created_at: String,
+}
+
+/// `null` → `""` for bodies the API may send as `null`.
+fn null_as_empty<'de, D: serde::Deserializer<'de>>(d: D) -> std::result::Result<String, D::Error> {
+    Ok(Option::<String>::deserialize(d)?.unwrap_or_default())
 }
 
 /// `IAPIMentionableUser`.
@@ -1000,5 +1046,78 @@ impl Client {
             parent: repo.parent.map(|p| Box::new(self.convert(*p))),
             archived: repo.archived,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pull_request_review_deserializes() {
+        let json = r#"{
+            "id": 80,
+            "node_id": "MDE3OlB1bGxSZXF1ZXN0UmV2aWV3ODA=",
+            "user": {
+                "login": "octocat",
+                "id": 1,
+                "avatar_url": "https://github.com/images/error/octocat_happy.gif",
+                "html_url": "https://github.com/octocat",
+                "type": "User"
+            },
+            "body": "Here is the body for the review.",
+            "state": "CHANGES_REQUESTED",
+            "html_url": "https://github.com/octocat/Hello-World/pull/12#pullrequestreview-80",
+            "submitted_at": "2019-11-17T17:43:43Z",
+            "commit_id": "ecdd80bb57125d7ba9641ffaa4d7d2c19d3f3091"
+        }"#;
+        let review: ApiPullRequestReview = serde_json::from_str(json).expect("review");
+        assert_eq!(review.id, 80);
+        assert_eq!(review.state, ApiPullRequestReviewState::ChangesRequested);
+        assert_eq!(review.user.login, "octocat");
+        assert_eq!(
+            review.user.html_url.as_deref(),
+            Some("https://github.com/octocat")
+        );
+        assert_eq!(review.user.kind.as_deref(), Some("User"));
+        assert_eq!(review.submitted_at, "2019-11-17T17:43:43Z");
+
+        let approved = json
+            .replace("CHANGES_REQUESTED", "APPROVED")
+            .replace(r#""Here is the body for the review.""#, "null");
+        let review: ApiPullRequestReview = serde_json::from_str(&approved).expect("approved");
+        assert_eq!(review.state, ApiPullRequestReviewState::Approved);
+        assert_eq!(review.body, "");
+        for (raw, state) in [
+            ("COMMENTED", ApiPullRequestReviewState::Commented),
+            ("DISMISSED", ApiPullRequestReviewState::Dismissed),
+            ("PENDING", ApiPullRequestReviewState::Pending),
+        ] {
+            let parsed: ApiPullRequestReviewState =
+                serde_json::from_str(&format!("\"{raw}\"")).expect("state");
+            assert_eq!(parsed, state);
+        }
+    }
+
+    #[test]
+    fn issue_comment_deserializes() {
+        let json = r#"{
+            "id": 1,
+            "node_id": "MDEyOklzc3VlQ29tbWVudDE=",
+            "url": "https://api.github.com/repos/octocat/Hello-World/issues/comments/1",
+            "html_url": "https://github.com/octocat/Hello-World/issues/1347#issuecomment-1",
+            "body": "Me too",
+            "user": { "login": "octocat", "id": 1, "avatar_url": null, "html_url": "https://github.com/octocat", "type": "User" },
+            "created_at": "2011-04-14T16:00:49Z",
+            "updated_at": "2011-04-14T16:00:49Z",
+            "author_association": "COLLABORATOR"
+        }"#;
+        let comment: ApiIssueComment = serde_json::from_str(json).expect("comment");
+        assert_eq!(comment.id, 1);
+        assert_eq!(comment.body, "Me too");
+        assert_eq!(comment.user.login, "octocat");
+        assert_eq!(comment.user.avatar_url, None);
+        assert_eq!(comment.created_at, "2011-04-14T16:00:49Z");
+        assert!(comment.html_url.ends_with("#issuecomment-1"));
     }
 }
