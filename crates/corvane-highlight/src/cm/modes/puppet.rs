@@ -122,21 +122,21 @@ fn token_string(stream: &mut StringStream, s: &mut PuppetState) -> &'static str 
 // tokenize
 fn tokenize(stream: &mut StringStream, s: &mut PuppetState) -> Option<&'static str> {
     // Matches one whole word
-    let word = stream.match_re(re!(r"[A-Za-z0-9_]+"), false);
+    let word = stream.match_re(re!(r"^(?:[A-Za-z0-9_]+)"), false);
     // Matches attributes (i.e. ensure => present ; 'ensure' would be matched)
     let attribute = stream
         .match_re(
-            re!(r"(\s+)?[A-Za-z0-9_]+\s+=>[^\n\r\x{2028}\x{2029}]*"),
+            re!(r"^(?:(\s+)?[A-Za-z0-9_]+\s+=>[^\n\r\x{2028}\x{2029}]*)"),
             false,
         )
         .is_some();
     // Matches non-builtin resource declarations
     let resource = stream
-        .match_re(re!(r"(\s+)?[A-Za-z0-9_:]+(\s+)?\{"), false)
+        .match_re(re!(r"^(?:(\s+)?[A-Za-z0-9_:]+(\s+)?\{)"), false)
         .is_some();
     // Matches virtual and exported resources (i.e. @@user { ; and the like)
     let special_resource = stream
-        .match_re(re!(r"(\s+)?[@]{1,2}[A-Za-z0-9_:]+(\s+)?\{"), false)
+        .match_re(re!(r"^(?:(\s+)?[@]{1,2}[A-Za-z0-9_:]+(\s+)?\{)"), false)
         .is_some();
 
     // Finally advance the stream
@@ -145,7 +145,7 @@ fn tokenize(stream: &mut StringStream, s: &mut PuppetState) -> Option<&'static s
     // Have we found a variable?
     if ch == '$' {
         if stream.matches(re!(
-            r"(\{)?([a-z][a-z0-9_]*)?((::[a-z][a-z0-9_]*)*::)?[a-zA-Z0-9_]+(\})?"
+            r"^(?:(\{)?([a-z][a-z0-9_]*)?((::[a-z][a-z0-9_]*)*::)?[a-zA-Z0-9_]+(\})?)"
         )) {
             return Some(if s.continue_string {
                 "variable-2"
@@ -162,35 +162,35 @@ fn tokenize(stream: &mut StringStream, s: &mut PuppetState) -> Option<&'static s
     }
     // Are we in a definition (class, node, define)?
     if s.in_definition {
-        if stream.matches(re!(r"(\s+)?[A-Za-z0-9_:]+(\s+)?")) {
+        if stream.matches(re!(r"^(?:(\s+)?[A-Za-z0-9_:]+(\s+)?)")) {
             return Some("def");
         }
         // Match the rest it the next time around
-        stream.matches(re!(r"\s+\{"));
+        stream.matches(re!(r"^(?:\s+\{)"));
         s.in_definition = false;
     }
     // Are we in an 'include' statement?
     if s.in_include {
-        stream.matches(re!(r"(\s+)?\S+(\s+)?"));
+        stream.matches(re!(r"^(?:(\s+)?\S+(\s+)?)"));
         s.in_include = false;
         return Some("def");
     }
     // Do we just have a function on our hands?
-    if stream.matches(re!(r"(\s+)?[A-Za-z0-9_]+\(")) {
+    if stream.matches(re!(r"^(?:(\s+)?[A-Za-z0-9_]+\()")) {
         stream.back_up(1);
         return Some("def");
     }
     // Have we matched the prior attribute regex?
     if attribute {
-        stream.matches(re!(r"(\s+)?[A-Za-z0-9_]+"));
+        stream.matches(re!(r"^(?:(\s+)?[A-Za-z0-9_]+)"));
         return Some("tag");
     }
     let word = word.map(|m| m.text);
     // Do we have Puppet specific words?
     if let Some(style) = word.as_deref().and_then(word_style) {
         stream.back_up(1);
-        stream.matches(re!(r"[A-Za-z0-9_]+"));
-        if stream.match_re(re!(r"\s+\S+\s+\{"), false).is_some() {
+        stream.matches(re!(r"^(?:[A-Za-z0-9_]+)"));
+        if stream.match_re(re!(r"^(?:\s+\S+\s+\{)"), false).is_some() {
             s.in_definition = true;
         }
         if word.as_deref() == Some("include") {
@@ -199,22 +199,22 @@ fn tokenize(stream: &mut StringStream, s: &mut PuppetState) -> Option<&'static s
         return Some(style);
     }
     // Is there a match on a reference? (`test(null)` tests "null")
-    if re!(r"(^|\s+)[A-Z][A-Za-z0-9_:]+")
+    if re!(r"^(?:(^|\s+)[A-Z][A-Za-z0-9_:]+)")
         .is_match(word.as_deref().unwrap_or("null"))
         .unwrap_or(false)
     {
         stream.back_up(1);
-        stream.matches(re!(r"(^|\s+)[A-Z][A-Za-z0-9_:]+"));
+        stream.matches(re!(r"^(?:(^|\s+)[A-Z][A-Za-z0-9_:]+)"));
         return Some("def");
     }
     // Have we matched the prior resource regex?
     if resource {
-        stream.matches(re!(r"(\s+)?[A-Za-z0-9_:]+"));
+        stream.matches(re!(r"^(?:(\s+)?[A-Za-z0-9_:]+)"));
         return Some("def");
     }
     // Have we matched the prior special_resource regex?
     if special_resource {
-        stream.matches(re!(r"(\s+)?[@]{1,2}"));
+        stream.matches(re!(r"^(?:(\s+)?[@]{1,2})"));
         return Some("special");
     }
     // Match all the comments. All of them.

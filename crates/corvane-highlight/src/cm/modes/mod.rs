@@ -13,6 +13,7 @@ pub mod dockerfile;
 pub mod go;
 pub mod javascript;
 pub mod jsx;
+pub mod oz;
 pub mod pig;
 pub mod puppet;
 pub mod python;
@@ -226,6 +227,7 @@ pub fn mode_for_mime(mime: &str) -> Option<Arc<dyn Mode>> {
         "application/sieve" => Some(Arc::new(sieve::Sieve)),
         "text/x-rpm-spec" => Some(Arc::new(rpm::RpmSpec)),
         "text/x-rpm-changes" => Some(Arc::new(rpm::RpmChanges)),
+        "text/x-oz" => Some(Arc::new(oz::Oz)),
         mime if sql::MIMES.contains(&mime) => sql::sql(mime),
         "text/x-csrc" | "text/x-c" | "text/x-chdr" => Some(clike::c()),
         "text/x-c++src" | "text/x-c++hdr" => Some(clike::cpp()),
