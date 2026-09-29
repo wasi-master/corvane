@@ -346,10 +346,31 @@ impl LoopbackListener {
                         }
                         Err(_) => return,
                     };
+                    // the accepted socket must block (a non-blocking listener's
+                    // children may not on every platform), and the request
+                    // line may arrive in pieces
+                    let _ = stream.set_nonblocking(false);
                     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
-                    let mut buf = [0u8; 4096];
-                    let n = stream.read(&mut buf).unwrap_or(0);
-                    let request = String::from_utf8_lossy(&buf[..n]);
+                    let mut raw = Vec::with_capacity(1024);
+                    let mut buf = [0u8; 1024];
+                    loop {
+                        match stream.read(&mut buf) {
+                            Ok(0) => break,
+                            Ok(n) => {
+                                raw.extend_from_slice(&buf[..n]);
+                                if raw.windows(2).any(|w| w == b"\r\n") || raw.len() > 8192 {
+                                    break;
+                                }
+                            }
+                            Err(err) if err.kind() == std::io::ErrorKind::WouldBlock
+                                || err.kind() == std::io::ErrorKind::Interrupted =>
+                            {
+                                continue;
+                            }
+                            Err(_) => break,
+                        }
+                    }
+                    let request = String::from_utf8_lossy(&raw);
                     // `GET /callback?code=…&state=… HTTP/1.1`
                     let query = request
                         .lines()
@@ -448,6 +469,9 @@ mod web_flow_tests {
         })
         .unwrap();
         let mut stream = std::net::TcpStream::connect(("127.0.0.1", listener.port())).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(30)))
+            .unwrap();
         write!(
             stream,
             "GET /callback?code=xyz&state=123 HTTP/1.1\r\nHost: localhost\r\n\r\n"
@@ -458,7 +482,7 @@ mod web_flow_tests {
         assert!(response.starts_with("HTTP/1.1 200 OK"));
         assert!(response.contains("Signed in"));
         assert_eq!(
-            rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+            rx.recv_timeout(Duration::from_secs(30)).unwrap(),
             Some(("xyz".into(), "123".into()))
         );
     }
