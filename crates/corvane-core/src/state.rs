@@ -359,6 +359,8 @@ pub struct RepositoryState {
     pub status: Option<WorkingDirectoryStatus>,
     /// Path of the file whose diff is shown (`selectedFileIDs[0]`).
     pub selected_file: Option<String>,
+    /// Every selected path (`selectedFileIDs`), click order; ⌘/⇧-click extend it.
+    pub selected_files: Vec<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
     /// Bumped whenever `diff` is replaced, so views can cache derived rows.

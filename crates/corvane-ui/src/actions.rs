@@ -6,6 +6,7 @@ gpui_kit::actions!(
         // Lists (arrow keys while the changes list has focus)
         SelectNextFile,
         SelectPreviousFile,
+        SelectAllFiles,
         // Compare-to-branch filter box
         CompareSelect,
         CompareClear,

@@ -460,6 +460,14 @@ impl Dispatcher {
                                     .cloned();
                                 repo_state.selected_file =
                                     keep.or_else(|| status.files.first().map(|f| f.path.clone()));
+                                repo_state
+                                    .selected_files
+                                    .retain(|p| status.files.iter().any(|f| &f.path == p));
+                                if repo_state.selected_files.is_empty()
+                                    && let Some(p) = repo_state.selected_file.clone()
+                                {
+                                    repo_state.selected_files = vec![p];
+                                }
                                 if repo_state.selected_file.is_none() {
                                     repo_state.diff = None;
                                 }
@@ -514,13 +522,83 @@ impl Dispatcher {
     pub fn select_file(id: u64, path: String, cx: &mut App) {
         let changed = Self::state(cx).update(cx, |s, cx| {
             let rs = s.repo_state_mut(id);
-            if rs.selected_file.as_deref() == Some(path.as_str()) {
+            let same_anchor = rs.selected_file.as_deref() == Some(path.as_str());
+            let single = rs.selected_files.len() == 1 && rs.selected_files[0] == path;
+            if same_anchor && single {
                 return false;
             }
+            rs.selected_files = vec![path.clone()];
             rs.selected_file = Some(path);
-            rs.diff = None;
+            if !same_anchor {
+                rs.diff = None;
+            }
             cx.notify();
-            true
+            !same_anchor
+        });
+        if changed {
+            Self::load_diff(id, cx);
+        }
+    }
+
+    /// ⌘-click (`SelectionSource` toggle): add or remove one path.
+    pub fn toggle_file_selection(id: u64, path: String, cx: &mut App) {
+        let changed = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            let before = rs.selected_file.clone();
+            if let Some(pos) = rs.selected_files.iter().position(|p| *p == path) {
+                rs.selected_files.remove(pos);
+                if rs.selected_file.as_deref() == Some(path.as_str()) {
+                    rs.selected_file = rs.selected_files.last().cloned();
+                }
+            } else {
+                rs.selected_files.push(path.clone());
+                rs.selected_file = Some(path);
+            }
+            if rs.selected_file != before {
+                rs.diff = None;
+            }
+            cx.notify();
+            rs.selected_file != before
+        });
+        if changed {
+            Self::load_diff(id, cx);
+        }
+    }
+
+    /// ⇧-click: select the visible range between the anchor and `path`.
+    pub fn extend_file_selection(id: u64, path: String, order: Vec<String>, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            let anchor = rs.selected_file.clone().unwrap_or_else(|| path.clone());
+            let (Some(a), Some(b)) = (
+                order.iter().position(|p| *p == anchor),
+                order.iter().position(|p| *p == path),
+            ) else {
+                return;
+            };
+            let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
+            rs.selected_files = order[lo..=hi].to_vec();
+            if rs.selected_file.is_none() {
+                rs.selected_file = Some(path);
+            }
+            cx.notify();
+        });
+    }
+
+    /// ⌘A in the list: every visible file.
+    pub fn select_all_files(id: u64, order: Vec<String>, cx: &mut App) {
+        let changed = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if order.is_empty() {
+                return false;
+            }
+            let before = rs.selected_file.clone();
+            if !rs.selected_file.as_ref().is_some_and(|p| order.contains(p)) {
+                rs.selected_file = order.first().cloned();
+            }
+            rs.selected_files = order;
+            cx.notify();
+            rs.selected_file != before
         });
         if changed {
             Self::load_diff(id, cx);

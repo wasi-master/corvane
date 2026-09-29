@@ -244,8 +244,12 @@ impl Workspace {
                 .cloned()
         });
         let showing_stash = rs.is_some_and(|r| r.showing_stash);
+        let multi_selected = rs.map(|r| r.selected_files.len()).unwrap_or(0);
         match self.section {
             Section::Changes if showing_stash => self.stash_view.clone().into_any_element(),
+            Section::Changes if multi_selected > 1 => {
+                crate::no_changes::multiple_selection(multi_selected, cx).into_any_element()
+            }
             Section::Changes if selected_change.is_some() => {
                 let file = selected_change.unwrap();
                 div()

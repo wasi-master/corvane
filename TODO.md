@@ -43,15 +43,11 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## History
 
-- [ ] Unreachable-commits dialog (`ui/history/unreachable-commits-dialog.tsx`, `PopupType.UnreachableCommits`); the multi-commit summary shows "N unreachable commits not included." as plain text
-- [ ] Drop tooltips while dragging commits ("Copy to <branch>", "Squash N commits", "Move commits here"); drop targets highlight instead
-- [ ] Highlighting the commits in / not in the range diff on hover of the summary text (`onHighlightShas`)
 - [ ] Cherry-pick by dropping commits on a pull request (needs the Pull Requests tab)
 
 ## Changes list
 
-- [ ] Multi-selection (⌘/⇧-click, ⌘A) and the "N selected" context-menu variants: `Discard N Selected Changes…`, `Ignore N Selected Files`, `Include/Exclude Selected Files`, `Copy Paths` / `Copy Relative Paths`
-- [ ] Rebase-conflict context menu variant (`getRebaseContextMenu`)
+- [ ] Range selection via ⇧-arrow keys (`list.tsx` `handleKeyDown` with `shiftKey` in multi-selection mode); ⌘/⇧-click and ⌘A are in v1
 
 ## Editor / commit form
 
