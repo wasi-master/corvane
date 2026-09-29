@@ -1445,6 +1445,7 @@ dependencies = [
  "corvane-highlight",
  "corvane-platform",
  "gpui-kit",
+ "libc",
  "objc",
  "raw-window-handle",
  "tracing",

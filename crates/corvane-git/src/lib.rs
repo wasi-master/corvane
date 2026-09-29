@@ -8,6 +8,7 @@ pub mod detect;
 pub mod diff;
 pub mod error;
 pub mod history_ops;
+pub mod hook_env;
 pub mod ignore;
 pub mod log;
 pub mod ops;
@@ -55,7 +56,7 @@ pub use ops::{
 };
 pub use patch::{apply_patch_to_index, format_patch, stage_partial_files};
 pub use paths::git_dir;
-pub use process::{GitCommand, GitOutput};
+pub use process::{GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{
     CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
     abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,

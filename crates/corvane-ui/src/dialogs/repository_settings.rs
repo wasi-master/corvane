@@ -451,8 +451,27 @@ impl Render for RepositorySettingsDialog {
                     .p(SPACING_DOUBLE)
                     .child(body),
             );
+        let name_valid = self.location == GitConfigLocation::Global
+            || corvane_core::git_author_name_is_valid(self.name.read(cx).value().trim());
+        let content = div()
+            .flex()
+            .flex_col()
+            .mx(px(-20.))
+            .my(px(-20.))
+            .when(!name_valid, |d| {
+                d.child(
+                    crate::widgets::dialog_error_banner(
+                        corvane_core::INVALID_GIT_AUTHOR_NAME_MESSAGE,
+                        cx,
+                    )
+                    .mx(px(0.))
+                    .mt(px(0.))
+                    .mb(px(0.)),
+                )
+            })
+            .child(content.mx(px(0.)).my(px(0.)));
         let weak = cx.weak_entity();
-        let loaded = self.loaded;
+        let loaded = self.loaded && name_valid;
         dialog(
             "dialog-repository-settings",
             "Repository Settings",

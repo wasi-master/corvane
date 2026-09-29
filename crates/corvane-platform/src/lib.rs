@@ -2,6 +2,7 @@
 //! Windows/Linux later (see TODO.md).
 
 pub mod apps;
+pub mod custom_integration;
 pub mod editors;
 pub mod keychain;
 pub mod shells;

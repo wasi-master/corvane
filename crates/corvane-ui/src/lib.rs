@@ -15,6 +15,7 @@ pub mod dialogs;
 pub mod diff_view;
 pub mod diff_view_rows;
 pub mod foldout;
+pub mod format;
 pub mod history;
 pub mod icons;
 pub mod keymap;

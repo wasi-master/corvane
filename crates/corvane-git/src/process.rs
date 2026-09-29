@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use tracing::{debug, warn};
@@ -39,6 +40,14 @@ pub struct GitCommand {
     stdin: Option<Vec<u8>>,
     /// Variables removed from the inherited environment (`GIT_SEQUENCE_EDITOR`).
     env_removed: Vec<OsString>,
+}
+
+/// Process-wide toggle for `-c credential.helper=manager` (set per network
+/// operation by the dispatcher for non-GitHub remotes).
+static CREDENTIAL_HELPER: AtomicBool = AtomicBool::new(false);
+
+pub fn set_credential_helper(enabled: bool) {
+    CREDENTIAL_HELPER.store(enabled, Ordering::Relaxed);
 }
 
 impl GitCommand {
@@ -98,9 +107,28 @@ impl GitCommand {
 
     fn command(&self) -> Command {
         let mut cmd = Command::new(&self.bin.path);
+        // Settings › Advanced › Use Git Credential Manager: `-c credential.helper=manager`
+        // for the network commands (GHD `useExternalCredentialHelper`).
+        if CREDENTIAL_HELPER.load(Ordering::Relaxed)
+            && self.args.first().is_some_and(|a| {
+                matches!(
+                    a.to_str(),
+                    Some("fetch" | "pull" | "push" | "clone" | "ls-remote")
+                )
+            })
+        {
+            cmd.args(["-c", "credential.helper=manager"]);
+        }
         cmd.args(&self.args);
         if let Some(cwd) = &self.cwd {
             cmd.current_dir(cwd);
+        }
+        // Settings › Git › Hooks: the user's login-shell environment first,
+        // so hooks see the same PATH as a terminal.
+        if let Some(env) = crate::hook_env::hook_env() {
+            for (k, v) in env {
+                cmd.env(k, v);
+            }
         }
         // GHD: never let git prompt on a terminal; force stable English output.
         cmd.env("GIT_TERMINAL_PROMPT", "0")

@@ -259,6 +259,19 @@ impl RepositoryInfo {
     }
 }
 
+/// GHD `gitAuthorNameIsValid`: git strips "crud" characters from names and
+/// refuses one that consists only of them (`ident.c`). Empty is valid.
+pub fn git_author_name_is_valid(name: &str) -> bool {
+    !(!name.is_empty()
+        && name.chars().all(|c| {
+            (c as u32) <= 0x20 || matches!(c, '.' | ',' | ':' | ';' | '<' | '>' | '"' | '\\' | '\'')
+        }))
+}
+
+/// GHD `InvalidGitAuthorNameMessage`.
+pub const INVALID_GIT_AUTHOR_NAME_MESSAGE: &str =
+    "Name is invalid, it consists only of disallowed characters.";
+
 /// Parse `owner/name` + host out of a remote URL if it points at GitHub.
 /// Handles `https://github.com/o/n(.git)`, `git@github.com:o/n(.git)`,
 /// `ssh://git@github.com/o/n` and GHES hosts when `ghes_hosts` lists them.

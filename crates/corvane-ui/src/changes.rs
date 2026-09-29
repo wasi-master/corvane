@@ -23,7 +23,7 @@ use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    avatar_placeholder, button, checkbox, checkbox_tristate, primary_button, text_box,
+    avatar_image, avatar_lookup, button, checkbox, checkbox_tristate, primary_button, text_box,
 };
 
 pub struct ChangesSidebar {
@@ -667,14 +667,17 @@ impl ChangesSidebar {
                         let (visible, total, _, _) = self.header_state(cx);
                         // GHD: "3 of 10 changed files" while a filter hides some
                         let prefix = if visible.len() != total {
-                            format!("{} of ", visible.len())
+                            format!("{} of ", crate::format::format_count(visible.len() as u64))
                         } else {
                             String::new()
                         };
                         div().text_size(FONT_SIZE).truncate().child(if total == 1 {
                             format!("{prefix}1 changed file")
                         } else {
-                            format!("{prefix}{total} changed files")
+                            format!(
+                                "{prefix}{} changed files",
+                                crate::format::format_count(total as u64)
+                            )
                         })
                     }),
             )
@@ -1035,6 +1038,13 @@ impl ChangesSidebar {
 
     fn commit_form(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        let avatar = self
+            .state
+            .read(cx)
+            .selected_state()
+            .and_then(|rs| rs.info.as_ref())
+            .and_then(|i| i.identity.email.as_deref())
+            .and_then(|email| avatar_lookup(email, cx));
         div()
             .id("commit-message")
             .key_context("CommitMessage")
@@ -1058,7 +1068,7 @@ impl ChangesSidebar {
                     .items_center()
                     .gap(SPACING_HALF)
                     .mb(SPACING)
-                    .child(avatar_placeholder(AVATAR_SIZE, cx))
+                    .child(avatar_image(avatar, AVATAR_SIZE, cx))
                     .child(text_box("commit-summary", &self.summary, None, window, cx)),
             )
             .child(
@@ -1149,6 +1159,16 @@ impl ChangesSidebar {
 
 impl Render for ChangesSidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        // `CommitMessageAvatar`: the committer's avatar next to the summary.
+        let identity_email = self
+            .state
+            .read(cx)
+            .selected_state()
+            .and_then(|rs| rs.info.as_ref())
+            .and_then(|i| i.identity.email.clone());
+        if let Some(email) = identity_email {
+            Dispatcher::request_avatar_for_email(&email, cx);
+        }
         div()
             .size_full()
             .flex()
