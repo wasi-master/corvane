@@ -31,11 +31,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] Welcome "Create a tutorial repository" card
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
 
-## Create / clone dialogs
-
-- [ ] Clone dialog account picker when several GitHub Enterprise accounts are signed in (`account-picker.tsx`); each tab uses its first account
-- [ ] Clone dialog: resolve `owner/name` shorthand through the API for the default branch and "repository not found" errors (`resolveCloneInfo`); v1 clones `https://github.com/owner/name`
-
 ## History
 
 - [ ] Cherry-pick by dropping commits on a pull request in the Pull Requests tab (`onDropOntoPullRequest`)

@@ -11,6 +11,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Repository rules**: `useRepoRulesLogic` needs the account plan; an account stored before Corvane read it counts as paid until the launch refresh fills it in. The commit-message check merges the `Co-Authored-By` trailers with a port of `git interpret-trailers`' block rules instead of spawning git on every keystroke.
 - **Re-authorization** (`workflow` scope, SAML SSO, invalidated token) opens the device-flow sign-in dialog instead of GHD's browser flow; the push / failed action is retried after signing in, as in GHD.
 - **Clone dialog** caches the repository list in redb per endpoint and filters it locally (as GHD does); there is no server-side search.
+- **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git`. The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
 
 ## Editor / commit form
 
