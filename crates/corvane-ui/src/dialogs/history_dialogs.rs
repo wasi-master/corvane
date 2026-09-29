@@ -41,12 +41,14 @@ impl Render for ResetToCommitDialog {
                     id: "reset-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "reset-continue",
                     label: "Continue".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::reset_to_commit(repo, sha.clone(), cx);
@@ -118,12 +120,14 @@ impl Render for CheckoutCommitDialog {
                     id: "checkout-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "checkout-ok",
                     label: "Checkout".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if dont_show_again {
                             Dispatcher::update_settings(cx, |s| s.confirm_checkout_commit = false);
@@ -195,12 +199,14 @@ impl Render for CreateTagDialog {
                     id: "tag-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "tag-create",
                     label: "Create Tag".into(),
                     primary: true,
+                    disabled,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
                             return;
@@ -273,12 +279,14 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
                     id: "undo-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "undo-continue",
                     label: "Continue".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if dont_show_again {
                             Dispatcher::update_settings(cx, |s| s.confirm_undo_commit = false);
@@ -352,12 +360,14 @@ impl Render for ConfirmDiscardStashDialog {
                     id: "discard-stash-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "discard-stash-ok",
                     label: "Discard".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if dont_show_again {
                             Dispatcher::update_settings(cx, |s| s.confirm_discard_stash = false);

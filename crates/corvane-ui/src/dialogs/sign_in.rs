@@ -244,12 +244,14 @@ impl Render for SignInDialog {
                         id: "sign-in-cancel",
                         label: "Cancel".into(),
                         primary: false,
+                        disabled: false,
                         on_click: Box::new(close),
                     },
                     DialogButton {
                         id: "sign-in-continue",
                         label: "Continue".into(),
                         primary: true,
+                        disabled: false,
                         on_click: Box::new(move |window, cx| {
                             this.update(cx, |d, cx| d.continue_endpoint(window, cx))
                         }),
@@ -279,12 +281,14 @@ impl Render for SignInDialog {
                         id: "sign-in-cancel",
                         label: "Cancel".into(),
                         primary: false,
+                        disabled: false,
                         on_click: Box::new(close),
                     },
                     DialogButton {
                         id: "sign-in-submit",
                         label: "Sign in".into(),
                         primary: true,
+                        disabled: false,
                         on_click: Box::new(move |_, cx| {
                             this.update(cx, |d, cx| d.submit_token(cx))
                         }),
@@ -297,6 +301,7 @@ impl Render for SignInDialog {
                     id: "sign-in-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 }],
             ),

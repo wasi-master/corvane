@@ -108,8 +108,11 @@ pub enum Popup {
         repo: u64,
     },
     /// `MultiCommitOperation`: the dialog for the current `RepositoryState::mco` step.
+    /// `flow` changes per operation so the dialog view is rebuilt (no stale
+    /// branch selection from an earlier flow).
     MultiCommitOperation {
         repo: u64,
+        flow: u64,
     },
     /// `LocalChangesOverwritten`: the operation needs a clean working directory.
     LocalChangesOverwritten {
@@ -393,6 +396,8 @@ pub struct RepositoryState {
 
     // ---- multi-commit operations ----
     pub mco: Option<crate::mco::MultiCommitOperation>,
+    /// Bumped by every new multi-commit operation (see `Popup::MultiCommitOperation`).
+    pub mco_flow: u64,
     pub mco_undo: Option<crate::mco::McoUndo>,
     /// `changesState.conflictState`
     pub conflict_state: Option<crate::mco::ConflictState>,

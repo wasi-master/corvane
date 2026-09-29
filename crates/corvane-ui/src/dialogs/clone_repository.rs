@@ -316,12 +316,14 @@ impl Render for CloneRepositoryDialog {
                     id: "clone-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "clone-ok",
                     label: "Clone".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if can_clone {
                             this.update(cx, |d, cx| d.submit(cx));

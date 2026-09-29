@@ -108,12 +108,14 @@ impl Render for DiscardChangesDialog {
                     id: "discard-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "discard-ok",
                     label: ok_label.into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         if dont_show_again {
                             Dispatcher::update_settings(cx, |s| s.confirm_discard_changes = false);

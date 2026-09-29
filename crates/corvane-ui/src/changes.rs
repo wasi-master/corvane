@@ -971,6 +971,68 @@ impl ChangesSidebar {
     }
 
     /// `.commit-message-component`
+    /// GHD `ContinueRebase` (`#continue-rebase`): while a rebase is stopped
+    /// on conflicts the commit form gives way to a single "Continue rebase"
+    /// button, enabled once every conflict is resolved.
+    fn continue_rebase(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let rs = s.repo_states.get(&id)?;
+        let conflict = rs.conflict_state.as_ref()?;
+        if !matches!(conflict.kind, corvane_core::ConflictKind::Rebase { .. }) {
+            return None;
+        }
+        let status = rs.status.as_ref()?;
+        let conflicted = corvane_core::conflicted_files(status, &conflict.manual_resolutions).len();
+        let untracked = status
+            .files
+            .iter()
+            .any(|f| f.status.kind == FileStatusKind::Untracked);
+        let in_progress = rs
+            .mco
+            .as_ref()
+            .is_some_and(|m| m.step == corvane_core::McoStep::ShowProgress);
+        let enabled = conflicted == 0 && !in_progress;
+        Some(
+            div()
+                .id("continue-rebase")
+                .flex_none()
+                .flex()
+                .flex_col()
+                .p(SPACING)
+                .bg(t.box_alt_background)
+                .border_t_1()
+                .border_color(t.box_border)
+                .child(
+                    primary_button(
+                        "continue-rebase-button",
+                        if in_progress {
+                            "Rebasing"
+                        } else {
+                            "Continue rebase"
+                        },
+                        !enabled,
+                        cx,
+                    )
+                    .w_full()
+                    .when(enabled, |d| {
+                        d.on_click(move |_, _, cx| Dispatcher::continue_after_conflicts(id, cx))
+                    }),
+                )
+                .when(untracked, |d| {
+                    d.child(
+                        div()
+                            .pt(SPACING_HALF)
+                            .text_align(TextAlign::Center)
+                            .text_size(FONT_SIZE)
+                            .child("Untracked files will be excluded"),
+                    )
+                })
+                .into_any_element(),
+        )
+    }
+
     fn commit_form(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         div()
@@ -1117,7 +1179,10 @@ impl Render for ChangesSidebar {
                     .child(self.list(cx))
                     .children(self.stash_button(cx)),
             )
-            .child(self.commit_form(window, cx))
+            .child(match self.continue_rebase(cx) {
+                Some(block) => block,
+                None => self.commit_form(window, cx).into_any_element(),
+            })
             .children(self.context_menu.clone())
             .children(self.filter_popover(cx))
     }

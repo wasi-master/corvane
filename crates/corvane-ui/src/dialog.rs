@@ -22,6 +22,8 @@ pub struct DialogButton {
     pub id: &'static str,
     pub label: SharedString,
     pub primary: bool,
+    /// GHD `okButtonDisabled`: 60 % opacity, clicks ignored.
+    pub disabled: bool,
     pub on_click: ClickHandler,
 }
 
@@ -211,15 +213,25 @@ fn dialog_impl(
                                 .pb(SPACING_DOUBLE)
                                 .children(buttons.into_iter().map(|b| {
                                     let on_click = b.on_click;
+                                    let disabled = b.disabled;
                                     if b.primary {
-                                        crate::widgets::primary_button(b.id, b.label, false, cx)
+                                        crate::widgets::primary_button(b.id, b.label, disabled, cx)
                                             .min_w(px(120.))
-                                            .on_click(move |_, window, cx| on_click(window, cx))
+                                            .when(!disabled, |d| {
+                                                d.on_click(move |_, window, cx| {
+                                                    on_click(window, cx)
+                                                })
+                                            })
                                             .into_any_element()
                                     } else {
                                         crate::widgets::button(b.id, b.label, cx)
                                             .min_w(px(120.))
-                                            .on_click(move |_, window, cx| on_click(window, cx))
+                                            .when(disabled, |d| d.opacity(0.6).cursor_default())
+                                            .when(!disabled, |d| {
+                                                d.on_click(move |_, window, cx| {
+                                                    on_click(window, cx)
+                                                })
+                                            })
                                             .into_any_element()
                                     }
                                 })),

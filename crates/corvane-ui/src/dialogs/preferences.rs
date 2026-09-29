@@ -22,8 +22,9 @@ use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    SelectHandler, avatar_placeholder, button, call_to_action, checkbox_row, labeled, link_button,
-    radio, radio_row, section_heading, select_button, settings_description, text_box,
+    SelectHandler, avatar_placeholder, button, call_to_action, checkbox_row, code_ref, labeled,
+    link_button, paragraph, radio, radio_row, section_heading, select_button, settings_description,
+    text_box,
 };
 
 const TABS: [PreferencesTab; 8] = [
@@ -325,25 +326,19 @@ impl PreferencesDialog {
                     .gap(SPACING_THIRD)
                     .child("External Editor")
                     .child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .flex_wrap()
-                            .text_color(t.text_secondary)
-                            .child("No editors found.\u{a0}")
-                            .child(
-                                link_button(
-                                    "prefs-install-editor",
-                                    "Install Visual Studio Code?",
-                                    cx,
-                                )
+                        paragraph(vec![
+                            "No editors found. ".into(),
+                            link_button("prefs-install-editor", "Install Visual Studio Code?", cx)
                                 .on_click(|_, _, cx| {
                                     Dispatcher::open_url(
                                         corvane_platform::editors::SUGGESTED_EDITOR_URL,
                                         cx,
                                     )
-                                }),
-                            ),
+                                })
+                                .into_any_element()
+                                .into(),
+                        ])
+                        .text_color(t.text_secondary),
                     )
                     .into_any_element()
             } else {
@@ -412,24 +407,22 @@ impl PreferencesDialog {
             cx,
         );
         let edit_config = |cx: &App| {
-            div()
-                .flex()
-                .flex_row()
-                .flex_wrap()
-                .mt(SPACING)
-                .text_size(FONT_SIZE_SM)
-                .text_color(t.text_secondary)
-                .child("These preferences will\u{a0}")
-                .child(
-                    link_button(
-                        "prefs-edit-gitconfig",
-                        "edit your global Git config file",
-                        cx,
-                    )
-                    .text_size(FONT_SIZE_SM)
-                    .on_click(|_, _, cx| Dispatcher::edit_global_git_config(cx)),
+            paragraph(vec![
+                "These preferences will ".into(),
+                link_button(
+                    "prefs-edit-gitconfig",
+                    "edit your global Git config file",
+                    cx,
                 )
-                .child(".")
+                .text_size(FONT_SIZE_SM)
+                .on_click(|_, _, cx| Dispatcher::edit_global_git_config(cx))
+                .into_any_element()
+                .into(),
+                ".".into(),
+            ])
+            .mt(SPACING)
+            .text_size(FONT_SIZE_SM)
+            .text_color(t.text_secondary)
         };
         let body = match self.git_tab {
             GitTab::Author => {
@@ -505,25 +498,21 @@ impl PreferencesDialog {
                     .when(warn, |d| {
                         // `GitEmailNotFoundWarning`
                         d.child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .flex_wrap()
-                                .text_size(FONT_SIZE_SM)
-                                .text_color(t.text_secondary)
-                                .child(
-                                    "This email address doesn't match your GitHub account, so your commits will be wrongly attributed.\u{a0}",
-                                )
-                                .child(
-                                    link_button("prefs-email-learn-more", "Learn more", cx)
-                                        .text_size(FONT_SIZE_SM)
-                                        .on_click(|_, _, cx| {
-                                            Dispatcher::open_url(
-                                                "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/setting-your-commit-email-address",
-                                                cx,
-                                            )
-                                        }),
-                                ),
+                            paragraph(vec![
+                                "This email address doesn't match your GitHub account, so your commits will be wrongly attributed. ".into(),
+                                link_button("prefs-email-learn-more", "Learn more", cx)
+                                    .text_size(FONT_SIZE_SM)
+                                    .on_click(|_, _, cx| {
+                                        Dispatcher::open_url(
+                                            "https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-email-preferences/setting-your-commit-email-address",
+                                            cx,
+                                        )
+                                    })
+                                    .into_any_element()
+                                    .into(),
+                            ])
+                            .text_size(FONT_SIZE_SM)
+                            .text_color(t.text_secondary),
                         )
                     })
                     .child(edit_config(cx))
@@ -555,17 +544,16 @@ impl PreferencesDialog {
                         )
                     })
                     .child(
-                        settings_description(cx)
-                            .flex()
-                            .flex_row()
-                            .flex_wrap()
-                            .child("GitHub's default branch name is\u{a0}")
-                            .child(mono("main", t))
-                            .child(
-                                ". You may want to change it due to different workflows, or because your integrations still require the historical default branch name of\u{a0}",
-                            )
-                            .child(mono("master", t))
-                            .child("."),
+                        paragraph(vec![
+                            "GitHub's default branch name is ".into(),
+                            code_ref("main", cx).into_any_element().into(),
+                            ". You may want to change it due to different workflows, or because your integrations still require the historical default branch name of ".into(),
+                            code_ref("master", cx).into_any_element().into(),
+                            ".".into(),
+                        ])
+                        .mt(SPACING)
+                        .text_size(FONT_SIZE_SM)
+                        .text_color(t.text_secondary),
                     )
                     .child(edit_config(cx))
                     .into_any_element()
@@ -938,20 +926,19 @@ impl PreferencesDialog {
                 cx,
             ))
             .child(
-                settings_description(cx)
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .child(
-                        "When enabled, Corvane will underline links in commit messages, comments, and other text fields. This can help make links easier to distinguish.\u{a0}",
-                    )
-                    .child(
-                        // `.example-link`: a non-interactive preview of the setting.
-                        div()
-                            .text_color(t.link)
-                            .when(underline, |d| d.underline())
-                            .child("This is an example link"),
-                    ),
+                paragraph(vec![
+                    "When enabled, Corvane will underline links in commit messages, comments, and other text fields. This can help make links easier to distinguish. ".into(),
+                    // `.example-link`: a non-interactive preview of the setting.
+                    div()
+                        .text_color(t.link)
+                        .when(underline, |d| d.underline())
+                        .child("This is an example link")
+                        .into_any_element()
+                        .into(),
+                ])
+                .mt(SPACING)
+                .text_size(FONT_SIZE_SM)
+                .text_color(t.text_secondary),
             )
             .child(div().mt(SPACING).child(checkbox_row(
                 "prefs-diff-check-marks",
@@ -965,16 +952,6 @@ impl PreferencesDialog {
             ))
             .into_any_element()
     }
-}
-
-/// `<Ref>`: inline monospace code.
-fn mono(text: &'static str, t: &crate::theme::GhdTheme) -> Div {
-    div()
-        .font_family(crate::theme::MONO_FONT)
-        .px(px(3.))
-        .rounded(px(3.))
-        .bg(t.box_alt_background)
-        .child(text)
 }
 
 impl Render for PreferencesDialog {
@@ -1076,12 +1053,14 @@ impl Render for PreferencesDialog {
                     id: "prefs-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "prefs-save",
                     label: "Save".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         weak.update(cx, |this, cx| this.save(cx)).ok();
                     }),

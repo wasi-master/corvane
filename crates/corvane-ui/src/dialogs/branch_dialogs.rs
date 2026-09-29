@@ -15,7 +15,7 @@ use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{checkbox, segmented_option, text_box};
+use crate::widgets::{Inline, checkbox, paragraph, segmented_option, text_box};
 
 /// `sanitizedRefName`: what GHD's `RefNameTextBox` turns the input into.
 pub fn sanitize_ref_name(input: &str) -> String {
@@ -232,21 +232,16 @@ impl Render for CreateBranchDialog {
                         }
                         _ => {
                             let is_default = default_branch.as_deref() == Some(current_name.as_str());
-                            description.push(
-                                div()
-                                    .flex()
-                                    .flex_row()
-                                    .flex_wrap()
-                                    .items_center()
-                                    .child("Your new branch will be based on your currently checked out branch (")
-                                    .child(ref_chip(current_name.clone(), cx))
-                                    .child(if is_default { ").\u{a0}" } else { ")." })
-                                    .when(is_default, |d| {
-                                        d.child(ref_chip(current_name.clone(), cx))
-                                            .child("\u{a0}is the default branch for your repository.")
-                                    })
-                                    .into_any_element(),
-                            );
+                            let mut parts: Vec<Inline> = vec![
+                                "Your new branch will be based on your currently checked out branch (".into(),
+                                ref_chip(current_name.clone(), cx).into_any_element().into(),
+                                "). ".into(),
+                            ];
+                            if is_default {
+                                parts.push(ref_chip(current_name.clone(), cx).into_any_element().into());
+                                parts.push(" is the default branch for your repository.".into());
+                            }
+                            description.push(paragraph(parts).into_any_element());
                         }
                     }
                 }
@@ -297,6 +292,7 @@ impl Render for CreateBranchDialog {
                     id: "create-branch-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
@@ -307,6 +303,7 @@ impl Render for CreateBranchDialog {
                         "Create Branch".into()
                     },
                     primary: true,
+                    disabled,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
                             return;
@@ -404,15 +401,13 @@ impl Render for RenameBranchDialog {
                         .gap(SPACING_HALF)
                         .child(octicon(Octicon::Alert, t.dialog_warning))
                         .child(
-                            div()
-                                .flex_1()
-                                .flex()
-                                .flex_row()
-                                .flex_wrap()
-                                .items_center()
-                                .child("This branch is tracking\u{a0}")
-                                .child(ref_chip(upstream, cx))
-                                .child("\u{a0}and renaming this branch will not change the branch name on the remote."),
+                            paragraph(vec![
+                                "This branch is tracking ".into(),
+                                ref_chip(upstream, cx).into_any_element().into(),
+                                " and renaming this branch will not change the branch name on the remote.".into(),
+                            ])
+                            .flex_1()
+                            .min_w_0(),
                         ),
                 )
             })
@@ -447,12 +442,14 @@ impl Render for RenameBranchDialog {
                     id: "rename-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "rename-ok",
                     label: format!("Rename {}", self.branch).into(),
                     primary: true,
+                    disabled,
                     on_click: Box::new(move |_, cx| {
                         if disabled {
                             return;
@@ -557,12 +554,14 @@ impl Render for DeleteBranchDialog {
                     id: "delete-branch-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "delete-branch-ok",
                     label: "Delete".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::delete_branch(repo, name.clone(), include_remote, cx);
@@ -681,12 +680,14 @@ impl Render for StashAndSwitchBranchDialog {
                     id: "switch-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "switch-ok",
                     label: "Switch Branch".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::checkout_branch(repo, branch.clone(), Some(action), cx);
@@ -729,12 +730,14 @@ impl Render for ConfirmOverwriteStashDialog {
                     id: "overwrite-cancel",
                     label: "Cancel".into(),
                     primary: true,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "overwrite-ok",
                     label: "Overwrite".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
                         Dispatcher::checkout_branch(
@@ -963,6 +966,7 @@ impl Render for MergeBranchDialog {
                     "Create a merge commit".into()
                 },
                 primary: true,
+                disabled: false,
                 on_click: Box::new(move |_, cx| {
                     let Some(branch) = selected_for_ok.clone() else {
                         return;

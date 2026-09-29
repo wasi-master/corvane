@@ -17,8 +17,8 @@ use crate::tab_bar::{VerticalTab, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    SelectHandler, call_to_action, labeled, link_button, radio_row, section_heading, select_button,
-    text_box,
+    SelectHandler, call_to_action, code_ref, labeled, link_button, paragraph, radio_row,
+    section_heading, select_button, text_box,
 };
 
 const TABS: [RepositorySettingsTab; 3] = [
@@ -197,24 +197,22 @@ impl RepositorySettingsDialog {
                 let repo = self.repo;
                 call_to_action(
                     "repo-settings-publish",
-                    div()
-                        .flex()
-                        .flex_row()
-                        .flex_wrap()
-                        .child("Publish your repository to GitHub. Need help?\u{a0}")
-                        .child(
-                            link_button(
-                                "repo-settings-remote-help",
-                                "Learn more about remote repositories.",
+                    paragraph(vec![
+                        "Publish your repository to GitHub. Need help? ".into(),
+                        link_button(
+                            "repo-settings-remote-help",
+                            "Learn more about remote repositories.",
+                            cx,
+                        )
+                        .on_click(|_, _, cx| {
+                            Dispatcher::open_url(
+                                "https://docs.github.com/en/get-started/getting-started-with-git/managing-remote-repositories",
                                 cx,
                             )
-                            .on_click(|_, _, cx| {
-                                Dispatcher::open_url(
-                                    "https://docs.github.com/en/get-started/getting-started-with-git/managing-remote-repositories",
-                                    cx,
-                                )
-                            }),
-                        ),
+                        })
+                        .into_any_element()
+                        .into(),
+                    ]),
                     "Publish",
                     move |_, cx| Dispatcher::show_popup(Popup::PublishRepository { repo }, cx),
                     cx,
@@ -230,32 +228,19 @@ impl RepositorySettingsDialog {
             .flex()
             .flex_col()
             .gap(SPACING)
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .items_center()
-                    .line_height(px(18.))
-                    .child("Editing\u{a0}")
-                    .child(
-                        div()
-                            .font_family(crate::theme::MONO_FONT)
-                            .px(px(3.))
-                            .rounded(px(3.))
-                            .bg(t.box_alt_background)
-                            .child(".gitignore"),
-                    )
-                    .child(
-                        ". This file specifies intentionally untracked files that Git should ignore. Files already tracked by Git are not affected.\u{a0}",
-                    )
-                    .child(
-                        link_button("repo-settings-gitignore-help", "Learn more about gitignore files", cx)
-                            .on_click(|_, _, cx| {
-                                Dispatcher::open_url("https://git-scm.com/docs/gitignore", cx)
-                            }),
-                    ),
-            )
+            .child(paragraph(vec![
+                "Editing ".into(),
+                code_ref(".gitignore", cx).into_any_element().into(),
+                ". This file specifies intentionally untracked files that Git should ignore. Files already tracked by Git are not affected. ".into(),
+                link_button(
+                    "repo-settings-gitignore-help",
+                    "Learn more about gitignore files",
+                    cx,
+                )
+                .on_click(|_, _, cx| Dispatcher::open_url("https://git-scm.com/docs/gitignore", cx))
+                .into_any_element()
+                .into(),
+            ]))
             .child(
                 // `textarea.gitignore { height: 130px }`
                 div()
@@ -477,12 +462,14 @@ impl Render for RepositorySettingsDialog {
                     id: "repo-settings-cancel",
                     label: "Cancel".into(),
                     primary: false,
+                    disabled: false,
                     on_click: Box::new(close),
                 },
                 DialogButton {
                     id: "repo-settings-save",
                     label: "Save".into(),
                     primary: true,
+                    disabled: !loaded,
                     on_click: Box::new(move |_, cx| {
                         if !loaded {
                             return;

@@ -81,6 +81,84 @@ pub type SelectHandler = std::rc::Rc<dyn Fn(usize, &mut Window, &mut App)>;
 /// Shared click handler.
 pub type ClickAction = std::rc::Rc<dyn Fn(&mut Window, &mut App)>;
 
+/// One piece of an inline paragraph.
+pub enum Inline {
+    Text(SharedString),
+    Element(AnyElement),
+}
+
+impl From<&'static str> for Inline {
+    fn from(s: &'static str) -> Self {
+        Inline::Text(s.into())
+    }
+}
+
+impl From<String> for Inline {
+    fn from(s: String) -> Self {
+        Inline::Text(s.into())
+    }
+}
+
+impl From<AnyElement> for Inline {
+    fn from(el: AnyElement) -> Self {
+        Inline::Element(el)
+    }
+}
+
+/// GHD `<p>` mixing text with `<LinkButton>` / `<Ref>` children. A flex-row
+/// text child never shrinks in GPUI, so long sentences would overflow;
+/// splitting the text into words gives real line wrapping around the inline
+/// elements. Text that touches an element with no space (`"(" + chip`,
+/// `chip + "."`) stays attached.
+pub fn paragraph(parts: Vec<Inline>) -> Div {
+    const GAP: f32 = 3.;
+    let mut row = div()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .items_center()
+        .gap_x(px(GAP))
+        .line_height(px(18.));
+    let mut attach_next = false;
+    for part in parts {
+        match part {
+            Inline::Text(text) => {
+                let starts_attached = !text.starts_with(char::is_whitespace);
+                let ends_attached = !text.ends_with(char::is_whitespace);
+                let mut first = true;
+                for word in text.split_whitespace() {
+                    let attach = first && starts_attached && attach_next;
+                    row = row.child(
+                        div()
+                            .when(attach, |d| d.ml(px(-GAP)))
+                            .child(SharedString::from(word.to_string())),
+                    );
+                    first = false;
+                }
+                if !first {
+                    attach_next = ends_attached;
+                }
+            }
+            Inline::Element(el) => {
+                row = row.child(div().when(attach_next, |d| d.ml(px(-GAP))).child(el));
+                attach_next = true;
+            }
+        }
+    }
+    row
+}
+
+/// `<Ref>`: inline monospace code on the alt background.
+pub fn code_ref(text: impl Into<SharedString>, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .font_family(crate::theme::MONO_FONT)
+        .px(px(3.))
+        .rounded(px(3.))
+        .bg(t.box_alt_background)
+        .child(text.into())
+}
+
 /// Dialog `h2` (`_dialog.scss`: 14 px semibold, 10 px below).
 pub fn section_heading(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
@@ -124,7 +202,7 @@ pub fn checkbox_row(
             false,
             cx,
         ))
-        .child(div().text_size(FONT_SIZE).child(label))
+        .child(div().flex_1().min_w_0().text_size(FONT_SIZE).child(label))
 }
 
 /// Chromium's native `<input type="radio">` with GHD's `accent-color`:
@@ -172,7 +250,7 @@ pub fn radio_row(
             selected,
             cx,
         ))
-        .child(div().text_size(FONT_SIZE).child(label))
+        .child(div().flex_1().min_w_0().text_size(FONT_SIZE).child(label))
 }
 
 /// Native `<select>` as macOS renders it in GHD: a textboxish 25 px popup
