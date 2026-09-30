@@ -120,6 +120,34 @@ are fake), so only views that render from that state can be compared: the
 signed-in blank slate, Welcome › Configure Git after "Skip this step",
 account pickers.
 
+## Linux
+
+GitHub Desktop 3.6.6 has no official Linux build; build it from source
+(`desktop/desktop` at `release-3.6.6`: `yarn install && yarn build:prod`,
+Node from `.nvmrc`) and point the harness at it. Both apps run on an X
+server (Xvfb works: `Xvfb :99 -screen 0 1920x1080x24`, a window manager such
+as openbox, `DISPLAY=:99`) and a session bus:
+
+```bash
+export PARITY_GHD_APP=$HOME/desktop/dist/desktop-linux-x64/desktop
+cargo build -p corvane --features snapshots
+dbus-run-session -- python3 tools/parity/parity.py main-window
+```
+
+- Scenarios keep macOS chords: `cmd` is Ctrl off macOS, and AppKit editing
+  commands are only sent on macOS. Menu items are matched case-insensitively
+  (GHD's Linux labels are sentence case).
+- Captures are the page: CDP leaves Electron's menu bar out, and Corvane's
+  control socket works in page coordinates below its own menu bar
+  (`PAGE_TOP` in `parity_control.rs`). Scale is 1.
+- `PARITY_GHD_ARGS` adds Chromium switches. Behind an intercepting HTTPS
+  proxy Chromium does not trust, GHD's first request opens an "Untrusted
+  server" dialog over every scenario; keep it offline, as Corvane is there:
+  `PARITY_GHD_ARGS=--proxy-server=http://127.0.0.1:9`.
+- GHD runs without the Chromium sandbox when the harness runs as root.
+- Masks placed for macOS text do not always cover the same text on Linux
+  (Noto Sans wraps differently from SF).
+
 ## Limits
 
 - Native chrome is not captured as pixels by either side (context menus,

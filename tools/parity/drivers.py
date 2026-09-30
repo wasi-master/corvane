@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import shlex
 import signal
 import socket
 import subprocess
@@ -167,6 +168,11 @@ class Ghd:
                     "--force-color-profile=srgb",
                     # Chromium refuses to run as root with its sandbox
                     *(["--no-sandbox"] if not IS_MAC and os.geteuid() == 0 else []),
+                    # extra switches, e.g. `--proxy-server=127.0.0.1:9` to keep
+                    # GHD offline where its network would fail differently
+                    # from Corvane's (an intercepting proxy Chromium does not
+                    # trust opens an "Untrusted server" dialog)
+                    *shlex.split(os.environ.get("PARITY_GHD_ARGS", "")),
                 ],
                 stdout=log,
                 stderr=log,
