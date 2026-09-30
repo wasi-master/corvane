@@ -39,6 +39,7 @@ gpui_kit::actions!(
         // App menu
         About,
         OpenSettings,
+        OpenFlags,
         InstallCli,
         Hide,
         HideOthers,

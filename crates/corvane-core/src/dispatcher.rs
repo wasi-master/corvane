@@ -26,7 +26,14 @@ pub struct Dispatcher;
 impl Dispatcher {
     /// Load persisted state, create the global entity, kick off git detection
     /// and a refresh of the selected repository.
-    pub fn init(store: Arc<Store>, settings: Settings, cx: &mut App) -> Entity<AppState> {
+    pub fn init(
+        store: Arc<Store>,
+        settings: Settings,
+        flag_overrides: crate::flags::FlagOverrides,
+        flags_env: crate::flags::EnvFlags,
+        cx: &mut App,
+    ) -> Entity<AppState> {
+        let flags = crate::flags::Flags::resolve(&flag_overrides, &flags_env);
         let repositories = store.repositories().unwrap_or_else(|err| {
             error!(?err, "could not load repositories");
             Vec::new()
@@ -60,6 +67,10 @@ impl Dispatcher {
         let state = cx.new(|_| AppState {
             store,
             settings,
+            flag_overrides,
+            flags_env,
+            flags: flags.clone(),
+            flags_at_launch: flags,
             git,
             git_error,
             repositories,
@@ -111,20 +122,26 @@ impl Dispatcher {
         state
     }
 
-    /// Watch the repository's worktree; each debounced change triggers a refresh.
+    /// Watch the repository's worktree; each debounced change triggers a
+    /// refresh. `202-fs-watcher` turns this off (GHD only refreshes on focus
+    /// and after its own actions); `203-fs-watcher-debounce-ms` is the wait.
     pub fn start_watching(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let path = {
+        let (path, debounce) = {
             let s = state.read(cx);
-            if s.watched_repo == Some(id) {
+            if s.watched_repo == Some(id) || !s.flags.bool(crate::flags::ids::FS_WATCHER) {
                 return;
             }
             let Some(repo) = s.repository(id) else {
                 return;
             };
-            repo.path.clone()
+            let debounce = s.flags.number(crate::flags::ids::FS_WATCHER_DEBOUNCE_MS);
+            (
+                repo.path.clone(),
+                std::time::Duration::from_millis(debounce.max(0) as u64),
+            )
         };
-        match crate::watcher::watch(path.clone()) {
+        match crate::watcher::watch(path.clone(), debounce) {
             Ok((watcher, rx)) => {
                 state.update(cx, |s, _| {
                     s.watcher = Some(watcher);

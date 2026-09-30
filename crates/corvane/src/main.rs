@@ -15,7 +15,7 @@ use corvane_core::{Dispatcher, Popup, Section, StoreExt, ThemeSetting};
 use corvane_ui::actions::*;
 use corvane_ui::workspace::Workspace;
 use gpui_kit::*;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 fn main() {
     // `GIT_ASKPASS` runs this same binary; answer git and exit before touching GPUI.
@@ -42,6 +42,15 @@ fn main() {
         }
     };
     let settings = store.settings().unwrap_or_default();
+    // Feature flags: the stored preset + overrides, then CORVANE_FLAGS for
+    // this session (bad entries are logged and skipped). Resolved here too
+    // because the theme is applied before `AppState` exists.
+    let flag_overrides = store.flags().unwrap_or_default();
+    let (flags_env, flag_errors) = corvane_core::flags::env::from_env();
+    for err in &flag_errors {
+        warn!("{err}");
+    }
+    let launch_flags = corvane_core::Flags::resolve(&flag_overrides, &flags_env);
     phase(started, "store opened");
 
     let app = gpui_kit::application().with_assets(assets::Assets);
@@ -82,6 +91,8 @@ fn main() {
             Ok("high-contrast") => ThemeSetting::HighContrast,
             _ => settings.theme,
         };
+        // `101-high-contrast-theme` off: High Contrast shows as Dark
+        let high_contrast = launch_flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME);
         // GHD `App.render`: the welcome flow is always drawn in the light theme
         let welcome_done = settings.welcome_completed;
         let shown_theme = if welcome_done {
@@ -99,9 +110,9 @@ fn main() {
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
         corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
         info!(zoom, "window zoom factor");
-        corvane_ui::init(cx, resolve_theme(shown_theme, cx));
+        corvane_ui::init(cx, resolve_theme_with(shown_theme, high_contrast, cx));
         let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);
-        let state = Dispatcher::init(store, settings, cx);
+        let state = Dispatcher::init(store, settings, flag_overrides, flags_env, cx);
         Dispatcher::load_custom_emoji(cx);
         Dispatcher::check_crash_reports(cx);
         // a notification click brings the (possibly hidden) window forward
@@ -115,7 +126,13 @@ fn main() {
         Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
         {
             let s = state.read(cx);
-            menus::install(cx, &s.editor_label(), &s.shell_label());
+            menus::install(
+                cx,
+                &s.editor_label(),
+                &s.shell_label(),
+                s.flags
+                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+            );
         }
         phase(started, "theme, keymap, menus and state installed");
 
@@ -126,34 +143,49 @@ fn main() {
         let mut last_theme = stored_theme;
         let mut chosen_theme = theme_setting;
         let mut last_welcome_done = welcome_done;
-        let mut last_labels = {
+        // the menu bar and the theme also depend on flags (401, 101)
+        let mut last_menu_key = {
             let s = state.read(cx);
-            (s.editor_label(), s.shell_label())
+            (
+                s.editor_label(),
+                s.shell_label(),
+                s.flags
+                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+            )
         };
+        let mut last_high_contrast = high_contrast;
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, welcome_done, labels) = {
+            let (theme, welcome_done, menu_key, high_contrast) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
                 (
                     s.settings.theme,
                     s.settings.welcome_completed,
-                    (s.editor_label(), s.shell_label()),
+                    (
+                        s.editor_label(),
+                        s.shell_label(),
+                        s.flags
+                            .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+                    ),
+                    s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                 )
             };
-            if labels != last_labels {
-                last_labels = labels;
-                menus::install(cx, &last_labels.0, &last_labels.1);
+            if menu_key != last_menu_key {
+                last_menu_key = menu_key;
+                menus::install(cx, &last_menu_key.0, &last_menu_key.1, last_menu_key.2);
             }
             let theme_changed = theme != last_theme;
             if theme_changed {
                 last_theme = theme;
                 chosen_theme = theme;
             }
-            if theme_changed || welcome_done != last_welcome_done {
+            let high_contrast_changed = high_contrast != last_high_contrast;
+            last_high_contrast = high_contrast;
+            if theme_changed || high_contrast_changed || welcome_done != last_welcome_done {
                 last_welcome_done = welcome_done;
                 apply_theme(
                     if welcome_done {
@@ -293,6 +325,7 @@ fn main() {
         //   update-available[:brew][:about|:notes] (a sample update in the ready /
         //   Homebrew state: the banner, plus About or the Release Notes with
         //   "Install and Restart")
+        //   flags[:<search>] (Corvane › Flags…, with the search box prefilled)
         if let Ok(popup) = std::env::var("CORVANE_POPUP") {
             // Deferred so a `CORVANE_ADD_REPO` repository has been added and refreshed.
             cx.spawn(async move |cx: &mut AsyncApp| {
@@ -310,6 +343,7 @@ fn main() {
                 Dispatcher::request_remove_repository(id, cx);
             }
         });
+        cx.on_action(|_: &OpenFlags, cx| Dispatcher::open_flags(None, cx));
         cx.on_action(|_: &OpenSettings, cx| {
             Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
         });
@@ -762,17 +796,33 @@ thread_local! {
         const { std::cell::Cell::new(ThemeSetting::System) };
 }
 
-/// The palette for `setting` given the system appearance and Settings ›
-/// Accessibility › Display › "Increase contrast".
+/// The palette for `setting` given the system appearance, Settings ›
+/// Accessibility › Display › "Increase contrast" and the
+/// `101-high-contrast-theme` flag (read from the app state).
 fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme {
+    let high_contrast = corvane_core::AppState::try_global(cx).is_none_or(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME)
+    });
+    resolve_theme_with(setting, high_contrast, cx)
+}
+
+/// `resolve_theme` before the app state exists: with `high_contrast` off a
+/// High Contrast setting shows as Dark and "Increase contrast" is ignored.
+fn resolve_theme_with(
+    setting: ThemeSetting,
+    high_contrast: bool,
+    cx: &App,
+) -> corvane_ui::theme::GhdTheme {
     let system_dark = matches!(
         cx.window_appearance(),
         WindowAppearance::Dark | WindowAppearance::VibrantDark
     );
     corvane_ui::theme::GhdTheme::for_setting(
-        setting,
+        corvane_core::flags::effective_theme(setting, high_contrast),
         system_dark,
-        corvane_platform::accessibility::increase_contrast(),
+        high_contrast && corvane_platform::accessibility::increase_contrast(),
     )
 }
 
@@ -795,6 +845,9 @@ fn focus_main_window(cx: &mut App) {
 fn open_dev_popup(popup: &str, cx: &mut App) {
     let selected = corvane_core::AppState::global(cx).read(cx).selected;
     match (popup, selected) {
+        (other, _) if other == "flags" || other.starts_with("flags:") => {
+            Dispatcher::open_flags(other.strip_prefix("flags:").map(str::to_string), cx)
+        }
         (other, _) if other.starts_with("preferences") => {
             use corvane_core::PreferencesTab as Tab;
             let tab = match other.strip_prefix("preferences:") {

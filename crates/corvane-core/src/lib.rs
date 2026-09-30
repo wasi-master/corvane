@@ -14,6 +14,7 @@ pub mod crash_reports;
 pub mod dispatcher;
 pub mod emoji;
 pub mod filter;
+pub mod flags;
 pub mod forks;
 pub mod integrations;
 pub mod list_selection;
@@ -49,6 +50,7 @@ pub use compare::{CompareForm, CompareState, ComparisonMode};
 pub use corvane_models::*;
 pub use dispatcher::Dispatcher;
 pub use emoji::CustomEmoji;
+pub use flags::{FlagId, FlagOverrides, Flags};
 pub use forks::UPSTREAM_REMOTE_NAME;
 pub use integrations::{PreferencesSave, RepositorySettingsSave};
 pub use mco::{

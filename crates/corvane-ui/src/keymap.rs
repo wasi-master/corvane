@@ -34,6 +34,8 @@ pub fn install(cx: &mut App) {
         KeyBinding::new("up", SelectPreviousFile, Some("CompareFilter")),
         KeyBinding::new("escape", ReorderCancel, Some("HistoryList")),
         KeyBinding::new("cmd-,", OpenSettings, None),
+        // ⌘⇧, - macOS delivers the shifted character, so the chord is `cmd-<`
+        KeyBinding::new("cmd-<", OpenFlags, None),
         KeyBinding::new("cmd-h", Hide, None),
         KeyBinding::new("alt-cmd-h", HideOthers, None),
         KeyBinding::new("cmd-q", Quit, None),
