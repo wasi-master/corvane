@@ -1,9 +1,12 @@
 //! History-operation dialogs: `ui/reset/warning-before-reset.tsx`,
 //! `ui/checkout/confirm-checkout-commit.tsx`, `ui/create-tag/create-tag-dialog.tsx`,
 //! `ui/undo/warn-local-changes-before-undo.tsx`.
+//!
+//! Deviation (`.docs/deviations.md` › History): Create a Tag has an
+//! optional Message field (flag `244`); GHD always tags with an empty message.
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -150,6 +153,8 @@ pub struct CreateTagDialog {
     repo: u64,
     sha: String,
     name: Entity<InputState>,
+    /// Flag `244`: the annotated tag's message.
+    message: Entity<TextareaState>,
 }
 
 /// GHD `MaxTagNameLength`
@@ -162,7 +167,13 @@ impl CreateTagDialog {
         // `RefNameTextBox` autoFocus
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
-        Self { repo, sha, name }
+        let message = cx.new(|cx| TextareaState::new(window, cx).rows(4));
+        Self {
+            repo,
+            sha,
+            name,
+            message,
+        }
     }
 }
 
@@ -179,6 +190,15 @@ impl Render for CreateTagDialog {
         };
         let disabled = error.is_some() || name.is_empty();
         let (repo, sha) = (self.repo, self.sha.clone());
+        let with_message = AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAG_MESSAGE);
+        let message = if with_message {
+            self.message.read(cx).value().trim().to_string()
+        } else {
+            String::new()
+        };
         let t = cx.ghd();
         let content = div()
             .flex()
@@ -193,7 +213,19 @@ impl Render for CreateTagDialog {
                 )
             })
             .child(div().child("Name"))
-            .child(text_box("tag-name", &self.name, None, window, cx));
+            .child(text_box("tag-name", &self.name, None, window, cx))
+            .when(with_message, |d| {
+                d.child(div().mt(SPACING_HALF()).child("Message (optional)"))
+                    .child(
+                        div()
+                            .border_1()
+                            .border_color(t.box_border_contrast)
+                            .rounded(BORDER_RADIUS())
+                            .bg(t.box_background)
+                            .overflow_hidden()
+                            .child(Textarea::new(&self.message)),
+                    )
+            });
         dialog(
             "dialog-create-tag",
             "Create a Tag",
@@ -216,7 +248,13 @@ impl Render for CreateTagDialog {
                             return;
                         }
                         Dispatcher::close_popup(cx);
-                        Dispatcher::create_tag(repo, name.clone(), sha.clone(), cx);
+                        Dispatcher::create_tag(
+                            repo,
+                            name.clone(),
+                            sha.clone(),
+                            message.clone(),
+                            cx,
+                        );
                     }),
                 },
             ],
