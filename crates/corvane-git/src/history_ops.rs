@@ -229,6 +229,9 @@ mod tests {
         };
         run(&["init", "-q", "-b", "main"]);
         run(&["config", "commit.gpgsign", "false"]);
+        // the code under test commits too; a CI runner has no identity
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
         std::fs::write(dir.path().join("a.txt"), "one\n").unwrap();
         run(&["add", "."]);
         run(&["commit", "-q", "-m", "first"]);
