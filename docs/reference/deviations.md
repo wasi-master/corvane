@@ -51,6 +51,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Undo deleting a branch (Corvane addition): after a local branch is deleted a "Deleted branch **name**" banner stays up for 15 s (like GHD's other Undo banners); its Undo runs `git branch --no-track <name> <old tip>` and shows "Restored branch **name**". The upstream setting is not restored, and a branch also deleted on the remote stays deleted there. Deleting a remote branch shows no banner. GHD offers no undo. Flag: `311-undo-delete-branch`.
 - The branch list's Recent group holds a configurable number of branches (5 by default, 0 hides it); GHD's `RecentBranchesLimit` is fixed at 5. Flag: `413-recent-branches-count`.
 - Deleting a branch that another worktree has checked out, or deleting the current branch while the default branch is checked out in another worktree, fails with an error that names that worktree and says what to switch first; GHD shows git's "used by worktree at" messages. Flag: `415-explain-branch-in-other-worktree`.
+- Deleting the checked-out branch switches to the default branch and then fetches its upstream remote in the background, so the commits of a just-merged pull request show up; GHD switches without fetching. Flag: `414-fetch-after-deleting-current-branch`.
 
 ## Tutorial
 

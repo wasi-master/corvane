@@ -1920,10 +1920,20 @@ impl Dispatcher {
             branch: branch.name.clone(),
             sha,
         });
-        let explain_worktrees = Self::state(cx)
-            .read(cx)
-            .flags
-            .bool(crate::flags::ids::EXPLAIN_BRANCH_IN_OTHER_WORKTREE);
+        let (fetch_after, explain_worktrees) = {
+            let flags = &Self::state(cx).read(cx).flags;
+            (
+                flags.bool(crate::flags::ids::FETCH_AFTER_DELETING_CURRENT_BRANCH),
+                flags.bool(crate::flags::ids::EXPLAIN_BRANCH_IN_OTHER_WORKTREE),
+            )
+        };
+        // Corvane (`414-fetch-after-deleting-current-branch`): the default
+        // branch this worktree switched to is brought up to date, so a merged
+        // pull request shows up in it (GHD does not fetch)
+        let fetch_remote = default
+            .as_ref()
+            .filter(|_| fetch_after)
+            .map(|d| d.upstream_remote_name().map(str::to_owned));
         let deleted = branch.name.clone();
         Self::run_history_op_then(
             id,
@@ -1989,6 +1999,9 @@ impl Dispatcher {
             move |cx| {
                 if let Some(banner) = undo {
                     Self::set_banner(banner, cx);
+                }
+                if let Some(remote) = fetch_remote {
+                    Self::fetch_remote_then(id, remote.as_deref(), true, |_, _| {}, cx);
                 }
             },
             cx,

@@ -769,6 +769,20 @@ registry! {
         upstream: &[Upstream::issue(14311)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Fetch after deleting the checked-out branch.
+    FETCH_AFTER_DELETING_CURRENT_BRANCH = 414 "fetch-after-deleting-current-branch" {
+        title: "Fetch after deleting the current branch",
+        summary: "Deleting the checked-out branch switches to the default branch and then fetches \
+                  its remote in the background, so the commits of a just-merged pull request \
+                  show up without a manual Fetch.",
+        ghd_behaviour: "Switches to the default branch without fetching.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15984)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
     /// A clear error when a branch is checked out in another worktree.
     EXPLAIN_BRANCH_IN_OTHER_WORKTREE = 415 "explain-branch-in-other-worktree" {
         title: "Explain branches checked out in another worktree",
