@@ -66,6 +66,9 @@ pub struct CherryPickSnapshot {
 pub struct RebaseSnapshot {
     pub commits: Vec<CommitOneLine>,
     pub progress: McoProgress,
+    /// A branch at the rebase's `onto` commit ([`branch_at`]), for a rebase
+    /// started elsewhere.
+    pub base_branch: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -138,7 +141,7 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
     if next == 0 || last == 0 {
         return None;
     }
-    let commits = commits_between(git, workdir, &base_branch_tip, &original_branch_tip)
+    let commits = commits_between(git.clone(), workdir, &base_branch_tip, &original_branch_tip)
         .ok()
         .flatten()?;
     if commits.is_empty() {
@@ -148,7 +151,10 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
         .get(next - 1)
         .map(|c| c.summary.clone())
         .unwrap_or_default();
+    let target = read_trimmed(dir.join("head-name"));
+    let base_branch = branch_at(git, workdir, &base_branch_tip, target.as_deref());
     Some(RebaseSnapshot {
+        base_branch,
         progress: McoProgress {
             value: format_rebase_value(next as f32 / last as f32),
             position: next,
@@ -157,6 +163,36 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
         },
         commits,
     })
+}
+
+/// A branch whose tip is `sha` (`for-each-ref --points-at`), local ones
+/// first, never `except` (a full ref name) or a remote's `HEAD`.
+pub fn branch_at(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    sha: &str,
+    except: Option<&str>,
+) -> Option<String> {
+    let out = GitCommand::new(git)
+        .args([
+            "for-each-ref",
+            "--points-at",
+            sha,
+            "--format=%(refname)",
+            "refs/heads",
+            "refs/remotes",
+        ])
+        .current_dir(workdir)
+        .run()
+        .ok()?;
+    let text = out.stdout_string().ok()?;
+    let refs: Vec<&str> = text
+        .lines()
+        .filter(|r| Some(*r) != except && !r.ends_with("/HEAD"))
+        .collect();
+    let local = refs.iter().find_map(|r| r.strip_prefix("refs/heads/"));
+    let remote = refs.iter().find_map(|r| r.strip_prefix("refs/remotes/"));
+    local.or(remote).map(str::to_string)
 }
 
 // ---------------------------------------------------------------------------
@@ -1310,6 +1346,15 @@ mod tests {
         assert_eq!(result, RebaseResult::ConflictsEncountered);
         let state = rebase_internal_state(path).unwrap();
         assert_eq!(state.target_branch, "feature");
+        assert_eq!(
+            branch_at(
+                git.clone(),
+                path,
+                &state.base_branch_tip,
+                Some("refs/heads/feature")
+            ),
+            Some("main".to_string())
+        );
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         let conflicted = status
             .files
