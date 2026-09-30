@@ -15,6 +15,9 @@
 //! Deviation (`269-shallow-clone`): a "Shallow clone" checkbox under the
 //! local path clones with `--depth 1`.
 //!
+//! Deviation (`358-clone-path-includes-owner`): the path derived from the
+//! URL can be `<clone dir>/<owner>/<name>` rather than `<clone dir>/<name>`.
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -257,14 +260,12 @@ impl CloneRepositoryDialog {
             .clone()
             .unwrap_or_else(corvane_platform::paths::default_clone_dir);
         let url = self.url.read(cx).value().to_string();
-        let derived = match corvane_git::normalize_clone_url(&url)
-            .and_then(|u| corvane_git::repository_name_from_url(&u))
-        {
-            Some(name) => base.join(name),
-            None => base,
-        }
-        .display()
-        .to_string();
+        let with_owner = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_PATH_INCLUDES_OWNER);
+        let derived = derived_path(&base, &url, with_owner).display().to_string();
         if derived != current {
             self.last_derived = derived.clone();
             self.path
@@ -652,6 +653,27 @@ impl CloneRepositoryDialog {
     }
 }
 
+/// `<clone dir>/<name>` for a clone URL (`<clone dir>/<owner>/<name>` with
+/// `358-clone-path-includes-owner` when the URL has an owner), the clone
+/// dir itself when the input is not a URL yet.
+fn derived_path(base: &Path, url: &str, with_owner: bool) -> PathBuf {
+    let Some(url) = corvane_git::normalize_clone_url(url) else {
+        return base.to_path_buf();
+    };
+    let Some(name) = corvane_git::repository_name_from_url(&url) else {
+        return base.to_path_buf();
+    };
+    let owner = with_owner
+        .then(|| corvane_core::clone_info::parse_repository_identifier(&url))
+        .flatten()
+        .map(|id| id.owner)
+        .filter(|owner| !owner.contains(['/', '\\']) && owner != ".." && owner != ".");
+    match owner {
+        Some(owner) => base.join(owner).join(name),
+        None => base.join(name),
+    }
+}
+
 /// `validateEmptyFolder`: the destination must be missing or an empty folder.
 fn validate_empty_folder(path: &Path) -> Option<&'static str> {
     if path.as_os_str().is_empty() {
@@ -774,5 +796,27 @@ impl Render for CloneRepositoryDialog {
             window,
             cx,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn derived_path_can_include_the_owner() {
+        let base = Path::new("/c");
+        let url = "https://github.com/octocat/Hello.git";
+        assert_eq!(derived_path(base, url, false), Path::new("/c/Hello"));
+        assert_eq!(derived_path(base, url, true), Path::new("/c/octocat/Hello"));
+        assert_eq!(
+            derived_path(base, "octocat/Hello", true),
+            Path::new("/c/octocat/Hello")
+        );
+        assert_eq!(
+            derived_path(base, "git@ghe.corp:team/app.git", true),
+            Path::new("/c/team/app")
+        );
+        assert_eq!(derived_path(base, "nope", true), Path::new("/c"));
     }
 }

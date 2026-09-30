@@ -671,6 +671,21 @@ registry! {
         code: &["crates/corvane-ui/src/cloneable_repositories.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-ui/src/no_repositories.rs"],
     },
 
+    /// Clone paths mirror owner/name.
+    CLONE_PATH_INCLUDES_OWNER = 358 "clone-path-includes-owner" {
+        title: "Clone into an owner folder",
+        summary: "The local path Clone a Repository suggests is <clone folder>/<owner>/<name> \
+                  (for example GitHub/desktop/desktop), so repositories with the same name from \
+                  different owners don't collide.",
+        ghd_behaviour: "Suggests <clone folder>/<name>.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21293), Upstream::issue(5449)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
