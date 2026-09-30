@@ -1,0 +1,140 @@
+%YAML 1.2
+---
+# source.lex.regexp (source.lex.regexp): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-grammars via GitHub Linguist v9.7.0 (license: isc).
+name: source.lex.regexp
+scope: source.lex.regexp
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_alternation:
+  - match: \|
+    scope: keyword.operator.logical.or.lex
+  repo_anchors:
+  - match: \^
+    scope: keyword.control.anchor.line-start.lex
+  - match: \$
+    scope: keyword.control.anchor.line-end.lex
+  - match: (<<)EOF(>>)
+    scope: keyword.control.anchor.eof.lex
+    captures:
+      1: punctuation.definition.angle.bracket.begin.lex
+      2: punctuation.definition.angle.bracket.end.lex
+  repo_class:
+  - match: (\[)(\^)?(-)?
+    captures:
+      1: punctuation.definition.character-class.set.begin.lex
+      2: keyword.operator.logical.not.lex
+      3: constant.single.character.character-class.lex
+    push:
+    - meta_scope: meta.character-class.set.lex
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.character-class.set.end.lex
+    - include: repo_escapes
+    - include: repo_expressions
+    - match: -(?!\])
+      scope: punctuation.separator.range.dash.lex
+    - match: .
+      scope: constant.single.character.character-class.lex
+  repo_escapes:
+  - match: \\[0-7]{3}
+    scope: constant.character.escape.codepoint.octal.lex
+  - match: \\[xX][A-Fa-f0-9]{2}
+    scope: constant.character.escape.codepoint.hexadecimal.hex.lex
+  - match: \\.
+    scope: constant.character.escape.lex
+  repo_expansion:
+  - match: (\{)([^{}\s]+)(\})
+    scope: meta.expansion.lex
+    captures:
+      1: punctuation.definition.expansion.bracket.curly.begin.lex
+      2: variable.parameter.reference.lex
+      3: punctuation.definition.expansion.bracket.curly.end.lex
+  repo_expressions:
+  - match: '(?x)
+
+      (\[:)
+
+      (alnum|alpha|blank|cntrl|digit|graph
+
+      |lower|print|punct|space|upper|xdigit)
+
+      (:\])'
+    captures:
+      1: punctuation.definition.character-class.set.begin.lex
+      2: support.constant.posix-class.lex
+      3: punctuation.definition.character-class.set.end.lex
+  repo_lookahead:
+  - match: /
+    scope: keyword.operator.logical.and.lookahead.lex
+  repo_main:
+  - include: repo_wildcard
+  - include: repo_alternation
+  - include: repo_lookahead
+  - include: repo_anchors
+  - include: repo_start-condition
+  - include: repo_quantifier
+  - include: repo_string
+  - include: repo_expansion
+  - include: repo_quantifier-range
+  - include: repo_class
+  - include: repo_subpattern
+  - include: repo_escapes
+  repo_quantifier:
+  - match: '[*+?]'
+    scope: keyword.operator.quantifier.lex
+  repo_quantifier-range:
+  - match: ({)(?:([0-9]+)(?:(,)([0-9]*))?|(,)([0-9]+))(})
+    scope: keyword.operator.quantifier.specific.lex
+    captures:
+      1: punctuation.definition.quantifier.bracket.curly.begin.lex
+      2: keyword.operator.quantifier.min.lex
+      3: punctuation.delimiter.comma.lex
+      4: keyword.operator.quantifier.max.lex
+      5: punctuation.delimiter.comma.lex
+      6: keyword.operator.quantifier.max.lex
+      7: punctuation.definition.quantifier.bracket.curly.end.lex
+  repo_start-condition:
+  - match: <
+    captures:
+      0: punctuation.definition.angle.bracket.begin.lex
+    push:
+    - meta_scope: meta.start-condition.lex
+    - match: '>|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.angle.bracket.end.lex
+    - match: \*
+      scope: keyword.operator.wildcard.condition.lex
+    - match: ','
+      scope: punctuation.delimiter.separator.comma.lex
+    - match: '[^<>*,\s]+'
+      scope: constant.language.condition.name.lex
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.lex
+    push:
+    - meta_scope: string.quoted.double.lex
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lex
+    - include: repo_escapes
+  repo_subpattern:
+  - match: \(
+    captures:
+      0: punctuation.definition.group.begin.lex
+    push:
+    - meta_scope: meta.group.regexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.lex
+    - include: repo_main
+  repo_wildcard:
+  - match: \.
+    scope: constant.character.wildcard.dot.match.any.lex

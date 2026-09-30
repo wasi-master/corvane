@@ -1,0 +1,59 @@
+%YAML 1.2
+---
+# Wollok (source.wollok): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/wollok-sublime via GitHub Linguist v9.7.0 (license: mit).
+name: Wollok
+scope: source.wollok
+file_extensions:
+- wlk
+contexts:
+  main:
+  - include: repo_general
+  repo_commentBlock:
+  - match: (//).*
+    scope: comment.line.double-slash.source.wollok
+  - match: /\*
+    push:
+    - meta_scope: comment.block.source.wollok
+    - match: \*/
+      pop: true
+  repo_general:
+  - include: repo_commentBlock
+  - include: repo_operators
+  - include: repo_keywords
+  - include: repo_numbers
+  - include: repo_stringSingleQuote
+  - include: repo_stringDoubleQuote
+  repo_keywords:
+  - match: \b(object|class|package|program|test|describe|method|override|constructor|native|var|const|property|inherits|new|if|else|self|super|import|null|true|false|return|throw|then always|try|catch|mixed with|with|mixin|fixture)\b
+    scope: keyword.source.wollok
+  repo_numbers:
+  - match: (?<![\d.])\s0x[a-fA-F\d]+|\b\d+(\.\d+)?([eE]-?\d+)?|\.\d+([eE]-?\d+)?
+    scope: constant.numeric.source.wollok
+  repo_operators:
+  - match: (\b(and|or|not)\b)|(\+|-|%|#|\*|\/|\^|==?|~=|<=?|>=?|(?<!\.)\.{2}(?!\.))
+    scope: keyword.operator.source.wollok
+  repo_stringDoubleQuote:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.source.wollok
+    push:
+    - meta_scope: string.quoted.double.source.wollok
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.source.wollok
+    - match: \\(\d{1,3}|.)
+      scope: constant.character.escape.source.wollok
+  repo_stringSingleQuote:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.source.wollok
+    push:
+    - meta_scope: string.quoted.single.source.wollok
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.source.wollok
+    - match: \\(\d{1,3}|.)
+      scope: constant.character.escape.source.wollok

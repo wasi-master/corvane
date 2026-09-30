@@ -1,0 +1,373 @@
+%YAML 1.2
+---
+# Toit (source.toit): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/toitware/ide-tools.git via GitHub Linguist v9.7.0 (license: mit).
+name: Toit
+scope: source.toit
+file_extensions:
+- toit
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_import-section
+  - include: repo_export-section
+  - include: repo_class-section
+  - include: repo_toplevel-section
+  repo_character:
+  - match: \'[^'\\]'|'\\[0abfnrtv$\\\"'nr]'|'\\x[a-fA-F0-9]{2}'|'\\u[a-fA-F0-9]{4}'
+    scope: constant.numeric.character.toit
+  - match: \'\\?..+\'
+    scope: invalid.illegal.character.toit
+  repo_class-section:
+  - match: ^(?:(abstract)[ ]+)?(class|interface|mixin|monitor)(?!-)\b
+    captures:
+      1: keyword.control.toit
+      2: keyword.control.toit
+    push:
+    - meta_scope: meta.class.toit
+    - match: ^(?=[^\s/]|/[^/*])
+      pop: true
+    - include: repo_comment
+    - match: ^(?=\s\s[^\s])
+      push:
+      - meta_scope: meta.class.members
+      - match: ^(?=[^\s/]|/[^/*])
+        pop: true
+      - include: repo_comment
+      - include: repo_member-section
+    - match: (\b(?<!-)[\w-]+(?!-)\b)
+      captures:
+        1: storage.type.class.toit
+      push:
+      - meta_scope: meta.class.signature
+      - match: ':'
+        pop: true
+      - include: repo_comment
+      - match: \b(?<!-)(extends)\s+([\p{L}_][\w-]*)(?!-)\b
+        scope: meta.extends.clause.toit
+        captures:
+          1: keyword.control.extends.toit
+          2: entity.other.inherited-class
+      - match: \b(?<!-)extends(?!-)\b
+        scope: keyword.control.extends.toit
+      - match: \b(?<!-)implements(?!-)\b
+        scope: keyword.control.implements.toit
+      - match: \bwith\b
+        scope: keyword.control.with.toit
+      - include: repo_type-name
+  repo_comment:
+  - include: repo_multi-line-comment
+  - include: repo_single-line-comment
+  repo_constant:
+  - match: \b(?<!-)(null|true|false)(?!-)\b
+    scope: constant.language.toit
+  - match: \b(?<!-)_*[A-Z](-?[A-Z0-9_])+(?!-)\b
+    scope: constant.numeric.capitalized_user_constants.toit
+  repo_control:
+  - match: (:|\?|;)
+    scope: keyword.control.toit
+  repo_delimited:
+  - match: (\()
+    captures:
+      1: keyword.operator.toit
+    push:
+    - meta_scope: meta.delimited.parenthesis
+    - match: (\))
+      pop: true
+      captures:
+        1: keyword.operator.toit
+    - include: repo_expressions
+  - match: (#?\[)
+    captures:
+      1: keyword.operator.toit
+    push:
+    - meta_scope: meta.delimited.brackets
+    - match: (\])
+      pop: true
+      captures:
+        1: keyword.operator.toit
+    - include: repo_expressions
+  - match: (\{)
+    captures:
+      1: keyword.operator.toit
+    push:
+    - meta_scope: meta.delimited.braces
+    - match: (\})
+      pop: true
+      captures:
+        1: keyword.operator.toit
+    - include: repo_expressions
+  repo_empty-string:
+  - match: '""(?!")'
+    scope: string.quoted.double.toit
+  repo_export-section:
+  - match: ^export(?!-)\b
+    captures:
+      0: constant.language.import-export-all.export.toit
+    push:
+    - meta_scope: meta.export.toit
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_comment
+    - match: \*
+      scope: constant.language.import-export-all.export_all.toit
+  repo_expressions:
+  - include: repo_variable-declaration
+  - include: repo_named-arg
+  - include: repo_delimited
+  - include: repo_comment
+  - include: repo_character
+  - include: repo_number
+  - include: repo_operator-assignment
+  - include: repo_operator
+  - include: repo_control
+  - include: repo_keyword
+  - include: repo_constant
+  - include: repo_string
+  - include: repo_primitive
+  - include: repo_special-variable
+  - include: repo_type-name
+  - include: repo_variable
+  repo_import-section:
+  - match: ^import(?!-)\b
+    captures:
+      0: constant.language.import-export-all.import.toit
+    push:
+    - meta_scope: meta.import.toit
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_comment
+    - match: \b(?<!-)show(?!-)\b
+      scope: constant.language.import-export-all.show.toit
+    - match: \b(?<!-)as(?!-)\b
+      scope: constant.language.import-export-all.as.toit
+    - match: \*
+      scope: constant.language.import-export-all.import_all.toit
+  repo_interpolated:
+  - match: (\$\()
+    captures:
+      1: keyword.control.string_interpolation.toit
+    push:
+    - meta_scope: variable.other.interpolated.delimited.color_hack.toit
+    - match: (\))
+      pop: true
+      captures:
+        1: keyword.control.string_interpolation.toit
+    - include: repo_expressions
+  - match: (\$)([\p{L}_][\w-]*(?:\.[\p{L}_][\w-]*|\[([^]]*)\])*)
+    scope: variable.other.interpolated.color_hack.toit
+    captures:
+      1: keyword.control.string_interpolation.toit
+      2: meta.interpolated.expression
+      3: meta.interpolated.expression
+  repo_invalid_non_expression:
+  - match: \b(?<!-)(assert|and|or|not|if|for|else|try|finally|call|while|break|continue|throw|static|abstract|return)(?!-)\b
+    scope: invalid.illegal.non_expression.toit
+  - match: \b(?<!-)(is|as)(?!-)\b
+    scope: invalid.illegal.non_expression.toit
+  - match: \b(?<!-)(super|this)(?!-)\b
+    scope: invalid.illegal.non_expression.toit
+  repo_keyword:
+  - match: \b(?<!-)(assert|and|or|not|if|for|else|try|finally|call|while|break|continue|throw|static|abstract|return)(?!-)\b
+    scope: keyword.control.toit
+  - match: \b(?<!-)unreachable(?!-)\b
+    scope: keyword.control.pseudo.toit
+  - match: \b(?<!-)(is|as)(?!-)\b
+    scope: keyword.control.type_check.toit
+  repo_member-section:
+  - include: repo_comment
+  - match: \b(?<!-)(static|abstract|operator)(?!-)\b
+    scope: keyword.control.toit
+  - match: (?<!-)\b(constructor)(?!-)\b(\.[\p{L}_][\w-]*)?|([\p{L}_][\w-]*[=]?|==|<<|>>>|>>|<=|>=|<|>|\+|-|\*|/|%|\^|&|\||\[\]\=|\[\]|\[\.\.\])
+    captures:
+      1: keyword.control.toit
+      2: storage.type.function
+      3: storage.type.function
+    push:
+    - meta_scope: meta.member.signature
+    - match: (?=\:(?![\p{L}_])|^\s{0,4}(?:[^\s/]|/[^/*]))
+      pop: true
+    - include: repo_signature-part2
+  - include: repo_type-annotation
+  - match: (:=|::=)|(:)|^\s{4}(?=[^\s/])
+    captures:
+      1: keyword.control.toit
+    push:
+    - meta_scope: meta.member.body
+    - match: (?=^\s{0,2}([^\s/]|/[^/*]))
+      pop: true
+    - include: repo_expressions
+  repo_multi-line-comment:
+  - match: \s*(/\*)(?!\*)
+    captures:
+      0: punctuation.definition.comment.toit
+    push:
+    - meta_scope: comment.block.toit
+    - match: (\*/)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.toit
+    - include: repo_multi-line-comment
+  - match: \s*(/\*\*/)
+    scope: comment.block.toit
+    captures:
+      0: punctuation.definition.comment.toit
+  - match: \s*(/\*\*)(?!/)
+    captures:
+      0: punctuation.definition.comment.toit
+    push:
+    - meta_scope: comment.block.documentation.toit
+    - match: (\*/)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.toit
+    - include: repo_multi-line-comment
+  repo_multi-line-string:
+  - match: '"""'
+    push:
+    - meta_scope: string.quoted.double.toit
+    - match: '"""(?!")|"""""'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.toit
+    - include: repo_interpolated
+  repo_named-arg:
+  - match: --no-[\p{L}_][\w-]*
+    scope: variable.language.special.named.toit
+  - match: --[\p{L}_][\w-]*
+    scope: variable.language.special.named.toit
+  repo_number:
+  - include: repo_number-double
+  - include: repo_number-decimal
+  repo_number-decimal:
+  - match: (?<!\w)-?([0-9](_(?=[0-9]))?)+(?!-)\b
+    scope: constant.numeric.dec.toit
+  - match: (?<!\w)-?0[xX]([0-9a-fA-F](_(?=[0-9a-fA-F]))?)+(?!-)\b
+    scope: constant.numeric.dec.hex.toit
+  - match: (?<!\w)-?0[bB]([01](_(?=[01]))?)+(?!-)\b
+    scope: constant.numeric.dec.bin.toit
+  repo_number-double:
+  - match: (?<!\w)-?([0-9](_(?=[0-9]))?)+[eE][+-]?([0-9](_(?=[0-9]))?)+
+    scope: constant.numeric.float.toit
+  - match: (?<!\w)-?([0-9](_(?=[0-9]))?)+\.([0-9](_(?=[0-9]))?)+([eE][+-]?([0-9](_(?=[0-9]))?)+)?
+    scope: constant.numeric.float.toit
+  - match: (?<!\w)-?\.([0-9](_(?=[0-9]))?)+([eE][+-]?([0-9](_(?=[0-9]))?)+)?
+    scope: constant.numeric.float.toit
+  - match: (?<!\w)-?0[xX]([0-9a-fA-F](_(?=[0-9a-fA-F]))?)+[pP][+-]?([0-9](_(?=[0-9]))?)+
+    scope: constant.numeric.float.hex.toit
+  - match: (?<!\w)-?0[xX]([0-9a-fA-F](_(?=[0-9a-fA-F]))?)+\.([0-9a-fA-F](_(?=[0-9a-fA-F]))?)+[pP][+-]?([0-9](_(?=[0-9]))?)+
+    scope: constant.numeric.float.hex.toit
+  - match: (?<!\w)-?0[xX]\.([0-9a-fA-F](_(?=[0-9a-fA-F]))?)+[pP][+-]?([0-9](_(?=[0-9]))?)+
+    scope: constant.numeric.float.hex.toit
+  repo_operator:
+  - match: (!=|==|>=|<=|<|>|\*|\+|-|%|//|/|<<|>>>|>>|&|\||\^|~|[.][.])
+    scope: keyword.control.toit
+  repo_operator-assignment:
+  - match: (=|<<=|>>>=|>>=|//=|\+=|-=|/=|\*=|%=|~=|\^=|&=)
+    scope: keyword.control.toit
+  repo_primitive:
+  - match: \#primitive(?!-)\b
+    scope: support.function.builtin.toit
+  repo_signature-part2:
+  - include: repo_type-annotation
+  - include: repo_comment
+  - match: (--)?(this)?\.([\p{L}_][\w-]*)
+    scope: meta.parameter.setting.toit
+    captures:
+      1: variable.parameter.named.setting.toit
+      3: variable.parameter.named.setting.toit
+  - match: (--)?(:)?([\p{L}_][\w-]*)
+    scope: variable.parameter.toit
+    captures:
+      2: keyword.control.block_marker.toit
+  - match: (=)\s*
+    captures:
+      1: keyword.control.toit
+    push:
+    - meta_scope: meta.parameter.default_value.toit
+    - match: '^|\s|:'
+      pop: true
+    - include: repo_comment
+    - include: repo_character
+    - include: repo_number
+    - include: repo_constant
+    - include: repo_string
+    - include: repo_type-name
+    - include: repo_delimited
+    - include: repo_keyword
+  repo_single-line-comment:
+  - match: \s*(//)
+    captures:
+      1: comment.line.double-slash.toit
+    push:
+    - meta_content_scope: comment.line.double-slash.toit
+    - match: (?=^)
+      pop: true
+  repo_single-line-string:
+  - match: '"(?!")'
+    push:
+    - meta_scope: string.quoted.double.toit
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.toit
+    - include: repo_interpolated
+  repo_special-variable:
+  - match: \b(?<!-)(this|it|super)(?!-)\b
+    scope: variable.language.special.toit
+  repo_string:
+  - include: repo_empty-string
+  - include: repo_single-line-string
+  - include: repo_multi-line-string
+  repo_toplevel-section:
+  - include: repo_comment
+  - include: repo_type-annotation
+  - match: ([\p{L}_][\w-]*[=]?)
+    captures:
+      1: storage.type.function
+    push:
+    - meta_scope: meta.toplevel.signature
+    - match: (?=\:(?![\p{L}_])|^\s{0,2}(?:[^\s/]|/[^/*]))
+      pop: true
+    - include: repo_signature-part2
+  - match: (:=|::=)|(:)|^\s{2}(?=[^\s/])
+    captures:
+      1: keyword.control.toit
+    push:
+    - meta_scope: meta.toplevel.body
+    - match: (?=^([^\s/]|/[^/*]))
+      pop: true
+    - include: repo_expressions
+  repo_type-annotation:
+  - match: (/|->) *(?=[\p{L}_])
+    captures:
+      1: keyword.control.return_type.toit
+    push:
+    - meta_scope: entity.name.type.annotation.toit
+    - match: (?=[^\w\-.?])
+      pop: true
+  repo_type-name:
+  - match: \b(?<!-)_?[A-Z][A-Z_-]*[a-z][\w-]*(?<!-)\b[?]?
+    scope: entity.name.type.toit
+  - match: \b(?<!-)_?[A-Z][0-9]*_?(?<!-)\b[?]?
+    scope: entity.name.type.toit
+  - match: \b(?<!-)(int|bool|float|string)(?<!-)\b[?]?
+    scope: entity.name.type.shorts.toit
+  - match: \b(?<!-)(any|none)(?<!-)\b
+    scope: entity.name.type.any_none.toit
+  repo_variable:
+  - match: \b(?<!-)[\p{L}_][\w-]*(?<!-)\b
+    scope: entity.name.function.call.toit
+  repo_variable-declaration:
+  - match: ([\p{L}_][\w-]*)\s*(\:=|\:\:=)
+    scope: meta.variable.toit
+    captures:
+      1: variable.other.toit
+      2: keyword.control.toit
+  - match: ([\p{L}_][\w-]*)\s*(\/)\s*([_\w.]+[?]?)\s*(\:=|\:\:=)
+    scope: meta.variable.toit
+    captures:
+      1: variable.other.toit
+      2: keyword.control.toit
+      3: meta.variable.type.toit
+      4: keyword.control.toit

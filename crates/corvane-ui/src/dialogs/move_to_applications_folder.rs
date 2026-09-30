@@ -41,6 +41,10 @@ impl Render for MoveToApplicationsFolderDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let weak = cx.weak_entity();
         let ask_again = self.ask_again;
+        // `103-product-name` (GHD: "GitHub Desktop")
+        let name = corvane_core::AppState::try_global(cx).map_or("Corvane".to_string(), |s| {
+            s.read(cx).product_name().to_string()
+        });
         let content = div()
             .flex()
             .flex_col()
@@ -52,15 +56,15 @@ impl Render for MoveToApplicationsFolderDialog {
                     cx.notify();
                 }),
             )
-            .child(
-                "We've detected that you're not running Corvane from the Applications folder of \
+            .child(format!(
+                "We've detected that you're not running {name} from the Applications folder of \
                  your machine. This could cause problems with the app, including impacting your \
-                 ability to sign in.",
-            )
-            .child(
-                "Do you want to move Corvane to the Applications folder now? This will also \
-                 restart the app.",
-            )
+                 ability to sign in."
+            ))
+            .child(format!(
+                "Do you want to move {name} to the Applications folder now? This will also \
+                 restart the app."
+            ))
             .child(checkbox_row_focus(
                 "move-to-applications-dont-ask",
                 !ask_again,
@@ -86,7 +90,7 @@ impl Render for MoveToApplicationsFolderDialog {
             "move-to-applications-folder",
             DialogKind::Warning,
             backdrop_dismissable,
-            "Move Corvane to the Applications folder?",
+            format!("Move {name} to the Applications folder?"),
             content,
             vec![
                 DialogButton {

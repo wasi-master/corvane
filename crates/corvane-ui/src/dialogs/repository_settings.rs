@@ -16,7 +16,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::dialog::{DialogButton, dialog};
+use crate::dialog::DialogButton;
 use crate::icons::Octicon;
 use crate::tab_bar::{VerticalTab, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
@@ -52,6 +52,9 @@ pub struct RepositorySettingsDialog {
     /// `239-line-endings-setting`: the chosen `--local` `core.autocrlf`
     /// (`None`: the global config's).
     autocrlf: Option<&'static str>,
+    /// `focusFirstSuitableChild`: with nothing to type into on the first tab
+    /// (no remote), Save holds focus until a mouse press moves it.
+    default_focus: bool,
 }
 
 /// The [`AUTOCRLF_CHOICES`] entry of the repository's own `core.autocrlf`.
@@ -124,6 +127,7 @@ impl RepositorySettingsDialog {
                 .map(|r| r.fork_contribution_target())
                 .unwrap_or_default(),
             autocrlf: None,
+            default_focus: true,
         };
         this.fill(&state, window, cx);
         this
@@ -769,7 +773,19 @@ impl Render for RepositorySettingsDialog {
             .child(content.mx(zpx(0.)).my(zpx(0.)));
         let weak = cx.weak_entity();
         let loaded = self.loaded && name_valid;
-        dialog(
+        let focus_save = self.default_focus
+            && self.tab == RepositorySettingsTab::Remote
+            && self.data(cx).is_some_and(|d| d.remote.is_none());
+        let content = content.on_mouse_down(
+            MouseButton::Left,
+            cx.listener(|this, _, _, cx| {
+                if this.default_focus {
+                    this.default_focus = false;
+                    cx.notify();
+                }
+            }),
+        );
+        crate::dialog::dialog_with_frame(
             "dialog-repository-settings",
             "Repository Settings",
             content,
@@ -794,6 +810,10 @@ impl Render for RepositorySettingsDialog {
                     }),
                 },
             ],
+            crate::dialog::DialogFrame {
+                focus_primary: focus_save,
+                ..Default::default()
+            },
             close,
             window,
             cx,

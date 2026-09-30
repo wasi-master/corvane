@@ -1,0 +1,120 @@
+%YAML 1.2
+---
+# Fluent (source.ftl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/macabeus/vscode-fluent via GitHub Linguist v9.7.0 (license: mit).
+name: Fluent
+scope: source.ftl
+file_extensions:
+- ftl
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_message
+  - include: repo_wrong-line
+  repo_attributes:
+  - match: \s*(\.[a-zA-Z][a-zA-Z0-9_-]*\s*=\s*)
+    captures:
+      1: support.class.attribute-begin.fluent
+    push:
+    - match: ^(?=\s*[^\.])
+      pop: true
+    - include: repo_placeable
+  repo_comment:
+  - match: ^##?#?\s.*$
+    scope: comment.fluent
+  repo_function-comma:
+  - match: ','
+    scope: support.function.function-comma.fluent
+  repo_function-named-argument:
+  - match: ([a-zA-Z0-9]+:)\s*(["a-zA-Z0-9]+)
+    captures:
+      1: support.function.named-argument.name.fluent
+      2: variable.other.named-argument.value.fluent
+    push:
+    - meta_scope: variable.other.named-argument.fluent
+    - match: (?=\)|,|\s)
+      pop: true
+  repo_function-positional-argument:
+  - match: \$[a-zA-Z0-9_-]+
+    scope: variable.other.function.positional-argument.fluent
+  repo_invalid-placeable-string-missing-end-quote:
+  - match: '"[^"]+$'
+    scope: invalid.illegal.wrong-placeable-missing-end-quote.fluent
+  repo_invalid-placeable-wrong-placeable-missing-end:
+  - match: ([^}A-Z]*$|[^-][^>]$)\b
+    scope: invalid.illegal.wrong-placeable-missing-end.fluent
+  repo_message:
+  - match: ^(-?[a-zA-Z][a-zA-Z0-9_-]*\s*=\s*)
+    captures:
+      1: support.class.message-identifier.fluent
+    push:
+    - meta_content_scope: string.fluent
+    - match: ^(?=\S)
+      pop: true
+    - include: repo_attributes
+    - include: repo_placeable
+  repo_placeable:
+  - match: ({)
+    captures:
+      1: keyword.placeable.begin.fluent
+    push:
+    - meta_content_scope: variable.other.placeable.content.fluent
+    - match: (})
+      pop: true
+      captures:
+        1: keyword.placeable.end.fluent
+    - include: repo_placeable-string
+    - include: repo_placeable-function
+    - include: repo_placeable-reference-or-number
+    - include: repo_selector
+    - include: repo_invalid-placeable-wrong-placeable-missing-end
+    - include: repo_invalid-placeable-string-missing-end-quote
+  repo_placeable-function:
+  - match: ([A-Z][A-Z0-9_-]*\()
+    captures:
+      1: support.function.placeable-function.call.begin.fluent
+    push:
+    - meta_content_scope: string.placeable-function.fluent
+    - match: (\))
+      pop: true
+      captures:
+        1: support.function.placeable-function.call.end.fluent
+    - include: repo_function-comma
+    - include: repo_function-positional-argument
+    - include: repo_function-named-argument
+  repo_placeable-reference-or-number:
+  - match: ((-|\$)[a-zA-Z0-9_-]+|[a-zA-Z][a-zA-Z0-9_-]*|[0-9]+)
+    scope: variable.other.placeable.reference-or-number.fluent
+  repo_placeable-string:
+  - match: (")(?=[^\n]*")
+    captures:
+      1: variable.other.placeable-string-begin.fluent
+    push:
+    - meta_content_scope: string.placeable-string-content.fluent
+    - match: (")
+      pop: true
+      captures:
+        1: variable.other.placeable-string-end.fluent
+  repo_selector:
+  - match: (->)
+    captures:
+      1: support.function.selector.begin.fluent
+    push:
+    - meta_content_scope: string.selector.content.fluent
+    - match: ^(?=\s*})
+      pop: true
+    - include: repo_selector-item
+  repo_selector-item:
+  - match: (\s*\*?\[)([a-zA-Z0-9_-]+)(\]\s*)
+    captures:
+      1: support.function.selector-item.begin.fluent
+      2: variable.other.selector-item.begin.fluent
+      3: support.function.selector-item.begin.fluent
+    push:
+    - meta_content_scope: string.selector-item.content.fluent
+    - match: ^(?=(\s*})|(\s*\[)|(\s*\*))
+      pop: true
+    - include: repo_placeable
+  repo_wrong-line:
+  - match: .*
+    scope: invalid.illegal.wrong-line.fluent

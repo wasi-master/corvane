@@ -1,0 +1,100 @@
+%YAML 1.2
+---
+# Dafny (text.dfy.dafny): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/DafnyVSCode/Dafny-VSCode via GitHub Linguist v9.7.0 (license: mit).
+name: Dafny
+scope: text.dfy.dafny
+file_extensions:
+- dfy
+first_line_match: ^#!.*\b(dafny)\b
+contexts:
+  main:
+  - match: (class)\s*(\w+)\s*
+    captures:
+      1: keyword.control.dafny
+      2: entity.name.function.dafny
+    push:
+    - meta_scope: meta.class.identifier.dafny
+    - match: \{
+      pop: true
+  - match: \b(class|trait|datatype|codatatype|type|newtype|function|ghost|var|const|method|constructor|colemma|abstract|module|import|export|lemma|as|opened|static|protected|twostate|refines|witness|extends|returns|break|then|else|if|label|return|while|print|where|new|in|fresh|allocated|match|case|assert|by|assume|expect|reveal|modify|predicate|inductive|copredicate|forall|exists|false|true|null|old|unchanged|calc|iterator|yields|yield)\b
+    scope: keyword.control.dafny
+  - match: (\w+)\s*\(
+    captures:
+      1: entity.name.function.dafny
+    push:
+    - meta_scope: meta.method.identifier.dafny
+    - match: \)
+      pop: true
+    - include: repo_parameters
+  - include: repo_code
+  repo_code:
+  - include: repo_comments
+  - include: repo_comments-inline
+  - include: repo_keywords
+  repo_comments:
+  - match: /\*\*/
+    scope: comment.block.empty.dafny
+    captures:
+      0: punctuation.definition.comment.dafny
+  - include: repo_comments-inline
+  repo_comments-inline:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.dafny
+    push:
+    - meta_scope: comment.block.dafny
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.dafny
+  - match: \s*((//).*$\n?)
+    captures:
+      1: comment.line.double-slash.dafny
+      2: punctuation.definition.comment.dafny
+  repo_generics:
+  - match: <(\w+)
+    captures:
+      1: storage.type.dafny
+    push:
+    - meta_scope: meta.type.identifier.dafny
+    - match: '>'
+      pop: true
+  repo_keywords:
+  - match: \b(class|trait|datatype|codatatype|type|newtype|function|include|ghost|var|const|method|constructor|colemma|abstract|module|import|export|lemma|as|opened|static|protected|twostate|refines|witness|extends|returns|break|then|else|if|label|return|while|print|where|new|in|fresh|allocated|match|case|assert|by|assume|reveal|modify|predicate|inductive|copredicate|forall|exists|false|true|null|old|unchanged|calc|iterator|yields|yield)\b
+    scope: keyword.control.dafny
+  - match: \b(function)\b
+    scope: entity.name.function
+  - match: ;
+    scope: punctuation.terminator.dafny
+  - match: \b(requires|ensures|modifies|reads|invariant|decreases|reveals|provides)\b
+    scope: keyword.control.verify.dafny
+  - match: \b(bool|char|real|multiset|map|imap|nat|int|ORDINAL|object|string|set|iset|seq|array|array[1-9]\d*|bv0|bv[1-9]\d*)\b
+    scope: keyword.type.dafny
+  - match: this
+    scope: storage.type.dafny
+  - match: \b(try|catch|finally|throw)\b
+    scope: keyword.control.catch-exception.dafny
+  - match: '\|:'
+    scope: keyword.control.dafny
+  - match: (==|!=|<=|>=|<>|<|>)
+    scope: keyword.operator.comparison.dafny
+  - match: (:=)
+    scope: keyword.operator.assignment.dafny
+  - match: (\-\-|\+\+)
+    scope: keyword.operator.increment-decrement.dafny
+  - match: (\-|\+|\*|\/|%)
+    scope: keyword.operator.arithmetic.dafny
+  - match: (!|&&|\|\|)
+    scope: keyword.operator.logical.dafny
+  - match: (?<=\S)\.(?=\S)
+    scope: keyword.operator.dereference.dafny
+  repo_parameters:
+  - match: :\s*(\w+)
+    captures:
+      1: storage.type.dafny
+    push:
+    - meta_scope: meta.type.identifier.dafny
+    - match: \s*|,|\)|\}|requires|ensures|modifies
+      pop: true
+  - include: repo_generics

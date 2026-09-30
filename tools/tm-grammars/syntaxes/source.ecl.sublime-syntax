@@ -1,0 +1,188 @@
+%YAML 1.2
+---
+# ECL (source.ecl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/hpcc-systems/ecl-tmLanguage via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: ECL
+scope: source.ecl
+file_extensions:
+- ecl
+- eclxml
+contexts:
+  main:
+  - include: repo_expression
+  - match: \b(?i:(std).(file|date|str|math|metaphone|metaphone3|uni|audit|blas|system.(debug|email|job|log|thorlib|util|workunit)))\b
+    scope: support.class.ecl
+  repo_array-literal:
+  - match: \[
+    captures:
+      0: meta.brace.square.ecl
+    push:
+    - meta_scope: meta.array.literal.ecl
+    - match: \]
+      pop: true
+      captures:
+        0: meta.brace.square.ecl
+    - include: repo_expression
+  repo_boolean-literal:
+  - match: \b(?i:(false|true))\b
+    scope: constant.language.boolean.ecl
+  repo_comment:
+  - include: repo_comment-block-doc
+  - include: repo_comment-block
+  - include: repo_comment-line
+  repo_comment-block:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.ecl
+    - match: \*/
+      pop: true
+  repo_comment-block-doc:
+  - match: /\*\*(?!/)
+    push:
+    - meta_scope: comment.block.documentation.ecl
+    - match: \*/
+      pop: true
+  repo_comment-line:
+  - match: (//).*$\n?
+    scope: comment.line.ecl
+  repo_decimal:
+  - match: \b(?i)(u?)decimal(\d+(_\d+)?)\b
+    scope: entity.name.type.ecl
+  repo_digital-signature:
+  - include: repo_digital-signature-header
+  - include: repo_digital-signature-footer
+  repo_digital-signature-footer:
+  - match: '-----BEGIN PGP SIGNATURE-----'
+    push:
+    - meta_scope: keyword.control.ecl
+    - match: '-----END PGP SIGNATURE-----'
+      pop: true
+  repo_digital-signature-header:
+  - match: '-----BEGIN PGP SIGNED MESSAGE-----'
+    push:
+    - meta_scope: keyword.control.ecl
+    - match: 'Hash: SHA512'
+      pop: true
+  repo_embedded-any:
+  - match: ((?i:(embed)))\s*(\()
+    captures:
+      0: entity.name.function.ecl
+    push:
+    - meta_scope: entity.other.ecl
+    - match: (?i:(endembed))
+      pop: true
+      captures:
+        0: entity.name.function.ecl
+  repo_embedded-cpp:
+  - match: (?i:(beginc))\+\+
+    captures:
+      0: entity.name.function.ecl
+    push:
+    - meta_scope: entity.other.ecl
+    - match: (?i:(endc))\+\+
+      pop: true
+      captures:
+        0: entity.name.function.ecl
+  repo_embedded-single:
+  - match: (?i:(embed))\s*(\([^\)]+\));
+    captures:
+      1: entity.name.function.ecl
+  repo_expression:
+  - include: repo_comment
+  - include: repo_special-structures
+  - include: repo_embedded-single
+  - include: repo_embedded-any
+  - include: repo_embedded-cpp
+  - include: repo_function-call
+  - include: repo_operators
+  - include: repo_logicals
+  - include: repo_types
+  - include: repo_keywords-pound
+  - include: repo_keywords-workflow
+  - include: repo_keywords
+  - include: repo_digital-signature
+  - include: repo_string
+  - include: repo_literal
+  repo_function-call:
+  - match: ([#A-Za-z_0-9]+)\s*(\()
+  repo_functions:
+  - match: \b(?i:(abs|acos|aggregate|allnodes|apply|apply|ascii|asin|assert|asstring|atan|atan2|ave|build|buildindex|case|catch|choose|choosen|choosesets|clustersize|combine|correlation|cos|cosh|count|covariance|cron|dataset|dedup|define|denormalize|deprecated|dictionary|distribute|distributed|distribution|ebcdic|enth|evaluate|evaluate|event|eventextra|eventname|exists|exp|fail|failcode|failmessage|fetch|fromunicode|fromxml|getenv|getisvalid|graph|group|hashcrc|hashmd5|having|httpcall|httpheader|if|iff|index|interface|intformat|isvalid|iterate|join|keydiff|keypatch|keyunicode|length|library|limit|ln|loadxml|local|log|loop|map|matched|matchlength|matchposition|matchtext|matchunicode|max|merge|mergejoin|min|nofold|nolocal|nonempty|normalize|nothor|notify|opt|output|parse|pattern|penalty|pipe|power|preload|process|project|pull|random|range|rank|ranked|realformat|record|recordof|regexfind|regexfindset|regexreplace|regroup|rejected|rollup|round|roundup|row|rowdiff|rule|sample|sequential|sin|sinh|sizeof|soapcall|sort|sorted|sqrt|stepped|stored|sum|table|tan|tanh|thisnode|topn|tounicode|toxml|transfer|transform|trim|truncate|typeof|ungroup|unicodeorder|use|validate|variance|wait|when|which|xmldecode|xmlencode|xmltext|xmlunicode))\b
+    scope: entity.name.function.ecl
+  repo_functions-action:
+  - match: \b(?i:(algorithm|cluster|escape|encrypt|expire|heading|keyed|maxlength|module|named|ordered|parallel|quote|terminator|threshold|timelimit|timeout|separator|set|skew|virtual|wild))\b
+    scope: keyword.other.ecl
+  repo_functions-hash:
+  - match: \b(?i:hash(32|64|crc)?)\b
+    scope: entity.name.function.ecl
+  repo_functions-hash2:
+  - match: \b(?i:hashmd(5))\b
+    scope: entity.name.function.ecl
+  repo_functions-pound:
+  - match: '#(?i:(append|constant|declare|demangle|end|else|elseif|error|expand|export|exportXML|for|getdatatype|if|inmodule|mangle|onwarning|option|set|stored|text|uniquename|warning|webservice|workunit))\b'
+    scope: keyword.other.ecl
+  repo_functions-workflow:
+  - match: \b(?i:(checkpoint|deprecated|failmessage|failure|global|onwarning|persist|priority|recovery|stored|success|when))\b
+    scope: keyword.control.ecl
+  repo_integer:
+  - match: \b(?i:(integer|unsigned))[1-8]\b
+    scope: entity.name.type.ecl
+  repo_keywords:
+  - match: \b(?i:(after|all|andor|any|as|atmost|before|best|between|case|compressed|compression|const|counter|csv|default|descend|distributed|encoding|end|endmacro|enum|error|except|exclusive|expand|export|exportxml|extend|fail|failcode|few|fileposition|first|flat|for|forward|from|full|group|grouped|hole|if|ifblock|import|inmodule|inner|internal|joined|keep|keyed|last|left|limit|linkcounted|literal|little_endian|load|local|locale|lookup|lzw|mangle|many|maxcount|maxlength|min skew|mofn|multiple|named|namespace|nocase|noroot|noscan|nosort|noxpath|of|onfail|only|opt|option|outer|overwrite|packed|partition|physicallength|pipe|prefetch|repeat|retry|return|right|right1|right2|rows|rowset|scan|scope|self|service|set|shared|skip|smart|soapaction|sql|stable|store|stored|success|thor|token|trim|type|unicodeorder|uniquename|unordered|unsorted|unstable|update|virtual|warning|whole|width|within|wnotrim|xml|xpath|__compressed_))\b
+    scope: keyword.other.ecl
+  repo_keywords-pound:
+  - match: '#(?i:(break|else|end|loop))\b'
+    scope: keyword.other.ecl
+  repo_keywords-workflow:
+  - match: \b(?i:(global|independent|once))\b
+    scope: keyword.control.ecl
+  repo_literal:
+  - include: repo_numeric-literal
+  - include: repo_boolean-literal
+  - include: repo_array-literal
+  - include: repo_self-literal
+  repo_logicals:
+  - match: \b(?i:(and|in|not|or))\b
+    scope: keyword.other.ecl
+  repo_numeric-literal:
+  - match: \b(?<=[^$])((0(x|X)[0-9a-fA-F]+)|([0-9a-fA-F]+(x|X))|(0(o|O)[0-7]+)|(0(b|B)(0|1)+)|((0|1)+(b|B))|(([0-9]+(\.[0-9]+)?))([eE]([+-]?)[0-9]+(\.[0-9]+)?)?)\b
+    scope: constant.numeric.ecl
+  repo_operators:
+  - match: (>|>=|<|<=|<>|/|\|+|-|=)
+    scope: keyword.operator.ecl
+  repo_qstring-single:
+  - match: ''''
+    push:
+    - meta_scope: string.single.ecl
+    - match: \'|(?:[^\\\n]$)
+      pop: true
+    - include: repo_string-character-escape
+  repo_real:
+  - match: \b(?i)real(?-i)(4|8)\b
+    scope: entity.name.type.ecl
+  repo_self-literal:
+  - match: \b(?i:(self))\b
+    scope: constant.language.this.ecl
+  repo_special-structures:
+  - match: \b(?i:(endmacro|function|functionmacro|interface|macro|module|record|transform))\b
+    scope: entity.name.function.ecl
+  repo_string:
+  - include: repo_qstring-single
+  repo_string-character-escape:
+  - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)
+    scope: constant.character.escape.ecl
+  repo_type-number:
+  - match: \b(?i:(data|string|qstring|varstring|varunicode|unicode|utf8))\d+\b
+    scope: entity.name.type.ecl
+  repo_type-rest:
+  - match: \b(?i:(ascii|big_endian|boolean|data|decimal|ebcdic|grouped|integer|linkcounted|pattern|qstring|real|rule|set of|streamed|string|token|udecimal|unicode|utf8|unsigned|varstring|varunicode))\b
+    scope: entity.name.type.ecl
+  repo_types:
+  - include: repo_real
+  - include: repo_decimal
+  - include: repo_unicode
+  - include: repo_integer
+  - include: repo_type-number
+  - include: repo_type-rest
+  repo_unicode:
+  - match: \b(?i:(d|u|q|v|x))(8)?(?='.*')
+    scope: entity.name.type.ecl

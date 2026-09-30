@@ -1,0 +1,93 @@
+%YAML 1.2
+---
+# Regular Expression (POSIX - Extended) (source.regexp.posix): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-regexp via GitHub Linguist v9.7.0 (license: isc).
+name: Regular Expression (POSIX - Extended)
+scope: source.regexp.posix
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_anchor:
+  - match: \^|\$
+  repo_bound:
+  - match: \\{,
+  - include: scope:source.regexp
+  repo_brackets:
+  - match: (\[)(\])
+    scope: meta.character-class.set.empty.regexp
+    captures:
+      1: punctuation.definition.character-class.set.begin.regexp
+      2: punctuation.definition.character-class.set.end.regexp
+  - match: \[
+    captures:
+      0: punctuation.definition.character-class.set.begin.regexp
+    push:
+    - meta_scope: meta.character-class.set.regexp
+    - match: (?!)-?\]
+      pop: true
+      captures:
+        0: punctuation.definition.character-class.set.end.regexp
+    - match: (\^)(?:-|\])?
+    - include: repo_charRange
+    - include: repo_localeClasses
+  repo_charClass:
+  - match: (\[:)(\^?)(\w+)(:\])
+    captures:
+      1: punctuation.definition.character-class.set.begin.regexp
+      2: keyword.operator.logical.not.regexp
+      3: support.constant.posix-class.regexp
+      4: punctuation.definition.character-class.set.end.regexp
+  repo_charRange:
+  - match: (?<=[^-])-[^\[\]\\]
+    scope: invalid.illegal.range.ambiguous-endpoint.regexp
+  repo_collatingElement:
+  - match: (\[\.)(.*?)(\.\])
+    scope: constant.language.collating-element.regexp.posix
+    captures:
+      1: punctuation.definition.collating-element.set.begin.regexp
+      2: storage.type.var.regexp
+      3: punctuation.definition.collating-element.set.end.regexp
+  repo_equivalenceClass:
+  - match: (\[=)(.*?)(=\])
+    scope: constant.language.posix.equivalence-class.regexp
+    captures:
+      1: punctuation.definition.class.begin.regexp
+      2: storage.type.class.regexp
+      3: punctuation.definition.class.end.regexp
+  repo_escape:
+  - include: repo_escapeMeta
+  - include: repo_escapeOther
+  repo_escapeMeta:
+  - match: \\[.^\[$\(\)|*+?{\\]
+    scope: constant.character.escape.literal-metacharacter.regexp
+  repo_escapeOther:
+  - match: \\.
+    scope: constant.character.escape.misc.regexp
+  repo_group:
+  - match: (\()(\))
+    scope: meta.group.empty.regexp
+    captures:
+      1: punctuation.definition.group.begin.regexp
+      2: punctuation.definition.group.end.regexp
+  - match: \(
+    captures:
+      0: punctuation.definition.group.begin.regexp
+    push:
+    - meta_scope: meta.group.regexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.regexp
+    - include: repo_main
+  repo_localeClasses:
+  - include: repo_collatingElement
+  - include: repo_equivalenceClass
+  repo_main:
+  - include: scope:source.regexp
+  - include: scope:source.regexp
+  - include: repo_escape
+  - include: repo_brackets
+  - include: repo_bound
+  - include: repo_anchor
+  - include: repo_group

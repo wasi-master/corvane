@@ -1,0 +1,339 @@
+tools/tm-grammars/syntaxes/etc.sublime-syntax: Error while compiling regex '(?x)
+(?<char>[^\s{,}\\]|\\[{,}\\]|\g<braced>){0}
+(?<braced>{(?:[^{},\\]|\\.)*+}){0}
+(?<alt>\g<char>*+,\g<char>*+|\g<char>++){0}
+(?<seq>{(?:-?\d+\.\.-?\d+|[a-zA-Z]\.\.[a-zA-Z])(?:\.\.-?\d+)?}){0}
+(?<entry> \g<char>*+ (?:
+	\g<seq>+
+	|
+	(?!\g<braced>)
+	{
+		(?<braces>
+			\g<alt>*+
+			(?:(?!\g<braced>) { \g<braces>*+ } | \g<seq>++)
+			\g<alt>*+
+			|
+			\g<alt>++
+		)
+	}
+) \g<char>*+)': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.4dm.sublime-syntax: Invalid scope: Too many atoms. Max 2^16-2 atoms allowed.
+tools/tm-grammars/syntaxes/source.bh.sublime-syntax: Error while compiling regex '(?x)
+  (?: # Infix data constructor
+    # First argument
+    (?:
+    # Simple type
+      (?<!')\b((?:[\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'\.])+)
+    # Type inside balanced parentheses
+    | ('? # Optional promotion tick
+        (?<paren>
+          \(          # Opening parenthesis
+          (?:
+            [^\(\)]*  # Match non-parentheses
+          | \g<paren> # or recurse into further depth
+          )*
+          \)          # Closing parenthesis
+        )
+      )
+    # Type inside balanced brackets
+    | ('? # Optional promotion tick
+        (?<brac>
+          \[          # Opening bracket
+          (?:
+            [^\[\]]*  # Match non-brackets
+          | \g<brac>  # or recurse into further depth
+          )*
+          \]          # Closing bracket
+        )
+      )
+    )
+    # Then either
+    \s*
+      # - a symbolic infix constructor, or
+    (?:(?<![\p{S}\p{P}&&[^(),;\[\]`{}_"']])(:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*)
+      # - an alphabetic infix constructor
+    | (`)([\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*)(`)
+    )
+  ) # Otherwise, prefix data constructor, either:
+  | # - an alphabetic data constructor e.g. "Cons_123"
+    (?:(?<!')\b([\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*))
+  | # - a symbolic (prefix) data constructor
+    (\()\s*(:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*)\s*(\))
+  | # Otherwise, try to fail early to avoid excessive backtracking (https://github.com/JustusAdam/language-bh/issues/161)
+      # Fail when detecting a lowercase identifier and then something not starting with a tick or colon
+      (?=\b(?<!')(?!(?:forall|deriving)\s)[\p{Ll}_]\S+\s+[^`:])
+      # Fail when seeing another equal signs or pipe symbol
+     |(?=
+        (?<![\p{S}\p{P}&&[^(),;\[\]`{}_"']]) # non-symbol
+        (?:=|\|)
+        (?![\p{S}\p{P}&&[^(),;\[\]`{}_"']])  # non-symbol
+      )': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+source.carbon: regex "\\\\([tnr'\"0\\0]|x[0-9A-F]{2}|u\\{[0-9A-F]{4,}\\})": Parsing error at position 10: Invalid character class
+tools/tm-grammars/syntaxes/source.cj.sublime-syntax: Error while compiling regex '(?=[^.\w\s])|\R|\Z|
+': Parsing error at position 13: Invalid escape: \R
+tools/tm-grammars/syntaxes/source.css.less.sublime-syntax: Error while compiling regex '(?<![\w-])[a-z][\w&&[^A-Z]]*+-[\w-&&[^A-Z]]+': Error compiling regex: Regex error: error parsing pattern 0
+tools/tm-grammars/syntaxes/source.curlrc.sublime-syntax: Invalid scope: Too many atoms. Max 2^16-2 atoms allowed.
+tools/tm-grammars/syntaxes/source.dm.sublime-syntax: Error while compiling regex '(?x)
+^\s* ((\#)\s*define) \s+     # define
+((?<id>[a-zA-Z_][a-zA-Z0-9_]*))  # macro name
+(?:
+	(\()
+		(
+			\s* \g<id> \s*         # first argument
+			((,) \s* \g<id> \s*)*  # additional arguments
+			(?:\.\.\.)?            # varargs ellipsis?
+		)
+	(\))
+)': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.fstar.sublime-syntax: Error while compiling regex '\b((?<name>[\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)(?:[.]\g<name>)*)\b': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.hc.sublime-syntax: Error while compiling regex '(?x)
+        		^\s*\#\s*(define)\s+             # define
+        		((?<id>[a-zA-Z_][a-zA-Z0-9_]*))  # macro name
+        		(?:                              # and optionally:
+        		    (\()                         # an open parenthesis
+        		        (
+        		            \s* \g<id> \s*       # first argument
+        		            ((,) \s* \g<id> \s*)*  # additional arguments
+        		            (?:\.\.\.)?          # varargs ellipsis?
+        		        )
+        		    (\))                         # a close parenthesis
+        		)?
+        	': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.jac.sublime-syntax: Error while compiling regex '(?x)
+  (.+?)
+    (
+      (?# .* and .*? in multi-line match need special handling of
+        newlines otherwise SublimeText and Atom will match slightly
+        differently.
+
+        The guard for newlines has to be separate from the
+        lookahead because of special (?m:$) matching rule.)
+      ((?m:$)\n?)
+      |
+      (?=[\\\}\{]|'''|""")
+    )
+  (?# due to how multiline regexps are matched we need a special case
+    for matching a newline character)
+  | \n
+': Parsing error at position 351: General parsing error: end of string not reached
+tools/tm-grammars/syntaxes/source.jai.sublime-syntax: Invalid scope: Too many atoms. Max 2^16-2 atoms allowed.
+tools/tm-grammars/syntaxes/source.koka.sublime-syntax: Error while compiling regex '([^]\s+)?(\?[\?]?\s*)?([@a-z][\w\-@]*[\']*)\s*(?=[:,\)])': Parsing error at position 56: Invalid character class
+tools/tm-grammars/syntaxes/source.litcoffee.sublime-syntax: Error while compiling regex '(?x)
+(\*\*|__)(?=\S)                                          # Open
+(?=
+  (
+    <[^>]*+>                                                # HTML tags
+    | (?<raw>`+)([^`]|(?!(?<!`)\k<raw>(?!`))`)*+\k<raw>   # Raw
+    | \\[\\`*_{}\[\]()#.!+\->]?+                     # Escapes
+    | \[
+    (
+      (?<square>                                            # Named group
+        [^\[\]\\]                                       # Match most chars
+        | \\.                                             # Escaped chars
+        | \[ \g<square>*+ \]                             # Nested brackets
+      )*+
+      \]
+      (
+        (                                                   # Reference Link
+          [ ]?                                              # Optional space
+          \[[^\]]*+\]                                    # Ref name
+        )
+        |
+        (                                                   # Inline Link
+          \(                                               # Opening paren
+          [ \t]*+                                          # Optional whitespace
+          <?(.*?)>?                                         # URL
+          [ \t]*+                                          # Optional whitespace
+          (                                                 # Optional Title
+            (?<title>['"])
+            (.*?)
+            \k<title>
+          )?
+          \)
+        )
+      )
+    )
+    | (?!(?<=\S)<placeholder_1>).                                      # Everything besides
+  )++
+  (?<=\S)<placeholder_1>                                               # Close
+)': Error compiling regex: Invalid back reference to group 12
+tools/tm-grammars/syntaxes/source.mdx.sublime-syntax: Error while compiling regex '(?:^|)[\t ]*(\[)((?:[^\[\\\]]|\\[\[\\\]]?)+?)(\])(:)[ \t]*(?:(<)((?:[^\n<\\>]|\\[<\\>]?)*)(>)|(\g<destination_raw>))(?:[\t ]+(?:(")((?:[^"\\]|\\["\\]?)*)(")|(')((?:[^'\\]|\\['\\]?)*)(')|(\()((?:[^\)\\]|\\[\)\\]?)*)(\))))?(?m:$)(?<destination_raw>(?!\<)(?:(?:[^\p{Cc}\ \\\(\)]|\\[\(\)\\]?)|\(\g<destination_raw>*\))+){0}': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.mojo.sublime-syntax: Error while compiling regex '(?x)
+  (.+?)
+    (
+      (?# .* and .*? in multi-line match need special handling of
+        newlines otherwise SublimeText and Atom will match slightly
+        differently.
+
+        The guard for newlines has to be separate from the
+        lookahead because of special (?m:$) matching rule.)
+      ((?m:$)\n?)
+      |
+      (?=[\\\}\{]|'''|""")
+    )
+  (?# due to how multiline regexps are matched we need a special case
+    for matching a newline character)
+  | \n
+': Parsing error at position 351: General parsing error: end of string not reached
+tools/tm-grammars/syntaxes/source.neon.sublime-syntax: Invalid scope: Too many atoms. Max 2^16-2 atoms allowed.
+tools/tm-grammars/syntaxes/source.netlinx.sublime-syntax: Error while compiling regex '(?ix)
+        		^\s*(\#(define))\s+             # define
+        		((?<id>[a-zA-Z_][a-zA-Z0-9_]*))  # macro name
+        		(?:                              # and optionally:
+        		    (\()                         # an open parenthesis
+        		        (
+        		            \s* \g<id> \s*       # first argument
+        		            ((,) \s* \g<id> \s*)*  # additional arguments
+        		            (?:\.\.\.)?          # varargs ellipsis?
+        		        )
+        		    (\))                         # a close parenthesis
+        		)?
+        	': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+source.pcb.sexp: regex "\\s*(-?(?:(?![\\s\\(\\)])[\\0-\\x7F])+)": Parsing error at position 22: Invalid character class
+tools/tm-grammars/syntaxes/source.pic.sublime-syntax: Error while compiling regex '^\S.*(?m:$)\R?': Parsing error at position 11: Invalid escape: \R
+tools/tm-grammars/syntaxes/source.polar.sublime-syntax: Error while compiling regex '(?<resourceType>[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*){0}((?:(resource|actor)\s+(\g<resourceType>)(?:\s+(extends)\s+(\g<resourceType>(?:\s*,\s*\g<resourceType>)*)\s*,?\s*)?)|(global))\s*{': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.postscript.sublime-syntax: Error while compiling regex '(?<![^/\s{}()<>\[\]%])\b(currentfile)\s+(eexec)(?:(?m:$)|(?=.*[<placeholder_0>-\x08\x14-\x31\x7F\x80-\x9F])(?=.{0,3}?[^A-Fa-f0-9]|\b[A-Fa-f0-9]))': Error compiling regex: Regex error: error parsing pattern 0
+tools/tm-grammars/syntaxes/source.powershell.sublime-syntax: Error while compiling regex '`u\{(?:(?:10)?([0-9a-fA-F]){1,4}|0?\g<1>{1,5})}': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.qsharp.sublime-syntax: Error while compiling regex '(?x)
+\b(operation|function)\b\s+
+([_\p{L}][_\p{L}\p{N}]*)\s*                      # callable name
+(?<type_args>\s*<([^<>]|\g<type_args>)+>\s*)?\s*    # type arguments
+(?=\()                                              # open parentheses of argument list': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.redscript.sublime-syntax: Error while compiling regex '(?x)
+						(?=
+							(?<oph>								# operator-head
+								[/=\-+!*%<>&|^~?]
+							  | [\x{00A1}-\x{00A7}]
+							  | [\x{00A9}\x{00AB}]
+							  | [\x{00AC}\x{00AE}]
+							  | [\x{00B0}-\x{00B1}\x{00B6}\x{00BB}\x{00BF}\x{00D7}\x{00F7}]
+							  | [\x{2016}-\x{2017}\x{2020}-\x{2027}]
+							  | [\x{2030}-\x{203E}]
+							  | [\x{2041}-\x{2053}]
+							  | [\x{2055}-\x{205E}]
+							  | [\x{2190}-\x{23FF}]
+							  | [\x{2500}-\x{2775}]
+							  | [\x{2794}-\x{2BFF}]
+							  | [\x{2E00}-\x{2E7F}]
+							  | [\x{3001}-\x{3003}]
+							  | [\x{3008}-\x{3030}]
+							)
+						  | \.
+							(
+								\g<oph>							# operator-head
+							  | \.
+							  | [\x{0300}-\x{036F}]				# operator-character
+							  | [\x{1DC0}-\x{1DFF}]
+							  | [\x{20D0}-\x{20FF}]
+							  | [\x{FE00}-\x{FE0F}]
+							  | [\x{FE20}-\x{FE2F}]
+							  | [\x{E0100}-\x{E01EF}]
+							)
+						)
+					': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.scenic.sublime-syntax: Error while compiling regex '(?x)
+  (.+?)
+    (
+      (?# .* and .*? in multi-line match need special handling of
+        newlines otherwise SublimeText and Atom will match slightly
+        differently.
+
+        The guard for newlines has to be separate from the
+        lookahead because of special (?m:$) matching rule.)
+      ((?m:$)\n?)
+      |
+      (?=[\\\}\{]|'''|""")
+    )
+  (?# due to how multiline regexps are matched we need a special case
+    for matching a newline character)
+  | \n
+': Parsing error at position 351: General parsing error: end of string not reached
+source.torrc: regex "[^\\s\\0#]": Parsing error at position 4: Invalid character class
+tools/tm-grammars/syntaxes/source.verse.sublime-syntax: Error while compiling regex '(^|(?<=[({\[\-\&;,+*/|<=>.]|->|=>|:\)|\Wvar|^var|\Wref|^ref|\Walias|^alias|\Wlive|^live|\Win|^in|\Wis|^is|\Wdo|^do|\Wthen|^then|\Wuntil|^until|\Welse|^else|\Wover|\Wwhile|\Wupon|\Wnext|\Wwhere|\Wof|^of|\Wat|^at|\Wreturn|^return|\Wyield|^yield|\Wbreak|^break|\Wcontinue|^continue))([\s\^?]*+)([A-Za-z_][A-Za-z0-9_]*+('((?!<#|#>|[\\{}"'])[ -~])*')?+)(?=((?<Call>(?<BlockCmt><#(\g<BlockCmt>|(?!#>).)*+#>)|[\s\^?]++|(&|->)\s*[A-Za-z_][A-Za-z0-9_]*+|->|'(\\.|[^'])*+'|"(\\.|[{](\g<Call>)*+[}]|<[^#]|#[^>]|[^\<#"{}]|\g<BlockCmt>)*+"|<(\g<Call>|[A-Za-z0-9_])*+>|[\[({](\g<Call>|<[^#]|[A-Za-z0-9_\-\&\^.%+*/,;>:@=!|?])*+[\])}]))*+((:|in\W|is\W)\s*+(?![)#]|(?m:$))))': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/source.webidl.sublime-syntax: Error while compiling regex '(?x)
+        		^\s*\#\s*(define)\s+             # define
+        		((?<id>[a-zA-Z_][a-zA-Z0-9_]*))  # macro name
+        		(?:                              # and optionally:
+        		    (\()                         # an open parenthesis
+        		        (
+        		            \s* \g<id> \s*       # first argument
+        		            ((,) \s* \g<id> \s*)*  # additional arguments
+        		            (?:\.\.\.)?          # varargs ellipsis?
+        		        )
+        		    (\))                         # a close parenthesis
+        		)?
+        	': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/text.html.creole.sublime-syntax: Error while compiling regex '(?x)
+						(?<!\*|^)(\*\*)(?=\S)						# opening **
+						(?=												# zero-width positive lookahead
+							(
+							    <[^>]*+>						# match any HTML tag
+							  | ~[\\*{}\[\]#\|/>]?+					# or escape characters
+							  | \[										# or literal [
+								(
+								        (?<square>				# named group
+											[^\[\]~]					# don't match these
+								          | ~.							# or escaped characters
+								          | \[ \g<square>*+ \]	# or nested group
+								        )*+
+									\]
+								)
+							  | (?!(?<=\S)<placeholder_1>).						# or everything else
+							)++
+							(?<=\S)<placeholder_1>								# closing **
+						)												# close positive lookahead
+					': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/text.html.markdown.d2.sublime-syntax: Error while compiling regex '(?x) (?<open>(\*\*(?=\w)|(?<!\w)\*\*|(?<!\w)\b__))(?=\S) (?=
+  (
+    <[^>]*+>              # HTML tags
+    | (?<raw>`+)([^`]|(?!(?<!`)\k<raw>(?!`))`)*+\k<raw>
+                      # Raw
+    | \\[\\`*_{}\[\]()#.!+\->]?+      # Escapes
+    | \[
+    (
+        (?<square>          # Named group
+          [^\[\]\\]        # Match most chars
+          | \\.            # Escaped chars
+          | \[ \g<square>*+ \]    # Nested brackets
+        )*+
+      \]
+      (
+        (              # Reference Link
+          [ ]?          # Optional space
+          \[[^\]]*+\]        # Ref name
+        )
+        | (              # Inline Link
+          \(            # Opening paren
+            [ \t]*+        # Optional whitespace
+            <?(.*?)>?      # URL
+            [ \t]*+        # Optional whitespace
+            (          # Optional Title
+              (?<title>['"])
+              (.*?)
+              \k<title>
+            )?
+          \)
+        )
+      )
+    )
+    | (?!(?<=\S)\k<open>).            # Everything besides
+                      # style closer
+  )++
+  (?<=\S)(?=__\b|\*\*)\k<open>                # Close
+)
+': Error compiling regex: Invalid back reference to group 13
+tools/tm-grammars/syntaxes/text.html.php.sublime-syntax: Error while compiling regex '(?x)
+						((\$)(?<name>[a-zA-Z_\x{7f}-\x{ff}][a-zA-Z0-9_\x{7f}-\x{ff}]*))
+						(?:
+							(->)(\g<name>)
+							|
+							(\[)
+								(?:(\d+)|((\$)\g<name>)|(\w+))
+							(\])
+						)?
+						': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+text.html.statamic: regex "(:?([\\S:]+?)(=)('|\")([^\\4]*?)(\\4))": Parsing error at position 23: Invalid character class
+tools/tm-grammars/syntaxes/text.md.sublime-syntax: Error while compiling regex '(?:^|)[ ]{0,3}(\[)((?:[^\[\\\]]|\\[\[\\\]]?)+?)(\])(:)[ \t]*(?:(<)((?:[^\n<\\>]|\\[<\\>]?)*)(>)|(\g<destination_raw>))(?:[\t ]+(?:(")((?:[^"\\]|\\["\\]?)*)(")|(')((?:[^'\\]|\\['\\]?)*)(')|(\()((?:[^\)\\]|\\[\)\\]?)*)(\))))?(?m:$)(?<destination_raw>(?!\<)(?:(?:[^\p{Cc}\ \\\(\)]|\\[\(\)\\]?)|\(\g<destination_raw>*\))+){0}': Error compiling regex: Regex uses currently unimplemented feature: Subroutine Call
+tools/tm-grammars/syntaxes/text.roff.sublime-syntax: Error while compiling regex '(?<![^\\]\\|^\\)(?=(?!R)\R|(?m:$))|(?=\\")': Parsing error at position 24: Invalid escape: \R
+tools/tm-grammars/syntaxes/text.runoff.sublime-syntax: Error while compiling regex '(?i)((\.)LITERAL\s*)(?:(?m:$)|\R)': Parsing error at position 30: Invalid escape: \R
+source.ring: timed out

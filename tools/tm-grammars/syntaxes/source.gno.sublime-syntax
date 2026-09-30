@@ -1,0 +1,673 @@
+%YAML 1.2
+---
+# Gno (source.gno): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/gnoverse/vscode-gno via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Gno
+scope: source.gno
+file_extensions:
+- gno
+contexts:
+  main:
+  - include: repo_statements
+  repo_after_control_variables:
+  - match: (?:(?<=\brange\b|\bswitch\b|\;|\bif\b|\bfor\b|\<|\>|\<\=|\>\=|\=\=|\!\=|\w(?:\+|/|\-|\*|\%)|\w(?:\+|/|\-|\*|\%)\=|\|\||\&\&)(?:\s*)((?![\[\]]+)[[:alnum:]\-\_\!\.\[\]\<\>\=\*/\+\%\:]+)(?:\s*)(?=\{))
+  repo_brackets:
+  - match: \{
+    captures:
+      0: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - include: main
+  - match: \(
+    captures:
+      0: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: main
+  - match: \[
+    captures:
+      0: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.go
+    - include: main
+  repo_built_in_functions:
+  - match: \b(append|cap|close|complex|copy|delete|imag|len|panic|print|println|real|recover|min|max|clear)\b(?=\()
+    scope: entity.name.function.support.builtin.go
+  - match: (?:(\bnew\b)(\())
+    captures:
+      1: entity.name.function.support.builtin.go
+      2: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_functions
+    - include: repo_struct_variables_types
+    - include: repo_type-declarations
+    - include: repo_generic_types
+    - match: (?:\w+)
+      scope: entity.name.type.go
+    - include: main
+  - match: (?:(\bmake\b)(?:(\()((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+(?:\([^\)]+\))?)?(?:[\[\]\*]+)?(?:(?!\bmap\b)(?:[\w\.]+))?(\[(?:(?:[\S]+)(?:(?:\,\s*(?:[\S]+))*))?\])?(?:\,)?)?))
+    captures:
+      1: entity.name.function.support.builtin.go
+      2: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: main
+  repo_comments:
+  - match: (\/\*)
+    captures:
+      1: punctuation.definition.comment.go
+    push:
+    - meta_scope: comment.block.go
+    - match: (\*\/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.go
+  - match: (\/\/)
+    captures:
+      1: punctuation.definition.comment.go
+    push:
+    - meta_scope: comment.line.double-slash.go
+    - match: (?:\n|$)
+      pop: true
+  repo_const_assignment:
+  - match: (?:(?<=\bconst\b)(?:\s*)(\b[\w\.]+(?:\,\s*[\w\.]+)*)(?:\s*)((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+(?:\([^\)]+\))?)?(?!(?:[\[\]\*]+)?\b(?:struct|func|map)\b)(?:[\w\.\[\]\*]+(?:\,\s*[\w\.\[\]\*]+)*)?(?:\s*)(?:\=)?)?)
+  - match: (?:(?<=\bconst\b)(?:\s*)(\())
+    captures:
+      1: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - match: (?:(?:^\s*)(\b[\w\.]+(?:\,\s*[\w\.]+)*)(?:\s*)((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+(?:\([^\)]+\))?)?(?!(?:[\[\]\*]+)?\b(?:struct|func|map)\b)(?:[\w\.\[\]\*]+(?:\,\s*[\w\.\[\]\*]+)*)?(?:\s*)(?:\=)?)?)
+    - include: main
+  repo_delimiters:
+  - match: \,
+    scope: punctuation.other.comma.go
+  - match: \.(?!\.\.)
+    scope: punctuation.other.period.go
+  - match: :(?!=)
+    scope: punctuation.other.colon.go
+  repo_double_parentheses_types:
+  - match: (?:(?<!\w)(\((?:[\w\.\[\]\*\&]+)\))(?=\())
+  repo_field_hover:
+  - match: (?:(?<=^\bfield\b)\s+([\w\*\.]+)\s+([\s\S]+))
+  repo_function_declaration:
+  - match: (?:^(\bfunc\b)(?:\s*(\([^\)]+\)\s*)?(?:(\w+)(?=\(|\[))?))
+    captures:
+      1: keyword.function.go
+    push:
+    - match: (?:(?<=\))\s*((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?!(?:[\[\]\*]+)?(?:\bstruct\b|\binterface\b))[\w\.\-\*\[\]]+)?\s*(?=\{))
+      pop: true
+    - match: \(
+      captures:
+        0: punctuation.definition.begin.bracket.round.go
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.definition.end.bracket.round.go
+      - include: repo_function_param_types
+    - match: (?:([\w\.\*]+)?(\[))
+      captures:
+        2: punctuation.definition.begin.bracket.square.go
+      push:
+      - match: \]
+        pop: true
+        captures:
+          0: punctuation.definition.end.bracket.square.go
+      - include: repo_generic_param_types
+    - match: (?:(?<=\))(?:\s*)((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?[\w\*\.\[\]\<\>\-]+(?:\s*)(?:\/(?:\/|\*).*)?)$)
+    - include: main
+  repo_function_param_types:
+  - include: repo_struct_variables_types
+  - include: repo_interface_variables_types
+  - include: repo_type-declarations-without-brackets
+  - match: ((?:(?:\b\w+\,\s*)+)?\b\w+)\s+(?=(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\[\]\*]+)?\b(?:struct|interface)\b\s*\{)
+  - match: (?:(?:(?<=\()|^\s*)((?:(?:\b\w+\,\s*)+)(?:/(?:/|\*).*)?)$)
+  - match: (?:((?:(?:\b\w+\,\s*)+)?\b\w+)(?:\s+)((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:(?:(?:[\w\[\]\.\*]+)?(?:(?:\bfunc\b\((?:[^\)]+)?\))(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:\s*))+(?:(?:(?:[\w\*\.\[\]]+)|(?:\((?:[^\)]+)?\))))?)|(?:(?:[\[\]\*]+)?[\w\*\.]+(?:\[(?:[^\]]+)\])?(?:[\w\.\*]+)?)+)))
+  - match: (?:([\w\.\*]+)?(\[))
+    captures:
+      2: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.go
+    - include: repo_generic_param_types
+  - match: \(
+    captures:
+      0: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_function_param_types
+  - match: ([\w\.]+)
+  - include: main
+  repo_functions:
+  - match: (?:(\bfunc\b)(?=\())
+    captures:
+      1: keyword.function.go
+    push:
+    - match: (?:(?<=\))(\s*(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?((?:(?:\s*(?:(?:[\[\]\*]+)?[\w\.\*]+)?(?:(?:\[(?:(?:[\w\.\*]+)?(?:\[(?:[^\]]+)?\])?(?:\,\s+)?)+\])|(?:\((?:[^\)]+)?\)))?(?:[\w\.\*]+)?)(?:\s*)(?=\{))|(?:\s*(?:(?:(?:[\[\]\*]+)?(?!\bfunc\b)(?:[\w\.\*]+)(?:\[(?:(?:[\w\.\*]+)?(?:\[(?:[^\]]+)?\])?(?:\,\s+)?)+\])?(?:[\w\.\*]+)?)|(?:\((?:[^\)]+)?\)))))?)
+      pop: true
+    - include: repo_parameter-variable-types
+  repo_functions_inline:
+  - match: (?:(\bfunc\b)((?:\((?:[^/]*?)\))(?:\s+)(?:\((?:[^/]*?)\)))(?:\s+)(?=\{))
+    captures:
+      1: keyword.function.go
+  repo_generic_param_types:
+  - include: repo_struct_variables_types
+  - include: repo_interface_variables_types
+  - include: repo_type-declarations-without-brackets
+  - match: ((?:(?:\b\w+\,\s*)+)?\b\w+)\s+(?=(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\[\]\*]+)?\b(?:struct|interface)\b\s*\{)
+  - match: (?:(?:(?<=\()|^\s*)((?:(?:\b\w+\,\s*)+)(?:/(?:/|\*).*)?)$)
+  - match: (?:((?:(?:\b\w+\,\s*)+)?\b\w+)(?:\s+)((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:(?:(?:[\w\[\]\.\*]+)?(?:(?:\bfunc\b\((?:[^\)]+)?\))(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:\s*))+(?:(?:(?:[\w\*\.]+)|(?:\((?:[^\)]+)?\))))?)|(?:(?:(?:[\w\*\.\~]+)|(?:\[(?:(?:[\w\.\*]+)?(?:\[(?:[^\]]+)?\])?(?:\,\s+)?)+\]))(?:[\w\.\*]+)?)+)))
+  - match: (?:([\w\.\*]+)?(\[))
+    captures:
+      2: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.go
+    - include: repo_generic_param_types
+  - match: \(
+    captures:
+      0: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_function_param_types
+  - match: (?:\b([\w\.]+))
+  - include: main
+  repo_generic_types:
+  - match: (?:([\w\.\*]+)(\[(?:[^\]]+)?\]))
+  repo_group-functions:
+  - include: repo_function_declaration
+  - include: repo_functions_inline
+  - include: repo_functions
+  - include: repo_built_in_functions
+  - include: repo_support_functions
+  repo_group-types:
+  - include: repo_other_struct_interface_expressions
+  - include: repo_type_assertion_inline
+  - include: repo_struct_variables_types
+  - include: repo_interface_variables_types
+  - include: repo_single_type
+  - include: repo_multi_types
+  - include: repo_struct_interface_declaration
+  - include: repo_double_parentheses_types
+  - include: repo_switch_types
+  - include: repo_type-declarations
+  repo_group-variables:
+  - include: repo_const_assignment
+  - include: repo_var_assignment
+  - include: repo_variable_assignment
+  - include: repo_label_loop_variables
+  - include: repo_slice_index_variables
+  - include: repo_property_variables
+  - include: repo_switch_select_case_variables
+  - include: repo_other_variables
+  repo_import:
+  - match: \b(import)\s+
+    captures:
+      1: keyword.control.import.go
+    push:
+    - match: (?!)
+      pop: true
+    - include: repo_imports
+  repo_imports:
+  - match: (\s*[\w\.]+)?\s*((")([^"]*)("))
+    captures:
+      2: string.quoted.double.go
+      3: punctuation.definition.string.begin.go
+      4: entity.name.import.go
+      5: punctuation.definition.string.end.go
+  - match: \(
+    captures:
+      0: punctuation.definition.imports.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.imports.end.bracket.round.go
+    - include: repo_comments
+    - include: repo_imports
+  - include: main
+  repo_interface_variables_types:
+  - match: (\binterface\b)\s*(\{)
+    captures:
+      1: keyword.interface.go
+      2: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - include: repo_interface_variables_types_field
+    - include: main
+  repo_interface_variables_types_field:
+  - include: repo_support_functions
+  - include: repo_type-declarations-without-brackets
+  - match: (?:([\w\.\*]+)?(\[))
+    captures:
+      2: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.go
+    - include: repo_generic_param_types
+  - match: \(
+    captures:
+      0: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_function_param_types
+  - match: ([\w\.]+)
+  repo_keywords:
+  - match: \b(break|case|continue|default|defer|else|fallthrough|for|go|goto|if|range|return|select|switch)\b
+    scope: keyword.control.go
+  - match: \bchan\b
+    scope: keyword.channel.go
+  - match: \bconst\b
+    scope: keyword.const.go
+  - match: \bvar\b
+    scope: keyword.var.go
+  - match: \bfunc\b
+    scope: keyword.function.go
+  - match: \binterface\b
+    scope: keyword.interface.go
+  - match: \bmap\b
+    scope: keyword.map.go
+  - match: \bstruct\b
+    scope: keyword.struct.go
+  - match: \bimport\b
+    scope: keyword.control.import.go
+  - match: \btype\b
+    scope: keyword.type.go
+  repo_label_loop_variables:
+  - match: ((?:^\s*\w+:\s*$)|(?:^\s*(?:\bbreak\b|\bgoto\b|\bcontinue\b)\s+\w+(?:\s*/(?:/|\*)\s*.*)?$))
+  repo_language_constants:
+  - match: \b(?:(true|false)|(nil)|(iota))\b
+    captures:
+      1: constant.language.boolean.go
+      2: constant.language.null.go
+      3: constant.language.iota.go
+  repo_map_types:
+  - match: (?:(\bmap\b)(\[))
+    captures:
+      1: keyword.map.go
+      2: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: (?:(\])((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?!(?:[\[\]\*]+)?\b(?:func|struct|map)\b)(?:[\*\[\]]+)?(?:[\w\.]+)(?:\[(?:(?:[\w\.\*\[\]\{\}]+)(?:(?:\,\s*(?:[\w\.\*\[\]\{\}]+))*))?\])?)?)
+      pop: true
+      captures:
+        1: punctuation.definition.end.bracket.square.go
+    - include: repo_type-declarations-without-brackets
+    - include: repo_parameter-variable-types
+    - include: repo_functions
+    - match: \[
+      scope: punctuation.definition.begin.bracket.square.go
+    - match: \]
+      scope: punctuation.definition.end.bracket.square.go
+    - match: \{
+      scope: punctuation.definition.begin.bracket.curly.go
+    - match: \}
+      scope: punctuation.definition.end.bracket.curly.go
+    - match: \(
+      scope: punctuation.definition.begin.bracket.round.go
+    - match: \)
+      scope: punctuation.definition.end.bracket.round.go
+    - match: \w+
+      scope: entity.name.type.go
+  repo_multi_types:
+  - match: (\btype\b)\s*(\()
+    captures:
+      1: keyword.type.go
+      2: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_struct_variables_types
+    - include: repo_interface_variables_types
+    - include: repo_type-declarations-without-brackets
+    - include: repo_parameter-variable-types
+    - match: (?:\w+)
+      scope: entity.name.type.go
+  repo_numeric_literals:
+  - match: (?<!\w)\.?\d(?:(?:[0-9a-zA-Z_\.])|(?<=[eEpP])[+-])*
+  repo_operators:
+  - match: ((?:\*|\&)+)(?:(?!\d)(?=(?:[\w\[\]])|(?:\<\-)))
+    scope: keyword.operator.address.go
+  - match: <\-
+    scope: keyword.operator.channel.go
+  - match: \-\-
+    scope: keyword.operator.decrement.go
+  - match: \+\+
+    scope: keyword.operator.increment.go
+  - match: (==|!=|<=|>=|<(?!<)|>(?!>))
+    scope: keyword.operator.comparison.go
+  - match: (&&|\|\||!)
+    scope: keyword.operator.logical.go
+  - match: (=|\+=|\-=|\|=|\^=|\*=|/=|:=|%=|<<=|>>=|&\^=|&=)
+    scope: keyword.operator.assignment.go
+  - match: (\+|\-|\*|/|%)
+    scope: keyword.operator.arithmetic.go
+  - match: (&(?!\^)|\||\^|&\^|<<|>>|\~)
+    scope: keyword.operator.arithmetic.bitwise.go
+  - match: \.\.\.
+    scope: keyword.operator.ellipsis.go
+  repo_other_struct_interface_expressions:
+  - include: repo_after_control_variables
+  - match: (\b[\w\.]+)(\[(?:[^\]]+)?\])?(?=\{)(?<!\bstruct\b|\binterface\b)
+  repo_other_variables:
+  - match: \w+
+    scope: variable.other.go
+  repo_package_name:
+  - match: \b(package)\s+
+    captures:
+      1: keyword.package.go
+    push:
+    - match: (?!)
+      pop: true
+    - match: \d\w*
+      scope: invalid.illegal.identifier.go
+    - match: \w+
+      scope: entity.name.type.package.go
+  repo_parameter-variable-types:
+  - match: \{
+    scope: punctuation.definition.begin.bracket.curly.go
+  - match: \}
+    scope: punctuation.definition.end.bracket.curly.go
+  - match: (?:([\w\.\*]+)?(\[))
+    captures:
+      2: punctuation.definition.begin.bracket.square.go
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.go
+    - include: repo_generic_param_types
+  - match: \(
+    captures:
+      0: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_function_param_types
+  repo_property_variables:
+  - match: ((?:\b[\w\.]+)(?:\:(?!\=)))
+  repo_raw_string_literals:
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.go
+    push:
+    - meta_scope: string.quoted.raw.go
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.go
+    - include: repo_string_placeholder
+  repo_runes:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.go
+    push:
+    - meta_scope: string.quoted.rune.go
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.go
+    - match: (\\([0-7]{3}|[abfnrtv\\'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})|.)(?=')
+      scope: constant.other.rune.go
+    - match: '[^'']+'
+      scope: invalid.illegal.unknown-rune.go
+  repo_single_type:
+  - match: (?:(?:^\s*)(\btype\b)(?:\s*)([\w\.\*]+)(?:\s+)(?!(?:\=\s*)?(?:[\[\]\*]+)?\b(?:struct|interface)\b)([\s\S]+))
+    captures:
+      1: keyword.type.go
+  - match: (?:(?:^|\s+)(\btype\b)(?:\s*)([\w\.\*]+)(?=\[))
+    captures:
+      1: keyword.type.go
+    push:
+    - match: (?:(?<=\])((?:\s+)(?:\=\s*)?(?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:(?!(?:[\[\]\*]+)?(?:\bstruct\b|\binterface\b|\bfunc\b))[\w\.\-\*\[\]]+(?:\,\s*[\w\.\[\]\*]+)*))?)
+      pop: true
+    - include: repo_struct_variables_types
+    - include: repo_type-declarations-without-brackets
+    - include: repo_parameter-variable-types
+    - match: \[
+      scope: punctuation.definition.begin.bracket.square.go
+    - match: \]
+      scope: punctuation.definition.end.bracket.square.go
+    - match: \{
+      scope: punctuation.definition.begin.bracket.curly.go
+    - match: \}
+      scope: punctuation.definition.end.bracket.curly.go
+    - match: \(
+      scope: punctuation.definition.begin.bracket.round.go
+    - match: \)
+      scope: punctuation.definition.end.bracket.round.go
+    - match: \w+
+      scope: entity.name.type.go
+  repo_slice_index_variables:
+  - match: (?<=\w\[)((?:(?:\b[\w\.\*\+/\-\%\<\>\|\&]+\:)|(?:\:\b[\w\.\*\+/\-\%\<\>\|\&]+))(?:\b[\w\.\*\+/\-\%\<\>\|\&]+)?(?:\:\b[\w\.\*\+/\-\%\<\>\|\&]+)?)(?=\])
+  repo_statements:
+  - include: repo_package_name
+  - include: repo_import
+  - include: repo_syntax_errors
+  - include: repo_group-functions
+  - include: repo_group-types
+  - include: repo_group-variables
+  - include: repo_field_hover
+  repo_storage_types:
+  - match: \bbool\b
+    scope: storage.type.boolean.go
+  - match: \bbyte\b
+    scope: storage.type.byte.go
+  - match: \berror\b
+    scope: storage.type.error.go
+  - match: \b(complex(64|128)|float(32|64)|u?int(8|16|32|64)?)\b
+    scope: storage.type.numeric.go
+  - match: \brune\b
+    scope: storage.type.rune.go
+  - match: \bstring\b
+    scope: storage.type.string.go
+  - match: \buintptr\b
+    scope: storage.type.uintptr.go
+  - match: \bany\b
+    scope: entity.name.type.any.go
+  repo_string_escaped_char:
+  - match: \\([0-7]{3}|[abfnrtv\\'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})
+    scope: constant.character.escape.go
+  - match: \\[^0-7xuUabfnrtv\'"]
+    scope: invalid.illegal.unknown-escape.go
+  repo_string_literals:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.go
+    push:
+    - meta_scope: string.quoted.double.go
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.go
+    - include: repo_string_escaped_char
+    - include: repo_string_placeholder
+  repo_string_placeholder:
+  - match: '%(\[\d+\])?([\+#\-0\x20]{,2}((\d+|\*)?(\.?(\d+|\*|(\[\d+\])\*?)?(\[\d+\])?)?))?[vT%tbcdoqxXUbeEfFgGspw]'
+    scope: constant.other.placeholder.go
+  repo_struct_interface_declaration:
+  - match: (?:(?:^\s*)(\btype\b)(?:\s*)([\w\.]+))
+    captures:
+      1: keyword.type.go
+  repo_struct_variable_types_fields_multi:
+  - match: (?:((?:\w+(?:\,\s*\w+)*)(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:\s+)(?:[\[\]\*]+)?)(\bstruct\b)(?:\s*)(\{))
+    captures:
+      2: keyword.struct.go
+      3: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - include: repo_struct_variables_types_fields
+    - include: main
+  - match: (?:((?:\w+(?:\,\s*\w+)*)(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:\s+)(?:[\[\]\*]+)?)(\binterface\b)(?:\s*)(\{))
+    captures:
+      2: keyword.interface.go
+      3: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - include: repo_interface_variables_types_field
+    - include: main
+  - match: (?:((?:\w+(?:\,\s*\w+)*)(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:\s+)(?:[\[\]\*]+)?)(\bfunc\b)(?:\s*)(\())
+    captures:
+      2: keyword.function.go
+      3: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - include: repo_function_param_types
+    - include: main
+  - include: repo_parameter-variable-types
+  repo_struct_variables_types:
+  - match: (\bstruct\b)\s*(\{)
+    captures:
+      1: keyword.struct.go
+      2: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - include: repo_struct_variables_types_fields
+    - include: main
+  repo_struct_variables_types_fields:
+  - include: repo_struct_variable_types_fields_multi
+  - match: (?:(?<=\{)\s*((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\w\.\*\[\]]+))\s*(?=\}))
+  - match: (?:(?<=\{)\s*((?:(?:\w+\,\s*)+)?(?:\w+\s+))((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\w\.\*\[\]]+))\s*(?=\}))
+  - match: (?:(?<=\{)((?:\s*(?:(?:(?:\w+\,\s*)+)?(?:\w+\s+))?(?:(?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\S]+)(?:\;)?))+)\s*(?=\}))
+  - match: (?:((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?(?:[\w\.\*]+)\s*)(?:(?=\`|\/|")|$))
+  - match: (?:((?:(?:\w+\,\s*)+)?(?:\w+\s+))([^\`"\/]+))
+  repo_support_functions:
+  - match: (?:(?:((?<=\.)\b\w+)|(\b\w+))(\[(?:(?:[\w\.\*\[\]\{\}"\']+)(?:(?:\,\s*(?:[\w\.\*\[\]\{\}]+))*))?\])?(?=\())
+    captures:
+      1: entity.name.function.support.go
+  repo_switch_select_case_variables:
+  - match: (?:(?:^\s*(\bcase\b))(?:\s+)([\s\S]+(?:\:)\s*(?:/(?:/|\*).*)?)$)
+    captures:
+      1: keyword.control.go
+  repo_switch_types:
+  - match: (?<=\bswitch\b)(?:\s*)(?:(\w+\s*\:\=)?\s*([\w\.\*\(\)\[\]\+/\-\%\<\>\|\&]+))(\.\(\btype\b\)\s*)(\{)
+    captures:
+      4: punctuation.definition.begin.bracket.curly.go
+    push:
+    - match: (?:\})
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.curly.go
+    - match: (?:^\s*(\bcase\b))(?:\s+)([\w\.\,\*\=\<\>\!\s]+)(:)(\s*/(?:/|\*)\s*.*)?$
+      captures:
+        1: keyword.control.go
+        3: punctuation.other.colon.go
+    - match: \bcase\b
+      captures:
+        0: keyword.control.go
+      push:
+      - match: '\:'
+        pop: true
+        captures:
+          0: punctuation.other.colon.go
+      - include: repo_type-declarations
+      - match: \w+
+        scope: entity.name.type.go
+    - include: main
+  repo_syntax_errors:
+  - match: \[\](\s+)
+    captures:
+      1: invalid.illegal.slice.go
+  - match: \b0[0-7]*[89]\d*\b
+    scope: invalid.illegal.numeric.go
+  repo_terminators:
+  - match: ;
+    scope: punctuation.terminator.go
+  repo_type-declarations:
+  - include: repo_language_constants
+  - include: repo_comments
+  - include: repo_map_types
+  - include: repo_brackets
+  - include: repo_delimiters
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_runes
+  - include: repo_storage_types
+  - include: repo_raw_string_literals
+  - include: repo_string_literals
+  - include: repo_numeric_literals
+  - include: repo_terminators
+  repo_type-declarations-without-brackets:
+  - include: repo_language_constants
+  - include: repo_comments
+  - include: repo_map_types
+  - include: repo_delimiters
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_runes
+  - include: repo_storage_types
+  - include: repo_raw_string_literals
+  - include: repo_string_literals
+  - include: repo_numeric_literals
+  - include: repo_terminators
+  repo_type_assertion_inline:
+  - match: (?:(?<=\.\()(?:(\btype\b)|((?:(?:\s*(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+)?[\w\.\[\]\*]+))(?=\)))
+    captures:
+      1: keyword.type.go
+  repo_var_assignment:
+  - match: (?:(?<=\bvar\b)(?:\s*)(\b[\w\.]+(?:\,\s*[\w\.]+)*)(?:\s*)((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+(?:\([^\)]+\))?)?(?!(?:[\[\]\*]+)?\b(?:struct|func|map)\b)(?:[\w\.\[\]\*]+(?:\,\s*[\w\.\[\]\*]+)*)?(?:\s*)(?:\=)?)?)
+  - match: (?:(?<=\bvar\b)(?:\s*)(\())
+    captures:
+      1: punctuation.definition.begin.bracket.round.go
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.round.go
+    - match: (?:(?:^\s*)(\b[\w\.]+(?:\,\s*[\w\.]+)*)(?:\s*)((?:(?:(?:[\*\[\]]+)?(?:\<\-\s*)?\bchan\b(?:\s*\<\-)?\s*)+(?:\([^\)]+\))?)?(?!(?:[\[\]\*]+)?\b(?:struct|func|map)\b)(?:[\w\.\[\]\*]+(?:\,\s*[\w\.\[\]\*]+)*)?(?:\s*)(?:\=)?)?)
+    - include: main
+  repo_variable_assignment:
+  - match: \b\w+(?:\,\s*\w+)*(?=\s*:=)
+  - match: \b[\w\.\*]+(?:\,\s*[\w\.\*]+)*(?=\s*=(?!=))

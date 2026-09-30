@@ -1,0 +1,122 @@
+%YAML 1.2
+---
+# X Logical Font Description (source.xlfd): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-fontforge via GitHub Linguist v9.7.0 (license: isc).
+name: X Logical Font Description
+scope: source.xlfd
+hidden: true
+contexts:
+  main:
+  - include: repo_name
+  repo_fieldAddStyleName:
+  - match: (?:^|).+$
+    scope: entity.add-style.name.xlfd
+  repo_fieldAverageWidth:
+  - match: '[+~]?[0-9]+'
+    scope: constant.numeric.integer.int.average-width.xlfd
+  repo_fieldCharsetEncoding:
+  - match: (?:^|)([^\[]+)((\[)([^\]]+)(\]))?$
+    captures:
+      1: entity.charset-encoding.name.xlfd
+      2: meta.subsetting-hint.xlfd
+      3: punctuation.definition.square.bracket.begin.xlfd
+      5: punctuation.definition.square.bracket.end.xlfd
+  repo_fieldPixelSize:
+  - match: (?:^|)[0-9]+$
+    scope: constant.numeric.int.integer.pixel-size.xlfd
+  - match: (?:^|)(?=\[)
+    push:
+    - meta_scope: meta.pixel-size.matrix.xlfd
+    - match: $
+      pop: true
+    - include: repo_matrix
+  repo_fieldPointSize:
+  - match: (?:^|)[0-9]+$
+    scope: constant.numeric.int.integer.point-size.xlfd
+  - match: (?:^|)(?=\[)
+    push:
+    - meta_scope: meta.point-size.matrix.xlfd
+    - match: $
+      pop: true
+    - include: repo_matrix
+  repo_fieldResX:
+  - match: (?:^|)[0-9]+$
+    scope: constant.numeric.unsigned.int.integer.resolution-x.xlfd
+  repo_fieldResY:
+  - match: (?:^|)[0-9]+$
+    scope: constant.numeric.unsigned.int.integer.resolution-y.xlfd
+  repo_fieldSetWidth:
+  - match: (?:^|)0$
+    scope: constant.numeric.polymorphic.set-width.xlfd
+  - match: (?:^|).+$
+    scope: entity.set-width.name.xlfd
+  repo_fieldSlant:
+  - match: (?:^|)[Rr]$
+    scope: constant.language.slant.regular.xlfd
+  - match: (?:^|)[Ii]$
+    scope: constant.language.slant.italic.xlfd
+  - match: (?:^|)[Oo]$
+    scope: constant.language.slant.oblique.xlfd
+  - match: (?:^|)[Rr][Ii]$
+    scope: constant.language.slant.reverse-italic.xlfd
+  - match: (?:^|)[Rr][Oo]$
+    scope: constant.language.slant.reverse-oblique.xlfd
+  - match: (?:^|)[Oo][Tt]$
+    scope: constant.language.slang.other-type.xlfd
+  - match: (?:^|)[0-9]+$
+    scope: constant.numeric.int.integer.slant.xlfd
+  - match: (?:^|).+$
+    scope: invalid.illegal.unknown-type.slant.xlfd
+  repo_fieldSpacing:
+  - match: (?:^|)[Pp]$
+    scope: constant.language.field-spacing.proportional.variable-pitch.xlfd
+  - match: (?:^|)[Mm]$
+    scope: constant.language.field-spacing.monospaced.fixed-pitch.xlfd
+  - match: (?:^|)[Cc]$
+    scope: constant.language.field-spacing.monospaced.char-celled.xlfd
+  repo_matrix:
+  - match: \[
+    captures:
+      0: punctuation.definition.square.bracket.begin.xlfd
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.square.bracket.end.xlfd
+    - match: '[+~]?[0-9]*\.[0-9]+(?:[Ee][+~]?[0-9]+)?'
+      scope: constant.numeric.decimal.float.xlfd
+    - match: '[+~]?[0-9]+(?:[Ee][+~]?[0-9]+)?'
+      scope: constant.numeric.decimal.integer.int.xlfd
+  repo_name:
+  - match: "(?x)\n# XFontNameRegistry\n(\n\t(\n\t\t(\\+)             # XFNExtPrefix\n\t\t([0-9]+\\.[0-9]+) # Version\n\t)?\n\t(-) # XFNDelim\n)\n\n# XFontNameSuffix\n# (Scoped as `meta.fields', as `suffix' is misleading)\n(\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # FOUNDRY\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # FAMILY_NAME\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # WEIGHT_NAME\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # SLANT\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # SETWIDTH_NAME\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # ADD_STYLE_NAME\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # PIXEL_SIZE\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # POINT_SIZE\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # RESOLUTION_X\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # RESOLUTION_Y\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # SPACING\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # AVERAGE_WIDTH\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*])) (-) # CHARSET_REGISTRY\n\t(?: ([!#-)+.->@-~\\x20]*) | ([?*]))\
+      \     # CHARSET_ENCODING\n)"
+    scope: meta.font-name.xlfd
+    captures:
+      1: meta.registry.xlfd
+      10: entity.family.name.xlfd
+      12: punctuation.delimiter.dash.xlfd
+      13: entity.weight.name.xlfd
+      15: punctuation.delimiter.dash.xlfd
+      18: punctuation.delimiter.dash.xlfd
+      2: meta.extension.xlfd
+      21: punctuation.delimiter.dash.xlfd
+      24: punctuation.delimiter.dash.xlfd
+      27: punctuation.delimiter.dash.xlfd
+      3: punctuation.definition.extension-prefix.xlfd
+      30: punctuation.delimiter.dash.xlfd
+      33: punctuation.delimiter.dash.xlfd
+      36: punctuation.delimiter.dash.xlfd
+      39: punctuation.delimiter.dash.xlfd
+      4: constant.numeric.decimal.float.version.xlfd
+      42: punctuation.delimiter.dash.xlfd
+      43: entity.charset-registry.name.xlfd
+      45: punctuation.delimiter.dash.xlfd
+      5: punctuation.delimiter.dash.xlfd
+      6: meta.fields.xlfd
+      7: entity.foundry.name.xlfd
+      9: punctuation.delimiter.dash.xlfd
+  repo_wildcards:
+  - match: \?
+    scope: keyword.operator.logical.wildcard.xlfd
+  - match: \*
+    scope: keyword.operator.logical.wildcard.xlfd

@@ -82,6 +82,10 @@ pub struct BranchFoldout {
     /// `FilterList` selection: the row last pressed or right-clicked (the
     /// current branch until then), and whether the list has keyboard focus.
     selected_row: Option<String>,
+    /// The row drawn as selected this frame: the pressed row while it is
+    /// visible, else the current branch, else — with a filter typed — the
+    /// first match (`FilterList` moves the selection into the results).
+    shown_selected: Option<String>,
     list_focus: FocusHandle,
     list_focused: bool,
     /// `851-branch-list-remote-only`: the list shows remote branches only.
@@ -267,6 +271,7 @@ impl BranchFoldout {
             quick_view_height: Rc::new(Cell::new(QUICK_VIEW_MAX_HEIGHT())),
             quick_view_hovered: false,
             selected_row: None,
+            shown_selected: None,
             list_focus: cx.focus_handle(),
             list_focused: false,
             remote_only: false,
@@ -600,10 +605,8 @@ impl BranchFoldout {
             .flatten();
         let t = cx.ghd();
         let name = branch.name.clone();
-        let selected = match &self.selected_row {
-            Some(row) => *row == branch.name,
-            None => current,
-        };
+        let _ = current;
+        let selected = self.shown_selected.as_deref() == Some(branch.name.as_str());
         let date = branch
             .tip_time
             .filter(|s| *s > 0)
@@ -984,7 +987,7 @@ impl BranchFoldout {
             .child(
                 // `.protip` with a `KeyboardShortcut` (⌘⇧N) in the sentence
                 crate::widgets::paragraph(vec![
-                    "ProTip! Press".into(),
+                    "ProTip! Press ".into(),
                     // `kbd` inherits the 11 px `.protip` text
                     div()
                         .flex()
@@ -996,7 +999,7 @@ impl BranchFoldout {
                         )
                         .into_any_element()
                         .into(),
-                    "to quickly create a new branch from anywhere within the app".into(),
+                    " to quickly create a new branch from anywhere within the app".into(),
                 ])
                 .justify_center()
                 .px(SPACING() * 3.)
@@ -1049,6 +1052,21 @@ impl Render for BranchFoldout {
         };
         let Some(id) = id else {
             return div().into_any_element();
+        };
+        let visible = |name: &str| {
+            groups
+                .iter()
+                .any(|g| g.branches.iter().any(|b| b.name == name))
+        };
+        self.shown_selected = match (&self.selected_row, &current) {
+            (Some(row), _) if visible(row) => Some(row.clone()),
+            (None, Some(cur)) if visible(cur) => Some(cur.clone()),
+            _ if !query.is_empty() => groups
+                .iter()
+                .flat_map(|g| g.branches.first())
+                .next()
+                .map(|b| b.name.clone()),
+            _ => None,
         };
         let query_for_new = query.clone();
         let is_github = self.is_github(cx);

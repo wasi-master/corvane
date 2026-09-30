@@ -1,0 +1,425 @@
+%YAML 1.2
+---
+# WebVTT (text.vtt): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-subtitles.git via GitHub Linguist v9.7.0 (license: isc).
+name: WebVTT
+scope: text.vtt
+file_extensions:
+- vtt
+contexts:
+  main:
+  - match: "\\A\uFEFF?(WEBVTT)(?=$|[ \\t])"
+    captures:
+      1: keyword.control.start-file.vtt
+    push:
+    - meta_scope: meta.file-body.vtt
+    - match: (?=A)B
+      pop: true
+    - match: ''
+      push:
+      - meta_scope: meta.header.vtt
+      - meta_content_scope: comment.line.ignored.vtt
+      - match: ^[ \t]*$
+        pop: true
+      - include: repo_setting
+    - include: repo_main
+  - include: repo_main
+  repo_badArrow:
+  - match: \S*?-->\S*
+    scope: invalid.illegal.syntax.unexpected-separator.vtt
+  repo_charRef:
+  - include: scope:text.html.basic
+  repo_class:
+  - match: (\.)(black|blue|cyan|lime|magenta|red|white|yellow)(?=$|[\s&<>.])
+    captures:
+      1: punctuation.definition.entity.class.vtt
+  - match: (\.)bg_(black|blue|cyan|lime|magenta|red|white|yellow)(?=$|[\s&<>.])
+    captures:
+      1: punctuation.definition.entity.class.vtt
+  - match: (\.)[^\s&<>.]+
+    scope: entity.other.attribute-name.class.vtt
+    captures:
+      1: punctuation.definition.entity.class.vtt
+  repo_comment:
+  - match: ^NOTE(?=$|\s)
+    captures:
+      0: storage.type.start-comment.vtt
+    push:
+    - meta_scope: comment.block.vtt
+    - match: ^[ \t]*$
+      pop: true
+  repo_cue:
+  - match: "(?x)\n(?=\n\t^\n\t(?:\\d{2,}:)?\\d{2}:\\d{2}\\.\\d{3}  # Start time\n\t[ \\t]+ --> [ \\t]+                  # Separator\n\t(?:\\d{2,}:)?\\d{2}:\\d{2}\\.\\d{3}  # End time\n\t(?:$|[ \\t])\n)\n|\n# Cue identifier\n^((?!.*?-->)[^\\r\\n]+)$"
+    captures:
+      1: entity.name.cue.vtt
+    push:
+    - meta_scope: meta.cue.block.vtt
+    - match: ^[ \t]*$
+      pop: true
+    - include: repo_cueTimings
+    - include: repo_cuePayload
+  repo_cueComponents:
+  - include: repo_cueSpan
+  - include: repo_cueTimestamp
+  - include: repo_cueDash
+  - include: repo_charRef
+  repo_cueDash:
+  - match: "(?:^|)([-\u2013\u2014\u2015\u2E3A\u2E3B\u301C\u3030\uFE31\uFE32\uFE58\uFE63\uFF0D])"
+    scope: markup.quote.quotation-dash.vtt
+    captures:
+      1: punctuation.section.quote.vtt
+  repo_cuePayload:
+  - match: ^(?=[ \t]*\S)
+    push:
+    - meta_scope: meta.cue.payload.vtt
+    - match: (?=^[ \t]*$)(?!)
+      pop: true
+    - include: repo_cueComponents
+  repo_cueSettings:
+  - match: (?<=[ \t]|^)(?!$)
+    push:
+    - meta_scope: meta.cue.settings-list.vtt
+    - match: $
+      pop: true
+    - include: repo_badArrow
+    - include: repo_setting
+  repo_cueSpan:
+  - match: (<)(c)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.class-span.vtt
+    - match: (?=^[ \t]*$)|((</)(c)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - include: repo_cueSpanBody
+  - match: (<)(i)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.italics-span.vtt
+    - match: (?=^[ \t]*$)|((</)(i)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - match: (?<=>)
+      push:
+      - meta_scope: markup.italic.vtt
+      - match: (?=</[A-Za-z_:]|^[ \t]*$)
+        pop: true
+      - include: repo_cueComponents
+  - match: (<)(b)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.bold-span.vtt
+    - match: (?=^[ \t]*$)|((</)(b)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - match: (?<=>)
+      push:
+      - meta_scope: markup.bold.vtt
+      - match: (?=</[A-Za-z_:]|^[ \t]*$)
+        pop: true
+      - include: repo_cueComponents
+  - match: (<)(u)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.underline-span.vtt
+    - match: (?=^[ \t]*$)|((</)(u)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - match: (?<=>)
+      push:
+      - meta_scope: markup.underline.vtt
+      - meta_content_scope: string.other.link.vtt
+      - match: (?=</[A-Za-z_:]|^[ \t]*$)
+        pop: true
+      - include: repo_cueComponents
+  - match: (<)(ruby)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.ruby-span.vtt
+    - match: (?=^[ \t]*$)|((</)(ruby)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - include: repo_cueSpanBody
+  - match: (<)(rt)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.ruby-text-span.vtt
+    - match: (?=^[ \t]*$)|((</)(rt)\s*(>))|(/>)|(?=\s*</ruby\s*>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - include: repo_cueSpanStart
+    - include: repo_cueSpanBody
+  - match: (<)(v)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.voice-span.vtt
+    - match: (?=^[ \t]*$)|((</)(v)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - match: (?!\s*/>)((?:\.[^\s&<>.]+)*\.?)?
+      push:
+      - meta_scope: meta.tag.opening.vtt
+      - match: '>|(?=\s*/>|^[ \t]*$)'
+        pop: true
+        captures:
+          0: punctuation.definition.tag.end.vtt
+      - match: (?:[ \t]|^|)(?=\S)(?!>|&)
+        push:
+        - meta_scope: meta.annotation.vtt
+        - meta_content_scope: entity.name.voice.vtt
+        - match: (?=$|>|&|^[ \t]*$)
+          pop: true
+        - include: repo_charRef
+    - include: repo_cueSpanBody
+  - match: (<)(lang)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - meta_scope: meta.span.language-span.vtt
+    - match: (?=^[ \t]*$)|((</)(lang)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - match: (?!\s*/>)((?:\.[^\s&<>.]+)*\.?)?
+      push:
+      - meta_scope: meta.tag.opening.vtt
+      - match: '>|(?=\s*/>|^[ \t]*$)'
+        pop: true
+        captures:
+          0: punctuation.definition.tag.end.vtt
+      - match: (?:[ \t]|^|)(?=\S)(?!>|&)
+        push:
+        - meta_scope: meta.annotation.vtt
+        - meta_content_scope: constant.language.locale.bcp47.vtt
+        - match: (?=$|>|&|^[ \t]*$)
+          pop: true
+        - include: repo_charRef
+    - include: repo_cueSpanBody
+  - match: (<)([A-Za-z_:][-\w:]*)(?=$|\s|/?>|\.)
+    captures:
+      0: meta.tag.opening.vtt
+      1: punctuation.definition.tag.begin.vtt
+      2: entity.name.tag.localname.vtt
+    push:
+    - match: (?=^[ \t]*$)|((</)(\2)\s*(>))|(/>)
+      pop: true
+      captures:
+        1: meta.tag.closing.vtt
+        2: punctuation.definition.tag.begin.vtt
+        3: entity.name.tag.localname.vtt
+        4: punctuation.definition.tag.end.vtt
+        5: punctuation.definition.tag.end.self-closing.vtt
+    - match: (?!\s*/>)((?:\.[^\s&<>.]+)*\.?)?
+      push:
+      - meta_scope: meta.tag.opening.vtt
+      - match: '>|(?=\s*/>|^[ \t]*$)'
+        pop: true
+        captures:
+          0: punctuation.definition.tag.end.vtt
+      - match: (?:[ \t]|^|)(?=\S)(?!>|&)
+        push:
+        - meta_scope: meta.annotation.vtt
+        - meta_content_scope: string.unquoted.annotation.vtt
+        - match: (?=$|>|&|^[ \t]*$)
+          pop: true
+        - include: repo_charRef
+    - include: repo_cueSpanBody
+  repo_cueSpanBody:
+  - match: (?<=>)
+    push:
+    - meta_scope: meta.content.vtt
+    - match: (?=</[A-Za-z_:]|^[ \t]*$)
+      pop: true
+    - include: repo_cueComponents
+  repo_cueSpanStart:
+  - match: (?!\s*/>)((?:\.[^\s&<>.]+)*\.?)?
+    push:
+    - meta_scope: meta.tag.opening.vtt
+    - meta_content_scope: invalid.illegal.unexpected-annotation.vtt
+    - match: '>|(?=\s*/>|^[ \t]*$)'
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.vtt
+    - include: repo_charRef
+  repo_cueTimestamp:
+  - match: (<)((?:\d{2,}:)?\d{2}:\d{2}\.\d{3})(>)
+    scope: constant.other.cue-timestamp.vtt
+    captures:
+      1: punctuation.definition.timestamp.begin.vtt
+      3: punctuation.definition.timestamp.end.vtt
+  repo_cueTimings:
+  - match: "(?x) (?:^|)\n((?:\\d{2,}:)?\\d{2}:\\d{2}\\.\\d{3}) # Start time\n[ \\t]+ (-->) [ \\t]+                 # Separator\n((?:\\d{2,}:)?\\d{2}:\\d{2}\\.\\d{3}) # End time\n(?=$|[ \\t])  [ \\t]*                 # Gap before \u201C#cueSettings\u201D"
+    captures:
+      1: meta.start-time.vtt
+      2: keyword.operator.timespan.vtt
+      3: meta.end-time.vtt
+    push:
+    - meta_scope: meta.cue.timings.vtt
+    - match: $
+      pop: true
+    - include: repo_cueSettings
+  repo_main:
+  - include: repo_comment
+  - include: repo_region
+  - include: repo_style
+  - include: repo_cue
+  repo_region:
+  - match: ^(REGION)[ \t]*$
+    captures:
+      1: storage.type.region.vtt
+    push:
+    - meta_scope: meta.region-definition.block.vtt
+    - match: ^[ \t]*$
+      pop: true
+    - match: ^(id)(:)(?:(.*?-->.*?)|(\S+))
+      scope: meta.setting.with-value.vtt
+      captures:
+        1: variable.assignment.setting-name.vtt
+        2: keyword.operator.assignment.key-value.colon.vtt
+        4: entity.name.region.vtt
+    - include: repo_setting
+  repo_setting:
+  - match: ([^\s:]+?)(:)
+    captures:
+      1: variable.assignment.setting-name.vtt
+      2: keyword.operator.assignment.key-value.colon.vtt
+    push:
+    - meta_scope: meta.setting.generic.vtt
+    - match: (?!)
+      pop: true
+    - match: (?=[ \t]*\S)
+      push:
+      - match: (?!)(?=\s|$)
+        pop: true
+      - match: (?<=scroll:)([ \t]*)(up)(?=$|\s)
+        captures:
+          1: punctuation.whitespace.inline.vtt
+          2: constant.language.scroll-setting.vtt
+      - match: (?<=vertical:)([ \t]*)(rl|lr)(?=$|\s)
+        captures:
+          1: punctuation.whitespace.inline.vtt
+          2: constant.language.vertical-setting.vtt
+      - match: (?<=line:)([ \t]*)(start|center|end)(?=$|\s)
+        captures:
+          1: punctuation.whitespace.inline.vtt
+          2: constant.language.line-setting.vtt
+      - match: (?<=position:)([ \t]*)([0-9]+%,)(center|line-left|line-right)(?=$|\s)
+        captures:
+          1: punctuation.whitespace.inline.vtt
+          3: constant.language.position-setting.vtt
+      - match: (?<=align:)([ \t]*)(center|end|left|right|start)(?=$|\s)
+        captures:
+          1: punctuation.whitespace.inline.vtt
+          3: constant.language.align-setting.vtt
+      - include: repo_settingValue
+  repo_settingValue:
+  - match: '[0-9]+(?:\.[0-9]+)?(%)'
+    scope: constant.numeric.percentage.vtt
+    captures:
+      1: punctuation.definition.percentage.vtt
+  - match: '[0-9]+\b(?!%|\.[0-9])'
+    scope: constant.numeric.integer.int.vtt
+  - match: \bauto\b(?=$|\s|,)
+    scope: constant.language.auto.vtt
+  - match: ','
+    scope: punctuation.separator.delimiter.comma.vtt
+  - include: repo_badArrow
+  - match: .+
+    scope: constant.other.setting-value.vtt
+  repo_style:
+  - match: ^(STYLE)[ \t]*$
+    captures:
+      1: storage.type.style.vtt
+    push:
+    - meta_scope: meta.style.block.vtt
+    - meta_content_scope: source.embedded.css
+    - match: ^[ \t]*$
+      pop: true
+    - include: scope:source.css
+  repo_timestamp:
+  - match: "(?x)\n(?:(\\d{2,})(:))?            # Hours        (\u2265 00)\n(?:([0-5]\\d)|(\\d{2}))(:)   # Minutes      (00-59)\n(?:([0-5]\\d)|(\\d{2}))(\\.) # Seconds      (00-59)\n(\\d{3})                     # Milliseconds (000-999)"
+    scope: meta.timestamp.vtt
+    captures:
+      1: constant.numeric.timestamp.unit.hour.vtt
+      3: constant.numeric.timestamp.unit.minute.vtt
+      4: invalid.illegal.value.out-of-range.vtt
+      6: constant.numeric.timestamp.unit.second.vtt
+      7: invalid.illegal.value.out-of-range.vtt
+      9: constant.numeric.timestamp.unit.millisecond.vtt
+  repo_timestampColon:
+  - match: ':'
+    scope: meta.separator.colon.vtt
+    captures:
+      0: punctuation.separator.delimiter.vtt
+  repo_timestampDecimal:
+  - match: \.
+    scope: meta.separator.decimal.fraction.radix-point.vtt
+    captures:
+      0: punctuation.separator.decimal.vtt

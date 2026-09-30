@@ -1,0 +1,39 @@
+%YAML 1.2
+---
+# World of Warcraft Addon Data (source.toc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nebularg/language-toc-wow via GitHub Linguist v9.7.0 (license: unlicense).
+name: World of Warcraft Addon Data
+scope: source.toc
+file_extensions:
+- toc
+contexts:
+  main:
+  - match: ^(##\s*(\S+))\s*(:)\s*(.*)$
+    captures:
+      1: keyword.tag.toc
+      2: keyword.tag.toc
+      3: punctuation.separator.key-value
+      4: string.value.toc
+  - match: '#.*$'
+    scope: comment.toc
+  - match: ^(?!#)\s*(?=[\w\[])
+    push:
+    - meta_scope: entity.name.file.toc
+    - match: \n
+      pop: true
+    - include: repo_inline-conditional-directive
+    - include: repo_inline-variable-directive
+  - match: '@.*?@'
+    scope: constant.other.packager.toc
+  repo_inline-conditional-directive:
+  - match: \[(\w+)(\s+)([^\]]*)\]
+    scope: keyword.tag.toc
+    captures:
+      1: keyword.tag.toc
+      2: punctuation.separator.key-value
+      3: string.escape.coloring.toc
+  repo_inline-variable-directive:
+  - match: \[(\w+)\]
+    scope: keyword.tag.toc
+    captures:
+      1: keyword.tag.toc

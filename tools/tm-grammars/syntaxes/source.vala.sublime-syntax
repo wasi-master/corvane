@@ -1,0 +1,404 @@
+%YAML 1.2
+---
+# Vala (source.vala): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/technosophos/Vala-TMBundle via GitHub Linguist v9.7.0 (license: mit).
+name: Vala
+scope: source.vala
+file_extensions:
+- vala
+- vapi
+contexts:
+  main:
+  - match: ^\s*(using)\b(?:\s*([^ ;$]+)\s*(;)?)?
+    scope: meta.using.vala
+    captures:
+      1: keyword.other.using.vala
+      2: storage.modifier.using.vala
+      3: punctuation.terminator.vala
+  - include: repo_code
+  repo_all-types:
+  - include: repo_primitive-arrays
+  - include: repo_primitive-types
+  - include: repo_object-types
+  repo_annotations:
+  - match: (@[^ (]+)(\()
+    captures:
+      1: storage.type.annotation.vala
+      2: punctuation.definition.annotation-arguments.begin.vala
+    push:
+    - meta_scope: meta.declaration.annotation.vala
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.annotation-arguments.end.vala
+    - match: (\w*)\s*(=)
+      captures:
+        1: constant.other.key.vala
+        2: keyword.operator.assignment.vala
+    - include: repo_code
+    - match: ','
+      scope: punctuation.seperator.property.vala
+  - match: '@\w*'
+    scope: storage.type.annotation.vala
+  repo_anonymous-classes-and-new:
+  - match: \bnew\b
+    captures:
+      0: keyword.control.new.vala
+    push:
+    - match: (?<=\)|\])(?!\s*{)|(?<=})|(?=;)
+      pop: true
+    - match: (\w+)\s*(?=\[)
+      captures:
+        1: storage.type.vala
+      push:
+      - match: '}|(?=;|\))'
+        pop: true
+      - match: \[
+        push:
+        - match: \]
+          pop: true
+        - include: repo_code
+      - match: '{'
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_code
+    - match: (?=\w.*\()
+      push:
+      - match: (?<=\))
+        pop: true
+      - include: repo_object-types
+      - match: \(
+        captures:
+          1: storage.type.vala
+        push:
+        - match: \)
+          pop: true
+        - include: repo_code
+    - match: '{'
+      push:
+      - meta_scope: meta.inner-class.vala
+      - match: '}'
+        pop: true
+      - include: repo_class-body
+  repo_assertions:
+  - match: \b(assert|requires|ensures)\s
+    captures:
+      1: keyword.control.assert.vala
+    push:
+    - meta_scope: meta.declaration.assertion.vala
+    - match: $
+      pop: true
+    - match: ':'
+      scope: keyword.operator.assert.expression-seperator.vala
+    - include: repo_code
+  repo_class:
+  - match: (?=\w?[\w\s]*(?:class|(?:@)?interface|enum|struct|namespace)\s+\w+)
+    push:
+    - meta_scope: meta.class.vala
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.class.end.vala
+    - include: repo_storage-modifiers
+    - include: repo_comments
+    - match: (class|(?:@)?interface|enum|struct|namespace)\s+([\w\.]+)
+      scope: meta.class.identifier.vala
+      captures:
+        1: storage.modifier.vala
+        2: entity.name.type.class.vala
+    - match: ':'
+      captures:
+        0: storage.modifier.extends.vala
+      push:
+      - meta_scope: meta.definition.class.inherited.classes.vala
+      - match: (?={|,)
+        pop: true
+      - include: repo_object-types-inherited
+      - include: repo_comments
+    - match: (,)\s
+      captures:
+        1: storage.modifier.implements.vala
+      push:
+      - meta_scope: meta.definition.class.implemented.interfaces.vala
+      - match: (?=\{)
+        pop: true
+      - include: repo_object-types-inherited
+      - include: repo_comments
+    - match: '{'
+      push:
+      - meta_scope: meta.class.body.vala
+      - match: (?=})
+        pop: true
+      - include: repo_class-body
+  repo_class-body:
+  - include: repo_comments
+  - include: repo_class
+  - include: repo_enums
+  - include: repo_methods
+  - include: repo_annotations
+  - include: repo_storage-modifiers
+  - include: repo_code
+  repo_code:
+  - include: repo_comments
+  - include: repo_class
+  - match: '{'
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_code
+  - include: repo_assertions
+  - include: repo_parens
+  - include: repo_constants-and-special-vars
+  - include: repo_anonymous-classes-and-new
+  - include: repo_keywords
+  - include: repo_storage-modifiers
+  - include: repo_strings
+  - include: repo_all-types
+  repo_comments:
+  - match: /\*\*/
+    scope: comment.block.empty.vala
+    captures:
+      0: punctuation.definition.comment.vala
+  - include: scope:text.html.javadoc
+  - include: repo_comments-inline
+  repo_comments-inline:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.vala
+    push:
+    - meta_scope: comment.block.vala
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.vala
+  - match: \s*((//).*$\n?)
+    captures:
+      1: comment.line.double-slash.vala
+      2: punctuation.definition.comment.vala
+  repo_constants-and-special-vars:
+  - match: \b(true|false|null)\b
+    scope: constant.language.vala
+  - match: \b(this|base)\b
+    scope: variable.language.vala
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)([LlFfUuDd]|UL|ul)?\b
+    scope: constant.numeric.vala
+  - match: (\.)?\b([A-Z][A-Z0-9_]+)(?!<|\.class|\s*\w+\s*=)\b
+    scope: constant.other.vala
+    captures:
+      1: keyword.operator.dereference.vala
+  repo_enums:
+  - match: ^(?=\s*[A-Z0-9_]+\s*({|\(|,))
+    push:
+    - match: (?=;|})
+      pop: true
+    - match: \w+
+      captures:
+        0: constant.other.enum.vala
+      push:
+      - meta_scope: meta.enum.vala
+      - match: (?=,|;|})
+        pop: true
+      - include: repo_parens
+      - match: '{'
+        push:
+        - match: '}'
+          pop: true
+        - include: repo_class-body
+  repo_keywords:
+  - match: \b(try|catch|finally|throw)\b
+    scope: keyword.control.catch-exception.vala
+  - match: \?|:|\?\?
+    scope: keyword.control.vala
+  - match: \b(return|break|case|continue|default|do|while|for|foreach|switch|if|else|in|yield|get|set|value)\b
+    scope: keyword.control.vala
+  - match: \b(typeof|is|as)\b
+    scope: keyword.operator.vala
+  - match: (==|!=|<=|>=|<>|<|>)
+    scope: keyword.operator.comparison.vala
+  - match: (=)
+    scope: keyword.operator.assignment.vala
+  - match: (\-\-|\+\+)
+    scope: keyword.operator.increment-decrement.vala
+  - match: (\-|\+|\*|\/|%)
+    scope: keyword.operator.arithmetic.vala
+  - match: (!|&&|\|\|)
+    scope: keyword.operator.logical.vala
+  - match: (?<=\S)\.(?=\S)
+    scope: keyword.operator.dereference.vala
+  - match: ;
+    scope: punctuation.terminator.vala
+  - match: (owned|unowned)
+    scope: keyword.operator.ownership
+  repo_methods:
+  - match: (?!new)(?=\w.*\s+)(?=[^=]+\()
+    push:
+    - meta_scope: meta.method.vala
+    - match: '}|(?=;)'
+      pop: true
+    - include: repo_storage-modifiers
+    - match: ([\~\w\.]+)\s*\(
+      captures:
+        1: entity.name.function.vala
+      push:
+      - meta_scope: meta.method.identifier.vala
+      - match: \)
+        pop: true
+      - include: repo_parameters
+    - match: (?=\w.*\s+\w+\s*\()
+      push:
+      - meta_scope: meta.method.return-type.vala
+      - match: (?=\w+\s*\()
+        pop: true
+      - include: repo_all-types
+    - include: repo_throws
+    - match: '{'
+      push:
+      - meta_scope: meta.method.body.vala
+      - match: (?=})
+        pop: true
+      - include: repo_code
+  repo_namespace:
+  - match: ^(?=\s*[A-Z0-9_]+\s*({|\(|,))
+    push:
+    - match: (?=;|})
+      pop: true
+    - match: \w+
+      captures:
+        0: constant.other.namespace.vala
+      push:
+      - meta_scope: meta.namespace.vala
+      - match: (?=,|;|})
+        pop: true
+      - include: repo_parens
+      - match: '{'
+        push:
+        - match: '}'
+          pop: true
+        - include: repo_code
+  repo_object-types:
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)<
+    push:
+    - meta_scope: storage.type.generic.vala
+    - match: '>|[^\w\s,\?<\[\]]'
+      pop: true
+    - include: repo_object-types
+    - match: <
+      push:
+      - meta_scope: storage.type.generic.vala
+      - match: '>|[^\w\s,\[\]<]'
+        pop: true
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)(?=\[)
+    push:
+    - meta_scope: storage.type.object.array.vala
+    - match: (?=[^\]\s])
+      pop: true
+    - match: \[
+      push:
+      - match: \]
+        pop: true
+      - include: repo_code
+  - match: \b(?:[a-z]\w*(\.))*[A-Z]+\w*\b
+    scope: storage.type.vala
+    captures:
+      1: keyword.operator.dereference.vala
+  repo_object-types-inherited:
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)<
+    push:
+    - meta_scope: entity.other.inherited-class.vala
+    - match: '>|[^\w\s,<]'
+      pop: true
+    - include: repo_object-types
+    - match: <
+      push:
+      - meta_scope: storage.type.generic.vala
+      - match: '>|[^\w\s,<]'
+        pop: true
+  - match: \b(?:[a-z]\w*(\.))*[A-Z]+\w*
+    scope: entity.other.inherited-class.vala
+    captures:
+      1: keyword.operator.dereference.vala
+  repo_parameters:
+  - match: final
+    scope: storage.modifier.vala
+  - include: repo_primitive-arrays
+  - include: repo_primitive-types
+  - include: repo_object-types
+  - match: \w+
+    scope: variable.parameter.vala
+  repo_parens:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_code
+  repo_primitive-arrays:
+  - match: \b(?:bool|byte|sbyte|char|decimal|double|float|int|uint|long|ulong|object|short|ushort|string|void|int8|int16|int32|int64|uint8|uint16|uint32|uint64)(\[\])*\b
+    scope: storage.type.primitive.array.vala
+  repo_primitive-types:
+  - match: \b(?:var|bool|byte|sbyte|char|decimal|double|float|int|uint|long|ulong|object|short|ushort|string|void|signal|int8|int16|int32|int64|uint8|uint16|uint32|uint64)\b
+    scope: storage.type.primitive.vala
+  repo_storage-modifiers:
+  - match: \b(public|private|protected|internal|static|final|sealed|virtual|override|abstract|readonly|volatile|dynamic|async|unsafe|out|ref|weak|owned|unowned|const)\b
+    captures:
+      1: storage.modifier.vala
+  repo_strings:
+  - match: '@"'
+    captures:
+      0: punctuation.definition.string.begin.vala
+    push:
+    - meta_scope: string.quoted.interpolated.vala
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.vala
+    - match: \\.|%[\w\.\-]+|\$(\w+|\([\w\s\+\-\*\/]+\))
+      scope: constant.character.escape.vala
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.vala
+    push:
+    - meta_scope: string.quoted.double.vala
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.vala
+    - match: \\.
+      scope: constant.character.escape.vala
+    - match: '%[\w\.\-]+'
+      scope: constant.character.escape.vala
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.vala
+    push:
+    - meta_scope: string.quoted.single.vala
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.vala
+    - match: \\.
+      scope: constant.character.escape.vala
+  - match: '"""'
+    captures:
+      0: punctuation.definition.string.begin.vala
+    push:
+    - meta_scope: string.quoted.triple.vala
+    - match: '"""'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.vala
+    - match: '%[\w\.\-]+'
+      scope: constant.character.escape.vala
+  repo_throws:
+  - match: throws
+    captures:
+      0: storage.modifier.vala
+    push:
+    - meta_scope: meta.throwables.vala
+    - match: (?={|;)
+      pop: true
+    - include: repo_object-types
+  repo_values:
+  - include: repo_strings
+  - include: repo_object-types
+  - include: repo_constants-and-special-vars

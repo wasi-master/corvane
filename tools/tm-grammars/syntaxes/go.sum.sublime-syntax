@@ -1,0 +1,22 @@
+%YAML 1.2
+---
+# Go Checksums (go.sum): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/golang/vscode-go via GitHub Linguist v9.7.0 (license: mit).
+name: Go Checksums
+scope: go.sum
+file_extensions:
+- go.sum
+- go.work.sum
+contexts:
+  main:
+  - include: repo_checksum
+  - include: repo_semver
+  - include: repo_unquoted_string
+  repo_checksum:
+  - match: h1:([^\s]+)=
+  repo_semver:
+  - match: v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z-]+(?:\.[\da-z-]+)*)?(?:\+[\da-z-]+(?:\.[\da-z-]+)*)?
+    scope: constant.language.go.sum
+  repo_unquoted_string:
+  - match: '[^\s]+'
+    scope: string.unquoted.go.sum

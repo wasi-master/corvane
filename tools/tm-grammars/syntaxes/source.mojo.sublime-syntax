@@ -1,0 +1,1887 @@
+%YAML 1.2
+---
+# Mojo (source.mojo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/modular/vscode-mojo.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Mojo
+scope: source.mojo
+file_extensions:
+- mojo
+contexts:
+  main:
+  - include: repo_statement
+  - include: repo_expression
+  repo_annotated-parameter:
+  - match: "(?x)\n  \\b\n  ([[:alpha:]_]\\w*) \\s* (:)\n"
+    captures:
+      1: variable.parameter.function.language.python
+      2: punctuation.separator.annotation.python
+    push:
+    - match: (,)|(?=\))
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.python
+    - include: repo_expression
+    - match: =(?!=)
+      scope: keyword.operator.assignment.python
+  repo_assignment-operator:
+  - match: "(?x)\n     <<= | >>= | //= | \\*\\*=\n    | \\+= | -= | /= | @=\n    | \\*= | %= | ~= | \\^= | &= | \\|=\n    | =(?!=)\n"
+    scope: keyword.operator.assignment.python
+  repo_backticks:
+  - match: \`
+    push:
+    - meta_scope: string.quoted.single.python
+    - match: (?:\`|(?<!\\)(\n))
+      pop: true
+  repo_builtin-callables:
+  - include: repo_illegal-names
+  - include: repo_illegal-object-name
+  - include: repo_builtin-exceptions
+  - include: repo_builtin-functions
+  - include: repo_builtin-types
+  repo_builtin-exceptions:
+  - match: "(?x) (?<!\\.) \\b(\n  (\n    Arithmetic | Assertion | Attribute | Buffer | BlockingIO\n    | BrokenPipe | ChildProcess\n    | (Connection (Aborted | Refused | Reset)?)\n    | EOF | Environment | FileExists | FileNotFound\n    | FloatingPoint | IO | Import | Indentation | Index | Interrupted\n    | IsADirectory | NotADirectory | Permission | ProcessLookup\n    | Timeout\n    | Key | Lookup | Memory | Name | NotImplemented | OS | Overflow\n    | Reference | Runtime | Recursion | Syntax | System\n    | Tab | Type | UnboundLocal | Unicode(Encode|Decode|Translate)?\n    | Value | Windows | ZeroDivision | ModuleNotFound\n  ) Error\n|\n  ((Pending)?Deprecation | Runtime | Syntax | User | Future | Import\n    | Unicode | Bytes | Resource\n  )? Warning\n|\n  SystemExit | Stop(Async)?Iteration\n  | KeyboardInterrupt\n  | GeneratorExit | (Base)?Exception\n)\\b\n"
+    scope: support.type.exception.python
+  repo_builtin-functions:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    __import__ | abs | aiter | all | any | anext | ascii | bin\n    | breakpoint | callable | chr | compile | copyright | credits\n    | delattr | dir | divmod | enumerate | eval | exec | exit\n    | filter | format | getattr | globals | hasattr | hash | help\n    | hex | id | input | isinstance | issubclass | iter | len\n    | license | locals | map | max | memoryview | min | next\n    | oct | open | ord | pow | print | quit | range | reload | repr\n    | reversed | round | setattr | sorted | sum | vars | zip\n  )\\b\n"
+    scope: support.function.builtin.python
+  - match: "(?x)\n  (?<!\\.) \\b(\n    file | reduce | intern | raw_input | unicode | cmp | basestring\n    | execfile | long | xrange\n  )\\b\n"
+    scope: variable.legacy.builtin.python
+  repo_builtin-possible-callables:
+  - include: repo_builtin-callables
+  - include: repo_magic-names
+  repo_builtin-types:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    __mlir_attr | __mlir_op | __mlir_type | bool | bytearray | bytes | classmethod | complex | dict\n    | float | frozenset | int | SIMD | list | object | property\n    | set | slice | staticmethod | always_inline | capturing | parameter | throws | escaping | str | tuple | type\n\n    (?# Although 'super' is not a type, it's related to types,\n        and is special enough to be highlighted differently from\n        other built-ins)\n    | super\n  )\\b\n"
+    scope: support.type.python
+  repo_call-wrapper-inheritance:
+  - match: "(?x)\n  \\b(?=\n    ([[:alpha:]_]\\w*) \\s* (\\()\n  )\n"
+    push:
+    - meta_scope: meta.function-call.python
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.python
+    - include: repo_inheritance-name
+    - include: repo_function-arguments
+  repo_class-declaration:
+  - match: "(?x)\n  \\s*(class|struct|trait)\\s+\n    (?=\n      [[:alpha:]_]\\w* \\s* (:|\\()\n    )\n"
+    captures:
+      1: storage.type.class.python
+    push:
+    - meta_scope: meta.class.python
+    - match: (:)
+      pop: true
+      captures:
+        1: punctuation.section.class.begin.python
+    - include: repo_class-name
+    - include: repo_class-inheritance
+  repo_class-inheritance:
+  - match: (\()
+    captures:
+      1: punctuation.definition.inheritance.begin.python
+    push:
+    - meta_scope: meta.class.inheritance.python
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.inheritance.end.python
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.arguments.python
+    - match: ','
+      scope: punctuation.separator.inheritance.python
+    - match: =(?!=)
+      scope: keyword.operator.assignment.python
+    - match: \bmetaclass\b
+      scope: support.type.metaclass.python
+    - include: repo_illegal-names
+    - include: repo_class-kwarg
+    - include: repo_call-wrapper-inheritance
+    - include: repo_expression-base
+    - include: repo_member-access-class
+    - include: repo_inheritance-identifier
+  repo_class-kwarg:
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\s*(=)(?!=)\n"
+    captures:
+      1: entity.other.inherited-class.python variable.parameter.class.python
+      2: keyword.operator.assignment.python
+  repo_class-name:
+  - include: repo_illegal-object-name
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: entity.name.type.class.python
+  repo_codetags:
+  - match: (?:\b(NOTE|XXX|HACK|FIXME|BUG|TODO)\b)
+    captures:
+      1: keyword.codetag.notation.python
+  repo_comments:
+  - match: "(?x)\n  (?:\n    \\# \\s* (type:)\n    \\s*+ (?# we want `\\s*+` which is possessive quantifier since\n             we do not actually want to backtrack when matching\n             whitespace here)\n    (?! $ | \\#)\n  )\n"
+    captures:
+      0: meta.typehint.comment.python
+      1: comment.typehint.directive.notation.python
+    push:
+    - meta_scope: comment.line.number-sign.python
+    - meta_content_scope: meta.typehint.comment.python
+    - match: (?:$|(?=\#))
+      pop: true
+    - match: "(?x)\n   ignore\n  (?= \\s* (?: $ | \\#))\n"
+      scope: comment.typehint.ignore.notation.python
+    - match: "(?x)\n  (?<!\\.)\\b(\n    bool | bytes | float | int | object | str\n    | List | Dict | Iterable | Sequence | Set\n    | FrozenSet | Callable | Union | Tuple\n    | Any | None\n  )\\b\n"
+      scope: comment.typehint.type.notation.python
+    - match: ([\[\]\(\),\.\=\*]|(->))
+      scope: comment.typehint.punctuation.notation.python
+    - match: ([[:alpha:]_]\w*)
+      scope: comment.typehint.variable.notation.python
+  - include: repo_comments-base
+  repo_comments-base:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.python
+    push:
+    - meta_scope: comment.line.number-sign.python
+    - match: ($)
+      pop: true
+    - include: repo_codetags
+  repo_comments-string-double-three:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.python
+    push:
+    - meta_scope: comment.line.number-sign.python
+    - match: ($|(?="""))
+      pop: true
+    - include: repo_codetags
+  repo_comments-string-single-three:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.python
+    push:
+    - meta_scope: comment.line.number-sign.python
+    - match: ($|(?='''))
+      pop: true
+    - include: repo_codetags
+  repo_curly-braces:
+  - match: \{
+    captures:
+      0: punctuation.definition.dict.begin.python
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.dict.end.python
+    - match: ':'
+      scope: punctuation.separator.dict.python
+    - include: repo_expression
+  repo_decorator:
+  - match: "(?x)\n  ^\\s*\n  ((@)) \\s* (?=[[:alpha:]_]\\w*)\n"
+    captures:
+      1: entity.name.function.decorator.python
+      2: punctuation.definition.decorator.python
+    push:
+    - meta_scope: meta.function.decorator.python
+    - match: "(?x)\n  ( \\) )\n    # trailing whitespace and comments are legal\n    (?: (.*?) (?=\\s*(?:\\#|$)) )\n  | (?=\\n|\\#)\n"
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.python
+        2: invalid.illegal.decorator.python
+    - include: repo_decorator-name
+    - include: repo_function-arguments
+  repo_decorator-name:
+  - include: repo_builtin-callables
+  - include: repo_illegal-object-name
+  - match: "(?x)\n  ([[:alpha:]_]\\w*) | (\\.)\n"
+    scope: entity.name.function.decorator.python
+    captures:
+      2: punctuation.separator.period.python
+  - include: repo_line-continuation
+  - match: "(?x)\n  \\s* ([^([:alpha:]\\s_\\.#\\\\] .*?) (?=\\#|$)\n"
+    scope: invalid.illegal.decorator.python
+    captures:
+      1: invalid.illegal.decorator.python
+  repo_double-one-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_regexp-character-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_double-one-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_codetags
+  repo_double-one-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_double-one-regexp-character-set
+  - include: repo_double-one-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_double-one-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_double-one-regexp-lookahead
+  - include: repo_double-one-regexp-lookahead-negative
+  - include: repo_double-one-regexp-lookbehind
+  - include: repo_double-one-regexp-lookbehind-negative
+  - include: repo_double-one-regexp-conditional
+  - include: repo_double-one-regexp-parentheses-non-capturing
+  - include: repo_double-one-regexp-parentheses
+  repo_double-one-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_double-three-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?="""))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_regexp-character-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_double-three-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_codetags
+  repo_double-three-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_double-three-regexp-character-set
+  - include: repo_double-three-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_double-three-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_double-three-regexp-lookahead
+  - include: repo_double-three-regexp-lookahead-negative
+  - include: repo_double-three-regexp-lookbehind
+  - include: repo_double-three-regexp-lookbehind-negative
+  - include: repo_double-three-regexp-conditional
+  - include: repo_double-three-regexp-parentheses-non-capturing
+  - include: repo_double-three-regexp-parentheses
+  - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_ellipsis:
+  - match: \.\.\.
+    scope: constant.other.ellipsis.python
+  repo_escape-sequence:
+  - match: "(?x)\n  \\\\ (\n        x[0-9A-Fa-f]{2}\n        | [0-7]{1,3}\n        | [\\\\\"'abfnrtv]\n     )\n"
+    scope: constant.character.escape.python
+  repo_escape-sequence-unicode:
+  - match: "(?x)\n  \\\\ (\n        u[0-9A-Fa-f]{4}\n        | U[0-9A-Fa-f]{8}\n        | N\\{[\\w\\s]+?\\}\n     )\n"
+    scope: constant.character.escape.python
+  repo_expression:
+  - include: repo_expression-base
+  - include: repo_member-access
+  - match: (?x) \b ([[:alpha:]_]\w*) \b
+  repo_expression-bare:
+  - include: repo_backticks
+  - include: repo_literal
+  - include: repo_regexp
+  - include: repo_string
+  - include: repo_lambda
+  - include: repo_generator
+  - include: repo_illegal-operator
+  - include: repo_operator
+  - include: repo_curly-braces
+  - include: repo_item-access
+  - include: repo_list
+  - include: repo_odd-function-call
+  - include: repo_round-braces
+  - include: repo_function-call
+  - include: repo_builtin-functions
+  - include: repo_builtin-types
+  - include: repo_builtin-exceptions
+  - include: repo_magic-names
+  - include: repo_special-names
+  - include: repo_illegal-names
+  - include: repo_special-variables
+  - include: repo_ellipsis
+  - include: repo_punctuation
+  - include: repo_line-continuation
+  repo_expression-base:
+  - include: repo_comments
+  - include: repo_expression-bare
+  - include: repo_line-continuation
+  repo_f-expression:
+  - include: repo_expression-bare
+  - include: repo_member-access
+  - match: (?x) \b ([[:alpha:]_]\w*) \b
+  repo_fregexp-base-expression:
+  - include: repo_fregexp-quantifier
+  - include: repo_fstring-formatting-braces
+  - match: \{.*?\}
+  - include: repo_regexp-base-common
+  repo_fregexp-quantifier:
+  - match: "(?x)\n  \\{\\{(\n    \\d+ | \\d+,(\\d+)? | ,\\d+\n  )\\}\\}\n"
+    scope: keyword.operator.quantifier.regexp
+  repo_fstring-fnorm-quoted-multi-line:
+  - match: (\b[fF])([bBuU])?('''|""")
+    captures:
+      1: string.interpolated.python string.quoted.multi.python storage.type.string.python
+      2: invalid.illegal.prefix.python
+      3: punctuation.definition.string.begin.python string.interpolated.python string.quoted.multi.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.multi.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-multi-core
+  repo_fstring-fnorm-quoted-single-line:
+  - match: (\b[fF])([bBuU])?((['"]))
+    captures:
+      1: string.interpolated.python string.quoted.single.python storage.type.string.python
+      2: invalid.illegal.prefix.python
+      3: punctuation.definition.string.begin.python string.interpolated.python string.quoted.single.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.single.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-single-core
+  repo_fstring-formatting:
+  - include: repo_fstring-formatting-braces
+  - include: repo_fstring-formatting-singe-brace
+  repo_fstring-formatting-braces:
+  - match: ({)(\s*?)(})
+    captures:
+      1: constant.character.format.placeholder.other.python
+      2: invalid.illegal.brace.python
+      3: constant.character.format.placeholder.other.python
+  - match: ({{|}})
+    scope: constant.character.escape.python
+  repo_fstring-formatting-singe-brace:
+  - match: (}(?!}))
+    scope: invalid.illegal.brace.python
+  repo_fstring-guts:
+  - include: repo_escape-sequence-unicode
+  - include: repo_escape-sequence
+  - include: repo_string-line-continuation
+  - include: repo_fstring-formatting
+  repo_fstring-illegal-multi-brace:
+  - include: repo_impossible
+  repo_fstring-illegal-single-brace:
+  - match: (\{)(?=[^\n}]*$\n?)
+    captures:
+      1: constant.character.format.placeholder.other.python
+    push:
+    - match: (\})|(?=\n)
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.python
+    - include: repo_fstring-terminator-single
+    - include: repo_f-expression
+  repo_fstring-multi-brace:
+  - match: (\{)
+    captures:
+      1: constant.character.format.placeholder.other.python
+    push:
+    - match: "(?x)\n  (\\})\n"
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.python
+    - include: repo_fstring-terminator-multi
+    - include: repo_f-expression
+  repo_fstring-multi-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|'''|\"\"\")\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.python string.quoted.multi.python
+  repo_fstring-normf-quoted-multi-line:
+  - match: (\b[bBuU])([fF])('''|""")
+    captures:
+      1: invalid.illegal.prefix.python
+      2: string.interpolated.python string.quoted.multi.python storage.type.string.python
+      3: punctuation.definition.string.begin.python string.quoted.multi.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.multi.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-multi-core
+  repo_fstring-normf-quoted-single-line:
+  - match: (\b[bBuU])([fF])((['"]))
+    captures:
+      1: invalid.illegal.prefix.python
+      2: string.interpolated.python string.quoted.single.python storage.type.string.python
+      3: punctuation.definition.string.begin.python string.quoted.single.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.single.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-single-core
+  repo_fstring-raw-guts:
+  - include: repo_string-consume-escape
+  - include: repo_fstring-formatting
+  repo_fstring-raw-multi-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|'''|\"\"\")\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.python string.quoted.raw.multi.python
+  repo_fstring-raw-quoted-multi-line:
+  - match: (\b(?:[rR][fF]|[fF][rR]))('''|""")
+    captures:
+      1: string.interpolated.python string.quoted.raw.multi.python storage.type.string.python
+      2: punctuation.definition.string.begin.python string.quoted.raw.multi.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.raw.multi.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-raw-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-raw-multi-core
+  repo_fstring-raw-quoted-single-line:
+  - match: (\b(?:[rR][fF]|[fF][rR]))((['"]))
+    captures:
+      1: string.interpolated.python string.quoted.raw.single.python storage.type.string.python
+      2: punctuation.definition.string.begin.python string.quoted.raw.single.python
+    push:
+    - meta_scope: meta.fstring.python
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python string.interpolated.python string.quoted.raw.single.python
+        2: invalid.illegal.newline.python
+    - include: repo_fstring-raw-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-raw-single-core
+  repo_fstring-raw-single-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.python string.quoted.raw.single.python
+  repo_fstring-single-brace:
+  - match: (\{)
+    captures:
+      1: constant.character.format.placeholder.other.python
+    push:
+    - match: "(?x)\n  (\\})|(?=\\n)\n"
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.python
+    - include: repo_fstring-terminator-single
+    - include: repo_f-expression
+  repo_fstring-single-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.python string.quoted.single.python
+  repo_fstring-terminator-multi:
+  - match: (=(![rsa])?)(?=})
+    scope: storage.type.format.python
+  - match: (=?![rsa])(?=})
+    scope: storage.type.format.python
+  - match: "(?x)\n  ( (?: =?) (?: ![rsa])? )\n    ( : \\w? [<>=^]? [-+ ]? \\#?\n      \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )(?=})\n"
+    captures:
+      1: storage.type.format.python
+      2: storage.type.format.python
+  - include: repo_fstring-terminator-multi-tail
+  repo_fstring-terminator-multi-tail:
+  - match: ((?:=?)(?:![rsa])?)(:)(?=.*?{)
+    captures:
+      1: storage.type.format.python
+      2: storage.type.format.python
+    push:
+    - match: (?=})
+      pop: true
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - match: ([bcdeEfFgGnosxX%])(?=})
+      scope: storage.type.format.python
+    - match: (\.\d+)
+      scope: storage.type.format.python
+    - match: (,)
+      scope: storage.type.format.python
+    - match: (\d+)
+      scope: storage.type.format.python
+    - match: (\#)
+      scope: storage.type.format.python
+    - match: ([-+ ])
+      scope: storage.type.format.python
+    - match: ([<>=^])
+      scope: storage.type.format.python
+    - match: (\w)
+      scope: storage.type.format.python
+  repo_fstring-terminator-single:
+  - match: (=(![rsa])?)(?=})
+    scope: storage.type.format.python
+  - match: (=?![rsa])(?=})
+    scope: storage.type.format.python
+  - match: "(?x)\n  ( (?: =?) (?: ![rsa])? )\n    ( : \\w? [<>=^]? [-+ ]? \\#?\n      \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )(?=})\n"
+    captures:
+      1: storage.type.format.python
+      2: storage.type.format.python
+  - include: repo_fstring-terminator-single-tail
+  repo_fstring-terminator-single-tail:
+  - match: ((?:=?)(?:![rsa])?)(:)(?=.*?{)
+    captures:
+      1: storage.type.format.python
+      2: storage.type.format.python
+    push:
+    - match: (?=})|(?=\n)
+      pop: true
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - match: ([bcdeEfFgGnosxX%])(?=})
+      scope: storage.type.format.python
+    - match: (\.\d+)
+      scope: storage.type.format.python
+    - match: (,)
+      scope: storage.type.format.python
+    - match: (\d+)
+      scope: storage.type.format.python
+    - match: (\#)
+      scope: storage.type.format.python
+    - match: ([-+ ])
+      scope: storage.type.format.python
+    - match: ([<>=^])
+      scope: storage.type.format.python
+    - match: (\w)
+      scope: storage.type.format.python
+  repo_function-arguments:
+  - match: (\()
+    captures:
+      1: punctuation.definition.arguments.begin.python
+    push:
+    - meta_content_scope: meta.function-call.arguments.python
+    - match: (?=\))(?!\)\s*\()
+      pop: true
+    - match: (,)
+      scope: punctuation.separator.arguments.python
+    - match: "(?x)\n  (?:(?<=[,(])|^) \\s* (\\*{1,2})\n"
+      captures:
+        1: keyword.operator.unpacking.arguments.python
+    - include: repo_lambda-incomplete
+    - include: repo_illegal-names
+    - match: \b([[:alpha:]_]\w*)\s*(=)(?!=)
+      captures:
+        1: variable.parameter.function-call.python
+        2: keyword.operator.assignment.python
+    - match: =(?!=)
+      scope: keyword.operator.assignment.python
+    - include: repo_expression
+    - match: \s*(\))\s*(\()
+      captures:
+        1: punctuation.definition.arguments.end.python
+        2: punctuation.definition.arguments.begin.python
+  repo_function-call:
+  - match: "(?x)\n  \\b(?=\n    ([[:alpha:]_]\\w*) \\s* (\\()\n  )\n"
+    push:
+    - meta_scope: meta.function-call.python
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.python
+    - include: repo_special-variables
+    - include: repo_function-name
+    - include: repo_function-arguments
+  repo_function-declaration:
+  - match: "(?x)\n  \\s*\n  (?:\\b(async) \\s+)? \\b(def|fn)\\s+\n    (?=\n      [[:alpha:]_][[:word:]]* \\s* [\\(\\[]\n    )\n"
+    captures:
+      1: storage.type.function.async.python
+      2: storage.type.function.python
+    push:
+    - meta_scope: meta.function.python
+    - match: (:|(?=[#'"\n]))
+      pop: true
+      captures:
+        1: punctuation.section.function.begin.python
+    - include: repo_function-modifier
+    - include: repo_function-def-name
+    - include: repo_parameters
+    - include: repo_meta_parameters
+    - include: repo_line-continuation
+    - include: repo_return-annotation
+  repo_function-def-name:
+  - include: repo_illegal-object-name
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: entity.name.function.python
+  repo_function-modifier:
+  - match: \b(raises|capturing)\b
+    scope: storage.modifier
+  repo_function-name:
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: meta.function-call.generic.python
+  repo_generator:
+  - match: \bfor\b
+    captures:
+      0: keyword.control.flow.python
+    push:
+    - match: \bin\b
+      pop: true
+      captures:
+        0: keyword.control.flow.python
+    - include: repo_expression
+  repo_illegal-names:
+  - match: "(?x)\n  \\b(?:\n    (\n      and | assert | async | await | break | class | struct | trait | continue | del | __disable_del | elif | else | except | finally | for | from | global\n      | if | in | is | (?<=\\.)lambda | lambda(?=\\s*[\\.=])\n      | nonlocal | not | or | pass | raise | return | try | while | with\n      | yield\n    ) | (def | fn | capturing | raises) | (\n      as | import\n    )\n  )\\b\n"
+    captures:
+      1: keyword.control.flow.python
+      2: storage.type.function.python
+      3: keyword.control.import.python
+  repo_illegal-object-name:
+  - match: \b(True|False|None)\b
+    scope: keyword.illegal.name.python
+  repo_illegal-operator:
+  - match: '&&|\|\||--|\+\+'
+    scope: invalid.illegal.operator.python
+  - match: '[?$]'
+    scope: invalid.illegal.operator.python
+  - match: '!\b'
+    scope: invalid.illegal.operator.python
+  repo_import:
+  - match: \b(?<!\.)(from)\b(?=.+import)
+    captures:
+      1: keyword.control.import.python
+    push:
+    - match: $|(?=import)
+      pop: true
+    - match: \.+
+      scope: punctuation.separator.period.python
+    - include: repo_expression
+  - match: \b(?<!\.)(import)\b
+    captures:
+      1: keyword.control.import.python
+    push:
+    - match: $
+      pop: true
+    - match: \b(?<!\.)as\b
+      scope: keyword.control.import.python
+    - include: repo_expression
+  repo_impossible:
+  - match: $.^
+  repo_inheritance-identifier:
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    captures:
+      1: entity.other.inherited-class.python
+  repo_inheritance-name:
+  - include: repo_lambda-incomplete
+  - include: repo_builtin-possible-callables
+  - include: repo_inheritance-identifier
+  repo_item-access:
+  - match: "(?x)\n  \\b(?=\n    [[:alpha:]_]\\w* \\s* \\[\n  )\n"
+    push:
+    - meta_scope: meta.item-access.python
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.python
+    - include: repo_item-name
+    - include: repo_item-index
+    - include: repo_expression
+  repo_item-index:
+  - match: (\[)
+    captures:
+      1: punctuation.definition.arguments.begin.python
+    push:
+    - meta_content_scope: meta.item-access.arguments.python
+    - match: (?=\])
+      pop: true
+    - match: ':'
+      scope: punctuation.separator.slice.python
+    - include: repo_expression
+  repo_item-name:
+  - include: repo_special-variables
+  - include: repo_builtin-functions
+  - include: repo_special-names
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: meta.indexed-name.python
+  repo_lambda:
+  - match: ((?<=\.)lambda|lambda(?=\s*[\.=]))
+    captures:
+      1: keyword.control.flow.python
+  - match: \b(lambda)\s*?(?=[,\n]|$)
+    captures:
+      1: storage.type.function.lambda.python
+  - match: "(?x)\n  \\b (lambda) \\b\n"
+    captures:
+      1: storage.type.function.lambda.python
+    push:
+    - meta_scope: meta.lambda-function.python
+    - meta_content_scope: meta.function.lambda.parameters.python
+    - match: (:)|(\n)
+      pop: true
+      captures:
+        1: punctuation.section.function.lambda.begin.python
+    - match: \b(var|imm|mut|out|ref)\b
+      scope: storage.modifier
+    - match: /
+      scope: keyword.operator.positional.parameter.python
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.parameter.python
+    - include: repo_lambda-nested-incomplete
+    - include: repo_illegal-names
+    - match: ([[:alpha:]_]\w*)\s*(?:(,)|(?=:|$))
+      captures:
+        1: variable.parameter.function.language.python
+        2: punctuation.separator.parameters.python
+    - include: repo_comments
+    - include: repo_backticks
+    - include: repo_lambda-parameter-with-default
+    - include: repo_line-continuation
+    - include: repo_illegal-operator
+  repo_lambda-incomplete:
+  - match: \blambda(?=\s*[,)])
+    scope: storage.type.function.lambda.python
+  repo_lambda-nested-incomplete:
+  - match: \blambda(?=\s*[:,)])
+    scope: storage.type.function.lambda.python
+  repo_lambda-parameter-with-default:
+  - match: "(?x)\n  \\b\n  ([[:alpha:]_]\\w*) \\s* (=)\n"
+    captures:
+      1: variable.parameter.function.language.python
+      2: keyword.operator.python
+    push:
+    - match: (,)|(?=:|$)
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.python
+    - include: repo_expression
+  repo_line-continuation:
+  - match: (\\)\s*(\S.*$\n?)
+    captures:
+      1: punctuation.separator.continuation.line.python
+      2: invalid.illegal.line.continuation.python
+  - match: (\\)\s*$\n?
+    captures:
+      1: punctuation.separator.continuation.line.python
+    push:
+    - match: "(?x)\n  (?=^\\s*$)\n  |\n  (?! (\\s* [rR]? (\\'\\'\\'|\\\"\\\"\\\"|\\'|\\\"))\n      |\n      ( $)  (?# '' is necessary for ST)\n  )\n"
+      pop: true
+    - include: repo_regexp
+    - include: repo_string
+  repo_list:
+  - match: \[
+    captures:
+      0: punctuation.definition.list.begin.python
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.list.end.python
+    - include: repo_expression
+  repo_literal:
+  - match: \b(True|False|None|NotImplemented|Ellipsis)\b
+    scope: constant.language.python
+  - include: repo_number
+  repo_loose-default:
+  - match: (=)
+    captures:
+      1: keyword.operator.python
+    push:
+    - match: (,)|(?=\))
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.python
+    - include: repo_expression
+  repo_magic-function-names:
+  - match: "(?x)\n  \\b(\n    __(?:\n      abs | add | aenter | aexit | aiter | and | anext\n      | await | bool | call | ceil | class_getitem\n      | cmp | coerce | complex | contains | copy\n      | deepcopy | deinit | delattr | delete | delitem\n      | delslice | dir | div | divmod | enter | eq\n      | exit | float | floor | floordiv | format | ge\n      | get | getattr | getattribute | getinitargs\n      | getitem | getnewargs | getslice | getstate | gt\n      | hash | hex | iadd | iand | idiv | ifloordiv |\n      | ilshift | imod | imul | index | init\n      | instancecheck | int | invert | ior | ipow\n      | irshift | isub | iter | itruediv | ixor | le\n      | len | long | lshift | lt | missing | mod | mul\n      | ne | neg | new | next | nonzero | oct | or | pos\n      | pow | radd | rand | rdiv | rdivmod | reduce\n      | reduce_ex | repr | reversed | rfloordiv |\n      | rlshift | rmod | rmul | ror | round | rpow\n      | rrshift | rshift | rsub | rtruediv | rxor | set\n \
+      \     | setattr | setitem | set_name | setslice\n      | setstate | sizeof | str | sub | subclasscheck\n      | truediv | trunc | unicode | xor | matmul\n      | rmatmul | imatmul | init_subclass | set_name\n      | fspath | bytes | prepare | length_hint\n    )__\n  )\\b\n"
+    captures:
+      1: support.function.magic.python
+  repo_magic-names:
+  - include: repo_magic-function-names
+  - include: repo_magic-variable-names
+  repo_magic-variable-names:
+  - match: "(?x)\n  \\b(\n    __(?:\n      all | annotations | bases | builtins | class\n      | struct\n      | trait\n      | closure | code | debug | defaults | dict | doc | file | func\n      | globals | kwdefaults | match_args | members | metaclass | methods\n      | module | mro | mro_entries | name | qualname | post_init | self\n      | signature | slots | subclasses | version | weakref | wrapped\n      | classcell | spec | path | package | future | traceback\n    )__\n  )\\b\n"
+    captures:
+      1: support.variable.magic.python
+  repo_member-access:
+  - match: (\.)\s*(?!\.)
+    captures:
+      1: punctuation.separator.period.python
+    push:
+    - meta_scope: meta.member.access.python
+    - match: "(?x)\n  # stop when you've just read non-whitespace followed by non-word\n  # i.e. when finished reading an identifier or function call\n  (?<=\\S)(?=\\W) |\n  # stop when seeing the start of something that's not a word,\n  # i.e. when seeing a non-identifier\n  (^|(?<=\\s))(?=[^\\\\\\w\\s]) |\n  $\n"
+      pop: true
+    - include: repo_function-call
+    - include: repo_member-access-base
+    - include: repo_member-access-attribute
+  repo_member-access-attribute:
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: meta.attribute.python
+  repo_member-access-base:
+  - include: repo_magic-names
+  - include: repo_illegal-names
+  - include: repo_illegal-object-name
+  - include: repo_special-names
+  - include: repo_line-continuation
+  - include: repo_item-access
+  repo_member-access-class:
+  - match: (\.)\s*(?!\.)
+    captures:
+      1: punctuation.separator.period.python
+    push:
+    - meta_scope: meta.member.access.python
+    - match: (?<=\S)(?=\W)|$
+      pop: true
+    - include: repo_call-wrapper-inheritance
+    - include: repo_member-access-base
+    - include: repo_inheritance-identifier
+  repo_meta_parameters:
+  - match: (\[)
+    captures:
+      1: punctuation.definition.parameters.begin.python
+    push:
+    - meta_scope: meta.function.parameters.python
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.python
+    - match: "(?x)\n  \\b\n  ([[:alpha:]_]\\w*) \\s* (:)\n"
+      captures:
+        1: variable.parameter.function.language.python
+        2: punctuation.separator.annotation.python
+      push:
+      - match: (,)|(?=\])
+        pop: true
+        captures:
+          1: punctuation.separator.parameters.python
+      - include: repo_expression
+    - include: repo_comments
+  repo_number:
+  - include: repo_number-float
+  - include: repo_number-dec
+  - include: repo_number-hex
+  - include: repo_number-oct
+  - include: repo_number-bin
+  - include: repo_number-long
+  - match: \b[0-9]+\w+
+    scope: invalid.illegal.name.python
+  repo_number-bin:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[bB]) (_?[01])+\n  \\b\n"
+    scope: constant.numeric.bin.python
+    captures:
+      1: storage.type.number.python
+  repo_number-dec:
+  - match: "(?x)\n  (?<![\\w\\.])(?:\n      [1-9](?: _?[0-9] )*\n      |\n      0+\n      |\n      [0-9](?: _?[0-9] )* ([jJ])\n      |\n      0 ([0-9]+)(?![eE\\.])\n  )\\b\n"
+    scope: constant.numeric.dec.python
+    captures:
+      1: storage.type.imaginary.number.python
+      2: invalid.illegal.dec.python
+  repo_number-float:
+  - match: "(?x)\n  (?<! \\w)(?:\n    (?:\n      \\.[0-9](?: _?[0-9] )*\n      |\n      [0-9](?: _?[0-9] )* \\. [0-9](?: _?[0-9] )*\n      |\n      [0-9](?: _?[0-9] )* \\.\n    ) (?: [eE][+-]?[0-9](?: _?[0-9] )* )?\n    |\n    [0-9](?: _?[0-9] )* (?: [eE][+-]?[0-9](?: _?[0-9] )* )\n  )([jJ])?\\b\n"
+    scope: constant.numeric.float.python
+    captures:
+      1: storage.type.imaginary.number.python
+  repo_number-hex:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[xX]) (_?[0-9a-fA-F])+\n  \\b\n"
+    scope: constant.numeric.hex.python
+    captures:
+      1: storage.type.number.python
+  repo_number-long:
+  - match: "(?x)\n  (?<![\\w\\.])\n    ([1-9][0-9]* | 0) ([lL])\n  \\b\n"
+    scope: constant.numeric.bin.python
+    captures:
+      2: storage.type.number.python
+  repo_number-oct:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[oO]) (_?[0-7])+\n  \\b\n"
+    scope: constant.numeric.oct.python
+    captures:
+      1: storage.type.number.python
+  repo_odd-function-call:
+  - match: "(?x)\n  (?<= \\] | \\) ) \\s*\n  (?=\\()\n"
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.python
+    - include: repo_function-arguments
+  repo_operator:
+  - match: "(?x)\n    \\b(?<!\\.)\n      (?:\n        (and | or | not | in | is)                         (?# 1)\n        |\n        (for | if | else | await | (?:yield(?:\\s+from)?))  (?# 2)\n      )\n    (?!\\s*:)\\b\n\n    | (<< | >> | & | \\| | \\^ | ~)                          (?# 3)\n\n    | (\\*\\* | \\* | \\+ | - | % | // | / | @)                (?# 4)\n\n    | (!= | == | >= | <= | < | >)                          (?# 5)\n\n    | (:=)                                                 (?# 6)\n"
+    captures:
+      1: keyword.operator.logical.python
+      2: keyword.control.flow.python
+      3: keyword.operator.bitwise.python
+      4: keyword.operator.arithmetic.python
+      5: keyword.operator.comparison.python
+      6: keyword.operator.assignment.python
+  repo_parameter-special:
+  - match: "(?x)\n  \\b ((self)|(cls)) \\b \\s*(?:(,)|(?=\\)))\n"
+    captures:
+      1: variable.parameter.function.language.python
+      2: variable.parameter.function.language.special.self.python
+      3: variable.parameter.function.language.special.cls.python
+      4: punctuation.separator.parameters.python
+  repo_parameters:
+  - match: (\()
+    captures:
+      1: punctuation.definition.parameters.begin.python
+    push:
+    - meta_scope: meta.function.parameters.python
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.python
+    - match: \b(var|imm|mut|out|ref)\b
+      scope: storage.modifier
+    - match: /
+      scope: keyword.operator.positional.parameter.python
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.parameter.python
+    - include: repo_lambda-incomplete
+    - include: repo_illegal-names
+    - include: repo_illegal-object-name
+    - include: repo_parameter-special
+    - match: "(?x)\n  ([[:alpha:]_]\\w*)\n    \\s* (?: (,) | (?=[)#\\n=]))\n"
+      captures:
+        1: variable.parameter.function.language.python
+        2: punctuation.separator.parameters.python
+    - include: repo_comments
+    - include: repo_loose-default
+    - include: repo_annotated-parameter
+  repo_punctuation:
+  - match: ':'
+    scope: punctuation.separator.colon.python
+  - match: ','
+    scope: punctuation.separator.element.python
+  repo_regexp:
+  - include: repo_regexp-single-three-line
+  - include: repo_regexp-double-three-line
+  - include: repo_regexp-single-one-line
+  - include: repo_regexp-double-one-line
+  repo_regexp-backreference:
+  - match: "(?x)\n  (\\()  (\\?P= \\w+(?:\\s+[[:alnum:]]+)?)  (\\))\n"
+    scope: meta.backreference.named.regexp
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.backreference.named.begin.regexp
+      2: entity.name.tag.named.backreference.regexp
+      3: support.other.parenthesis.regexp punctuation.parenthesis.backreference.named.end.regexp
+  repo_regexp-backreference-number:
+  - match: (\\[1-9]\d?)
+    scope: meta.backreference.regexp
+    captures:
+      1: entity.name.tag.backreference.regexp
+  repo_regexp-base-common:
+  - match: \.
+    scope: support.other.match.any.regexp
+  - match: \^
+    scope: support.other.match.begin.regexp
+  - match: \$
+    scope: support.other.match.end.regexp
+  - match: '[+*?]\??'
+    scope: keyword.operator.quantifier.regexp
+  - match: \|
+    scope: keyword.operator.disjunction.regexp
+  - include: repo_regexp-escape-sequence
+  repo_regexp-base-expression:
+  - include: repo_regexp-quantifier
+  - include: repo_regexp-base-common
+  repo_regexp-character-set-escapes:
+  - match: \\[abfnrtv\\]
+    scope: constant.character.escape.regexp
+  - include: repo_regexp-escape-special
+  - match: \\([0-7]{1,3})
+    scope: constant.character.escape.regexp
+  - include: repo_regexp-escape-character
+  - include: repo_regexp-escape-unicode
+  - include: repo_regexp-escape-catchall
+  repo_regexp-double-one-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(")
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: storage.type.string.python
+      5: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.regexp.quoted.single.python
+    - match: (")|(?<!\\)(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_double-one-regexp-expression
+  repo_regexp-double-three-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(""")
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: storage.type.string.python
+      5: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.regexp.quoted.multi.python
+    - match: (""")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_double-three-regexp-expression
+  repo_regexp-escape-catchall:
+  - match: \\(.|\n)
+    scope: constant.character.escape.regexp
+  repo_regexp-escape-character:
+  - match: "(?x)\n  \\\\ (\n        x[0-9A-Fa-f]{2}\n        | 0[0-7]{1,2}\n        | [0-7]{3}\n     )\n"
+    scope: constant.character.escape.regexp
+  repo_regexp-escape-sequence:
+  - include: repo_regexp-escape-special
+  - include: repo_regexp-escape-character
+  - include: repo_regexp-escape-unicode
+  - include: repo_regexp-backreference-number
+  - include: repo_regexp-escape-catchall
+  repo_regexp-escape-special:
+  - match: \\([AbBdDsSwWZ])
+    scope: support.other.escape.special.regexp
+  repo_regexp-escape-unicode:
+  - match: "(?x)\n  \\\\ (\n        u[0-9A-Fa-f]{4}\n        | U[0-9A-Fa-f]{8}\n     )\n"
+    scope: constant.character.unicode.regexp
+  repo_regexp-flags:
+  - match: \(\?[aiLmsux]+\)
+    scope: storage.modifier.flag.regexp
+  repo_regexp-quantifier:
+  - match: "(?x)\n  \\{(\n    \\d+ | \\d+,(\\d+)? | ,\\d+\n  )\\}\n"
+    scope: keyword.operator.quantifier.regexp
+  repo_regexp-single-one-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(\')
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: storage.type.string.python
+      5: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.regexp.quoted.single.python
+    - match: (\')|(?<!\\)(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_regexp-single-three-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(\'\'\')
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: storage.type.string.python
+      5: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.regexp.quoted.multi.python
+    - match: (\'\'\')
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+  repo_return-annotation:
+  - match: (->)
+    captures:
+      1: punctuation.separator.annotation.result.python
+    push:
+    - match: (?=:)
+      pop: true
+    - include: repo_expression
+  repo_round-braces:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.begin.python
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.end.python
+    - include: repo_expression
+  repo_semicolon:
+  - match: \;$
+    scope: invalid.deprecated.semicolon.python
+  repo_single-one-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_regexp-character-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_single-one-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_codetags
+  repo_single-one-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_single-one-regexp-character-set
+  - include: repo_single-one-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_single-one-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_single-one-regexp-lookahead
+  - include: repo_single-one-regexp-lookahead-negative
+  - include: repo_single-one-regexp-lookbehind
+  - include: repo_single-one-regexp-lookbehind-negative
+  - include: repo_single-one-regexp-conditional
+  - include: repo_single-one-regexp-parentheses-non-capturing
+  - include: repo_single-one-regexp-parentheses
+  repo_single-one-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-one-regexp-expression
+  repo_single-three-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?=\'\'\'))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_regexp-character-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_single-three-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_codetags
+  repo_single-three-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_single-three-regexp-character-set
+  - include: repo_single-three-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_single-three-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_single-three-regexp-lookahead
+  - include: repo_single-three-regexp-lookahead-negative
+  - include: repo_single-three-regexp-lookbehind
+  - include: repo_single-three-regexp-lookbehind-negative
+  - include: repo_single-three-regexp-conditional
+  - include: repo_single-three-regexp-parentheses-non-capturing
+  - include: repo_single-three-regexp-parentheses
+  - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.python
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_special-names:
+  - match: "(?x)\n  \\b\n    # we want to see \"enough\", meaning 2 or more upper-case\n    # letters in the beginning of the constant\n    #\n    # for more details refer to:\n    #   https://github.com/MagicStack/MagicPython/issues/42\n    (\n      _* [[:upper:]] [_\\d]* [[:upper:]]\n    )\n    [[:upper:]\\d]* (_\\w*)?\n  \\b\n"
+    scope: constant.other.caps.python
+  repo_special-variables:
+  - match: "(?x)\n  \\b (?<!\\.) (?:\n    (self) | (cls)\n  )\\b\n"
+    captures:
+      1: variable.language.special.self.python
+      2: variable.language.special.cls.python
+  repo_statement:
+  - match: ^\s*\%\#
+    scope: comment.line.mojo
+  - match: ^\%[a-zA-Z0-9_]+
+    scope: entity.name.function.decorator.python
+  - include: repo_import
+  - include: repo_class-declaration
+  - include: repo_function-declaration
+  - include: repo_generator
+  - include: repo_statement-keyword
+  - include: repo_assignment-operator
+  - include: repo_decorator
+  - include: repo_semicolon
+  repo_statement-keyword:
+  - match: \b((async\s+)?\s*(def|fn))\b
+    scope: storage.type.function.python
+  - match: \b(?<!\.)as\b(?=.*[:\\])
+    scope: keyword.control.flow.python
+  - match: \b(?<!\.)as\b
+    scope: keyword.control.import.python
+  - match: "(?x)\n  \\b(?<!\\.)(\n    async | continue | del | __disable_del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
+    scope: keyword.control.flow.python
+  - match: "(?x)\n  \\b(?<!\\.)(\n    global | nonlocal\n  )\\b\n"
+    scope: storage.modifier.declaration.python
+  - match: \b(?<!\.)(class|struct|trait)\b
+    scope: storage.type.class.python
+  - match: "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n"
+    captures:
+      1: keyword.control.flow.python
+  - match: \b(var|let|alias|comptime) \s*([[:alpha:]_]\w*)\b
+    captures:
+      1: storage.modifier.declaration.python
+      2: variable.other.python
+  repo_string:
+  - include: repo_string-quoted-multi-line
+  - include: repo_string-quoted-single-line
+  - include: repo_string-bin-quoted-multi-line
+  - include: repo_string-bin-quoted-single-line
+  - include: repo_string-raw-quoted-multi-line
+  - include: repo_string-raw-quoted-single-line
+  - include: repo_string-raw-bin-quoted-multi-line
+  - include: repo_string-raw-bin-quoted-single-line
+  - include: repo_fstring-fnorm-quoted-multi-line
+  - include: repo_fstring-fnorm-quoted-single-line
+  - include: repo_fstring-normf-quoted-multi-line
+  - include: repo_fstring-normf-quoted-single-line
+  - include: repo_fstring-raw-quoted-multi-line
+  - include: repo_fstring-raw-quoted-single-line
+  repo_string-bin-quoted-multi-line:
+  - match: (\b[bB])('''|""")
+    captures:
+      1: storage.type.string.python
+      2: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.binary.multi.python
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-entity
+  repo_string-bin-quoted-single-line:
+  - match: (\b[bB])((['"]))
+    captures:
+      1: storage.type.string.python
+      2: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.binary.single.python
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-entity
+  repo_string-brace-formatting:
+  - match: "(?x)\n  (\n    {{ | }}\n    | (?:\n      {\n        \\w* (\\.[[:alpha:]_]\\w* | \\[[^\\]'\"]+\\])*\n        (![rsa])?\n        ( : \\w? [<>=^]? [-+ ]? \\#?\n          \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )?\n      })\n  )\n"
+    scope: meta.format.brace.python
+    captures:
+      1: constant.character.format.placeholder.other.python
+      3: storage.type.format.python
+      4: storage.type.format.python
+  - match: "(?x)\n  (\n    {\n      \\w* (\\.[[:alpha:]_]\\w* | \\[[^\\]'\"]+\\])*\n      (![rsa])?\n      (:)\n        [^'\"{}\\n]* (?:\n          \\{ [^'\"}\\n]*? \\} [^'\"{}\\n]*\n        )*\n    }\n  )\n"
+    scope: meta.format.brace.python
+    captures:
+      1: constant.character.format.placeholder.other.python
+      3: storage.type.format.python
+      4: storage.type.format.python
+  repo_string-consume-escape:
+  - match: \\['"\n\\]
+  repo_string-entity:
+  - include: repo_escape-sequence
+  - include: repo_string-line-continuation
+  - include: repo_string-formatting
+  repo_string-formatting:
+  - match: "(?x)\n  (\n    % (\\([\\w\\s]*\\))?\n      [-+#0 ]*\n      (\\d+|\\*)? (\\.(\\d+|\\*))?\n      ([hlL])?\n      [diouxXeEfFgGcrsab%]\n  )\n"
+    scope: meta.format.percent.python
+    captures:
+      1: constant.character.format.placeholder.other.python
+  repo_string-line-continuation:
+  - match: \\$
+    scope: constant.language.python
+  repo_string-mojo-code-block:
+  - match: ^(\s*\`{3,})(mojo)$
+    captures:
+      1: string.quoted.single.python
+      2: string.quoted.single.python
+    push:
+    - meta_scope: meta.embedded.block.mojo
+    - meta_content_scope: source.mojo
+    - match: ^(\1)$
+      pop: true
+      captures:
+        1: string.quoted.single.python
+    - include: main
+  repo_string-multi-bad-brace1-formatting-raw:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!'''|\"\"\") )\n        %\\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_string-consume-escape
+  repo_string-multi-bad-brace1-formatting-unicode:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!'''|\"\"\") )\n        %\\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_escape-sequence
+    - include: repo_string-line-continuation
+  repo_string-multi-bad-brace2-formatting-raw:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!'''|\"\"\") [^!:\\.\\[}\\w]\n           )\n        .*?(?!'''|\"\"\")\n        \\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_string-consume-escape
+    - include: repo_string-formatting
+  repo_string-multi-bad-brace2-formatting-unicode:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!'''|\"\"\") [^!:\\.\\[}\\w]\n           )\n        .*?(?!'''|\"\"\")\n        \\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_string-entity
+  repo_string-quoted-multi-line:
+  - match: (?:\b([rR])(?=[uU]))?([uU])?('''|""")
+    captures:
+      1: invalid.illegal.prefix.python
+      2: storage.type.string.python
+      3: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.multi.python
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-multi-bad-brace1-formatting-unicode
+    - include: repo_string-multi-bad-brace2-formatting-unicode
+    - include: repo_string-unicode-guts
+  repo_string-quoted-single-line:
+  - match: (?:\b([rR])(?=[uU]))?([uU])?((['"]))
+    captures:
+      1: invalid.illegal.prefix.python
+      2: storage.type.string.python
+      3: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.single.python
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-single-bad-brace1-formatting-unicode
+    - include: repo_string-single-bad-brace2-formatting-unicode
+    - include: repo_string-unicode-guts
+  repo_string-raw-bin-guts:
+  - include: repo_string-consume-escape
+  - include: repo_string-formatting
+  repo_string-raw-bin-quoted-multi-line:
+  - match: (\b(?:R[bB]|[bB]R))('''|""")
+    captures:
+      1: storage.type.string.python
+      2: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.raw.binary.multi.python
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-raw-bin-guts
+  repo_string-raw-bin-quoted-single-line:
+  - match: (\b(?:R[bB]|[bB]R))((['"]))
+    captures:
+      1: storage.type.string.python
+      2: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.raw.binary.single.python
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-raw-bin-guts
+  repo_string-raw-guts:
+  - include: repo_string-consume-escape
+  - include: repo_string-formatting
+  - include: repo_string-brace-formatting
+  repo_string-raw-quoted-multi-line:
+  - match: \b(([uU]R)|(R))('''|""")
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.raw.multi.python
+    - match: (\4)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-multi-bad-brace1-formatting-raw
+    - include: repo_string-multi-bad-brace2-formatting-raw
+    - include: repo_string-raw-guts
+  repo_string-raw-quoted-single-line:
+  - match: \b(([uU]R)|(R))((['"]))
+    captures:
+      2: invalid.deprecated.prefix.python
+      3: storage.type.string.python
+      4: punctuation.definition.string.begin.python
+    push:
+    - meta_scope: string.quoted.raw.single.python
+    - match: (\4)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.python
+        2: invalid.illegal.newline.python
+    - include: repo_string-single-bad-brace1-formatting-raw
+    - include: repo_string-single-bad-brace2-formatting-raw
+    - include: repo_string-raw-guts
+  repo_string-single-bad-brace1-formatting-raw:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!(['\"])|((?<!\\\\)\\n)) )\n        %\\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_string-consume-escape
+  repo_string-single-bad-brace1-formatting-unicode:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!(['\"])|((?<!\\\\)\\n)) )\n        %\\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_escape-sequence
+    - include: repo_string-line-continuation
+  repo_string-single-bad-brace2-formatting-raw:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!(['\"])|((?<!\\\\)\\n)) [^!:\\.\\[}\\w]\n           )\n        .*?(?!(['\"])|((?<!\\\\)\\n))\n        \\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_string-consume-escape
+    - include: repo_string-formatting
+  repo_string-single-bad-brace2-formatting-unicode:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!(['\"])|((?<!\\\\)\\n)) [^!:\\.\\[}\\w]\n           )\n        .*?(?!(['\"])|((?<!\\\\)\\n))\n        \\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_string-entity
+  repo_string-unicode-guts:
+  - include: repo_string-mojo-code-block
+  - include: repo_escape-sequence-unicode
+  - include: repo_string-entity
+  - include: repo_string-brace-formatting

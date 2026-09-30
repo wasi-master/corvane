@@ -1,0 +1,552 @@
+%YAML 1.2
+---
+# Context (SQTroff Intermediate Output) (source.context): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-roff via GitHub Linguist v9.7.0 (license: isc).
+name: Context (SQTroff Intermediate Output)
+scope: source.context
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_bitmap:
+  - match: ^[ \t]*(B)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.display-bitmap.context
+    - match: $
+      pop: true
+    - match: (\d+)(?:\s+(\d+))?
+      captures:
+        1: constant.numeric.bitmap-width.context
+        2: constant.numeric.bitmap-height.context
+      push:
+      - meta_content_scope: string.unquoted.filename.context
+      - match: '[ \t]*$'
+        pop: true
+        captures:
+          1: constant.numeric.bitmap-width.context
+          2: constant.numeric.bitmap-height.context
+  repo_commands:
+  - include: repo_comment
+  - include: repo_text
+  - include: repo_bitmap
+  - include: repo_drawing
+  - include: repo_escape-interpretation
+  - include: repo_escape-to-device
+  - include: repo_font
+  - include: repo_indent
+  - include: repo_kerning
+  - include: repo_line-length
+  - include: repo_motion
+  - include: repo_offset
+  - include: repo_shift
+  - include: repo_vertical-spacing
+  - include: repo_sentence-space
+  - include: repo_extra-space
+  - include: repo_embolden
+  - include: repo_constant-space
+  - include: repo_slant
+  - include: repo_height
+  - include: repo_zero-width-print
+  - include: repo_unknown-line
+  repo_comment:
+  - match: '%'
+    captures:
+      0: punctuation.definition.comment.context
+    push:
+    - meta_scope: comment.line.percentage.context
+    - match: $
+      pop: true
+    - match: \s*([DETW])(?=[ \t])
+      captures:
+        1: storage.modifier.message-category.context
+      push:
+      - match: $
+        pop: true
+      - match: (?<=E)[ \t]*
+        push:
+        - meta_content_scope: message.error.context
+        - match: '[ \t]*$'
+          pop: true
+      - match: (?<=W)[ \t]*
+        push:
+        - meta_content_scope: sublimelinter.mark.warning.context
+        - match: '[ \t]*$'
+          pop: true
+      - match: '[ \t]*'
+        push:
+        - meta_scope: constant.other.debug-message.context
+        - match: '[ \t]*$'
+          pop: true
+    - match: \s*(I)[ \t]+(fp)\s+(\d+)\s+(\S+)(?:[ \t]+(\S.*?))?[ \t]*$
+      captures:
+        1: storage.modifier.message-category.context
+        2: entity.name.tag.request.context
+        3: constant.character.numeric.font-position.context
+        4: variable.reference.typeface-name.context
+        5: invalid.illegal.superfluous-arguments.context
+  repo_constant-space:
+  - match: ^[ \t]*(x)\s+(cs)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.fixed-pitch.context
+    - match: $
+      pop: true
+    - match: (-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.width.current-font.context
+        2: constant.numeric.integer.decimal.width.search-fonts.context
+        3: invalid.illegal.superfluous-arguments.context
+  repo_drawing:
+  - match: ^[ \t]*(D)\s+(?=\S)
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.line-drawing.context
+    - match: $
+      pop: true
+    - match: (a)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.draw-arc.context
+        2: constant.numeric.integer.decimal.x-coordinate.context
+        3: constant.numeric.integer.decimal.y-coordinate.context
+        4: constant.numeric.integer.decimal.dx-coordinate.context
+        5: constant.numeric.integer.decimal.dy-coordinate.context
+        6: invalid.illegal.superfluous-arguments.context
+    - match: (b)\s+(-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.draw-box.context
+        2: constant.numeric.integer.decimal.x-coordinate.context
+        3: constant.numeric.integer.decimal.y-coordinate.context
+        4: invalid.illegal.superfluous-arguments.context
+    - match: (c)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.draw-circle.context
+        2: constant.numeric.integer.decimal.radius.context
+        3: invalid.illegal.superfluous-arguments.context
+    - match: (e)\s+(-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.draw-ellipse.context
+        2: constant.numeric.integer.decimal.x-coordinate.context
+        3: constant.numeric.integer.decimal.y-coordinate.context
+        4: invalid.illegal.superfluous-arguments.context
+    - match: (f)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.figure-fill-pattern.context
+        2: constant.numeric.integer.decimal.context
+        3: invalid.illegal.superfluous-arguments.context
+    - match: (l)\s+(-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.draw-line.context
+        2: constant.numeric.integer.decimal.x-coordinate.context
+        3: constant.numeric.integer.decimal.y-coordinate.context
+        4: invalid.illegal.superfluous-arguments.context
+    - match: (t)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.line-thickness.context
+        2: constant.numeric.integer.decimal.thickness.context
+        3: invalid.illegal.superfluous-arguments.context
+    - match: (w)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: storage.type.drawing.greyscale-value.context
+        2: constant.numeric.integer.decimal.darkness.context
+        3: invalid.illegal.superfluous-arguments.context
+    - match: (~)(?=$|\s)
+      captures:
+        1: storage.type.drawing.draw-spline.context
+      push:
+      - match: (?:|(?<=\s))(-?\d+)\s+(-?\d+)(?=$|\s)
+        captures:
+          1: constant.numeric.integer.decimal.x-coordinate.context
+          2: constant.numeric.integer.decimal.y-coordinate.context
+      - match: (?=\s*$)|(\S.*?)[ \t]*$
+        pop: true
+        captures:
+          1: invalid.illegal.bad-argument.context
+  repo_embolden:
+  - match: ^[ \t]*(x)\s+(bd)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.embolden-font.context
+    - match: $
+      pop: true
+    - match: (-?\d+)\s+(-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.boldness.current-font.context
+        2: constant.numeric.integer.decimal.boldness.search-fonts.context
+        3: invalid.illegal.superfluous-arguments.context
+  repo_escape-interpretation:
+  - match: ^[ \t]*(E)(?=$|\s)
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.escape-interpretation.context
+    - match: $
+      pop: true
+    - match: \s*(cmd|nl|oc|<)(?=$|\s)
+    - match: (?<=cmd)\s+(\S.*?)(?=\s*$)
+      captures:
+        1: source.embedded.shell
+    - match: (?<=nl)\s+(on|off)(?=\s*$)
+      scope: meta.set-newline-mode.context
+    - match: (?<=oc)\s+(\S)(?=\s*$)
+      scope: meta.set-octal-indicator.context
+      captures:
+        1: constant.character.single.context
+    - match: (?<=<)\s+(\S.*?)[ \t]*$
+      scope: meta.transparent-passthrough.context
+      captures:
+        1: constant.other.reference.link.filename.context
+  repo_escape-to-device:
+  - match: ^[ \t]*(e)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.escape-to-device.context
+    - meta_content_scope: markup.raw.verbatim.context
+    - match: '[ \t]*$'
+      pop: true
+  repo_extra-space:
+  - match: ^[ \t]*(x)\s+(a)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.extra-space.after-next-line.context
+    - match: $
+      pop: true
+    - include: repo_extra-space-arg
+  - match: ^[ \t]*(x)\s+(b)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.extra-space.before-next-line.context
+    - match: $
+      pop: true
+    - include: repo_extra-space-arg
+  repo_extra-space-arg:
+  - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+    captures:
+      1: constant.numeric.integer.decimal.offset.context
+      2: invalid.illegal.superfluous-arguments.context
+  repo_font:
+  - match: ^[ \t]*(f)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-font.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: (-?\d+)\s+(\S.*?)[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.point-size.context
+        2: variable.reference.typeface-name.context
+  repo_height:
+  - match: ^[ \t]*(x)\s+(Height)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.character-height.context
+    - match: $
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.height.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_indent:
+  - match: ^[ \t]*(I)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-indentation.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: -?\d+(?=$|\s)
+      scope: constant.numeric.integer.decimal.indent-size.context
+  repo_init:
+  - match: ^[ \t]*(X)\s+((?!-)[-\w]+)(?=\s|\()
+    captures:
+      1: keyword.control.initialise-device.context
+      2: entity.name.device.context
+    push:
+    - meta_scope: meta.command.initialise-device.context
+    - match: $
+      pop: true
+    - match: \(
+      captures:
+        0: punctuation.definition.parameters.begin.bracket.round.context
+      push:
+      - meta_scope: meta.parameters.context
+      - match: (\))|([^)]*?)$
+        pop: true
+        captures:
+          1: punctuation.definition.parameters.end.bracket.round.context
+          2: invalid.illegal.missing-bracket.context
+      - match: '[^\s)]+'
+        scope: entity.other.available-physical-font-prefix.context
+    - match: (?<=\s)(\d+)\s+(\d+)\s+(\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.resolution.context
+        2: constant.numeric.integer.decimal.minimum-horizontal-motion.context
+        3: constant.numeric.integer.decimal.minimum-vertical-motion.context
+        4: invalid.illegal.superfluous-arguments.context
+  repo_kerning:
+  - match: ^[ \t]*(k)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-kerning.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: (-?\d+)\s+(?:(0)|(1))(?=$|\$)
+      captures:
+        1: constant.numeric.integer.decimal.overall-character-spacing.context
+        2: constant.numeric.boolean.false.enable-kerning.context
+        3: constant.numeric.boolean.true.enable-kerning.context
+  repo_line:
+  - match: ^[ \t]*(N)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.control.start.line.context
+    push:
+    - meta_scope: meta.line.context
+    - match: ^[ \t]*(n)(?=$|\s)
+      pop: true
+      captures:
+        1: keyword.control.end.line.context
+    - match: (f|b|n)\s+(l|j|c|r)\s+(\d+)\s+(\d+)(?=$|\s)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.language.fill-mode.context
+        2: constant.language.adjustment-mode.context
+        3: constant.numeric.integer.decimal.paddable-spaces.context
+        4: constant.numeric.integer.decimal.slack-available.context
+        5: invalid.illegal.superfluous-arguments.context
+    - include: repo_rule
+    - include: repo_commands
+  repo_line-length:
+  - match: ^[ \t]*(L)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-line-length.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: -?\d+(?=$|\s)
+      scope: constant.numeric.integer.decimal.line-length.context
+  repo_main:
+  - include: repo_line
+  - include: repo_page
+  - include: repo_init
+  - include: repo_pageinfo
+  - include: repo_commands
+  repo_motion:
+  - match: ^[ \t]*(h)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.horizontal.local-motion.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: -?\d+(?=$|\s)
+      scope: constant.numeric.integer.decimal.x-offset.context
+  - match: ^[ \t]*(v)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.vertical.local-motion.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: -?\d+(?=$|\s)
+      scope: constant.numeric.integer.decimal.y-offset.context
+  repo_offset:
+  - match: ^[ \t]*(O)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-page-offset.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: -?\d+(?=$|\s)
+      scope: constant.numeric.integer.decimal.page-offset.context
+  repo_page:
+  - match: ^[ \t]*(P)(?:\s+(\d+))?(?=$|\s)(?:[ \t]+(\S.*))?[ \t]*$
+    captures:
+      1: keyword.control.start.page.context
+      2: constant.numeric.integer.decimal.page-number.context
+      3: invalid.illegal.superfluous-arguments.context
+    push:
+    - meta_scope: meta.page.context
+    - match: ^[ \t]*(p)(?:\s+(\d+))?(?=$|\s)(?:[ \t]+(\S.*))?[ \t]*$
+      pop: true
+      captures:
+        1: keyword.control.end.page.context
+        2: constant.numeric.integer.decimal.page-length.context
+        3: invalid.illegal.superfluous-arguments.context
+    - include: repo_line
+    - include: repo_commands
+  repo_pageinfo:
+  - match: ^[ \t]*(Y)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.control.initialise-device.context
+    push:
+    - meta_scope: meta.command.define-paper.context
+    - match: $
+      pop: true
+    - match: "(?x)\n  (P|L)      # Orientation (paper/landscape)\n\\s+ ([-\\w]+)  # Paper type\n\\s+ ([-\\w]+)  # Paper size\n\\s+ (-?\\d+)   # Px\n\\s+ (-?\\d+)   # Py\n\\s+ (-?\\d+)   # Bx\n\\s+ (-?\\d+)   # By\n\\s+ (-?\\d+)   # Dx\n\\s+ (-?\\d+)   # Dy\n\\s+ (-?\\d+)   # Sx\n\\s+ (-?\\d+)   # Sy\n(?:\\s+\\S.*?)? # Anything (reserved for extensions)\n[ \\t]* $"
+      captures:
+        1: constant.language.page-orientation.context
+        10: constant.numeric.integer.decimal.sx.context
+        11: constant.numeric.integer.decimal.sy.context
+        12: comment.ignored.unused-argument.context
+        2: entity.name.paper-type.context
+        3: entity.other.paper-size.context
+        4: constant.numeric.integer.decimal.px.context
+        5: constant.numeric.integer.decimal.py.context
+        6: constant.numeric.integer.decimal.bx.context
+        7: constant.numeric.integer.decimal.by.context
+        8: constant.numeric.integer.decimal.dx.context
+        9: constant.numeric.integer.decimal.dy.context
+  repo_rule:
+  - match: ^[ \t]*(R)\s+(h)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.drawing-direction.context
+    push:
+    - meta_scope: meta.command.draw-rule.horizontal.context
+    - match: $
+      pop: true
+    - match: (-?\d+)\s+(\S+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.rule-length.context
+        3: invalid.illegal.superfluous-arguments.context
+  - match: ^[ \t]*(R)\s+(v)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.drawing-direction.context
+    push:
+    - meta_scope: meta.command.draw-rule.horizontal.context
+    - match: $
+      pop: true
+    - match: (-?\d+)\s+(\S+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.rule-length.context
+        3: invalid.illegal.superfluous-arguments.context
+  - match: ^[ \t]*(R)\s+(t)\s+(h|v)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+      3: keyword.operator.drawing-direction.context
+    push:
+    - meta_scope: meta.command.set-rule-thickness.context
+    - match: $
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.thickness.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_rule-character:
+  - match: (?:^|)(?:ru|rn|ul|bv|br)(?=$|\s)
+    scope: support.constant.continuation-character.context
+  - match: (?:^|)\S+
+    scope: string.unquoted.repetition-character.context
+  repo_sentence-space:
+  - match: ^[ \t]*(w)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.set-sentence-space-width.context
+    - match: '[ \t]*$'
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.space-width.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_shift:
+  - match: ^[ \t]*(s)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.shift-baseline.context
+    - match: $
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.offset.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_slant:
+  - match: ^[ \t]*(x)\s+(Slant)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+      2: keyword.operator.subcommand.context
+    push:
+    - meta_scope: meta.command.slant.context
+    - match: $
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.slant-angle.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_text:
+  - match: ^[ \t]*(=)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.display-text.context
+    - match: $
+      pop: true
+    - match: \(
+      captures:
+        0: punctuation.definition.string.begin.context
+      push:
+      - meta_scope: string.quoted.other.context
+      - match: \)|(?=$)
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.context
+      - include: repo_text-escapes
+  repo_text-escapes:
+  - match: (\\)\\
+    scope: constant.character.escape.backslash.context
+  - match: (\\)[()]
+    scope: constant.character.escape.bracket.context
+  - match: (\()([^()]+)(\))
+    scope: constant.character.entity.named.context
+    captures:
+      1: punctuation.definition.entity.begin.context
+      2: entity.name.character.other.context
+      3: punctuation.definition.entity.end.context
+  repo_unknown-line:
+  - match: \S+
+    push:
+    - meta_scope: invalid.unimplemented.command.context
+    - match: (?=[ \t]*$)
+      pop: true
+  repo_vertical-spacing:
+  - match: ^[ \t]*(V)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.vertical-spacing.context
+    - match: $
+      pop: true
+    - match: (-?\d+)(?:[ \t]+(\S.*))?[ \t]*$
+      captures:
+        1: constant.numeric.integer.decimal.offset.context
+        2: invalid.illegal.superfluous-arguments.context
+  repo_zero-width-print:
+  - match: ^[ \t]*(z)(?=$|\s)[ \t]*
+    captures:
+      1: keyword.operator.command.context
+    push:
+    - meta_scope: meta.command.zero-width-print.context
+    - match: $
+      pop: true
+    - match: \S.*?(?=\s*$)
+      captures:
+        0: invalid.illegal.superfluous-arguments.context

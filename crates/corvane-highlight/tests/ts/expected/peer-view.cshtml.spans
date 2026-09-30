@@ -1,0 +1,20 @@
+1: 0+6=Atom 7+11=Variable 19+6=Qualifier 26+6=Qualifier 33+10=Qualifier
+2: 0+1=Atom
+3: 4+8=Variable 13+7=String 24+14=String
+4: 4+6=Variable 13+9=String
+6: 0+4=Tag 4+9=Variable 13+9=Header 22+5=Tag
+7: 0+5=Tag 6+10=Attribute 17+8=String 26+5=Attribute 32+17=String 49+1=Tag 50+10=Link 60+8=Tag
+8: 0+6=Tag 7+5=Attribute 13+7=String 20+1=Tag
+9: 4+15=Tag 19+5=Variable 25+14=Variable 40+1=AltVariable 45+1=Variable 47+4=AltVariable 52+27=Tag
+10: 4+7=Tag
+11: 4+8=Keyword 14+3=Keyword 18+4=Variable 23+2=Keyword 26+5=Variable
+12: 8+3=Tag 12+5=Attribute 18+42=String 60+1=Tag
+13: 12+4=Tag 16+5=Variable 22+4=AltVariable 51+5=Tag
+14: 12+3=Tag 16+2=Tag 19+10=Attribute 30+6=String 37+12=Attribute 50+10=String 60+1=Tag 61+4=Link 65+4=Tag 88+1=Tag 93+5=Tag
+15: 8+5=Tag
+17: 4+8=Tag
+18: 0+8=Tag
+19: 0+8=Keyword 9+7=Variable
+20: 4+8=Tag
+21: 8+1=Variable 10+8=Keyword 24+1=Variable 26+8=String 36+9=Variable 48+6=AltVariable 56+4=Atom
+22: 4+9=Tag

@@ -1,0 +1,219 @@
+%YAML 1.2
+---
+# Talon (source.talon): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/mrob95/vscode-TalonScript.git via GitHub Linguist v9.7.0 (license: mit).
+name: Talon
+scope: source.talon
+file_extensions:
+- talon
+contexts:
+  main:
+  - include: repo_body-header
+  - include: repo_header
+  - include: repo_body-noheader
+  - include: repo_comment
+  repo_action:
+  - match: ([a-zA-Z0-9._]+)(\()
+    captures:
+      1: entity.name.function.talon
+      2: punctuation.definition.parameters.begin.talon
+    push:
+    - meta_scope: variable.parameter.talon
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.talon
+    - include: repo_action
+    - include: repo_qstring-long
+    - include: repo_qstring
+    - include: repo_argsep
+    - include: repo_number
+    - include: repo_operator
+    - include: repo_varname
+  repo_action-gamepad:
+  - match: (deck|gamepad|action|face|parrot)(\()(.*)(\))
+    scope: entity.name.function.talon
+    captures:
+      2: punctuation.definition.parameters.begin.talon
+      3: variable.parameter.talon
+      4: punctuation.definition.parameters.key.talon
+  repo_action-key:
+  - match: key(\()(.*)(\))
+    scope: entity.name.function.talon
+    captures:
+      1: punctuation.definition.parameters.begin.talon
+      2: variable.parameter.talon
+      3: punctuation.definition.parameters.key.talon
+  repo_argsep:
+  - match: ','
+    scope: punctuation.separator.talon
+  repo_assignment:
+  - match: (\S*)(\s?=\s?)
+    captures:
+      1: variable.other.talon
+      2: keyword.operator.talon
+    push:
+    - match: '
+
+        '
+      pop: true
+    - include: repo_comment
+    - include: repo_comment-invalid
+    - include: repo_expression
+  repo_body-header:
+  - match: ^-$
+    push:
+    - match: (?=not)possible
+      pop: true
+    - include: repo_body-noheader
+  repo_body-noheader:
+  - include: repo_comment
+  - include: repo_comment-invalid
+  - include: repo_other-rule-definition
+  - include: repo_speech-rule-definition
+  repo_capture:
+  - match: (\<[a-zA-Z0-9._]+\>)
+    scope: variable.parameter.talon
+  repo_comment:
+  - match: ^\s*(#.*)$
+    scope: comment.line.number-sign.talon
+  repo_comment-invalid:
+  - match: (\s*#.*)$
+    scope: invalid.illegal
+  repo_context:
+  - match: '(.*): (.*)'
+    captures:
+      1: entity.name.tag.talon
+      2: entity.name.type.talon
+  repo_expression:
+  - include: repo_qstring-long
+  - include: repo_action-key
+  - include: repo_action
+  - include: repo_operator
+  - include: repo_number
+  - include: repo_qstring
+  - include: repo_varname
+  repo_fstring:
+  - match: '{(.+?)}'
+    scope: constant.character.format.placeholder.talon
+  repo_header:
+  - match: (?=^app:|title:|os:|tag:|list:|language:)
+    push:
+    - match: (?=^-$)
+      pop: true
+    - include: repo_comment
+    - include: repo_context
+  repo_key-mods:
+  - match: (:)(up|down|change|repeat|start|stop|\d+)
+    scope: keyword.operator.talon
+    captures:
+      1: keyword.operator.talon
+      2: keyword.control.talon
+  repo_key-prefixes:
+  - match: (ctrl|shift|cmd|alt|win|super)(-)
+    captures:
+      1: keyword.control.talon
+      2: keyword.operator.talon
+  repo_keystring:
+  - match: ("|')
+    captures:
+      1: punctuation.definition.string.begin.talon
+    push:
+    - meta_scope: string.quoted.double.talon
+    - match: (\1)|$
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.talon
+    - include: repo_string-body
+    - include: repo_key-mods
+    - include: repo_key-prefixes
+  repo_list:
+  - match: ({[a-zA-Z0-9._]+?})
+    scope: string.interpolated.talon
+  repo_number:
+  - match: (?<=\b)\d+(\.\d+)?
+    scope: constant.numeric.talon
+  repo_operator:
+  - match: \s(\+|-|\*|/|or)\s
+    scope: keyword.operator.talon
+  repo_other-rule-definition:
+  - match: '^([a-z]+\(.*[^\-]\)|[a-z]+\(.*--\)|[a-z]+\(-\)|[a-z]+\(\)):'
+    captures:
+      1: entity.name.tag.talon
+    push:
+    - match: (?=^[^\s#])
+      pop: true
+    - include: repo_statement
+  repo_qstring:
+  - match: ("|')
+    captures:
+      1: punctuation.definition.string.begin.talon
+    push:
+    - meta_scope: string.quoted.double.talon
+    - match: (\1)|$
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.talon
+    - include: repo_string-body
+  repo_qstring-long:
+  - match: ("""|''')
+    captures:
+      1: punctuation.definition.string.begin.talon
+    push:
+    - meta_scope: string.quoted.triple.talon
+    - match: (\1)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.talon
+    - include: repo_string-body
+  repo_regexp:
+  - match: (/)
+    push:
+    - meta_scope: string.regexp.talon
+    - match: (/)
+      pop: true
+    - match: \.
+      scope: support.other.match.any.regexp
+    - match: \$
+      scope: support.other.match.end.regexp
+    - match: \^
+      scope: support.other.match.begin.regexp
+    - match: \\\.|\\\*|\\\^|\\\$|\\\+|\\\?
+      scope: constant.character.escape.talon
+    - match: \[(\\\]|[^\]])*\]
+      scope: constant.other.set.regexp
+    - match: \*|\+|\?
+      scope: keyword.operator.quantifier.regexp
+  repo_rule-specials:
+  - match: (settings|tag)(\()(\))
+    captures:
+      1: entity.name.function.talon
+      2: punctuation.definition.parameters.begin.talon
+      3: punctuation.definition.parameters.end.talon
+  repo_speech-rule-definition:
+  - match: '^(.*?):'
+    captures:
+      1: entity.name.tag.talon
+    push:
+    - match: (?=^[^\s#])
+      pop: true
+    - include: repo_statement
+  repo_statement:
+  - include: repo_comment
+  - include: repo_comment-invalid
+  - include: repo_qstring-long
+  - include: repo_action-key
+  - include: repo_action
+  - include: repo_qstring
+  - include: repo_assignment
+  repo_string-body:
+  - match: '{{|}}'
+    scope: string.quoted.double.talon
+  - match: \\\\|\\n|\\t|\\r|\\"|\\'
+    scope: constant.character.escape.python
+  - include: repo_fstring
+  repo_varname:
+  - match: ([a-zA-Z0-9._])(_(list|\d+)(?=[^a-zA-Z0-9._]))?
+    scope: variable.parameter.talon
+    captures:
+      2: constant.numeric.talon

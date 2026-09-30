@@ -1,0 +1,292 @@
+%YAML 1.2
+---
+# nanorc (source.nanorc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: nanorc
+scope: source.nanorc
+file_extensions:
+- nanorc
+- .nanorc
+contexts:
+  main:
+  - include: scope:injections.etc
+  - include: repo_main
+  repo_colourParam:
+  - match: "(?x)\n(?:(?<=,|\\s)|^|)\n(\n\t# Basic colour swatches for 8-colour terminals\n\t(?:bright|light)?\n\t(?:black|blue|cyan|green|magenta|red|white|yellow)\n\t|\n\t# Synonym for \u201Clightblack\u201D\n\tgr[ae]y\n\t|\n\t# 256-colour values\n\t(?:beet|brick|brown|crimson|lagoon|latte|lime|mauve|mint|normal|ocher\n\t|orange|peach|pink|plum|purple|rosy|sage|sand|sea|sky|slate|tawny|teal)\n)\n(?=$|,|\\s)"
+  - match: (?:(?<=,|\s)|^|)(#)[A-Fa-f0-9]{3}(?=$|,|\s)
+    scope: constant.language.colour.hex.nanorc
+    captures:
+      1: punctuation.definition.constant.colour.nanorc
+  - match: (?:(?<=,|\s)|^|)([bf]gcolou?r)|([^\s,]+)(?=$|,|\s)
+    captures:
+      1: constant.language.colour.placeholder.nanorc
+      2: invalid.illegal.colour.unsupported.nanorc
+  repo_colourParams:
+  - match: "(?x) \n(?:\n\t\\s+\n\t(?: (\\[)? (bold)   (,) (\\])?)?\n\t(?: (\\[)? (italic) (,) (\\])?)?\n\t(?<=,\\]|,)\n)?+ \\s*\n(?:\n\t(?=$|\\s)\n\t|\n\t(?= (?!bold|italic) [^\\s,]\n\t| , (?!bold|italic) [^\\s,]\n\t) ([^\\s,]*) (,)? ([^\\s,]*) (?!,)\n)"
+    captures:
+      11: meta.background-colour.nanorc
+      2: constant.language.style.bold.nanorc
+      6: constant.language.style.italic.nanorc
+      9: meta.foreground-colour.nanorc
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.nanorc
+    push:
+    - meta_scope: comment.line.number-sign.nanorc
+    - match: $
+      pop: true
+  repo_key:
+  - include: repo_keyBind
+  - include: repo_keyUnbind
+  repo_keyBind:
+  - match: ^\s*(bind)\s+(\S+)\s+((")(.*)("))(?:\s+([^\s"]+))?(?=\s*$|\s+#)
+    scope: meta.bind.nanorc
+    captures:
+      1: keyword.operator.key.bind.nanorc
+      3: string.quoted.double.nanorc
+      4: punctuation.definition.string.begin.nanorc
+      6: punctuation.definition.string.end.nanorc
+      7: constant.other.menu-name.nanorc
+  - match: ^\s*(bind)\s+(\S+)\s+([^"\s]+)(?:\s+([^\s"]+))?(?=\s*$|\s+#)
+    scope: meta.bind.nanorc
+    captures:
+      1: keyword.operator.key.bind.nanorc
+      3: entity.name.function.nanorc
+      4: constant.other.menu-name.nanorc
+  repo_keyName:
+  - match: (?:^|)(Sh(-))?(M(-))?((\^))?
+    captures:
+      0: meta.key.modifiers.nanorc
+      1: entity.name.tag.key.modifier.shift.nanorc
+      2: punctuation.definition.modifier.dash.nanorc
+      3: entity.name.tag.key.modifier.meta.nanorc
+      4: punctuation.definition.modifier.dash.nanorc
+      5: entity.name.tag.key.modifier.ctrl.nanorc
+      6: punctuation.definition.modifier.caret.nanorc
+    push:
+    - match: \S+|(?=$|\s)
+      pop: true
+  repo_keyUnbind:
+  - match: ^\s*(unbind)\s+(\S+)(?:\s+([^\s"]+))?(?=\s*$|\s+#)
+    captures:
+      1: keyword.operator.key.unbind.nanorc
+      3: constant.other.menu-name.nanorc
+  repo_main:
+  - include: repo_comment
+  - include: repo_key
+  - include: repo_option
+  - include: repo_syntax
+  - include: repo_syntaxCommands
+  - include: repo_other
+  repo_option:
+  - match: ^\s*(set|unset)(?=\s+([a-z][a-z_0-9]*))
+    push:
+    - match: $
+      pop: true
+    - include: repo_optionInnards
+  repo_optionInnards:
+  - match: \s*(fill|guidestripe|tabsize)(?=\s|$)
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+    - match: '[0-9]+'
+      scope: constant.numeric.integer.int.decimal.nanorc
+  - match: '(?x)  \s*
+
+      (afterends|allow_insecure_backup|atblanks|autoindent|backup|boldtext|bookstyle|breaklonglines
+
+      |casesensitive|colonparsing|constantshow|cutfromcursor|emptyline|historylog|indicator|jumpyscrolling
+
+      |linenumbers|locking|magic|minibar|mouse|multibuffer|noconvert|nohelp|nonewlines|nowrap|positionlog
+
+      |preserve|quickblank|rawsequences|rebinddelete|regexp|saveonexit|showcursor|smarthome|softwrap
+
+      |stateflags|tabstospaces|trimblanks|unix|wordbounds|zap|zero)
+
+      (?=\s|$)'
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+  - match: '(?x)  \s*
+
+      ((error|function|key|mini|number|prompt|scroller|selected|spotlight|status|stripe|title)color)
+
+      (?=\s|$)'
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+    - include: repo_colourParams
+  - match: \s*(speller)(?=\s|$)[ \t]*
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+    - match: (")(.+)(?:(")(?=[^"]*$)|(?=$))
+      captures:
+        0: string.quoted.double.nanorc
+        1: punctuation.definition.string.begin.nanorc
+        2: source.embedded.shell
+        3: punctuation.definition.string.end.nanorc
+  - match: '(?x)  \s*
+
+      (backupdir|brackets|matchbrackets|operatingdir|punct|whitespace|wordchars)
+
+      (?=\s|$)'
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+    - include: repo_string
+  - match: \s*(quotestr)(?=\s|$)
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - match: $
+      pop: true
+    - include: repo_regexp
+  - match: \s*(\S+)
+    captures:
+      1: entity.option.name.nanorc
+    push:
+    - meta_scope: meta.custom-option.nanorc
+    - match: $
+      pop: true
+    - match: \b(true|false|on|off|yes|no)\b
+    - match: '[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?=\s|$)'
+      scope: constant.numeric.decimal.nanorc
+    - include: repo_regexp
+  repo_other:
+  - match: ^\s*(include)(?=\s|$)[ \t]*
+    captures:
+      1: keyword.control.directive.include.nanorc
+    push:
+    - meta_scope: meta.preprocessor.include.nanorc
+    - meta_content_scope: meta.import.file-name.nanorc
+    - match: $
+      pop: true
+    - include: repo_string
+  - match: ^\s*(extendsyntax)\s+(\S+)[ \t]*
+    captures:
+      1: keyword.control.directive.extendsyntax.nanorc
+      2: variable.parameter.syntax-name.nanorc
+    push:
+    - meta_scope: meta.override.nanorc
+    - match: $
+      pop: true
+    - include: repo_syntaxCommands
+    - include: repo_optionInnards
+  repo_quotedString:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.nanorc
+    push:
+    - meta_scope: string.quoted.double.nanorc
+    - match: '"(?=[^"]*$)|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.nanorc
+  repo_regexp:
+  - match: (")"?+
+    captures:
+      1: punctuation.definition.string.begin.nanorc
+    push:
+    - meta_scope: string.regexp.embedded.nanorc
+    - match: '"(?=\s|$)|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.nanorc
+    - match: (?:"(?!\s|$))+
+    - include: scope:source.regexp
+  repo_string:
+  - include: repo_quotedString
+  - include: repo_unquotedString
+  repo_syntax:
+  - match: ^\s*(syntax)\s+(none|default)(?=\s|$)
+    scope: meta.syntax.nanorc
+    captures:
+      1: storage.type.var.syntax.name.nanorc
+  - match: ^\s*(syntax)(?:\s+((")[^"]+(")|\S+)(?:\s+(.*))?)?\s*$\s*
+    captures:
+      1: storage.type.var.syntax.name.nanorc
+      2: entity.syntax.name.nanorc
+      3: punctuation.definition.name.begin.nanorc
+      4: punctuation.definition.name.end.nanorc
+    push:
+    - meta_scope: meta.syntax.nanorc
+    - match: ^(?=\s*syntax)
+      pop: true
+    - include: repo_main
+  repo_syntaxCommands:
+  - match: (?:^|)\s*(header|magic)(?=$|\s)[ \t]*
+    push:
+    - include: repo_regexp
+    - match: (?!)
+      pop: true
+  - match: (?:^|)\s*(comment)(?=$|\s)[ \t]*
+    push:
+    - meta_scope: meta.comment-string.nanorc
+    - match: $
+      pop: true
+    - match: (")(")(?=\s*$|\s+#)
+      scope: string.quoted.double.comments.disable.nanorc
+      captures:
+        1: punctuation.definition.string.begin.nanorc
+        2: punctuation.definition.string.end.nanorc
+    - match: (")([^\|]+)(\|)([^\|]+)(")(?=\s*$|\s+#)
+      scope: string.quoted.double.comments.bracket-style.comment
+      captures:
+        1: punctuation.definition.string.begin.nanorc
+        2: constant.other.bracket.begin.nanorc
+        3: meta.separator.brackets.nanorc
+        4: constant.other.bracket.end.nanorc
+        5: punctuation.definition.string.end.nanorc
+    - match: (").+(")(?=\s*$|\s+#)
+      scope: string.quoted.double.comments.verbatim.nanorc
+      captures:
+        1: punctuation.definition.string.begin.nanorc
+        2: punctuation.definition.string.end.nanorc
+  - match: (?:^|)\s*(tabgives)(?=$|\s)
+    push:
+    - meta_scope: meta.tabgives.nanorc
+    - match: $
+      pop: true
+    - include: repo_string
+  - match: (?:^|)\s*(formatter|linter)(?=$|\s)(.*)$
+    captures:
+      2: source.embedded.shell
+  - match: (?:^|)\s*(i?color)(?=\s|$)
+    captures:
+      1: storage.type.var.colour.name.nanorc
+    push:
+    - meta_scope: meta.colour.nanorc
+    - match: $
+      pop: true
+    - include: repo_colourParams
+    - match: (?<=\s|)(start|end)(=)(?=\s|$)
+      captures:
+        1: variable.parameter.attribute.nanorc
+        2: punctuation.definition.assignment.equals-sign.nanorc
+    - match: (?<=\s|)(start|end)(=)(?=")
+      captures:
+        1: variable.parameter.attribute.nanorc
+        2: punctuation.definition.assignment.equals-sign.nanorc
+      push:
+      - match: (?<=")
+        pop: true
+        captures:
+          1: variable.parameter.attribute.nanorc
+          2: punctuation.definition.assignment.equals-sign.nanorc
+      - include: repo_regexp
+    - include: repo_regexp
+  repo_unquotedString:
+  - match: \S+
+    scope: string.unquoted.bareword.nanorc

@@ -1,0 +1,134 @@
+%YAML 1.2
+---
+# Kickstart (source.kickstart): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/wgwoods/language-kickstart.git via GitHub Linguist v9.7.0 (license: mit).
+name: Kickstart
+scope: source.kickstart
+file_extensions:
+- ks
+contexts:
+  main:
+  - match: ^\s*(%(?:pre|pre-install|post))\b.*\s--interpreter(?:\s+|=)(\S*python\S*).*$
+    captures:
+      1: keyword.control.scriptlet.kickstart
+    push:
+    - meta_scope: scriptlet.python.kickstart
+    - meta_content_scope: source.python.embedded.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.scriptlet.kickstart
+    - include: scope:source.python
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+  - match: ^\s*(%(?:pre|pre-install|post))\b.*\s--interpreter(?:\s+|=)(\S*perl\S*).*$
+    captures:
+      1: keyword.control.scriptlet.kickstart
+    push:
+    - meta_scope: scriptlet.perl.kickstart
+    - meta_content_scope: source.perl.embedded.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.scriptlet.kickstart
+    - include: scope:source.perl
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+  - match: ^\s*(%(?:pre|pre-install|post))\b.*\s--interpreter(?:\s+|=)(\S*sh\b).*$
+    captures:
+      1: keyword.control.scriptlet.kickstart
+    push:
+    - meta_scope: scriptlet.shell.kickstart
+    - meta_content_scope: source.shell.embedded.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.scriptlet.kickstart
+    - include: scope:source.shell
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+  - match: ^\s*(%(?:pre|pre-install|post))\b.*\s--interpreter\b.*$
+    captures:
+      1: keyword.control.scriptlet.kickstart
+    push:
+    - meta_content_scope: string.unquoted.scriptlet.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.scriptlet.kickstart
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+  - match: ^\s*(%(?:pre|pre-install|post))\b(\s+--[^i][^n][^t]\w+)*\s*$
+    captures:
+      1: keyword.control.scriptlet.kickstart
+    push:
+    - meta_scope: scriptlet.shell.kickstart
+    - meta_content_scope: source.shell.embedded.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.scriptlet.kickstart
+    - include: scope:source.shell
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+  - match: (^[ \t]+)?(?=#)
+    captures:
+      1: punctuation.whitespace.comment.leading.kickstart
+    push:
+    - match: (?!)
+      pop: true
+    - match: '#'
+      captures:
+        0: punctuation.definition.comment.kickstart
+      push:
+      - meta_scope: comment.line.number-sign.kickstart
+      - match: \n
+        pop: true
+  - match: ^\s*(%packages)\b.*$
+    captures:
+      1: keyword.control.packages.kickstart
+    push:
+    - meta_scope: packages.kickstart
+    - match: ^\s*(%end)\s*$
+      pop: true
+      captures:
+        1: keyword.control.packages.kickstart
+    - match: ^\s*-?@\^?.*$
+      scope: string.unquoted.packages.group.kickstart
+    - match: ^\s*(%(?:pre|pre-install|post|packages))
+      scope: invalid.illegal.missingend.kickstart
+    - match: ^\s*#.*$
+      scope: comment.line.number-sign.kickstart
+  - match: ^\s*(cmdline|graphical|text|mediacheck|vnc|logging)\b
+    scope: support.function.ui.kickstart
+  - match: ^\s*(halt|poweroff|shutdown|reboot)\b
+    scope: support.function.shutdown.kickstart
+  - match: ^\s*(autopart|bootloader|btrfs|clearpart|dmraid|fcoe|iscsi|iscsiname|logvol|multipath|part|partition|raid|volgroup|zerombr|zfcp|ignoredisk)\b
+    scope: support.function.disk.kickstart
+  - match: ^\s*(auth|authconfig|firewall|firstboot|monitor|network|realm|rootpw|selinux|services|sshkey|sshpw|skipx|timezone|user|group|xconfig|skipx)\b
+    scope: support.function.services.kickstart
+  - match: ^\s*(lang|keyboard|timezone)\b
+    scope: support.function.i18n.kickstart
+  - match: ^\s*(install|cdrom|repo|harddrive|liveimg|nfs|url)\b
+    scope: support.function.install.kickstart
+  - match: ^\s*(%include|%ksappend)\b
+    scope: keyword.control.import.kickstart
+  - match: ^\s*(rescue|updates|device|driverdisk|autostep)\b
+    scope: support.function.misc.kickstart
+  - match: \$6\$(rounds=\d+\$)?[./0-9A-Za-z]{1,16}\$[./0-9A-Za-z]{86}
+    scope: string.password-hash.sha512.kickstart
+  - match: \$5\$(rounds=\d+\$)?[./0-9A-Za-z]{1,16}\$[./0-9A-Za-z]{43}
+    scope: string.password-hash.sha256.kickstart
+  - match: \$[56]\$\S+
+    scope: invalid.illegal.password-hash.kickstart
+  - match: (['"])
+    captures:
+      0: punctuation.definition.string.begin.kickstart
+    push:
+    - meta_scope: string.quoted.kickstart
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.kickstart
+    - match: \\[\$`"'\\\n]
+      scope: constant.character.escape.kickstart

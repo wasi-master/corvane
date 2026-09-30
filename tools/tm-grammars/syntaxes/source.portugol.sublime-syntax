@@ -1,0 +1,96 @@
+%YAML 1.2
+---
+# Portugol (source.portugol): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/luisgbr1el/portugol-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Portugol
+scope: source.portugol
+file_extensions:
+- por
+contexts:
+  main:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.portugol
+    - match: \*/
+      pop: true
+  - match: //.*
+    scope: comment.double-slash.portugol
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.portugol
+    - match: '"'
+      pop: true
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.portugol
+    - match: ''''
+      pop: true
+  - match: \b(para|caso|continue|senao|para|se|escolha|enquanto|e|ou)\b
+    scope: keyword.control.portugol
+  - match: \b(inclua|biblioteca|programa)\b
+    scope: keyword.other.portugol
+  - match: \b(=|!|<|>|&|\+|raiz|sen|cos|mod|div|-|\^|\*|\/|\|)\b
+    scope: keyword.operator.new.portugol
+  - match: \b(\d+|\d+.?(f)?)\b
+    scope: constant.numeric.portugol
+  - match: (#)([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b(?!.*?(?<!@){)
+    scope: constant.rgb-value.portugol
+  - match: \b(falso|NULL|verdadeiro)\b
+    scope: constant.language.portugol
+  - match: \b(enum|struct|state|array)\b
+    scope: storage.type.portugol
+  - match: \b(this|parent|super)\b
+    scope: variable.language.portugol
+  - match: (funcao)\s*(\/\*.*\*\/)?\s*(\w+)\s*\(
+    captures:
+      1: support.type.portugol
+      2: comment.block.portugol
+      3: support.function.portugol
+    push:
+    - match: \)(\s*:\s*(array\s*<\s*\w+\s*>|\w*))?
+      pop: true
+    - match: \s*(out|optional)?\s*(\w+)\s*:\s*(array\s*<\s*\w+\s*>|\w*|),?
+      captures:
+        1: keyword.other.portugol
+        2: support.variable.portugol
+  - match: \b(variavel)\b\s*
+    captures:
+      1: storage.type.portugol
+    push:
+    - match: :\s*(array\s*<\s*\w+\s*>|\w*)\s*;
+      pop: true
+    - match: (\w+)\s*,?
+      scope: support.variable.portugol
+  - match: (default)\s*(\w+)
+    captures:
+      1: keyword.control.portugol
+      2: support.variable
+  - match: (escreva|leia)\s*(\w*)
+    captures:
+      1: keyword.other.portugol
+      2: support.class.portugol
+  - match: \(\s*(\s*[A-Z]\w+\s*)\s*\)\s*\(
+    captures:
+      1: support.class.portugol
+  - match: \(\s*\(\s*([A-Z]\w+)\s*\)
+    captures:
+      1: support.class.portugol
+  - match: (novo|nova)\s*(\w+)\s*(in)\s*(this)
+    captures:
+      1: variable.language.portugol
+      2: support.class.portugol
+      3: variable.language.portugol
+      4: variable.language.portugol
+  - include: repo_witcherscript-data-types
+  repo_witcherscript-data-types:
+  - match: \b(cadeia|inteiro|caractere|logico|real)\b
+    scope: storage.type.portugol
+  repo_witcherscript-object-types:
+  - match: '[A-Z]\w+'
+    scope: support.class.portugol
+  repo_witcherscript-var-types:
+  - include: repo_witcherscript-object-types
+  - match: (array)\s*<\s*(\w+)\s*>
+    captures:
+      1: storage.type.portugol
+  - include: repo_witcherscript-data-types

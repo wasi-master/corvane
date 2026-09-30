@@ -1,0 +1,122 @@
+%YAML 1.2
+---
+# QuakeC (source.quakec): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/4LT/quakec-syntax.git via GitHub Linguist v9.7.0 (license: mit).
+name: QuakeC
+scope: source.quakec
+file_extensions:
+- qc
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_directive
+  - include: repo_command
+  - include: repo_toplevel-declaration
+  repo_block-comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.quakec
+    - match: \*/
+      pop: true
+  repo_builtin-literal:
+  - match: '#[0-9]+\b'
+    scope: constant.other.builtin.quakec
+  repo_code-block:
+  - match: '{'
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_comment
+    - include: repo_directive
+    - include: repo_statement
+  repo_command:
+  - match: \$(cd|origin|base|skin|frame|scale)\b
+    scope: keyword.other.command.quakec
+  repo_comment:
+  - include: repo_block-comment
+  - include: repo_line-comment
+  repo_ctl-keyword:
+  - match: \b(if|else|while|do|for|break|continue|goto|return|switch|case|default)\b
+    scope: keyword.control.quakec
+  repo_directive:
+  - match: ^\s*#\s*(if|ifdef|ifndef|elif|endif|else|define|undef|pragma|include|append|error|message)\b
+    push:
+    - meta_scope: meta.preprocessor
+    - match: "([^\\\\]|^)\r?\n"
+      pop: true
+  repo_expression:
+  - include: repo_literal
+  - include: repo_operator
+  - include: repo_code-block
+  repo_line-comment:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.quakec
+    - match: $
+      pop: true
+  repo_literal:
+  - include: repo_raw-string
+  - include: repo_string-literal
+  - include: repo_vector-literal
+  - include: repo_builtin-literal
+  - include: repo_number-literal
+  repo_modifier:
+  - match: \b(local|const|static|__wrap)\b
+    scope: storage.modifier.quakec
+  repo_number-literal:
+  - match: \b0x[0-9a-fA-F]+\b
+    scope: constant.numeric.quakec
+  - match: -?\b[0-9]+\.[0-9]+([eE]-?[0-9]+)?\b
+    scope: constant.numeric.quakec
+  - match: -?\b[0-9]+(\.|i)?
+    scope: constant.numeric.quakec
+  repo_operator:
+  - match: (>>=|<<=|&&=|\|\|=)
+    scope: keyword.operator.symbole.quakec
+  - match: (><|>=|<=|==|!=|&&|\|\|~=|&=|\|=|\^=|\*=|/=|\+=|-=|\+\+|--)
+    scope: keyword.operator.symbole.quakec
+  - match: (\.|!|~|&|\||\^|\*|%|/|\+|-|>|<|=|\?|:)
+    scope: keyword.operator.symbole.quakec
+  - match: \bnew\b
+    scope: keyword.operator.new.quakec
+  repo_primitive:
+  - match: \b(float|int|string|vector|entity|void|__variant)\b
+    scope: storage.type.quakec
+  repo_raw-string:
+  - match: R"(\S*)\(
+    push:
+    - meta_scope: string.quoted.double
+    - match: \)\1"
+      pop: true
+  repo_statement:
+  - include: repo_modifier
+  - include: repo_type
+  - include: repo_ctl-keyword
+  - match: \bprior\b
+    scope: support.function
+  - include: repo_expression
+  repo_string-literal:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.quakec
+    - match: '"'
+      pop: true
+    - match: \\([\\"'nrts0-9\(=\)<\->]|x[0-9a-fA-F][0-9a-fA-F])
+      scope: constant.character.escape.quakec
+  repo_toplevel-declaration:
+  - include: repo_type-declaration-keyword
+  - include: repo_type
+  - include: repo_modifier
+  - include: repo_code-block
+  - include: repo_expression
+  repo_type:
+  - include: repo_primitive
+  repo_type-declaration-keyword:
+  - match: \b(struct|class|enum|union|typedef)\b
+    scope: storage.type.quakec
+  repo_vector-literal:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.quakec
+    - match: ''''
+      pop: true

@@ -1,0 +1,82 @@
+%YAML 1.2
+---
+# Jolie (source.jolie): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-jolie via GitHub Linguist v9.7.0 (license: mit).
+name: Jolie
+scope: source.jolie
+file_extensions:
+- ol
+- iol
+first_line_match: ^#!.*\b(jolie)\b
+contexts:
+  main:
+  - include: repo_code
+  repo_block_comments:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.jolie
+    - match: \*/
+      pop: true
+  repo_code:
+  - include: repo_block_comments
+  - include: repo_line_comments
+  - include: repo_constants_language
+  - include: repo_constants_numeric
+  - include: repo_strings
+  - include: repo_keywords_control
+  - include: repo_keywords_with_colon
+  - include: repo_keywords_other
+  - include: repo_keywords_types
+  - include: repo_keywords_modifiers
+  - include: repo_invocations
+  - include: repo_operators
+  - include: repo_definitions
+  repo_constants_language:
+  - match: \b(true|false)\b
+    scope: constant.language.jolie
+  repo_constants_numeric:
+  - match: \b\d+\b
+    scope: constant.numeric.jolie
+  repo_definitions:
+  - match: \b(inputPort|outputPort|interface|type|define|service)\s+(\w+)\b
+    captures:
+      1: keyword.other.jolie
+      2: meta.class.identifier.jolie
+  repo_invocations:
+  - match: \b(\w+)\s*(@)\s*(\w+)\b
+    captures:
+      1: meta.method.jolie
+      2: keyword.operator.jolie
+      3: meta.class.jolie
+  repo_keywords_control:
+  - match: \b(if|else|while|for|foreach|provide|until|throw|forward|scope)\b
+    scope: keyword.control.jolie
+  repo_keywords_modifiers:
+  - match: \b(csets|global)\b
+    scope: storage.modifiers.jolie
+  repo_keywords_other:
+  - match: \b(constants|cH|instanceof|execution|comp|concurrent|nullProcess|single|sequential|main|init|cset|is_defined|embedded|extender|courier|forward|install|undef|include|synchronized|throws|throw)\b
+    scope: keyword.other.jolie
+  repo_keywords_types:
+  - match: \b(void|bool|int|string|long|double|any|raw)\b
+    scope: storage.type.jolie
+  repo_keywords_with_colon:
+  - match: '\b(location|Location|protocol|Protocol|interfaces|Interfaces|aggregates|Aggregates|redirects|Redirects|Jolie|JavaScript|Java|OneWay|RequestResponse)\b\s*:'
+    scope: keyword.other.with_colon.jolie
+  repo_line_comments:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.jolie
+    - match: \n
+      pop: true
+  repo_operators:
+  - match: \b(<<|&&|\|\||\+|\-|/|\*|=|==|\+\+|--|\+=|-=|\*=|/=|!|%|%=)\b
+    scope: keyword.operator.jolie
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.jolie
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.jolie

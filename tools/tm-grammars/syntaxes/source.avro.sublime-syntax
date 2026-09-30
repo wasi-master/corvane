@@ -1,0 +1,291 @@
+%YAML 1.2
+---
+# Avro IDL (source.avro): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Jason3S/avro.tmLanguage via GitHub Linguist v9.7.0 (license: mit).
+name: Avro IDL
+scope: source.avro
+file_extensions:
+- avdl
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_decorators
+  - include: repo_protocol
+  - include: repo_contents
+  repo_collections:
+  - match: \b(array|map)\s*<
+    captures:
+      1: storage.type.collection.avro
+    push:
+    - meta_content_scope: meta.type.collection.avro
+    - match: '>'
+      pop: true
+    - include: repo_types
+    - include: repo_comments
+    - include: repo_decorators
+    - include: repo_declared_type
+  repo_comments:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.avro
+    push:
+    - meta_scope: comment.line.double-slash.avro
+    - match: $
+      pop: true
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.avro
+    push:
+    - meta_scope: comment.block.avro
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.avro
+  repo_constants:
+  - match: \b(true|false|null)\b
+    scope: constant.language.avro
+  - match: \b[A-Z][A-Z0-9_]*\b
+    scope: constant.language.avro
+  - match: \b-?[0-9]+(\.[0-9]*)?\b
+    scope: constant.numeric.avro
+  repo_contents:
+  - include: repo_decorators
+  - include: repo_record
+  - include: repo_error
+  - include: repo_declaration
+  - include: repo_comments
+  - include: repo_import
+  - include: repo_union
+  - include: repo_fixed
+  - include: repo_function
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_collections
+  - include: repo_throws
+  - include: repo_constants
+  - include: repo_declared_type
+  repo_decimal:
+  - match: \b(decimal)\s*\(([^)]+)\)([^;]*)
+    captures:
+      1: support.type.logical.avro
+      2: meta.decimal.length
+      3: meta.decimal.avro
+  repo_declaration:
+  - match: \b(enum)\s+(\w+)\s*{
+    captures:
+      1: keyword.struct.enum.avro
+      2: entity.name.type.avro
+    push:
+    - meta_content_scope: meta.enum.declaration.avro
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_decorators
+    - match: \b\w+\b
+      scope: variable.other.enummember.avro
+  repo_declared_type:
+  - match: \w+
+    scope: entity.name.type
+  repo_decorators:
+  - match: (@[-\w]+)\s*\(
+    captures:
+      1: meta.decorator.name.avro
+    push:
+    - meta_scope: meta.decorator
+    - meta_content_scope: meta.decorator.avro
+    - match: \)
+      pop: true
+    - include: repo_object
+  repo_error:
+  - match: \b(error)\s+(\w*)\s*{
+    captures:
+      1: keyword.struct.error.avro
+      2: entity.name.type.avro
+    push:
+    - meta_content_scope: meta.error.avro
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_decorators
+    - include: repo_field
+  repo_field:
+  - match: (?=\S)
+    push:
+    - meta_scope: meta.field
+    - match: ;
+      pop: true
+    - include: repo_decorators
+    - include: repo_field_base_type_entry
+    - include: repo_field_user_type_entry
+  repo_field_base_type_entry:
+  - match: (?=(?:map|array|union|int|long|string|boolean|float|double|null|bytes|decimal|date|time_ms|timestamp_ms))
+    push:
+    - meta_scope: meta.field.base.avro
+    - match: (?=;)
+      pop: true
+    - include: repo_types
+    - include: repo_decorators
+    - include: repo_variable
+    - include: repo_comments
+    - include: repo_field_default_value
+  repo_field_default_value:
+  - match: '='
+    push:
+    - meta_scope: meta.default.avro
+    - match: (?=;)
+      pop: true
+    - include: repo_strings
+    - include: repo_object
+    - include: repo_constants
+  repo_field_user_type_entry:
+  - match: \b\w+
+    captures:
+      0: entity.name.type.avro
+    push:
+    - meta_scope: meta.field.user.avro
+    - match: (?=;)
+      pop: true
+    - include: repo_decorators
+    - include: repo_variable
+    - include: repo_comments
+    - include: repo_field_default_value
+  repo_fixed:
+  - match: \b(fixed)\b([^(]+)\(([^)]+)\)
+    captures:
+      1: support.type.logical.avro
+      2: meta.fixed.avro
+      3: meta.fixed.length
+  repo_function:
+  - match: \b([\w`]+)\s*\(
+    captures:
+      1: meta.function.name.avro
+    push:
+    - meta_scope: meta.function
+    - meta_content_scope: meta.function.parameters.avro
+    - match: \)
+      pop: true
+    - include: repo_function_param
+  repo_function_param:
+  - match: (?!=\))
+    push:
+    - meta_scope: meta.function.param
+    - match: ',|(?=\))'
+      pop: true
+    - match: \w+
+      captures:
+        0: meta.function.param.type
+      push:
+      - match: ',|(?=\))'
+        pop: true
+      - include: repo_decorators
+      - include: repo_variable
+      - include: repo_comments
+      - include: repo_function_param_default_value
+    - include: repo_comments
+    - include: repo_decorators
+  repo_function_param_default_value:
+  - match: '='
+    push:
+    - meta_scope: meta.default.avro
+    - match: (?=[,)])
+      pop: true
+    - include: repo_strings
+    - include: repo_object
+    - include: repo_constants
+  repo_import:
+  - match: \b(import)\s+(idl|protocol|schema)\s+([^;]+);
+    captures:
+      1: keyword.avro
+      2: keyword.avro
+  repo_keywords:
+  - match: \b(protocol|record)\b
+    scope: keyword.struct.avro
+  - match: \b(oneway)\b
+    scope: keyword.other.avro
+  - match: (@namespace|@extends|@import)\b
+    scope: keyword.control.avro
+  - include: repo_types
+  - match: \b(true|false|null)\b
+    scope: constant.language.avro
+  - match: \b[A-Z][A-Z0-9_]*\b
+    scope: constant.language.avro
+  repo_object:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_object
+  - match: '{'
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_object
+  - include: repo_strings
+  - include: repo_constants
+  - include: repo_comments
+  repo_protocol:
+  - match: \b(protocol)\s+(\w+)\s*{
+    captures:
+      1: keyword.struct.avro
+      2: entity.name.type.avro
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_contents
+  repo_record:
+  - match: \b(record)\s+(\w+)\s*{
+    captures:
+      1: keyword.struct.record.avro
+      2: entity.name.type.avro
+    push:
+    - meta_content_scope: meta.record.avro
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_field
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.avro
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.avro
+  repo_throws:
+  - match: \bthrows\b
+    captures:
+      0: keyword.control.avro
+    push:
+    - meta_scope: meta.throws
+    - match: (?=;)
+      pop: true
+    - include: repo_comments
+    - match: \b\w+\b
+      scope: entity.name.type.avro
+  repo_types:
+  - include: repo_union
+  - include: repo_decimal
+  - include: repo_collections
+  - match: \b(int|long|string|boolean|float|double|null|bytes)\b
+    scope: support.type.primitive.avro
+  - match: \b(date|time_ms|timestamp_ms|uuid)\b
+    scope: support.type.logical.avro
+  - match: \b(uint|void)\b
+    scope: support.type.primitive.avro
+  repo_union:
+  - match: \b(union)\s*{
+    captures:
+      1: keyword.struct.union.avro
+    push:
+    - meta_content_scope: meta.type.union.avro
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_types
+    - include: repo_declared_type
+  repo_variable:
+  - match: (`?)(\w+)(`?)
+    captures:
+      1: variable.name.escape.avro
+      2: variable.name.avro
+      3: variable.name.escape.avro

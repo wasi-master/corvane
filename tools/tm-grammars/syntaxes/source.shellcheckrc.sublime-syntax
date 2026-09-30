@@ -1,0 +1,95 @@
+%YAML 1.2
+---
+# ShellCheck Config (source.shellcheckrc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: ShellCheck Config
+scope: source.shellcheckrc
+file_extensions:
+- .shellcheckrc
+contexts:
+  main:
+  - match: (?<=#)\s*(shellcheck)\s+(?=[a-z]+=)
+    captures:
+      1: directive.name.keyword.shellcheckrc
+    push:
+    - meta_scope: directive.shellcheckrc
+    - match: (?=\s*$)|(\S*)(?=[\)\]}>"'`])
+      pop: true
+    - include: repo_directive
+  - match: \A
+    push:
+    - match: (?=A)B
+      pop: true
+    - include: repo_main
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.shellcheckrc
+    push:
+    - meta_scope: comment.line.number-sign.shellcheckrc
+    - match: $
+      pop: true
+  repo_directive:
+  - match: (\w[-\w]*)(=)
+    captures:
+      1: variable.parameter.directive.shellcheckrc
+      2: punctuation.definition.assignment.equals-sign.shellcheckrc
+    push:
+    - match: (?=$|\s)
+      pop: true
+    - match: (?x)(?<= \s disable= | \s enable=  | ^   disable= | ^   enable= )
+      push:
+      - meta_scope: meta.list.shellcheckrc
+      - match: (?=$|\s)
+        pop: true
+      - match: all(?=$|\s)
+        scope: keyword.operator.all-warnings.shellcheckrc
+      - include: repo_errorCodeRange
+      - include: repo_errorCode
+      - include: repo_warningName
+      - include: scope:etc
+    - match: (?x)(?<= \s source-path= | ^   source-path= )
+      push:
+      - meta_scope: string.other.file.path.shellcheckrc
+      - match: (?=$|\s)
+        pop: true
+      - match: \bSCRIPTDIR\b
+        scope: variable.environment.language.shellcheckrc
+    - match: (?x)(?<= \s shell= | ^   shell= )
+      push:
+      - meta_scope: entity.name.shell.shellcheckrc
+      - match: (?=$|\s)
+        pop: true
+      - include: repo_escape
+    - match: (?x)(?<= \s external-sources= | ^   external-sources= )
+      push:
+      - match: (?=$|\s)
+        pop: true
+      - match: (true|false)(?=$|\s)
+      - include: repo_escape
+    - match: (?=\S)
+      push:
+      - meta_scope: string.unquoted.other.shellcheckrc
+      - match: (?=$|\s)
+        pop: true
+  repo_errorCode:
+  - match: \bSC[0-9]{4}\b
+    scope: constant.numeric.error-code.shellcheckrc
+    captures:
+      0: markup.underline.link.error-code.shellcheckrc
+  repo_errorCodeRange:
+  - match: \b(SC[0-9]{4})(-)(SC[0-9]{4})\b
+    scope: meta.range.error-codes.shellcheckrc
+    captures:
+      1: meta.range.begin.shellcheckrc
+      2: punctuation.separator.range.dash.shellcheckrc
+      3: meta.range.end.shellcheckrc
+  repo_escape:
+  - match: (\\).
+    scope: constant.character.escape.backslash.shellcheckrc
+  repo_main:
+  - include: repo_comment
+  - include: repo_directive
+  repo_warningName:
+  - match: (?:[^\\\s=#,]|\\.)+
+    scope: constant.other.warning-name.shellcheckrc

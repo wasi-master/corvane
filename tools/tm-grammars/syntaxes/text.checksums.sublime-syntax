@@ -1,0 +1,95 @@
+%YAML 1.2
+---
+# Checksums (text.checksums): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: Checksums
+scope: text.checksums
+file_extensions:
+- crc32
+- md2
+- md4
+- md5
+- sha1
+- sha2
+- sha224
+- sha256
+- sha256sum
+- sha3
+- sha384
+- sha512
+- MD5SUMS
+- SHA1SUMS
+- SHA256SUMS
+- SHA256SUMS.txt
+- SHA512SUMS
+- checksums.txt
+- cksums
+- md5sum.txt
+contexts:
+  main:
+  - include: repo_main
+  repo_bsd-style:
+  - match: "(?ix) (?:^|) \\s*\n(?=[-/A-Z0-9]+\\s*\\(.+?\\)\\s*=\\s*(?:[A-F0-9]+|[A-Za-z0-9+/=]{4,})\\s*$)\n(?=\n\t(?:CRC-?32            \\b .+?=\\s* (?:[A-F0-9]{8}   | [A-Za-z0-9+/=]{12}  )\n\t| MD[245]             \\b .+?=\\s* (?:[A-F0-9]{32}  | [A-Za-z0-9+/=]{44}  )\n\t| MD6                 \\b .+?=\\s* (?:[A-F0-9]{128} | [A-Za-z0-9+/=]{172} )\n\t| SHA-?[01]           \\b .+?=\\s* (?:[A-F0-9]{40}  | [A-Za-z0-9+/=]{56}  )\n\t| SHA-?224            \\b .+?=\\s* (?:[A-F0-9]{56}  | [A-Za-z0-9+/=]{76}  )\n\t| SHA-?256            \\b .+?=\\s* (?:[A-F0-9]{64}  | [A-Za-z0-9+/=]{88}  )\n\t| SHA-?384            \\b .+?=\\s* (?:[A-F0-9]{96}  | [A-Za-z0-9+/=]{128} )\n\t| SHA-?512            \\b .+?=\\s* (?:[A-F0-9]{128} | [A-Za-z0-9+/=]{172} )\n\t| SHA-?512/224        \\b .+?=\\s* (?:[A-F0-9]{56}  | [A-Za-z0-9+/=]{76}  )\n\t| SHA-?512/256        \\b .+?=\\s* (?:[A-F0-9]{64}  | [A-Za-z0-9+/=]{88}  )\n\t| SHA3-?224           \\b .+?=\\s* (?:[A-F0-9]{56}  | [A-Za-z0-9+/=]{76}  )\n\t| SHA3-?256       \
+      \    \\b .+?=\\s* (?:[A-F0-9]{64}  | [A-Za-z0-9+/=]{88}  )\n\t| SHA3-?384           \\b .+?=\\s* (?:[A-F0-9]{96}  | [A-Za-z0-9+/=]{128} )\n\t| SHA3-?512           \\b .+?=\\s* (?:[A-F0-9]{128} | [A-Za-z0-9+/=]{172} )\n\t| SHAKE-?128          \\b .+?=\\s* (?:[A-F0-9]{64}  | [A-Za-z0-9+/=]{88}  )\n\t| SHAKE-?256          \\b .+?=\\s* (?:[A-F0-9]{128} | [A-Za-z0-9+/=]{172} )\n\t| (?:RMD|RIPEMD-?)128 \\b .+?=\\s* (?:[A-F0-9]{32}  | [A-Za-z0-9+/=]{44}  )\n\t| (?:RMD|RIPEMD-?)160 \\b .+?=\\s* (?:[A-F0-9]{40}  | [A-Za-z0-9+/=]{56}  )\n\t| (?:RMD|RIPEMD-?)256 \\b .+?=\\s* (?:[A-F0-9]{64}  | [A-Za-z0-9+/=]{88}  )\n\t| (?:RMD|RIPEMD-?)320 \\b .+?=\\s* (?:[A-F0-9]{80}  | [A-Za-z0-9+/=]{108} )\n\t| SHA-?2              \\b .*? \\b  (?:[A-F0-9]{56}  | [A-F0-9]{64}|[A-F0-9]{96}|[A-F0-9]{128})\n\t| SHA-?3              \\b .*? \\b [A-F0-9]+\n\t) \\s* $\n) "
+    push:
+    - meta_scope: meta.bsd-style.checksum
+    - match: \b([A-Fa-f0-9]+)(?=\s*$)|(?=$)
+      pop: true
+      captures:
+        1: constant.numeric.integer.int.hexadecimal.hex.checksum
+    - match: ([-/A-Za-f0-9]+)(?=\s|\()
+    - match: (\()
+      captures:
+        0: punctuation.definition.string.begin.checksum
+        1: brackethighlighter.round.checksum
+      push:
+      - meta_scope: string.quoted.other.filename.checksum
+      - match: (\))(?=\s*=\s*[A-Fa-f0-9]+\s*$)|(?=$)
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.checksum
+          1: brackethighlighter.round.checksum
+    - include: scope:etc
+  repo_digest:
+  - include: scope:etc
+  - include: scope:etc
+  - match: \S+
+    scope: invalid.illegal.bad-character.checksum
+  repo_geo-style:
+  - match: (?:^|)\s*(((?:crypt|digest)[1-9]|plain)(:))(?:(?<=\d:)([A-Za-z0-9+/=]{4,})|(?<=n:)(\S+))(?=\s|$)
+    scope: meta.geo-style.checksum
+    captures:
+      5: constant.other.password.checksum
+  repo_gnu-style:
+  - match: '^\s*(?=\S{24})([A-Za-z0-9+/]=*|[A-Fa-f0-9]+)(?:[ \t](?: |(\*)|(\^))?|(?:\t* \t*){3,}+)(\S.*)'
+    scope: meta.gnu-style.checksum
+    captures:
+      2: storage.modifier.binary-mode.checksum
+      3: storage.modifier.bitwise-mode.checksum
+      4: string.unquoted.other.filename.checksum
+  repo_isolated:
+  - match: '(?ix) (?:^|)
+
+      ( [A-F0-9]{8}   # CRC-32
+
+      | [A-F0-9]{32}  # MD2 MD4 MD5 RMD128
+
+      | [A-F0-9]{40}  # SHA-1 RMD160
+
+      | [A-F0-9]{56}  # SHA-224 SHA-512/224 SHA3-224
+
+      | [A-F0-9]{64}  # SHA-256 SHA-512/256 SHA3-256 SHAKE128 RMD256
+
+      | [A-F0-9]{80}  # RMD320
+
+      | [A-F0-9]{96}  # SHA-384 SHA3-384
+
+      | [A-F0-9]{128} # SHA-512 SHA3-512 SHAKE256 MD6
+
+      ) \s*$'
+    scope: constant.numeric.integer.int.hexadecimal.hex.checksum
+  repo_main:
+  - include: repo_bsd-style
+  - include: repo_gnu-style
+  - include: repo_geo-style
+  - include: repo_isolated

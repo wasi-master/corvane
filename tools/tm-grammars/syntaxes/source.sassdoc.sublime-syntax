@@ -1,0 +1,178 @@
+%YAML 1.2
+---
+# SassDoc (source.sassdoc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/atom/language-sass via GitHub Linguist v9.7.0 (license: mit).
+name: SassDoc
+scope: source.sassdoc
+hidden: true
+contexts:
+  main:
+  - match: '(?x)
+
+      ((@)(?:access))
+
+      \s+
+
+      (private|public)
+
+      \b'
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: constant.language.access-type.sassdoc
+  - match: "(?x)\n((@)author)\n\\s+\n(\n  [^@\\s<>*/]\n  (?:[^@<>*/]|\\*[^/])*\n)\n(?:\n  \\s*\n  (<)\n  ([^>\\s]+)\n  (>)\n)?"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: entity.name.type.instance.sassdoc
+      4: punctuation.definition.bracket.angle.begin.sassdoc
+      5: constant.other.email.link.underline.sassdoc
+      6: punctuation.definition.bracket.angle.end.sassdoc
+  - match: '(?x)
+
+      ((@)example)
+
+      \s+
+
+      (css|scss)'
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: variable.other.sassdoc
+    push:
+    - meta_scope: meta.example.css.scss.sassdoc
+    - match: (?=@|///$)
+      pop: true
+    - match: ^///\s+
+    - match: '[^\s@*](?:[^*]|\*[^/])*'
+      captures:
+        0: source.embedded.css.scss
+  - match: '(?x)
+
+      ((@)example)
+
+      \s+
+
+      (markup)'
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: variable.other.sassdoc
+    push:
+    - meta_scope: meta.example.html.sassdoc
+    - match: (?=@|///$)
+      pop: true
+    - match: ^///\s+
+    - match: '[^\s@*](?:[^*]|\*[^/])*'
+      captures:
+        0: source.embedded.html
+  - match: '(?x)
+
+      ((@)example)
+
+      \s+
+
+      (javascript)'
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: variable.other.sassdoc
+    push:
+    - meta_scope: meta.example.js.sassdoc
+    - match: (?=@|///$)
+      pop: true
+    - match: ^///\s+
+    - match: '[^\s@*](?:[^*]|\*[^/])*'
+      captures:
+        0: source.embedded.js
+  - match: "(?x)\n((@)link)\n\\s+\n(?:\n  # URL\n  (\n    (?=https?://)\n    (?:[^\\s*]|\\*[^/])+\n  )\n)"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: variable.other.link.underline.sassdoc
+      4: entity.name.type.instance.sassdoc
+  - match: "(?x)\n(\n  (@)\n  (?:arg|argument|param|parameter|requires?|see|colors?|fonts?|ratios?|sizes?)\n)\n\\s+\n(\n  [A-Za-z_$%]\n  [\\-\\w$.\\[\\]]*\n)"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: variable.other.sassdoc
+  - match: ((@)(?:arg|argument|param|parameter|prop|property|requires?|see|sizes?))\s+(?={)
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+    push:
+    - match: (?=\s|\*/|[^{}\[\]A-Za-z_$])
+      pop: true
+    - include: repo_sassdoctype
+    - match: ([A-Za-z_$%][\-\w$.\[\]]*)
+      scope: variable.other.sassdoc
+    - match: "(?x)\n(\\[)\\s*\n[\\w$]+\n(?:\n  (?:\\[\\])?                                        # Foo[].bar properties within an array\n  \\.                                                # Foo.Bar namespaced parameter\n  [\\w$]+\n)*\n(?:\n  \\s*\n  (=)                                                # [foo=bar] Default parameter value\n  \\s*\n  (\n    # The inner regexes are to stop the match early at */ and to not stop at escaped quotes\n    (?>\n      \"(?:(?:\\*(?!/))|(?:\\\\(?!\"))|[^*\\\\])*?\" |  # [foo=\"bar\"] Double-quoted\n      '(?:(?:\\*(?!/))|(?:\\\\(?!'))|[^*\\\\])*?' |  # [foo='bar'] Single-quoted\n      \\[ (?:(?:\\*(?!/))|[^*])*? \\] |              # [foo=[1,2]] Array literal\n      (?:(?:\\*(?!/))|\\s(?!\\s*\\])|\\[.*?(?:\\]|(?=\\*/))|[^*\\s\\[\\]])* # Everything else (sorry)\n    )*\n  )\n)?\n\\s*(?:(\\])((?:[^*\\s]|\\*[^\\s/])+)?|(?=\\*/))"
+      scope: variable.other.sassdoc
+      captures:
+        1: punctuation.definition.optional-value.begin.bracket.square.sassdoc
+        2: keyword.operator.assignment.sassdoc
+        3: source.embedded.js
+        4: punctuation.definition.optional-value.end.bracket.square.sassdoc
+        5: invalid.illegal.syntax.sassdoc
+  - match: "(?x)\n(\n  (@)\n  (?:returns?|throws?|exception|outputs?)\n)\n\\s+(?={)"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+    push:
+    - match: (?=\s|[^{}\[\]A-Za-z_$])
+      pop: true
+    - include: repo_sassdoctype
+  - match: "(?x)\n(\n  (@)\n  (?:type)\n)\n\\s+\n(\n  (?:\n    [A-Za-z |]+\n  )\n)"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: entity.name.type.instance.sassdoc
+  - match: "(?x)\n(\n  (@)\n  (?:alias|group|name|requires?|see|icons?)\n)\n\\s+\n(\n  (?:\n    [^{}@\\s*] | \\*[^/]\n  )+\n)"
+    captures:
+      1: storage.type.class.sassdoc
+      2: punctuation.definition.block.tag.sassdoc
+      3: entity.name.type.instance.sassdoc
+  - match: '(?x)
+
+      (@)
+
+      (?:access|alias|author|content|deprecated|example|exception|group
+
+      |ignore|name|prop|property|requires?|returns?|see|since|throws?|todo
+
+      |type|outputs?)
+
+      \b'
+    scope: storage.type.class.sassdoc
+    captures:
+      1: punctuation.definition.block.tag.sassdoc
+  repo_brackets:
+  - match: '{'
+    push:
+    - match: '}|(?=$)'
+      pop: true
+    - include: repo_brackets
+  - match: \[
+    push:
+    - match: \]|(?=$)
+      pop: true
+    - include: repo_brackets
+  repo_sassdoctype:
+  - match: '{(?:[^}*]|\*[^/}])+$'
+    scope: invalid.illegal.type.sassdoc
+  - match: ({)
+    captures:
+      0: entity.name.type.instance.sassdoc
+      1: punctuation.definition.bracket.curly.begin.sassdoc
+    push:
+    - meta_content_scope: entity.name.type.instance.sassdoc
+    - match: ((}))\s*|(?=$)
+      pop: true
+      captures:
+        1: entity.name.type.instance.sassdoc
+        2: punctuation.definition.bracket.curly.end.sassdoc
+    - include: repo_brackets
+  repo_sassdoctypedelimiter:
+  - match: (\|)
+    captures:
+      1: punctuation.definition.delimiter.sassdoc

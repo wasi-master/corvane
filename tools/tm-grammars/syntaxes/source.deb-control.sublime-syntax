@@ -1,0 +1,67 @@
+%YAML 1.2
+---
+# Debian Package Control File (source.deb-control): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/tsbarnes/language-debian.git via GitHub Linguist v9.7.0 (license: mit).
+name: Debian Package Control File
+scope: source.deb-control
+file_extensions:
+- dsc
+contexts:
+  main:
+  - include: repo_paragraphs
+  repo_comments:
+  - match: ^#.*$
+    scope: comment.line.deb-control
+  repo_fields:
+  - match: ^(Package|Version|Architecture|Maintainer|Source|Section|Priority|Essential|Installed-Size|Homepage|Built-Using|Standards-Version)(:)
+    captures:
+      1: entity.name.section.field.simple.deb-control
+      2: keyword.operator.deb-control
+    push:
+    - meta_scope: meta.section.field.simple.deb-control
+    - match: \n
+      pop: true
+    - include: repo_variables
+  - match: ^(Depends|Build-Depends)(:)
+    captures:
+      1: entity.name.section.field.folded.deb-control
+      2: keyword.operator.deb-control
+    push:
+    - meta_scope: meta.section.field.folded.deb-control
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_comments
+    - include: repo_variables
+  - match: ^(Description)(:)
+    captures:
+      1: entity.name.section.field.multiline.deb-control
+      2: keyword.operator.deb-control
+    push:
+    - meta_scope: meta.section.field.multiline.deb-control
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_comments
+    - include: repo_variables
+  - match: ^([^:\s]*)(:)
+    captures:
+      2: keyword.operator.deb-control
+    push:
+    - meta_scope: meta.section.field.multiline.deb-control
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_comments
+    - include: repo_variables
+  repo_paragraphs:
+  - match: ^(?!\s)
+    push:
+    - meta_scope: meta.section.paragraph.deb-control
+    - match: ^$
+      pop: true
+    - include: repo_comments
+    - include: repo_fields
+  repo_variables:
+  - match: \${
+    push:
+    - meta_scope: variable.other.substitution.deb-control
+    - match: '}'
+      pop: true

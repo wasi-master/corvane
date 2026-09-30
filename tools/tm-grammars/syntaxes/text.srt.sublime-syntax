@@ -1,0 +1,241 @@
+%YAML 1.2
+---
+# SubRip Text (text.srt): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-subtitles.git via GitHub Linguist v9.7.0 (license: isc).
+name: SubRip Text
+scope: text.srt
+file_extensions:
+- srt
+contexts:
+  main:
+  - include: repo_main
+  repo_action:
+  - match: \[
+    captures:
+      0: punctuation.definition.string.begin.srt
+    push:
+    - meta_scope: string.quoted.other.sound.action.square-brackets.srt
+    - match: \]|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.srt
+    - include: repo_formatting
+  - match: \(
+    captures:
+      0: punctuation.definition.string.begin.srt
+    push:
+    - meta_scope: string.quoted.other.sound.action.round-brackets.srt
+    - match: \)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.srt
+    - include: repo_formatting
+  repo_align:
+  - match: ({)(\\a(?:n[1-9]|(10|11|(?!4|8)\d)))(})
+    scope: meta.tag.override.line-alignment.srt
+    captures:
+      1: punctuation.definition.tag.begin.srt
+      2: entity.name.tag.srt
+      3: invalid.deprecated.syntax.tag.srt
+      4: punctuation.definition.tag.end.srt
+  repo_arrow:
+  - match: -->
+    scope: keyword.operator.timespan.srt
+    captures:
+      0: punctuation.definition.separator.srt
+  repo_bold:
+  - match: (<)([Bb])(?=$|>|\s)([^>]*)(>)
+    captures:
+      0: meta.tag.inline.b.html.srt
+      1: punctuation.definition.tag.begin.html.srt
+      2: entity.name.tag.inline.b.html.srt
+      4: punctuation.definition.tag.end.html.srt
+    push:
+    - meta_content_scope: markup.bold.srt
+    - match: (</)([Bb])[ \t]*(>)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: meta.tag.inline.b.html.srt
+        1: punctuation.definition.tag.begin.html.srt
+        2: entity.name.tag.inline.b.html
+        3: punctuation.definition.tag.end.html.srt
+    - include: repo_text
+  repo_dash:
+  - match: (?:^|)(-)
+    scope: markup.quote.quotation-dash.srt
+    captures:
+      1: punctuation.section.quote.srt
+  - match: (?:^|)((?:{(?:.:|\\)[^}]*})++)(-)
+  repo_escapes:
+  - match: (\\)h
+    scope: constant.character.whitespace.escape.hard-space.srt
+    captures:
+      1: punctuation.definition.escape.backslash.srt
+  - match: (\\)N
+    scope: constant.character.whitespace.escape.forced-newline.srt
+    captures:
+      1: punctuation.definition.escape.backslash.srt
+  repo_font:
+  - match: (?i)(<)(font)(?=$|>|\s)([^>]*)(>)
+    captures:
+      0: meta.tag.inline.font.html.srt
+      1: punctuation.definition.tag.begin.html.srt
+      2: entity.name.tag.inline.font.html.srt
+      4: punctuation.definition.tag.end.html.srt
+    push:
+    - meta_content_scope: markup.other.font.srt
+    - match: (?i)(</)(font)[ \t]*(>)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: meta.tag.inline.font.html.srt
+        1: punctuation.definition.tag.begin.html.srt
+        2: entity.name.tag.inline.font.html.srt
+        3: punctuation.definition.tag.end.html.srt
+    - include: repo_text
+  repo_formatting:
+  - include: repo_bold
+  - include: repo_italic
+  - include: repo_underline
+  - include: repo_strike
+  - include: repo_font
+  - include: repo_ssa
+  repo_italic:
+  - match: (<)([Ii])(?=$|>|\s)([^>]*)(>)
+    captures:
+      0: meta.tag.inline.i.html.srt
+      1: punctuation.definition.tag.begin.html.srt
+      2: entity.name.tag.inline.i.html.srt
+      4: punctuation.definition.tag.end.html.srt
+    push:
+    - meta_content_scope: markup.italic.srt
+    - match: (</)([Ii])[ \t]*(>)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: meta.tag.inline.i.html.srt
+        1: punctuation.definition.tag.begin.html.srt
+        2: entity.name.tag.inline.i.html
+        3: punctuation.definition.tag.end.html.srt
+    - include: repo_text
+  repo_linePosition:
+  - match: \b(([XY])[0-9]+)(:)(?:([-+]?[0-9]+\.[0-9]+)|([-+]?[0-9]+))\b
+    captures:
+      1: variable.parameter.position.srt
+      3: keyword.operator.assignment.key-value.colon.srt
+      4: constant.numeric.float.srt
+      5: constant.numeric.integer.srt
+  repo_lyrics:
+  - match: "(\u266A+)[ \\t]*"
+    captures:
+      1: punctuation.definition.lyrics.begin.srt
+    push:
+    - meta_scope: markup.quote.lyrics.srt
+    - match: "[ \\t]*(\u266A+)|(?=^-|^[ \\t]*$|\\s*</)"
+      pop: true
+      captures:
+        1: punctuation.definition.lyrics.end.srt
+    - include: repo_formatting
+  repo_main:
+  - include: repo_subtitle
+  repo_speaker:
+  - match: "(?x)\n(?:^|)\n((?:{(?:.:|\\\\)[^}]*})*+)\n(-(?:\\[0-9A-Fa-f]|[ \\t])*)?\n(\n\t(?: [^-<>\\s:]    [^<>:]* (?=:[ \\t]*\\S)\n\t|   [^-<>\\s:a-z] [^<>:a-z]*\n\t|   <(?!/(?i:[bisu]|font)>\\s*:)\n\t)++\n\t(?:\n\t\t(?=(?:\\s*</(?i:[bisu]|font)>)++\\s*:)\n\t\t|\n\t\t(:)\n\t)\n)(?=$|\\s|</)"
+    captures:
+      3: entity.name.speaker.srt
+      4: punctuation.separator.speaker.colon.srt
+  repo_ssa:
+  - include: repo_align
+  - include: repo_unknownTag
+  repo_strike:
+  - match: (<)([Ss])(?=$|>|\s)([^>]*)(>)
+    captures:
+      0: meta.tag.inline.s.html.srt
+      1: punctuation.definition.tag.begin.html.srt
+      2: entity.name.tag.inline.s.html.srt
+      4: punctuation.definition.tag.end.html.srt
+    push:
+    - meta_content_scope: markup.strike.srt
+    - match: (</)([Ss])[ \t]*(>)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: meta.tag.inline.s.html.srt
+        1: punctuation.definition.tag.begin.html.srt
+        2: entity.name.tag.inline.s.html
+        3: punctuation.definition.tag.end.html.srt
+    - include: repo_text
+  repo_subtitle:
+  - match: "^(?:\uFEFF?)(\\d+)$"
+    captures:
+      1: entity.name.section.srt
+    push:
+    - meta_scope: meta.subtitle.srt
+    - match: ^[ \t]*$
+      pop: true
+    - match: \s*
+      push:
+      - match: (?!)$
+        pop: true
+      - match: '(?x) ^
+
+          ([0-9]{2}:[0-9]{2}:[0-9]{2}[,.][0-9]{3}) \x20(-->)\x20 (\1)
+
+          ((?:\s*[XY][0-9]+:[-+]?[0-9]+(?:\.[0-9]+)?)++)?
+
+          [ \t]* $ '
+        captures:
+          1: constant.numeric.time.timecode.start.srt
+          3: constant.numeric.time.timecode.end.srt
+        push:
+        - meta_scope: meta.timespan.empty.srt
+        - meta_content_scope: comment.block.ignored.hidden-subtitle.srt
+        - match: (?=^[ \t]*$)
+          pop: true
+      - match: '(?x) ^
+
+          ([0-9]{2}:[0-9]{2}:[0-9]{2}[,.][0-9]{3}) \x20(-->)\x20
+
+          ([0-9]{2}:[0-9]{2}:[0-9]{2}[,.][0-9]{3})
+
+          ((?:\s*[XY][0-9]+:[-+]?[0-9]+(?:\.[0-9]+)?)++)?
+
+          [ \t]* $ '
+        scope: meta.timespan.srt
+        captures:
+          1: constant.numeric.time.timecode.start.srt
+          3: constant.numeric.time.timecode.end.srt
+      - include: repo_text
+    - include: repo_text
+  repo_text:
+  - include: repo_speaker
+  - include: repo_dash
+  - include: repo_action
+  - include: repo_lyrics
+  - include: repo_formatting
+  - include: repo_escapes
+  repo_timecode:
+  - match: \.
+    scope: invalid.illegal.syntax.decimal-separator.srt
+  - match: (?<=:)([6-9][0-9])
+    scope: invalid.illegal.value.out-of-range.vtt
+  repo_underline:
+  - match: (<)([Uu])(?=$|>|\s)([^>]*)(>)
+    captures:
+      0: meta.tag.inline.u.html.srt
+      1: punctuation.definition.tag.begin.html.srt
+      2: entity.name.tag.inline.u.html.srt
+      4: punctuation.definition.tag.end.html.srt
+    push:
+    - meta_content_scope: markup.underline.srt
+    - match: (</)([Uu])[ \t]*(>)|(?=^[ \t]*$)
+      pop: true
+      captures:
+        0: meta.tag.inline.u.html.srt
+        1: punctuation.definition.tag.begin.html.srt
+        2: entity.name.tag.inline.u.html
+        3: punctuation.definition.tag.end.html.srt
+    - include: repo_text
+  repo_unknownTag:
+  - match: ({)(?:.:|\\)[^}]*(})
+    scope: meta.tag.override.unsupported.srt
+    captures:
+      0: invalid.unimplemented.syntax.tag.srt
+      1: punctuation.definition.tag.begin.srt
+      2: punctuation.definition.tag.end.srt

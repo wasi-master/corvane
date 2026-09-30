@@ -1,0 +1,57 @@
+%YAML 1.2
+---
+# X Font Directory Index (source.fontdir): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-fontforge via GitHub Linguist v9.7.0 (license: isc).
+name: X Font Directory Index
+scope: source.fontdir
+file_extensions:
+- encodings.dir
+- fonts.alias
+- fonts.dir
+- fonts.scale
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: ^!
+    captures:
+      0: punctuation.definition.comment.fontdir
+    push:
+    - meta_scope: comment.line.bang.exclamation-mark.fontdir
+    - match: (?=$)
+      pop: true
+  repo_entryCount:
+  - match: \A([0-9]+)(?=\s|$)
+    scope: constant.numeric.integer.int.decimal.fontdir
+  repo_entryName:
+  - include: repo_string
+  - match: ^(?:[^-\s]|\s(?!-|\S+$)|(?<!\s)-)+
+    scope: string.unquoted.font-name.fontdir
+  repo_keywords:
+  - match: ^(FILE_NAMES_ALIASES)(?=\s|$)
+    scope: keyword.control.directive.font-name-aliases.fontdir
+  repo_main:
+  - include: repo_comment
+  - include: repo_keywords
+  - include: repo_entryCount
+  - include: repo_entryName
+  - include: scope:source.xlfd
+  - include: repo_otherField
+  repo_otherField:
+  - include: repo_string
+  - match: (?<=\s)\S+$
+    scope: constant.language.other.fontdir
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.fontdir
+    push:
+    - meta_scope: string.quoted.double.font-name.fontdir
+    - match: '"|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.fontdir
+    - match: (\\).
+      scope: constant.character.escape.backslash.fontdir
+      captures:
+        1: punctuation.definition.escape.backslash.fontdir

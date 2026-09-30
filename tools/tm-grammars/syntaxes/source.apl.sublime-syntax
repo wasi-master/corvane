@@ -1,0 +1,620 @@
+%YAML 1.2
+---
+# APL (source.apl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-apl.git via GitHub Linguist v9.7.0 (license: isc).
+name: APL
+scope: source.apl
+file_extensions:
+- apl
+- dyalog
+first_line_match: ^#!.*\b(apl|aplx|dyalog)\b
+contexts:
+  main:
+  - match: \A#!.*$
+    scope: comment.line.shebang.apl
+  - include: repo_heredocs
+  - include: repo_main
+  - match: ^\s*((\))OFF|(\])NEXTFILE)\b(.*)$
+    captures:
+      1: entity.name.command.eof.apl
+      2: punctuation.definition.command.apl
+      3: punctuation.definition.command.apl
+    push:
+    - meta_content_scope: text.embedded.apl
+    - match: (?=N)A
+      pop: true
+  - match: \(
+    captures:
+      0: punctuation.round.bracket.begin.apl
+    push:
+    - meta_scope: meta.round.bracketed.group.apl
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.round.bracket.end.apl
+    - include: repo_main
+  - match: \[
+    captures:
+      0: punctuation.square.bracket.begin.apl
+    push:
+    - meta_scope: meta.square.bracketed.group.apl
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.square.bracket.end.apl
+    - include: repo_main
+  - match: ^\s*((\))\S+)
+    captures:
+      1: entity.name.command.apl
+      2: punctuation.definition.command.apl
+    push:
+    - meta_scope: meta.system.command.apl
+    - match: $
+      pop: true
+    - include: repo_command-arguments
+    - include: repo_command-switches
+    - include: repo_main
+  - match: ^\s*((\])\S+)
+    captures:
+      1: entity.name.command.apl
+      2: punctuation.definition.command.apl
+    push:
+    - meta_scope: meta.user.command.apl
+    - match: $
+      pop: true
+    - include: repo_command-arguments
+    - include: repo_command-switches
+    - include: repo_main
+  repo_class:
+  - match: "(?x)\n(?<=\\s|^)\n((:)Class)\n\\s+\n(\n\t'[^']*'?\n\t|\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n)\n\\s*\n(\n\t(:)\n\t\\s*\n\t(?:\n\t\t(\n\t\t\t'[^']*'?\n\t\t\t|\n\t\t\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t\t\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n\t\t)\n\t\t\\s*\n\t)?\n)?\n(.*?)$"
+    captures:
+      0: meta.class.apl
+      1: keyword.control.class.apl
+      2: punctuation.definition.class.apl
+      3: entity.name.type.class.apl
+      4: entity.other.inherited-class.apl
+      5: punctuation.separator.inheritance.apl
+      7: entity.other.class.interfaces.apl
+    push:
+    - match: (?<=\s|^)((:)EndClass)(?=\b)
+      pop: true
+      captures:
+        1: keyword.control.class.apl
+        2: punctuation.definition.class.apl
+    - match: (?<=\s|^)(:)Field(?=\s)
+      captures:
+        0: keyword.control.field.apl
+        1: punctuation.definition.field.apl
+      push:
+      - meta_scope: meta.field.apl
+      - match: "\\s*(\u2190.*)?(?:$|(?=\u235D))"
+        pop: true
+        captures:
+          0: entity.other.initial-value.apl
+      - match: (?<=\s|^)(Public|Private)(?=\s|$)
+      - match: (?<=\s|^)(Shared|Instance|ReadOnly)(?=\s|$)
+      - match: "(?x)\n(\n\t'[^']*'?\n\t|\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n)"
+        scope: entity.name.type.apl
+    - include: main
+  repo_command-arguments:
+  - match: \b(?=\S)
+    push:
+    - meta_scope: variable.parameter.argument.apl
+    - match: \b(?=\s)
+      pop: true
+    - include: repo_main
+  repo_command-switches:
+  - match: "(?x)\n(?<=\\s)(-)\n(\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n)\n(=)"
+    captures:
+      1: punctuation.delimiter.switch.apl
+      2: entity.name.switch.apl
+      3: punctuation.assignment.switch.apl
+    push:
+    - meta_scope: variable.parameter.switch.apl
+    - match: \b(?=\s)
+      pop: true
+    - include: repo_main
+  - match: "(?x)\n(?<=\\s)(-)\n(\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n)\n(?!=)"
+    scope: variable.parameter.switch.apl
+    captures:
+      1: punctuation.delimiter.switch.apl
+      2: entity.name.switch.apl
+  repo_comment:
+  - match: "\u235D"
+    captures:
+      0: punctuation.definition.comment.apl
+    push:
+    - meta_scope: comment.line.apl
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.definition.comment.apl
+  repo_csv:
+  - match: ','
+    scope: punctuation.separator.apl
+  - include: main
+  repo_definition:
+  - match: "(?x) ^\\s*? (?# 1: keyword.operator.nabla.apl) (\u2207) (?: \\s* (?: (?# 2: entity.function.return-value.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* ) | \\s* (?# 3: entity.function.return-value.shy.apl) ( (\\{)             (?# 4: punctuation.definition.return-value.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\})             (?# 5: punctuation.definition.return-value.end.apl) | (\\()             (?# 6: punctuation.definition.return-value.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\))             (?# 7: punctuation.definition.return-value.end.apl) | (\\\
+      (\\s*\\{)      (?# 8: punctuation.definition.return-value.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\}\\s*\\))      (?# 9: punctuation.definition.return-value.end.apl) | (\\{\\s*\\()      (?# 10: punctuation.definition.return-value.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\)\\s*\\})      (?# 11: punctuation.definition.return-value.end.apl) ) \\s* ) \\s* (?# 12: keyword.operator.assignment.apl) (\u2190) )? \\s* (?: (?# MONADIC) (?: (?# 13: entity.function.name.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* ) \\s* (?# 14: entity.function.axis.apl) ( (?# 15:\
+      \ punctuation.definition.axis.begin.apl) (\\[) \\s* (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* (?# 16: invalid.illegal.extra-characters.apl) (.*?) | (?# 17: invalid.illegal.apl) ([^\\]]*) ) \\s* (?# 18: punctuation.definition.axis.end.apl) (\\]) )? \\s*? (?# 19: entity.function.arguments.right.apl) ( (?<=\\s|\\]) [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* | (\\()   (?# 20: punctuation.definition.arguments.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\))   (?# 21: punctuation.definition.arguments.end.apl) ) \\s* (?=;|$) ) | (?# DYADIC/AMBIVALENT) (?#==================) (?: (?# 22:\
+      \ entity.function.arguments.left.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s+ ) | (?# 23: entity.function.arguments.left.optional.apl) ( (\\{)          (?# 24: punctuation.definition.arguments.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\})          (?# 25: punctuation.definition.arguments.end.apl) | (\\(\\s*\\{)   (?# 26: punctuation.definition.arguments.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\}\\s*\\))   (?# 27: punctuation.definition.arguments.end.apl) | (\\{\\s*\\()   (?# 28: punctuation.definition.arguments.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\
+      \xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\)\\s*\\})   (?# 29: punctuation.definition.arguments.end.apl) ) )? \\s* (?: (?# 30: entity.function.name.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* ) \\s* (?# 31: entity.function.axis.apl) ( (?# 32: punctuation.definition.axis.begin.apl) (\\[) \\s* (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* (?# 33: invalid.illegal.extra-characters.apl) (.*?) | (?# 34: invalid.illegal.apl) ([^\\]]*) ) \\s* (?# 35: punctuation.definition.axis.end.apl) (\\]) )? | (?# 36: entity.function.operands.apl) ( (?# 37: punctuation.definition.operands.begin.apl) (\\() (?# 38: entity.function.operands.left.apl)\
+      \ ( \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* )? \\s* (?# 39: entity.function.name.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* ) \\s*? (?# 40: entity.function.axis.apl) ( (?# 41: punctuation.definition.axis.begin.apl) (\\[) \\s* (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* (?# 42: invalid.illegal.extra-characters.apl) (.*?) | (?# 43: invalid.illegal.apl) ([^\\]]*) ) \\s* (?# 44: punctuation.definition.axis.end.apl) (\\]) )? \\s* (?# 45: entity.function.operands.right.apl) ( [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\
+      \xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )? (?# 46: punctuation.definition.operands.end.apl) (\\)) ) ) \\s* (?# 47: entity.function.arguments.right.apl) ( (?<=\\s|\\]) [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* | \\s* (\\()   (?# 48: punctuation.definition.arguments.begin.apl) (?: \\s* [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]* \\s* )* (\\))   (?# 49: punctuation.definition.arguments.end.apl) )? (?#==================) ) \\s* (?# 50: invalid.illegal.arguments.right.apl) ([^;]+)? (?# 51: entity.function.local-variables.apl) ( (?# 52: Include \u201C;\u201D) ( (?> \\s* ; (?: \\s* [\u2395A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF] [A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF\
+      0-9]* \\s* )+ )+ ) | (?# 53: invalid.illegal.local-variables.apl) ([^\u235D]+) )? \\s* (?# 54: comment.line.apl) (\u235D.*)? $"
+    captures:
+      0: entity.function.definition.apl
+      1: keyword.operator.nabla.apl
+      10: punctuation.definition.return-value.begin.apl
+      11: punctuation.definition.return-value.end.apl
+      12: keyword.operator.assignment.apl
+      13: entity.function.name.apl
+      14: entity.function.axis.apl
+      15: punctuation.definition.axis.begin.apl
+      16: invalid.illegal.extra-characters.apl
+      17: invalid.illegal.apl
+      18: punctuation.definition.axis.end.apl
+      19: entity.function.arguments.right.apl
+      2: entity.function.return-value.apl
+      20: punctuation.definition.arguments.begin.apl
+      21: punctuation.definition.arguments.end.apl
+      22: entity.function.arguments.left.apl
+      23: entity.function.arguments.left.optional.apl
+      24: punctuation.definition.arguments.begin.apl
+      25: punctuation.definition.arguments.end.apl
+      26: punctuation.definition.arguments.begin.apl
+      27: punctuation.definition.arguments.end.apl
+      28: punctuation.definition.arguments.begin.apl
+      29: punctuation.definition.arguments.end.apl
+      3: entity.function.return-value.shy.apl
+      30: entity.function.name.apl
+      31: entity.function.axis.apl
+      32: punctuation.definition.axis.begin.apl
+      33: invalid.illegal.extra-characters.apl
+      34: invalid.illegal.apl
+      35: punctuation.definition.axis.end.apl
+      36: entity.function.operands.apl
+      37: punctuation.definition.operands.begin.apl
+      38: entity.function.operands.left.apl
+      39: entity.function.name.apl
+      4: punctuation.definition.return-value.begin.apl
+      40: entity.function.axis.apl
+      41: punctuation.definition.axis.begin.apl
+      42: invalid.illegal.extra-characters.apl
+      43: invalid.illegal.apl
+      44: punctuation.definition.axis.end.apl
+      45: entity.function.operands.right.apl
+      46: punctuation.definition.operands.end.apl
+      47: entity.function.arguments.right.apl
+      48: punctuation.definition.arguments.begin.apl
+      49: punctuation.definition.arguments.end.apl
+      5: punctuation.definition.return-value.end.apl
+      50: invalid.illegal.arguments.right.apl
+      51: entity.function.local-variables.apl
+      53: invalid.illegal.local-variables.apl
+      54: comment.line.apl
+      6: punctuation.definition.return-value.begin.apl
+      7: punctuation.definition.return-value.end.apl
+      8: punctuation.definition.return-value.begin.apl
+      9: punctuation.definition.return-value.end.apl
+    push:
+    - meta_scope: meta.function.apl
+    - match: "^\\s*?(?:(\u2207)|(\u236B))\\s*?(\u235D.*?)?$"
+      pop: true
+      captures:
+        1: keyword.operator.nabla.apl
+        2: keyword.operator.lock.apl
+        3: comment.line.apl
+    - match: "(?x)\n^\\s*\n(\n\t(?>\n\t\t;\n\t\t(?:\n\t\t\t\\s*\n\t\t\t[\u2395A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t\t\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n\t\t\t\\s*\n\t\t)+\n\t)+\n)"
+      scope: entity.function.definition.apl
+      captures:
+        0: entity.function.local-variables.apl
+    - include: main
+  repo_embedded-apl:
+  - match: (?i)(<(\?|%)(?:apl(?=\s+)|=))
+    captures:
+      1: punctuation.section.embedded.begin.apl
+    push:
+    - meta_scope: meta.embedded.block.apl
+    - match: (?<=\s)(\2>)
+      pop: true
+      captures:
+        1: punctuation.section.embedded.end.apl
+    - include: repo_main
+  repo_embolden:
+  - match: .+
+    scope: markup.bold.identifier.apl
+  repo_heredocs:
+  - match: "^.*?\u2395INP\\s+('|\")((?i).*?HTML?.*?|END-OF-\u2395INP)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: text.embedded.html.basic
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: scope:text.html.basic
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")((?i).*?(?:XML|XSLT|SVG|RSS).*?)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: text.embedded.xml
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: scope:text.xml
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")((?i).*?(?:CSS|stylesheet).*?)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: source.embedded.css
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: scope:source.css
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")((?i).*?(?:JS(?!ON)|(?:ECMA|J|Java).?Script).*?)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: source.embedded.js
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: scope:source.js
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")((?i).*?(?:JSON).*?)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: source.embedded.json
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: scope:source.json
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")(?i)((?:Raw|Plain)?\\s*Te?xt)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - meta_content_scope: text.embedded.plain
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: repo_embedded-apl
+  - match: "^.*?\u2395INP\\s+('|\")(.*?)\\1.*$"
+    push:
+    - meta_scope: meta.heredoc.apl
+    - match: ^.*?\2.*?$
+      pop: true
+      captures:
+        0: constant.other.apl
+    - include: main
+  repo_label:
+  - match: "(?x)\n^\\s*\n(\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n\t[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*\n)\n(:)"
+    scope: meta.label.apl
+    captures:
+      1: entity.label.name.apl
+      2: punctuation.definition.label.end.apl
+  repo_lambda:
+  - match: \{
+    captures:
+      0: punctuation.definition.lambda.begin.apl
+    push:
+    - meta_scope: meta.lambda.function.apl
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.lambda.end.apl
+    - include: repo_main
+    - include: repo_lambda-variables
+  repo_lambda-variables:
+  - match: "\u237A\u237A"
+    scope: constant.language.lambda.operands.left.apl
+  - match: "\u2375\u2375"
+    scope: constant.language.lambda.operands.right.apl
+  - match: "[\u237A\u2376]"
+    scope: constant.language.lambda.arguments.left.apl
+  - match: "[\u2375\u2379]"
+    scope: constant.language.lambda.arguments.right.apl
+  - match: "\u03C7"
+    scope: constant.language.lambda.arguments.axis.apl
+  - match: "\u2207\u2207"
+    scope: constant.language.lambda.operands.self.operator.apl
+  - match: "\u2207"
+    scope: constant.language.lambda.operands.self.function.apl
+  - match: "\u03BB"
+    scope: constant.language.lambda.symbol.apl
+  repo_main:
+  - include: repo_class
+  - include: repo_definition
+  - include: repo_comment
+  - include: repo_label
+  - include: repo_sck
+  - include: repo_strings
+  - include: repo_number
+  - include: repo_lambda
+  - include: repo_sysvars
+  - include: repo_symbols
+  - include: repo_name
+  repo_name:
+  - match: "(?x)\n[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF]\n[A-Z_a-z\xC0-\xD6\xD8-\xDD\xDF\xE0-\xF6\xF8-\xFC\xFE\u2206\u2359\u24B6-\u24CF\xAF0-9]*"
+    scope: variable.other.readwrite.apl
+  repo_number:
+  - match: "\xAF?[0-9][\xAF0-9A-Za-z]*(?:\\.[\xAF0-9Ee][\xAF0-9A-Za-z]*)*|\xAF?\\.[0-9Ee][\xAF0-9A-Za-z]*"
+    scope: constant.numeric.apl
+  repo_sck:
+  - match: (?<=\s|^)(:)[A-Za-z]+
+    scope: keyword.control.sck.apl
+    captures:
+      1: punctuation.definition.sck.begin.apl
+  repo_strings:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.apl
+    push:
+    - meta_scope: string.quoted.single.apl
+    - match: '''|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.apl
+    - match: '[^'']*[^''\n\r\\]$'
+      scope: invalid.illegal.string.apl
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.apl
+    push:
+    - meta_scope: string.quoted.double.apl
+    - match: '"|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.apl
+    - match: '[^"]*[^"\n\r\\]$'
+      scope: invalid.illegal.string.apl
+  repo_symbols:
+  - match: "(?<=\\s)\u2190(?=\\s|$)"
+    scope: keyword.spaced.operator.assignment.apl
+  - match: "(?<=\\s)\u2192(?=\\s|$)"
+    scope: keyword.spaced.control.goto.apl
+  - match: "(?<=\\s)\u2261(?=\\s|$)"
+    scope: keyword.spaced.operator.identical.apl
+  - match: "(?<=\\s)\u2262(?=\\s|$)"
+    scope: keyword.spaced.operator.not-identical.apl
+  - match: \+
+    scope: keyword.operator.plus.apl
+  - match: "[-\u2212]"
+    scope: keyword.operator.minus.apl
+  - match: "\xD7"
+    scope: keyword.operator.times.apl
+  - match: "\xF7"
+    scope: keyword.operator.divide.apl
+  - match: "\u230A"
+    scope: keyword.operator.floor.apl
+  - match: "\u2308"
+    scope: keyword.operator.ceiling.apl
+  - match: "[\u2223|]"
+    scope: keyword.operator.absolute.apl
+  - match: "[\u22C6*]"
+    scope: keyword.operator.exponent.apl
+  - match: "\u235F"
+    scope: keyword.operator.logarithm.apl
+  - match: "\u25CB"
+    scope: keyword.operator.circle.apl
+  - match: '!'
+    scope: keyword.operator.factorial.apl
+  - match: "\u2227"
+    scope: keyword.operator.and.apl
+  - match: "\u2228"
+    scope: keyword.operator.or.apl
+  - match: "\u2372"
+    scope: keyword.operator.nand.apl
+  - match: "\u2371"
+    scope: keyword.operator.nor.apl
+  - match: <
+    scope: keyword.operator.less.apl
+  - match: "\u2264"
+    scope: keyword.operator.less-or-equal.apl
+  - match: '='
+    scope: keyword.operator.equal.apl
+  - match: "\u2265"
+    scope: keyword.operator.greater-or-equal.apl
+  - match: '>'
+    scope: keyword.operator.greater.apl
+  - match: "\u2260"
+    scope: keyword.operator.not-equal.apl
+  - match: "[\u223C~]"
+    scope: keyword.operator.tilde.apl
+  - match: \?
+    scope: keyword.operator.random.apl
+  - match: "[\u220A\u2208]"
+    scope: keyword.operator.member-of.apl
+  - match: "\u2377"
+    scope: keyword.operator.find.apl
+  - match: ','
+    scope: keyword.operator.comma.apl
+  - match: "\u236A"
+    scope: keyword.operator.comma-bar.apl
+  - match: "\u2337"
+    scope: keyword.operator.squad.apl
+  - match: "\u2373"
+    scope: keyword.operator.iota.apl
+  - match: "\u2374"
+    scope: keyword.operator.rho.apl
+  - match: "\u2191"
+    scope: keyword.operator.take.apl
+  - match: "\u2193"
+    scope: keyword.operator.drop.apl
+  - match: "\u22A3"
+    scope: keyword.operator.left.apl
+  - match: "\u22A2"
+    scope: keyword.operator.right.apl
+  - match: "\u22A4"
+    scope: keyword.operator.encode.apl
+  - match: "\u22A5"
+    scope: keyword.operator.decode.apl
+  - match: \/
+    scope: keyword.operator.slash.apl
+  - match: "\u233F"
+    scope: keyword.operator.slash-bar.apl
+  - match: \x5C
+    scope: keyword.operator.backslash.apl
+  - match: "\u2340"
+    scope: keyword.operator.backslash-bar.apl
+  - match: "\u233D"
+    scope: keyword.operator.rotate-last.apl
+  - match: "\u2296"
+    scope: keyword.operator.rotate-first.apl
+  - match: "\u2349"
+    scope: keyword.operator.transpose.apl
+  - match: "\u234B"
+    scope: keyword.operator.grade-up.apl
+  - match: "\u2352"
+    scope: keyword.operator.grade-down.apl
+  - match: "\u2339"
+    scope: keyword.operator.quad-divide.apl
+  - match: "\u2261"
+    scope: keyword.operator.identical.apl
+  - match: "\u2262"
+    scope: keyword.operator.not-identical.apl
+  - match: "\u2282"
+    scope: keyword.operator.enclose.apl
+  - match: "\u2283"
+    scope: keyword.operator.pick.apl
+  - match: "\u2229"
+    scope: keyword.operator.intersection.apl
+  - match: "\u222A"
+    scope: keyword.operator.union.apl
+  - match: "\u234E"
+    scope: keyword.operator.hydrant.apl
+  - match: "\u2355"
+    scope: keyword.operator.thorn.apl
+  - match: "\u2286"
+    scope: keyword.operator.underbar-shoe-left.apl
+  - match: "\u2378"
+    scope: keyword.operator.underbar-iota.apl
+  - match: "\xA8"
+    scope: keyword.operator.each.apl
+  - match: "\u2364"
+    scope: keyword.operator.rank.apl
+  - match: "\u2338"
+    scope: keyword.operator.quad-equal.apl
+  - match: "\u2368"
+    scope: keyword.operator.commute.apl
+  - match: "\u2363"
+    scope: keyword.operator.power.apl
+  - match: \.
+    scope: keyword.operator.dot.apl
+  - match: "\u2218"
+    scope: keyword.operator.jot.apl
+  - match: "\u2360"
+    scope: keyword.operator.quad-colon.apl
+  - match: '&'
+    scope: keyword.operator.ampersand.apl
+  - match: "\u2336"
+    scope: keyword.operator.i-beam.apl
+  - match: "\u233A"
+    scope: keyword.operator.quad-diamond.apl
+  - match: '@'
+    scope: keyword.operator.at.apl
+  - match: "\u25CA"
+    scope: keyword.operator.lozenge.apl
+  - match: ;
+    scope: keyword.operator.semicolon.apl
+  - match: "\xAF"
+    scope: keyword.operator.high-minus.apl
+  - match: "\u2190"
+    scope: keyword.operator.assignment.apl
+  - match: "\u2192"
+    scope: keyword.control.goto.apl
+  - match: "\u236C"
+    scope: constant.language.zilde.apl
+  - match: "\u22C4"
+    scope: keyword.operator.diamond.apl
+  - match: "\u236B"
+    scope: keyword.operator.lock.apl
+  - match: "\u2395"
+    scope: keyword.operator.quad.apl
+  - match: '##'
+    scope: constant.language.namespace.parent.apl
+  - match: '#'
+    scope: constant.language.namespace.root.apl
+  - match: "\u233B"
+    scope: keyword.operator.quad-jot.apl
+  - match: "\u233C"
+    scope: keyword.operator.quad-circle.apl
+  - match: "\u233E"
+    scope: keyword.operator.circle-jot.apl
+  - match: "\u2341"
+    scope: keyword.operator.quad-slash.apl
+  - match: "\u2342"
+    scope: keyword.operator.quad-backslash.apl
+  - match: "\u2343"
+    scope: keyword.operator.quad-less.apl
+  - match: "\u2344"
+    scope: keyword.operator.greater.apl
+  - match: "\u2345"
+    scope: keyword.operator.vane-left.apl
+  - match: "\u2346"
+    scope: keyword.operator.vane-right.apl
+  - match: "\u2347"
+    scope: keyword.operator.quad-arrow-left.apl
+  - match: "\u2348"
+    scope: keyword.operator.quad-arrow-right.apl
+  - match: "\u234A"
+    scope: keyword.operator.tack-down.apl
+  - match: "\u234C"
+    scope: keyword.operator.quad-caret-down.apl
+  - match: "\u234D"
+    scope: keyword.operator.quad-del-up.apl
+  - match: "\u234F"
+    scope: keyword.operator.vane-up.apl
+  - match: "\u2350"
+    scope: keyword.operator.quad-arrow-up.apl
+  - match: "\u2351"
+    scope: keyword.operator.tack-up.apl
+  - match: "\u2353"
+    scope: keyword.operator.quad-caret-up.apl
+  - match: "\u2354"
+    scope: keyword.operator.quad-del-down.apl
+  - match: "\u2356"
+    scope: keyword.operator.vane-down.apl
+  - match: "\u2357"
+    scope: keyword.operator.quad-arrow-down.apl
+  - match: "\u2358"
+    scope: keyword.operator.underbar-quote.apl
+  - match: "\u235A"
+    scope: keyword.operator.underbar-diamond.apl
+  - match: "\u235B"
+    scope: keyword.operator.underbar-jot.apl
+  - match: "\u235C"
+    scope: keyword.operator.underbar-circle.apl
+  - match: "\u235E"
+    scope: keyword.operator.quad-quote.apl
+  - match: "\u2361"
+    scope: keyword.operator.dotted-tack-up.apl
+  - match: "\u2362"
+    scope: keyword.operator.dotted-del.apl
+  - match: "\u2365"
+    scope: keyword.operator.dotted-circle.apl
+  - match: "\u2366"
+    scope: keyword.operator.stile-shoe-up.apl
+  - match: "\u2367"
+    scope: keyword.operator.stile-shoe-left.apl
+  - match: "\u2369"
+    scope: keyword.operator.dotted-greater.apl
+  - match: "\u236D"
+    scope: keyword.operator.stile-tilde.apl
+  - match: "\u236E"
+    scope: keyword.operator.underbar-semicolon.apl
+  - match: "\u236F"
+    scope: keyword.operator.quad-not-equal.apl
+  - match: "\u2370"
+    scope: keyword.operator.quad-question.apl
+  repo_sysvars:
+  - match: "(?:(\u2395)|(\u235E))[A-Za-z]*"
+    scope: support.system.variable.apl
+    captures:
+      1: punctuation.definition.quad.apl
+      2: punctuation.definition.quad-quote.apl

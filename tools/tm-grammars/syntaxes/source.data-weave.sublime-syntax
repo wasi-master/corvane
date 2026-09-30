@@ -1,0 +1,139 @@
+%YAML 1.2
+---
+# DataWeave (source.data-weave): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/mulesoft-labs/data-weave-tmLanguage via GitHub Linguist v9.7.0 (license: mit).
+name: DataWeave
+scope: source.data-weave
+file_extensions:
+- dwl
+contexts:
+  main:
+  - include: repo_namespace
+  - include: repo_comment
+  - include: repo_document
+  - include: repo_constant
+  - include: repo_keyword
+  - include: repo_directive
+  - include: repo_identifier
+  - include: repo_selector
+  repo_comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.dw
+    - match: \*/
+      pop: true
+  - match: \s*((//).*$\n?)
+    captures:
+      1: comment.line.double-slash.dw
+      2: punctuation.definition.comment.dw
+  repo_constant:
+  - include: repo_regex
+  - include: repo_string-constants
+  - include: repo_number-constants
+  - match: (?<![[:alnum:]])(?:true|false|null)(?![[:alnum:]_])
+    scope: constant.language.dw
+  repo_directive:
+  - match: (%dw)\s+([0-9]+\.[0-9]+)(?!\$|\.)
+    captures:
+      1: keyword.directive.version.dw
+      2: constant.numeric.version.dw
+    push:
+    - meta_scope: meta.directive.version.dw
+    - match: (?=\n)
+      pop: true
+  - match: (?<![[:alnum:]_])(?:import|fun|ns|input|var|type|annotation|output|from)(?![[:alnum:]_])
+    scope: storage.type.dw
+  repo_document:
+  - match: (---)
+    scope: keyword.operator.body-marker.dw
+  repo_identifier:
+  - match: '[[:alpha:]][[:alnum:]_]*'
+    scope: entity.name.variable.dw
+  repo_keyword:
+  - match: (?<![[:alnum:]])(?:if|else|unless|do|using|default|match|case|update)(?![[:alnum:]_])
+    scope: keyword.control.dw
+  - match: (?<![[:alnum:]_])(?:and|or|not|as|is)(?![[:alnum:]_])
+    scope: keyword.operator.dw
+  - match: (->)
+    scope: keyword.operator.case.dw
+  - match: (<~)
+    scope: keyword.operator.assignment.metadata.dw
+  - match: (~=|==|!=|!=|<=|>=|<|>)
+    scope: keyword.operator.comparison.dw
+  - match: (=)
+    scope: keyword.operator.assignment.dw
+  - match: (:)
+    scope: keyword.operator.declaration.dw
+  - match: (\-|\+|\*|\/)
+    scope: keyword.operator.arithmetic.dw
+  - match: \?\?\?
+    scope: keyword.operator.implement.dw
+  - match: (?<![[:alnum:]])(?:private|internal)(?![[:alnum:]_])
+    scope: storage.modifier.dw
+  repo_namespace:
+  - match: (ns)\s+([[:alpha:]][[:alnum:]_]*)\s+([^\s]*)
+    captures:
+      1: storage.type.dw
+      2: entity.name.variable.dw
+      3: markup.underline.link
+  repo_number-constants:
+  - match: (?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][0-9]*)?
+    scope: constant.numeric.dw
+  repo_regex:
+  - match: \/.*\/
+    scope: string.regexp.dw
+  repo_selector:
+  - match: \.\.|\.\*|\.\^|\.\@|\.
+    scope: storage.type.dw
+  - match: \[
+    push:
+    - meta_scope: storage.type.dw
+    - match: \]
+      pop: true
+    - include: main
+  repo_string-constants:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.dw
+    push:
+    - meta_scope: string.quoted.double.dw
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.dw
+    - include: repo_string-interpolation
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.dw
+    push:
+    - meta_scope: string.quoted.single.dw
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.dw
+    - include: repo_string-interpolation
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.dw
+    push:
+    - meta_scope: string.quoted.backtick.dw
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.dw
+    - include: repo_string-interpolation
+  repo_string-interpolation:
+  - match: \$\(
+    captures:
+      0: keyword.other.dw
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: keyword.other.dw
+    - include: repo_selector
+    - include: main
+  - match: (\$)([[:alpha:]][[:alnum:]_]*)
+    captures:
+      1: keyword.other.dw
+      2: entity.name.variable.dw

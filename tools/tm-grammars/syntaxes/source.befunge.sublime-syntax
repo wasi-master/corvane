@@ -1,0 +1,25 @@
+%YAML 1.2
+---
+# Befunge (source.befunge): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-befunge via GitHub Linguist v9.7.0 (license: mit).
+name: Befunge
+scope: source.befunge
+file_extensions:
+- befunge
+- bf
+contexts:
+  main:
+  - match: '[0-9]'
+    scope: constant.numberic.bf
+  - match: '[+\-*/%!`]'
+    scope: storage.type.bf
+  - match: '[#<>^v?|_@]'
+    scope: storage.type.bf
+  - match: '[:$"]'
+    scope: stack.bf
+  - match: '[.,&~]'
+    scope: function.io.bf
+  - match: '[pg]'
+    scope: storage.type.bf
+  - match: '"(.*?)"'
+    scope: comment.block.bf

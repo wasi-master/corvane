@@ -1,0 +1,146 @@
+%YAML 1.2
+---
+# Cypher (source.cypher): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/fredbenenson/sublime-cypher.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Cypher
+scope: source.cypher
+file_extensions:
+- cyp
+- cypher
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_constants
+  - include: repo_keywords
+  - include: repo_functions
+  - include: repo_path-patterns
+  - include: repo_operators
+  - include: repo_identifiers
+  - include: repo_properties_literal
+  - include: repo_numbers
+  - include: repo_strings
+  repo_comments:
+  - match: //.*$\n?
+    scope: comment.line.double-slash.cypher
+  repo_constants:
+  - match: \bTRUE|true|FALSE|false\b
+    scope: constant.language.bool.cypher
+  repo_functions:
+  - match: (?i)\b(NOT)(?=\s*\()
+    scope: keyword.control.function.boolean.cypher
+  - match: (?i)\b(ALL|ANY|NONE|SINGLE)(?=\s*\()
+    scope: support.function.predicate.cypher
+  - match: (?i)\b(LENGTH|TYPE|ID|COALESCE|HEAD|LAST)(?=\s*\()
+    scope: support.function.scalar.cypher
+  - match: (?i)\b(NODES|RELATIONSHIPS|EXTRACT|FILTER|TAIL|RANGE|REDUCE)(?=\s*\()
+    scope: support.function.collection.cypher
+  - match: (?i)\b(ABS|ROUND|SQRT|SIGN)(?=\s*\()
+    scope: support.function.math.cypher
+  - match: (?i)\b(count|sum|avg|max|min|percentile_disc|percentile_cont|collect)(?=\s*\()
+    scope: support.function.aggregation.cypher
+  - match: (?i)\b(STR|REPLACE|SUBSTRING|LEFT|RIGHT|LTRIM|RTRIM|TRIM|LOWER|UPPER)(?=\s*\()
+    scope: support.function.string.cypher
+  repo_identifiers:
+  - match: '`.+?`'
+    scope: variable.other.quoted-identifier.cypher
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+    scope: variable.other.identifier.cypher
+  repo_keywords:
+  - match: (?i)\b(START|MATCH|WHERE|RETURN|CREATE|DELETE|SET|FOREACH|WITH|CYPHER|DISTINCT|AS|LIMIT|SKIP|UNIQUE|ORDER\s+BY)\b
+    scope: keyword.control.clause.cypher
+  - match: (?i)\b(DESC|ASC)\b
+    scope: keyword.other.order.cypher
+  - match: (?i)\b(node|relationship|rel)((:)([a-zA-Z_-][a-zA-Z0-9_]*))?(?=\s*\()
+    captures:
+      1: support.class.starting-functions-point.cypher
+      2: keyword.control.index-seperator.cypher
+      3: keyword.control.index-seperator.cypher
+      4: support.class.index.cypher
+    push:
+    - meta_scope: source.starting-functions.cypher
+    - match: \)
+      pop: true
+    - match: ((?:`.+?`)|(?:[a-zA-Z_][a-zA-Z0-9_]*))
+      scope: variable.parameter.relationship-name.cypher
+    - match: (\*)
+      scope: keyword.control.starting-function-params,cypher
+    - include: repo_comments
+    - include: repo_numbers
+    - include: repo_strings
+  repo_numbers:
+  - match: \b\d+(\.\d+)?\b
+    scope: constant.numeric.cypher
+  repo_operators:
+  - match: (\+|\-|\/|\*|\%|\?|!)
+    scope: keyword.operator.math.cypher
+  - match: (<=|=>|<>|<|>|=~|=)
+    scope: keyword.operator.compare.cypher
+  - match: (?i)\b(OR|AND)\b
+    scope: keyword.operator.logical.cypher
+  - match: (?i)\b(IN)\b
+    scope: keyword.operator.in.cypher
+  repo_path-patterns:
+  - match: (<--|-->|--)
+    scope: support.function.relationship-pattern.cypher
+  - match: (<-|-)(\[)
+    captures:
+      1: support.function.relationship-pattern-start.cypher
+      2: keyword.operator.relationship-pattern-start.cypher
+    push:
+    - meta_scope: path-pattern.cypher
+    - match: (])(->|-)
+      pop: true
+      captures:
+        1: keyword.operator.relationship-patern-end.cypher
+        2: support.function.relationship-pattern-start.cypher
+    - include: repo_identifiers
+    - match: (:)((?:`.+?`)|(?:[a-zA-Z_][a-zA-Z0-9_]*))
+      scope: entity.name.class.relationship-type.cypher
+      captures:
+        1: keyword.operator.relationship-type-start.cypher
+        2: entity.name.class.relationship.type.cypher
+    - match: (\|)(\s*)((?:`.+?`)|(?:[a-zA-Z_][a-zA-Z0-9_]*))
+      scope: entity.name.class.relationship-type-ored.cypher
+      captures:
+        1: support.type.operator.relationship-type-or.cypher
+        2: entity.name.class.relationship.type-or.cypher
+    - match: (?:\?\*|\?|\*)\s*(?:\d+\s*(?:\.\.\s*\d+)?)?
+      scope: support.function.relationship-pattern.quant.cypher
+    - include: repo_properties_literal
+  repo_properties_literal:
+  - match: '{'
+    captures:
+      0: keyword.control.properties_literal.cypher
+    push:
+    - meta_scope: source.cypher
+    - match: '}'
+      pop: true
+      captures:
+        0: keyword.control.properties_literal.cypher
+    - match: :|,
+      scope: keyword.control.properties_literal.seperator.cypher
+    - include: repo_comments
+    - include: repo_constants
+    - include: repo_functions
+    - include: repo_operators
+    - include: repo_identifiers
+    - include: repo_numbers
+    - include: repo_strings
+  repo_string_escape:
+  - match: (\\\\|\\[tbnrf])|(\\'|\\")
+    scope: constant.character.escape.cypher
+    captures:
+      2: string.quoted.double.cypher
+  repo_strings:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.cypher
+    - match: ''''
+      pop: true
+    - include: repo_string_escape
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.cypher
+    - match: '"'
+      pop: true
+    - include: repo_string_escape

@@ -1,0 +1,20 @@
+%YAML 1.2
+---
+# Python traceback (text.python.traceback): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/MagicStack/MagicPython via GitHub Linguist v9.7.0 (license: mit).
+name: Python traceback
+scope: text.python.traceback
+file_extensions:
+- pytb
+contexts:
+  main:
+  - match: ^  File ("[^"]+"), line (\d+)(?:, in (.+))?$
+    captures:
+      1: string.python.traceback
+      2: constant.numeric.python.traceback
+      3: entity.name.function.python.traceback
+  - match: ^    (.+)$
+  - match: '^([^\s:]+):(?: (.+))?$'
+    captures:
+      1: entity.name.type.class.python.traceback
+      2: string.python.traceback

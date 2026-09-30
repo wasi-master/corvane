@@ -1,0 +1,532 @@
+%YAML 1.2
+---
+# Teal (source.teal): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/teal-language/vscode-teal.git via GitHub Linguist v9.7.0 (license: mit).
+name: Teal
+scope: source.teal
+file_extensions:
+- tl
+first_line_match: ^#!.*\b(tl)\b
+contexts:
+  main:
+  - include: repo_expression
+  - include: repo_statement
+  repo_attribute:
+  - match: <\s*(const|close|total)\s*>
+    scope: storage.modifier.teal
+  repo_base:
+  - include: repo_pragma
+  - include: repo_comment
+  - include: repo_constant
+  - include: repo_number
+  - include: repo_string
+  - include: repo_long-string
+  - include: repo_attribute
+  repo_brackets:
+  - match: \[
+    push:
+    - meta_scope: teal.brackets
+    - match: \]
+      pop: true
+    - include: repo_expression
+  repo_break:
+  - match: \b(break)\b
+    scope: keyword.control.teal
+  repo_builtin-function:
+  - match: (?<![^.]\.|:)\b(assert|collectgarbage|dofile|error|getfenv|getmetatable|ipairs|loadfile|loadstring|module|next|pairs|pcall|print|rawequal|rawget|rawset|require|select|setfenv|setmetatable|tonumber|tostring|type|unpack|xpcall)\b(?=\s*(?:[({"']|\[\[))
+    scope: support.function.teal
+  - match: (?<![^.]\.|:)\b(coroutine\.(create|resume|running|status|wrap|yield)|string\.(byte|char|dump|find|format|gmatch|gsub|len|lower|match|rep|reverse|sub|upper)|table\.(concat|insert|maxn|remove|sort)|math\.(abs|acos|asin|atan2?|ceil|cosh?|deg|exp|floor|fmod|frexp|ldexp|log|log10|max|min|modf|pow|rad|random|randomseed|sinh?|sqrt|tanh?)|io\.(close|flush|input|lines|open|output|popen|read|tmpfile|type|write)|os\.(clock|date|difftime|execute|exit|getenv|remove|rename|setlocale|time|tmpname)|package\.(cpath|loaded|loadlib|path|preload|seeall)|debug\.(debug|[gs]etfenv|[gs]ethook|getinfo|[gs]etlocal|[gs]etmetatable|getregistry|[gs]etupvalue|traceback))\b(?=\s*(?:[({"']|\[\[))
+    scope: support.function.library.teal
+  repo_comment:
+  - include: repo_long-comment
+  - include: repo_short-comment
+  repo_constant:
+  - match: \b(nil|true|false)\b
+    scope: constant.language.teal
+  repo_do-block:
+  - match: \bdo\b
+    captures:
+      0: keyword.control.teal
+    push:
+    - meta_scope: statement.do-block.teal
+    - match: \bend\b
+      pop: true
+      captures:
+        0: keyword.control.teal
+    - include: repo_statement
+  repo_enum-block:
+  - match: \benum\b
+    captures:
+      0: storage.type.enum.teal
+    push:
+    - match: \bend\b
+      pop: true
+      captures:
+        0: storage.type.enum.teal
+    - include: repo_comment
+    - include: repo_string
+    - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+      scope: support.type.teal
+  repo_escaped-char:
+  - match: \\[abfnrtvz\\"'\n]
+    scope: constant.character.escape.teal
+  - match: \\\d{1,3}
+    scope: constant.character.escape.byte.teal
+  - match: \\x[0-9A-Fa-f][0-9A-Fa-f]
+    scope: constant.character.escape.byte.teal
+  - match: \\u\{[0-9A-Fa-f]+\}
+    scope: constant.character.escape.unicode.teal
+  - match: \\.
+    scope: invalid.illegal.character.escape.teal
+  repo_expression:
+  - include: repo_base
+  - include: repo_parentheses
+  - include: repo_brackets
+  - include: repo_operator
+  - include: repo_builtin-function
+  - include: repo_function-block
+  - include: repo_function-call
+  - include: repo_table-constructor
+  - include: repo_record-or-interface-block
+  - include: repo_enum-block
+  - include: repo_self
+  - include: repo_field-access
+  repo_field-access:
+  - match: (?<=[^.]\.|:)\b([a-zA-Z_][a-zA-Z0-9_]*)
+    scope: variable.other.teal
+  repo_for-block:
+  - match: \bfor\b
+    captures:
+      0: keyword.control.teal
+    push:
+    - meta_scope: statement.for.teal
+    - match: \bend\b
+      pop: true
+      captures:
+        0: keyword.control.teal
+    - match: (?<=\bfor\b)
+      push:
+      - meta_scope: teal.for.expression
+      - match: \bdo\b
+        pop: true
+        captures:
+          0: keyword.control.do.teal
+      - include: repo_expression
+    - match: (?<=\bdo\b)
+      push:
+      - meta_scope: teal.for.body
+      - match: (?=\bend\b)
+        pop: true
+      - include: repo_statement
+  repo_function-arg-name:
+  - match: (?<=\()
+    push:
+    - meta_scope: function.argument.teal
+    - match: (?=:|\))
+      pop: true
+    - include: repo_comment
+  - match: ','
+    push:
+    - meta_scope: function.argument.teal
+    - match: (?=:|\))
+      pop: true
+    - include: repo_comment
+  repo_function-arg-type:
+  - match: ':'
+    push:
+    - match: (?=,|\))
+      pop: true
+    - include: repo_comment
+    - include: repo_type
+  repo_function-args:
+  - match: \(
+    push:
+    - meta_scope: function.arguments.teal
+    - match: (?=\))
+      pop: true
+    - include: repo_comment
+    - include: repo_function-arg-name
+    - include: repo_function-arg-type
+  repo_function-block:
+  - match: \bfunction\b
+    captures:
+      0: keyword.declaration.function.teal
+    push:
+    - match: \bend\b
+      pop: true
+      captures:
+        0: keyword.declaration.function.teal
+    - include: repo_function-signature
+    - include: repo_function-body
+  repo_function-body:
+  - match: (?<=\))
+    push:
+    - meta_scope: teal.function.body
+    - match: (?=\bend\b)
+      pop: true
+    - include: repo_statement
+  repo_function-call:
+  - match: \b((?!\bfunction\b|\breturn\b|\bif\b|\belseif\b|\bwhile\b|\buntil\b|\bin\b)[a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*(?:\())
+    captures:
+      1: support.function.any-method.teal
+    push:
+    - meta_scope: function-call
+    - match: (?<=\))
+      pop: true
+    - include: repo_parentheses
+  - match: \b((?!\bfunction\b|\breturn\b|\bif\b|\belseif\b|\bwhile\b|\buntil\b|\bin\b)[a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*(?:\{))
+    captures:
+      1: support.function.any-method.teal
+    push:
+    - meta_scope: function-call
+    - match: (?<=})
+      pop: true
+    - include: repo_table-constructor
+  - match: \b((?!\bfunction\b|\breturn\b|\bif\b|\belseif\b|\bwhile\b|\buntil\b|\bin\b)[a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*("|'))
+    captures:
+      1: support.function.any-method.teal
+    push:
+    - meta_scope: function-call
+    - match: (?<=\2)
+      pop: true
+    - include: repo_string
+  - match: \b((?!\bfunction\b|\breturn\b|\bif\b|\belseif\b|\bwhile\b|\buntil\b|\bin\b)[a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*(\[(=*)\[))
+    captures:
+      1: support.function.any-method.teal
+    push:
+    - meta_scope: function-call
+    - match: (?<=\]\3\])
+      pop: true
+    - include: repo_long-string
+  repo_function-name:
+  - match: ([a-zA-Z_][a-zA-Z0-9_]*)
+    scope: support.function.name.teal
+  repo_function-signature:
+  - match: (?<=\bfunction\b)
+    push:
+    - meta_scope: function.signature.teal
+    - match: \)
+      pop: true
+    - include: repo_comment
+    - include: repo_function-name
+    - include: repo_generics
+    - include: repo_function-args
+  repo_function-type:
+  - match: (\bfunction\b)\s*(<\s*)?([a-zA-Z_][a-zA-Z0-9_, ]*\s*)?(>\s*)?\(
+    captures:
+      1: keyword.declaration.function.teal
+      3: support.type.teal
+    push:
+    - match: \)
+      pop: true
+    - include: repo_comment
+    - match: '[a-zA-Z_][a-zA-Z0-9_]*\s*(?=:)'
+      scope: function.argument.teal
+    - include: repo_type
+  - match: (\bfunction\b)\s*(<\s*)?([a-zA-Z_][a-zA-Z0-9_, ]*\s*)?(>\s*)?
+    captures:
+      1: keyword.declaration.function.teal
+      3: support.type.teal
+  repo_generics:
+  - match: <
+    push:
+    - meta_scope: type.arguments.teal
+    - match: '>'
+      pop: true
+    - include: repo_comment
+    - include: repo_type-arg
+  repo_goto:
+  - match: \b(goto)\b
+    scope: keyword.control.teal
+  repo_if-block:
+  - match: \bif\b
+    captures:
+      0: keyword.control.teal
+    push:
+    - meta_scope: statement.if-block.teal
+    - match: \bend\b
+      pop: true
+      captures:
+        0: keyword.control.teal
+    - include: repo_expression
+    - match: \bthen\b
+      scope: keyword.control.if-then.teal
+    - match: \belseif\b
+      captures:
+        0: keyword.control.teal
+      push:
+      - meta_scope: statement.elseif.teal
+      - match: \bthen\b
+        pop: true
+        captures:
+          0: keyword.control.teal
+      - include: repo_expression
+    - match: \belse\b
+      scope: keyword.control.else.teal
+    - include: repo_statement
+  repo_label:
+  - match: '::([a-zA-Z_][a-zA-Z0-9_]*)::'
+    scope: entity.name.label.teal
+  repo_long-comment:
+  - match: --\[(=*)\[
+    captures:
+      0: punctuation.definition.comment.begin.teal
+    push:
+    - meta_scope: comment.block.teal
+    - match: \]\1\]
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.teal
+  repo_long-string:
+  - match: \[(=*)\[
+    captures:
+      0: punctuation.definition.string.begin.teal
+    push:
+    - meta_scope: string.multiline.teal
+    - match: \]\1\]
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.teal
+  repo_new-type-declaration:
+  - match: \b(type)\b
+    captures:
+      1: keyword.declaration.type.teal
+    push:
+    - match: $
+      pop: true
+    - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+      captures:
+        0: support.type.teal
+      push:
+      - match: (=|$)
+        pop: true
+      - include: repo_comment
+    - match: (?<==)
+      push:
+      - match: $
+        pop: true
+      - include: repo_comment
+      - include: repo_function-call
+      - include: repo_record-or-interface-block
+      - include: repo_enum-block
+      - include: repo_type
+  repo_number:
+  - match: (?<![\w\d.])0[xX][0-9A-Fa-f]+(?![pPeE.0-9])
+    scope: constant.numeric.integer.hexadecimal.teal
+  - match: (?<![\w\d.])0[xX][0-9A-Fa-f]+(\.[0-9A-Fa-f]+)?([eE]-?\d*)?([pP][-+]\d+)?
+    scope: constant.numeric.float.hexadecimal.teal
+  - match: (?<![\w\d.])\d+(?![pPeE.0-9])
+    scope: constant.numeric.integer.teal
+  - match: (?<![\w\d.])\d+(\.\d+)?([eE]-?\d*)?
+    scope: constant.numeric.float.teal
+  repo_operator:
+  - match: \+|-|%|#|\*|\/|\^|==?|~=|<=?|>=?|(?<!\.)\.{2}(?!\.)
+    scope: keyword.operator.teal
+  - match: \b(and|or|not)\b
+    scope: keyword.operator.logical.teal
+  - match: \b(as|is|in)\b
+    scope: keyword.other.teal
+  repo_parentheses:
+  - match: \(
+    push:
+    - meta_scope: teal.parentheses
+    - match: \)
+      pop: true
+    - include: repo_expression
+  repo_pragma:
+  - match: --#pragma
+    captures:
+      0: keyword.control.directive.pragma.teal
+    push:
+    - match: .*$
+      pop: true
+      captures:
+        0: entity.other.attribute-name.pragma.preprocessor.teal
+  repo_record-or-interface-block:
+  - match: \b(record|interface)\b
+    captures:
+      0: storage.type.record.teal
+    push:
+    - meta_scope: statement.record-or-interface-block.teal
+    - match: \bend\b
+      pop: true
+      captures:
+        0: storage.type.record.teal
+    - include: repo_comment
+    - match: \b(is)\b
+      captures:
+        0: keyword.other.teal
+      push:
+      - match: (?=\bend\b|\bwhere\b|\brecord\b|\benum\b|^\s*\buserdata\b|^\s*\bmetamethod\b|\[|^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:)
+        pop: true
+        captures:
+          0: keyword.other.teal
+      - include: repo_comment
+      - include: repo_type
+    - match: \b(where)\b
+      captures:
+        0: keyword.control.teal
+      push:
+      - meta_scope: where-clause.teal
+      - match: (?=\bend\b|\brecord\b|\benum\b|^\s*\buserdata\b|^\s*\bmetamethod\b|\[|^\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:)
+        pop: true
+        captures:
+          0: keyword.control.teal
+      - include: repo_comment
+      - include: repo_expression
+    - include: repo_brackets
+    - include: repo_enum-block
+    - include: repo_record-or-interface-block
+    - include: repo_new-type-declaration
+    - match: ^\s*\buserdata\b
+      scope: storage.type.userdata.teal
+    - match: ^\s*\bmetamethod\b
+      captures:
+        0: storage.type.metamethod.teal
+      push:
+      - match: ':'
+        pop: true
+      - include: repo_function-name
+    - match: '^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:'
+      captures:
+        1: variable.other.teal
+    - include: repo_type
+  repo_repeat-block:
+  - match: \brepeat\b
+    captures:
+      0: keyword.control.teal
+    push:
+    - meta_scope: statement.repeat-block.teal
+    - match: \buntil\b
+      pop: true
+      captures:
+        0: keyword.control.teal
+    - include: repo_statement
+  repo_return:
+  - match: \b(return)\b
+    scope: keyword.control.teal
+  repo_scope-modifier:
+  - match: \b(local|global)\b
+    scope: storage.modifier.teal
+  repo_self:
+  - match: (?<![^.]\.|:)\b(self)\b
+    scope: variable.language.self.teal
+  repo_short-comment:
+  - match: --.*$
+    scope: comment.teal
+  repo_statement:
+  - include: repo_expression
+  - include: repo_if-block
+  - include: repo_do-block
+  - include: repo_repeat-block
+  - include: repo_while-block
+  - include: repo_for-block
+  - include: repo_goto
+  - include: repo_label
+  - include: repo_break
+  - include: repo_return
+  - include: repo_scope-modifier
+  - include: repo_type-annotation
+  - include: repo_new-type-declaration
+  repo_string:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.teal
+    push:
+    - meta_scope: string.quoted.single.teal
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.teal
+    - include: repo_escaped-char
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.teal
+    push:
+    - meta_scope: string.quoted.double.teal
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.teal
+    - include: repo_escaped-char
+  repo_table-constructor:
+  - match: '{'
+    push:
+    - meta_scope: teal.table-constructor
+    - match: '}'
+      pop: true
+    - include: repo_comment
+    - match: '='
+      push:
+      - match: ;|,|(?=})
+        pop: true
+      - include: repo_expression
+    - match: \[
+      push:
+      - meta_scope: teal.brackets
+      - match: \]
+        pop: true
+      - include: repo_expression
+    - match: ':'
+      push:
+      - match: (?<=\))|(?=[=,};])
+        pop: true
+      - include: repo_comment
+      - include: repo_function-call
+      - include: repo_type
+    - match: '[a-zA-Z_][a-zA-Z0-9_]*\s*(?=.*=)'
+      scope: variable.other.teal
+    - include: repo_expression
+  repo_table-type:
+  - match: '{'
+    push:
+    - meta_scope: support.tabletype.teal
+    - match: '}'
+      pop: true
+    - include: repo_comment
+    - include: repo_type
+  repo_type:
+  - include: repo_function-type
+  - include: repo_table-type
+  - include: repo_type-name
+  - include: repo_generics
+  repo_type-annotation:
+  - match: ':'
+    push:
+    - match: (?<=\))|=|;|$|(?=\breturn\b)
+      pop: true
+    - include: repo_comment
+    - include: repo_function-call
+    - include: repo_type
+  repo_type-arg:
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+    scope: support.type.teal
+  repo_type-name:
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+    scope: support.type.teal
+  - match: \.
+    scope: punctuation.accessor.teal
+  repo_while-block:
+  - match: \bwhile\b
+    captures:
+      0: keyword.control.teal
+    push:
+    - meta_scope: statement.while-block.teal
+    - match: \bend\b
+      pop: true
+      captures:
+        0: keyword.control.teal
+    - match: (?<=\bwhile\b)
+      push:
+      - meta_scope: teal.while.expression
+      - match: \bdo\b
+        pop: true
+        captures:
+          0: keyword.control.do.teal
+      - include: repo_expression
+    - match: (?<=\bdo\b)
+      push:
+      - meta_scope: teal.while.body
+      - match: (?=\bend\b)
+        pop: true
+      - include: repo_statement

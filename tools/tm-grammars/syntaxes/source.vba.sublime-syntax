@@ -1,0 +1,21 @@
+%YAML 1.2
+---
+# B4X (source.vba): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/serkonda7/vscode-vba.git via GitHub Linguist v9.7.0 (license: mpl-2.0).
+name: B4X
+scope: source.vba
+file_extensions:
+- bas
+contexts:
+  main:
+  - include: repo_keywords
+  - include: repo_types
+  - include: scope:source.vb6
+  repo_keywords:
+  - match: (?i)\bPtrSafe\b
+    scope: keyword.other.vba
+  - match: (?i)\bOption (Compare Database|Private Module)\b
+    scope: keyword.other.option.vba
+  repo_types:
+  - match: (?i)(?<= As )(LongLong|LongPtr)\b
+    scope: support.type.builtin.vba

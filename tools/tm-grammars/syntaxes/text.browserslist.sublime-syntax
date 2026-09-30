@@ -1,0 +1,62 @@
+%YAML 1.2
+---
+# Browserslist (text.browserslist): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/browserslist/browserslist-vscode via GitHub Linguist v9.7.0 (license: mit).
+name: Browserslist
+scope: text.browserslist
+file_extensions:
+- .browserslistrc
+- browserslist
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_marketshares
+  - include: repo_dates
+  - include: repo_versions
+  - include: repo_keywords
+  - include: repo_browsers
+  - include: repo_sections
+  - include: repo_configs
+  repo_browsers:
+  - match: (?i)\b(Android|Baidu|BlackBerry|bb|Chrome|ChromeAndroid|and_chr|Edge|Electron|Explorer|ie|ExplorerMobile|ie_mob|Firefox|ff|FirefoxAndroid|and_ff|iOS|ios_saf|Node|Opera|OperaMini|op_mini|OperaMobile|op_mob|PhantomJS|QQAndroid|and_qq|Safari|Samsung|UCAndroid|and_uc|kaios)\b
+    scope: string.unquoted.browserslist
+  repo_comments:
+  - match: '#'
+    push:
+    - meta_scope: comment.line.number-sign.browserslist
+    - match: '
+
+        '
+      pop: true
+  repo_configs:
+  - match: '@\w+\/browserslist-config(-.+)?'
+    scope: entity.name.class.browserslist
+  - match: \bbrowserslist-config-\w+\b
+    scope: entity.name.class.browserslist
+  repo_dates:
+  - match: \d{4}(-\d{1,2}){0,2}
+    scope: constant.numeric.date.browserslist
+  - match: years?
+    scope: constant.numeric.date.browserslist
+  repo_keywords:
+  - match: (<=?|>=?|,)
+    scope: keyword.control.browserslist
+  - match: \b(not|and|or|extends|in|last|since|cover|supports)\b
+    scope: keyword.control.browserslist
+  repo_marketshares:
+  - match: (\d*\.)?\d+%
+    scope: constant.numeric.browserslist
+  repo_sections:
+  - match: defaults
+    scope: entity.name.function.browserslist
+  - match: (\[|\])
+    scope: constant.character.browserslist
+  - match: (?!\[)(.+)(?=\])
+    scope: entity.name.function.browserslist
+  repo_versions:
+  - match: \b\d+(.\d+){0,2}\b
+    scope: constant.numeric.browserslist
+  - match: (?i)\b(esr|tp|all|dead|unreleased|major|versions?)\b
+    scope: constant.numeric.browserslist
+  - match: (?i)\b(current|maintained?)\b
+    scope: constant.numeric.node.browserslist

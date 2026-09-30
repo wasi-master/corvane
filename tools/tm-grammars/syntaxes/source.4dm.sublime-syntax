@@ -1,0 +1,487 @@
+%YAML 1.2
+---
+# 4D (source.4dm): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/4d/language-4d.git via GitHub Linguist v9.7.0 (license: mit).
+name: 4D
+scope: source.4dm
+file_extensions:
+- 4dm
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_for_loop
+  - include: repo_keywords
+  - include: repo_parameters
+  - include: repo_affectation_variable
+  - include: repo_long_int_variable
+  - include: repo_real_variable
+  - include: repo_text_variable
+  - include: repo_boolean_variable
+  - include: repo_picture_variable
+  - include: repo_pointer_variable
+  - include: repo_object_variable
+  - include: repo_variant_variable
+  - include: repo_collection_variable
+  - include: repo_strings
+  - include: repo_interprocess_variable
+  - include: repo_local_variables
+  - include: repo_operators
+  - include: repo_boolean_values
+  - include: repo_constant_4d
+  - include: repo_this-function
+  - include: repo_numbers
+  - include: repo_block
+  - include: repo_table_reference
+  - include: repo_function-call-innards
+  - match: \n
+    scope: punctuation.terminator.statement.4d
+  - include: repo_param_separator
+  - match: ([a-zA-Z_][a-zA-Z_0-9]*|(?<=[\]\)]))?(\[)(?!\])
+    captures:
+      1: variable.object.4d
+      2: punctuation.definition.begin.bracket.square.4d
+    push:
+    - meta_scope: meta.bracket.square.access.4d
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.end.bracket.square.4d
+    - include: repo_function-call-innards
+  - include: repo_member_access
+  - include: repo_method_access
+  - match: ^\n*[\t ]*(?i)(Class constructor)
+    scope: entity.name.class.4d
+  - match: ^\n*[\t ]*(?i)(Function)(\s[a-z_0-9]+[a-z_0-9 ]*)
+    scope: variable.language.function.4d
+  - match: ^\n*[\t ]*(?i)(Class extends)(\s[a-z_0-9]+[a-z_0-9 ]*)
+    scope: entity.name.class.4d
+  - match: ^\n*[\t ]*(?i)(Super(\:C1705)?)
+    scope: variable.language.super.4d
+  repo_affectation_variable:
+  - match: ^((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)(:=)
+    captures:
+      1: variable.name.4d
+      2: keyword.operator.assignment.4d
+    push:
+    - meta_scope: meta.block.affectation.4d
+    - match: (\n)
+      pop: true
+      captures:
+        1: punctuation.section.end.affectaction.4d
+    - include: repo_this-function
+    - include: repo_function-call-innards
+    - include: repo_member_access
+    - include: repo_method_access
+    - include: repo_local_variables
+    - include: repo_numbers
+    - include: repo_strings
+    - include: repo_interprocess_variable
+    - match: (?i)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: meta.probably_variable.4d
+  repo_block:
+  - match: (?i)\b(for each)\b
+    captures:
+      0: punctuation.section.block.begin.for_each.curly.4d
+    push:
+    - meta_scope: meta.block.4d
+    - match: (?i)\b(end for each)\b
+      pop: true
+      captures:
+        0: punctuation.section.block.end.for_each.curly.4d
+  repo_boolean_values:
+  - match: (?i)(NULL|true(\:C214)?|false(\:C215)?)
+    scope: constant.language.4d
+  repo_boolean_variable:
+  - match: ^\n*[\t ]*(?i)(C_BOOLEAN(\:C305)?)(\()((?i)[\$a-z_0-9 ]+)
+    captures:
+      1: storage.type.boolean.4d
+      2: meta.c_boolean.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.boolean.4d
+    push:
+    - meta_scope: storage.type.boolean.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.boolean.4d
+    - include: repo_param_separator
+  repo_collection_variable:
+  - match: ^\n*[\t ]*(?i)(C_COLLECTION(\:C1488)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.collection.4d
+      2: meta.c_collection.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.collection.4d
+    push:
+    - meta_scope: storage.type.collection.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.collection.4d
+    - include: repo_param_separator
+  repo_comments:
+  - match: \s*+(\/\/)
+    captures:
+      1: punctuation.definition.comment.4d
+    push:
+    - meta_scope: comment.line.double-slash.4d
+    - match: (?<=\n)(?<!\\\n)
+      pop: true
+  - match: ^/\*\* =(\s*.*?)\s*= \*\*/$\n?
+    scope: comment.block.4d
+    captures:
+      1: meta.toc-list.banner.block.4d
+  - match: /\*\*
+    captures:
+      0: punctuation.definition.comment.begin.4d
+    push:
+    - meta_scope: comment.block.4d
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.4d
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.4d
+    push:
+    - meta_scope: comment.block.4d
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.4d
+  - match: ^//=(\s*.*?)\s*=\s*$\n?
+    scope: comment.line.banner.4d
+    captures:
+      1: meta.toc-list.banner.line.4d
+  - match: (^[ \t]+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.4d
+    push:
+    - match: (?!)
+      pop: true
+    - match: //
+      captures:
+        0: punctuation.definition.comment.4d
+      push:
+      - meta_scope: comment.line.double-slash.4d
+      - match: (?=\n)
+        pop: true
+  repo_constant_4d:
+  - match: (?i)([a-z_0-9 ]*)(\:K[0-9]+)?(\:[0-9]+)
+    scope: constant.numeric.4d
+  repo_for_loop:
+  - match: ^(?i)(for)\((\$[a-z]+);([0-9]+);([0-9]+)\)
+    captures:
+      1: keyword.control.4d
+      2: variable.name.4d
+      3: constant.range.begin.4d
+      4: constant.range.end.4d
+    push:
+    - meta_scope: meta.block.loop.for.4d
+    - match: (\n)
+      pop: true
+      captures:
+        1: punctuation.section.end.for.4d
+  repo_function-call-innards:
+  - include: repo_strings
+  - include: repo_comments
+  - include: repo_operators
+  - match: '(?x)
+
+      (?!\s*\()
+
+      (
+
+      (?:[A-Za-z_ ][A-Za-z0-9_]*+)++(\:C[0-9]+)?  # actual name
+
+      |
+
+      (?:(?<=operator)(?:[-*&<>=+#]+|\(\)))
+
+      )
+
+      \s*(\()'
+    captures:
+      1: entity.name.function.4d
+      2: entity.command.number.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.arguments.end.bracket.round.4d
+    - include: repo_this-function
+    - include: repo_function-call-innards
+    - include: repo_strings
+    - include: repo_numbers
+    - include: repo_parameters
+    - include: repo_local_variables
+    - include: repo_boolean_values
+    - include: repo_constant_4d
+    - include: repo_param_separator
+    - include: repo_operators
+    - include: repo_member_access
+    - include: repo_table_reference
+  - match: \(
+    captures:
+      0: punctuation.section.parens.begin.bracket.round.4d
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.parens.end.bracket.round.4d
+    - include: repo_function-call-innards
+    - include: repo_member_access
+    - include: repo_table_reference
+    - include: repo_this-function
+  repo_interprocess_variable:
+  - match: <>(?i)[a-z_0-9 ]+
+    scope: variable.interprocess.name.4d
+  repo_keywords:
+  - match: ^\n*[\t ]*(?i)(If|While|Else|End if|For each|End for each|End for|Begin SQL|End SQL|while|End while|Use|End use|Case of|End case|Repeat|Until|For|End try|Try|Catch|Throw|return|continue|break|property|var)\b
+    scope: keyword.control.4d
+  repo_local_variables:
+  - match: \$[a-zA-Z_0-9 ]*
+    scope: variable.local.name.4d
+  repo_long_int_variable:
+  - match: ^\n*[\t ]*(?i)(C_LONGINT(\:C283)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.longint.4d
+      2: meta.c_longint.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.longint.4d
+    push:
+    - meta_scope: storage.type.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.longint.4d
+    - include: repo_param_separator
+  repo_member_access:
+  - match: ((?:[a-zA-Z_\s*]*(\:C[0-9]+)?|(?<=\]|\)))\s*)(?:((?:\.\*|\.))|((?:->\*|->)))((?:[a-zA-Z_]\w*\s*(?:(?:(?:\.\*|\.))|(?:(?:->\*|->)))\s*)*)\s*(\b[a-zA-Z_]\w*\b(?!\())
+    captures:
+      1: variable.other.object.access.4d
+      2: entity.command.number.4d
+      3: punctuation.separator.dot-access.4d
+      4: punctuation.separator.pointer-access.4d
+      6: variable.other.member.4d
+  repo_method_access:
+  - match: ((?:[a-zA-Z_\s*]*(\:C[0-9]+)?|(?<=\]|\)))\s*)(?:((?:\.\*|\.))|((?:->\*|->)))((?:[a-zA-Z_]\w*\s*(?:(?:(?:\.\*|\.))|(?:(?:->\*|->)))\s*)*)\s*([a-zA-Z_]\w*)(\()
+    captures:
+      1: variable.other.object.access.4d
+      2: entity.command.number.4d
+      3: punctuation.separator.dot-access.4d
+      4: punctuation.separator.pointer-access.4d
+      6: entity.name.function.member.4d
+      7: punctuation.section.arguments.begin.bracket.round.function.member.4d
+    push:
+    - meta_content_scope: meta.function-call.member.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.function.member.4d
+    - include: repo_strings
+    - include: repo_numbers
+    - include: repo_parameters
+    - include: repo_local_variables
+    - include: repo_boolean_values
+    - include: repo_constant_4d
+    - include: repo_param_separator
+    - include: repo_function-call-innards
+    - include: repo_table_reference
+    - include: repo_this-function
+  repo_numbers:
+  - match: (?<!\w)(?=\d|\.\d)
+    push:
+    - match: (?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      pop: true
+    - match: (0[xX])([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?:(?<=[0-9a-fA-F])\.|\.(?=[0-9a-fA-F])))([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?<!')([pP])(\+?)(\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?([lLfF](?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        1: keyword.other.unit.hexadecimal.4d
+        10: keyword.operator.minus.exponent.hexadecimal.4d
+        11: constant.numeric.exponent.hexadecimal.4d
+        12: keyword.other.unit.suffix.floating-point.4d
+        2: constant.numeric.hexadecimal.4d
+        3: punctuation.separator.constant.numeric.4d
+        4: constant.numeric.hexadecimal.4d
+        5: constant.numeric.hexadecimal.4d
+        6: punctuation.separator.constant.numeric.4d
+        8: keyword.other.unit.exponent.hexadecimal.4d
+        9: keyword.operator.plus.exponent.hexadecimal.4d
+    - match: ((?=[0-9.])(?!0[xXbB]))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?:(?<=[0-9])\.|\.(?=[0-9])))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)?((?<!')([eE])(\+?)(\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?([lLfF](?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        10: keyword.operator.minus.exponent.decimal.4d
+        11: constant.numeric.exponent.decimal.4d
+        12: keyword.other.unit.suffix.floating-point.4d
+        2: constant.numeric.decimal.4d
+        3: punctuation.separator.constant.numeric.4d
+        4: constant.numeric.decimal.point.4d
+        5: constant.numeric.decimal.4d
+        6: punctuation.separator.constant.numeric.4d
+        8: keyword.other.unit.exponent.decimal.4d
+        9: keyword.operator.plus.exponent.decimal.4d
+    - match: (0[bB])([01](?:[01]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        1: keyword.other.unit.binary.4d
+        2: constant.numeric.binary.4d
+        3: punctuation.separator.constant.numeric.4d
+        4: keyword.other.unit.suffix.integer.4d
+    - match: (0)((?:[0-7]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))+)((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        1: keyword.other.unit.octal.4d
+        2: constant.numeric.octal.4d
+        3: punctuation.separator.constant.numeric.4d
+        4: keyword.other.unit.suffix.integer.4d
+    - match: (0[xX])([0-9a-fA-F](?:[0-9a-fA-F]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?<!')([pP])(\+?)(\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        1: keyword.other.unit.hexadecimal.4d
+        2: constant.numeric.hexadecimal.4d
+        3: punctuation.separator.constant.numeric.4d
+        5: keyword.other.unit.exponent.hexadecimal.4d
+        6: keyword.operator.plus.exponent.hexadecimal.4d
+        7: keyword.operator.minus.exponent.hexadecimal.4d
+        8: constant.numeric.exponent.hexadecimal.4d
+        9: keyword.other.unit.suffix.integer.4d
+    - match: ((?=[0-9.])(?!0[xXbB]))([0-9](?:[0-9]|((?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)((?<!')([eE])(\+?)(\-?)((?:[0-9](?:[0-9]|(?:(?<=[0-9a-fA-F])'(?=[0-9a-fA-F])))*)))?((?:(?:(?:(?:(?:[uU]|[uU]ll?)|[uU]LL?)|ll?[uU]?)|LL?[uU]?)|[fF])(?!\w))?(?!(?:(?:[0-9a-zA-Z_\.]|')|(?<=[eEpP])[+-]))
+      captures:
+        2: constant.numeric.decimal.4d
+        3: punctuation.separator.constant.numeric.4d
+        5: keyword.other.unit.exponent.decimal.4d
+        6: keyword.operator.plus.exponent.decimal.4d
+        7: keyword.operator.minus.exponent.decimal.4d
+        8: constant.numeric.exponent.decimal.4d
+        9: keyword.other.unit.suffix.integer.4d
+  repo_object_variable:
+  - match: ^\n*[\t ]*(?i)(C_OBJECT(\:C1216)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.object.4d
+      2: meta.c_object.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.object.4d
+    push:
+    - meta_scope: storage.type.object.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.object.4d
+    - include: repo_param_separator
+  repo_operators:
+  - match: :=
+    scope: keyword.operator.assignment.4d
+  - match: '#|<=|>=|<|>|='
+    scope: keyword.operator.comparison.4d
+  - match: '%|\*|/|-|\+'
+    scope: keyword.operator.4d
+  repo_param_separator:
+  - match: ;
+    scope: punctuation.separator.delimiter.4d
+  repo_parameters:
+  - match: \$[0-9]
+    scope: variable.parameter.4d
+  repo_picture_variable:
+  - match: ^\n*[\t ]*(?i)(C_PICTURE(\:C286)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.picture.4d
+      2: meta.c_picture.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.picture.4d
+    push:
+    - meta_scope: storage.type.picture.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.picture.4d
+    - include: repo_param_separator
+  repo_pointer_variable:
+  - match: ^\n*[\t ]*(?i)(C_POINTER(\:C301)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.pointer.4d
+      2: meta.c_pointer.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.pointer.4d
+    push:
+    - meta_scope: storage.type.pointer.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.pointer.4d
+    - include: repo_param_separator
+  repo_real_variable:
+  - match: ^\n*[\t ]*(?i)(C_REAL(\:C285)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.real.4d
+      2: meta.c_real.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.real.4d
+    push:
+    - meta_scope: storage.type.real.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.real.4d
+    - include: repo_param_separator
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.4d
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.4d
+  repo_table_reference:
+  - match: (?i)\[((?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)(\:[0-9]+)?
+    captures:
+      1: support.table.name.4d
+      2: support.table.index.4d
+    push:
+    - match: \]
+      pop: true
+  repo_text_variable:
+  - match: ^\n*[\t ]*(?i)(C_TEXT(\:C284)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.text.4d
+      2: meta.c_text.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.text.4d
+    push:
+    - meta_scope: storage.type.text.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.text.4d
+    - include: repo_param_separator
+  repo_this-function:
+  - match: (^\n*[\t ]*(?i)(This(\:C1470)?))|((?i)(This(\:C1470)?))
+    scope: variable.language.this.4d
+  repo_variant_variable:
+  - match: ^\n*[\t ]*(?i)(C_VARIANT(\:C1683)?)(\()((?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*)
+    captures:
+      1: storage.type.variant.4d
+      2: meta.c_variant.code.4d
+      3: punctuation.section.arguments.begin.bracket.round.4d
+      4: variable.name.variant.4d
+    push:
+    - meta_scope: storage.type.variant.4d
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.arguments.end.bracket.round.4d
+    - match: (?i)(?:\$|<>|)(?:\$|<>|)[a-z_0-9]+[a-z_0-9 ]*
+      scope: variable.name.variant.4d
+    - include: repo_param_separator

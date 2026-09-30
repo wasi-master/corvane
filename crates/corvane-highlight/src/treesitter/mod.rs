@@ -37,8 +37,8 @@ use tree_sitter::{
 };
 
 pub use library::{
-    BUNDLED, Grammar, available, bundled, generation, is_loaded, load_library, register_table,
-    unload_library,
+    BUNDLED, Entry, Grammar, available, bundled, generation, is_loaded, load_library, load_pack,
+    register_table, unload_library,
 };
 
 use crate::{Span, TokenClass};
@@ -48,7 +48,9 @@ use captures::Style;
 const MAX_DEPTH: usize = 4;
 /// At most this many injected regions per file.
 const MAX_LAYERS: usize = 8192;
-/// Give up on a file after this long (pathological input).
+/// Give up on a parse after this long (pathological input). Per layer, and
+/// not counting query compilation (a first file in a language compiles its
+/// injected languages' queries too).
 const TIME_LIMIT: Duration = Duration::from_secs(2);
 /// nvim-treesitter's default `priority`.
 const DEFAULT_PRIORITY: u32 = 100;
@@ -156,7 +158,7 @@ thread_local! {
 /// Whether a grammar is available for `path` (by name, extension or first
 /// line).
 pub fn has_grammar(path: &str, first_line: &str) -> bool {
-    detect::for_path(&library::grammars(), path, first_line).is_some()
+    detect::for_path(&library::entries(), path, first_line).is_some()
 }
 
 /// Tokenize `lines` (without newlines) as one document. `None` when no
@@ -164,11 +166,12 @@ pub fn has_grammar(path: &str, first_line: &str) -> bool {
 /// `budget` bytes get no spans.
 pub fn highlight(path: &str, lines: &[&str], budget: usize) -> Option<Vec<Vec<Span>>> {
     let generation = generation();
-    let grammars = library::grammars();
+    let grammars = library::entries();
     if grammars.is_empty() {
         return None;
     }
-    let grammar = detect::for_path(&grammars, path, lines.first().copied().unwrap_or(""))?;
+    let grammar =
+        detect::for_path(&grammars, path, lines.first().copied().unwrap_or(""))?.grammar()?;
     let root = compiled(&grammar, generation)?;
     run(root, &grammars, generation, lines, budget)
         .map_err(|err| tracing::debug!("tree-sitter highlighting {path}: {err}"))
@@ -181,7 +184,7 @@ pub fn highlight_with_grammar(grammar: &Grammar, lines: &[&str]) -> Result<Vec<V
     let root = Arc::new(compile(grammar)?);
     run(
         root,
-        &library::grammars(),
+        &library::entries(),
         generation(),
         lines,
         crate::MAX_HIGHLIGHT_BYTES,
@@ -190,7 +193,7 @@ pub fn highlight_with_grammar(grammar: &Grammar, lines: &[&str]) -> Result<Vec<V
 
 fn run(
     root: Arc<Compiled>,
-    grammars: &[Arc<Grammar>],
+    grammars: &[Arc<Entry>],
     generation: u64,
     lines: &[&str],
     budget: usize,
@@ -238,12 +241,11 @@ struct Layer {
 /// One code per byte: 0 for the line colour, else a class ([`code_of`]).
 fn paint_document(
     parser: &mut Parser,
-    grammars: &[Arc<Grammar>],
+    grammars: &[Arc<Entry>],
     generation: u64,
     root: Arc<Compiled>,
     source: &[u8],
 ) -> Result<Vec<u8>, String> {
-    let started = Instant::now();
     let mut paint = vec![0u8; source.len()];
     let mut layers = vec![Layer {
         compiled: root,
@@ -257,6 +259,7 @@ fn paint_document(
         next += 1;
         let compiled = layer.compiled.clone();
         let depth = layer.depth;
+        let started = Instant::now();
         parser
             .set_language(&compiled.language)
             .map_err(|err| err.to_string())?;
@@ -292,7 +295,9 @@ fn paint_document(
                 if layers.len() >= MAX_LAYERS {
                     break;
                 }
-                let Some(grammar) = detect::for_injection(grammars, &language) else {
+                let Some(grammar) =
+                    detect::for_injection(grammars, &language).and_then(|e| e.grammar())
+                else {
                     continue;
                 };
                 let Some(compiled) = self::compiled(&grammar, generation) else {
@@ -304,9 +309,6 @@ fn paint_document(
                     depth: depth + 1,
                 });
             }
-        }
-        if started.elapsed() > TIME_LIMIT {
-            return Err("highlighting timed out".to_string());
         }
     }
     Ok(paint)

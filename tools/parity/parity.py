@@ -116,9 +116,10 @@ class Run:
         shots.mkdir(parents=True, exist_ok=True)
         (work / "logs").mkdir(parents=True)
         setup = sc.get("setup", "repo")
-        # same-length parents: paths shown in either app wrap alike
-        repo_g = fixture.build(work / "desktop-repo") if setup == "repo" else None
-        repo_c = fixture.build(work / "corvane-repo") if setup == "repo" else None
+        # parents "n" / "u": one glyph apart and the same advance in SF (1079
+        # units), so paths shown in either app lay out and wrap identically
+        repo_g = fixture.build(work / "n") if setup == "repo" else None
+        repo_c = fixture.build(work / "u") if setup == "repo" else None
 
         ghd = Ghd(work / "ghd-profile", work / "logs" / "ghd.log", sc.get("ghd_env"))
         cv = Absent() if self.args.ghd_only else Corvane(self.binary, work / "corvane-data", work / "logs" / "corvane.log", theme)

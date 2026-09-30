@@ -1,0 +1,72 @@
+%YAML 1.2
+---
+# Sweave (text.tex.latex.sweave): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/textmate/sweave.tmbundle.git via GitHub Linguist v9.7.0 (license: permissive).
+name: Sweave
+scope: text.tex.latex.sweave
+file_extensions:
+- rnw
+contexts:
+  main:
+  - match: ^(<<)
+    captures:
+      1: punctuation.definition.parameters.begin.sweave
+    push:
+    - meta_scope: meta.block.parameters.sweave
+    - match: (>>)(?==)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.sweave
+    - match: (\w+)(=)(?:(true|false)|(verbatim|tex|hide)|([\w.]+))
+      scope: meta.parameter.sweave
+      captures:
+        1: keyword.other.name-of-parameter.sweave
+        2: punctuation.separator.key-value.sweave
+        3: constant.language.boolean.sweave
+        4: constant.language.results.sweave
+        5: string.unquoted.label.sweave
+    - match: '[\w.]+'
+      scope: string.unquoted.label.sweave
+    - match: ','
+      scope: punctuation.separator.parameters.sweave
+  - match: (?<=>>)(=)(.*)\n
+    captures:
+      1: punctuation.section.embedded.begin.sweave
+      2: comment.line.other.sweave
+    push:
+    - meta_scope: meta.block.code.sweave
+    - meta_content_scope: source.r.embedded.sweave
+    - match: ^(@)(.*)$
+      pop: true
+      captures:
+        1: punctuation.section.embedded.end.sweave
+        2: comment.line.other.sweave
+    - match: ^\s+@.*\n?
+      scope: invalid.illegal.sweave
+    - include: scope:source.r
+  - match: ^\s+<<.*\n?
+    scope: invalid.illegal.sweave
+  - match: ^\\begin(\{)Scode(\})
+    captures:
+      1: punctuation.definition.arguments.begin.latex
+      2: punctuation.definition.arguments.end.latex
+    push:
+    - meta_scope: meta.block.source.r
+    - meta_content_scope: source.r.embedded.sweave
+    - match: ^\\end(\{)Scode(\})
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.begin.latex
+        2: punctuation.definition.arguments.end.latex
+    - include: scope:source.r
+  - match: \\Sexpr(\{)
+    captures:
+      1: punctuation.definition.arguments.begin.latex
+    push:
+    - meta_scope: source.r.embedded.sweave
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.latex
+    - include: scope:source.r
+  - include: scope:text.tex.latex

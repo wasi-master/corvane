@@ -1,0 +1,72 @@
+%YAML 1.2
+---
+# PDDL (source.pddl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/jan-dolejsi/vscode-pddl.git via GitHub Linguist v9.7.0 (license: mit).
+name: PDDL
+scope: source.pddl
+file_extensions:
+- pddl
+contexts:
+  main:
+  - include: repo_meta
+  - include: repo_keywords
+  - include: repo_comments
+  - include: repo_scalars
+  - include: repo_time-qualifiers
+  - include: repo_operators
+  - include: repo_parameters
+  - include: repo_unexpected
+  repo_comments:
+  - match: ;.*$
+    scope: comment.line
+  repo_keywords:
+  - match: \b(define|domain|problem)\b
+    scope: keyword.control.pddl.header
+  - match: :(strips|typing|negative-preconditions|disjunctive-preconditions|equality|existential-preconditions|universal-preconditions|quantified-preconditions|conditional-effects|fluents|numeric-fluents|object-fluents|adl|durative-actions|duration-inequalities|continuous-effects|derived-predicates|derived-functions|timed-initial-literals|timed-effects|preferences|constraints|action-costs|timed-initial-fluents|time|supply-demand|job-scheduling)\b
+    scope: keyword.control.pddl.requirements
+  - match: :(requirements|types|constants|predicates|functions|derived|action|durative-action|event|process|job|domain|objects|init|goal|metric)\b
+    scope: keyword.control.pddl.global
+  - match: :(parameters|precondition|effect)\b
+    scope: keyword.control.pddl.action
+  - match: :(parameters|duration|condition|effect)\b
+    scope: keyword.control.pddl.action.durative
+  - match: :(parameters|duration|condition|effect)\b
+    scope: keyword.control.pddl.action.job
+  repo_meta:
+  - match: ^;;\s*!pre-parsing:\s*{\s*type:\s*"(command|nunjucks|jinja2|python)"\s*,\s*(command:\s*"([\w:\-/\\\. ]+)"\s*(,\s*args:\s*\[([^\]]*)\])?|data:\s*"([\w:\-/\\\. ]+)")\s*}
+    scope: meta.preprocessor.pre-parsing
+    captures:
+      1: variable.parameter.pre-parsing.type
+      3: variable.parameter.pre-parsing.command
+      6: variable.parameter.pre-parsing.data
+  - match: ^;;\s*!
+    scope: meta.preprocessor
+  - match: '{%[^%]+%}'
+    scope: meta.preprocessor.template.flow-control
+  - match: '{{[^}]+}}'
+    scope: meta.preprocessor.template.literal
+  repo_operators:
+  - match: \b(and|not|or|either)\b
+    scope: keyword.operator.logical
+  - match: (>|<|>=|<=|=|/|\*|\+)
+    scope: keyword.other.numeric
+  - match: \b(assign|increase|decrease|forall|exists)\b
+    scope: keyword.other.effects
+  - match: \b(undefined)\b
+    scope: keyword.other.undefined
+  - match: \b(minimize|maximize)\b
+    scope: keyword.other.metric
+  repo_parameters:
+  - match: \?\w+\b
+    scope: variable.parameter
+  repo_scalars:
+  - match: \b[-+]?([0-9]*\.[0-9]+|[0-9]+)\b
+    scope: constant.numeric
+  repo_time-qualifiers:
+  - match: \b(at start|at end|over all)\b
+    scope: keyword.other.pddl_qualifier
+  - match: '#t\b'
+    scope: keyword.other.delta_t
+  repo_unexpected:
+  - match: :[\w-]+\b
+    scope: invalid.illegal

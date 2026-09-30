@@ -1,0 +1,134 @@
+%YAML 1.2
+---
+# SWI-Prolog (source.prolog): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublimeprolog via GitHub Linguist v9.7.0 (license: mpl-2.0).
+name: SWI-Prolog
+scope: source.prolog
+hidden: true
+contexts:
+  main:
+  - include: repo_comments
+  - match: (?<=:-)\s*
+    push:
+    - meta_scope: meta.clause.body.prolog
+    - match: (\.)
+      pop: true
+      captures:
+        1: keyword.control.clause.bodyend.prolog
+    - include: repo_comments
+    - include: repo_builtin
+    - include: repo_controlandkeywords
+    - include: repo_atom
+    - include: repo_variable
+    - include: repo_constants
+    - match: .
+      scope: meta.clause.body.prolog
+  - match: ^\s*([a-z][a-zA-Z0-9_]*)(\(?)(?=.*:-.*)
+    captures:
+      1: entity.name.function.clause.prolog
+      2: punctuation.definition.parameters.begin
+    push:
+    - meta_scope: meta.clause.head.prolog
+    - match: ((\)?))\s*(:-)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end
+        3: keyword.control.clause.bodybegin.prolog
+    - include: repo_atom
+    - include: repo_variable
+    - include: repo_constants
+  - match: ^\s*([a-z][a-zA-Z0-9_]*)(\(?)(?=.*-->.*)
+    captures:
+      1: entity.name.function.dcg.prolog
+      2: punctuation.definition.parameters.begin
+    push:
+    - meta_scope: meta.dcg.head.prolog
+    - match: ((\)?))\s*(-->)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end
+        3: keyword.control.dcg.bodybegin.prolog
+    - include: repo_atom
+    - include: repo_variable
+    - include: repo_constants
+  - match: (?<=-->)\s*
+    push:
+    - meta_scope: meta.dcg.body.prolog
+    - match: (\.)
+      pop: true
+      captures:
+        1: keyword.control.dcg.bodyend.prolog
+    - include: repo_comments
+    - include: repo_controlandkeywords
+    - include: repo_atom
+    - include: repo_variable
+    - include: repo_constants
+    - match: .
+      scope: meta.dcg.body.prolog
+  - match: ^\s*([a-zA-Z][a-zA-Z0-9_]*)(\(?)(?!.*(:-|-->).*)
+    captures:
+      1: entity.name.function.fact.prolog
+      2: punctuation.definition.parameters.begin
+    push:
+    - meta_scope: meta.fact.prolog
+    - match: ((\)?))\s*(\.)(?!\d+)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end
+        3: keyword.control.fact.end.prolog
+    - include: repo_atom
+    - include: repo_variable
+    - include: repo_constants
+  repo_atom:
+  - match: (?<![a-zA-Z0-9_])[a-z][a-zA-Z0-9_]*(?!\s*\(|[a-zA-Z0-9_])
+    scope: constant.other.atom.simple.prolog
+  - match: '''.*?'''
+    scope: constant.other.atom.quoted.prolog
+  - match: \[\]
+    scope: constant.other.atom.emptylist.prolog
+  repo_builtin:
+  - match: \b(op|findall|write|nl|writeln|fail|use_module|module)\b
+    scope: keyword.other
+  repo_comments:
+  - match: '%.*'
+    scope: comment.line.percent-sign.prolog
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.prolog
+    push:
+    - meta_scope: comment.block.prolog
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.prolog
+  repo_constants:
+  - match: (?<![a-zA-Z]|/)(\d+|(\d+\.\d+))
+    scope: constant.numeric.integer.prolog
+  - match: '".*?"'
+    scope: string.quoted.double.prolog
+  repo_controlandkeywords:
+  - match: (->)
+    captures:
+      1: keyword.control.if.prolog
+    push:
+    - meta_scope: meta.if.prolog
+    - match: (;)
+      pop: true
+      captures:
+        1: keyword.control.else.prolog
+    - include: main
+    - include: repo_builtin
+    - include: repo_comments
+    - include: repo_atom
+    - include: repo_variable
+    - match: .
+      scope: meta.if.body.prolog
+  - match: '!'
+    scope: keyword.control.cut.prolog
+  - match: (\s(is)\s)|=:=|=?\\?=|\\\+|@?>|@?=?<|\+|\*|\-
+    scope: keyword.operator.prolog
+  repo_variable:
+  - match: (?<![a-zA-Z0-9_])[_A-Z][a-zA-Z0-9_]*
+    scope: variable.parameter.uppercase.prolog
+  - match: (?<!\w)_
+    scope: variable.language.anonymous.prolog

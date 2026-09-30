@@ -1,0 +1,428 @@
+%YAML 1.2
+---
+# Curry (source.curry): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/fwcd/vscode-curry via GitHub Linguist v9.7.0 (license: mit).
+name: Curry
+scope: source.curry
+file_extensions:
+- curry
+contexts:
+  main:
+  - match: ^(module)\b
+    captures:
+      1: keyword.other.curry keyword.module.curry
+    push:
+    - meta_scope: meta.declaration.module.curry
+    - match: \b(where)\b|(^(?!\s))
+      pop: true
+      captures:
+        1: keyword.module.curry
+    - include: repo_comments
+    - include: repo_module_name
+    - include: repo_module_exports
+    - match: '[a-z]+'
+      scope: invalid
+  - match: ^(import)\b
+    captures:
+      1: keyword.other.curry keyword.import.curry
+    push:
+    - meta_scope: meta.import.curry
+    - match: (^(?!\s))
+      pop: true
+    - include: repo_comments
+    - match: \b(qualified|as|hiding)\b
+      scope: keyword.other.curry keyword.import.curry
+    - include: repo_module_name
+    - include: repo_module_exports
+  - match: ^\s*(#)\s*\w+
+    captures:
+      1: punctuation.definition.preprocessor.c punctuation.pragma.preprocessor.curry
+    push:
+    - meta_scope: meta.preprocessor.c pragma.preprocessor.curry
+    - match: $
+      pop: true
+  - include: repo_pragma
+  - match: ^(foreign)\s+(import|export)((\s+\w+))(\s+\"(\\.|[^\"])*\")?\s*
+    captures:
+      1: keyword.declaration.foreign.curry
+      2: keyword.declaration.foreign.curry
+      3: keyword.declaration.foreign.curry
+      5: string.quoted.double.curry
+    push:
+    - meta_scope: meta.function.foreign-declaration.curry
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_foreign_function_signature
+  - include: repo_type_declarations
+  - include: repo_function_declarations
+  - include: repo_expression_stuff
+  repo_block_comment:
+  - match: \{-(?!#)
+    captures:
+      0: punctuation.comment.curry
+    push:
+    - meta_scope: comment.block.curry
+    - include: repo_block_comment
+    - match: (?<!#)-\}
+      pop: true
+      captures:
+        0: punctuation.comment.curry
+  repo_class_declaration:
+  - match: ^(\s*)(class)\b
+    captures:
+      2: keyword.declaration.class.curry
+    push:
+    - meta_scope: meta.declaration.class.curry
+    - match: \b(where)\b|(^(?!\1\s))
+      pop: true
+      captures:
+        1: keyword.declaration.class.curry
+    - include: repo_type
+  repo_comments:
+  - match: (--).*$
+    scope: comment.line.curry
+    captures:
+      1: punctuation.comment.curry
+  - include: repo_block_comment
+  repo_common_keywords:
+  - match: \b(where|case|fcase|of|let|in|default|do|mdo|if|then|else|free)\b
+    scope: keyword.other.curry
+  repo_constructor_signature:
+  - match: "^(\\s+)([A-Z][\\w']*|\\(\\W+\\))\\s*((::)|\u2237)"
+    captures:
+      2: constant.other.curry entity.name.constructor.curry
+      3: keyword.other.double-colon.curry
+    push:
+    - meta_scope: meta.declaration.function.curry
+    - match: ^(?!\1\s)
+      pop: true
+    - include: repo_type
+  repo_ctor_names:
+  - match: (?<!')\b[A-Z][\w']*
+    scope: constant.other.curry entity.name.constructor.curry
+  - match: \(\)
+    scope: constant.other.curry entity.name.constructor.curry
+  repo_data_declaration:
+  - match: ^(\s*)(?:(external)\s+)?(data|newtype)\s+([A-Z][\w']*)?
+    captures:
+      2: keyword.declaration.external.curry
+      3: keyword.declaration.data.curry
+      4: constant.other.curry entity.name.type.curry
+    push:
+    - meta_scope: meta.declaration.data.curry
+    - match: ^(?!\1\s)
+      pop: true
+    - include: repo_comments
+    - match: where
+      scope: keyword.declaration.data.curry
+    - match: ([=\|])
+      captures:
+        1: keyword.operator.curry
+      push:
+      - match: (?<!')\b([A-Z][\w']*)
+        pop: true
+        captures:
+          1: constant.other.curry entity.name.constructor.curry
+      - include: repo_comments
+    - include: repo_deriving
+    - include: repo_constructor_signature
+    - include: repo_record_declaration
+    - include: repo_type
+  repo_deriving:
+  - match: \b(deriving)\b
+    scope: keyword.other.curry keyword.declaration.data.curry
+  repo_expression_stuff:
+  - include: repo_comments
+  - match: ([A-Z][\w']*\.)+
+    scope: storage.module.curry entity.name.module.curry
+  - match: \b(abs|acos|acosh|all|and|any|appendFile|asTypeOf|asin|asinh|atan|atan2|atanh|break|ceiling|compare|concat|concatMap|const|cos|cosh|curry|cycle|decodeFloat|div|divMod|drop|dropWhile|either|elem|encodeFloat|enumFrom|enumFromThen|enumFromThenTo|enumFromTo|even|exp|exponent|fail|filter|flip|floatDigits|floatRadix|floatRange|floor|fmap|foldl|foldl1|foldr|foldr1|fromEnum|fromInteger|fromIntegral|fromRational|fst|gcd|getChar|getContents|getLine|head|id|init|interact|ioError|isDenormalized|isIEEE|isInfinite|isNaN|isNegativeZero|iterate|last|lcm|length|lex|lines|log|logBase|lookup|map|mapM|mapM_|max|maxBound|maximum|maybe|min|minBound|minimum|mod|negate|not|notElem|null|odd|or|otherwise|pi|pred|print|product|properFraction|putChar|putStr|putStrLn|quot|quotRem|read|readFile|readIO|readList|readLn|readParen|reads|readsPrec|realToFrac|recip|rem|repeat|replicate|return|reverse|round|scaleFloat|scanl|scanl1|scanr|scanr1|seq|sequence|sequence_|show|showChar|showList|showParen|showString|shows|showsPrec|significand|signum|sin|sinh|snd|span|splitAt|sqrt|subtract|succ|sum|tail|take|takeWhile|tan|tanh|toEnum|toInteger|toRational|truncate|uncurry|unlines|until|unwords|unzip|unzip3|userError|words|writeFile|zip|zip3|zipWith|zipWith3)\b
+    scope: support.function.prelude.curry
+  - match: \b(error|undefined)\b
+    scope: support.function.prelude.error.curry
+  - include: repo_infix_op
+  - match: \[|\]
+    scope: keyword.operator.curry punctuation.list.curry
+  - match: ','
+    scope: punctuation.separator.comma.curry
+  - match: (`)([A-Z][\w']*\.)*[a-z][\w']*(`)
+    scope: keyword.operator.function.infix.curry
+    captures:
+      1: punctuation.definition.entity.curry
+      3: punctuation.definition.entity.curry
+  - match: (\{)(?!-)
+    captures:
+      1: keyword.operator.curry punctuation.record.curry
+    push:
+    - meta_scope: record.expression.curry
+    - match: (?<!-)(\})
+      pop: true
+      captures:
+        1: keyword.operator.curry punctuation.record.curry
+    - match: (?<!')\b[a-z][\w']+\s+(=)
+      captures:
+        2: keyword.operator.curry
+    - include: repo_expression_stuff
+  - match: \(\)
+    scope: constant.other.curry entity.name.constructor.curry
+  - match: \[\]
+    scope: constant.other.curry entity.name.constructor.curry
+  - match: "[@|!%$?~+:.\\-*=</>\\\\\u2218\u2192\u21D2\u21D4\u2190\u21D0\u2264\u2265\u2261\u22EE\\[\\]]+"
+    scope: keyword.operator.curry
+  - include: repo_common_keywords
+  - include: repo_literals
+  - include: repo_quasi_quote
+  - include: repo_ctor_names
+  repo_external_function_definition:
+  - match: ^\s*(?<!')\b([a-z_][\w']*|\(\W+\))\s+(external)\b
+    captures:
+      1: entity.name.function.curry
+      2: keyword.declaration.external.curry
+    push:
+    - meta_scope: meta.definition.function.curry
+    - match: ^(?!\s)
+      pop: true
+  repo_field_signature:
+  - match: "\\b(\\w+)\\s*(::|\u2237)\\s*(.*--.*|[^,}]+)"
+    scope: meta.declaration.field.signature.curry
+    captures:
+      1: entity.name.function.curry
+      2: keyword.other.double-colon.curry
+  repo_fixity_declaration:
+  - match: \b(infix[lr]?)\b\s*(\d+).+
+    scope: meta.declaration.fixity.curry
+    captures:
+      1: keyword.declaration.fixity.curry
+      2: constant.numeric.fixity.curry
+  repo_foreign_function_signature:
+  - match: "(\\s*)([a-z_][\\w']*|\\(\\W+\\))\\s*((::)|\u2237)"
+    captures:
+      2: entity.name.function.curry
+      3: keyword.other.double-colon.curry
+    push:
+    - meta_scope: meta.declaration.function.curry
+    - match: ^(?!\s)
+      pop: true
+    - include: repo_type
+  repo_function_declarations:
+  - include: repo_fixity_declaration
+  - include: repo_function_signature
+  - include: repo_function_definition
+  - include: repo_infix_function_definition
+  - include: repo_external_function_definition
+  repo_function_definition:
+  - match: ^\s*(?<!')\b([a-z_][\w']*|\(\W+\))\s+(?![^\w\s='"\(\[])(?=((([\w\.,'"_]+|(?:\w+\@)?\(.*\)|\[.*\])\s+)*[=\|]))
+    captures:
+      1: entity.name.function.curry
+    push:
+    - meta_scope: meta.definition.function.curry
+    - match: (=)
+      pop: true
+      captures:
+        1: keyword.operator.curry
+    - include: repo_expression_stuff
+  repo_function_signature:
+  - match: "^(\\s*)(?!--|(?:where|case|fcase|of|let|in|default|do|mdo|if|then|else|free)\\s+)(?:(\\(\\W\\)|[\\w']+)|[\\(\\[])(?=[\\w',\\s\\[\\]\\(\\)]*((?:::)|\u2237))"
+    captures:
+      2: entity.name.function.curry
+    push:
+    - meta_scope: meta.declaration.function.curry
+    - match: ^(?!\1\s)|(?=})
+      pop: true
+    - match: "(?=.*((::)|\u2237))"
+      push:
+      - meta_scope: meta.declaration.function.names.curry
+      - match: "((::)|\u2237)"
+        pop: true
+        captures:
+          1: keyword.other.double-colon.curry
+      - match: ((?<!')\b[a-z_][\w']*|\(\W+\))
+        scope: entity.name.function.curry
+    - include: repo_type
+  repo_infix_function_definition:
+  - match: ^\s*(?=(([\w'\.'"]+|(?:\w+@)?\(.*\)|\[.*\])\s+)+([^"'_,\(\);\[\]`\{\}\:\w\s]+|`[a-z][\w']*`)((\s*[\w'\.'"]+|\s*(?:\w+@)?\(.*\)|\s*\[.*\]))+\s*=)
+    push:
+    - meta_scope: meta.definition.function.curry
+    - match: ( [^"'_,\(\);\[\]`\{\}\:\w\s]+|`[a-z][\w']*`)
+      pop: true
+      captures:
+        1: entity.name.function.curry
+    - include: repo_expression_stuff
+  repo_infix_op:
+  - match: (\([^"'\w \)]+\)|\(,+\))
+    scope: keyword.operator.curry
+  repo_instance_declaration:
+  - match: ^(\s*)(instance)\b
+    captures:
+      2: keyword.declaration.instance.curry
+    push:
+    - meta_scope: meta.declaration.instance.curry
+    - match: \b(where)\b|(^(?!\1\s))
+      pop: true
+      captures:
+        1: keyword.declaration.instance.curry
+    - include: repo_comments
+    - include: repo_type
+  repo_literals:
+  - match: \b([0-9]+\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+)\b
+    scope: constant.numeric.curry
+  - match: \b([0-9]+|0([xX][0-9a-fA-F]+|[oO][0-7]+))\b
+    scope: constant.numeric.curry
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.curry
+    - match: '"|$'
+      pop: true
+    - match: \\(NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL|[abfnrtv\\\"'\&])
+      scope: constant.character.escape.curry
+    - match: \\o[0-7]+|\\x[0-9A-Fa-f]+|\\[0-9]+
+      scope: constant.character.escape.octal.curry
+    - match: \^[A-Z@\[\]\\\^_]
+      scope: constant.character.escape.control.curry
+  - match: '(?x)('')(?:  [\ -&(-\[\]-~"]|(\\(?:NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL|[abfnrtv\\\"''\&]))|(\\o[0-7]+)|(\\x[0-9A-Fa-f]+)|(\^[A-Z@\[\]\\\^_]))('')'
+    scope: string.quoted.single.curry
+    captures:
+      2: constant.character.escape.curry
+      3: constant.character.escape.octal.curry
+      4: constant.character.escape.hexadecimal.curry
+      5: constant.character.escape.control.curry
+  repo_module_exports:
+  - match: (\()
+    captures:
+      1: storage.module.curry
+    push:
+    - meta_scope: meta.declaration.exports.curry
+    - match: (\))
+      pop: true
+      captures:
+        1: storage.module.curry
+    - include: repo_comments
+    - match: \\\s*$
+      push:
+      - meta_scope: constant.character.escape.multilinestring.curry
+      - match: \\
+        pop: true
+    - match: (?<!')\b[a-z][\w']*
+      scope: entity.name.function.curry
+    - match: (?<!')\b([A-Z][\w']*)\s*(\()
+      captures:
+        1: storage.type.curry entity.name.data.curry
+        2: keyword.operator.curry
+      push:
+      - meta_scope: meta.declaration.export.data.curry
+      - match: (\))
+        pop: true
+        captures:
+          1: keyword.operator.curry
+      - include: repo_expression_stuff
+    - match: (?<!')\b[A-Z][\w']*
+      scope: storage.type.curry entity.name.data.curry
+    - match: ','
+      scope: punctuation.separator.comma.curry
+    - include: repo_infix_op
+    - match: \(.*?\)
+      scope: meta.other.unknown.curry
+    - include: repo_module_exports
+  repo_module_name:
+  - match: ([A-Z][\w']*)(\.[A-Z][\w']*)*
+    scope: entity.name.module.curry entity.name.namespace.curry
+  repo_pattern_function_definition:
+  - match: ^\s*(?=\(.*\)|\[.*\]|([A-Z][\w']*(\s+([\w\s,']*|\(.*\)|\[.*\]|\{.*\}))*)\s*=)
+    push:
+    - meta_scope: meta.definition.function.curry
+    - match: (=)
+      pop: true
+      captures:
+        1: keyword.operator.curry
+    - match: (?<!')\b([a-z_][\w']*)\b
+      captures:
+        1: entity.name.function.curry
+    - include: repo_expression_stuff
+  repo_pragma:
+  - match: (\{-#)\s+([A-Z_]+)\b
+    captures:
+      1: punctuation.pragma.curry
+      2: keyword.preprocessor.curry pragma.name.curry
+    push:
+    - meta_scope: meta.preprocessor.curry pragma.curry
+    - match: '#-\}'
+      pop: true
+    - match: \b([A-Z][a-z]*)+\b
+      scope: keyword.other.preprocessor.curry pragma.support.language.curry
+    - match: (-+[a-z]+)+
+      scope: keyword.other.preprocessor.curry pragma.support.flag.curry
+  repo_quasi_quote:
+  - match: (\[)([a-z]\w*)?(\|)
+    captures:
+      1: punctuation.quasi-quoter.curry keyword.operator.curry
+      2: entity.name.function.curry
+      3: punctuation.quasi-quoter.curry keyword.operator.curry
+    push:
+    - meta_scope: string.quoted.quasi.curry
+    - match: (\|\])
+      pop: true
+      captures:
+        1: punctuation.quasi-quoter.curry keyword.operator.curry
+  repo_record_declaration:
+  - match: (\{)(?!-)
+    captures:
+      1: keyword.operator.curry punctuation.record.curry
+    push:
+    - meta_scope: meta.declaration.record.curry
+    - match: (?<!-)(\})
+      pop: true
+      captures:
+        1: keyword.operator.curry punctuation.record.curry
+    - include: repo_comments
+    - include: repo_field_signature
+  repo_type:
+  - include: repo_comments
+  - match: "->|\u2192"
+    scope: keyword.operator.arrow.curry
+  - match: "=>|\u21D2"
+    scope: keyword.operator.big-arrow.curry
+  - match: \b(Int(eger)?|Maybe|Either|Bool|Float|Double|Char|String|Ordering|ShowS|ReadS|FilePath|IO(Error)?)\b
+    scope: entity.name.type.curry support.type.curry
+  - match: (?<!')\b[a-z][\w']*\b
+    scope: variable.generic.curry
+  - match: (?<!')\b[A-Z][\w']*\b
+    scope: entity.name.type.curry
+  - match: \(\)
+    scope: punctuation.unit.curry
+  - match: (\()
+    captures:
+      1: keyword.operator.curry
+    push:
+    - meta_scope: meta.type_signature.brace.curry
+    - match: (\))
+      pop: true
+      captures:
+        1: keyword.operator.curry
+    - include: repo_type
+  - match: (\[)
+    captures:
+      1: keyword.operator.curry
+    push:
+    - meta_scope: meta.type_signature.list.curry
+    - match: (\])
+      pop: true
+      captures:
+        1: keyword.operator.curry
+    - include: repo_type
+  repo_type_declaration:
+  - match: ^(\s*)(type)\s+([A-Z][\w']*)?
+    captures:
+      2: keyword.declaration.data.curry
+      3: constant.other.curry entity.name.type.curry
+    push:
+    - meta_scope: meta.declaration.type.curry
+    - match: ^(?!\1\s)
+      pop: true
+    - include: repo_comments
+    - match: '='
+      scope: keyword.operator.curry
+    - include: repo_type
+  repo_type_declarations:
+  - include: repo_data_declaration
+  - include: repo_type_declaration
+  - include: repo_class_declaration
+  - include: repo_instance_declaration

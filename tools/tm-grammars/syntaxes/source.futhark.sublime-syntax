@@ -1,0 +1,102 @@
+%YAML 1.2
+---
+# Futhark (source.futhark): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: Futhark
+scope: source.futhark
+file_extensions:
+- fut
+contexts:
+  main:
+  - include: repo_main
+  repo_attribute:
+  - match: (#\[)([^\]]*)(\])
+    scope: meta.attribute.futhark
+    captures:
+      1: punctuation.definition.attribute.begin.futhark
+      2: storage.modifier.attribute.futhark
+      3: punctuation.definition.attribute.end.futhark
+  repo_booleans:
+  - match: (?<![#'])(true|false)\b(?![#'])
+  repo_builtInTypes:
+  - match: (?<![#'])(bool)\b(?![#'])
+    scope: support.type.builtin.futhark
+  - include: repo_numericTypes
+  repo_character:
+  - match: (')[^']?(')
+    scope: string.quoted.single.character.futhark
+    captures:
+      1: punctuation.definition.string.begin.futhark
+      2: punctuation.definition.string.end.futhark
+  repo_comment:
+  - match: --
+    push:
+    - meta_scope: comment.line.double-dash.futhark
+    - match: $
+      pop: true
+  repo_constructor:
+  - match: (#)['\w]+
+    scope: entity.name.function.constructor.futhark
+    captures:
+      1: punctuation.definition.constructor.number-sign.futhark
+  repo_functionDefinition:
+  - match: (?<![#'])\b(def|let|entry)(?:\s+([_A-Za-z]['\w]*))?(?:\b(?![#'])|(?<=')\B(?!#))
+    captures:
+      2: entity.name.function.futhark
+  repo_keywords:
+  - match: (?<![#'])\b(assert|case|do|else|def|entry|for|if|import|include|in|let|local|loop|match|module|open|then|unsafe|val|while|with)\b(?![#'])
+  repo_main:
+  - include: repo_typeBinding
+  - include: repo_typeParameter
+  - include: repo_functionDefinition
+  - include: repo_comment
+  - include: repo_keywords
+  - include: repo_attribute
+  - include: repo_numericTypes
+  - include: repo_builtInTypes
+  - include: repo_booleans
+  - include: repo_number
+  - include: repo_character
+  - include: repo_var
+  - include: repo_constructor
+  - include: repo_operator
+  - match: '#'
+  - match: ''''
+  - include: scope:etc
+  - include: scope:etc
+  repo_number:
+  - match: "(?x) -?\n(?:\n\t(?:0[xX])\n\t[0-9a-fA-F]+\n\t(?: \\.[0-9a-fA-F]+)?\n\t(?: [Pp][+-]?[0-9]+)?\n\t\n\t|\n\t\n\t(?:0[bB])\n\t[0-1_]+\n\t\n\t|\n\n\t[0-9]+\n\t(?:\\.[0-9]+)?\n\t(?:[Ee][+-]?[0-9]+)?\n) (?:i8|i16|i32|i64|u8|u16|u32|u64|f32|f64)?"
+    scope: constant.numeric.futhark
+  repo_numericTypes:
+  - match: (?<![#'])\b(f32|f64|i16|i32|i64|i8|u16|u32|u64|u8)\b(?![#'])
+    scope: support.type.numeric.futhark
+  repo_operator:
+  - match: '[-+*/%!<>=&|@]+'
+    scope: keyword.operator.futhark
+  - match: (`)[^`]*(`)
+    scope: string.interpolated.quoted.backticks.futhark
+    captures:
+      1: punctuation.definition.string.begin.futhark
+      2: punctuation.definition.string.end.futhark
+  repo_typeBinding:
+  - match: (?<![#'])\b(module\s+)?(type[~^]?)(?:\s+([_A-Za-z]['\w]*))?(?:\b(?![#'])|(?<=')\B(?!#))
+    captures:
+      1: storage.modifier.module.futhark
+      2: storage.type.decl.futhark
+      3: entity.name.type.futhark
+    push:
+    - meta_scope: meta.type.binding.futhark
+    - match: =|(?=\s*(?!--)[^\s=])
+      pop: true
+      captures:
+        0: keyword.operator.futhark
+    - include: repo_comment
+    - include: repo_typeParameter
+  repo_typeParameter:
+  - match: ('[~^]?)[_A-Za-z]\w*\b(?![#'])
+    scope: entity.name.type.parameter.futhark
+    captures:
+      1: punctuation.definition.type.parameter.futhark
+  repo_var:
+  - match: (?<![#'])\b[_A-Za-z]['\w]*
+    scope: variable.other.readwrite.futhark

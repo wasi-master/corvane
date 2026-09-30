@@ -1,0 +1,63 @@
+%YAML 1.2
+---
+# Win32 Message File (source.win32-messages): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Win32 Message File
+scope: source.win32-messages
+file_extensions:
+- mc
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: ;
+    captures:
+      0: punctuation.definition.comment.win32-messages
+    push:
+    - meta_scope: meta.comment.line.semicolon.win32-messages
+    - match: $
+      pop: true
+    - include: scope:source.c
+  repo_delim:
+  - match: ^\.$
+    scope: meta.separator.win32-messages
+  repo_insert:
+  - match: '(?x) (%(?:.|\d{1,2})) ((!)(\w+)(!))? '
+    scope: meta.line.insert.win32-messages
+    captures:
+      1: constant.language.insert.win32-messages
+      2: entity.name.tag.insert.format.win32-messages
+      3: punctuation.definition.insert.format.begin.win32-messages
+      4: punctuation.definition.insert.format.end.win32-messages
+  repo_main:
+  - include: repo_comment
+  - include: repo_insert
+  - include: repo_message
+  - include: repo_statement
+  repo_message:
+  - match: ^[^=]+$
+    scope: string.unquoted.message.win32-messages
+  repo_statement:
+  - match: '[^=()]+(?=(=))'
+    scope: keyword.control.statement.win32-messages
+    captures:
+      1: punctuation.definition.statement.win32-messages
+  - match: (?:0\w)?\d+
+    scope: constant.numeric.win32-messages
+  - match: (?<==)(?!\()
+    captures:
+      0: punctuation.definition.statement.win32-messages
+    push:
+    - meta_scope: string.unquoted.value.win32-messages
+    - match: $
+      pop: true
+  - match: (?<==)\(
+    captures:
+      0: punctuation.definition.block.group.begin.win32-messages
+    push:
+    - meta_scope: meta.block.statement.value.win32-messages
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.block.group.end.win32-messages
+    - include: repo_statement

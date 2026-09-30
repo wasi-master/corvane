@@ -1,0 +1,57 @@
+%YAML 1.2
+---
+# Mathematical Programming System (text.source.mps): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/sharktide/mps-vscode.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Mathematical Programming System
+scope: text.source.mps
+file_extensions:
+- mps
+contexts:
+  main:
+  - include: repo_sections
+  - include: repo_constraints
+  - include: repo_bounds
+  - include: repo_columns
+  - include: repo_infinity
+  - include: repo_variables
+  - include: repo_numbers
+  - include: repo_comments
+  - include: repo_braces
+  - include: repo_parentheses
+  repo_bounds:
+  - match: (?i)\b(UP|LO|FX|FR|MI|PL)\b
+    scope: keyword.bound.mps
+  repo_braces:
+  - match: '[{}]'
+    scope: punctuation.definition.block.mps
+  repo_columns:
+  - match: ^(\s{0,2}[A-Za-z0-9]+)\s+([A-Za-z0-9_]+)\s+(-?\d+(\.\d+)?|Infinity)\b
+    scope: meta.column.mps
+    captures:
+      1: variable.mps
+      2: keyword.constraint.mps
+      3: constant.numeric.mps
+  repo_comments:
+  - match: \*
+    push:
+    - meta_scope: comment.line.mps
+    - match: $
+      pop: true
+  repo_constraints:
+  - match: (?i)\b(E|L|G|N)\b
+    scope: keyword.constraint.mps
+  repo_infinity:
+  - match: (?i)\bInfinity\b
+    scope: constant.language.infinity.mps
+  repo_numbers:
+  - match: \b\d+(\.\d+)?\b
+    scope: constant.numeric.mps
+  repo_parentheses:
+  - match: '[()]'
+    scope: punctuation.definition.group.mps
+  repo_sections:
+  - match: (?i)\b(NAME|ROWS|COLUMNS|RHS|BOUNDS|ENDATA|RANGES)\b
+    scope: keyword.section.mps
+  repo_variables:
+  - match: \b[A-Za-z_][A-Za-z0-9_]*\b
+    scope: variable.mps

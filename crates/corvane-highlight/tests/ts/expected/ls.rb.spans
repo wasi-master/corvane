@@ -5,6 +5,6 @@
 5: 0+6=AltVariable
 6: 0+16=String
 7: 0+3=AltVariable
-8: 0+6=Comment
-9: 0+8=Comment
-10: 0+4=Comment
+8: 1+5=Type
+9: 0+8=Type
+10: 1+3=Keyword

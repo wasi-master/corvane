@@ -1,0 +1,187 @@
+%YAML 1.2
+---
+# KiCad Schematic (source.pcb.schematic): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-pcb via GitHub Linguist v9.7.0 (license: isc).
+name: KiCad Schematic
+scope: source.pcb.schematic
+file_extensions:
+- kicad_sch
+- kicad_sym
+- sch
+contexts:
+  main:
+  - match: \A(?=<\?xml\s+version="[\d.]+"\s)
+    push:
+    - meta_content_scope: source.eagle.pcb.board
+    - match: (?=A)B
+      pop: true
+    - include: scope:text.xml
+  - match: \A\s*(?=\(kicad_sch(?:\s|$|\())
+    push:
+    - meta_content_scope: source.pcb.sexp
+    - match: (?=A)B
+      pop: true
+    - include: scope:source.pcb.sexp
+  - match: \A\s*(?=;|\()
+    push:
+    - meta_content_scope: source.scheme
+    - match: (?=A)B
+      pop: true
+    - include: scope:source.scheme
+  - match: ^\s*(EESchema(?:\s+Schematic|-(?:DOCLIB|LIBRARY))\s+\S+.*)\s*$
+    captures:
+      1: keyword.control.header.pcb.schematic
+    push:
+    - meta_scope: meta.header.pcb.schematic
+    - match: (?<=\$EndDescr)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.header.pcb.schematic
+        2: punctuation.definition.header.pcb.schematic
+    - match: ^\s*(LIBS(:))\s*(.+)
+      captures:
+        1: variable.assignment.libs.pcb.schematic
+        2: punctuation.separator.key-value.pcb.schematic
+    - match: ^\s*(EELAYER)((?:\s+[-+]?[\d.]+)*)\s*$
+      captures:
+        1: entity.name.var.pcb.schematic
+      push:
+      - meta_scope: meta.eelayer.pcb.schematic
+      - match: ^\s*(EELAYER)\s+(END)\s*$
+        pop: true
+        captures:
+          1: entity.name.var.pcb.schematic
+          2: keyword.control.pcb.schematic
+      - include: main
+    - match: ^\s*((\$)Descr)(?=\s)
+      captures:
+        1: keyword.control.section.pcb.schematic
+        2: punctuation.section.begin.pcb.schematic
+      push:
+      - meta_scope: meta.description.pcb.schematic
+      - match: ^\s*((\$)EndDescr)(?=\s)
+        pop: true
+        captures:
+          1: keyword.control.section.pcb.schematic
+          2: punctuation.section.end.pcb.schematic
+      - match: \s+([A-E][0-9]?)(?=\s)
+        captures:
+          1: constant.language.paper-size.pcb.schematic
+      - include: main
+    - include: main
+  - match: ^\s*((\$)Bitmap)\s*$
+    captures:
+      1: keyword.control.section.pcb.schematic
+      2: punctuation.section.begin.pcb.schematic
+    push:
+    - meta_scope: meta.bitmap.pcb.schematic
+    - match: ^\s*((\$)EndBitmap)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.section.pcb.schematic
+        2: punctuation.section.end.pcb.schematic
+    - match: ^\s*(Data)\s*$
+      captures:
+        1: keyword.control.data.section.begin.pcb.schematic
+      push:
+      - meta_content_scope: string.unquoted.heredoc.bytestream.pcb.schematic
+      - match: ^\s*(EndData)\s*$
+        pop: true
+        captures:
+          1: keyword.control.data.section.end.pcb.schematic
+      - match: \s+((\$)EndBitmap)\s*$
+        scope: comment.ignored.pcb.schematic
+      - match: (?<=\s|^)(?![A-Fa-f0-9]{2}(?:\s|$))(\S+)
+        scope: invalid.illegal.syntax.pcb.schematic
+    - include: main
+  - match: ^\s*(DEF|DRAW)(?:\s+(\S+)\s+(.+))?\s*$
+    captures:
+      1: storage.type.class.definition.pcb.schematic
+      2: entity.name.var.pcb.schematic
+    push:
+    - match: ^\s*(END\1)(?=\s|$)
+      pop: true
+      captures:
+        1: storage.type.class.definition.pcb.schematic
+    - include: repo_params
+  - match: ^\s*(ALIAS)\s+(.+)\s*$
+    scope: meta.aliases.pcb.schematic
+    captures:
+      1: storage.type.class.alias.pcb.schematic
+  - match: ^\s*((\$)([A-Za-z]\w+))\s*$
+    captures:
+      1: keyword.control.section.pcb.schematic
+      2: punctuation.section.begin.pcb.schematic
+    push:
+    - match: ^\s*((\$)[Ee]nd\3)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.section.pcb.schematic
+        2: punctuation.section.end.pcb.schematic
+    - include: main
+  - match: ^\s*(Wire)\s+(Wire|Bus|Line)\s+(Line)\s*$
+    scope: meta.wire.pcb.schematic
+    captures:
+      1: entity.name.var.pcb.schematic
+      2: entity.name.type.pcb.schematic
+      3: constant.language.other.pch.schematic
+  - match: ^\s*(Text)\s+(\w+)\s+(.+)\s+(?:(~)|(\w+))\s*$
+    captures:
+      1: entity.name.var.pcb.schematic
+      2: entity.name.type.pcb.schematic
+      5: constant.language.other.pch.schematic
+    push:
+    - meta_scope: meta.text.pcb.schematic
+    - match: ^\s*(\S.*)$
+      pop: true
+      captures:
+        0: string.unquoted.herestring.pcb.schematic
+  - match: ^\s*([A-Za-z]\w*)(?=\s)
+    captures:
+      1: entity.name.var.pcb.schematic
+    push:
+    - match: $
+      pop: true
+    - include: repo_params
+  - include: repo_shared
+  repo_comments:
+  - match: ^\s*((#).*$)
+    captures:
+      1: comment.line.number-sign.pcb.schematic
+      2: punctuation.definition.comment.pcb.board
+  repo_lowerCaseName:
+  - match: (?<=\s)[A-Za-z_][-\w]+(?=\s|$)
+    scope: variable.parameter.identifier.pcb.schematic
+  repo_numbers:
+  - match: (?<![-\w])[-+]?\d+(?=\s|$)
+    scope: constant.numeric.integer.decimal.pcb.schematic
+  - match: (?<![-\w])[-+]?\d*\.\d+
+    scope: constant.numeric.float.decimal.pcb.schematic
+  repo_params:
+  - include: repo_upperCaseName
+  - include: repo_lowerCaseName
+  - include: main
+  repo_quotedString:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.pcb.schematic
+    push:
+    - meta_scope: string.quoted.double.pcb.schematic
+    - match: '"|^|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.pcb.schematic
+    - include: scope:source.pcb.sexp
+  repo_shared:
+  - include: repo_comments
+  - include: repo_tilde
+  - include: repo_quotedString
+  - include: repo_numbers
+  repo_tilde:
+  - match: '~'
+    scope: keyword.operator.pcb.schematic
+  repo_upperCaseName:
+  - match: (?<=\s)([+#])?[A-Z0-9_]+(?:\s|$)
+    scope: constant.language.other.pcb.schematic
+    captures:
+      1: punctuation.definition.constant.pcb.schematic

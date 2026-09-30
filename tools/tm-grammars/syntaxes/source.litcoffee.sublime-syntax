@@ -1,0 +1,360 @@
+%YAML 1.2
+---
+# Literate CoffeeScript (source.litcoffee): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/atom/language-coffee-script via GitHub Linguist v9.7.0 (license: mit).
+name: Literate CoffeeScript
+scope: source.litcoffee
+file_extensions:
+- litcoffee
+- coffee.md
+contexts:
+  main:
+  - match: ^(?=([ ]{4}|\t)(?!$))
+    push:
+    - meta_scope: markup.raw.block.markdown
+    - match: ^(?!([ ]{4}|\t))
+      pop: true
+    - include: repo_block_raw
+  - match: '(?x)^
+
+      (?=  [ ]{0,3}>.
+
+      |  [#]{1,6}\s*+
+
+      |  [ ]{0,3}(?<marker>[-*_])([ ]{0,2}\k<marker>){2,}[ \t]*+$
+
+      )'
+    push:
+    - meta_scope: meta.block-level.markdown
+    - match: '(?x)^
+
+        (?!  [ ]{0,3}>.
+
+        |  [#]{1,6}\s*+
+
+        |  [ ]{0,3}(?<marker>[-*_])([ ]{0,2}\k<marker>){2,}[ \t]*+$
+
+        )'
+      pop: true
+    - include: repo_block_quote
+    - include: repo_heading
+    - include: repo_separator
+  - match: ^[ ]{0,3}([*+-])(?=\s)
+    captures:
+      1: punctuation.definition.list_item.markdown
+    push:
+    - meta_scope: markup.list.unnumbered.markdown
+    - match: ^(?=\S|[ ]{4,})|(?!)
+      pop: true
+      captures:
+        1: punctuation.definition.list_item.markdown
+    - include: repo_list-paragraph
+  - match: ^[ ]{0,3}([0-9]+\.)(?=\s)
+    captures:
+      1: punctuation.definition.list_item.markdown
+    push:
+    - meta_scope: markup.list.numbered.markdown
+    - match: ^(?=\S|[ ]{4,})|(?!)
+      pop: true
+      captures:
+        1: punctuation.definition.list_item.markdown
+    - include: repo_list-paragraph
+  - match: ^(?=<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b)(?!.*?</\1>)
+    push:
+    - meta_scope: meta.disable-markdown
+    - match: (?<=^</\1>$\n)
+      pop: true
+    - include: scope:text.html.basic
+  - match: ^(?=<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b)
+    push:
+    - meta_scope: meta.disable-markdown
+    - match: $\n?
+      pop: true
+    - include: scope:text.html.basic
+  - match: "(?x)\n\\s*                    # Leading whitespace\n(\\[)(.+?)(\\])(:)      # Reference name\n[ \\t]*                 # Optional whitespace\n(<?)(\\S+?)(>?)         # The url\n[ \\t]*                 # Optional whitespace\n(?:\n  ((\\().+?(\\)))       # Match title in quotes\u2026\n  | ((\").+?(\"))         # or in parens.\n)?                      # Title is optional\n\\s*                    # Optional whitespace\n$"
+    scope: meta.link.reference.def.markdown
+    captures:
+      1: punctuation.definition.constant.markdown
+      10: punctuation.definition.string.end.markdown
+      11: string.other.link.description.title.markdown
+      12: punctuation.definition.string.begin.markdown
+      13: punctuation.definition.string.end.markdown
+      2: constant.other.reference.link.markdown
+      3: punctuation.definition.constant.markdown
+      4: punctuation.separator.key-value.markdown
+      5: punctuation.definition.link.markdown
+      6: markup.underline.link.markdown
+      7: punctuation.definition.link.markdown
+      8: string.other.link.description.title.markdown
+      9: punctuation.definition.string.begin.markdown
+  - match: ^(?=\S)(?![=-]{3,}(?=$))
+    push:
+    - meta_scope: meta.paragraph.markdown
+    - match: ^(?:\s*$|(?=[ ]{0,3}>.))|(?=[ \t]*\n)(?<=^===|^====|=====|^---|^----|-----)[ \t]*\n|(?=^#)
+      pop: true
+    - include: repo_inline
+    - include: scope:text.html.basic
+    - match: ^(={3,})(?=[ \t]*$)
+      scope: markup.heading.1.markdown
+      captures:
+        1: punctuation.definition.heading.markdown
+    - match: ^(-{3,})(?=[ \t]*$)
+      scope: markup.heading.2.markdown
+      captures:
+        1: punctuation.definition.heading.markdown
+  repo_ampersand:
+  - match: '&(?!([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);)'
+    scope: meta.other.valid-ampersand.markdown
+  repo_block_quote:
+  - match: '[ ]{0,3}(>)(?!$)[ ]?'
+    captures:
+      1: punctuation.definition.blockquote.markdown
+    push:
+    - meta_scope: markup.quote.markdown
+    - match: '(?x)^
+
+        (?=  \s*$
+
+        |  [ ]{0,3}(?<marker>[-*_])([ ]{0,2}\k<marker>){2,}[ \t]*+$
+
+        |  [ ]{0,3}>.
+
+        )'
+      pop: true
+    - match: '(?x)
+
+        (?=  [ ]{0,3}>.
+
+        )'
+      push:
+      - match: ^
+        pop: true
+      - include: repo_block_quote
+    - match: '(?x)
+
+        (?=  ([ ]{4}|\t)
+
+        |  [#]{1,6}\s*+
+
+        |  [ ]{0,3}(?<marker>[-*_])([ ]{0,2}\k<marker>){2,}[ \t]*+$
+
+        )'
+      push:
+      - include: repo_block_raw
+      - include: repo_heading
+      - include: repo_separator
+      - match: ^
+        pop: true
+    - match: '(?x)
+
+        (?!  $
+
+        |  [ ]{0,3}>.
+
+        |  ([ ]{4}|\t)
+
+        |  [#]{1,6}\s*+
+
+        |  [ ]{0,3}(?<marker>[-*_])([ ]{0,2}\k<marker>){2,}[ \t]*+$
+
+        )'
+      push:
+      - match: $|(?<=\n)
+        pop: true
+      - include: repo_inline
+  repo_block_raw:
+  - include: repo_coffee_script
+  repo_bold:
+  - match: "(?x)\n(\\*\\*|__)(?=\\S)                                          # Open\n(?=\n  (\n    <[^>]*+>                                                # HTML tags\n    | (?<raw>`+)([^`]|(?!(?<!`)\\k<raw>(?!`))`)*+\\k<raw>   # Raw\n    | \\\\[\\\\`*_{}\\[\\]()#.!+\\->]?+                     # Escapes\n    | \\[\n    (\n      (?<square>                                            # Named group\n        [^\\[\\]\\\\]                                       # Match most chars\n        | \\\\.                                             # Escaped chars\n        | \\[ \\g<square>*+ \\]                             # Nested brackets\n      )*+\n      \\]\n      (\n        (                                                   # Reference Link\n          [ ]?                                              # Optional space\n          \\[[^\\]]*+\\]                                    # Ref name\n        )\n        |\n        (                                                   # Inline Link\n         \
+      \ \\(                                               # Opening paren\n          [ \\t]*+                                          # Optional whitespace\n          <?(.*?)>?                                         # URL\n          [ \\t]*+                                          # Optional whitespace\n          (                                                 # Optional Title\n            (?<title>['\"])\n            (.*?)\n            \\k<title>\n          )?\n          \\)\n        )\n      )\n    )\n    | (?!(?<=\\S)\\1).                                      # Everything besides\n  )++\n  (?<=\\S)\\1                                               # Close\n)"
+    captures:
+      1: punctuation.definition.bold.markdown
+    push:
+    - meta_scope: markup.bold.markdown
+    - match: (?<=\S)(\1)
+      pop: true
+      captures:
+        1: punctuation.definition.bold.markdown
+    - match: (?=<[^>]*?>)
+      push:
+      - include: scope:text.html.basic
+      - match: (?<=>)
+        pop: true
+    - include: repo_escape
+    - include: repo_ampersand
+    - include: repo_bracket
+    - include: repo_raw
+    - include: repo_italic
+    - include: repo_image-inline
+    - include: repo_link-inline
+    - include: repo_link-inet
+    - include: repo_link-email
+    - include: repo_image-ref
+    - include: repo_link-ref-literal
+    - include: repo_link-ref
+  repo_bracket:
+  - match: <(?![a-z/?\$!])
+    scope: meta.other.valid-bracket.markdown
+  repo_coffee_script:
+  - include: scope:source.coffee
+  repo_escape:
+  - match: \\[-`*_#+.!(){}\[\]\\>]
+    scope: constant.character.escape.markdown
+  repo_heading:
+  - match: (#{1,6})(?!#)\s*(?=\S)
+    captures:
+      1: punctuation.definition.heading.markdown
+    push:
+    - meta_scope: markup.heading.markdown
+    - meta_content_scope: entity.name.section.markdown
+    - match: \s*(#*)$\n?
+      pop: true
+      captures:
+        1: punctuation.definition.heading.markdown
+    - include: repo_inline
+  repo_image-inline:
+  - match: "(?x)\n\\!                       # Images start with !\n(\\[)((?<square>[^\\[\\]\\\\]|\\\\.|\\[\\g<square>*+\\])*+)(\\]) # Match the link text\n([ ])?                    # Space not allowed\n(\\()                     # Opening paren for url\n(<?)(\\S+?)(>?)           # The url\n[ \\t]*                   # Optional whitespace\n(?:\n  ((\\().+?(\\)))         # Match title in parens\u2026\n  | ((\").+?(\"))           # or in quotes.\n)?                        # Title is optional\n\\s*                      # Optional whitespace\n(\\))"
+    scope: meta.image.inline.markdown
+    captures:
+      1: punctuation.definition.string.begin.markdown
+      10: string.other.link.description.title.markdown
+      11: punctuation.definition.string.markdown
+      12: punctuation.definition.string.markdown
+      13: string.other.link.description.title.markdown
+      14: punctuation.definition.string.markdown
+      15: punctuation.definition.string.markdown
+      16: punctuation.definition.metadata.markdown
+      2: string.other.link.description.markdown
+      3: punctuation.definition.string.end.markdown
+      5: invalid.illegal.whitespace.markdown
+      6: punctuation.definition.metadata.markdown
+      7: punctuation.definition.link.markdown
+      8: markup.underline.link.image.markdown
+      9: punctuation.definition.link.markdown
+  repo_image-ref:
+  - match: \!(\[)((?<square>[^\[\]\\]|\\.|\[\g<square>*+\])*+)(\])[ ]?(\[)(.*?)(\])
+    scope: meta.image.reference.markdown
+    captures:
+      1: punctuation.definition.string.begin.markdown
+      2: string.other.link.description.markdown
+      4: punctuation.definition.string.begin.markdown
+      5: punctuation.definition.constant.markdown
+      6: constant.other.reference.link.markdown
+      7: punctuation.definition.constant.markdown
+  repo_inline:
+  - include: repo_escape
+  - include: repo_ampersand
+  - include: repo_bracket
+  - include: repo_raw
+  - include: repo_bold
+  - include: repo_italic
+  - include: repo_line-break
+  - include: repo_image-inline
+  - include: repo_link-inline
+  - include: repo_link-inet
+  - include: repo_link-email
+  - include: repo_image-ref
+  - include: repo_link-ref-literal
+  - include: repo_link-ref
+  repo_italic:
+  - match: "(?x)\n(\\*|_)(?=\\S)                                            # Open\n(?=\n  (\n    <[^>]*+>                                              # HTML tags\n    | (?<raw>`+)([^`]|(?!(?<!`)\\k<raw>(?!`))`)*+\\k<raw> # Raw\n    | \\\\[\\\\`*_{}\\[\\]()#.!+\\->]?+                   # Escapes\n    | \\[\n    (\n      (?<square>                                          # Named group\n        [^\\[\\]\\\\]                                     # Match most chars\n        | \\\\.                                           # Escaped chars\n        | \\[ \\g<square>*+ \\]                           # Nested brackets\n      )*+\n      \\]\n      (\n        (                                                 # Reference Link\n          [ ]?                                            # Optional space\n          \\[[^\\]]*+\\]                                  # Ref name\n        )\n        |\n        (                                                 # Inline Link\n          \\(                    \
+      \                         # Opening paren\n          [ \\t]*+                                        # Optional whitespace\n          <?(.*?)>?                                       # URL\n          [ \\t]*+                                        # Optional whitespace\n          (                                               # Optional Title\n            (?<title>['\"])\n            (.*?)\n            \\k<title>\n          )?\n          \\)\n        )\n      )\n    )\n    | \\1\\1                                               # Must be bold closer\n    | (?!(?<=\\S)\\1).                                     # Everything besides\n  )++\n  (?<=\\S)\\1                                              # Close\n)"
+    captures:
+      1: punctuation.definition.italic.markdown
+    push:
+    - meta_scope: markup.italic.markdown
+    - match: (?<=\S)(\1)((?!\1)|(?=\1\1))
+      pop: true
+      captures:
+        1: punctuation.definition.italic.markdown
+    - match: (?=<[^>]*?>)
+      push:
+      - include: scope:text.html.basic
+      - match: (?<=>)
+        pop: true
+    - include: repo_escape
+    - include: repo_ampersand
+    - include: repo_bracket
+    - include: repo_raw
+    - include: repo_bold
+    - include: repo_image-inline
+    - include: repo_link-inline
+    - include: repo_link-inet
+    - include: repo_link-email
+    - include: repo_image-ref
+    - include: repo_link-ref-literal
+    - include: repo_link-ref
+  repo_line-break:
+  - match: ' {2,}$'
+    scope: meta.dummy.line-break
+  repo_link-email:
+  - match: (<)((?:mailto:)?[-.\w]+@[-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+)(>)
+    scope: meta.link.email.lt-gt.markdown
+    captures:
+      1: punctuation.definition.link.markdown
+      2: markup.underline.link.markdown
+      4: punctuation.definition.link.markdown
+  repo_link-inet:
+  - match: (<)((?:https?|ftp)://.*?)(>)
+    scope: meta.link.inet.markdown
+    captures:
+      1: punctuation.definition.link.markdown
+      2: markup.underline.link.markdown
+      3: punctuation.definition.link.markdown
+  repo_link-inline:
+  - match: "(?x)\n(\\[)((?<square>[^\\[\\]\\\\]|\\\\.|\\[\\g<square>*+\\])*+)(\\]) # Match the link text.\n([ ])?            # Space not allowed\n(\\()             # Opening paren for url\n(<?)(.*?)(>?)     # The url\n[ \\t]*           # Optional whitespace\n(?:\n  ((\\().+?(\\))) # Match title in parens\u2026\n  | ((\").+?(\"))   # or in quotes.\n)?                # Title is optional\n\\s*              # Optional whitespace\n(\\))"
+    scope: meta.link.inline.markdown
+    captures:
+      1: punctuation.definition.string.begin.markdown
+      10: string.other.link.description.title.markdown
+      11: punctuation.definition.string.begin.markdown
+      12: punctuation.definition.string.end.markdown
+      13: string.other.link.description.title.markdown
+      14: punctuation.definition.string.begin.markdown
+      15: punctuation.definition.string.end.markdown
+      16: punctuation.definition.metadata.markdown
+      2: string.other.link.title.markdown
+      4: punctuation.definition.string.end.markdown
+      5: invalid.illegal.whitespace.markdown
+      6: punctuation.definition.metadata.markdown
+      7: punctuation.definition.link.markdown
+      8: markup.underline.link.markdown
+      9: punctuation.definition.link.markdown
+  repo_link-ref:
+  - match: (\[)((?<square>[^\[\]\\]|\\.|\[\g<square>*+\])*+)(\])[ ]?(\[)([^\]]*+)(\])
+    scope: meta.link.reference.markdown
+    captures:
+      1: punctuation.definition.string.begin.markdown
+      2: string.other.link.title.markdown
+      4: punctuation.definition.string.end.markdown
+      5: punctuation.definition.constant.begin.markdown
+      6: constant.other.reference.link.markdown
+      7: punctuation.definition.constant.end.markdown
+  repo_link-ref-literal:
+  - match: (\[)((?<square>[^\[\]\\]|\\.|\[\g<square>*+\])*+)(\])[ ]?(\[)(\])
+    scope: meta.link.reference.literal.markdown
+    captures:
+      1: punctuation.definition.string.begin.markdown
+      2: string.other.link.title.markdown
+      4: punctuation.definition.string.end.markdown
+      5: punctuation.definition.constant.begin.markdown
+      6: punctuation.definition.constant.end.markdown
+  repo_list-paragraph:
+  - match: \s+(?=\S)
+    push:
+    - meta_scope: meta.paragraph.list.markdown
+    - match: ^\s*$
+      pop: true
+    - include: repo_inline
+    - match: ^\s*([*+-]|[0-9]+\.)
+      captures:
+        1: punctuation.definition.list_item.markdown
+  repo_raw:
+  - match: (`+)([^`]|(?!(?<!`)\1(?!`))`)*+(\1)
+    scope: markup.raw.inline.markdown
+    captures:
+      1: punctuation.definition.raw.markdown
+      3: punctuation.definition.raw.markdown
+  repo_separator:
+  - match: '[ ]{0,3}([-*_])([ ]{0,2}\1){2,}[ \t]*$\n?'
+    scope: meta.separator.markdown

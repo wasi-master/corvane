@@ -1,0 +1,81 @@
+%YAML 1.2
+---
+# Parrot Internal Representation (source.parrot.pir): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/parrot via GitHub Linguist v9.7.0 (license: permissive).
+name: Parrot Internal Representation
+scope: source.parrot.pir
+file_extensions:
+- pir
+first_line_match: ^#!.*\b(parrot)\b
+contexts:
+  main:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.pir
+    push:
+    - meta_scope: string.quoted.double.pir
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.pir
+    - match: \\.
+      scope: constant.character.escape.pir
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.pir
+    push:
+    - meta_scope: string.quoted.single.pir
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.pir
+    - match: \\.
+      scope: constant.character.escape.pir
+  - match: \b(print|save|restore)\b
+    scope: support.function.pir
+  - match: (if|unless|goto|\.return|\.end|\.emit|\.eot)
+    scope: keyword.control.pir
+  - match: (\.(pcc_begin|pcc_end|pcc_call|nci_call|invocant|meth_call|arg|result|pcc_begin_return|pcc_end_return|pcc_begin_yield|pcc_end_yield|yield))
+    scope: keyword.control.pcc.pir
+  - match: ([SNIP]\d+)
+    scope: variable.other.register.pir
+  - match: (\$[SNIP]\d+)
+    scope: variable.other.register.symbolic.pir
+  - match: ^\s*(\S+:)\s*
+    scope: keyword.other.label.pir
+  - match: (int|float|string|pmc|array|\.Array|\.Sub)
+    scope: storage.type.pir
+  - match: \.(namespace|endnamespace)
+    scope: storage.type.pir
+  - match: \.(local|arg|lex|param|global|const)
+    scope: storage.modifier.pir
+  - match: '!|-|~'
+    scope: keyword.operator.unary.pir
+  - match: "(?x)\n\t\t\t\t\\s* (\\.sub) \\s+ ([_a-zA-Z](?:[_a-zA-Z0-9]+)?)\n\t\t\t\t(?:\\s+\n\t\t\t\t\t(?: (:(?:load|init|immediate|postcomp|main|anon|lex)) #sub_pragma\n\t\t\t\t\t| (:vtable \\s* (?: \\(\"\\S+\"\\) )? ) #vtable_pragma\n\t\t\t\t\t| (:multi  \\s* (?: \\( \\))? ) #multi_pragma\n\t\t\t\t\t| (:outer  \\s* (?: \\( \\))? ) #outer_pragma\n\t\t\t\t\t)\\s+\n\t\t\t\t)*"
+    scope: meta.function.pir
+    captures:
+      1: storage.type.sub.pir
+      2: entity.name.function.pir
+      3: keyword.other.sub_pragma.pir
+      4: keyword.other.vtable_pragma.pir
+      5: keyword.other.multi_pragma.pir
+      6: keyword.other.outer_pragma.pir
+  - match: \+|-|/|\*\*|\*|%|<<|>>|<>|&&|\|\||~~|\||&|~|\.
+    scope: keyword.operator.binary.pir
+  - match: \+=|-=|\=|%=|\*=|\.=|&=|\|=|~=|<<=|>>=|<>=
+    scope: keyword.operator.assign.pir
+  - match: (^[ \t]+)?(?=#)
+    captures:
+      1: punctuation.whitespace.comment.leading.pir
+    push:
+    - match: (?!)
+      pop: true
+    - match: '#'
+      captures:
+        0: punctuation.definition.comment.pir
+      push:
+      - meta_scope: comment.line.number-sign.pir
+      - match: \n
+        pop: true
+  - match: \b([_a-zA-Z]([_a-zA-Z0-9]+)?)\b
+    scope: variable.other.identifier.pir

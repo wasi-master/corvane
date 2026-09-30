@@ -1,0 +1,53 @@
+%YAML 1.2
+---
+# Apollo Guidance Computer (source.agc): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-agc via GitHub Linguist v9.7.0 (license: isc).
+name: Apollo Guidance Computer
+scope: source.agc
+file_extensions:
+- agc
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.agc
+    push:
+    - meta_scope: comment.line.number-sign.agc
+    - match: $
+      pop: true
+    - match: TODO|FIXME|CHANGED|XXX|IDEA|HACK|NOTE|REVIEW|NB|BUG
+      scope: disable-todo
+  - match: ^\t[-+]\d+(?=\t)
+    scope: comment.annotation.numeric.agc
+  repo_identifier:
+  - match: ^(?!\$)(?:[^#\s]{1,7}\t|[^#\s]{8})
+    scope: entity.name.identifier.agc
+  repo_inclusion:
+  - match: ^\$
+    captures:
+      0: punctuation.definition.directive.agc
+    push:
+    - meta_scope: meta.preprocessor.include.directive.agc
+    - match: (?=\s)
+      pop: true
+  repo_main:
+  - include: repo_comment
+  - include: repo_number
+  - include: repo_inclusion
+  - include: repo_identifier
+  - include: repo_opcode
+  repo_number:
+  - match: '[-+]\d+(?:\.\d+)?D?'
+    scope: constant.numeric.agc
+  repo_opcode:
+  - match: (?<=\t)([^#\s]+)(?=\s|$)
+    captures:
+      1: keyword.function.opcode.agc
+    push:
+    - meta_scope: meta.opcode.agc
+    - match: $|(?=#)|[^#\s]+
+      pop: true
+      captures:
+        0: variable.parameter.operand.agc

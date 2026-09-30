@@ -1,0 +1,68 @@
+%YAML 1.2
+---
+# Whiley (source.whiley): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Whiley/WhileySyntaxBundle.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Whiley
+scope: source.whiley
+file_extensions:
+- whiley
+contexts:
+  main:
+  - match: //[^/]*
+    push:
+    - meta_scope: comment.line.whiley
+    - match: $\n?
+      pop: true
+  - match: /\*
+    push:
+    - meta_scope: comment.block.whiley
+    - match: \*/
+      pop: true
+  - match: \b(false|true|null)\b
+    scope: constant.language.whiley
+  - match: \b(function|method|property|type|variant)\b
+    scope: entity.name.function.whiley
+  - match: ^(import)\s*([a-zA-Z0-9:]+)\s*(with)\s*([a-zA-Z_0-9]+)
+    captures:
+      1: entity.name.class.whiley
+      2: variable.whiley
+      3: entity.name.class.whiley
+      4: variable.whiley
+  - match: ^(import)\s*([a-zA-Z0-9_]+)\s*(from)\s*([a-zA-Z0-9:]+)
+    captures:
+      1: entity.name.class.whiley
+      2: variable.whiley
+      3: entity.name.class.whiley
+      4: variable.whiley
+  - match: ^(import)\s*([a-zA-Z0-9:]+)
+    captures:
+      1: entity.name.class.whiley
+      2: variable.whiley
+  - match: \b(assert|assume|break|case|continue|debug|default|do|else|ensures|fail|for|if|requires|return|skip|switch|where|while)\b
+    scope: keyword.control.whiley
+  - match: \b(all|in|is|new|no|old|some)\b
+    scope: keyword.operator.word.whiley
+  - match: \b(bool|byte|export|final|int|native|private|protected|public|unsafe|void)\b
+    scope: keyword.other.whiley
+  - match: \b(-)?[0-9.]+\b
+    scope: constant.numeric.whiley
+  - match: (&&|\|\||!|==>|<==>)
+    scope: keyword.operator.logical.whiley
+  - match: (<=|<|>=|>|==|!=|\+|-|\*|/)
+    scope: keyword.operator.arithmetic.whiley
+  - match: ^package\b
+    scope: entity.name.class.whiley
+  - match: '"'
+    push:
+    - meta_scope: punctuation.definition.string.whiley
+    - match: '"'
+      pop: true
+    - include: repo_escaped-char
+  - match: \b[_A-Z][_A-Z0-9]+\b
+    scope: variable.constant.whiley
+  - match: \b[_a-zA-Z][_a-zA-Z0-9]*_t\b
+    scope: entity.name.type.whiley
+  - match: \b[_a-zA-Z][_a-zA-Z0-9]*\b
+    scope: variable.whiley
+  repo_escaped-char:
+  - match: \\.

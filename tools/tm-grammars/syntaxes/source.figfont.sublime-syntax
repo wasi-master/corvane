@@ -1,0 +1,88 @@
+%YAML 1.2
+---
+# FIGlet Font (source.figfont): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-fontforge via GitHub Linguist v9.7.0 (license: isc).
+name: FIGlet Font
+scope: source.figfont
+file_extensions:
+- flf
+contexts:
+  main:
+  - include: repo_main
+  repo_codeTag:
+  - match: '(?x) ^(?!.+[@#]$)
+
+      ( (-(?:0[Xx])?0*1)(?=\s|$)        # Invalid -1
+
+      | (\+?(?:[1-9][0-9]*|0(?=\s|$))) # Decimal
+
+      | (\+?0[0-7]+)                    # Octal
+
+      | (\+?0[Xx][0-9A-Fa-f]+)          # Hex
+
+      )
+
+      (?:\s+(\S.*))?
+
+      (?=\s*$)'
+    scope: meta.code-tag.figfont
+    captures:
+      1: meta.codepoint.figfont
+      2: invalid.illegal.reserved-codepoint.figfont
+      3: constant.numeric.decimal.integer.int.figfont
+      4: constant.numeric.octal.integer.int.figfont
+      5: constant.numeric.hexadecimal.hex.integer.int.figfont
+      6: string.unquoted.description.figfont
+  repo_codeTagTable:
+  - match: '(?x) ^(?!.+[@#]$)
+
+      ( (-(?:[1-9][0-9]*|0(?=\s|$))) # Decimal
+
+      | (-0[0-7]+)                    # Octal
+
+      | (-0[Xx][0-9A-Fa-f]+)          # Hex
+
+      )
+
+      (?:\s+(\S.*))?
+
+      \s*$\n?'
+    captures:
+      0: meta.code-tag.figfont
+      1: meta.negative.codepoint.figfont
+      2: constant.numeric.decimal.integer.int.figfont
+      3: constant.numeric.octal.integer.int.figfont
+      4: constant.numeric.hexadecimal.hex.integer.int.figfont
+      5: string.unquoted.description.figfont
+    push:
+    - meta_scope: meta.translation-table.figfont
+    - meta_content_scope: string.interpolated.code-tag.figfont
+    - match: (?<=@@|##)[ \t]*$
+      pop: true
+    - include: repo_endmarks
+  repo_endmarks:
+  - match: (?:@+|#+)[ \t]*$
+    scope: keyword.operator.endmark.character.figfont
+  repo_fontData:
+  - match: '[^#@\s]+|#+(?!#*[ \t]*$)|@+(?!@*[ \t]*$)'
+    scope: constant.character.sub-character.figfont
+  repo_integer:
+  - match: '[-+]?[0-9]+'
+    scope: constant.numeric.decimal.integer.int.figfont
+  repo_main:
+  - include: repo_prologue
+  - include: repo_codeTag
+  - include: repo_codeTagTable
+  - include: repo_fontData
+  - include: repo_endmarks
+  repo_prologue:
+  - match: ^([ft]lf2a)(\S|\x7F)(\s+.+)?\s*$
+    captures:
+      0: meta.header-line.figfont
+      1: keyword.control.file.signature.figfont
+      2: variable.parameter.hardblank.figfont
+    push:
+    - meta_scope: meta.prologue.figfont
+    - meta_content_scope: comment.block.freeform.figfont
+    - match: ^\s*(?=\2(?!.*(?i:hard\W?blank))|.{0,6}[#@]\s*$)
+      pop: true

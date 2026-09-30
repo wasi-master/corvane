@@ -1378,7 +1378,7 @@ impl DiffView {
                         .shadow(vec![BoxShadow {
                             color: hsla(0., 0., 0., 0.3),
                             offset: point(zpx(0.), zpx(0.)),
-                            blur_radius: zpx(8.),
+                            blur_radius: css_blur(8.),
                             spread_radius: zpx(0.),
                             inset: false,
                         }])
@@ -1466,7 +1466,7 @@ impl DiffView {
                         .shadow(vec![BoxShadow {
                             color: hsla(0., 0., 0., 0.3),
                             offset: point(zpx(0.), zpx(0.)),
-                            blur_radius: zpx(8.),
+                            blur_radius: css_blur(8.),
                             spread_radius: zpx(0.),
                             inset: false,
                         }])
@@ -1681,7 +1681,7 @@ impl DiffView {
                     Octicon::Info,
                     t.text_secondary,
                     paragraph(vec![
-                        "This is a submodule based on the repository".into(),
+                        "This is a submodule based on the repository ".into(),
                         Inline::Element(
                             link_button("submodule-repo-link", label, cx)
                                 .on_click(move |_, _, cx| {
@@ -1700,13 +1700,13 @@ impl DiffView {
         let suffix: Vec<Inline> = if read_only {
             vec![]
         } else {
-            vec!["This change can be committed to the parent repository.".into()]
+            vec![" This change can be committed to the parent repository.".into()]
         };
         match (&diff.old_sha, &diff.new_sha) {
             (Some(old), Some(new)) => {
-                let mut parts: Vec<Inline> = vec!["This submodule changed its commit from".into()];
+                let mut parts: Vec<Inline> = vec!["This submodule changed its commit from ".into()];
                 parts.extend(sha(old));
-                parts.push("to".into());
+                parts.push(" to ".into());
                 parts.extend(sha(new));
                 parts.push(".".into());
                 parts.extend(suffix);
@@ -1717,7 +1717,7 @@ impl DiffView {
             }
             (None, Some(new)) => {
                 let mut parts: Vec<Inline> =
-                    vec![format!("This submodule {verb} added pointing at commit").into()];
+                    vec![format!("This submodule {verb} added pointing at commit ").into()];
                 parts.extend(sha(new));
                 parts.push(".".into());
                 parts.extend(suffix);
@@ -1727,7 +1727,8 @@ impl DiffView {
             }
             (Some(old), None) => {
                 let mut parts: Vec<Inline> = vec![
-                    format!("This submodule {verb} removed while it was pointing at commit").into(),
+                    format!("This submodule {verb} removed while it was pointing at commit ")
+                        .into(),
                 ];
                 parts.extend(sha(old));
                 parts.push(".".into());

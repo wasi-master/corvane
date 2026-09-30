@@ -1,0 +1,71 @@
+%YAML 1.2
+---
+# TextMate Properties (source.tm-properties): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/textmate/textmate.tmbundle via GitHub Linguist v9.7.0 (license: permissive).
+name: TextMate Properties
+scope: source.tm-properties
+file_extensions:
+- .tm_properties
+contexts:
+  main:
+  - match: ^([a-zA-Z0-9][a-zA-Z0-9_+\-]*)\s*(=)\s*
+    captures:
+      1: support.constant.tm-properties
+      2: punctuation.separator.key-value.tm-properties
+    push:
+    - match: $
+      pop: true
+      captures:
+        1: support.constant.tm-properties
+        2: punctuation.separator.key-value.tm-properties
+    - include: repo_string
+  - match: ^\[
+    captures:
+      0: punctuation.definition.section.begin.tm-properties
+    push:
+    - meta_scope: meta.section.tm-properties
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.section.end.tm-properties
+    - include: repo_string
+  - include: repo_comment
+  repo_comment:
+  - match: (^[ \t]+)?(?=#)
+    captures:
+      1: punctuation.whitespace.comment.leading.tm-properties
+    push:
+    - match: (?!)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.tm-properties
+    - match: '#'
+      captures:
+        0: punctuation.definition.comment.tm-properties
+      push:
+      - meta_scope: comment.line.number-sign.tm-properties
+      - match: \n
+        pop: true
+  repo_string:
+  - match: '[a-zA-Z0-9][a-zA-Z0-9_+\-]*'
+    scope: string.unquoted.tm-properties
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.tm-properties
+    push:
+    - meta_scope: string.quoted.double.tm-properties
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.tm-properties
+    - match: \\.
+      scope: constant.character.escape.tm-properties
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.tm-properties
+    push:
+    - meta_scope: string.quoted.single.tm-properties
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.tm-properties

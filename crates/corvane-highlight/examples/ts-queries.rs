@@ -48,12 +48,15 @@ fn main() {
     }
     let samples = samples(&[root.join("tests/cm/samples"), root.join("tests/ts/samples")]);
     let mut picks = Vec::new();
-    for grammar in treesitter::library::grammars() {
+    for entry in treesitter::library::entries() {
+        let Some(grammar) = entry.grammar() else {
+            continue;
+        };
         let files: Vec<PathBuf> = samples
             .iter()
             .filter(|p| {
                 let name = p.to_string_lossy().to_string();
-                treesitter::detect::for_path(std::slice::from_ref(&grammar), &name, "").is_some()
+                treesitter::detect::for_path(std::slice::from_ref(&entry), &name, "").is_some()
             })
             .cloned()
             .collect();

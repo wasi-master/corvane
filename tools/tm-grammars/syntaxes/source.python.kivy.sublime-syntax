@@ -1,0 +1,23 @@
+%YAML 1.2
+---
+# kvlang (source.python.kivy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/p0lygun/kivy-language-grammer.git via GitHub Linguist v9.7.0 (license: mit).
+name: kvlang
+scope: source.python.kivy
+file_extensions:
+- kv
+contexts:
+  main:
+  - match: '#:.*?$'
+    scope: support.type.kivy
+  - match: '#.*?$'
+    scope: comment.kivy
+  - match: \<.+\>
+    scope: support.class.kivy
+  - match: '[A-Za-z][A-Za-z0-9]+$'
+    scope: support.function.kivy
+  - match: .*?:$
+    scope: support.function.kivy
+  - match: (.*?):$
+    scope: entity.name.section.kivy
+  - include: scope:source.python

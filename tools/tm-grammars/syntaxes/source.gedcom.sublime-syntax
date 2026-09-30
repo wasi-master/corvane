@@ -1,0 +1,170 @@
+%YAML 1.2
+---
+# GEDCOM (source.gedcom): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/fguitton/vscode-gedcom via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: GEDCOM
+scope: source.gedcom
+file_extensions:
+- ged
+contexts:
+  main:
+  - include: repo_line
+  repo_bad-enum-line:
+  - match: ^(\s*)(\d+)[ ]+(SEX)[ ](?!(?i:M|F|U|X)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  - match: ^(\s*)(\d+)[ ]+(QUAY)[ ](?!(?i:[0-3])[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  - match: ^(\s*)(\d+)[ ]+(PEDI)[ ](?!(?i:ADOPTED|BIRTH|FOSTER|SEALING|OTHER)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  - match: ^(\s*)(\d+)[ ]+(RESN)[ ](?!(?i:(?:CONFIDENTIAL|LOCKED|PRIVACY)(?:[ ]*,[ ]*(?:CONFIDENTIAL|LOCKED|PRIVACY))*)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  repo_bad-format-line:
+  - match: ^(\s*)(\d+)[ ]+(AGE)[ ](?!(?i:(?:[<>][ ]*)?\d+[ ]*[ymwd](?:[ ]*\d+[ ]*[ymwd])*|(?i:CHILD|INFANT|STILLBORN))[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  - match: ^(\s*)(\d+)[ ]+(TIME)[ ](?!(?i:\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[ ]*(?i:AM|PM))?)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  repo_bad-integer-line:
+  - match: ^(\s*)(\d+)[ ]+(ANCE|DESC|HEIGHT|LEFT|NCHI|NMR|TOP|WIDTH)[ ](?!(?i:\d+)[ ]*$)(?![_A-Za-z][A-Za-z0-9]*:)(?!_)(.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.value.gedcom
+  repo_broken-pointer-line:
+  - match: ^(\s*)(\d+)[ ]+(ALIA|ANCI|ASSO|CHIL|DESI|FAMC|FAMS)[ ](.+)$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: invalid.illegal.pointer.gedcom
+  repo_continuation-line:
+  - match: ^(\s*)(\d+)[ ]+(CONC|CONT)(?:[ ](.*))?$
+    scope: meta.line.continuation.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      3: keyword.control.continuation.gedcom
+      4: string.unquoted.payload.gedcom
+  repo_date:
+  - match: '@#[^@]*@'
+    scope: constant.language.calendar.gedcom
+  - match: \b(?:GREGORIAN|JULIAN|HEBREW|FRENCH_R|ROMAN|UNKNOWN)\b
+    scope: constant.language.calendar.gedcom
+  - match: \b(?:FROM|TO|BEF|AFT|BET|AND|ABT|CAL|EST|INT)\b
+    scope: keyword.operator.date.gedcom
+  - match: \b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|TSH|CSH|KSL|TVT|SHV|ADR|ADS|NSN|IYR|SVN|TMZ|AAV|ELL|VEND|BRUM|FRIM|NIVO|PLUV|VENT|GERM|FLOR|PRAI|MESS|THER|FRUC|COMP)\b
+    scope: constant.language.month.gedcom
+  - match: \b(?:BCE|BC|B\.C\.)
+    scope: constant.language.epoch.gedcom
+  - match: \b\d+\b
+    scope: constant.numeric.date.gedcom
+  repo_date-line:
+  - match: ^(\s*)(\d+)[ ]+(DATE|SDATE)(?:[ ](.*))?$
+    scope: meta.line.date.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      3: entity.name.tag.gedcom
+      4: string.unquoted.payload.gedcom
+  repo_invalid-line:
+  - match: ^(?!\s*$).*$
+    scope: invalid.illegal.line.gedcom
+  repo_line:
+  - include: repo_record-line
+  - include: repo_continuation-line
+  - include: repo_date-line
+  - include: repo_name-line
+  - include: repo_pointer-line
+  - include: repo_broken-pointer-line
+  - include: repo_bad-enum-line
+  - include: repo_bad-integer-line
+  - include: repo_bad-format-line
+  - include: repo_tag-line
+  - include: repo_invalid-line
+  repo_name-line:
+  - match: ^(\s*)(\d+)[ ]+(NAME|_MARNM|_AKA|_AKAN|_BIRN|_ADPN)(?:[ ](.*))?$
+    scope: meta.line.name.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: string.unquoted.payload.gedcom
+  repo_payload-escapes:
+  - match: '@#[^@]*@'
+    scope: constant.language.escape.gedcom
+  - match: '@@'
+    scope: constant.character.escape.gedcom
+  repo_personal-name:
+  - match: (/)([^/]*)(/)
+    captures:
+      1: punctuation.definition.surname.begin.gedcom
+      2: string.quoted.other.surname.gedcom
+      3: punctuation.definition.surname.end.gedcom
+  - include: repo_payload-escapes
+  repo_pointer-line:
+  - match: ^(\s*)(\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)[ ](@[^@#\s][^@\n]*@)[ ]*$
+    scope: meta.line.pointer.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+  repo_record-line:
+  - match: ^(\s*)(\d+)[ ]+(@[^@#\s][^@\n]*@)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$
+    scope: meta.line.record.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      5: string.unquoted.payload.gedcom
+  repo_tag:
+  - match: \b(?:CHAR|DEST|FORM|GEDC|HEAD|SCHMA|TAG|TRLR|VERS)\b
+    scope: keyword.control.envelope.gedcom
+  - match: \b(?:FAM|INDI|OBJE|REPO|SNOTE|SOUR|SUBM)\b
+    scope: entity.name.type.record.gedcom
+  - match: \b(?:ADOP|ANUL|BAPM|BARM|BASM|BIRT|BLES|BURI|CENS|CHR|CHRA|CONF|CREM|DEAT|DIV|DIVF|EMIG|ENGA|FCOM|GRAD|IMMI|MARB|MARC|MARL|MARR|MARS|NATU|ORDN|PROB|RETI|WILL)\b
+    scope: support.function.event.gedcom
+  - match: \b(?:CAST|DSCR|EDUC|EVEN|FACT|IDNO|NAME|NATI|NCHI|NMR|OCCU|PROP|RELI|RESI|SEX|SSN|TITL)\b
+    scope: entity.name.tag.attribute.gedcom
+  - match: \b(?:ALIA|ANCI|ASSO|CHIL|DESI|FAMC|FAMS|HUSB|WIFE)\b
+    scope: variable.other.linkage.gedcom
+  - match: \b(?:ABBR|AUTH|CALN|DATA|MEDI|NOTE|PAGE|PUBL|QUAY|TEXT)\b
+    scope: markup.quote.evidence.gedcom
+  - match: \b(?:CHAN|CREA|EXID|REFN|RESN|RIN|UID)\b
+    scope: entity.name.tag.administrative.gedcom
+  - match: \b(?:ADDR|ADR1|ADR2|ADR3|AFN|AGE|AGNC|ANCE|BAPL|CAUS|CITY|CONL|COPR|CORP|CROP|CTRY|DATE|DESC|EMAIL|ENDL|FAMF|FAX|FILE|FONE|GIVN|HEIGHT|INIL|LANG|LATI|LEFT|LONG|MAP|MIME|NICK|NO|NPFX|NSFX|ORDI|PEDI|PHON|PHRASE|PLAC|POST|RELA|RFN|ROLE|ROMN|SDATE|SLGC|SLGS|SPFX|STAE|STAT|SUBN|SURN|TEMP|TIME|TOP|TRAN|TYPE|WIDTH|WWW)\b
+    scope: entity.name.tag.gedcom
+  - match: _[A-Za-z0-9_]*
+    scope: entity.name.tag.extension.gedcom
+  - match: '[A-Za-z][A-Za-z0-9_]*'
+    scope: entity.name.tag.unknown.gedcom
+  repo_tag-line:
+  - match: ^(\s*)(\d+)[ ]+([A-Za-z_][A-Za-z0-9_]*)(?:[ ](.*))?$
+    scope: meta.line.gedcom
+    captures:
+      2: constant.numeric.integer.level.gedcom
+      4: string.unquoted.payload.gedcom
+  repo_xref-definition:
+  - match: (@)([^@#\s][^@\n]*)(@)
+    captures:
+      1: punctuation.definition.xref.begin.gedcom
+      2: entity.name.type.xref.gedcom
+      3: punctuation.definition.xref.end.gedcom
+  repo_xref-reference:
+  - match: (@)(VOID)(@)
+    captures:
+      1: punctuation.definition.xref.begin.gedcom
+      2: constant.language.void.gedcom
+      3: punctuation.definition.xref.end.gedcom
+  - match: (@)([^@#\s][^@\n]*)(@)
+    captures:
+      1: punctuation.definition.xref.begin.gedcom
+      2: variable.other.xref.gedcom
+      3: punctuation.definition.xref.end.gedcom

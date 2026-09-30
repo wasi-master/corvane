@@ -1,0 +1,49 @@
+%YAML 1.2
+---
+# iCalendar (source.iCalendar): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/kimsey0/iCalendar-sublime.git via GitHub Linguist v9.7.0 (license: mit).
+name: iCalendar
+scope: source.iCalendar
+file_extensions:
+- ics
+- ical
+contexts:
+  main:
+  - match: ^(BEGIN|END)
+    scope: keyword.command.icalObject
+  - match: :(VCALENDAR|VEVENT|VTODO|VJOURNAL|VFREEBUSY|VTIMEZONE|VALARM)$
+    scope: constant.language.icalObjectType
+  - match: :(DAYLIGHT|STANDARD)$
+    scope: constant.language.icalObjectType
+  - match: ^(DTSTART|PRODID|VERSION|CALSCALE|METHOD)
+    scope: keyword.other.icalProperty
+  - match: ^(DTEND|DTSTAMP|ORGANIZER|UID|CLASS|CREATED)
+    scope: keyword.other.icalProperty
+  - match: ^(LOCATION|SEQUENCE|STATUS|SUMMARY|COMMENT)
+    scope: keyword.other.icalProperty
+  - match: ^(TRANSP|ATTENDEE|ATTACH|FREEBUSY|METHOD|CONTACT)
+    scope: keyword.other.icalProperty
+  - match: ^(DURATION|RRULE|EXDATE|EXRULE|URL|DESCRIPTION|ACTION)
+    scope: keyword.other.icalProperty
+  - match: ^(LAST-MODIFIED|RECURRENCE-ID|TRIGGER|RELATED-TO|RDATE)
+    scope: keyword.other.icalProperty
+  - match: ^(TZID|TZOFFSETFROM|TZOFFSETTO|TZNAME|TZURL)
+    scope: keyword.other.icalProperty
+  - match: ^(PRIORITY|DUE|COMPLETED|PERCENT-COMPLETE|CATEGORIES)
+    scope: keyword.other.icalProperty
+  - match: ^(RESOURCES|REPEAT|REQUEST-STATUS)
+    scope: keyword.other.icalProperty
+  - match: ^X-[A-Z-]+
+    scope: keyword.other.icalCustom
+  - match: '[0-9]{8}T[0-9]{6}Z?'
+    scope: string.interpolated.icalDate
+  - match: '[A-Z0-9-]+=[^;:]+'
+    scope: variable.parameter.icalParameter
+  - match: (CONFIRMED|TENTATIVE|CANCELLED|DELEGATED|OPAQUE)
+    scope: constant.other.icalSetValue
+  - match: (NEEDS-ACTION|ACCEPTED|DECLINED|IN-PROGRESS)
+    scope: constant.other.icalSetValue
+  - match: (PRIVATE|PUBLIC|PUBLISH|GREGORIAN|DISPLAY)
+    scope: constant.other.icalSetValue
+  - match: :COMPLETED$
+    scope: constant.other.icalSetValue

@@ -1,0 +1,309 @@
+%YAML 1.2
+---
+# ooc (source.ooc): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/ooc.tmbundle via GitHub Linguist v9.7.0 (license: bsd-2-clause).
+name: ooc
+scope: source.ooc
+file_extensions:
+- ooc
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_imports
+  - include: repo_literals
+  - include: repo_block
+  - include: repo_function_decl
+  - include: repo_class_decl
+  - include: repo_interface_decl
+  - include: repo_cover_decl
+  - include: repo_function_call
+  - include: repo_variable_decl
+  - include: repo_member_access
+  repo_block:
+  - match: \{
+    push:
+    - meta_scope: meta.block.ooc
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_literals
+    - include: repo_block
+    - include: repo_function_decl
+    - include: repo_variable_decl
+    - include: repo_function_call
+    - include: repo_member_access
+  repo_class_decl:
+  - match: "(?mx)\n            ([_A-Z]\\w* \\s*) : \\s* (abstract\\s+)? (class)\n            (?:\n                \\s*<\\s*([^<]+)\\s*>\\s*\n            )?\n\t\t   (?:\n                \\s* (extends)\n            )?\n            "
+    scope: meta.class.ooc
+    captures:
+      1: entity.name.type.class.ooc
+      2: storage.modifier.abstract.ooc
+      3: storage.type.class.ooc
+      4: support.type.generic.ooc
+      5: storage.modifier.extends.class.ooc
+      6: entity.other.inherited-class.ooc
+  repo_comments:
+  - match: ^/\* =(\s*.*?)\s*= \*/$\n?
+    scope: comment.block.ooc
+    captures:
+      1: meta.toc-list.banner.block.ooc
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.ooc
+    push:
+    - meta_scope: comment.block.ooc
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.ooc
+  - match: \*/.*\n
+    scope: invalid.illegal.stray-comment-end.ooc
+  - match: ^// =(\s*.*?)\s*=\s*$\n?
+    scope: comment.line.banner.ooc
+    captures:
+      1: meta.toc-list.banner.line.ooc
+  - match: //
+    captures:
+      0: punctuation.definition.comment.ooc
+    push:
+    - meta_scope: comment.line.double-slash.ooc
+    - match: $\n?
+      pop: true
+    - match: (?>\\\s*\n)
+      scope: punctuation.separator.continuation.ooc
+  repo_cover_decl:
+  - match: "(?mx)\n            ([_A-Z]\\w* \\s*) : \\s* (cover)\n            (?:\n            (?:\n                \\s+(from)\\s+(?:([\\s\\w\\d_\\*]+?)\\s*(?= \\s extends | [/{;] | $) )\n            )\n            |\n            (?:\n                \\s+(extends)\\s+([_A-Z]\\w*)\\s*\n            )\n            )*\n            "
+    scope: meta.definition.cover.ooc
+    captures:
+      1: entity.name.type.cover.ooc
+      2: storage.type.cover.ooc
+      3: storage.modifier.extends.from.ooc
+      4: entity.other.inherited-class.overtype.ooc
+      5: storage.modifier.extends.cover.ooc
+      6: entity.other.inherited-class.supertype.ooc
+  repo_escaped_char:
+  - match: \\.
+    scope: constant.character.escape.ooc
+  repo_function_call:
+  - match: (?:((?:\.[a-z_]\w*)|(?:[a-z_]\w*)(?:~[a-z_]\w*)?))\(
+    captures:
+      1: support.function.any-method.ooc
+      2: support.function.any-method.ooc
+    push:
+    - meta_scope: meta.function.call.ooc
+    - match: \)
+      pop: true
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_literals
+    - include: repo_block
+    - include: repo_function_call
+    - include: repo_member_access
+  repo_function_decl:
+  - match: "(?mx)\n            \t        (operator\\s+(?:(?:[+\\-/\\*=!<>]|\\[\\])=?|\\[\\]|[<>=]|=|as))\n        \t            [\\s\\w~]*?\n        \t            \\("
+    captures:
+      1: entity.name.function.ooc
+    push:
+    - meta_scope: meta.function.operator.ooc
+    - match: "(?mx)\\)\n\n        \t\t\t(?:\\s*(->) \\s*\n        \t\t    (?:\n\t\t\t\t\t\t(?:(This) |\n        \t\t        ([A-Z_]\\w*))\n        \t\t        ([@*]*)\n        \t\t    ))?"
+      pop: true
+      captures:
+        1: keyword.other.return-type.ooc
+        2: storage.type.class.this.ooc
+        3: storage.type.ooc
+        4: storage.modifier.pointer-arith.ooc
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_parameters
+  - match: "(?mx)\n        \t\t        ([_a-z]\\w*) \\s* : \\s*\n        \t\t            ((?:(?:static|proto|inline|final|abstract)\\s+)*)\n        \t\t            (?:(extern|unmangled)(?:\\s*\\(([^\\)]+)\\))?\\s+\n        \t\t                ((?:(?:static|proto|inline|final|abstract)\\s+)*)\n        \t\t            )?\n        \t\t            \n        \t\t            (func)\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t(?:\\s*@)?\n\t\t\t\t\t\t\t\n        \t\t            (?:\\s*(~[A-Za-z_]\\w*))?\n                        \n                            (?:\n                                \\s*<\\s*([^<]+)\\s*>\n                            )?\n                            \n        \t\t            \\s* \\("
+    captures:
+      1: entity.name.function.ooc
+      10: storage.type.ooc
+      11: storage.modifier.pointer-arith.ooc
+      2: keyword.other.ooc
+      3: keyword.other.extern.ooc
+      4: support.function.c
+      5: keyword.other.ooc
+      6: storage.type.function.ooc
+      7: storage.modifier.func-tag.ooc
+      8: support.type.generic.ooc
+      9: keyword.other.return-type.ooc
+    push:
+    - meta_scope: meta.function.params.ooc
+    - match: "(?mx)\\)\n\t\t\t\t\t(?:\\s*(->) \\s*\n        \t\t    (?:\n\t\t\t\t\t\t(?:(This) | \n        \t\t        ([A-Z_]\\w*))\n        \t\t        ([@*]*)\n        \t\t    ))?"
+      pop: true
+      captures:
+        1: keyword.other.ooc
+        2: storage.type.class.this.ooc
+        3: storage.type.ooc
+        4: storage.modifier.pointer-arith.ooc
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_parameters
+  - match: "(?mx)\n        \t\t        ([_a-z]\\w*) \\s* : \\s*\n        \t\t            \n        \t\t            ((?:(?:static|proto|inline|final|abstract)\\s+)*)\n        \t\t            (?:(extern|unmangled)(?:\\s*\\(([^\\)]+)\\))?\\s+\n        \t\t                ((?:(?:static|proto|inline|final|abstract)\\s+)*)\n        \t\t            )?\n        \t\t            \n        \t\t            (func)\n\n        \t\t            (?:\\s*(~[A-Za-z_]\\w*))?\n                        \n                            (?:\n                                \\s*<\\s*([^<]+)\\s*>\n                            )?\n                            \n                            (?:\\s*(->) \\s*\n                \t\t    (?:\n\t\t\t\t\t\t\t\t(?:(This) |\n                \t\t        ([A-Z_]\\w*))\n                \t\t        ([@*]*)\n                \t\t    ))?\n        \t\t            "
+    scope: meta.function.noparams.ooc
+    captures:
+      1: entity.name.function.ooc
+      10: storage.type.class.this.ooc
+      11: storage.type.ooc
+      12: storage.modifier.pointer-arith.ooc
+      2: keyword.other.ooc
+      3: keyword.other.extern.ooc
+      4: support.function.c
+      5: keyword.other.ooc
+      6: storage.type.function.ooc
+      7: storage.modifier.func-tag.ooc
+      8: support.type.generic.ooc
+      9: keyword.other.return-type.ooc
+  repo_imports:
+  - match: \b(?:use|include|import)\b
+    push:
+    - meta_scope: keyword.control.import.ooc
+    - match: ;|$
+      pop: true
+    - include: repo_comments
+  repo_interface_decl:
+  - match: "(?mx)\n            ([_A-Z]\\w* \\s*) : \\s* (interface)\n            (?:\n                \\s*<\\s*([^<]+)\\s*>\\s*\n            )?\n            "
+    scope: meta.interface.ooc
+    captures:
+      1: entity.name.type.class.ooc
+      2: storage.modifier.abstract.ooc
+      3: storage.type.class.ooc
+      4: support.type.generic.ooc
+      5: storage.modifier.extends.class.ooc
+      6: entity.other.inherited-class.ooc
+  repo_keywords:
+  - match: \b(?:if|else|while|do|for|in|switch|match|case|return|break|continue|default)\b
+    scope: keyword.control.ooc
+  - match: \bthis\b
+    scope: variable.language.this.ooc
+  - match: \b(This)([@&*]*|\b)
+    scope: meta.type.class.this.ooc
+    captures:
+      1: storage.type.class.this.ooc
+      2: storage.modifier.pointer-arith.ooc
+  - match: (?:&&|\|\||\#|!)
+    scope: keyword.operator.logical.ooc
+  - include: repo_return_type
+  - match: (?:[<>!=]=|=>|[><])
+    scope: keyword.operator.comparison.ooc
+  - match: (?:[\*+\-/|&:]|<{2,3}|>{2,3})?=
+    scope: keyword.operator.assignment.ooc
+  - match: (?:[\*\-\+/|&]|<{2,3}|>{2,3})
+    scope: keyword.operator.arithmetic.ooc
+  - match: \b(?:true|false)\b
+    scope: constant.language.boolean.ooc
+  - match: \bnull\b
+    scope: constant.language.null.ooc
+  - match: \bconst\b
+    scope: keyword.other.directive.const.ooc
+  - match: \bstatic\b
+    scope: keyword.other.directive.static.ooc
+  - match: \b(as)\s*([A-Z_]\w*)([@&]*)
+    scope: meta.operator.as.ooc
+    captures:
+      1: keyword.operator.logical.as.ooc
+      2: storage.type.ooc
+      3: storage.modifier.pointer-arith.ooc
+  - match: \b(Func)\s*\(
+    captures:
+      1: storage.type.function.pointer.ooc
+    push:
+    - meta_scope: meta.function.pointer.ooc
+    - match: \)
+      pop: true
+    - include: repo_keywords
+    - include: repo_parameters
+  - match: (?mx)\bFunc\b
+    scope: meta.function.pointer.ooc
+    captures:
+      1: storage.type.function.pointer.ooc
+  repo_literals:
+  - include: repo_ooc_numbers
+  - include: repo_ooc_char
+  - include: repo_ooc_string
+  repo_member_access:
+  - match: ([a-zA-Z_]\w*)\s+(?=[a-zA-Z_])
+    scope: variable.other.accessed.ooc
+  repo_ooc_char:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.ooc
+    - match: ''''
+      pop: true
+    - include: repo_escaped_char
+  repo_ooc_numbers:
+  - match: (0c[0-7]+)
+    scope: constant.numeric.integer.octal.ooc
+  - match: (0x[0-9a-fA-F]+)
+    scope: constant.numeric.integer.hexadecimal.ooc
+  - match: (0b[01]+)
+    scope: constant.numeric.integer.binary.ooc
+  - match: "(?x) (?<! 0[bcx] ) (\n                            (?: (?:[0-9]*)\\.(?:[0-9]+) | (?:[0-9]+)\\.(?:[0-9]*) )\n                            (?: [eE][+\\-]?\\d+)?\n                        )"
+    scope: constant.numeric.float.ooc
+  - match: '(?x)\b([0-9]+)(?: [eE][+\-]?\d+)?'
+    scope: constant.numeric.integer.ooc
+  repo_ooc_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.ooc
+    - match: '"'
+      pop: true
+    - include: repo_escaped_char
+  repo_parameters:
+  - include: repo_comments
+  - include: repo_keywords
+  - match: ([_A-Z]\w*)([&@*]*)
+    scope: meta.function.nameless-typed.ooc
+    captures:
+      1: storage.type.ooc
+      2: storage.modifier.pointer-arith.ooc
+  - match: :\s*([A-Z_]\w*([@&*]*))
+    scope: meta.function.parameter.type.ooc
+    captures:
+      1: storage.type.ooc
+      2: storage.modifier.pointer-arith.ooc
+  - match: ([=.])?([a-zA-Z_]\w*)
+    scope: meta.function.parameter.name.ooc
+    captures:
+      1: keyword.operator.assignment.parameter.ooc
+      2: variable.parameter.ooc
+  repo_return_type:
+  - match: "(?mx)\n\t\t    (\\-\\>) \\s*\n\t\t    (?:\n\t\t\t\t(?:(This) |\n\t\t        ([A-Z_]\\w*))\n\t\t        ([@*]*)\n\t\t    )"
+    scope: meta.function.return-type.ooc
+    captures:
+      1: keyword.other.return-type.ooc
+      2: storage.type.class.this.ooc
+      3: storage.type.ooc
+      4: storage.modifier.pointer-arith.ooc
+  repo_var_explicit_decl:
+  - match: '[_a-zA-Z]\w*\s*(?=,|:[^=])'
+    captures:
+      0: variable.other.ooc
+    push:
+    - meta_scope: meta.definition.variable.explicit.ooc
+    - match: "(?mx)(?:\n\t\t\t(?:\n\t\t\t    :\\s*\n\t\t\t    (?:\n\t\t\t        (?:\n\t\t\t            (?:\n\t\t\t                (static) |\n\t\t\t                (const) |\n\t\t\t                (extern) (?:\\s* \\( \\s* ([^\\)]+) \\s* \\) )?\n\t\t\t            ) \\s+\n\t\t\t        )*\n                )\n\t\t\t    (?: (?: (This) | ([A-Z_]\\w*)) ([@&]*) )\n\t\t\t\t(?: \\s* \\<\\s*([A-Z_]\\w*)\\s*\\> )?\n\t\t\t) | ; | $ )"
+      pop: true
+      captures:
+        1: keyword.other.ooc
+        2: keyword.other.ooc
+        3: keyword.other.ooc
+        4: storage.type.c
+        5: storage.type.class.this.ooc
+        6: storage.type.ooc
+        7: storage.modifier.pointer-arith.ooc
+        8: support.type.generic.ooc
+    - include: repo_comments
+    - match: '[_a-zA-Z]\w*'
+      scope: variable.other.ooc
+  repo_var_inferred_decl:
+  - match: (?x)([a-zA-Z_]\w*)\s*(?= := )
+    scope: meta.definition.variable.inferred.ooc
+    captures:
+      1: variable.other.ooc
+      2: storage.type.ooc
+  repo_variable_decl:
+  - include: repo_var_inferred_decl
+  - include: repo_var_explicit_decl

@@ -1,0 +1,719 @@
+%YAML 1.2
+---
+# sed (source.sed): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-sed via GitHub Linguist v9.7.0 (license: isc).
+name: sed
+scope: source.sed
+file_extensions:
+- sed
+first_line_match: ^#!.*\b(gsed|minised|sed|ssed)\b
+contexts:
+  main:
+  - match: \A#!
+    captures:
+      0: punctuation.definition.comment.sed
+    push:
+    - meta_scope: comment.line.number-sign.hashbang.sed
+    - match: $
+      pop: true
+  - include: repo_main
+  repo_addresses:
+  - match: ([0-9]+)\s*(,)\s*([0-9]+)(?:\s*(!))?
+    scope: meta.address.numbered.range.sed
+    captures:
+      1: constant.numeric.integer.start-index.sed
+      2: keyword.operator.address.range.comma.sed
+      3: constant.numeric.integer.end-index.sed
+      4: keyword.operator.logical.not.negation.sed
+  - match: ([0-9]+)\s*(~)\s*([0-9]+)(?:\s*(!))?
+    scope: meta.address.numbered.range.step.gnu.sed
+    captures:
+      1: constant.numeric.integer.start-index.sed
+      2: keyword.operator.address.range.tilde.gnu.sed
+      3: constant.numeric.integer.step-size.sed
+      4: keyword.operator.logical.not.negation.sed
+  - match: ([0-9]+)(?:\s*(!))?
+    scope: meta.address.numbered.sed
+    captures:
+      1: constant.numeric.integer.line-index.sed
+      2: keyword.operator.logical.not.negation.sed
+  - match: \$
+    scope: meta.address.last-line.sed
+    captures:
+      0: constant.language.anchor.last-line.sed
+  - match: /
+    captures:
+      0: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.address.pattern.sed
+    - meta_content_scope: string.regexp.address.sed
+    - match: (/)([IM]*)(?:\s*(!))?|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: meta.flags.sed
+        3: keyword.operator.logical.not.negation.sed
+    - include: repo_regexp
+  - match: \\(.)
+    captures:
+      0: punctuation.delimiter.address.begin.sed
+    push:
+    - meta_scope: meta.address.pattern.custom-delimiter.sed
+    - meta_content_scope: string.regexp.address.sed
+    - match: (\1)([IM]*)(?:\s*(!))?|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.address.end.sed
+        2: meta.modifier.flags.sed
+        3: keyword.operator.logical.not.negation.sed
+    - include: repo_regexp
+  - match: (,)(\s*(?:(\+)|(~)))?\s*([0-9]*)(?:\s*(!))?
+    captures:
+      1: keyword.operator.address.range.comma.sed
+      2: meta.address.range.nth-line.gnu.sed
+      3: keyword.operator.arithmetic.plus.gnu.sed
+      4: keyword.operator.arithmetic.tilde.gnu.sed
+      5: constant.numeric.integer.line-index.sed
+      6: keyword.operator.logical.not.negation.sed
+  repo_braces:
+  - match: '{'
+    captures:
+      0: punctuation.section.scope.begin.sed
+    push:
+    - meta_scope: meta.group.sed
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.sed
+    - include: repo_main
+  repo_commands:
+  - match: '[Dd]'
+    scope: keyword.control.delete.command.sed
+  - match: '[Pp]'
+    scope: keyword.control.print.command.sed
+  - match: '[Hh]'
+    scope: keyword.control.replace-hold.command.sed
+  - match: '[Gg]'
+    scope: keyword.control.replace-pattern.command.sed
+  - match: x
+    scope: keyword.control.exchange.command.sed
+  - match: F
+    scope: keyword.control.print.filename.gnu.sed
+  - match: n
+    scope: keyword.control.skip.command.sed
+  - match: N
+    scope: keyword.control.print.newline.sed
+  - match: '='
+    scope: keyword.control.print.line-number.sed
+  - match: z
+    scope: keyword.control.zap.gnu.sed
+  - match: (l)(?:\s*([0-9]+))?
+    captures:
+      1: keyword.control.print.unambiguously.sed
+      2: variable.parameter.line-length.gnu.sed
+  - match: (?:(q)|(Q))(?:\s*([0-9]+))?
+    captures:
+      1: keyword.control.quit.command.sed
+      2: keyword.control.quit.silently.command.gnu.sed
+      3: variable.parameter.exit-code.gnu.sed
+  - match: (?:(r)|(R))\s*(\S.*)$
+    captures:
+      1: keyword.control.read.file.command.sed
+      2: keyword.control.read.file.line.command.gnu.sed
+      3: string.unquoted.filename.sed
+  - match: (?:(w)|(W))\s*(\S.*)$
+    captures:
+      1: keyword.control.write.file.command.sed
+      2: keyword.control.write.file.command.gnu.sed
+      3: string.unquoted.filename.sed
+  - match: (:)\s*([^\s;#}]+)
+    scope: meta.label.sed
+    captures:
+      1: storage.type.function.label.sed
+      2: entity.name.function.label.sed
+  - match: (?:([bt])|(T))(?:\s*([^\s;#}]+))?
+    scope: meta.branch.sed
+    captures:
+      1: keyword.control.branch.sed
+      2: keyword.control.branch.inverse.gnu.sed
+      3: entity.name.function.label.sed
+  - match: (e)\s*
+    captures:
+      1: keyword.control.execute.sed
+    push:
+    - meta_scope: meta.execution.sed
+    - meta_content_scope: string.unquoted.herestring.sed
+    - match: $
+      pop: true
+    - include: repo_escape
+  - match: (v)(?:\s*([^\s;#}]+))?
+    captures:
+      1: keyword.control.version.gnu.sed
+      2: constant.other.version-string.sed
+  repo_comment:
+  - match: \A(#)n
+    captures:
+      0: keyword.control.directive.no-autoprint.sed
+      1: punctuation.definition.directive.sed
+    push:
+    - meta_content_scope: comment.line.number-sign.sed
+    - match: $
+      pop: true
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.sed
+    push:
+    - meta_scope: comment.line.number-sign.sed
+    - match: $
+      pop: true
+  repo_escape:
+  - match: \\$\s*
+    push:
+    - meta_scope: constant.character.escape.newline.sed
+    - match: ^
+      pop: true
+  - match: \\t
+    scope: constant.character.tab.sed
+  - match: \\n
+    scope: constant.character.newline.sed
+  - match: \\.
+    scope: constant.character.escape.sed
+  repo_flags:
+  - match: g
+    scope: keyword.operator.modifier.global.sed
+  - match: p
+    scope: keyword.operator.modifier.print.sed
+  - match: '[0-9]+'
+    scope: keyword.operator.modifier.limit-match.sed
+  - match: (w)\s*([^;#}]*)
+    captures:
+      1: keyword.operator.modifier.write.file.sed
+      2: string.unquoted.filename.sed
+  - match: e
+    scope: keyword.operator.modifier.exec-shell.gnu.sed
+  - match: I|i
+    scope: keyword.operator.modifier.ignore-case.gnu.sed
+  - match: M|m
+    scope: keyword.operator.modifier.multi-line.gnu.sed
+  - match: '[^;\s#}gp0-9eIiMm]+'
+    scope: invalid.illegal.unknown.flag.sed
+  repo_insertion:
+  - match: '[aic](\\)$\s*'
+    captures:
+      0: keyword.control.insertion.command.sed
+      1: constant.character.escape.newline.sed
+    push:
+    - meta_scope: meta.insertion.sed
+    - meta_content_scope: string.unquoted.herestring.sed
+    - match: $
+      pop: true
+    - include: repo_escape
+  - match: '[aic]'
+    captures:
+      0: keyword.control.insertion.command.sed
+    push:
+    - meta_scope: meta.insertion.gnu.sed
+    - meta_content_scope: string.unquoted.herestring.sed
+    - match: $
+      pop: true
+    - include: repo_escape
+  repo_main:
+  - include: repo_comment
+  - include: repo_substitution
+  - include: repo_transliteration
+  - include: repo_insertion
+  - include: repo_addresses
+  - include: repo_semicolon
+  - include: repo_braces
+  - include: repo_commands
+  repo_reference:
+  - match: \\[0-9]
+    scope: variable.language.reference.sed
+  repo_regexp:
+  - match: \.
+    scope: constant.language.wildcard.dot.match.any.sed
+  - match: \^
+    scope: constant.language.anchor.line-start.sed
+  - match: \$
+    scope: constant.language.anchor.line-end.sed
+  - match: \*
+    scope: constant.language.quantifier.min-0.sed
+  - match: \\?\+
+    scope: constant.language.quantifier.min-1.sed
+  - match: \\?\?
+    scope: constant.language.quantifier.max-1.sed
+  - match: \\?\|
+    scope: constant.language.alternation.disjunction.sed
+  - match: \\?\(
+    scope: constant.language.group.begin.sed
+  - match: \\?\)
+    scope: constant.language.group.end.sed
+  - include: repo_reference
+  - include: repo_regexp.miscEscapes
+  - include: repo_regexp.quantiferRanges
+  - include: repo_regexp.bracketExpression
+  - include: repo_regexp.gnuCharacterEscapes
+  - include: repo_regexp.gnuEscapes
+  - include: repo_escape
+  repo_regexp.bracketExpression:
+  - match: (\[)(\^)?\]?
+    captures:
+      1: punctuation.definition.character-class.begin.sed
+      2: keyword.operator.logical.not.sed
+    push:
+    - meta_scope: string.regexp.character-class.sed
+    - match: \]|(?=$)
+      pop: true
+      captures:
+        0: punctuation.definition.character-class.end.sed
+    - match: (?<!)-(?!$|\])
+      scope: punctuation.separator.range.dash.sed
+    - match: (\[:)(?:(alnum|alpha|blank|cntrl|digit|graph|lower|print|punct|space|upper|xdigit)|(.*?))(\:])
+      scope: constant.language.named.character-class.sed
+      captures:
+        1: punctuation.definition.character-class.begin.sed
+        2: support.constant.posix-class.sed
+        3: invalid.illegal.unknown.character-class.sed
+        4: punctuation.definition.character-class.end.sed
+    - match: \[\.
+      captures:
+        0: punctuation.definition.collating-symbol.begin.sed
+      push:
+      - meta_scope: constant.language.collating-symbol.sed
+      - match: \.\]|(?=$)
+        pop: true
+        captures:
+          0: punctuation.definition.collating-symbol.end.sed
+      - include: repo_escape
+    - match: \[=
+      captures:
+        0: punctuation.definition.equivalence-class.begin.sed
+      push:
+      - meta_scope: constant.language.equivalence-class.sed
+      - match: =\]
+        pop: true
+        captures:
+          0: punctuation.definition.equivalence-class.end.sed
+      - include: repo_escape
+    - include: repo_escape
+  repo_regexp.gnuCharacterEscapes:
+  - match: \\a
+    scope: constant.character.escape.alert.gnu.sed
+  - match: \\f
+    scope: constant.character.escape.form-feed.gnu.sed
+  - match: \\r
+    scope: constant.character.escape.carriage-return.gnu.sed
+  - match: \\t
+    scope: constant.character.escape.tab.gnu.sed
+  - match: \\v
+    scope: constant.character.escape.vertical-tab.gnu.sed
+  - match: \\c.
+    scope: constant.character.escape.control-x.gnu.sed
+  - match: \\d[0-9]{3}
+    scope: constant.character.escape.decimal.codepoint.gnu.sed
+  - match: \\o[0-7]{3}
+    scope: constant.character.escape.octal.codepoint.gnu.sed
+  - match: \\x[0-9A-Fa-f]{2}
+    scope: constant.character.escape.hex.codepoint.gnu.sed
+  repo_regexp.gnuEscapes:
+  - match: \\[Ll]
+    scope: keyword.operator.lowercase.conversion.gnu.sed
+  - match: \\[Uu]
+    scope: keyword.operator.uppercase.conversion.gnu.sed
+  - match: \\E
+    scope: keyword.operator.end.conversion.gnu.sed
+  - match: \\w
+    scope: constant.language.word-character.gnu.sed
+  - match: \\W
+    scope: constant.language.word-character.negated.gnu.sed
+  - match: \\b
+    scope: constant.language.word-boundary.gnu.sed
+  - match: \\B
+    scope: constant.language.word-boundary.negated.gnu.sed
+  - match: \\s
+    scope: constant.language.whitespace-character.gnu.sed
+  - match: \\S
+    scope: constant.language.whitespace-character.negated.gnu.sed
+  - match: \\<
+    scope: constant.language.anchor.beginning-of-word.gnu.sed
+  - match: \\>
+    scope: constant.language.anchor.end-of-word.gnu.sed
+  - match: \\`
+    scope: constant.language.anchor.start-of-pattern.gnu.sed
+  - match: \\'
+    scope: constant.language.anchor.end-of-pattern.gnu.sed
+  repo_regexp.miscEscapes:
+  - match: \\\$
+    scope: constant.character.escape.dollar-sign.sed
+  - match: \\\*
+    scope: constant.character.escape.asterisk.sed
+  - match: \\\.
+    scope: constant.character.escape.dot.period.sed
+  - match: \\\[
+    scope: constant.character.escape.square.bracket.sed
+  - match: \\{2}
+    scope: constant.character.escape.backslash.sed
+  - match: \\\^
+    scope: constant.character.escape.caret.sed
+  repo_regexp.quantiferRanges:
+  - match: (\\{)([0-9]+)(?:(,)([0-9]+)?)?(\\})
+    scope: meta.escaped.quantifier.specific.range.sed
+    captures:
+      1: punctuation.definition.quantifier.bracket.curly.begin.sed
+      2: constant.numeric.integer.sed
+      3: punctuation.separator.range.comma.sed
+      4: constant.numeric.integer.sed
+      5: punctuation.definition.quantifier.bracket.curly.end.sed
+  - match: ({)([0-9]+)(?:(,)([0-9]+)?)?(})
+    scope: meta.unescaped.quantifier.specific.range.sed
+    captures:
+      1: punctuation.definition.quantifier.bracket.curly.begin.sed
+      2: constant.numeric.integer.sed
+      3: punctuation.separator.range.comma.sed
+      4: constant.numeric.integer.sed
+      5: punctuation.definition.quantifier.bracket.curly.end.sed
+  repo_replacement.innards:
+  - match: '&'
+    scope: variable.language.input.sed
+  - include: repo_reference
+  - include: repo_escape
+  repo_semicolon:
+  - match: ;
+    scope: punctuation.terminator.statement.semicolon.sed
+  repo_substitution:
+  - match: (s)(#)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.substitution.pound-delimiter.sed
+    - match: (#)([^;#}]*+)|(?=$|[;#}])
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: meta.options.sed
+    - match: ''
+      push:
+      - meta_scope: meta.match-pattern.sed
+      - meta_content_scope: string.regexp.substitution.search.sed
+      - match: '#|(?=$)'
+        pop: true
+        captures:
+          0: punctuation.delimiter.pattern.middle.sed
+      - include: repo_regexp
+    - match: (?<=#)
+      push:
+      - meta_scope: meta.replacement.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)(?=#)|(?=$)
+        pop: true
+      - include: repo_replacement.innards
+    - include: repo_escape
+  - match: (s)(;)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.substitution.semicolon-delimiter.sed
+    - match: (;)([^;#}]*+)|(?=$|[;#}])
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: meta.options.sed
+    - match: ''
+      push:
+      - meta_scope: meta.match-pattern.sed
+      - meta_content_scope: string.regexp.substitution.search.sed
+      - match: ;|(?=$)
+        pop: true
+        captures:
+          0: punctuation.delimiter.pattern.middle.sed
+      - include: repo_regexp
+    - match: (?<=;)
+      push:
+      - meta_scope: meta.replacement.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)(?=;)|(?=$)
+        pop: true
+      - include: repo_replacement.innards
+    - include: repo_escape
+  - match: (s)(})
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.substitution.brace-delimiter.sed
+    - match: (})([^;#}]*+)|(?=$|[;#}])
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: meta.options.sed
+    - match: ''
+      push:
+      - meta_scope: meta.match-pattern.sed
+      - meta_content_scope: string.regexp.substitution.search.sed
+      - match: '}|(?=$)'
+        pop: true
+        captures:
+          0: punctuation.delimiter.pattern.middle.sed
+      - include: repo_regexp
+    - match: (?<=})
+      push:
+      - meta_scope: meta.replacement.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)(?=})|(?=$)
+        pop: true
+      - include: repo_replacement.innards
+    - include: repo_escape
+  - match: s
+    captures:
+      0: keyword.control.command.sed
+    push:
+    - meta_scope: meta.substitution.sed
+    - match: $|(?<=^)|(?=[;#}])
+      pop: true
+    - match: (.)
+      captures:
+        1: punctuation.delimiter.pattern.begin.sed
+      push:
+      - meta_scope: meta.match-pattern.sed
+      - meta_content_scope: string.regexp.substitution.search.sed
+      - match: -?(?=\1|$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_regexp
+    - match: ([^;#}])
+      captures:
+        1: punctuation.delimiter.pattern.middle.sed
+      push:
+      - meta_scope: meta.replacement.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (\1)([^;#}]*+)|(?=$)
+        pop: true
+        captures:
+          1: punctuation.delimiter.pattern.end.sed
+          2: meta.options.sed
+      - include: repo_replacement.innards
+  repo_transliteration:
+  - match: 'y {2}[^ ]*(?: |$)|y\t{2}[^\t]*(?:\t|$)'
+    scope: invalid.illegal.syntax.transliteration.sed
+  - match: (y)( )
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.whitespace.begin.sed
+    push:
+    - meta_scope: meta.transliteration.space-delimiter.sed
+    - match: ( )([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.whitespace.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?( )|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.whitespace.middle.sed
+      - include: repo_transliteration.ranges
+    - match: (?<= )
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)-?(?= )|(?=$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - include: repo_escape
+  - match: (y)(\t)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.whitespace.begin.sed
+    push:
+    - meta_scope: meta.transliteration.tab-delimiter.sed
+    - match: (\t)([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.whitespace.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?(\t)|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.whitespace.middle.sed
+      - include: repo_transliteration.ranges
+    - match: (?<=\t)
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)-?(?=\t)|(?=$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - include: repo_escape
+  - match: (y)(;)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.transliteration.semicolon-delimiter.sed
+    - match: (;)([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?(;)|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.pattern.middle.sed
+      - include: repo_transliteration.ranges
+    - match: (?<=;)
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)-?(?=;)|(?=$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - include: repo_escape
+  - match: (y)(})
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.transliteration.brace-delimiter.sed
+    - match: (})([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?(})|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.pattern.middle.sed
+      - include: repo_transliteration.ranges
+    - match: (?<=})
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)-?(?=})|(?=$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - include: repo_escape
+  - match: (y)(#)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.transliteration.pound-delimiter.sed
+    - match: (#)([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?(#)|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.pattern.middle.sed
+      - include: repo_transliteration.ranges
+    - match: (?<=#)
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?!)-?(?=#)|(?=$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - include: repo_escape
+  - match: (y)(-)
+    captures:
+      1: keyword.control.command.sed
+      2: punctuation.delimiter.pattern.begin.sed
+    push:
+    - meta_scope: meta.transliteration.dash-delimiter.sed
+    - match: (-)([^#;}]*)|$
+      pop: true
+      captures:
+        1: punctuation.delimiter.pattern.end.sed
+        2: invalid.illegal.extra-characters.sed
+    - match: ''
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: -|(?=$)
+        pop: true
+        captures:
+          0: punctuation.delimiter.pattern.middle.sed
+      - include: repo_escape
+    - match: (?<=-)
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (?=$|-)
+        pop: true
+      - include: repo_escape
+    - include: repo_escape
+  - match: y
+    captures:
+      0: keyword.control.command.sed
+    push:
+    - meta_scope: meta.transliteration.sed
+    - match: $|(?=[\s#;}])|(?<=^)
+      pop: true
+    - match: (.)
+      captures:
+        1: punctuation.delimiter.pattern.begin.sed
+      push:
+      - meta_scope: meta.source-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: -?(?=\1|$)
+        pop: true
+        captures:
+          0: string.quoted.double.sed
+      - include: repo_transliteration.ranges
+    - match: (.)
+      captures:
+        1: punctuation.delimiter.pattern.middle.sed
+      push:
+      - meta_scope: meta.replacement-characters.sed
+      - meta_content_scope: string.quoted.double.sed
+      - match: (-)?(\1)([^#;}]*+)|(?=$)
+        pop: true
+        captures:
+          1: string.quoted.double.sed
+          2: punctuation.delimiter.pattern.end.sed
+          3: invalid.illegal.extra-characters.sed
+      - include: repo_transliteration.ranges
+  repo_transliteration.ranges:
+  - match: '-'
+  - match: '-'
+    scope: keyword.operator.range.dash.sed
+  - include: repo_escape

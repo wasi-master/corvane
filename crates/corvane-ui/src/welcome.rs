@@ -376,7 +376,7 @@ impl WelcomeView {
                             .line_height(px(WELCOME_FONT_MD * 1.5))
                             .child(
                                 paragraph(vec![
-                                    "New to GitHub?".into(),
+                                    "New to GitHub? ".into(),
                                     link_button(
                                         "welcome-create-account",
                                         "Create your free account.",
@@ -393,7 +393,6 @@ impl WelcomeView {
                                     .into_any_element()
                                     .into(),
                                 ])
-                                .gap_x(px(4.5))
                                 .line_height(px(WELCOME_FONT_MD * 1.5))
                                 .my(px(10.)),
                             )
@@ -421,14 +420,14 @@ impl WelcomeView {
                     .text_color(t.text_secondary)
                     .child(
                         paragraph(vec![
-                            "By creating an account, you agree to the".into(),
+                            "By creating an account, you agree to the ".into(),
                             footer_link(
                                 "welcome-terms",
                                 "Terms of Service",
                                 "https://github.com/site/terms",
                                 cx,
                             ),
-                            ". For more information about GitHub's privacy practices, see the"
+                            ". For more information about GitHub's privacy practices, see the "
                                 .into(),
                             footer_link(
                                 "welcome-privacy",
@@ -820,7 +819,7 @@ fn email_not_found_warning(account: &corvane_core::Account, email: &str, cx: &Ap
         parts.push(
             format!(
                 "⚠️This email address does not match your {kind} account. Your commits \
-                 will be wrongly attributed."
+                 will be wrongly attributed. "
             )
             .into(),
         );
@@ -841,7 +840,6 @@ fn email_not_found_warning(account: &corvane_core::Account, email: &str, cx: &Ap
     Some(
         paragraph(parts)
             .mt(px(10.))
-            .gap_x(px(4.5))
             .line_height(px(WELCOME_FONT_MD * 1.5)),
     )
 }
@@ -894,6 +892,11 @@ impl Render for WelcomeView {
         if self.autofocus && self.step == Step::Start {
             self.autofocus = false;
             window.focus(&self.sign_in_focus, cx);
+        }
+        if self.step == Step::ConfigureGit {
+            // the example commit's avatar, as `CommitListItem` fetches it
+            let (_, email) = self.author(cx);
+            Dispatcher::request_avatar_for_email(&email, cx);
         }
         let t = cx.ghd();
         let content: AnyElement = match self.step {

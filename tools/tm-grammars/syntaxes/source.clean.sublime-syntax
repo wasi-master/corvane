@@ -1,0 +1,121 @@
+%YAML 1.2
+---
+# Clean (source.clean): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/atom-language-clean via GitHub Linguist v9.7.0 (license: mit).
+name: Clean
+scope: source.clean
+file_extensions:
+- icl
+- dcl
+contexts:
+  main:
+  - include: repo_marks
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_literals
+  - include: repo_operators
+  - include: repo_delimiters
+  repo_commentBlock:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.clean
+    push:
+    - meta_scope: comment.block.clean
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.clean
+  repo_commentDoc:
+  - match: /\*\*
+    captures:
+      0: punctuation.definition.comment.documentation.begin.clean
+    push:
+    - meta_scope: comment.block.documentation
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.documentation.begin.clean
+    - include: scope:text.md
+  repo_commentLine:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.clean
+    push:
+    - meta_scope: comment.line.double-slash.clean
+    - match: $
+      pop: true
+  repo_comments:
+  - include: repo_commentDoc
+  - include: repo_commentBlock
+  - include: repo_commentLine
+  repo_delimiters:
+  - match: '[,;(){}]'
+    scope: punctuation.separator
+  repo_keywordGeneral:
+  - match: \b(if|let|in|with|where|case|of|class|instance)\b
+    scope: keyword.control.clean
+  repo_keywordImport:
+  - match: \b(implementation|definition|system|module|from|import|qualified|as)\b
+    scope: keyword.control.import.clean
+  repo_keywordReserved:
+  - match: \b(special|code|inline|foreign|export|ccall|stdcall|generic|derive|infix(l|r)?|otherwise|dynamic)\b
+    scope: keyword.reserved.clean
+  repo_keywords:
+  - include: repo_keywordGeneral
+  - include: repo_keywordImport
+  - include: repo_keywordReserved
+  repo_literalBool:
+  - match: \b(True|False)\b
+    scope: constant.language.boolean.clean
+  repo_literalChar:
+  - match: '''([^''\\]|\\(x[0-9a-fA-F]+|\d+|.))'''
+    scope: constant.character.clean
+  repo_literalHex:
+  - match: \b[+~-]?0x[0-9A-Fa-f]+\b
+    scope: constant.numeric.integer.hexadecimal.clean
+  repo_literalInt:
+  - match: \b[+~-]?[0-9]+\b
+    scope: constant.numeric.integer.decimal.clean
+  repo_literalOct:
+  - match: \b[+~-]?0[0-7]+\b
+    scope: constant.numeric.integer.octal.clean
+  repo_literalReal:
+  - match: \b[+~-]?[0-9]+\.[0-9]+(E[+-]?[0-9]+)?\b
+    scope: constant.numeric.float.clean
+  repo_literalString:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.clean
+    push:
+    - meta_scope: string.quoted.double.clean
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.clean
+  repo_literals:
+  - include: repo_literalChar
+  - include: repo_literalInt
+  - include: repo_literalOct
+  - include: repo_literalHex
+  - include: repo_literalReal
+  - include: repo_literalBool
+  - include: repo_literalString
+  repo_mark:
+  - match: '/// #+ '
+    captures:
+      0: punctuation.definition.comment.clean
+    push:
+    - meta_scope: markup.heading.clean
+    - match: $
+      pop: true
+  repo_marks:
+  - include: repo_mark
+  repo_operatorComposition:
+  - match: \s+o\s+
+    scope: keyword.operator.composition.clean
+  repo_operatorGeneral:
+  - match: '[-~@#$%^?!+*<>\\/|&=:.]+'
+    scope: keyword.operator.clean
+  repo_operators:
+  - include: repo_operatorGeneral
+  - include: repo_operatorComposition

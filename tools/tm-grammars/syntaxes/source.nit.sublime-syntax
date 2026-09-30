@@ -1,0 +1,123 @@
+%YAML 1.2
+---
+# Nit (source.nit): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/Sublime-Nit via GitHub Linguist v9.7.0 (license: wtfpl).
+name: Nit
+scope: source.nit
+file_extensions:
+- nit
+contexts:
+  main:
+  - include: repo_strings
+  - include: repo_markup
+  - include: repo_comments
+  - include: repo_keyword
+  - include: repo_constant
+  - include: repo_storage
+  - include: repo_variable
+  - include: repo_entity
+  repo_character:
+  - match: ('[^\\']'|'\\.')
+    scope: string.character.nit
+  repo_comment-single-line:
+  - match: '#.*'
+    scope: comment.singleline.nit
+  repo_comments:
+  - include: repo_comment-single-line
+  repo_constant:
+  - match: -?(([0-9]*.[0-9])|([0-9]+))+e-?[0-9]+
+    scope: constant.numeric.float_exp.nit
+  - match: -?[0-9]*\.[0-9]+
+    scope: constant.numeric.float.nit
+  - match: -?0(x|X)[0-9A-Fa-f_]+((u|i)(8|(16)|(32)))?
+    scope: constant.numeric.hex.nit
+  - match: -?0(o|O)[0-7_]+((u|i)(8|(16)|(32)))?
+    scope: constant.numeric.oct.nit
+  - match: -?0(b|B)[0-1_]+((u|i)(8|(16)|(32)))?
+    scope: constant.numeric.bin.nit
+  - match: -?[0-9][0-9_]*((u|i)(8|(16)|(32)))?
+    scope: constant.numeric.dec.nit
+  - match: \b(true|false|null)\b
+    scope: constant.language.nit
+  repo_entity:
+  - match: '[A-Z][a-zA-Z0-9_]*'
+    scope: entity.name.type.nit
+  - match: _[a-z][a-zA-Z0-9_]*
+    scope: entity.other.attribute-name.nit
+  repo_inlongstring-code:
+  - match: '{{{'
+    push:
+    - meta_scope: incode.nit
+    - match: '}}}'
+      pop: true
+    - include: main
+  repo_inshortstring-code:
+  - match: '{'
+    push:
+    - meta_scope: string.quoted.double.untitled
+    - match: '}'
+      pop: true
+    - include: main
+  repo_keyword:
+  - match: \b(label|if|then|loop|else|while|for|do|end|in|with)\b
+    scope: keyword.control.nit
+  - match: \b(return|continue|break|abort)\b
+    scope: keyword.breaks.nit
+  - match: \b(nullable|once|new|var)\b
+    scope: keyword.declaration.nit
+  - match: \b(is)\b
+    scope: keyword.annot.nit
+  - match: \b(isa|as|type|isset)\b
+    scope: keyword.types.nit
+  - match: \b(assert|__debug__|super|implies)\b
+    scope: keyword.misc.nit
+  - match: (==|\+=|-=|!=|=|!|@|<=>|<=|<<|<|>=|>>|>|\(|\)|\[|\]|,|::|:|\.\.\.|\.\.|\.|\+|-|\*\*|\*|/|%|)
+    scope: keyword.operator.nit
+  - match: \b(and|not|or)\b
+    scope: keyword.operator.boolean.nit
+  repo_long-tquote-alt-string:
+  - match: ''''''''
+    push:
+    - meta_scope: string.triple.alt.nit
+    - match: ''''''''
+      pop: true
+    - include: repo_inlongstring-code
+  repo_long-tquote-string:
+  - match: \"\"\"
+    push:
+    - meta_scope: string.triple.nit
+    - match: \"\"\"
+      pop: true
+    - include: repo_inlongstring-code
+    - match: ([^\\]|\\.)
+      scope: string.char.nit
+  repo_markup:
+  - match: '`{'
+    push:
+    - meta_scope: markup.raw.nit
+    - match: '`}'
+      pop: true
+  repo_simple-string:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double.untitled
+    - match: \"
+      pop: true
+    - include: repo_inshortstring-code
+    - match: ([^\\]|\\.)
+      scope: string.char.nit
+  repo_storage:
+  - match: \b(fun|init|redef|class|interface|module|import|package|abstract|universal|enum)\b
+    scope: storage.type.nit
+  - match: \b(private|protected|public|intrude|extern)\b
+    scope: storage.modifier.nit
+  repo_strings:
+  - include: repo_long-tquote-alt-string
+  - include: repo_long-tquote-string
+  - include: repo_simple-string
+  - include: repo_character
+  repo_variable:
+  - match: \b(self)\b
+    scope: variable.language.nit
+  - match: '[a-z][a-zA-Z0-9_]*'
+    scope: variable.other.nit

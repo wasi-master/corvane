@@ -24,7 +24,7 @@ Reference artefacts for the port live in `docs/reference/`:
 | Git engine | Hybrid: `gix 0.88` for reads; system `git` CLI (≥2.40) for writes + network. Detect git at launch, `InstallGit` dialog if missing. |
 | GitHub auth | OAuth device flow (no client secret) with PAT paste fallback. Tokens in macOS Keychain via `keyring 4`. GHES: the same flows with an administrator-registered OAuth app (client ID entered per host or `CORVANE_GHES_OAUTH` at build time), else PAT. |
 | HTTP | `ureq 3` (blocking, rustls) on background threads. No tokio in v1. `octocrab` evaluated and rejected 2026-09-30 (0.54.2: +1.56 MB release binary, +61 crates incl. tokio/hyper/tower and mandatory JWT/RSA crypto, cold `corvane-github` build 37 s → 196 s, a tokio runtime bridge that serialises our background threads; its only gain, retries/rate-limit backoff, is a small wrapper on `get_json_accept`). GraphQL, if ever needed: `graphql_client` 0.16 codegen only (`graphql_query_derive`, no reqwest) posted with ureq `send_json` (+66 KB, +6 crates, no duplicates); GHES GraphQL is `<host>/api/graphql`, not under `/api/v3`. |
-| Highlighting | `syntect 5.3` + `two-face` grammars, line-stateful, diff-lines only, first 256 KB. Core grammar set bundled; extended set is an on-demand pack. Since 2026-09-30 GHD's CodeMirror modes are ported (`corvane-highlight::cm`) and an opt-in tree-sitter engine (flag `105-tree-sitter-highlighting`) runs ~100 grammars from `corvane-grammars`, shipped as native `tree-sitter-all` / `tree-sitter-rest` packs. |
+| Highlighting | `syntect 5.3` + `two-face` grammars, line-stateful, diff-lines only, first 256 KB. Core grammar set bundled; extended set is an on-demand pack. Since 2026-09-30 GHD's CodeMirror modes are ported (`corvane-highlight::cm`) and an opt-in tree-sitter engine (flag `105-tree-sitter-highlighting`) runs 317 grammars from `corvane-grammars`, shipped as native `tree-sitter-all` / `tree-sitter-rest` packs (one gzipped library per grammar, unpacked on first use); the core syntect set adds 330 TextMate grammars from GitHub Linguist (`tools/tm-grammars`). |
 | Storage | `redb 4` single file `~/Library/Application Support/Corvane/corvane.redb`. |
 | Updates | Custom in-app self-updater (M7): GitHub Releases as feed, minisign-verified `.zip`, swap `Corvane.app` in place, relaunch. "Update available" banner from M0. Velopack rejected: its macOS flow requires paid signing + notarization. |
 | Distribution | Homebrew tap cask (primary install path) + `.zip`/`.dmg` on GitHub Releases. Ad-hoc signed; no Apple Developer ID (hobby project, see R5). |
@@ -150,9 +150,9 @@ Manifest `packs/manifest.json` on GitHub Releases: `{name, version, min_app, url
 
 | Pack | Default build | Full build | Trigger |
 |---|---|---|---|
-| `syntax-core` (≈30 langs, syntect dump) | bundled | bundled | — |
+| `syntax-core` (syntect defaults + 330 Linguist TextMate grammars, `assets/syntaxes.packdump`) | bundled | bundled | — |
 | `syntax-extended` (two-face full set) | on demand | bundled | first diff with unknown extension → banner "Download extended highlighting (6 MB)?" or Settings › Advanced |
-| `tree-sitter-all` (every tree-sitter grammar, `corvane-grammars` dylib, one per OS + architecture, ~13 MB zipped / ~170 MB installed) | on demand | bundled | Settings › Appearance › Syntax highlighting "Tree-sitter" (Download under the choice) or Settings › Advanced, with `105-tree-sitter-highlighting` |
+| `tree-sitter-all` (every tree-sitter grammar: one gzipped library per grammar package + `index.json`, per OS + architecture, ~25 MB; units unpack into the cache on first use) | on demand | bundled | Settings › Appearance › Syntax highlighting "Tree-sitter" (Download under the choice) or Settings › Advanced, with `105-tree-sitter-highlighting` |
 | `tree-sitter-rest` (grammars of languages GHD does not highlight) | on demand | bundled | "Tree-sitter for other languages" |
 | `git-portable` (dugite-native git + lfs) | on demand | bundled | `InstallGit` dialog offers "Download portable git" alongside Xcode CLT/Homebrew |
 | `git-lfs` | on demand | bundled | `InitializeLFS` when repo has `.gitattributes` lfs filters and no lfs binary |
@@ -214,7 +214,7 @@ Total ≈ 12 weeks for one developer. Windows/Linux, GitHub layer: see `TODO.md`
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes |
+| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes. Vendored today: `vendor/gpui-pre-macos` (0.3.7 + exact variable-font weights in `src/text_system.rs`, see its `exact_weight_variant`); re-apply that diff when upgrading |
 | R2 | gpui-kit look leaks into GHD chrome | Own widgets for toolbar/tabs/lists/diff; gpui-kit only for form controls + infra; theme override tested by screenshot diff |
 | R3 | gix status slower than git on huge/fsmonitor repos | `status-cli` fallback path; measure in M2; keep both parsers |
 | R4 | Commit description editor (autocomplete, IME, spellcheck) | gpui-kit `Textarea` + custom autocomplete popover; spellcheck deferred (`TODO.md`) |

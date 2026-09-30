@@ -1,0 +1,204 @@
+%YAML 1.2
+---
+# Wren (source.wren): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nelarius/vscode-wren.git via GitHub Linguist v9.7.0 (license: mit).
+name: Wren
+scope: source.wren
+file_extensions:
+- wren
+contexts:
+  main:
+  - include: repo_code
+  - include: repo_class
+  repo_block:
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.wren
+    push:
+    - meta_scope: meta.block.wren
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.wren
+    - include: repo_code
+    - match: \|
+      push:
+      - meta_scope: meta.block.parameters.wren
+      - match: \|
+        pop: true
+      - match: \w+
+        scope: variable.parameter.function.wren
+  repo_blockComment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.wren
+    - match: \*/
+      pop: true
+    - include: repo_blockComment
+  repo_class:
+  - match: (?:\b(foreign)\s+)?(\bclass)\s+(\w+)\s+(?:(\bis)\s+(\w+))?
+    captures:
+      1: storage.modifier.wren
+      2: storage.modifier.wren
+      3: entity.name.class.wren
+      4: storage.modifier.wren
+      5: entity.name.class.wren
+    push:
+    - meta_scope: meta.class
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.class.end.wren
+    - match: '{'
+      captures:
+        0: punctuation.section.class.begin.wren
+      push:
+      - meta_scope: meta.class.body.wren
+      - match: (?=})
+        pop: true
+      - include: repo_comment
+      - include: repo_blockComment
+      - include: repo_foreignMethod
+      - include: repo_subscriptOperator
+      - include: repo_method
+  repo_code:
+  - include: repo_blockComment
+  - include: repo_comment
+  - include: repo_block
+  - include: repo_keyword
+  - include: repo_constant
+  - include: repo_variable
+  - include: repo_string
+  - include: repo_function
+  - include: repo_static_function
+  - include: repo_static_constant
+  repo_comment:
+  - match: //.*
+    scope: comment.line.wren
+  repo_constant:
+  - match: \b(true|false|null)\b
+    scope: constant.language.wren
+  - match: \b(0x[0-9a-fA-F]*|[0-9]+(\.?[0-9]*)?(e(\+|-)?[0-9]+)?)\b
+    scope: constant.numeric.wren
+  - match: 0x[A-Fa-f0-9]+
+    scope: constant.numeric.hexadecimal.wren
+  repo_foreignMethod:
+  - match: \b(foreign)\s+(?:\b(construct|static)\s+)?(\w+=|\w+|\+|-|\*|\/|%|<=?|>=?|==|!=?|&|\||~)
+    captures:
+      1: storage.modifier.wren
+      2: storage.modifier.wren
+      3: entity.name.function.wren
+    push:
+    - meta_scope: meta.method.wren
+    - match: '
+
+        '
+      pop: true
+    - include: repo_comment
+    - match: \(
+      push:
+      - meta_scope: meta.method.identifier.wren
+      - match: \)
+        pop: true
+      - match: \w+
+        scope: variable.parameter.function.wren
+  repo_function:
+  - match: (?:[.]|\b)(\w+)\(
+    scope: meta.function.wren
+    captures:
+      1: entity.name.function.wren
+  repo_keyword:
+  - match: \b(?:break|else|for|if|import|in|return|while|var)\b
+    scope: keyword.control.wren
+  - match: \b(is)\b
+    scope: keyword.operator.wren
+  - match: '!|&&|\|\|'
+    scope: keyword.operator.logical.wren
+  - match: (\.\.\.?)
+    scope: keyword.operator.range.wren
+  - match: (\-|\+|\*|/|%)
+    scope: keyword.operator.arithmetic.wren
+  - match: (==|!=|<=|>=|<|>)
+    scope: keyword.operator.comparison.wren
+  - match: (=)
+    scope: keyword.operator.assignment.wren
+  repo_method:
+  - match: (?:\b(construct|static)\s+)?(\w+=|\w+|\+|-|\*|\/|%|<=?|>=?|==|!=?|&|\||~)
+    captures:
+      1: storage.modifier.wren
+      2: entity.name.function.wren
+    push:
+    - meta_scope: meta.method.wren
+    - match: '}'
+      pop: true
+    - match: \(
+      push:
+      - meta_scope: meta.method.identifier.wren
+      - match: \)
+        pop: true
+      - match: \w+
+        scope: variable.parameter.function.wren
+    - match: '{'
+      push:
+      - meta_scope: meta.method.body.wren
+      - match: (?=})
+        pop: true
+      - include: repo_code
+  repo_static_constant:
+  - match: \b([A-Z]+\w*)[.](\w+)\b
+    scope: meta.static_constant.wren
+    captures:
+      1: entity.name.type.wren
+      2: variable.other.constant
+  repo_static_function:
+  - match: \b([A-Z]+\w*)[.](\w+)\(
+    scope: meta.static_function.wren
+    captures:
+      1: entity.name.type.wren
+      2: entity.name.function.class.wren
+  repo_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.wren
+    - match: '"'
+      pop: true
+    - include: repo_stringEscapes
+  repo_stringEscapes:
+  - match: \\(?:[0"\abfnrtv]|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{4})
+    scope: constant.character.escape.wren
+  - match: \\(?:x[0-9A-Fa-f]{0,1}|u[0-9A-Fa-f]{0,3}|U[0-9A-Fa-f]{0,7}|.)
+    scope: invalid.illegal.unknown-escape.wren
+  - match: '%\((.*?)\)'
+    scope: constant.character.interpolation.wren
+  repo_subscriptOperator:
+  - match: \[
+    captures:
+      0: entity.name.function.wren
+    push:
+    - meta_scope: meta.method.wren
+    - match: '}'
+      pop: true
+    - match: \w
+      captures:
+        0: variable.parameter.function.wren
+      push:
+      - meta_scope: meta.method.identifier.wren
+      - match: \]
+        pop: true
+        captures:
+          0: entity.name.function.wren
+      - match: \w+
+        scope: variable.parameter.function.wren
+    - match: '{'
+      push:
+      - meta_scope: meta.method.body.wren
+      - match: (?=})
+        pop: true
+      - include: repo_code
+  repo_variable:
+  - match: \b(this|super)\b
+    scope: variable.language.wren
+  - match: \b__\w*
+    scope: variable.other.class.wren
+  - match: \b_\w*
+    scope: variable.other.instance.wren

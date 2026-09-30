@@ -1,0 +1,528 @@
+%YAML 1.2
+---
+# Papyrus (source.papyrus.skyrim): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/SublimePapyrus via GitHub Linguist v9.7.0 (license: mit).
+name: Papyrus
+scope: source.papyrus.skyrim
+file_extensions:
+- psc
+contexts:
+  main:
+  - match: ^\s*$
+    scope: meta.emptyline.papyrus
+  - include: repo_commentDocumentation
+  - include: repo_commentBlock
+  - include: repo_commentLine
+  - include: repo_scriptHeader
+  - include: repo_import
+  - include: repo_state
+  - include: repo_endState
+  - include: repo_event
+  - include: repo_endEvent
+  - include: repo_return
+  - include: repo_if
+  - include: repo_elseif
+  - include: repo_else
+  - include: repo_endIf
+  - include: repo_while
+  - include: repo_endWhile
+  - include: repo_property
+  - include: repo_endProperty
+  - include: repo_function
+  - include: repo_endFunction
+  - include: repo_variable
+  - include: repo_assign
+  - include: repo_expression
+  - include: repo_whitespace
+  - include: repo_unmatched
+  repo_addExpression:
+  - match: (\+|\-)
+    scope: keyword.operator.papyrus
+  - include: repo_multExpression
+  repo_andExpression:
+  - match: \&\&
+    scope: keyword.operator.papyrus
+  - include: repo_boolExpression
+  repo_arrayAtom:
+  - match: \[
+    push:
+    - meta_scope: meta.array.papyrus
+    - match: \]
+      pop: true
+    - include: repo_expression
+  - include: repo_atom
+  repo_arrayFuncOrId:
+  - include: repo_funcOrId
+  - match: \[
+    push:
+    - meta_scope: meta.arrayelement.papyrus
+    - match: \]
+      pop: true
+    - include: repo_expression
+  repo_assign:
+  - match: ^\s*
+    push:
+    - meta_scope: meta.assign.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_assignmentOperators
+    - include: repo_expression
+    - include: repo_endOfLine
+  repo_assignmentOperators:
+  - match: (\=|\+\=|\-\=|\*\=|\/\=|\%\=)
+    scope: keyword.operator.papyrus
+  repo_atom:
+  - match: (?i)\b(new)\s+([_a-z][0-9_a-z]*)\[
+    captures:
+      1: keyword.operator.papyrus
+      2: storage.type.papyrus
+    push:
+    - meta_scope: meta.newarray.papyrus
+    - match: \]
+      pop: true
+    - include: repo_integer
+  - match: \(
+    push:
+    - meta_scope: meta.parenthesis.papyrus
+    - match: (\)|[\n\r])
+      pop: true
+    - include: repo_expression
+  - include: repo_funcOrId
+  repo_baseTypes:
+  - match: (?i)\b(bool|float|int|string)\b
+    scope: storage.type.papyrus
+  repo_bool:
+  - match: (?i)\b(true|false|none)\b
+    scope: constant.language.boolean.papyrus
+  repo_boolExpression:
+  - match: (\=\=|\!\=|\<\=|\>\=|\<|\>)
+    scope: keyword.operator.papyrus
+  - include: repo_addExpression
+  repo_brackets:
+  - match: \[\]
+    scope: meta.array.papyrus
+  repo_castAtom:
+  - match: (?i)\b(as)\s+([_a-z][0-9_a-z]*)\b
+    scope: meta.cast.papyrus
+    captures:
+      1: keyword.operator.papyrus
+      2: storage.type.papyrus
+  - include: repo_dotAtom
+  repo_comma:
+  - match: \,
+    scope: meta.comma.papyrus
+  repo_commentBlock:
+  - match: ;/
+    push:
+    - meta_scope: comment.block.papyrus
+    - match: /;
+      pop: true
+  repo_commentDocumentation:
+  - match: ^\s*\{
+    push:
+    - meta_scope: comment.documentation.papyrus
+    - match: \}
+      pop: true
+  repo_commentLine:
+  - match: ;.*$
+    scope: comment.line.papyrus
+  repo_comments:
+  - include: repo_commentBlock
+  - include: repo_commentLine
+  - include: repo_commentDocumentation
+  repo_constants:
+  - include: repo_bool
+  - include: repo_float
+  - include: repo_integer
+  - include: repo_string
+  repo_dotAtom:
+  - match: \.
+    scope: keyword.operator.papyrus
+  - include: repo_constants
+  - include: repo_arrayAtom
+  - include: repo_arrayFuncOrId
+  repo_else:
+  - match: (?i)^\s*(else)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.else.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_elseif:
+  - match: (?i)^\s*(elseif)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.elseif.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_expression
+    - include: repo_endOfLine
+  repo_endEvent:
+  - match: (?i)^\s*(endevent)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endevent.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_endFunction:
+  - match: (?i)^\s*(endfunction)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endfunction.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_endIf:
+  - match: (?i)^\s*(endif)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endif.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_endOfLine:
+  - include: repo_commentBlock
+  - include: repo_commentLine
+  - include: repo_whitespace
+  - include: repo_multiline
+  - include: repo_unmatched
+  repo_endProperty:
+  - match: (?i)^\s*(endproperty)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endproperty.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_endState:
+  - match: (?i)^\s*(endstate)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endstate.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_endWhile:
+  - match: (?i)^\s*(endwhile)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.endwhile.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_event:
+  - match: (?i)^\s*(event)\s+
+    captures:
+      1: keyword.control.eventstart.papyrus
+      2: entity.name.function.papyrus
+    push:
+    - meta_scope: meta.event.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_eventParameters
+    - include: repo_eventFlags
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_functionIdentifier
+    - include: repo_endOfLine
+  repo_eventFlags:
+  - match: (?i)(?<=\))\s*(native)\b
+    scope: keyword.other.papyrus
+  repo_eventParameter:
+  - include: repo_eventParameterIdentifier
+  - include: repo_typeIdentifier
+  - include: repo_brackets
+  repo_eventParameterIdentifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\s*(?=(\,|\)))
+    scope: variable.parameter.papyrus
+  repo_eventParameters:
+  - match: \(
+    push:
+    - meta_scope: meta.eventparameters.papyrus
+    - match: \)
+      pop: true
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_eventParameter
+    - include: repo_comma
+    - include: repo_multiline
+    - include: repo_whitespace
+    - include: repo_unmatched
+  repo_expression:
+  - match: \|\|
+    scope: keyword.operator.papyrus
+  - include: repo_andExpression
+  - include: repo_endOfLine
+  repo_float:
+  - include: repo_unaryMinus
+  - match: \b(\d+\.\d+)\b
+    scope: constant.numeric.float.papyrus
+  repo_funcOrId:
+  - match: (?i)\b(length)\b
+    scope: keyword.other.papyrus
+  - include: repo_functionCall
+  - include: repo_illegalKeywords
+  - include: repo_illegalBaseTypes
+  - include: repo_specialVariables
+  - include: repo_identifier
+  repo_function:
+  - match: (?i)^\s*(?:([_a-z][0-9_a-z]*)(?:\[\])?\s+)?(function)\s+
+    captures:
+      1: storage.type.papyrus
+      2: keyword.control.functionstart.papyrus
+      3: entity.name.function.papyrus
+    push:
+    - meta_scope: meta.function.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_functionParameters
+    - include: repo_functionFlags
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_functionIdentifier
+    - include: repo_endOfLine
+  repo_functionCall:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\(
+    captures:
+      1: variable.other.papyrus
+    push:
+    - meta_scope: meta.functioncall.papyrus
+    - match: \)
+      pop: true
+    - include: repo_functionCallParameters
+  repo_functionCallParameter:
+  - match: (?i)\b(?:([_a-z][0-9_a-z]*)\s*(\=)(?!\=))?
+    scope: meta.functioncallparameter.papyrus
+    captures:
+      1: variable.parameter.papyrus
+      2: keyword.operator.papyrus
+  - include: repo_expression
+  repo_functionCallParameters:
+  - include: repo_comma
+  - include: repo_functionCallParameter
+  repo_functionFlags:
+  - match: (?i)\b(native|global)\b
+    scope: keyword.other.papyrus
+  repo_functionIdentifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\s*(?=\()
+    scope: entity.name.function.papyrus
+  repo_functionParameter:
+  - include: repo_functionParameterIdentifier
+  - include: repo_typeIdentifier
+  - include: repo_brackets
+  repo_functionParameterIdentifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\s*(?=(\,|\)|\=))
+    scope: variable.parameter.papyrus
+  repo_functionParameters:
+  - match: \(
+    push:
+    - meta_scope: meta.functionparameters.papyrus
+    - match: \)
+      pop: true
+    - match: (\=)
+      scope: keyword.operator.assignment.papyrus
+    - include: repo_constants
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_functionParameter
+    - include: repo_comma
+    - include: repo_multiline
+    - include: repo_whitespace
+    - include: repo_unmatched
+  repo_identifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\b
+    scope: variable.other.papyrus
+  repo_if:
+  - match: (?i)^\s*(if)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.if.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_expression
+    - include: repo_endOfLine
+  repo_illegalBaseTypes:
+  - match: (?i)\b(bool|float|int|string)\b
+    scope: meta.invalid.papyrus
+  repo_illegalKeywords:
+  - match: (?i)\b(as|auto|autoreadonly|else|elseif|endevent|endfunction|endif|endproperty|endstate|endwhile|event|extends|false|function|global|if|import|length|native|new|none|property|return|scriptname|state|true|while)\b
+    scope: meta.invalid.papyrus
+  repo_illegalSpecialVariables:
+  - match: (?i)\b(parent|self)\b
+    scope: meta.invalid.papyrus
+  repo_import:
+  - match: (?i)^\s*(import)\s+
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.import.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_typeIdentifier
+    - include: repo_endOfLine
+  repo_integer:
+  - include: repo_unaryMinus
+  - match: (?i)\b(0x[0-9a-f]+|\d+)\b
+    scope: constant.numeric.integer.papyrus
+  repo_keywords:
+  - match: (?i)\b(as|auto|autoreadonly|else|elseif|endevent|endfunction|endif|endproperty|endstate|endwhile|event|extends|false|function|global|if|import|length|native|new|none|property|return|scriptname|state|true|while)\b
+    scope: keyword.other.papyrus
+  repo_multExpression:
+  - match: (\*|/|\%)
+    scope: keyword.operator.papyrus
+  - include: repo_unaryExpression
+  repo_multiline:
+  - match: \\
+    captures:
+      0: keyword.operator.papyrus
+    push:
+    - meta_scope: meta.multiline.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_commentBlock
+    - include: repo_commentLine
+    - include: repo_whitespace
+    - include: repo_unmatched
+  repo_parameterIdentifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\b
+    scope: variable.parameter.papyrus
+  repo_property:
+  - match: (?i)^\s*([_a-z][0-9_a-z]*)(?:\[\])?\s+(property)\s+
+    captures:
+      1: storage.type.papyrus
+      2: keyword.other.papyrus
+    push:
+    - meta_scope: meta.property.papyrus
+    - match: ([\n\r])
+      pop: true
+    - match: (\=)
+      scope: keyword.operator.assignment.papyrus
+    - include: repo_constants
+    - include: repo_propertyFlags
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_identifier
+    - include: repo_endOfLine
+  repo_propertyFlags:
+  - match: (?i)\b(auto|autoreadonly|conditional|hidden)\b
+    scope: keyword.other.papyrus
+  repo_return:
+  - match: (?i)^\s*(return)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.return.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_expression
+    - include: repo_endOfLine
+  repo_scriptHeader:
+  - match: (?i)^\s*(scriptname)\s+
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.scriptheader.papyrus
+    - match: ([\n\r])
+      pop: true
+    - match: (?i)\b(extends)\b
+      scope: keyword.other.papyrus
+    - match: (?i)\b(hidden|conditional)\b
+      scope: keyword.other.papyrus
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_typeIdentifier
+    - include: repo_endOfLine
+  repo_specialVariables:
+  - match: (?i)\b(parent|self)\b
+    scope: keyword.other.papyrus
+  repo_state:
+  - match: (?i)^\s*(?:(auto)\s+)?(state)\s+
+    captures:
+      1: keyword.other.papyrus
+      2: keyword.other.papyrus
+    push:
+    - meta_scope: meta.state.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_illegalKeywords
+    - include: repo_illegalSpecialVariables
+    - include: repo_illegalBaseTypes
+    - include: repo_identifier
+    - include: repo_endOfLine
+  repo_string:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double
+    - match: \"
+      pop: true
+    - match: (\\.)
+      scope: constant.character.escape.papyrus
+  repo_typeIdentifier:
+  - match: (?i)\b([_a-z][0-9_a-z]*)\b
+    scope: storage.type.papyrus
+  repo_unaryExpression:
+  - match: (\-|\!)
+    scope: keyword.operator.papyrus
+  - include: repo_castAtom
+  repo_unaryMinus:
+  - match: \-(?=\d)
+    scope: keyword.operator.papyrus
+  repo_unmatched:
+  - match: ([^\n\r])
+    scope: meta.invalid.papyrus
+  repo_variable:
+  - match: (?i)^\s*([_a-z][0-9_a-z]*)(?:\[\])?\s+([_a-z][0-9_a-z]*)(?:\s*(\=)\s*)
+    captures:
+      1: storage.type.papyrus
+      2: variable.other.papyrus
+      3: keyword.operator.papyrus
+    push:
+    - meta_scope: meta.variable.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_constants
+    - match: (?i)(?:\b(conditional)\b)
+      scope: keyword.other.papyrus
+    - include: repo_expression
+    - include: repo_endOfLine
+  - match: (?i)^\s*([_a-z][0-9_a-z]*)(?:\[\])?\s+([_a-z][0-9_a-z]*)(?:\s+(conditional)\b)?
+    captures:
+      1: storage.type.papyrus
+      2: variable.other.papyrus
+      3: keyword.other.papyrus
+    push:
+    - meta_scope: meta.variable.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_endOfLine
+  repo_while:
+  - match: (?i)^\s*(while)\b
+    captures:
+      1: keyword.other.papyrus
+    push:
+    - meta_scope: meta.while.papyrus
+    - match: ([\n\r])
+      pop: true
+    - include: repo_expression
+    - include: repo_endOfLine
+  repo_whitespace:
+  - match: ([ \t])
+    scope: meta.whitespace.papyrus

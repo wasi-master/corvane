@@ -1,0 +1,104 @@
+%YAML 1.2
+---
+# B (Formal Method) (source.b): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/JJWRoeloffs/b-vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: B (Formal Method)
+scope: source.b
+file_extensions:
+- mch
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_numbers
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_types
+  - include: repo_constants
+  - include: repo_preprocessor
+  repo_comments:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.b
+    - match: \*/
+      pop: true
+    - match: \b(TODO|FIXME|XXX)\b
+      scope: keyword.other.documentation.b
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.b
+    - match: $
+      pop: true
+    - match: \b(TODO|FIXME|XXX)\b
+      scope: keyword.other.documentation.b
+  repo_constants:
+  - match: \b(TRUE|FALSE|bfalse|btrue)\b
+    scope: constant.language.boolean.b
+  - match: \b(PI|MAXINT|MININT|User_Pass|PatchProver|PatchProverH0|PatchProverB0|FLAT|ARI|DED|SUB|RES)\b
+    scope: constant.other.b
+  - match: \b(binhyp|band|bnot|bguard|bsearch|bflat|bfresh|bguardi|bget|bgethyp|barith|bgetresult|bresult|bgoal|bmatch|bmodr|bnewv|bnum|btest|bpattern|bprintf|bwritef|bsubfrm|bvrb|blvar|bcall|bappend|bclose)\b
+    scope: support.function.builtin.b
+  repo_keywords:
+  - match: \b(MACHINE|MODEL|SEES|OPERATIONS|INCLUDES|DEFINITIONS|CONSTRAINTS|CONSTANTS|VARIABLES|CONCRETE_CONSTANTS|CONCRETE_VARIABLES|ABSTRACT_CONSTANTS|ABSTRACT_VARIABLES|HIDDEN_CONSTANTS|HIDDEN_VARIABLES|ASSERT|ASSERTIONS|EXTENDS|IMPLEMENTATION|REFINEMENT|IMPORTS|USES|INITIALISATION|INVARIANT|PROMOTES|PROPERTIES|REFINES|SETS|VALUES|VARIANT|VISIBLE_CONSTANTS|VISIBLE_VARIABLES|THEORY|XLS|THEOREMS|LOCAL_OPERATIONS)\b
+    scope: keyword.control.b
+  - match: \b(CASE|IN|EITHER|OR|CHOICE|DO|OF)\b
+    scope: keyword.control.label.b
+  - match: \b(IF|ELSE|SELECT|ELSIF|THEN|WHEN)\b
+    scope: keyword.control.conditional.b
+  - match: \b(WHILE|FOR)\b
+    scope: keyword.control.repeat.b
+  - match: \b(LET|VAR|BE|IN|BEGIN|END|POW|POW1|FIN|FIN1|PRE|SIGMA|STRING|UNION|INTER|IS|ANY|WHERE)\b
+    scope: keyword.operator.b
+  - match: \b(arity|bin|bool|btree|card|const|conc|closure|closure1|dom|father|first|fnc|front|id|inter|iseq|iseq1|iterate|last|left|max|min|mirror|mod|perm|postfix|pred|prj1|prj2|ran|rev|rank|rec|rel|right|seq|seq1|size|sizet|skip|sons|struct|subtree|succ|tail|top|tree|union)\b
+    scope: support.function.b
+  repo_numbers:
+  - match: \b[0-9]+\.?[0-9]*\b
+    scope: constant.numeric.b
+  repo_operators:
+  - match: \b(or|not)\b
+    scope: keyword.operator.logical.b
+  - match: :=
+    scope: keyword.operator.assignment.b
+  - match: (\!|#|%|&|\$|&|\*\*|\*|\+->|\+->>|-->>|-->|->|/:|/<:|/<<:|/=|/\\\|/\|\\|/\\|\\/|::|:|;:|<\+|<->|<--|<-|<:|<<:|<<\||<=|<=>|<\||==|=>|>\+>>|>->|>->>|><|>=|>\+>|\|\||\|->|\+|<|>|-|=|r~)
+    scope: keyword.operator.b
+  repo_preprocessor:
+  - match: ^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b
+    push:
+    - meta_scope: meta.preprocessor.b
+    - match: $
+      pop: true
+    - include: repo_comments
+    - include: repo_strings
+    - include: repo_numbers
+  - match: ^\s*#\s*include\b
+    push:
+    - meta_scope: meta.preprocessor.include.b
+    - match: $
+      pop: true
+    - match: '"[^"]*"'
+      scope: string.quoted.double.include.b
+    - match: <[^>]*>
+      scope: string.quoted.angle.include.b
+  - match: ^\s*#\s*(define|undef)\b
+    push:
+    - meta_scope: meta.preprocessor.define.b
+    - match: $
+      pop: true
+  - match: ^\s*#\s*(pragma|line|warning|warn|error)\b
+    push:
+    - meta_scope: meta.preprocessor.b
+    - match: $
+      pop: true
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.b
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.b
+    - match: \\[0-7]{1,3}
+      scope: constant.character.escape.b
+  repo_types:
+  - match: \b(INT|INTEGER|BOOL|NAT|NATURAL|NAT1|NATURAL1)\b
+    scope: storage.type.b

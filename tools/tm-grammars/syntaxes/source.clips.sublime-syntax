@@ -1,0 +1,43 @@
+%YAML 1.2
+---
+# CLIPS (source.clips): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-clips via GitHub Linguist v9.7.0 (license: mit).
+name: CLIPS
+scope: source.clips
+file_extensions:
+- clp
+contexts:
+  main:
+  - match: ;
+    captures:
+      0: punctuation.definition.comment.clips
+    push:
+    - meta_scope: comment.line.double-slash.clips
+    - match: '$
+
+        ?'
+      pop: true
+      captures:
+        0: punctuation.definition.comment.clips
+  - match: \b(type|default|allowed-values|slot|not|or|and|assert|retract|gensym|printout|declare|salience|modify|export)\b
+    scope: keyword.control.clips
+  - match: =>
+    scope: constant.language.clips
+  - match: (\?)([a-zA-Z0-9_\-]*)
+    scope: meta.function.clips
+    captures:
+      1: keyword.clips
+      2: variable.parameter
+  - match: (^.*(defrule|deffacts|defmodule|deftemplate)[ \t]+)([a-zA-Z0-9_\-]+)
+    captures:
+      2: entity.name.function.clips
+      3: variable.clips
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b
+    scope: constant.other.color.rgb-value.css
+  - match: (<-|~|%)
+    scope: constant.language.clips
+  - match: (|=|>|\+|\*|\/|~|%|neq|eq)
+    scope: entity.name.function.clips
+  - match: (\()(\-)
+    captures:
+      2: entity.name.function.clips

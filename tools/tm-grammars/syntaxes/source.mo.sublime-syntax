@@ -1,0 +1,320 @@
+%YAML 1.2
+---
+# Motoko (source.mo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/caffeinelabs/vscode-motoko.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Motoko
+scope: source.mo
+file_extensions:
+- mo
+contexts:
+  main:
+  - include: repo_shebang-line
+  - include: repo_comment
+  - include: repo_attribute
+  - include: repo_literal
+  - include: repo_operator
+  - include: repo_declaration
+  - include: repo_storage-type
+  - include: repo_keyword
+  - include: repo_type
+  - include: repo_boolean
+  repo_access-level-modifier:
+  - match: \b(public|system|private)\b
+    scope: keyword.other.access-level-modifier.motoko
+  repo_arithmetic-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])(\+|\-|\*|\/)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.arithmetic.motoko
+  repo_array-type:
+  - match: \b(Array)(<)
+    captures:
+      1: support.type.array.motoko
+      2: punctuation.array.begin.motoko
+    push:
+    - meta_scope: meta.array.motoko
+    - match: (>)
+      pop: true
+      captures:
+        1: punctuation.array.end.motoko
+    - include: main
+  repo_assignment-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])(\+|\-|\*|\/|%|<<>?|<?>>|&|\^|\||&&|\|\|)?=(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.assignment.motoko
+  repo_async-await-keyword:
+  - match: \b(async|await)\b
+    scope: keyword.async-await.motoko
+  repo_attribute:
+  - match: ((@)(\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B))(\()
+    captures:
+      1: storage.modifier.attribute.motoko
+      2: punctuation.definition.attribute.motoko
+      3: punctuation.definition.attribute-arguments.begin.motoko
+    push:
+    - meta_content_scope: meta.attribute.arguments.motoko
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.attribute-arguments.end.motoko
+    - include: main
+  - match: ((@)(\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B))
+    captures:
+      1: storage.modifier.attribute.motoko
+      2: punctuation.definition.attribute.motoko
+  repo_bitwise-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])(&|\||\^|<<>?|<?>>)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.bitwise.motoko
+  repo_block-comment:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.block.begin.motoko
+    push:
+    - meta_scope: comment.block.motoko
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.end.motoko
+  repo_boolean:
+  - match: \b(true|false)\b
+    scope: keyword.constant.boolean.motoko
+  repo_branch-statement-keyword:
+  - include: repo_if-statement-keyword
+  - include: repo_switch-statement-keyword
+  repo_char-literal:
+  - match: ''''
+    captures:
+      0: string.quoted.double.motoko
+    push:
+    - meta_scope: meta.literal.char.motoko
+    - match: ''''
+      pop: true
+      captures:
+        0: string.quoted.single.motoko
+    - match: \\([0tnr\"\'\\]|x[[:xdigit:]]{2}|u[[:xdigit:]]{4}|U[[:xdigit:]]{8})
+      scope: constant.character.escape.motoko
+    - match: (\'|\\)
+      scope: invalid.illegal.motoko
+    - match: (.)
+      scope: string.quoted.single.motoko
+  repo_code-block:
+  - match: (\{)
+    captures:
+      1: punctuation.definition.code-block.begin.motoko
+    push:
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.definition.code-block.end.motoko
+    - include: main
+  repo_comment:
+  - include: repo_documentation-comment
+  - include: repo_block-comment
+  - include: repo_in-line-comment
+  repo_comparative-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])((=|!)==?|(<|>)=?|~=)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.comparative.motoko
+  repo_control-transfer-statement-keyword:
+  - match: \b(continue|break|return)\b
+    scope: keyword.control.transfer.motoko
+  repo_custom-operator:
+  - match: (?<=[\s(\[{,;:])([/=\-+!*%<>&|\^~.]++)(?![\s)\]},;:])
+    scope: keyword.operator.custom.prefix.unary.motoko
+  - match: (?<![\s(\[{,;:])([/=\-+!*%<>&|\^~.]++)(?![\s)\]},;:\.])
+    scope: keyword.operator.custom.postfix.unary.motoko
+  - match: (?<=[\s(\[{,;:])([/=\-+!*%<>&|\^~.]++)(?=[\s)\]},;:])
+    scope: keyword.operator.custom.binary.motoko
+  repo_declaration:
+  - include: repo_import-declaration
+  repo_declaration-modifier:
+  - match: \b(class|object|type|shared)\b
+    scope: keyword.other.declaration-modifier.motoko
+  repo_dictionary-type:
+  - match: \b(Dictionary)(<)
+    captures:
+      1: support.type.dictionary.motoko
+      2: punctuation.dictionary.begin.motoko
+    push:
+    - meta_scope: meta.dictionary.motoko
+    - match: (>)
+      pop: true
+      captures:
+        1: punctuation.dictionary.end.motoko
+    - include: main
+  repo_documentation-comment:
+  - match: /\*\*
+    captures:
+      0: punctuation.definition.comment.block.documentation.begin.motoko
+    push:
+    - meta_scope: comment.block.documentation.motoko
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.documentation.end.motoko
+  repo_floating-point-literal:
+  - match: \b([0-9][0-9_]*)(\.([0-9][0-9_]*))?([eE][+\-]?([0-9][0-9_]*))?\b
+  - match: \b(0x[[:xdigit:]][[[:xdigit:]]_]*)(\.(0x[[:xdigit:]][[[:xdigit:]]_]*))?([pP][+\-]?(0x[[:xdigit:]][[[:xdigit:]]_]*))\b
+  repo_function-body:
+  - include: repo_code-block
+  repo_function-declaration:
+  - match: \b(func)\s+(\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%<>&|\^~.]+)\s*(?=\(|<)
+    captures:
+      1: storage.type.function.motoko
+      2: entity.type.function.motoko
+    push:
+    - meta_scope: meta.function-declaration.motoko
+    - match: (?<=\})
+      pop: true
+    - include: repo_generic-parameter-clause
+    - include: repo_parameter-clause
+    - include: repo_function-result
+    - include: repo_function-body
+  repo_function-result:
+  - match: (?<![/=\-+!*%<>&|\^~.])(\->)(?![/=\-+!*%<>&|\^~.])\s*
+    captures:
+      1: keyword.operator.function-result.motoko
+    push:
+    - meta_scope: meta.function-result.motoko
+    - match: \s*(?=\{)
+      pop: true
+    - include: repo_type
+  repo_generic-parameter-clause:
+  - match: (<)
+    captures:
+      1: punctuation.definition.generic-parameter-clause.begin.motoko
+    push:
+    - meta_scope: meta.generic-parameter-clause.motoko
+    - match: (>)
+      pop: true
+      captures:
+        1: punctuation.definition.generic-parameter-clause.end.motoko
+    - include: main
+  repo_identifier:
+  - match: (\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B)
+    scope: meta.identifier.motoko
+  repo_if-statement-keyword:
+  - match: \b(if|else)\b
+    scope: keyword.control.if.motoko
+  repo_import-declaration:
+  - match: \b(import)\s+(?:(class|var|func)\s+)?((?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%<>&|\^~.]+)(?:\.(?:\B\$[0-9]+|\b[\w^\d][\w\d]*\b|\B`[\w^\d][\w\d]*`\B|[/=\-+!*%<>&|\^~.]+))*)
+    scope: meta.import.motoko
+    captures:
+      1: keyword.other.import.motoko
+      2: storage.modifier.motoko
+      3: support.type.module.import.motoko
+  repo_in-line-comment:
+  - match: (//).*
+    scope: comment.line.double-slash.motoko
+    captures:
+      1: punctuation.definition.comment.line.double-slash.motoko
+  repo_increment-decrement-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])(\+\+|\-\-)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.increment-or-decrement.motoko
+  repo_integer-literal:
+  - match: (\B\-|\b)(0b[01][01_]*)\b
+    scope: constant.numeric.integer.binary.motoko
+  - match: (\B\-|\b)(0o[0-7][0-7_]*)\b
+    scope: constant.numeric.integer.octal.motoko
+  - match: (\B\-|\b)([0-9][0-9_]*)\b
+    scope: constant.numeric.integer.decimal.motoko
+  - match: (\B\-|\b)(0x[[:xdigit:]][[[:xdigit:]]_]*)\b
+    scope: constant.numeric.integer.hexadecimal.motoko
+  repo_keyword:
+  - include: repo_branch-statement-keyword
+  - include: repo_control-transfer-statement-keyword
+  - include: repo_loop-statement-keyword
+  - include: repo_async-await-keyword
+  - include: repo_declaration-modifier
+  - include: repo_access-level-modifier
+  - match: \b(actor|and|class|func|import|let|module|not|or)\b
+    scope: keyword.declaration.motoko
+  - match: \b(assert|break|case|continue|debug|debug_show|else|if|ignore|in|for|label|null|return|switch|while|loop|try|throw|catch|finally|do|to_candid|from_candid|with|include)\b
+    scope: keyword.statement.motoko
+  - match: \b(query|composite|stable|flexible|persistent|transient|implicit|weak|mixin)\b
+    scope: keyword.other.motoko
+  repo_literal:
+  - include: repo_integer-literal
+  - include: repo_floating-point-literal
+  - include: repo_string-literal
+  - include: repo_char-literal
+  repo_logical-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])(!|&&|\|\|)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.logical.motoko
+  repo_loop-statement-keyword:
+  - match: \b(while|for|in|loop)\b
+    scope: keyword.control.loop.motoko
+  repo_null-literal:
+  - match: \bnull\b
+    scope: constant.null.motoko
+  repo_operator:
+  - include: repo_comparative-operator
+  - include: repo_assignment-operator
+  - include: repo_logical-operator
+  - include: repo_remainder-operator
+  - include: repo_increment-decrement-operator
+  - include: repo_overflow-operator
+  - include: repo_range-operator
+  - include: repo_bitwise-operator
+  - include: repo_arithmetic-operator
+  - include: repo_custom-operator
+  repo_optional-type:
+  - match: \b(Optional)(<)
+    scope: meta.optional.motoko
+  repo_overflow-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])\&(\+|\-|\*|\/|%)(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.overflow.motoko
+  repo_parameter-clause:
+  - match: (\()
+    captures:
+      1: punctuation.definition.function-arguments.begin.motoko
+    push:
+    - meta_scope: meta.parameter-clause.motoko
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.function-arguments.end.motoko
+    - include: main
+  repo_primitive-type:
+  - match: \b(Blob|Bool|Char|Float|Float32|(Int|Nat)(8|16|32|64)?|Principal|Text|Error)\b
+    scope: support.type.motoko
+  repo_protocol-composition-type:
+  - match: \b(protocol)(<)
+    scope: meta.protocol.motoko
+  repo_range-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])\.\.(?:\.)?(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.range.motoko
+  repo_remainder-operator:
+  - match: (?<![/=\-+!*%<>&|\^~.])\%(?![/=\-+!*%<>&|\^~.])
+    scope: keyword.operator.remainder.motoko
+  repo_resolved-type:
+  - match: \b[A-Z].*?\b
+    scope: support.type.motoko
+  repo_shebang-line:
+  - match: ^(#!).*$
+    scope: comment.line.shebang.motoko
+    captures:
+      1: punctuation.definition.comment.line.shebang.motoko
+  repo_storage-type:
+  - match: \b(var|func|let|class|module|actor)\b
+    scope: storage.type.motoko
+  repo_string-literal:
+  - match: \"
+    captures:
+      0: string.quoted.double.motoko
+    push:
+    - meta_scope: meta.literal.string.motoko
+    - match: \"
+      pop: true
+      captures:
+        0: string.quoted.double.motoko
+    - match: \\([0tnr\"\'\\]|x[[:xdigit:]]{2}|u[[:xdigit:]]{4}|U[[:xdigit:]]{8})
+      scope: constant.character.escape.motoko
+    - match: (\"|\\)
+      scope: invalid.illegal.motoko
+    - match: (.)
+      scope: string.quoted.double.motoko
+  repo_switch-statement-keyword:
+  - match: \b(switch|case)\b
+    scope: keyword.control.switch.motoko
+  repo_type:
+  - include: repo_primitive-type
+  - include: repo_resolved-type
+  - include: repo_optional-type
+  - include: repo_protocol-composition-type

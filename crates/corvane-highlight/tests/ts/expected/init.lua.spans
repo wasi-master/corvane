@@ -18,7 +18,7 @@
 20: 0+1=Atom 2+7=AltVariable 12+35=String
 21: 0+1=Atom 2+8=AltVariable 18+3=Variable
 23: 0+5=Keyword 6+8=Keyword 15+4=Variable 20+1=AltVariable
-24: 1+6=Keyword 9+1=Variable 11+4=Variable 16+14=String 32+4=String
+24: 1+6=Keyword 9+1=Variable 11+4=Variable 16+1=String 18+2=String 22+1=String 25+2=String 29+1=String 32+4=String
 25: 0+3=Keyword
 27: 0+5=Keyword 6+8=Keyword 15+5=Variable 21+3=AltVariable 26+3=AltVariable
 28: 1+5=Keyword 7+3=Variable 13+2=Type

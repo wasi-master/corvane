@@ -255,7 +255,7 @@ impl Render for AddExistingRepositoryDialog {
                     .text_color(t.error)
                     .child("This directory does not appear to be a Git repository.")
                     .child(crate::widgets::paragraph(vec![
-                        "Would you like to".into(),
+                        "Would you like to ".into(),
                         crate::widgets::link_button("create-instead", "create a repository", cx)
                             .on_click(move |_, _, cx| {
                                 Dispatcher::show_popup(
@@ -265,7 +265,7 @@ impl Render for AddExistingRepositoryDialog {
                             })
                             .into_any_element()
                             .into(),
-                        "here instead?".into(),
+                        " here instead?".into(),
                     ]))
                     .into_any_element()
             }),

@@ -84,6 +84,19 @@ pub fn tab_bar(
     on_select: impl Fn(usize, &mut Window, &mut App) + Clone + 'static,
     cx: &App,
 ) -> impl IntoElement {
+    tab_bar_focus(tabs, selected, false, on_select, cx)
+}
+
+/// [`tab_bar`] whose selected tab may show its `:focus-visible` ring (a
+/// dialog's first focusable element): Chromium's 2 px outline drawn 4 px
+/// inside the tab (`.tab-bar.tabs .tab-bar-item:focus-visible`).
+pub fn tab_bar_focus(
+    tabs: Vec<TabModel>,
+    selected: usize,
+    focus_ring: bool,
+    on_select: impl Fn(usize, &mut Window, &mut App) + Clone + 'static,
+    cx: &App,
+) -> impl IntoElement {
     let t = cx.ghd();
     let count = tabs.len();
     div()
@@ -130,6 +143,19 @@ pub fn tab_bar(
                             )
                         }),
                 )
+                .when(is_selected && focus_ring, |d| {
+                    d.child(
+                        div()
+                            .absolute()
+                            .top(zpx(2.))
+                            .bottom(zpx(2.))
+                            .left(zpx(2.))
+                            .right(zpx(2.))
+                            .border_2()
+                            .border_color(t.focus)
+                            .rounded(zpx(3.)),
+                    )
+                })
                 .when(is_selected, |d| {
                     // `box-shadow: inset 0 -3px 0 var(--tab-bar-active-color)`
                     d.child(

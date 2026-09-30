@@ -1,0 +1,166 @@
+%YAML 1.2
+---
+# IL Assembly (source.il): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/mg0x7BE/il-assembly-grammar.git via GitHub Linguist v9.7.0 (license: unlicense).
+name: IL Assembly
+scope: source.il
+file_extensions:
+- il
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_string-double
+  - include: repo_string-single
+  - include: repo_bytearray
+  - include: repo_directive
+  - include: repo_label
+  - include: repo_opcode-prefix
+  - include: repo_opcode-control
+  - include: repo_opcode
+  - include: repo_storage-modifier
+  - include: repo_type-builtin
+  - include: repo_number-hex
+  - include: repo_number-float
+  - include: repo_number-integer
+  - include: repo_assembly-ref
+  - include: repo_punctuation
+  repo_assembly-ref:
+  - match: \[[A-Za-z_][\w.]*\]
+    scope: entity.name.type.module.il
+  repo_bytearray:
+  - match: \b(bytearray)\s*(\()
+    captures:
+      1: keyword.other.bytearray.il
+      2: punctuation.section.parens.begin.il
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.parens.end.il
+    - include: repo_comment
+    - match: '[0-9a-fA-F]{2}'
+      scope: constant.numeric.hex.il
+  repo_comment:
+  - match: //.*$
+    scope: comment.line.double-slash.il
+  repo_directive:
+  - match: (?<![.\w])\.(assembly|module|class|namespace|method|field|property|event|custom)(?![.\w])
+    scope: keyword.control.directive.il
+  - match: (?<![.\w])\.(maxstack|locals|entrypoint|try|catch|finally|filter|fault|override)(?![.\w])
+    scope: keyword.control.directive.il
+  - match: (?<![.\w])\.(data|size|pack|param|permissionset|zeroinit|emitbyte)(?![.\w])
+    scope: keyword.control.directive.il
+  - match: (?<![.\w])\.(get|set|addon|removeon|fire|other)(?![.\w])
+    scope: keyword.control.directive.il
+  - match: (?<![.\w])\.(export|vtfixup|vtentry|corflags|subsystem|imagebase|stackreserve|file|hash|mresource)(?![.\w])
+    scope: keyword.control.directive.il
+  - match: (?<![.\w])\.(line|language|ctor|cctor|ver|publickey|publickeytoken|culture|locale)(?![.\w])
+    scope: keyword.control.directive.il
+  repo_label:
+  - match: ^\s*([A-Za-z_$][A-Za-z_$0-9]*)\s*(:)(?!:)
+    captures:
+      1: entity.name.label.il
+      2: punctuation.separator.label.il
+  repo_number-float:
+  - match: \b[0-9]+\.[0-9]+(?:[eE][+-]?[0-9]+)?\b
+    scope: constant.numeric.float.il
+  repo_number-hex:
+  - match: \b0[xX][0-9a-fA-F]+\b
+    scope: constant.numeric.hex.il
+  repo_number-integer:
+  - match: \b[0-9]+\b
+    scope: constant.numeric.integer.il
+  repo_opcode:
+  - match: (?<![.\w])(?:ldarg|ldarg\.[0-3s]|ldarga|ldarga\.s|ldloc|ldloc\.[0-3s]|ldloca|ldloca\.s)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:ldc\.i4|ldc\.i4\.[0-8]|ldc\.i4\.m1|ldc\.i4\.s|ldc\.i8|ldc\.r4|ldc\.r8|ldstr|ldnull)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:ldfld|ldsfld|ldflda|ldsflda|ldlen|ldobj|ldftn|ldvirtftn|ldtoken)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:ldelem|ldelem\.i[1248]?|ldelem\.u[1248]|ldelem\.r[48]|ldelem\.ref|ldelema)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:ldind\.i[1248]?|ldind\.u[1248]|ldind\.r[48]|ldind\.ref)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:starg|starg\.s|stloc|stloc\.[0-3s]|stfld|stsfld|stobj)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:stelem|stelem\.i[1248]?|stelem\.r[48]|stelem\.ref)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:stind\.i[1248]?|stind\.r[48]|stind\.ref)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:add|add\.ovf|add\.ovf\.un|sub|sub\.ovf|sub\.ovf\.un|mul|mul\.ovf|mul\.ovf\.un|div|div\.un|rem|rem\.un|neg)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:and|or|xor|not|shl|shr|shr\.un)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:conv\.i[1248]?|conv\.u[1248]?|conv\.r[48]|conv\.r\.un)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:conv\.ovf\.i[1248]?|conv\.ovf\.i[1248]?\.un|conv\.ovf\.u[1248]?|conv\.ovf\.u[1248]?\.un)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:ceq|cgt|cgt\.un|clt|clt\.un|ckfinite)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:newobj|newarr|initobj|castclass|isinst|box|unbox|unbox\.any|sizeof)(?![.\w])
+    scope: support.function.opcode.il
+  - match: (?<![.\w])(?:mkrefany|refanytype|refanyval|pop|dup|nop|localloc|initblk|cpblk|cpobj|arglist|break)(?![.\w])
+    scope: support.function.opcode.il
+  repo_opcode-control:
+  - match: (?<![.\w])(?:br|br\.s|brfalse|brfalse\.s|brtrue|brtrue\.s)(?![.\w])
+    scope: keyword.control.flow.il
+  - match: (?<![.\w])(?:beq|beq\.s|bge|bge\.s|bge\.un|bge\.un\.s|bgt|bgt\.s|bgt\.un|bgt\.un\.s)(?![.\w])
+    scope: keyword.control.flow.il
+  - match: (?<![.\w])(?:ble|ble\.s|ble\.un|ble\.un\.s|blt|blt\.s|blt\.un|blt\.un\.s|bne\.un|bne\.un\.s)(?![.\w])
+    scope: keyword.control.flow.il
+  - match: (?<![.\w])(?:switch|call|calli|callvirt|ret|jmp)(?![.\w])
+    scope: keyword.control.flow.il
+  - match: (?<![.\w])(?:throw|rethrow|leave|leave\.s|endfinally|endfilter|endfault)(?![.\w])
+    scope: keyword.control.flow.il
+  repo_opcode-prefix:
+  - match: (?<![.\w])(?:tail|volatile|unaligned|readonly|constrained|no)\.
+    scope: keyword.other.prefix.il
+  repo_punctuation:
+  - match: '::'
+    scope: punctuation.separator.accessor.il
+  - match: \{
+    scope: punctuation.section.braces.begin.il
+  - match: \}
+    scope: punctuation.section.braces.end.il
+  repo_storage-modifier:
+  - match: \b(?:public|private|family|assembly|famorassem|famandassem|privatescope|compilercontrolled)\b
+    scope: storage.modifier.il
+  - match: \b(?:static|instance|virtual|abstract|sealed|newslot|final|hidebysig)\b
+    scope: storage.modifier.il
+  - match: \b(?:specialname|rtspecialname|pinvokeimpl|managed|unmanaged|cil|runtime|internalcall)\b
+    scope: storage.modifier.il
+  - match: \b(?:forwardref|noinlining|aggressiveinlining|synchronized)\b
+    scope: storage.modifier.il
+  - match: \b(?:interface|enum|extends|implements|nested|sequential|explicit|auto)\b
+    scope: storage.modifier.il
+  - match: \b(?:ansi|unicode|autochar|beforefieldinit|serializable|initonly|literal|notserialized|extern)\b
+    scope: storage.modifier.il
+  - match: \b(?:init|marshal|modopt|modreq|in|out|opt|at|bytearray|nullref|vararg|default)\b
+    scope: storage.modifier.il
+  repo_string-double:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.il
+    push:
+    - meta_scope: string.quoted.double.il
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.il
+    - match: \\.
+      scope: constant.character.escape.il
+  repo_string-single:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.il
+    push:
+    - meta_scope: string.quoted.single.il
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.il
+    - match: \\.
+      scope: constant.character.escape.il
+  repo_type-builtin:
+  - match: \b(?:void|bool|char|int8|int16|int32|int64|float32|float64|native|unsigned|int|object|string|typedref|class|valuetype)\b
+    scope: support.type.il

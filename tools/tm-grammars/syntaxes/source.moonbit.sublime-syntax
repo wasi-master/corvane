@@ -1,0 +1,625 @@
+%YAML 1.2
+---
+# MoonBit (source.moonbit): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/moonbitlang/moonbit-tmLanguage.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: MoonBit
+scope: source.moonbit
+file_extensions:
+- mbt
+contexts:
+  main:
+  - include: repo_doccomment
+  - include: repo_linecomment
+  - include: repo_regexliteral
+  - include: repo_bytes
+  - include: repo_string-double
+  - include: repo_string-single
+  - include: repo_multilineinterp
+  - include: repo_multilinestring
+  - include: repo_attributename
+  - include: repo_type-annotation-var
+  - include: repo_type-annotation-return
+  - include: repo_object-method-key
+  - include: repo_ternary-expression
+  - include: repo_fn-definition
+  - include: repo_let-destructure
+  - include: repo_const-destructure
+  - include: repo_as-typekw
+  - include: repo_dotint
+  - include: repo_float
+  - include: repo_double
+  - include: repo_int
+  - include: repo_scope-keyword-operator-expression-as
+  - include: repo_scope-keyword-operator-expression-is
+  - include: repo_scope-keyword-operator-expression-not
+  - include: repo_tryquestion
+  - include: repo_trybang
+  - include: repo_lexmatchquestion
+  - include: repo_scope-keyword-control-flow
+  - include: repo_scope-keyword-control-conditional
+  - include: repo_scope-keyword-control-loop-for
+  - include: repo_scope-keyword-control-loop-in
+  - include: repo_scope-keyword-control-loop-loop
+  - include: repo_scope-keyword-control-loop-while
+  - include: repo_scope-keyword-control-loop-break
+  - include: repo_scope-keyword-control-loop-continue
+  - include: repo_scope-keyword-control-exception
+  - include: repo_scope-keyword-control-import
+  - include: repo_scope-keyword-control-proof
+  - include: repo_uident
+  - include: repo_prooflabel
+  - include: repo_scope-keyword-other
+  - include: repo_scope-storage-modifier
+  - include: repo_scope-storage-modifier-accessibility
+  - include: repo_scope-storage-type-function
+  - include: repo_moonbit-impl-header
+  - include: repo_scope-storage-type
+  - include: repo_scope-storage-type-function-arrow
+  - include: repo_scope-constant-language-boolean-true
+  - include: repo_scope-constant-language-boolean-false
+  - include: repo_method-call
+  - include: repo_known-property-access
+  - include: repo_property-access
+  - include: repo_forall
+  - include: repo_exists
+  - include: repo_implies
+  - include: repo_operator-overrides
+  - include: repo_operators
+  - include: repo_scope-punctuation-accessor
+  - include: repo_scope-punctuation-separator-colon
+  - include: repo_scope-punctuation-bracket-square
+  - include: repo_scope-punctuation-separator-comma
+  - include: repo_scope-punctuation-bracket-round
+  - include: repo_scope-punctuation-bracket-curly
+  - include: repo_scope-punctuation-terminator-statement
+  - include: repo_punctuation
+  - include: repo_function-call
+  - include: repo_ident
+  - include: repo_packagename
+  - include: repo_byte
+  - include: repo_char
+  repo_as-typekw:
+  - match: \b(as)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$)
+    captures:
+      1: keyword.operator.expression.as.moonbit
+    push:
+    - meta_scope: meta.type.as.moonbit
+    - match: (?=[)}{\],;=>]|\b(?:as|if|else|match|guard|lexmatch|for|while|loop|in|break|continue|return|raise|throw|defer|try|catch|import|using|fn|predicate|lemma|let|letrec|const|type|struct|enum|enumview|extenum|trait|impl|typealias|traitalias|fnalias|suberror|test|pub|priv|readonly|extern|mut|async|declare|noraise|nobreak|proof_assert|proof_let|is|not)\b)
+      pop: true
+    - include: repo_type-inner
+  repo_attributename:
+  - match: '#[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?'
+    scope: entity.name.function.decorator.moonbit
+  repo_bind-default:
+  - match: (=)
+    captures:
+      1: keyword.operator.assignment.moonbit
+    push:
+    - match: (?=[,}\])])
+      pop: true
+    - include: main
+  repo_byte:
+  - match: b'(?:\\(?:['"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.)|[^\\'\n])+'
+    scope: constant.character.byte.moonbit
+  repo_bytes:
+  - match: b"(?:[^"\\\n]|\\(?:['"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.))*"
+    scope: string.quoted.double.bytes.moonbit
+  repo_char:
+  - match: '''(?:\\(?:[''"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.)|[^\\''\n])+'''
+    scope: constant.character.moonbit
+  repo_const-bind-array:
+  - match: \[
+    captures:
+      0: punctuation.definition.binding-pattern.array.moonbit
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.binding-pattern.array.moonbit
+    - include: repo_const-bind-elem
+  repo_const-bind-elem:
+  - match: (\.\.\.)
+    scope: keyword.operator.rest.moonbit
+  - include: repo_bind-default
+  - include: repo_const-bind-object
+  - include: repo_const-bind-array
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_const-bind-object:
+  - match: \{
+    captures:
+      0: punctuation.definition.binding-pattern.object.moonbit
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.binding-pattern.object.moonbit
+    - include: repo_const-bind-prop
+  repo_const-bind-prop:
+  - match: (\.\.\.)
+    scope: keyword.operator.rest.moonbit
+  - include: repo_bind-default
+  - include: repo_const-bind-object
+  - include: repo_const-bind-array
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_const-destructure:
+  - match: \b(const)\s+(?=[{\[])
+    captures:
+      1: storage.type.moonbit
+    push:
+    - match: (?<=[}\]])
+      pop: true
+    - include: repo_mut-bind-object
+    - include: repo_mut-bind-array
+  repo_doccomment:
+  - match: \/\/\/[^\n]*
+    scope: comment.line.documentation.moonbit
+  repo_dotint:
+  - match: \.[0-9]+
+    scope: constant.numeric.integer.tuple-index.moonbit
+  repo_double:
+  - match: (?:0[xX][0-9a-fA-F][0-9a-fA-F_]*\.[0-9a-fA-F_]*(?:[pP][+-]?[0-9][0-9_]*)?(?!\.)|[0-9][0-9_]*\.[0-9_]*(?:[eE][+-]?[0-9][0-9_]*)?(?!\.))
+    scope: constant.numeric.double.moonbit
+  repo_exists:
+  - match: "\u2203"
+    scope: keyword.operator.quantifier.moonbit
+  repo_expr-scope-keyword-control-flow:
+  - match: \b(raise|throw|return)\b
+    scope: keyword.control.flow.moonbit
+  repo_expr-scope-storage-modifier:
+  - match: \b(async)\b
+    scope: storage.modifier.moonbit
+  repo_expr-scope-storage-modifier-accessibility:
+  - match: \b(noraise|nobreak)\b(?=\s+(?:\.\.\.|[[:alpha:]_\[*#{"'0-9]))
+    scope: storage.modifier.moonbit
+  repo_expression:
+  - include: repo_doccomment
+  - include: repo_linecomment
+  - include: repo_regexliteral
+  - include: repo_bytes
+  - include: repo_string-double
+  - include: repo_string-single
+  - include: repo_multilineinterp
+  - include: repo_multilinestring
+  - include: repo_attributename
+  - include: repo_type-annotation-return
+  - include: repo_object-method-key
+  - include: repo_ternary-expression
+  - include: repo_fn-definition
+  - include: repo_as-typekw
+  - include: repo_dotint
+  - include: repo_float
+  - include: repo_double
+  - include: repo_int
+  - include: repo_scope-keyword-operator-expression-as
+  - include: repo_scope-keyword-operator-expression-is
+  - include: repo_scope-keyword-operator-expression-not
+  - include: repo_tryquestion
+  - include: repo_trybang
+  - include: repo_lexmatchquestion
+  - include: repo_expr-scope-keyword-control-flow
+  - include: repo_scope-keyword-control-conditional
+  - include: repo_scope-keyword-control-loop-for
+  - include: repo_scope-keyword-control-loop-in
+  - include: repo_scope-keyword-control-loop-loop
+  - include: repo_scope-keyword-control-loop-while
+  - include: repo_scope-keyword-control-loop-break
+  - include: repo_scope-keyword-control-loop-continue
+  - include: repo_scope-keyword-control-exception
+  - include: repo_uident
+  - include: repo_prooflabel
+  - include: repo_scope-keyword-other
+  - include: repo_expr-scope-storage-modifier
+  - include: repo_expr-scope-storage-modifier-accessibility
+  - include: repo_scope-storage-type-function
+  - include: repo_scope-storage-type-function-arrow
+  - include: repo_scope-constant-language-boolean-true
+  - include: repo_scope-constant-language-boolean-false
+  - include: repo_method-call
+  - include: repo_known-property-access
+  - include: repo_property-access
+  - include: repo_forall
+  - include: repo_exists
+  - include: repo_implies
+  - include: repo_operator-overrides
+  - include: repo_operators
+  - include: repo_scope-punctuation-accessor
+  - include: repo_scope-punctuation-separator-colon
+  - include: repo_scope-punctuation-bracket-square
+  - include: repo_scope-punctuation-separator-comma
+  - include: repo_scope-punctuation-bracket-round
+  - include: repo_scope-punctuation-bracket-curly
+  - include: repo_scope-punctuation-terminator-statement
+  - include: repo_punctuation
+  - include: repo_function-call
+  - include: repo_ident
+  - include: repo_packagename
+  - include: repo_byte
+  - include: repo_char
+  repo_float:
+  - match: (?:0[xX][0-9a-fA-F][0-9a-fA-F_]*\.[0-9a-fA-F_]*[pP][+-]?[0-9][0-9_]*F|[0-9][0-9_]*\.[0-9_]*(?:[eE][+-]?[0-9][0-9_]*)?F)
+    scope: constant.numeric.float.moonbit
+  repo_fn-definition: []
+  repo_forall:
+  - match: "\u2200"
+    scope: keyword.operator.quantifier.moonbit
+  repo_function-call: []
+  repo_ident: []
+  repo_implies:
+  - match: "\u2192"
+    scope: keyword.operator.logical.implication.moonbit
+  repo_int:
+  - match: (?:0[xX][0-9a-fA-F][0-9a-fA-F_]*|0[oO][0-7][0-7_]*|0[bB][01][01_]*|[0-9][0-9_]*)(?:UL|U|L|N)?
+    scope: constant.numeric.integer.moonbit
+  repo_known-property-access:
+  - match: (?<=[\w\]\)])(\.)\s*(\.|\.=|\.<|\.<=|\.\.)\b
+    captures:
+      1: punctuation.accessor.moonbit
+      2: keyword.operator.range.moonbit
+  repo_let-destructure:
+  - match: \b(let)\s+(?=[{\[])
+    captures:
+      1: storage.type.moonbit
+    push:
+    - match: (?<=[}\]])
+      pop: true
+    - include: repo_mut-bind-object
+    - include: repo_mut-bind-array
+  repo_lexmatchquestion:
+  - match: lexmatch\?
+    scope: keyword.control.conditional.moonbit
+  repo_linecomment:
+  - match: \/\/[^\n]*
+    scope: comment.line.double-slash.moonbit
+  repo_method-call: []
+  repo_moonbit-impl-header:
+  - match: \b(impl)\b
+    captures:
+      1: storage.type.moonbit
+    push:
+    - meta_scope: meta.impl.header.moonbit
+    - match: (?=\bwith\b|[;{]|$)
+      pop: true
+    - match: \b(for)\b
+      scope: keyword.other.impl.moonbit
+    - include: repo_type-inner
+    - include: main
+  repo_moonbit-interpolation-braces:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.moonbit
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.moonbit
+    - include: repo_moonbit-interpolation-braces
+    - include: main
+  repo_multilineinterp:
+  - match: \$\|
+    captures:
+      0: string.quoted.other.multiline.interpolated.moonbit punctuation.definition.string.begin.moonbit
+    push:
+    - match: $
+      pop: true
+    - match: \\\{
+      captures:
+        0: punctuation.definition.template-expression.begin.moonbit
+      push:
+      - meta_scope: meta.embedded.expression.moonbit
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.template-expression.end.moonbit
+      - include: repo_moonbit-interpolation-braces
+      - include: main
+    - match: (?:\\(?!\{)|[^\\\n])+
+      scope: string.quoted.other.multiline.interpolated.moonbit
+  repo_multilinestring:
+  - match: '#\|[^\n]*'
+    scope: string.quoted.other.multiline.moonbit
+  repo_mut-bind-array:
+  - match: \[
+    captures:
+      0: punctuation.definition.binding-pattern.array.moonbit
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.binding-pattern.array.moonbit
+    - include: repo_mut-bind-elem
+  repo_mut-bind-elem:
+  - match: (\.\.\.)
+    scope: keyword.operator.rest.moonbit
+  - include: repo_bind-default
+  - include: repo_mut-bind-object
+  - include: repo_mut-bind-array
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_mut-bind-object:
+  - match: \{
+    captures:
+      0: punctuation.definition.binding-pattern.object.moonbit
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.binding-pattern.object.moonbit
+    - include: repo_mut-bind-prop
+  repo_mut-bind-prop:
+  - match: (\.\.\.)
+    scope: keyword.operator.rest.moonbit
+  - include: repo_bind-default
+  - include: repo_mut-bind-object
+  - include: repo_mut-bind-array
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_object-method-key: []
+  repo_operator-overrides:
+  - match: (\.\.<=)|(>=\.\.)|(\.\.\.)|(\.\.<)|(\.\.=)|(>\.\.)|(\.\.)|(=~)|(\+=)|(-=)|(\*=)|(/=)|(%=)|(\|>)|(<\|)|(\|\|)|(&&)|(==)|(!=)|(<=)|(>=)|(<<)|(>>)|(&)|(\+)|(=)|(-)|(\|)|(\^)|(<)|(>)|(\*)|(/)|(%)
+    captures:
+      1: keyword.operator.range.moonbit
+      10: keyword.operator.assignment.moonbit
+      11: keyword.operator.assignment.moonbit
+      12: keyword.operator.assignment.moonbit
+      13: keyword.operator.assignment.moonbit
+      14: keyword.operator.pipe.moonbit
+      15: keyword.operator.pipe.moonbit
+      16: keyword.operator.logical.moonbit
+      17: keyword.operator.logical.moonbit
+      18: keyword.operator.comparison.moonbit
+      19: keyword.operator.comparison.moonbit
+      2: keyword.operator.range.moonbit
+      20: keyword.operator.comparison.moonbit
+      21: keyword.operator.comparison.moonbit
+      22: keyword.operator.bitwise.moonbit
+      23: keyword.operator.bitwise.moonbit
+      24: keyword.operator.bitwise.moonbit
+      25: keyword.operator.arithmetic.moonbit
+      26: keyword.operator.assignment.moonbit
+      27: keyword.operator.arithmetic.moonbit
+      28: keyword.operator.bitwise.moonbit
+      29: keyword.operator.bitwise.moonbit
+      3: keyword.operator.range.moonbit
+      30: keyword.operator.comparison.moonbit
+      31: keyword.operator.comparison.moonbit
+      32: keyword.operator.arithmetic.moonbit
+      33: keyword.operator.arithmetic.moonbit
+      34: keyword.operator.arithmetic.moonbit
+      4: keyword.operator.range.moonbit
+      5: keyword.operator.range.moonbit
+      6: keyword.operator.range.moonbit
+      7: keyword.operator.range.moonbit
+      8: keyword.operator.comparison.moonbit
+      9: keyword.operator.assignment.moonbit
+  repo_operators:
+  - match: '!'
+    scope: keyword.operator.moonbit
+  repo_packagename: []
+  repo_prooflabel:
+  - match: proof_(?:require|ensure|invariant|yield|decrease|reasoning|axiomatized)(?=\s*:)
+    scope: keyword.other.proof-label.moonbit
+  repo_property-access: []
+  repo_punctuation:
+  - match: <\+|<\?|\?|~
+    scope: punctuation.moonbit
+  repo_regexliteral:
+  - match: (re)(")
+    captures:
+      1: string.regexp.moonbit
+      2: string.regexp.moonbit punctuation.definition.string.begin.moonbit
+    push:
+    - match: '"|$'
+      pop: true
+      captures:
+        0: string.regexp.moonbit punctuation.definition.string.end.moonbit
+    - match: \\\{
+      captures:
+        0: punctuation.definition.template-expression.begin.moonbit
+      push:
+      - meta_scope: meta.embedded.expression.moonbit
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.template-expression.end.moonbit
+      - include: repo_moonbit-interpolation-braces
+      - include: main
+    - match: \\(?:['"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.)
+      scope: constant.character.escape.moonbit
+    - match: (?:\\(?!\{)|[^"\\])+
+      scope: string.regexp.moonbit
+  repo_scope-constant-language-boolean-false:
+  - match: \b(false)\b
+    scope: constant.language.boolean.false.moonbit
+  repo_scope-constant-language-boolean-true:
+  - match: \b(true)\b
+    scope: constant.language.boolean.true.moonbit
+  repo_scope-keyword-control-conditional:
+  - match: \b(if|else|guard|match|lexmatch)\b
+    scope: keyword.control.conditional.moonbit
+  repo_scope-keyword-control-exception:
+  - match: \b(try|catch)\b
+    scope: keyword.control.exception.moonbit
+  repo_scope-keyword-control-flow:
+  - match: \b(raise|throw|return|defer)\b
+    scope: keyword.control.flow.moonbit
+  repo_scope-keyword-control-import:
+  - match: \b(import|using)\b
+    scope: keyword.control.import.moonbit
+  repo_scope-keyword-control-loop-break:
+  - match: \b(break)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-loop-continue:
+  - match: \b(continue)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-loop-for:
+  - match: \b(for)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-loop-in:
+  - match: \b(in)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-loop-loop:
+  - match: \b(loop)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-loop-while:
+  - match: \b(while)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$|\s*[({\["])
+    scope: keyword.control.loop.moonbit
+  repo_scope-keyword-control-proof:
+  - match: \b(proof_assert|proof_let)\b
+    scope: keyword.control.proof.moonbit
+  repo_scope-keyword-operator-expression-as:
+  - match: \b(as)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$)
+    scope: keyword.operator.expression.moonbit
+  repo_scope-keyword-operator-expression-is:
+  - match: \b(is)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$)
+    scope: keyword.operator.expression.moonbit
+  repo_scope-keyword-operator-expression-not:
+  - match: \b(not)\b(?=\s+[[:alpha:][:digit:]_@"({\[]|\s*$)
+    scope: keyword.operator.expression.moonbit
+  repo_scope-keyword-other:
+  - match: \b(_|Unit|Bool|Byte|Char|Int|Int64|UInt|UInt64|Float|Double|String|Bytes|Array|FixedArray|Option|Result|Json|where|with|all|open|derive|and)\b
+    scope: keyword.other.moonbit
+  repo_scope-punctuation-accessor:
+  - match: \.
+    scope: punctuation.accessor.moonbit
+  repo_scope-punctuation-bracket-curly:
+  - match: \{|\}
+    scope: punctuation.bracket.curly.moonbit
+  repo_scope-punctuation-bracket-round:
+  - match: \(|\)
+    scope: punctuation.bracket.round.moonbit
+  repo_scope-punctuation-bracket-square:
+  - match: \[|\]
+    scope: punctuation.bracket.square.moonbit
+  repo_scope-punctuation-separator-colon:
+  - match: ':'
+    scope: punctuation.separator.colon.moonbit
+  repo_scope-punctuation-separator-comma:
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_scope-punctuation-terminator-statement:
+  - match: ;
+    scope: punctuation.terminator.statement.moonbit
+  repo_scope-storage-modifier:
+  - match: \b(async|pub|priv|readonly|extern)\b
+    scope: storage.modifier.moonbit
+  repo_scope-storage-modifier-accessibility:
+  - match: \b(noraise|mut|nobreak|declare)\b(?=\s+(?:\.\.\.|[[:alpha:]_\[*#{"'0-9]))
+    scope: storage.modifier.moonbit
+  repo_scope-storage-type:
+  - match: \b(let|const|letrec|type|struct|enum|extenum|suberror|enumview|typealias|traitalias|fnalias|trait|impl|test)\b
+    scope: storage.type.moonbit
+  repo_scope-storage-type-function:
+  - match: \b(fn|predicate|lemma)\b
+    scope: storage.type.function.moonbit
+  repo_scope-storage-type-function-arrow:
+  - match: ->|=>
+    scope: storage.type.function.arrow.moonbit
+  repo_simple-type: []
+  repo_string-double:
+  - match: '"'
+    captures:
+      0: string.quoted.double.moonbit punctuation.definition.string.begin.moonbit
+    push:
+    - match: '"|$'
+      pop: true
+      captures:
+        0: string.quoted.double.moonbit punctuation.definition.string.end.moonbit
+    - match: \\\{
+      captures:
+        0: punctuation.definition.template-expression.begin.moonbit
+      push:
+      - meta_scope: meta.embedded.expression.moonbit
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.template-expression.end.moonbit
+      - include: repo_moonbit-interpolation-braces
+      - include: main
+    - match: \\(?:['"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.)
+      scope: constant.character.escape.moonbit
+    - match: '[^"\\]+'
+      scope: string.quoted.double.moonbit
+  repo_string-single:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.moonbit
+    push:
+    - meta_scope: string.quoted.single.moonbit
+    - match: '''|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.moonbit
+    - match: \\(?:['"\\nrtbf/ ]|x[0-9a-fA-F]{2}|o[0-3][0-7]{2}|u[0-9a-fA-F]{4}|u\{[0-9a-fA-F]+\}|.)
+      scope: constant.character.escape.moonbit
+  repo_ternary-expression:
+  - match: (\?)(?![:])
+    captures:
+      1: keyword.operator.ternary.moonbit
+    push:
+    - meta_scope: meta.ternary-expression.moonbit
+    - match: (:)
+      pop: true
+      captures:
+        1: keyword.operator.ternary.moonbit
+    - include: repo_ternary-expression
+    - include: main
+  repo_trybang:
+  - match: try!
+    scope: keyword.control.exception.moonbit
+  repo_tryquestion:
+  - match: try\?
+    scope: keyword.control.exception.moonbit
+  repo_type-annotation-return:
+  - match: (?<=\))(:)
+    captures:
+      1: keyword.operator.type.annotation.moonbit
+    push:
+    - meta_scope: meta.type.annotation.return.moonbit
+    - match: (?=[{;]|=>)
+      pop: true
+    - include: repo_type-inner
+  repo_type-annotation-var:
+  - include: repo_type-inner
+  repo_type-inner:
+  - include: repo_type-object-type
+  - include: repo_type-paren
+  - include: repo_uident
+  - include: repo_doccomment
+  - include: repo_linecomment
+  - include: repo_scope-constant-language-boolean-true
+  - include: repo_scope-constant-language-boolean-false
+  - include: repo_scope-keyword-operator-expression-as
+  - include: repo_scope-keyword-operator-expression-is
+  - include: repo_scope-keyword-operator-expression-not
+  - include: repo_simple-type
+  - match: \[\]
+    scope: keyword.operator.type.array.moonbit
+  - match: ','
+    scope: punctuation.separator.comma.moonbit
+  repo_type-object-member:
+  - include: repo_type-inner
+  repo_type-object-type:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.moonbit
+    push:
+    - meta_scope: meta.object-type.moonbit
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.moonbit
+    - include: repo_type-object-member
+    - include: repo_type-inner
+    - match: ;
+      scope: punctuation.separator.moonbit
+  repo_type-paren:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_type-inner
+  repo_uident:
+  - match: '[A-Z][A-Za-z0-9_]*\??'
+    scope: entity.name.type.moonbit

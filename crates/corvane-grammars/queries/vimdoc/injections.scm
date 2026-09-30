@@ -1,0 +1,6 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/vimdoc/).
+; Source: nvim-treesitter@728e031f6b11 queries/vimdoc (Apache-2.0)
+((codeblock
+  (language) @injection.language
+  (code) @injection.content)
+  (#set! injection.include-children))

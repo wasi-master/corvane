@@ -303,16 +303,16 @@ impl Render for ConfirmRemoveRepositoryDialog {
                     .line_height(zpx(16.5))
                     .text_color(t.text_secondary)
                     .child("The repository will be removed from Corvane:")
-                    // `<Ref>` breaks anywhere (`word-break: break-all`): a
-                    // monospace run on the path-segment background
-                    .child({
-                        let style = window.text_style();
-                        let mut mono = style.clone();
-                        mono.font_family = crate::theme::mono_font().into();
-                        let mut run = mono.to_run(path.len());
-                        run.background_color = Some(t.path_segment_background);
-                        StyledText::new(path).with_runs(vec![run])
-                    }),
+                    // `<Ref>` breaks anywhere (`word-break: break-all`) within
+                    // the 364 px text column of the 450 px warning dialog
+                    .child(crate::widgets::wrapped_ref(
+                        &path,
+                        FONT_SIZE_SM(),
+                        zpx(16.5),
+                        zpx(364.),
+                        window,
+                        cx,
+                    )),
             )
             .on_mouse_down(
                 MouseButton::Left,

@@ -1,0 +1,318 @@
+%YAML 1.2
+---
+# mcfunction (source.mcfunction): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/MinecraftCommands/syntax-mcfunction.git via GitHub Linguist v9.7.0 (license: mit).
+name: mcfunction
+scope: source.mcfunction
+file_extensions:
+- mcfunction
+contexts:
+  main:
+  - include: repo_root
+  repo_comments:
+  - match: ^\s*(#[>!#])(.+)$
+    captures:
+      1: comment.block.mcfunction
+      2: markup.bold.mcfunction
+    push:
+    - meta_scope: meta.comments
+    - include: repo_comments_block
+    - match: ^(?!#)
+      pop: true
+      captures:
+        0: comment.block.mcfunction
+  - match: ^\s*#.*$
+    scope: meta.comments
+    captures:
+      0: comment.line.mcfunction
+  repo_comments_block:
+  - match: ^\s*#[>!]
+    captures:
+      0: comment.block.mcfunction
+    push:
+    - meta_scope: meta.comments_block
+    - include: repo_comments_block_emphasized
+    - match: $
+      pop: true
+      captures:
+        0: comment.block.mcfunction
+  - match: ^\s*#
+    captures:
+      0: comment.block.mcfunction
+    push:
+    - meta_scope: meta.comments_block
+    - include: repo_comments_block_normal
+    - match: $
+      pop: true
+      captures:
+        0: comment.block.mcfunction
+  repo_comments_block_emphasized:
+  - include: repo_comments_block_special
+  - match: \S+
+    scope: meta.comments_block_emphasized
+    captures:
+      0: markup.bold.mcfunction
+  repo_comments_block_normal:
+  - include: repo_comments_block_special
+  - match: \S+
+    scope: meta.comments_block_normal
+    captures:
+      0: comment.block.mcfunction
+  repo_comments_block_special:
+  - match: '@\S+'
+    scope: meta.comments_block_special
+    captures:
+      0: markup.heading.mcfunction
+  - include: repo_resource-name
+  - match: '[#%$][A-Za-z0-9_.#%$]+'
+    scope: meta.comments_block_special
+    captures:
+      0: variable.other.mcfunction
+  repo_comments_inline:
+  - match: '#.*$'
+    scope: meta.comments
+    captures:
+      0: comment.line.mcfunction
+  repo_literals:
+  - match: \b(true|false|True|False)\b
+    scope: meta.literals
+    captures:
+      0: constant.numeric.boolean.mcfunction
+  - match: \b[0-9a-fA-F]+(?:-[0-9a-fA-F]+){4}\b
+    scope: meta.names
+    captures:
+      0: variable.uuid.mcfunction
+  - match: '[+-]?\d*\.?\d+([eE]?[+-]?\d+)?[df]?\b'
+    scope: meta.literals
+    captures:
+      0: constant.numeric.float.mcfunction
+  - match: '[+-]?\d+(b|B|L|l|s|S)?\b'
+    scope: meta.literals
+    captures:
+      0: constant.numeric.integer.mcfunction
+  - match: \.\.
+    scope: meta.ellipse.literals
+    captures:
+      0: variable.other.mcfunction
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.mcfunction
+    push:
+    - meta_scope: string.quoted.double.mcfunction
+    - include: repo_literals_string-double
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.mcfunction
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.mcfunction
+    push:
+    - meta_scope: string.quoted.single.mcfunction
+    - include: repo_literals_string-single
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.begin.mcfunction
+  repo_literals_string-double:
+  - match: \\.
+    scope: meta.literals_string-double
+    captures:
+      0: constant.character.escape.mcfunction
+  - match: \\
+    scope: meta.literals_string-double
+    captures:
+      0: constant.character.escape.mcfunction
+  - include: repo_macro-name
+  - match: '[^\\"]'
+    scope: meta.literals_string-double
+    captures:
+      0: string.quoted.double.mcfunction
+  repo_literals_string-single:
+  - match: \\.
+    scope: meta.literals_string-single
+    captures:
+      0: constant.character.escape.mcfunction
+  - match: \\
+    scope: meta.literals_string-double
+    captures:
+      0: constant.character.escape.mcfunction
+  - include: repo_macro-name
+  - match: '[^\\'']'
+    scope: meta.literals_string-single
+    captures:
+      0: string.quoted.single.mcfunction
+  repo_macro-name:
+  - match: (\$\()([A-Za-z0-9_]*)(\))
+    scope: meta.macro-name
+    captures:
+      1: punctuation.definition.template-expression.begin.mcfunction
+      2: variable.other.mcfunction
+      3: punctuation.definition.template-expression.end.mcfunction
+  repo_names:
+  - match: ^(\s*)([a-z_]+)(?=\s)
+    scope: meta.names
+    captures:
+      1: whitespace.mcfunction
+      2: keyword.control.flow.mcfunction
+  - match: ^(\s*)(\$)( ?)([a-z_]*)
+    scope: meta.names
+    captures:
+      1: whitespace.mcfunction
+      2: markup.italic.mcfunction
+      3: whitespace.mcfunction
+      4: keyword.control.flow.mcfunction
+  - match: (run)(\s+)([a-z_]+)
+    scope: meta.names
+    captures:
+      1: entity.name.mcfunction
+      2: whitespace.mcfunction
+      3: keyword.control.flow.mcfunction
+  - include: repo_resource-name
+  - match: '[A-Za-z]+(?=\W)'
+    scope: meta.names
+    captures:
+      0: entity.name.mcfunction
+  - match: '[A-Za-z_][A-Za-z0-9_.#%$]*'
+    scope: meta.names
+    captures:
+      0: string.unquoted.mcfunction
+  - include: repo_macro-name
+  - match: ([#%$]|((?<=\s)\.))[A-Za-z0-9_.#%$\-]+
+    scope: meta.names
+    captures:
+      0: variable.other.mcfunction
+  repo_operators:
+  - match: '[~^]'
+    scope: meta.operators
+    captures:
+      0: constant.numeric.mcfunction
+  - match: '[\-%?!+*<>\\/|&=.:,;]'
+    scope: meta.operators
+    captures:
+      0: keyword.operator.mcfunction
+  repo_property:
+  - match: \{
+    captures:
+      0: punctuation.mcfunction
+    push:
+    - meta_scope: meta.property.curly
+    - include: repo_resource-name
+    - include: repo_literals
+    - include: repo_property_key
+    - include: repo_operators
+    - include: repo_property_value
+    - include: main
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.mcfunction
+  - match: \[
+    captures:
+      0: variable.other.mcfunction
+    push:
+    - meta_scope: meta.property.square
+    - include: repo_resource-name
+    - include: repo_literals
+    - include: repo_property_key
+    - include: repo_operators
+    - include: repo_property_value
+    - include: main
+    - match: \]
+      pop: true
+      captures:
+        0: variable.other.mcfunction
+  - match: \(
+    captures:
+      0: punctuation.mcfunction
+    push:
+    - meta_scope: meta.property.paren
+    - include: repo_resource-name
+    - include: repo_literals
+    - include: repo_property_key
+    - include: repo_operators
+    - include: repo_property_value
+    - include: main
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.mcfunction
+  repo_property_key:
+  - match: '#?[a-z_][a-z_\.\-]*\:[a-z0-9_\.\-/]+(?=\s*\=:)'
+    scope: meta.property_key
+    captures:
+      0: variable.other.mcfunction
+  - match: '#?[a-z_][a-z0-9_\.\-/]+'
+    scope: meta.property_key
+    captures:
+      0: variable.other.mcfunction
+  - match: '[A-Za-z_]+[A-Za-z_\-\+]*'
+    scope: meta.property_key
+    captures:
+      0: variable.other.mcfunction
+  repo_property_value:
+  - match: '#?[a-z_][a-z_\.\-]*\:[a-z0-9_\.\-/]+'
+    scope: meta.property_value
+    captures:
+      0: string.unquoted.mcfunction
+  - match: '#?[a-z_][a-z0-9_\.\-/]+'
+    scope: meta.property_value
+    captures:
+      0: string.unquoted.mcfunction
+  repo_resource-name:
+  - match: '#?[a-z_][a-z0-9_.-]*:[a-z0-9_./-]+'
+    scope: meta.resource-name
+    captures:
+      0: entity.name.function.mcfunction
+  - match: '#?[a-z0-9_\.\-]+\/[a-z0-9_\.\-\/]+'
+    scope: meta.resource-name
+    captures:
+      0: entity.name.function.mcfunction
+  repo_root:
+  - include: repo_literals
+  - include: repo_comments
+  - include: repo_say
+  - include: repo_names
+  - include: repo_comments_inline
+  - include: repo_subcommands
+  - include: repo_property
+  - include: repo_operators
+  - include: repo_selectors
+  repo_say:
+  - match: ^(\s*)(say)
+    captures:
+      1: whitespace.mcfunction
+      2: keyword.control.flow.mcfunction
+    push:
+    - meta_scope: meta.say.mcfunction
+    - match: \n
+      pop: true
+    - match: \\\s*\n
+      captures:
+        0: constant.character.escape.mcfunction
+    - include: repo_literals_string-double
+    - include: repo_literals_string-single
+  - match: (run)(\s+)(say)
+    captures:
+      1: entity.name.mcfunction
+      2: whitespace.mcfunction
+      3: keyword.control.flow.mcfunction
+    push:
+    - meta_scope: meta.say.mcfunction
+    - match: \n
+      pop: true
+    - match: \\\s*\n
+      captures:
+        0: constant.character.escape.mcfunction
+    - include: repo_literals_string-double
+    - include: repo_literals_string-single
+  repo_selectors:
+  - match: '@[a-z]+'
+    scope: meta.selectors
+    captures:
+      0: support.class.mcfunction
+  repo_subcommands:
+  - match: '[a-z_]+'
+    scope: meta.literals
+    captures:
+      0: entity.name.class.mcfunction

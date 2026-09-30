@@ -1,0 +1,159 @@
+%YAML 1.2
+---
+# Fantom (source.fan): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-fantom via GitHub Linguist v9.7.0 (license: mit).
+name: Fantom
+scope: source.fan
+file_extensions:
+- fan
+contexts:
+  main:
+  - include: repo_main
+  repo_comments:
+  - include: repo_line-comment
+  - include: repo_fandoc-comment
+  - include: repo_multiline-comment
+  repo_double-quoted-string:
+  - match: (")
+    push:
+    - meta_scope: string.quoted.double.fan
+    - match: (")
+      pop: true
+    - include: repo_escaped-unicode
+    - include: repo_escaped-char
+    - include: repo_interpolation
+  repo_escaped-char:
+  - match: (\\[bfnrt"'`$\\])
+    scope: constant.character.escape.char.fan
+  - match: (\\.)
+    scope: invalid.illegal.escape.char.fan
+  repo_escaped-unicode:
+  - match: (\\u[0-9A-Fa-f]{4})
+    scope: constant.character.escape.unicode.fan
+  - match: (\\u[0-9A-Fa-f]{0,3})
+    scope: invalid.illegal.escape.unicode.fan
+  repo_fandoc-comment:
+  - match: (^\s*\*\*.*$)
+    scope: comment.line.fandoc.fan
+  repo_interpolation:
+  - match: (\$\{.+?\})
+    scope: variable.other.interpolated-expr.fan
+  - match: (\$([A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*))
+    scope: variable.other.interpolated-dotcall.fan
+  - match: (\$\{\w*)
+    scope: invalid.illegal.interpolation.fan
+  repo_keywords:
+  - match: (\b(true|false|null)\b)
+    scope: constant.language.fan
+  - match: (\b(abstract|const|enum|facet|final|internal|native|once|override|private|protected|public|readonly|static|virtual|volatile)\b)
+    scope: storage.modifier.fan
+  - match: (\b(return|break|continue)\b)
+    scope: keyword.control.block.fan
+  - match: (\b(try|catch|finally|throw|assert)\b)
+    scope: keyword.control.exceptions.fan
+  - match: (\b(for|while|do|foreach)\b)
+    scope: keyword.control.loop.fan
+  - match: (\b(if|else|switch|case|default)\b)
+    scope: keyword.control.flow.fan
+  - match: (\b(new|void)\b)
+    scope: keyword.other.fan
+  - match: (\b(using)\b)
+    scope: storage.modifier.global.fan
+  - match: (\b(this|super|it)\b)
+    scope: variable.language.self.fan
+  - match: (\b(Void|Bool|Int|Float|Decimal|Duration|Str|Uri|Type|Slot|Range|List|Map|This)\b)
+    scope: support.type.sys.fan
+  repo_line-comment:
+  - match: ((//).*$)
+    scope: comment.line.double-slash.fan
+  repo_main:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_uris
+  - include: repo_numbers
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_typedef
+  repo_multiline-comment:
+  - match: (/\*)
+    push:
+    - meta_scope: comment.block
+    - match: (\*/)
+      pop: true
+  repo_numbers:
+  - match: (\b0x[0-9A-Fa-f][_0-9A-Fa-f]*)
+    scope: constant.numeric.hex.fan
+  - match: (0x)
+    scope: invalid.illegal.hex.fan
+  - match: (\\u[0-9A-Fa-f]{4})
+    scope: constant.numeric.escape.unicode.fan
+  - match: (\\(u[0-9A-Fa-f]{0,3})?)
+    scope: invalid.illegal.escape.unicode.fan
+  - match: (\'\\[bfnrt"'$\\]\')
+    scope: constant.numeric.escape.char.fan
+  - match: (\'[^\\]\')
+    scope: constant.numeric.char.fan
+  - match: ((\B\.[0-9][0-9_]*|\b[0-9][0-9_]*(\.[0-9][0-9_]*)?)([eE][-+]?[0-9][0-9_]*)?(ns|ms|sec|min|hr|day))
+    scope: constant.other.duration.fan
+  - match: ((\B\.[0-9][0-9_]*|\b[0-9][0-9_]*(\.[0-9][0-9_]*)?)([eE][-+]?[0-9][0-9_]*)?[fdFD]?)
+    scope: constant.numeric.number.fan
+  repo_operators:
+  - match: (===?|!==?)
+    scope: keyword.operator.equality.fan
+  - match: (<(=|=>)?|>=?)
+    scope: keyword.operator.relational.symbol.fan
+  - match: (:?=)
+    scope: keyword.operator.assign.fan
+  - match: ([+*/%-]=?)
+    scope: keyword.operator.math.fan
+  - match: (!|&&|(\?\:)|(\|\|))
+    scope: keyword.operator.logical.fan
+  - match: (\b(is|isnot|as)\b)
+    scope: keyword.operator.relational.named.fan
+  - match: (\->|\?\->|\?\.)
+    scope: keyword.operator.call.fan
+  - match: (\+\+|\-\-)
+    scope: keyword.operator.inc-dec.fan
+  - match: (\.\.<?)
+    scope: keyword.operator.range.fan
+  - match: (\?|:)
+    scope: keyword.operator.tertiary.fan
+  - match: (;)
+    scope: punctuation.terminator.fan
+  repo_string-dsl:
+  - match: ((Str)<\|)
+    captures:
+      1: support.type.sys.fan
+    push:
+    - meta_scope: string.quoted.other.fan
+    - match: (\|>)
+      pop: true
+      captures:
+        1: support.type.sys.fan
+  repo_strings:
+  - include: repo_triple-quoted-string
+  - include: repo_double-quoted-string
+  - include: repo_string-dsl
+  repo_triple-quoted-string:
+  - match: '"""'
+    push:
+    - meta_scope: string.quoted.triple.fan
+    - match: '"""'
+      pop: true
+    - match: \\"
+      scope: invalid.illegal.escape.char.fan
+    - include: repo_escaped-unicode
+    - include: repo_escaped-char
+    - include: repo_interpolation
+  repo_typedef:
+  - match: (class|mixin)(?=\s+([A-Za-z_][A-Za-z0-9_]*))
+    scope: storage.modifier.fan
+  repo_uris:
+  - match: (`)
+    push:
+    - meta_scope: string.quoted.other.uri.fan
+    - match: (`)
+      pop: true
+    - include: repo_escaped-unicode
+    - include: repo_escaped-char
+    - include: repo_interpolation

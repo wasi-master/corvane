@@ -1,0 +1,29 @@
+%YAML 1.2
+---
+# RDoc (text.rdoc): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/RDoc.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: RDoc
+scope: text.rdoc
+file_extensions:
+- rdoc
+contexts:
+  main:
+  - match: "^\\s*(\u2022).*$\\n?"
+    scope: meta.bullet-point.strong.text
+    captures:
+      1: punctuation.definition.item.text
+  - match: "^\\s*(\xB7).*$\\n?"
+    scope: meta.bullet-point.light.text
+    captures:
+      1: punctuation.definition.item.text
+  - match: ^\s*(\*).*$\n?
+    scope: meta.bullet-point.star.text
+    captures:
+      1: punctuation.definition.item.text
+  - match: ^([ \t]*)(?=\S)
+    push:
+    - meta_content_scope: meta.paragraph.text
+    - match: ^(?!\1(?=\S))
+      pop: true
+    - match: "(?x)\n\t\t\t\t\t\t( (https?|s?ftp|ftps|file|smb|afp|nfs|(x-)?man|gopher|txmt)://|mailto:)\n\t\t\t\t\t\t[-:@a-zA-Z0-9_.,~%+/?=&#]+(?<![.,?:])\n\t\t\t\t\t"
+      scope: markup.underline.link.text

@@ -1,0 +1,167 @@
+%YAML 1.2
+---
+# source.ideal (source.ideal): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-roff via GitHub Linguist v9.7.0 (license: isc).
+name: source.ideal
+scope: source.ideal
+hidden: true
+contexts:
+  main:
+  - include: repo_external
+  - include: repo_main
+  repo_box:
+  - match: (\w+)[ \t]*(\{)
+    captures:
+      0: meta.box.definition.ideal
+      1: entity.function.box.name.ideal
+      2: punctuation.definition.bracket.curly.ideal
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.curly.ideal
+    - include: main
+  repo_comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.ideal
+    - match: \*/
+      pop: true
+  repo_external:
+  - include: scope:source.pic
+  - match: ^(?=[.'][ \t]*(?:\w|\\))
+    push:
+    - match: (?<!\\)$|(\\".*)$
+      pop: true
+    - include: scope:text.roff
+  repo_function-call:
+  - match: (\w+)(\()
+    captures:
+      1: entity.function.name.ideal
+      2: punctuation.definition.bracket.round.ideal
+    push:
+    - meta_scope: meta.function-call.ideal
+    - match: (?=\))
+      pop: true
+    - include: main
+  repo_keywords:
+  - match: \b(at|box|conn|construct|to|put|using|opaque(?:\s+exterior)?)\b(?:\s+(?:\w+)\s*(:)\s*?)?
+    captures:
+      2: punctuation.separator.dictionary.key-value.ideal
+  - match: \b(left|right|spline)\b
+    scope: entity.function.box.name.ideal
+  repo_libfile:
+  - match: ((\.{3})libfile)\b
+    scope: meta.libfile.include.ideal
+    captures:
+      1: keyword.control.directive.include.ideal
+      2: punctuation.definition.directive.include.ideal
+  repo_main:
+  - include: repo_comment
+  - include: repo_strings
+  - include: repo_number
+  - include: repo_libfile
+  - include: repo_variables
+  - include: repo_box
+  - include: repo_function-call
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_punctuation
+  repo_number:
+  - match: (?<![A-Za-z])\d+(?:\.\d+)?
+    scope: constant.numeric.ideal
+  repo_operators:
+  - match: '='
+    scope: keyword.operator.assignment.ideal
+  - match: '[-+*/~]'
+    scope: keyword.operator.arithmetic.ideal
+  repo_punctuation:
+  - match: \.
+    scope: punctuation.delimiter.full-stop.period.ideal
+  - match: ','
+    scope: punctuation.delimiter.object.comma.ideal
+  - match: ;
+    scope: punctuation.terminator.statement.ideal
+  - match: \)
+    scope: punctuation.definition.bracket.round.ideal
+  - match: \]
+    scope: punctuation.definition.bracket.square.ideal
+  - match: \}
+    scope: punctuation.definition.bracket.curly.ideal
+  - match: \(
+    captures:
+      0: punctuation.definition.bracket.round.ideal
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.round.ideal
+    - include: main
+  - match: \[
+    captures:
+      0: punctuation.definition.bracket.square.ideal
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.square.ideal
+    - include: main
+  - match: \{
+    captures:
+      0: punctuation.definition.bracket.curly.ideal
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.curly.ideal
+    - include: main
+  - match: <
+    captures:
+      0: punctuation.definition.bracket.angle.ideal
+    push:
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.angle.ideal
+  repo_strings:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.ideal
+    push:
+    - meta_scope: string.quoted.single.ideal
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.ideal
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.ideal
+    push:
+    - meta_scope: string.quoted.double.ideal
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.ideal
+  repo_tags:
+  - match: ^([.'])[ \t]*(IS)\b\s*(\\["#].*$)?
+    captures:
+      0: meta.function.begin.ideal.section.macro.roff
+      1: punctuation.definition.macro.roff
+      2: entity.function.name.roff
+    push:
+    - meta_content_scope: source.embedded.ideal
+    - match: ^([.'])[ \t]*(IE)\b
+      pop: true
+      captures:
+        0: meta.function.end.ideal.section.macro.roff
+        1: punctuation.definition.macro.roff
+        2: entity.function.name.roff
+    - include: main
+  repo_variables:
+  - match: \b(var)\b
+    captures:
+      1: storage.type.var.ideal
+    push:
+    - match: (?=;)
+      pop: true
+    - include: repo_punctuation

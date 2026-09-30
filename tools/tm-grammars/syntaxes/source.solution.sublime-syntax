@@ -1,0 +1,101 @@
+%YAML 1.2
+---
+# Microsoft Visual Studio Solution (source.solution): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Microsoft Visual Studio Solution
+scope: source.solution
+file_extensions:
+- sln
+contexts:
+  main:
+  - include: repo_main
+  repo_booleans:
+  - match: TRUE|FALSE
+    scope: constant.language.boolean.solution
+  repo_functions:
+  - match: (?:Project|GlobalSection|Global)
+    captures:
+      0: keyword.block.start.solution
+    push:
+    - meta_scope: meta.block.solution
+    - match: End(?:Project|GlobalSection|Global)
+      pop: true
+      captures:
+        0: keyword.block.start.solution
+    - include: repo_main
+  - match: \(
+    captures:
+      0: punctuation.section.parens.begin.solution
+    push:
+    - meta_scope: meta.parens.solution
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.parens.end.solution
+    - include: repo_strings
+    - include: repo_variables
+  repo_header:
+  - match: Microsoft Visual Studio Solution File
+    push:
+    - meta_scope: entity.other.header.format.solution
+    - match: $
+      pop: true
+  - match: '#'
+    captures:
+      0: punctuation.definition.header.solution
+    push:
+    - meta_scope: entity.other.header.major-version.solution
+    - match: $
+      pop: true
+  repo_main:
+  - include: repo_header
+  - include: repo_functions
+  - include: repo_variables
+  - include: repo_strings
+  - include: repo_numbers
+  - include: repo_booleans
+  - include: repo_punct
+  repo_numbers:
+  - match: \d+(?:\.\d+)*
+    scope: string.unquoted.version.solution
+  repo_punct:
+  - match: ','
+    scope: punctuation.separator.attributes.solution
+  - match: .
+    scope: punctuation.accessor.solution
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.other.string.begin.solution
+    push:
+    - meta_scope: string.quoted.double.solution
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.other.string.end.solution
+  - match: '{'
+    captures:
+      0: punctuation.other.guid.begin.solution
+    push:
+    - meta_scope: string.quoted.other.guid.solution
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.other.guid.end.solution
+  repo_variables:
+  - match: (?<![.|])([A-Za-z]+)\s*(=)
+    scope: meta.generic.variable.other.solution
+    captures:
+      0: variable.other.solution
+      1: punctuation.separator.declaration.solution
+  - match: ([A-Za-z]+)\s*(\|)
+    scope: meta.generic.variable.property.solution
+    captures:
+      0: variable.language.property.solution
+      1: punctuation.separator.property.solution
+  - match: (?<=[.|])\s*[A-Za-z0-9 ]+
+    scope: variable.other.member.solution
+  - match: (?:pre|post)Solution
+    scope: variable.language.setting.solution
+  - match: '[A-Za-z]+'
+    scope: variable.other.solution

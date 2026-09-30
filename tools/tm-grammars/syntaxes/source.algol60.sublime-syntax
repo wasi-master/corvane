@@ -1,0 +1,85 @@
+%YAML 1.2
+---
+# ALGOL (source.algol60): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/PolariTOON/language-algol60.git via GitHub Linguist v9.7.0 (license: mit).
+name: ALGOL
+scope: source.algol60
+file_extensions:
+- alg
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_operators
+  - include: repo_separators
+  - include: repo_groups
+  - include: repo_keywords
+  - include: repo_constants
+  - include: repo_numbers
+  - include: repo_strings
+  - include: repo_identifiers
+  repo_comments:
+  - match: \bcomment\b
+    captures:
+      0: keyword.control.algol60
+    push:
+    - meta_content_scope: comment.block.algol60
+    - match: (?=;)
+      pop: true
+  repo_constants:
+  - match: \bfalse\b
+    scope: constant.language.false.algol60
+  - match: \btrue\b
+    scope: constant.language.true.algol60
+  - match: \bBoolean\b
+    scope: storage.type.bool.algol60
+  - match: \binteger\b
+    scope: storage.type.int.algol60
+  - match: \breal\b
+    scope: storage.type.re.algol60
+  - match: \bstring\b
+    scope: storage.type.str.algol60
+  - match: \blabel\b
+    scope: storage.type.lbl.algol60
+  - match: \b(abs|arctan|cos|entier|epsilon|exp|fault|iabs|inchar|ininteger|inreal|length|ln|maxint|maxreal|minreal|outchar|outinteger|outreal|outstring|outterminator|sign|sin|sqrt|stop)\b
+    scope: variable.language.function.algol60
+  repo_groups:
+  - match: \(|\)
+    scope: meta.brace.round.algol60
+  - match: \[|\]
+    scope: meta.brace.square.algol60
+  repo_identifiers:
+  - match: \b[A-Za-z][0-9A-Za-z]*\b
+    scope: variable.other.identifier.algol60
+  repo_keywords:
+  - match: \b(array|begin|do|else|end|for|go|goto|if|own|procedure|step|switch|then|to|until|value|while)\b
+    scope: keyword.control.algol60
+  repo_numbers:
+  - match: "\\b(\\+|\u2212|-)?([0-9]+(\\.[0-9]+)?((\u23E8|e)(\\+|\u2212|-)?[0-9]+)?|\\.[0-9]+((\u23E8|e)(\\+|\u2212|-)?[0-9]+)?|\u23E8(\\+|\u2212|-)?[0-9]+)\\b"
+    scope: constant.numeric.decimal.algol60
+  repo_operators:
+  - match: "=|\u2260|<>|<|\u2265|>=|>|\u2264|<="
+    scope: keyword.operator.relational.algol60
+  - match: "\u2261|<=>|\u2283|=>|\u2228|\\\\/|\u2227|/\\\\|\xAC|~"
+    scope: keyword.operator.logical.algol60
+  - match: "\u2254|:="
+    scope: keyword.operator.assignment.algol60
+  - match: "\\+|\u2212|-|\xD7|\\*|/|\xF7|//|\u2191|\\*\\*"
+    scope: keyword.operator.arithmetic.algol60
+  repo_separators:
+  - match: ;
+    scope: punctuation.separator.semicolon.algol60
+  - match: ','
+    scope: punctuation.separator.comma.algol60
+  - match: ':'
+    scope: punctuation.separator.colon.algol60
+  repo_strings:
+  - match: "\u2E22|`"
+    captures:
+      0: punctuation.definition.string.begin.algol60
+    push:
+    - meta_scope: string.quoted.compound.algol60
+    - match: "\u2E23|'"
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.algol60
+    - include: repo_strings

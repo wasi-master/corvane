@@ -1,0 +1,100 @@
+%YAML 1.2
+---
+# Witcher Script (source.witcherscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/ADawesomeguy/witcherscript-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Witcher Script
+scope: source.witcherscript
+file_extensions:
+- ws
+contexts:
+  main:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.witcherscript
+    - match: \*/
+      pop: true
+  - match: //.*
+    scope: comment.double-slash.witcherscript
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.witcherscript
+    - match: '"'
+      pop: true
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.witcherscript
+    - match: ''''
+      pop: true
+  - match: \b(break|case|continue|else|for|if|return|switch|while)\b
+    scope: keyword.control.witcherscript
+  - match: \b(out|inlined|autobind|editable|entry|exec|hint|import|latent|optional|out|quest|saved|statemachine|timer)\b
+    scope: keyword.other.witcherscript
+  - match: \b(=|!|<|>|&|\+|-|\^|\*|\/|\|)\b
+    scope: keyword.operator.new.witcherscript
+  - match: \b(\d+|\d+.?(f)?)\b
+    scope: constant.numeric.witcherscript
+  - match: (#)([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b(?!.*?(?<!@){)
+    scope: constant.rgb-value.witcherscript
+  - match: \b(false|NULL|true)\b
+    scope: constant.language.witcherscript
+  - match: \b(enum|struct|state|array)\b
+    scope: storage.type.witcherscript
+  - match: \b(abstract|const|final|private|protected|public)\b
+    scope: storage.modifier.witcherscript
+  - match: \b(theGame|theInput|thePlayer|theSound)\b
+    scope: support.class.witcherscript
+  - match: \b(this|parent|super)\b
+    scope: variable.language.witcherscript
+  - match: (function|event)\s*(\/\*.*\*\/)?\s*(\w+)\s*\(
+    captures:
+      1: support.type.witcherscript
+      2: comment.block.witcherscript
+      3: support.function.witcherscript
+    push:
+    - match: \)(\s*:\s*(array\s*<\s*\w+\s*>|\w*))?
+      pop: true
+    - match: \s*(out|optional)?\s*(\w+)\s*:\s*(array\s*<\s*\w+\s*>|\w*|),?
+      captures:
+        1: keyword.other.witcherscript
+        2: support.variable.witcherscript
+  - match: \b(var)\b\s*
+    captures:
+      1: storage.type.witcherscript
+    push:
+    - match: :\s*(array\s*<\s*\w+\s*>|\w*)\s*;
+      pop: true
+    - match: (\w+)\s*,?
+      scope: support.variable.witcherscript
+  - match: (default)\s*(\w+)
+    captures:
+      1: keyword.control.witcherscript
+      2: support.variable
+  - match: (extends|class)\s*(\w*)
+    captures:
+      1: keyword.other.witcherscript
+      2: support.class.witcherscript
+  - match: \(\s*(\s*[A-Z]\w+\s*)\s*\)\s*\(
+    captures:
+      1: support.class.witcherscript
+  - match: \(\s*\(\s*([A-Z]\w+)\s*\)
+    captures:
+      1: support.class.witcherscript
+  - match: (new)\s*(\w+)\s*(in)\s*(this)
+    captures:
+      1: variable.language.witcherscript
+      2: support.class.witcherscript
+      3: variable.language.witcherscript
+      4: variable.language.witcherscript
+  - include: repo_witcherscript-data-types
+  repo_witcherscript-data-types:
+  - match: \b(string|int|integer|bool|float|name|range)\b
+    scope: storage.type.witcherscript
+  repo_witcherscript-object-types:
+  - match: '[A-Z]\w+'
+    scope: support.class.witcherscript
+  repo_witcherscript-var-types:
+  - include: repo_witcherscript-object-types
+  - match: (array)\s*<\s*(\w+)\s*>
+    captures:
+      1: storage.type.witcherscript
+  - include: repo_witcherscript-data-types

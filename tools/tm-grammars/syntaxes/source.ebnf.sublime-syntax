@@ -1,0 +1,152 @@
+%YAML 1.2
+---
+# EBNF (source.ebnf): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-grammars via GitHub Linguist v9.7.0 (license: isc).
+name: EBNF
+scope: source.ebnf
+file_extensions:
+- ebnf
+contexts:
+  main:
+  - include: repo_main
+  repo_brackets:
+  - match: \[
+    scope: punctuation.definition.square.bracket.begin.ebnf
+  - match: \]
+    scope: punctuation.definition.square.bracket.end.ebnf
+  - match: '{'
+    scope: punctuation.definition.curly.bracket.begin.ebnf
+  - match: '}'
+    scope: punctuation.definition.curly.bracket.end.ebnf
+  - match: \(
+    scope: punctuation.definition.round.bracket.begin.ebnf
+  - match: \)
+    scope: punctuation.definition.round.bracket.end.ebnf
+  repo_comment:
+  - match: \(\*
+    captures:
+      0: punctuation.definition.comment.begin.ebnf
+    push:
+    - meta_scope: comment.block.iso14977.ebnf
+    - match: \*\)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.ebnf
+  - match: ^[ \t]*((/\*))
+    captures:
+      1: comment.block.w3c.ebnf
+      2: punctuation.definition.comment.begin.ebnf
+    push:
+    - meta_scope: comment.block.w3c.ebnf
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.ebnf
+  repo_lhs:
+  - match: '(?x)
+
+      (?:    \s++
+
+      |      ^|
+
+      | (?=  ^|    )
+
+      | (?<= ;|\*\) )
+
+      )
+
+
+      # Exclude leading whitespace
+
+      \s*
+
+
+      ([A-Za-z][A-Za-z0-9_-]*+)'
+    scope: meta.lhs.ebnf
+    captures:
+      1: entity.name.rule.identifier.ebnf
+  - match: "(?x)\n(?:    \\s++\n|      ^|\n| (?=  ^|  )\n| (?<= \\*\\) )\n)\n\n# Exclude leading whitespace\n\\s*\n\n# Check for at least one \u201Cinvalid\u201D character\n(?=\n\t# Starts with a digit\n\t[0-9]\n\t|\n\t\n\t# Contains at least one non-\u201Cword\u201D character\n\t[A-Za-z0-9_-]*  # Skip any legal characters\n\t(?: [^:;=()]    # Don't swallow symbols for comments, terminators, or assignments\n\t|   \\((?!\\*)  # Permit open brackets if they don't introduce a comment\n\t)\n)"
+    push:
+    - meta_scope: meta.lhs.non-standard.ebnf
+    - meta_content_scope: entity.name.rule.identifier.non-standard.ebnf
+    - match: '(?x)
+
+        # Exclude trailing whitespace
+
+        \s*
+
+
+        # Stop before an...
+
+        (?= :*=      # Assignment operator separating `#lhs` from `#rhs`
+
+        |   ;        # Unexpected terminator
+
+        |   \(\*   # Embedded comment
+
+        )'
+      pop: true
+    - include: repo_comment
+  - include: repo_comment
+  repo_main:
+  - include: repo_comment
+  - include: repo_semicolon
+  - include: repo_lhs
+  - include: repo_rhs
+  - include: repo_special
+  repo_rhs:
+  - match: (::=)|(:=)|(=)
+    captures:
+      1: keyword.operator.assignment.non-standard.double-colon.ebnf
+      2: keyword.operator.assignment.non-standard.single-colon.ebnf
+      3: keyword.operator.assignment.ebnf
+    push:
+    - meta_scope: meta.rhs.ebnf
+    - match: (?=;|^\s*(?:<?[A-Za-z][A-Za-z0-9_-]*>?\s*)?:*=)
+      pop: true
+    - include: repo_rhs-innards
+  repo_rhs-innards:
+  - match: ','
+    scope: punctuation.delimiter.comma.ebnf
+  - match: \|
+    scope: keyword.operator.logical.or.alternation.pipe.ebnf
+  - match: '-'
+    scope: keyword.operator.logical.minus.hyphen.exception.ebnf
+  - match: \*
+    scope: keyword.operator.logical.repetition.asterisk.star.ebnf
+  - include: repo_special
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.ebnf
+    push:
+    - meta_scope: string.quoted.double.ebnf
+    - match: '"(?!")|(?=^\s*+\S+?\s+::{0,2}=\s|\s+\|)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.ebnf
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.ebnf
+    push:
+    - meta_scope: string.quoted.single.ebnf
+    - match: '''(?!'')|(?=^\s*+\S+?\s+::{0,2}=\s|\s+\|)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.ebnf
+  - include: repo_brackets
+  - include: repo_comment
+  - match: \b(?<!-)[A-Za-z][A-Za-z0-9_-]*
+    scope: variable.parameter.argument.identifier.reference.ebnf
+  - match: '!'
+    scope: keyword.operator.logical.not.negation.non-standard.ebnf
+  - include: scope:source.lex.regexp
+  repo_semicolon:
+  - match: ;
+    scope: punctuation.terminator.statement.ebnf
+  repo_special:
+  - match: (?<=\s|^)(\?)(.+?)(?<=\s)(\?)(?=[,;]?(?:$|\s))
+    scope: meta.pragma.directive.special.iso14977.ebnf
+    captures:
+      1: keyword.operator.pragma.begin.ebnf
+      2: support.constant.language.pragma.ebnf
+      3: keyword.operator.pragma.end.ebnf

@@ -7,169 +7,539 @@ license.workspace = true
 description = "Tree-sitter grammars and highlight queries for Corvane's opt-in tree-sitter highlighter"
 
 [lib]
-# rlib: the "full" build links every grammar in; cdylib: the `tree-sitter-all`
-# / `tree-sitter-rest` packs (packaging/packs.sh), loaded with dlopen.
+# rlib: the "full" build links every grammar in; cdylib: one pack unit per
+# `lang-*` feature (packaging/packs.sh), loaded with dlopen.
 crate-type = ["rlib", "cdylib"]
 
 # A grammar package may use `tree-sitter` itself only in a version that
 # resolves to corvane-highlight's (cargo refuses a second copy of the C
-# runtime: `links = "tree-sitter"`).
+# runtime: `links = "tree-sitter"`). Grammars without a usable crate are
+# built by build.rs from tools/ts-queries/fetch.py's sources (skipped when
+# those are missing).
 [features]
 default = []
 # every grammar (the `tree-sitter-all` pack and the full build)
 all = [
     "lang-ada",
     "lang-agda",
+    "lang-angular",
+    "lang-apex",
+    "lang-arduino",
     "lang-asciidoc",
     "lang-asm",
+    "lang-astro",
+    "lang-authzed",
+    "lang-awk",
     "lang-bash",
+    "lang-bass",
+    "lang-beancount",
+    "lang-bibtex",
     "lang-bicep",
+    "lang-bitbake",
+    "lang-blade",
+    "lang-bp",
+    "lang-bpftrace",
+    "lang-brightscript",
     "lang-c",
     "lang-c-sharp",
+    "lang-c3",
+    "lang-cairo",
+    "lang-capnp",
+    "lang-chatito",
+    "lang-circom",
+    "lang-clojure",
     "lang-cmake",
     "lang-comment",
     "lang-commonlisp",
+    "lang-cooklang",
+    "lang-corn",
+    "lang-cpon",
     "lang-cpp",
     "lang-css",
+    "lang-csv",
     "lang-cuda",
+    "lang-cue",
+    "lang-cylc",
     "lang-d",
     "lang-dart",
+    "lang-desktop",
+    "lang-devicetree",
+    "lang-dhall",
     "lang-diff",
+    "lang-djot",
+    "lang-dockerfile",
+    "lang-dot",
+    "lang-doxygen",
+    "lang-earthfile",
+    "lang-editorconfig",
+    "lang-eds",
+    "lang-eex",
     "lang-elisp",
     "lang-elixir",
     "lang-elm",
+    "lang-elsa",
+    "lang-elvish",
     "lang-embedded-template",
+    "lang-enforce",
     "lang-erlang",
+    "lang-facility",
+    "lang-faust",
+    "lang-fennel",
+    "lang-fidl",
+    "lang-firrtl",
     "lang-fish",
+    "lang-foam",
+    "lang-forth",
     "lang-fortran",
+    "lang-fsh",
     "lang-fsharp",
+    "lang-func",
+    "lang-gap",
+    "lang-gaptst",
     "lang-gdscript",
+    "lang-gdshader",
+    "lang-git_config",
+    "lang-git_rebase",
+    "lang-gitattributes",
     "lang-gitcommit",
+    "lang-gitignore",
     "lang-gleam",
+    "lang-glimmer",
+    "lang-glimmer_javascript",
+    "lang-glimmer_typescript",
     "lang-glsl",
+    "lang-gn",
+    "lang-gnuplot",
     "lang-go",
+    "lang-goctl",
     "lang-godot-resource",
+    "lang-gomod",
+    "lang-gosum",
+    "lang-gotmpl",
+    "lang-gowork",
+    "lang-gpg",
     "lang-graphql",
+    "lang-gren",
+    "lang-groovy",
+    "lang-groq",
+    "lang-gstlaunch",
+    "lang-hack",
     "lang-handlebars",
+    "lang-hare",
     "lang-haskell",
+    "lang-haskell_persistent",
     "lang-hcl",
     "lang-heex",
+    "lang-helm",
+    "lang-hjson",
     "lang-hlsl",
+    "lang-hocon",
+    "lang-hoon",
     "lang-html",
+    "lang-htmldjango",
+    "lang-http",
+    "lang-hurl",
+    "lang-hyprlang",
+    "lang-idl",
+    "lang-idris",
     "lang-ini",
+    "lang-inko",
+    "lang-ispc",
+    "lang-janet_simple",
     "lang-java",
+    "lang-javadoc",
     "lang-javascript",
     "lang-jinja2",
+    "lang-jinja_inline",
+    "lang-jjdescription",
+    "lang-jq",
     "lang-jsdoc",
     "lang-json",
+    "lang-json5",
     "lang-jsonnet",
     "lang-julia",
+    "lang-just",
+    "lang-kcl",
+    "lang-kconfig",
     "lang-kdl",
+    "lang-kitty",
+    "lang-kos",
     "lang-kotlin-ng",
+    "lang-koto",
+    "lang-kusto",
+    "lang-lalrpop",
+    "lang-latex",
+    "lang-ledger",
+    "lang-leo",
     "lang-less",
+    "lang-linkerscript",
+    "lang-liquid",
+    "lang-liquidsoap",
     "lang-llvm",
     "lang-lua",
+    "lang-luadoc",
+    "lang-luap",
     "lang-luau",
+    "lang-m68k",
     "lang-make",
+    "lang-matlab",
     "lang-md",
+    "lang-menhir",
+    "lang-mermaid",
+    "lang-meson",
+    "lang-mlir",
+    "lang-nasm",
     "lang-nginx",
     "lang-nickel",
+    "lang-nim",
+    "lang-nim_format_string",
+    "lang-ninja",
     "lang-nix",
+    "lang-nqc",
+    "lang-nu",
     "lang-objc",
     "lang-ocaml",
+    "lang-ocamllex",
     "lang-odin",
     "lang-pascal",
+    "lang-passwd",
+    "lang-pem",
+    "lang-perl",
     "lang-php",
+    "lang-phpdoc",
+    "lang-pioasm",
+    "lang-pkl",
+    "lang-po",
+    "lang-pod",
+    "lang-poe_filter",
+    "lang-pony",
     "lang-powershell",
     "lang-printf",
+    "lang-prisma",
+    "lang-promql",
     "lang-properties",
     "lang-proto",
+    "lang-prql",
+    "lang-psv",
+    "lang-pug",
+    "lang-puppet",
+    "lang-purescript",
+    "lang-pymanifest",
     "lang-python",
     "lang-ql",
+    "lang-qmldir",
+    "lang-qmljs",
+    "lang-query",
     "lang-r",
     "lang-racket",
+    "lang-rasi",
+    "lang-razor",
+    "lang-rbs",
+    "lang-re2c",
+    "lang-readline",
     "lang-regex",
+    "lang-rego",
     "lang-requirements",
+    "lang-rescript",
+    "lang-rifleconf",
+    "lang-robot",
+    "lang-robots_txt",
+    "lang-roc",
+    "lang-ron",
     "lang-rst",
     "lang-ruby",
+    "lang-runescript",
     "lang-rust",
     "lang-scala",
+    "lang-scfg",
     "lang-scheme",
     "lang-scss",
+    "lang-sflog",
+    "lang-slang",
+    "lang-slim",
+    "lang-slint",
+    "lang-smali",
+    "lang-smithy",
+    "lang-snakemake",
+    "lang-snl",
     "lang-solidity",
+    "lang-soql",
+    "lang-sosl",
+    "lang-sourcepawn",
+    "lang-sparql",
+    "lang-sproto",
+    "lang-sql",
+    "lang-squirrel",
+    "lang-ssh_config",
     "lang-starlark",
+    "lang-strace",
+    "lang-styled",
+    "lang-supercollider",
+    "lang-superhtml",
+    "lang-surface",
     "lang-svelte-ng",
     "lang-swift",
+    "lang-sxhkdrc",
+    "lang-systemtap",
     "lang-systemverilog",
+    "lang-t32",
+    "lang-tablegen",
+    "lang-tact",
+    "lang-tcl",
+    "lang-teal",
     "lang-templ",
+    "lang-tera",
+    "lang-terraform",
+    "lang-textproto",
+    "lang-thrift",
+    "lang-tiger",
     "lang-tlaplus",
+    "lang-todotxt",
     "lang-toml-ng",
+    "lang-tsv",
+    "lang-turtle",
+    "lang-twig",
     "lang-typescript",
+    "lang-typespec",
+    "lang-typoscript",
+    "lang-typst",
+    "lang-udev",
+    "lang-ungrammar",
+    "lang-unison",
+    "lang-uxntal",
+    "lang-v",
+    "lang-vento",
     "lang-verilog",
     "lang-vhdl",
+    "lang-vhs",
     "lang-vim",
+    "lang-vimdoc",
+    "lang-vrl",
+    "lang-vue",
+    "lang-wgsl",
+    "lang-wgsl_bevy",
+    "lang-wing",
     "lang-wit",
+    "lang-wxml",
     "lang-xcompose",
     "lang-xml",
+    "lang-xresources",
     "lang-yaml",
+    "lang-yang",
+    "lang-yuck",
     "lang-zig",
+    "lang-ziggy",
+    "lang-ziggy_schema",
     "lang-zsh",
 ]
-# grammars for file types no CodeMirror port covers, plus what they inject
-# (the `tree-sitter-rest` pack); `REST` in src/grammars.rs lists them
+# grammars of languages no CodeMirror port covers, plus the injection-only
+# grammars they use (the `tree-sitter-rest` pack); `REST` in src/grammars.rs
 rest = [
     "lang-ada",
     "lang-agda",
+    "lang-apex",
     "lang-asciidoc",
     "lang-asm",
+    "lang-awk",
+    "lang-bibtex",
     "lang-bicep",
+    "lang-bitbake",
+    "lang-bp",
+    "lang-bpftrace",
+    "lang-brightscript",
+    "lang-c3",
+    "lang-cairo",
+    "lang-chatito",
+    "lang-circom",
     "lang-comment",
     "lang-commonlisp",
+    "lang-cooklang",
+    "lang-csv",
     "lang-cuda",
+    "lang-cue",
+    "lang-cylc",
     "lang-d",
+    "lang-desktop",
+    "lang-devicetree",
+    "lang-dhall",
+    "lang-djot",
+    "lang-doxygen",
+    "lang-earthfile",
+    "lang-eex",
     "lang-elisp",
     "lang-elm",
+    "lang-elvish",
     "lang-embedded-template",
     "lang-erlang",
+    "lang-facility",
+    "lang-faust",
+    "lang-fennel",
+    "lang-fidl",
+    "lang-firrtl",
     "lang-fish",
+    "lang-foam",
+    "lang-forth",
+    "lang-gap",
+    "lang-gaptst",
     "lang-gdscript",
+    "lang-gdshader",
+    "lang-git_config",
+    "lang-git_rebase",
     "lang-gitcommit",
     "lang-gleam",
+    "lang-glimmer",
+    "lang-glimmer_javascript",
+    "lang-glimmer_typescript",
     "lang-glsl",
+    "lang-gn",
+    "lang-gnuplot",
     "lang-godot-resource",
+    "lang-gomod",
+    "lang-gosum",
+    "lang-gotmpl",
+    "lang-gpg",
     "lang-graphql",
+    "lang-gren",
+    "lang-groovy",
+    "lang-groq",
+    "lang-hack",
     "lang-handlebars",
+    "lang-hare",
     "lang-haskell",
+    "lang-haskell_persistent",
     "lang-hcl",
     "lang-heex",
     "lang-hlsl",
+    "lang-hocon",
+    "lang-hoon",
+    "lang-http",
+    "lang-hurl",
+    "lang-idl",
+    "lang-idris",
+    "lang-inko",
+    "lang-ispc",
+    "lang-janet_simple",
+    "lang-javadoc",
     "lang-jinja2",
+    "lang-jinja_inline",
+    "lang-jjdescription",
+    "lang-jq",
+    "lang-jsdoc",
+    "lang-json5",
     "lang-jsonnet",
+    "lang-just",
+    "lang-kcl",
+    "lang-kconfig",
     "lang-kdl",
+    "lang-kitty",
+    "lang-kos",
+    "lang-koto",
+    "lang-kusto",
+    "lang-lalrpop",
+    "lang-ledger",
+    "lang-leo",
+    "lang-liquid",
+    "lang-liquidsoap",
     "lang-llvm",
+    "lang-luadoc",
+    "lang-luap",
+    "lang-m68k",
     "lang-make",
+    "lang-matlab",
+    "lang-md",
+    "lang-mermaid",
+    "lang-meson",
+    "lang-mlir",
+    "lang-nasm",
     "lang-nginx",
     "lang-nickel",
+    "lang-nim",
+    "lang-nim_format_string",
+    "lang-ninja",
     "lang-nix",
+    "lang-nu",
     "lang-ocaml",
+    "lang-ocamllex",
     "lang-odin",
+    "lang-pem",
+    "lang-pkl",
+    "lang-pod",
+    "lang-poe_filter",
+    "lang-pony",
     "lang-printf",
+    "lang-prisma",
+    "lang-purescript",
+    "lang-pymanifest",
     "lang-ql",
+    "lang-qmldir",
+    "lang-qmljs",
+    "lang-query",
     "lang-racket",
+    "lang-rasi",
+    "lang-rbs",
+    "lang-re2c",
+    "lang-readline",
     "lang-regex",
+    "lang-rego",
     "lang-requirements",
+    "lang-rescript",
+    "lang-robot",
+    "lang-robots_txt",
+    "lang-roc",
+    "lang-ron",
+    "lang-runescript",
+    "lang-scfg",
+    "lang-sflog",
+    "lang-slang",
+    "lang-slint",
+    "lang-smali",
+    "lang-smithy",
+    "lang-snakemake",
     "lang-solidity",
+    "lang-soql",
+    "lang-sosl",
+    "lang-sourcepawn",
+    "lang-sproto",
+    "lang-squirrel",
+    "lang-ssh_config",
     "lang-starlark",
+    "lang-strace",
+    "lang-styled",
+    "lang-supercollider",
     "lang-svelte-ng",
     "lang-systemverilog",
+    "lang-t32",
+    "lang-tablegen",
+    "lang-tact",
+    "lang-tcl",
+    "lang-teal",
     "lang-templ",
+    "lang-tera",
+    "lang-terraform",
+    "lang-thrift",
     "lang-tlaplus",
+    "lang-tsv",
+    "lang-turtle",
+    "lang-typespec",
+    "lang-typoscript",
+    "lang-typst",
+    "lang-udev",
+    "lang-unison",
+    "lang-v",
+    "lang-vento",
     "lang-verilog",
     "lang-vhdl",
+    "lang-vhs",
     "lang-vim",
+    "lang-vimdoc",
+    "lang-wgsl",
     "lang-wit",
+    "lang-wxml",
     "lang-xcompose",
     "lang-xml",
+    "lang-xresources",
+    "lang-yang",
+    "lang-yuck",
     "lang-zsh",
 ]
 lang-ada = ["dep:tree-sitter-ada"]
@@ -268,6 +638,221 @@ lang-xml = ["dep:tree-sitter-xml"]
 lang-yaml = ["dep:tree-sitter-yaml"]
 lang-zig = ["dep:tree-sitter-zig"]
 lang-zsh = ["dep:tree-sitter-zsh"]
+lang-angular = []
+lang-apex = []
+lang-arduino = []
+lang-astro = []
+lang-authzed = []
+lang-awk = []
+lang-bass = []
+lang-beancount = []
+lang-bibtex = []
+lang-bitbake = []
+lang-blade = []
+lang-bp = []
+lang-bpftrace = []
+lang-brightscript = []
+lang-c3 = []
+lang-cairo = []
+lang-capnp = []
+lang-chatito = []
+lang-circom = []
+lang-clojure = []
+lang-cooklang = []
+lang-corn = []
+lang-cpon = []
+lang-csv = []
+lang-cue = []
+lang-cylc = []
+lang-desktop = []
+lang-devicetree = []
+lang-dhall = []
+lang-djot = []
+lang-dockerfile = []
+lang-dot = []
+lang-doxygen = []
+lang-earthfile = []
+lang-editorconfig = []
+lang-eds = []
+lang-eex = []
+lang-elsa = []
+lang-elvish = []
+lang-enforce = []
+lang-facility = []
+lang-faust = []
+lang-fennel = []
+lang-fidl = []
+lang-firrtl = []
+lang-foam = []
+lang-forth = []
+lang-fsh = []
+lang-func = []
+lang-gap = []
+lang-gaptst = []
+lang-gdshader = []
+lang-git_config = []
+lang-git_rebase = []
+lang-gitattributes = []
+lang-gitignore = []
+lang-glimmer = []
+lang-glimmer_javascript = []
+lang-glimmer_typescript = []
+lang-gn = []
+lang-gnuplot = []
+lang-goctl = []
+lang-gomod = []
+lang-gosum = []
+lang-gotmpl = []
+lang-gowork = []
+lang-gpg = []
+lang-gren = []
+lang-groovy = []
+lang-groq = []
+lang-gstlaunch = []
+lang-hack = []
+lang-hare = []
+lang-haskell_persistent = []
+lang-helm = []
+lang-hjson = []
+lang-hocon = []
+lang-hoon = []
+lang-htmldjango = []
+lang-http = []
+lang-hurl = []
+lang-hyprlang = []
+lang-idl = []
+lang-idris = []
+lang-inko = []
+lang-ispc = []
+lang-janet_simple = []
+lang-javadoc = []
+lang-jinja_inline = []
+lang-jjdescription = []
+lang-jq = []
+lang-json5 = []
+lang-just = []
+lang-kcl = []
+lang-kconfig = []
+lang-kitty = []
+lang-kos = []
+lang-koto = []
+lang-kusto = []
+lang-lalrpop = []
+lang-latex = []
+lang-ledger = []
+lang-leo = []
+lang-linkerscript = []
+lang-liquid = []
+lang-liquidsoap = []
+lang-luadoc = []
+lang-luap = []
+lang-m68k = []
+lang-matlab = []
+lang-menhir = []
+lang-mermaid = []
+lang-meson = []
+lang-mlir = []
+lang-nasm = []
+lang-nim = []
+lang-nim_format_string = []
+lang-ninja = []
+lang-nqc = []
+lang-nu = []
+lang-ocamllex = []
+lang-passwd = []
+lang-pem = []
+lang-perl = []
+lang-phpdoc = []
+lang-pioasm = []
+lang-pkl = []
+lang-po = []
+lang-pod = []
+lang-poe_filter = []
+lang-pony = []
+lang-prisma = []
+lang-promql = []
+lang-prql = []
+lang-psv = []
+lang-pug = []
+lang-puppet = []
+lang-purescript = []
+lang-pymanifest = []
+lang-qmldir = []
+lang-qmljs = []
+lang-query = []
+lang-rasi = []
+lang-razor = []
+lang-rbs = []
+lang-re2c = []
+lang-readline = []
+lang-rego = []
+lang-rescript = []
+lang-rifleconf = []
+lang-robot = []
+lang-robots_txt = []
+lang-roc = []
+lang-ron = []
+lang-runescript = []
+lang-scfg = []
+lang-sflog = []
+lang-slang = []
+lang-slim = []
+lang-slint = []
+lang-smali = []
+lang-smithy = []
+lang-snakemake = []
+lang-snl = []
+lang-soql = []
+lang-sosl = []
+lang-sourcepawn = []
+lang-sparql = []
+lang-sproto = []
+lang-sql = []
+lang-squirrel = []
+lang-ssh_config = []
+lang-strace = []
+lang-styled = []
+lang-supercollider = []
+lang-superhtml = []
+lang-surface = []
+lang-sxhkdrc = []
+lang-systemtap = []
+lang-t32 = []
+lang-tablegen = []
+lang-tact = []
+lang-tcl = []
+lang-teal = []
+lang-tera = []
+lang-terraform = []
+lang-textproto = []
+lang-thrift = []
+lang-tiger = []
+lang-todotxt = []
+lang-tsv = []
+lang-turtle = []
+lang-twig = []
+lang-typespec = []
+lang-typoscript = []
+lang-typst = []
+lang-udev = []
+lang-ungrammar = []
+lang-unison = []
+lang-uxntal = []
+lang-v = []
+lang-vento = []
+lang-vhs = []
+lang-vimdoc = []
+lang-vrl = []
+lang-vue = []
+lang-wgsl = []
+lang-wgsl_bevy = []
+lang-wing = []
+lang-wxml = []
+lang-xresources = []
+lang-yang = []
+lang-yuck = []
+lang-ziggy = []
+lang-ziggy_schema = []
 
 [dependencies]
 tree-sitter-language.workspace = true
@@ -367,3 +952,6 @@ tree-sitter-xml = { version = "=0.7.0", optional = true }
 tree-sitter-yaml = { version = "=0.7.2", optional = true }
 tree-sitter-zig = { version = "=1.1.2", optional = true }
 tree-sitter-zsh = { version = "=0.63.4", optional = true }
+
+[build-dependencies]
+cc = "1"

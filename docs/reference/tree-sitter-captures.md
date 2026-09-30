@@ -73,7 +73,6 @@ How the tree-sitter highlighter (Settings › Appearance › Syntax highlighting
 | `operator` | line colour |
 | `punctuation` | line colour |
 | `embedded` | line colour |
-| `none` | line colour |
 | `emphasis` | line colour |
 | `markup.italic` | line colour |
 | `markup.strong` | line colour |
@@ -89,6 +88,7 @@ How the tree-sitter highlighter (Settings › Appearance › Syntax highlighting
 | `entity.name` | `--syntax-variable-color` |
 | `meta.attribute` | `--syntax-attribute-color` |
 | `storage` | `--syntax-keyword-color` |
+| `none` | enclosing |
 | `spell` | enclosing |
 | `nospell` | enclosing |
 | `conceal` | enclosing |

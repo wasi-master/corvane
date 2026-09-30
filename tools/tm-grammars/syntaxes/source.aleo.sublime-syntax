@@ -1,0 +1,85 @@
+%YAML 1.2
+---
+# Aleo (source.aleo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/ProvableHQ/aleo-linguist.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Aleo
+scope: source.aleo
+file_extensions:
+- aleo
+contexts:
+  main:
+  - include: repo_block_comment
+  - include: repo_line_comment
+  - include: repo_strings
+  - include: repo_identifier_literal
+  - include: repo_instructions
+  - include: repo_special_operands
+  - include: repo_keywords
+  - include: repo_visibility
+  - include: repo_base_register
+  - include: repo_address
+  - include: repo_signature
+  - include: repo_literal_type
+  - include: repo_register_type
+  - include: repo_boolean_literal
+  - include: repo_numeric_literal
+  - include: repo_punctuation
+  repo_address:
+  - match: \baleo1[qpzry9x8gf2tvdw0s3jn54khce6mua7l_]+\b
+    scope: constant.other.address.aleo
+  repo_base_register:
+  - match: \br[0-9]+\b
+    scope: variable.other.register.aleo
+  repo_block_comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.aleo
+    - match: \*/
+      pop: true
+  repo_boolean_literal:
+  - match: \b(true|false)\b
+    scope: constant.language.boolean.aleo
+  repo_identifier_literal:
+  - match: '''[A-Za-z][A-Za-z0-9_]*'''
+    scope: string.quoted.single.identifier.aleo
+  repo_instructions:
+  - match: \b(abs(?:\.w)?|add(?:\.w)?|and|assert\.(?:eq|neq)|async|await|branch\.(?:eq|neq)|call(?:\.dynamic)?|cast(?:\.lossy)?|commit\.(?:bhp(?:256|512|768|1024)|ped(?:64|128))(?:\.raw)?|contains(?:\.dynamic)?|deserialize\.bits(?:\.raw)?|div(?:\.w)?|double|ecdsa\.verify\.(?:digest(?:\.eth)?|(?:keccak(?:256|384|512)|sha3_(?:256|384|512))(?:\.(?:eth|raw))?)|get(?:\.record\.dynamic|\.or_use(?:\.dynamic)?|\.dynamic)?|gt|gte|hash\.(?:(?:bhp(?:256|512|768|1024)|ped(?:64|128)|psd(?:2|4|8))(?:\.raw)?|(?:keccak(?:256|384|512)|sha3_(?:256|384|512))(?:\.native)?(?:\.raw)?)|hash_many\.psd(?:2|4|8)|inv|is\.(?:eq|neq)|lt|lte|mod|mul(?:\.w)?|nand|neg|nor|not|or|position|pow(?:\.w)?|rand\.chacha|rem(?:\.w)?|remove|serialize\.bits(?:\.raw)?|set|shl(?:\.w)?|shr(?:\.w)?|sign\.verify|snark\.verify(?:\.batch)?|sqrt|square|sub(?:\.w)?|ternary|xor)(?![A-Za-z0-9_.])
+    scope: entity.other.instruction.aleo
+  repo_keywords:
+  - match: \b(as|closure|constructor|finalize|function|import|input|into|key|mapping|output|owner|program|record|self|storage|struct|to|transition|value|view|with)\b
+    scope: keyword.control.aleo
+  repo_line_comment:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.aleo
+    - match: $
+      pop: true
+  repo_literal_type:
+  - match: \b(address|boolean|field|group|i8|i16|i32|i64|i128|identifier|scalar|signature|string|u8|u16|u32|u64|u128)\b
+    scope: storage.type.primitive.aleo
+  repo_numeric_literal:
+  - match: (?<![A-Za-z0-9_])(?:-[0-9][0-9_]*(?:i(?:8|16|32|64|128)|field|group|scalar)|[0-9][0-9_]*(?:[iu](?:8|16|32|64|128)|field|group|scalar))(?![A-Za-z0-9_])
+    scope: constant.numeric.aleo
+  repo_punctuation:
+  - match: '[()\[\]:;,]'
+    scope: punctuation.aleo
+  repo_register_type:
+  - match: \b(dynamic\.(?:future|record)|future)\b
+    scope: storage.type.register.aleo
+  repo_signature:
+  - match: \bsign1[qpzry9x8gf2tvdw0s3jn54khce6mua7l_]+\b
+    scope: constant.other.signature.aleo
+  repo_special_operands:
+  - match: \b(aleo::GENERATOR_POWERS(?:\[[0-9][0-9_]*u32\])?|aleo::GENERATOR|block\.(?:height|timestamp)|group::GEN|network\.id|self\.(?:caller|signer)|(?:[A-Za-z][A-Za-z0-9_]*\.aleo/)?(?:[A-Za-z][A-Za-z0-9_]*/)?checksum|(?:[A-Za-z][A-Za-z0-9_]*\.aleo/)?(?:edition|program_owner))(?![A-Za-z0-9_.])
+    scope: constant.language.aleo
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.aleo
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.aleo
+  repo_visibility:
+  - match: \b(const|constant|private|public)\b
+    scope: storage.modifier.aleo

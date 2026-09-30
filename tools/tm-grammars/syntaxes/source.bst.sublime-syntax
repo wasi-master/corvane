@@ -1,0 +1,68 @@
+%YAML 1.2
+---
+# BibTeX Style (source.bst): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/zyoshoka/bst.tmLanguage.git via GitHub Linguist v9.7.0 (license: mit).
+name: BibTeX Style
+scope: source.bst
+file_extensions:
+- bst
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_function-declaration
+  - include: repo_command-keywords
+  - include: repo_operators
+  - include: repo_builtin-objects
+  - include: repo_string
+  - include: repo_number
+  repo_builtin-objects:
+  - match: \b(?<!\.)(if\$|while\$)(?!(\w|\.))
+    scope: keyword.control.bst
+  - match: \b(?<!\.)(add\.period\$|call\.type\$|change\.case\$|chr\.to\.int\$|cite\$|duplicate\$|empty\$|format\.name\$|int\.to\.chr\$|int\.to\.chr\$|int\.to\.str\$|missing\$|newline\$|num\.names\$|pop\$|preamble\$|purify\$|quote\$|skip\$|stack\$|substring\$|swap\$|text\.length\$|text\.prefix\$|top\$|type\$|warning\$|width\$|write\$)(?!(\w|\.))
+    scope: support.function.bst
+  - match: \b(?<!\.)(entry\.max\$|global\.max\$)(?!(\w|\.))
+    scope: support.constant.bst
+  - match: \b(?<!\.)sort\.key\$(?!(\w|\.))
+    scope: support.variable.bst
+  repo_command-keywords:
+  - match: \b(?<!\.)INTEGERS\b(?!\.)
+    scope: storage.type.int.bst
+  - match: \b(?<!\.)(ENTRY|MACRO|STRINGS)\b(?!\.)
+    scope: storage.type.var.bst
+  - match: \b(?<!\.)(READ|EXECUTE|ITERATE|REVERSE|SORT)\b(?!\.)
+    scope: support.function.bst
+  repo_comments:
+  - match: '%'
+    push:
+    - meta_scope: comment.line.percentage.bst
+    - match: $
+      pop: true
+  repo_function-declaration:
+  - match: \b(FUNCTION)\s*\{\s*([[:alpha:]_.\$]*\$?)
+    captures:
+      1: storage.type.function.bst
+      2: entity.name.function.bst
+    push:
+    - meta_scope: meta.function.bst
+    - match: \}
+      pop: true
+  repo_number:
+  - match: '#-?\d+\b'
+    scope: constant.numeric.bst
+  repo_operators:
+  - match: <|>
+    scope: keyword.operator.relational.bst
+  - match: \=
+    scope: keyword.operator.comparison.bst
+  - match: \+|-|\*
+    scope: keyword.operator.arithmetic.bst
+  - match: :\=
+    scope: keyword.operator.assignment.bst
+  - match: \b(?<!\.)(and|or|not)(?!(\w|\.))
+    scope: keyword.operator.logic.bst
+  repo_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.bst
+    - match: '"'
+      pop: true

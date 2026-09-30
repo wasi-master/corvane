@@ -1,0 +1,180 @@
+%YAML 1.2
+---
+# MLIR (source.mlir): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/jpienaar/mlir-grammar via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: MLIR
+scope: source.mlir
+file_extensions:
+- mlir
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_top_level_entity
+  repo_attribute_alias_def:
+  - match: ^\s*(\#\w+)\b\s+\=
+    captures:
+      1: constant.language.mlir
+  repo_attribute_dictionary_body:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_attribute_value
+  - match: (\%)?\b([\w\.\-\$\:0-9]+)\b\s*(?=\=|\,|\})
+    scope: variable.other.mlir
+  repo_attribute_value:
+  - include: repo_string
+  - include: repo_comment
+  - include: repo_number
+  - match: \b(false|true|unit)\b
+    scope: constant.language.mlir
+  - match: \b(affine_map|affine_set)\s*\<
+    captures:
+      1: constant.language.mlir
+    push:
+    - match: \)\>
+      pop: true
+    - match: \b(ceildiv|floordiv|mod|symbol)\b
+      scope: entity.name.function.mlir
+    - match: \b([\w\.\$\-]+)\b
+      scope: variable.mlir
+    - include: repo_number
+  - match: \b(dense|opaque|sparse)\s*\<
+    captures:
+      1: constant.language.mlir
+    push:
+    - match: \>
+      pop: true
+    - include: repo_attribute_value
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_attribute_value
+    - include: repo_operation_body
+  - match: \{
+    push:
+    - match: \}
+      pop: true
+    - include: repo_attribute_dictionary_body
+  - match: (\@[\w+\$\-\.]*)
+    scope: entity.name.function.mlir
+  - match: (\#[\w\$\-\.]+)\<
+    captures:
+      1: constant.language.mlir
+    push:
+    - match: \>
+      pop: true
+    - include: repo_attribute_value
+    - match: \-\>|\>\=
+    - include: repo_bare_identifier
+  - match: \#[\w\$\-\.]+\b
+    scope: constant.language.mlir
+  - include: repo_type_value
+  - match: \<
+    push:
+    - match: \>
+      pop: true
+    - include: repo_attribute_value
+    - include: repo_bare_identifier
+  repo_bare_identifier:
+  - match: \b([\w\.\$\-]+)\b
+    scope: keyword.other.mlir
+  repo_block:
+  - match: \^[\w\d_$\.-]+
+    scope: keyword.control.mlir
+  repo_comment:
+  - match: //.*$
+    scope: comment.line.double-slash.mlir
+  repo_number:
+  - match: (\W)?([0-9]+\.[0-9]*)([eE][+-]?[0-9]+)?
+    scope: constant.numeric.mlir
+  - match: ([\W])?(0x[0-9a-zA-Z]+)
+    captures:
+      2: constant.numeric.mlir
+  - match: ([\Wx])?([0-9]+)
+    captures:
+      2: constant.numeric.mlir
+  repo_operation:
+  - match: ^\s*(\%[\%\w\:\,\s]+)\s+\=\s+([\w\.\$\-]+)\b
+    captures:
+      2: variable.other.enummember.mlir
+  - match: ^\s*([\w\.\$\-]+)\b(?=[^\<\:])
+    scope: variable.other.enummember.mlir
+  repo_operation_body:
+  - include: repo_operation
+  - include: repo_region_body_or_attr_dict
+  - include: repo_comment
+  - include: repo_ssa_value
+  - include: repo_block
+  - include: repo_attribute_value
+  - include: repo_bare_identifier
+  repo_region_body_or_attr_dict:
+  - match: \{\s*(?=\%|\/|\^)
+    push:
+    - match: \}
+      pop: true
+    - include: repo_operation_body
+  - match: \{\s*(?=[^\}]*$)
+    push:
+    - match: \}
+      pop: true
+    - include: repo_operation_body
+  - match: \{\s*(?=\%)
+    push:
+    - match: \}
+      pop: true
+    - include: repo_operation_body
+  - match: \{\s*(?=.*$)
+    push:
+    - match: \}
+      pop: true
+    - include: repo_attribute_dictionary_body
+  repo_ssa_value:
+  - match: \%[\w\.\$\:\#]+
+    scope: variable.other.mlir
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.mlir
+    push:
+    - meta_scope: string.quoted.double.mlir
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.mlir
+    - match: \\[nt"]
+      scope: constant.character.escape.mlir
+  repo_top_level_entity:
+  - include: repo_attribute_alias_def
+  - include: repo_type_alias_def
+  - include: repo_operation_body
+  repo_type_alias_def:
+  - match: ^\s*(\!\w+)\b\s+\=
+    captures:
+      1: entity.name.type.mlir
+  repo_type_value:
+  - match: (\![\w\$\-\.]+)\<
+    captures:
+      1: entity.name.type.mlir
+    push:
+    - match: \>
+      pop: true
+    - include: repo_attribute_value
+    - match: \-\>|\>\=
+      scope: punctuation.other.mlir
+    - include: repo_bare_identifier
+  - match: \![\w\$\-\.]+\b
+    scope: entity.name.type.mlir
+  - match: (complex|memref|tensor|tuple|vector)\<
+    captures:
+      1: entity.name.type.mlir
+    push:
+    - match: \>
+      pop: true
+    - match: '[\?x0-9\[\]]+'
+    - include: repo_attribute_value
+    - match: \-\>|\>\=
+      scope: punctuation.other.mlir
+    - include: repo_bare_identifier
+  - match: bf16|f16|f32|f64|f80|f128|index|none|(u|s)?i[0-9]+
+    scope: entity.name.type.mlir

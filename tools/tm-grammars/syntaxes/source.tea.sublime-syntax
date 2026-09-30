@@ -1,0 +1,92 @@
+%YAML 1.2
+---
+# Tea (source.tea): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-tea via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Tea
+scope: source.tea
+file_extensions:
+- tea
+contexts:
+  main:
+  - match: <%
+    push:
+    - match: '%>'
+      pop: true
+    - include: repo_language
+  - include: scope:text.html.basic
+  - include: scope:source.js
+  - include: scope:text.xml
+  repo_functions:
+  - match: \b(setLocale|getLocale|getAvailableLocales|nullFormat|getNullFormat|getDateFormat|getAvailableTimeZones|getDataFormatTimeZone|numberFormat|getNumberFormat|getNumberFormatInfinity|getNumberFormatNaN|currentDate|startsWith|endsWith|find|findFirst|substring|toLowerCase|toUpperCase|trim|trimLeading|trimTrailing|replace|replaceFirst|replaceLast|shortOrdinal|ordinal|cardinal)\b(?=\()
+    scope: support.function.tea
+  repo_language:
+  - include: repo_strings
+  - include: repo_functions
+  - match: \b(template)\s+([a-zA-Z_$]\w*)?\s*(\()
+    captures:
+      1: storage.type.template.tea
+      2: entity.name.class.tea
+    push:
+    - meta_scope: meta.template.tea
+    - match: (\))
+      pop: true
+    - match: \s*([a-zA-Z_$][\w.]*)\s+(\w*)(?:,\s*)?
+      captures:
+        1: storage.type.tea
+        2: variable.parameter.template.tea
+  - match: \b(call)\s+(.*?)\(.*?
+    captures:
+      1: keyword.other.tea
+      2: entity.name.function.tea
+    push:
+    - meta_scope: meta.template-call.tea
+    - match: \)
+      pop: true
+    - include: repo_functions
+    - include: repo_strings
+  - match: \?:|\?\.|\b(break|else|foreach|if|in|reverse)\b
+    scope: keyword.control.tea
+  - match: '#|##|\.\.|\.\.\.|&|\*\.'
+    scope: keyword.operator.tea
+  - match: (\-|\+|\*|%)
+    scope: keyword.operator.arithmetic.tea
+  - match: (=)
+    scope: keyword.operator.assignment.tea
+  - match: (==|!=|<|>|<=|>=|<=>|\b(and|not|or|isa)\b)
+    scope: keyword.operator.comparison.tea
+  - match: (!)
+    scope: keyword.operator.logical.tea
+  - match: \b(call|as|define)\b
+    scope: keyword.other.tea
+  - match: \b(true)\b
+    scope: constant.language.boolean.true.tea
+  - match: \b(false)\b
+    scope: constant.language.boolean.false.tea
+  - match: \b(null)\b
+    scope: constant.language.null.tea
+  - match: \b((0(x|X)[0-9a-fA-F]+)|([0-9]+(\.[0-9]+)?))\b
+    scope: constant.numeric.tea
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.tea
+  - match: /\*
+    push:
+    - meta_scope: comment.block.tea
+    - match: \*/
+      pop: true
+  - match: \;
+    scope: punctuation.terminator.statement.tea
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.tea
+    - match: '"'
+      pop: true
+    - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)
+      scope: constant.character.escape.tea
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.tea
+    - match: ''''
+      pop: true
+    - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)
+      scope: constant.character.escape.tea

@@ -1,0 +1,121 @@
+%YAML 1.2
+---
+# Type Language (source.tl): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-typelanguage via GitHub Linguist v9.7.0 (license: mit).
+name: Type Language
+scope: source.tl
+file_extensions:
+- tl
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_triple-statement
+  - include: repo_combinator-declaration
+  repo_combinator-args:
+  - include: repo_combinator-args-member
+  repo_combinator-args-member: []
+  repo_combinator-declaration:
+  - include: repo_combinator-declaration-with-hash
+  - include: repo_combinator-declaration-without-hash
+  repo_combinator-declaration-with-hash:
+  - match: (([_$\w]+)(\b\.))?([_$\w]*)(\b#)([[:alpha:][:alnum:]]*)\s*
+    captures:
+      2: meta.definition.combinator.tl variable.other.tl
+      4: meta.definition.combinator.tl variable.other.tl
+      5: storage.type.tl
+      6: storage.type.tl
+    push:
+    - meta_scope: meta.combinator.declaration.tl
+    - match: \;\s*
+      pop: true
+    - match: \.
+      scope: punctuation.namespace.tl
+    - include: repo_keywords
+    - include: repo_comments
+    - include: repo_combinator-opt-args
+    - include: repo_combinator-args
+    - include: repo_combinator-result-type
+    - match: (=)\s*
+      captures:
+        1: keyword.operator.assignment.tl
+  repo_combinator-declaration-without-hash:
+  - match: "(([_$\\w]+)(\b\\.))?([_$\\w]*)(?= )"
+    captures:
+      2: meta.definition.combinator.tl variable.other.tl
+      4: meta.definition.combinator.tl variable.other.tl
+    push:
+    - meta_scope: meta.combinator.declaration.tl
+    - match: \;\s*
+      pop: true
+    - match: \.
+      scope: punctuation.namespace.tl
+    - include: repo_keywords
+    - include: repo_comments
+    - include: repo_combinator-opt-args
+    - include: repo_combinator-args
+    - include: repo_combinator-result-type
+    - match: (=)\s*
+      captures:
+        1: keyword.operator.assignment.tl
+  repo_combinator-opt-args:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.tl
+    push:
+    - meta_scope: meta.object.type.tl
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.tl
+    - include: repo_combinator-args-member
+  repo_combinator-result-type:
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(\.)
+    captures:
+      1: entity.name.type.module.tl
+      2: punctuation.accessor.tl
+  - match: '[_$[:alpha:]][_$[:alnum:]]*'
+    scope: entity.name.type.tl
+  repo_comments:
+  - match: /\*\*
+    captures:
+      0: punctuation.definition.comment.tl
+    push:
+    - meta_scope: comment.block.documentation.tl
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.tl
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.tl
+    push:
+    - meta_scope: comment.block.tl
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.tl
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.tl
+    captures:
+      1: punctuation.definition.comment.tl
+  repo_keywords:
+  - match: \#
+    scope: keyword.other.hash.tl
+  - match: \?
+    scope: keyword.other.questionmark.tl
+  - match: \%
+    scope: keyword.other.percent.tl
+  repo_triple-statement:
+  - match: \-\-\-
+    captures:
+      0: punctuation.triple.open.tl
+    push:
+    - meta_scope: keyword.control.triple.tl
+    - match: \-\-\-
+      pop: true
+      captures:
+        0: punctuation.triple.close.tl
+    - match: \b(types|functions)\b
+      scope: keyword.control.triple.name.tl
+    - match: \b(.*)\b
+      scope: invalid.illegal

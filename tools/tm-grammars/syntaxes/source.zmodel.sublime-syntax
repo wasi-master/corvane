@@ -1,0 +1,45 @@
+%YAML 1.2
+---
+# Zmodel (source.zmodel): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/zenstackhq/zenstack.git via GitHub Linguist v9.7.0 (license: mit).
+name: Zmodel
+scope: source.zmodel
+file_extensions:
+- zmodel
+contexts:
+  main:
+  - include: repo_comments
+  - match: \b(Any|BigInt|Boolean|Bytes|ContextType|DateTime|Decimal|FieldReference|Float|Int|Json|Null|Object|String|TransitiveFieldReference|Unsupported|abstract|attribute|datasource|enum|extends|false|function|generator|import|in|model|null|plugin|this|true|type|view)\b
+    scope: keyword.control.zmodel
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.zmodel
+    - match: '"'
+      pop: true
+    - include: repo_string-character-escape
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.zmodel
+    - match: ''''
+      pop: true
+    - include: repo_string-character-escape
+  repo_comments:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.zmodel
+    push:
+    - meta_scope: comment.block.zmodel
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.zmodel
+  - match: //
+    captures:
+      1: punctuation.whitespace.comment.leading.zmodel
+    push:
+    - meta_scope: comment.line.zmodel
+    - match: (?=$)
+      pop: true
+  repo_string-character-escape:
+  - match: \\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\{[0-9A-Fa-f]+\}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)
+    scope: constant.character.escape.zmodel

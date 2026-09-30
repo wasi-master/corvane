@@ -101,6 +101,14 @@ fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
+/// Where a tree-sitter pack's grammar libraries are unpacked on first use
+/// (`~/Library/Caches/Corvane/grammars/<pack>/`, one folder per version).
+fn grammar_cache(kind: PackKind) -> std::path::PathBuf {
+    corvane_platform::paths::cache_dir()
+        .join("grammars")
+        .join(kind.name())
+}
+
 /// Point the consumer at an installed pack's data.
 fn activate(pack: &InstalledPack) -> Result<(), String> {
     match pack.kind {
@@ -112,12 +120,15 @@ fn activate(pack: &InstalledPack) -> Result<(), String> {
             Ok(())
         }
         PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
-            let count =
-                corvane_highlight::treesitter::load_library(pack.kind.name(), &pack.entry_path())
-                    .map_err(|err| {
-                    warn!(%err, pack = pack.kind.name(), "could not load the tree-sitter grammars");
-                    err
-                })?;
+            let count = corvane_highlight::treesitter::load_pack(
+                pack.kind.name(),
+                &pack.entry_path(),
+                &grammar_cache(pack.kind).join(&pack.version),
+            )
+            .map_err(|err| {
+                warn!(%err, pack = pack.kind.name(), "could not load the tree-sitter grammars");
+                err
+            })?;
             info!(count, version = %pack.version, pack = pack.kind.name(), "tree-sitter grammars loaded");
             Ok(())
         }
@@ -130,6 +141,7 @@ fn deactivate(kind: PackKind) {
         PackKind::SyntaxExtended => corvane_highlight::syntaxes::clear_extended_dump(),
         PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
             corvane_highlight::treesitter::unload_library(kind.name());
+            let _ = std::fs::remove_dir_all(grammar_cache(kind));
         }
         PackKind::GitPortable | PackKind::GitLfs => {}
     }

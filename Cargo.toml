@@ -60,9 +60,33 @@ dirs = "6"
 [profile.dev.package.tree-sitter]
 opt-level = 3
 
+# reading back and PNG-encoding CORVANE_SNAPSHOT / parity harness frames:
+# unoptimised, a 2734×1628 frame takes seconds (past the 30 s control reply
+# under load)
+[profile.dev.package.gpui-pre-apple]
+opt-level = 3
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.simd-adler32]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# gpui-pre-macos with one change in src/text_system.rs: a font asked for at a
+# weight between its named instances gets the variable `wght` axis set to that
+# weight, like Chromium (PLAN.md › R1).
+[patch.crates-io]
+gpui-pre-macos = { path = "vendor/gpui-pre-macos" }

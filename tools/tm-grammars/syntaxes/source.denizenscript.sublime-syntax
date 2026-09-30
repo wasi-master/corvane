@@ -1,0 +1,102 @@
+%YAML 1.2
+---
+# DenizenScript (source.denizenscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/DenizenScript/denizenscript-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: DenizenScript
+scope: source.denizenscript
+file_extensions:
+- dsc
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_todo_comments
+  - include: repo_header_comments
+  - include: repo_keys
+  - include: repo_commands
+  - include: repo_double_quotes
+  - include: repo_single_quotes
+  - include: repo_tags
+  - include: repo_def_brackets
+  - include: repo_not_script_keys
+  repo_commands:
+  - match: ^\s*(-)\s([^\s<>"':]+)
+    captures:
+      1: operator.dash.denizenscript
+      2: entity.other.command.denizenscript
+    push:
+    - match: \s
+      pop: true
+      captures:
+        1: operator.dash.denizenscript
+        2: entity.other.command.denizenscript
+  repo_comments:
+  - match: (?i)^\s*#(?!\s*todo|(?:\s*(?:\||\+|=|#|_|@|\/)))
+    push:
+    - meta_scope: comment.line.number-sign.denizenscript
+    - match: \n
+      pop: true
+  repo_def_brackets:
+  - match: (?<=\w|<|&)\[
+    push:
+    - meta_scope: entity.name.tag.def_brackets.denizenscript
+    - match: \]
+      pop: true
+    - include: repo_tags
+    - include: repo_def_brackets
+  repo_double_quotes:
+  - match: (?<=\s)"
+    push:
+    - meta_scope: string.quoted.double.denizenscript
+    - match: (?:")
+      pop: true
+    - include: repo_tags
+    - include: repo_def_brackets
+  repo_header_comments:
+  - match: ^\s*#\s*(?:\||\+|=|#|_|@|\/)
+    push:
+    - meta_scope: keyword.header-comment.denizenscript
+    - match: \n
+      pop: true
+  repo_keys:
+  - match: (?i)(^(?!^\s*-|#|\n|^\s*(?:interact scripts|default constants|data|constants|text|lore|aliases|slots|enchantments|input|description)(?=:\n)).*?)(?=(:)\s)
+    captures:
+      1: markup.heading.key.denizenscript
+      2: operator.colon.denizenscript
+    push:
+    - match: \s
+      pop: true
+  repo_not_script_keys:
+  - match: (?i)(^(?!.*- |#|\n).*(?=interact scripts|default constants|data|constants|text|lore|aliases|slots|enchantments|input|description).*)(?=(:)\n)
+    captures:
+      1: markup.heading.not_script_key.denizenscript
+      2: operator.colon.denizenscript
+    push:
+    - match: ^(?!.*- |\n|\s*#)
+      pop: true
+    - include: repo_tags
+    - include: repo_def_brackets
+    - include: repo_comments
+    - include: repo_todo_comments
+    - include: repo_header_comments
+  repo_single_quotes:
+  - match: (?<=\s)'
+    push:
+    - meta_scope: string.quoted.single.denizenscript
+    - match: (?:')
+      pop: true
+    - include: repo_tags
+    - include: repo_def_brackets
+  repo_tags:
+  - match: <(?!-|\s|=)
+    push:
+    - meta_scope: constant.language.tag.denizenscript
+    - match: '>'
+      pop: true
+    - include: repo_tags
+    - include: repo_def_brackets
+  repo_todo_comments:
+  - match: (?i)^\s*#\s*(?:todo)
+    push:
+    - meta_scope: variable.todo-comment.denizenscript
+    - match: \n
+      pop: true

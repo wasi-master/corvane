@@ -1,0 +1,115 @@
+%YAML 1.2
+---
+# RAScript (source.rascript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/joshraphael/rascript-syntax.git via GitHub Linguist v9.7.0 (license: mit).
+name: RAScript
+scope: source.rascript
+file_extensions:
+- rascript
+contexts:
+  main:
+  - include: repo_statements
+  repo_booleans:
+  - match: \b(true|false)\b
+    scope: constant.language.boolean.rascript
+  repo_class-definitions:
+  - match: (\bclass\b)[\t ]*(([a-zA-Z_][\w]*)|(.+))
+    captures:
+      1: keyword.class.rascript
+      3: entity.name.class.rascript
+      4: invalid.illegal.identifier.rascript
+  repo_comments:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.block.rascript
+    push:
+    - meta_scope: comment.block.rascript
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.rascript
+  - match: //
+    captures:
+      0: punctuation.definition.comment.single.rascript
+    push:
+    - meta_scope: comment.line.double-slash.rascript
+    - match: $
+      pop: true
+  repo_controls:
+  - match: \b(if|else|for|in|return)\b
+    scope: keyword.control.rascript
+  repo_function-definitions:
+  - match: (\bfunction\b)[\t ]*(([a-zA-Z_][\w]*)|(.+))\(
+    captures:
+      1: keyword.function.rascript
+      3: entity.name.function.rascript
+      4: invalid.illegal.identifier.rascript
+    push:
+    - match: \)
+      pop: true
+    - match: (?:[\w]+\s+[\w]+)
+      scope: invalid.illegal.identifier.rascript
+    - match: (?:[^\s\,!]*[\%\!\@\#\$\%\^\&\*\-\=\+\[\]\{\}\;\:\'"\.\<\>\/\?]+[^\s\,]*)
+      scope: invalid.illegal.identifier.rascript
+    - match: (?:[a-zA-Z_][\w]*)
+      scope: variable.parameter.rascript
+    - match: (?:\w+)
+      scope: invalid.illegal.identifier.rascript
+  repo_function-names:
+  - match: (([0-9][\w+]*)|(\w+))\(
+    captures:
+      2: invalid.illegal.identifier.rascript
+      3: entity.name.function.rascript
+  repo_header:
+  - match: ^//\s*(#ID)\s*=\s*(\d+)$
+    scope: comment.line.double-slash.rascript
+    captures:
+      1: keyword.other.id.rascript
+      2: constant.numeric.id.rascript
+  - match: ^//\s*(#MinimumVersion)\s*=\s*(\d+(\.\d)?)$
+    scope: comment.line.double-slash.rascript
+    captures:
+      1: keyword.other.version.rascript
+      2: constant.numeric.version.rascript
+  repo_numbers:
+  - match: \b[0-9]+\b
+    scope: constant.numeric.decimal.rascript
+  - match: (?i)\$\b[[:xdigit:]]+\b|\b0x[[:xdigit:]]+\b
+    scope: constant.numeric.hexadecimal.rascript
+  repo_statements:
+  - include: repo_controls
+  - include: repo_booleans
+  - include: repo_strings
+  - include: repo_numbers
+  - include: repo_class-definitions
+  - include: repo_function-definitions
+  - include: repo_function-names
+  - include: repo_header
+  - include: repo_comments
+  - include: repo_variable-language-this
+  - include: repo_variable-assignment
+  - include: repo_variable-other
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.rascript
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.rascript
+    - match: ({)([0-9]+)(})
+      captures:
+        1: punctuation.definition.template-expression.begin.rascript
+        2: variable.other.rascript
+        3: punctuation.definition.template-expression.end.rascript
+  repo_variable-assignment:
+  - match: ([a-zA-Z_][\w]*)[\t ]*=
+    captures:
+      1: variable.other.assignment.rascript
+  repo_variable-language-this:
+  - match: \b(this)\b
+    scope: variable.language.this.rascript
+  repo_variable-other:
+  - match: ([a-zA-Z_][\w]*)
+    captures:
+      1: variable.other.rascript

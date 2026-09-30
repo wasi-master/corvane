@@ -1,0 +1,173 @@
+%YAML 1.2
+---
+# Noir (source.nr): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/noir-lang/vscode-noir.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Noir
+scope: source.nr
+file_extensions:
+- nr
+contexts:
+  main:
+  - include: repo_code
+  repo_--struct-content:
+  - match: (pub|pub\(.+\))?\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.+)
+    captures:
+      2: support.type.property-name.nr
+  - match: <
+    push:
+    - match: '>'
+      pop: true
+    - include: repo_--struct-types
+  - include: repo_comments
+  repo_--struct-types:
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+    scope: support.type.nr
+  - match: <
+    push:
+    - match: '>'
+      pop: true
+    - include: repo_--struct-types
+  - include: repo_comments
+  repo_attribute:
+  - match: '#\['
+    push:
+    - match: \]
+      pop: true
+    - match: '[a-zA-Z_][a-zA-Z0-9_]\s*\('
+      push:
+      - match: \)
+        pop: true
+    - match: '[a-zA-Z_][a-zA-Z0-9_]'
+  repo_code:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_numeric
+  - include: repo_syntax
+  - include: repo_attribute
+  - include: repo_keywords
+  - include: repo_input
+  repo_comments:
+  - match: \/\*
+    push:
+    - meta_scope: comment.block.nr
+    - match: \*\/
+      pop: true
+    - include: repo_comments
+  - match: '\/\/.*
+
+      '
+    scope: comment.line.double-slash.nr
+  repo_input:
+  - match: \b((u|i)\d+|str|bool|field|Field)\b
+    scope: support.type.nr
+  - match: \b(_*[A-Z][a-zA-Z0-9_]*|[a-zA-Z_][a-zA-Z0-9_]*::)\b
+    scope: support.type.nr
+  - match: \b([a-z_][a-zA-Z0-9_]*)\s*(::<(.*)>\s*)?\(
+    captures:
+      1: support.function.nr
+    push:
+    - match: \)
+      pop: true
+    - include: repo_code
+  - match: \b[a-z_][a-zA-Z0-9_]*\b
+    scope: variable.nr
+  repo_interpolated-string-escapes:
+  - match: \\.|{{|}}
+    scope: constant.character.escape.nr
+  repo_interpolations:
+  - match: ({)[^"{}]*(})
+    scope: variable.other.nr
+    captures:
+      1: constant.character.nr
+      2: constant.character.nr
+  repo_keywords:
+  - match: \b(fn|impl|trait|type|mod|use|struct|if|else|for|loop|while|enum|match|break|continue)\b
+    scope: keyword.control.nr
+  - match: \b(global|comptime|quote|unsafe|unconstrained|pub|crate|&mut|mut|self|in|as|let)\b
+    scope: keyword.nr
+  repo_numeric:
+  - match: (\-)?\d+\.\d+(\.|[a-zA-Z])
+    scope: token.error-token.nr
+  - match: (\-)?0x[0-9a-fA-F]+
+    scope: constant.numeric.nr
+  - match: (\-)?\d+(\.\d+)?
+    scope: constant.numeric.nr
+  - match: \b(true|false)\b
+    scope: constant.language.nr
+  repo_string-escapes:
+  - match: \\.
+    scope: constant.character.escape.nr
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.nr
+    - match: '"'
+      pop: true
+    - include: repo_string-escapes
+  - match: r(#*)"
+    captures:
+      1: string.quoted.byte.raw.nr
+    push:
+    - meta_scope: string.quoted.double.nr
+    - match: '"(\1)'
+      pop: true
+      captures:
+        1: string.quoted.byte.raw.nr
+  - match: f"
+    push:
+    - meta_scope: string.interpolated.nr
+    - match: '"'
+      pop: true
+    - include: repo_interpolated-string-escapes
+    - include: repo_interpolations
+  repo_syntax:
+  - match: \b(mod|use)\s+([a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)*::)\{
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr
+    push:
+    - match: \}
+      pop: true
+    - include: repo_code
+  - match: \b(mod|use)\s+([a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)*)
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr
+  - match: \b(fn)\s+([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.control.nr
+      2: support.function.nr
+  - match: \b(let)\s+(mut\s+)?([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.nr
+      2: keyword.nr
+      3: variable.nr
+  - match: \b(for)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(in)\b
+    captures:
+      1: keyword.control.nr
+      2: variable.nr
+      3: keyword.nr
+  - match: \b(struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\{
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr
+    push:
+    - match: \}
+      pop: true
+    - include: repo_--struct-content
+  - match: \b(struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr
+    push:
+    - match: \)
+      pop: true
+    - include: repo_--struct-content
+  - match: \b(struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr
+  - match: (\->)\s*([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.control.nr
+      2: support.type.nr

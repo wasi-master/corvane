@@ -1,0 +1,38 @@
+%YAML 1.2
+---
+# Procfile (source.procfile): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/benspaulding/vscode-procfile via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Procfile
+scope: source.procfile
+file_extensions:
+- Procfile
+contexts:
+  main:
+  - include: repo_process
+  - include: repo_ignored
+  repo_ignored:
+  - match: ^(?![\w-]+:).*$
+    scope: comment.line.procfile
+  repo_process:
+  - match: ^(?=[\w-]+:)
+    push:
+    - meta_content_scope: meta.function.procfile
+    - match: $
+      pop: true
+    - match: ^(?=[\w-]+:)
+      push:
+      - meta_content_scope: support.function.procfile
+      - match: (?<=:)
+        pop: true
+      - match: ^(web|release)(?=:)
+        scope: keyword.heroku.procfile
+      - match: ^[\w-]+(?=:)
+        scope: entity.name.function.procfile
+      - match: '(?<=[\w-]):'
+        scope: punctuation.separator.colon.procfile
+    - match: (?<=[\w-]:)
+      push:
+      - meta_scope: meta.embedded.line.shell
+      - match: $
+        pop: true
+      - include: scope:source.shell

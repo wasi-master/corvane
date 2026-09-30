@@ -1,0 +1,79 @@
+%YAML 1.2
+---
+# Rich Text Format (text.rtf): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nwhetsell/language-rtf via GitHub Linguist v9.7.0 (license: mit).
+name: Rich Text Format
+scope: text.rtf
+file_extensions:
+- rtf
+contexts:
+  main:
+  - match: \{\\\*
+    captures:
+      0: keyword.operator.group.ignorable-destination.begin.rtf
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: keyword.operator.group.ignorable-destination.end.rtf
+    - include: main
+  - match: \{
+    captures:
+      0: keyword.operator.group.begin.rtf
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: keyword.operator.group.end.rtf
+    - include: main
+  - match: \\[\\{}]
+    scope: constant.character.escape.rtf
+  - match: \\\|
+    scope: keyword.operator.formula.rtf
+  - match: \\~
+    scope: constant.character.escape.non-breaking-space.rtf
+  - match: \\-
+    scope: constant.character.escape.optional-hyphen.rtf
+  - match: \\_
+    scope: constant.character.escape.non-breaking-hyphen.rtf
+  - match: '\\:'
+    scope: keyword.operator.index-subentry.rtf
+  - match: \\\*
+    scope: keyword.operator.ignorable-destination.rtf
+  - match: \\[\n\r]
+    scope: support.function.par.rtf
+  - match: (\\')[0-9A-Fa-f]{2}
+    scope: constant.character.entity.rtf
+    captures:
+      1: punctuation.definition.constant.rtf
+  - match: \\b\b
+    captures:
+      0: support.function.rtf
+    push:
+    - meta_content_scope: markup.bold.rtf
+    - match: (?=\\(?:b0(?:\b|[^\d])|plain\b)|})
+      pop: true
+    - include: main
+  - match: \\i\b
+    captures:
+      0: support.function.rtf
+    push:
+    - meta_content_scope: markup.italic.rtf
+    - match: (?=\\(?:i0(?:\b|[^\d])|plain\b)|})
+      pop: true
+    - include: main
+  - match: \\strike\b
+    captures:
+      0: support.function.rtf
+    push:
+    - meta_content_scope: markup.strike.rtf
+    - match: (?=\\(?:strike0(?:\b|[^\d])|plain\b)|})
+      pop: true
+    - include: main
+  - match: (\\[A-Za-z]+)(?:(-?)(\d+))?
+    captures:
+      1: support.function.rtf
+      2: keyword.operator.rtf
+      3: constant.numeric.rtf
+  - match: \\[^A-Za-z]
+    scope: invalid.unimplemented.rtf

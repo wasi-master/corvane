@@ -1,0 +1,148 @@
+%YAML 1.2
+---
+# SmPL (source.smpl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: SmPL
+scope: source.smpl
+file_extensions:
+- cocci
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: ///
+    captures:
+      0: punctuation.definition.comment.smpl
+    push:
+    - meta_scope: comment.line.triple-slash.smpl
+    - match: $
+      pop: true
+  - match: //
+    captures:
+      0: punctuation.definition.comment.smpl
+    push:
+    - meta_scope: comment.line.double-slash.smpl
+    - match: $
+      pop: true
+  repo_control:
+  - match: <\+(?=\.{3})|(?<=\.{3})\+>
+    scope: storage.modifier.required.dots.smpl
+  - match: <(?=\.{3})|(?<=\.{3})>
+    scope: storage.modifier.optional.dots.smpl
+  - match: \.{3}
+    scope: keyword.control.flow.dots.smpl
+  repo_include:
+  - match: ^\s*(include|using)\s+(?:("[^"]*")|(<.*>))
+  repo_isoPath:
+  - match: <
+    captures:
+      0: punctuation.definition.string.begin.smpl
+    push:
+    - meta_scope: string.quoted.other.lt-gt.include.smpl
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.smpl
+  repo_lineAdded:
+  - match: ^(\+).*
+    scope: markup.inserted.diff.smpl
+    captures:
+      1: punctuation.definition.inserted.diff.smpl
+  repo_lineDeleted:
+  - match: ^(-).*
+    scope: markup.deleted.diff.smpl
+    captures:
+      1: punctuation.definition.deleted.diff.smpl
+  repo_lineMatched:
+  - match: ^(\*)\s*(\S.*)
+    captures:
+      1: keyword.operator.semantic-match.diff.smpl
+      2: markup.changed.diff.smpl
+  repo_main:
+  - include: repo_comment
+  - include: repo_include
+  - include: repo_virtual
+  - include: repo_control
+  - include: repo_scripts
+  - include: repo_metavariables
+  - include: repo_variables
+  - include: repo_lineAdded
+  - include: repo_lineDeleted
+  - include: repo_lineMatched
+  - include: repo_when
+  repo_metavariables:
+  - match: ^(@).*(@)\s*$
+    captures:
+      0: meta.diff.range.smpl
+      1: punctuation.definition.range.diff.begin.smpl
+      2: punctuation.definition.range.diff.end.smpl
+    push:
+    - meta_scope: meta.diff.header.metavariables.smpl
+    - match: ^(@@)
+      pop: true
+      captures:
+        0: meta.diff.range.smpl
+        1: punctuation.definition.range.diff.smpl
+  repo_scripts:
+  - match: (^(@).*?(?<=\s|@)(script|initialize|finalize):python(?=\s|@).*?(@)\s*$)
+    captures:
+      0: meta.diff.header.metavariables.smpl
+      1: meta.diff.range.smpl
+      2: punctuation.definition.range.diff.begin.smpl
+      3: punctuation.definition.range.diff.end.smpl
+    push:
+    - match: ^(?=@(?!@\s*$))
+      pop: true
+    - match: ^
+      push:
+      - meta_scope: meta.diff.header.metavariables.smpl
+      - match: ^(@@)
+        pop: true
+        captures:
+          0: meta.diff.range.smpl
+          1: punctuation.definition.range.diff.smpl
+    - match: (?<=@@)\s*$\n?
+      push:
+      - meta_content_scope: source.embedded.python
+      - match: ^(?=@)
+        pop: true
+      - include: repo_comment
+      - include: scope:source.python
+  - match: (^(@).*?(?<=\s|@)(script|initialize|finalize):ocaml(?=\s|@).*?(@)\s*$)
+    captures:
+      0: meta.diff.header.metavariables.smpl
+      1: meta.diff.range.smpl
+      2: punctuation.definition.range.diff.begin.smpl
+      3: punctuation.definition.range.diff.end.smpl
+    push:
+    - match: ^(?=@(?!@\s*$))
+      pop: true
+    - match: ^
+      push:
+      - meta_scope: meta.diff.header.metavariables.smpl
+      - match: ^(@@)
+        pop: true
+        captures:
+          0: meta.diff.range.smpl
+          1: punctuation.definition.range.diff.smpl
+    - match: (?<=@@)\s*$\n?
+      push:
+      - meta_content_scope: source.embedded.ocaml
+      - match: ^(?=@)
+        pop: true
+      - include: repo_comment
+      - include: scope:source.ocaml
+  repo_variables:
+  - match: (?<!^)(@)[\w]+
+    scope: variable.at-prefix.smpl
+    captures:
+      1: keyword.operator.variable.smpl
+  repo_virtual:
+  - match: ^\s*(virtual)\s+(.*)
+    captures:
+      1: storage.modifier.virtual.smpl
+  repo_when:
+  - match: (?<=\s|\.{3})(when)\s*(any(?:\s|$)|!=)
+    captures:
+      1: keyword.control.flow.when.smpl
+      2: keyword.operator.comparison.smpl

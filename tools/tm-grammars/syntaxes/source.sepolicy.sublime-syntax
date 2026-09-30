@@ -1,0 +1,51 @@
+%YAML 1.2
+---
+# SELinux Policy (source.sepolicy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/google/selinux-policy-languages via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: SELinux Policy
+scope: source.sepolicy
+file_extensions:
+- te
+- file_contexts
+- genfs_contexts
+- initial_sids
+- port_contexts
+- security_classes
+contexts:
+  main:
+  - include: repo_main
+  repo_comments:
+  - match: (#).*
+    scope: comment.line.number-sign.sepolicy
+    captures:
+      1: punctuation.definition.comment.sepolicy
+  repo_keywords:
+  - match: \b(alias|allow|and|attribute|attribute_role|auditallow|auditdeny|bool|category|cfalse|class|clone|common|constrain|ctrue|dom|domby|dominance|dontaudit|else|equals|false|filename|filesystem|fscon|fs_use_task|fs_use_trans|fs_use_xattr|genfscon|h1|h2|identifier|if|incomp|inherits|iomemcon|ioportcon|ipv4_addr|ipv6_addr|l1|l2|level|mlsconstrain|mlsvalidatetrans|module|netifcon|neverallow|nodecon|not|notequal|number|object_r|optional|or|path|pcidevicecon|permissive|pirqcon|policycap|portcon|r1|r2|r3|range|range_transition|require|role|roleattribute|roles|role_transition|sameuser|sensitivity|sid|source|t1|t2|t3|target|true|type|typealias|typeattribute|typebounds|type_change|type_member|types|type_transition|u1|u2|u3|user|validatetrans|version_identifier|xor|default_user|default_role|default_type|default_range|low|high|low_high)\b
+    scope: keyword.sepolicy
+  repo_main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_numbers
+  - include: repo_punctuation
+  repo_numbers:
+  - match: (0x[0-9a-fA-F]+)
+    scope: constant.numeric.integer.hexadecimal.sepolicy
+  - match: ([0-9]+)
+    scope: constant.numeric.integer.decimal.sepolicy
+  repo_punctuation:
+  - match: (;)
+    scope: punctuation.terminator.sepolicy
+  - match: (==|!=|&&|\|\||!|\^)
+    scope: keyword.operator.sepolicy
+  - match: ([,:])
+    scope: punctuation.separator.sepolicy
+  - match: ([.~*-])
+    scope: punctuation.sepolicy
+  - match: (\{)
+    scope: punctuation.section.braces.begin.sepolicy
+  - match: (\})
+    scope: punctuation.section.braces.end.sepolicy
+  - match: (\()
+    scope: punctuation.section.parens.begin.sepolicy
+  - match: (\))
+    scope: punctuation.section.parens.end.sepolicy

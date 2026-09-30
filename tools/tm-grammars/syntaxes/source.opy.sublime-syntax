@@ -1,0 +1,126 @@
+%YAML 1.2
+---
+# OverPy (source.opy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Zezombye/overpy-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: OverPy
+scope: source.opy
+file_extensions:
+- opy
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_multiline-comments
+  - include: repo_macros
+  - include: repo_fstrings
+  - include: repo_strings
+  - include: repo_apos-fstrings
+  - include: repo_apos-strings
+  - include: repo_string-modifiers
+  - include: repo_labels
+  - include: repo_keywords
+  - include: repo_invalid
+  - include: repo_numbers
+  - include: repo_enums
+  - include: repo_classes
+  - include: repo_functions
+  repo_apos-fstrings:
+  - match: ((?<=f)|(?<=f\w)|(?<=f\w\w))'
+    push:
+    - meta_scope: string.quoted.double.overpy
+    - match: ''''
+      pop: true
+    - match: \\([\\"'nrtzbf]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|&\w+;)
+      scope: constant.character.escape.overpy
+    - match: \{
+      push:
+      - meta_scope: constant.character.escape.overpy
+      - meta_content_scope: meta.embedded.overpy
+      - match: '[\}'']'
+        pop: true
+      - include: main
+  repo_apos-strings:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.double.overpy
+    - match: ''''
+      pop: true
+    - match: (\\([\\"'nrtzbf]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|&\w+;))|(\{\d*\})
+      scope: constant.character.escape.overpy
+  repo_classes:
+  - match: \b[A-Z][a-z_]\w*\b
+    scope: variable
+  repo_comments:
+  - match: '#[^!].*$'
+    scope: comment.line.number-sign
+  repo_enums:
+  - match: \b[A-Z_\d]+\b
+    scope: constant
+  repo_fstrings:
+  - match: ((?<=f)|(?<=f\w)|(?<=f\w\w))"
+    push:
+    - meta_scope: string.quoted.double.overpy
+    - match: '"'
+      pop: true
+    - match: \\([\\"'nrtzbf]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|&\w+;)
+      scope: constant.character.escape.overpy
+    - match: \{
+      push:
+      - meta_scope: constant.character.escape.overpy
+      - meta_content_scope: meta.embedded.overpy
+      - match: '[\}"]'
+        pop: true
+      - include: main
+  repo_functions:
+  - match: \b\w+(?=\()
+    scope: entity
+  repo_invalid:
+  - match: \b(False|True|None|Null|class|finally|is|try|from|nonlocal|with|as|yield|assert|except|raise|disabled|import)\b
+    scope: invalid.illegal
+  repo_keywords:
+  - match: \b(if|else|elif|do|while|for|return|continue|false|true|null|goto|lambda|pass|del|break|switch|case|default|def|rule|settings|globalvar|playervar|subroutine|unsigned|signed|int|float|bool|enum|const|macro|self)\b
+    scope: keyword
+  - match: \b(and|or|not|in)\b|((\+|\-|\*\*|\/|\%|\*|<|>)=?)|(\=)|\.|((min|max|\!)\=)
+    scope: constant
+  - match: \b(eventPlayer|attacker|victim|eventDamage|eventHealing|eventWasCriticalHit|eventWasEnvironment|eventWasHealthPack|eventAbility|eventDirection|healee|healer|hostPlayer|localPlayer|loc|RULE_CONDITION|ruleCondition|RULE_START|__\w+__|[A-Z]|[A-D][A-Z])\b
+    scope: entity.name.tag
+  - match: \@\w+\b
+    scope: markup.list
+  - match: (?<=\@Event )\w+\b
+    scope: meta.diff.range
+  - match: (?<=\@Team )\w+\b
+    scope: meta.diff.range
+  - match: (?<=\@Slot )\w+\b
+    scope: meta.diff.range
+  - match: (?<=\@Hero )\w+\b
+    scope: meta.diff.range
+  repo_labels:
+  - match: ^[ \t]*(?!(do|else|elif|default)\b)[A-Za-z\d_]+(?=:)
+    scope: markup.italic
+  - match: (?<=goto )[A-Za-z\d_]+
+    scope: markup.italic
+  repo_macros:
+  - match: '#!'
+    push:
+    - meta_scope: markup.heading
+    - match: (?<!\\)\n
+      pop: true
+  repo_multiline-comments:
+  - match: \/\*
+    push:
+    - meta_scope: comment.line
+    - match: \*\/
+      pop: true
+  repo_numbers:
+  - match: \b[+-]?((\d*\.)?\d+|0x[0-9a-fA-F]+)\b
+    scope: constant.numeric
+  repo_string-modifiers:
+  - match: \b[a-z]+(?=["'])
+    scope: entity.name.tag
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.overpy
+    - match: '"'
+      pop: true
+    - match: (\\([\\"'nrtzbf]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|&\w+;))|(\{\d*\})
+      scope: constant.character.escape.overpy

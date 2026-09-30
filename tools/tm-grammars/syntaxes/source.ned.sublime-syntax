@@ -1,0 +1,34 @@
+%YAML 1.2
+---
+# OMNeT++ NED (source.ned): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/omnetpp/omnetpp-textmate-ned.git via GitHub Linguist v9.7.0 (license: mit).
+name: OMNeT++ NED
+scope: source.ned
+file_extensions:
+- ned
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_property
+  - include: repo_type
+  - include: repo_string
+  - include: repo_expr
+  - include: repo_non_expr
+  repo_comment:
+  - match: //.*$
+    scope: comment.line.double-slash.ned
+  repo_expr:
+  - match: \b(?:sizeof|const|default|ask|this|index|typename)\b
+    scope: keyword.other.ned
+  repo_non_expr:
+  - match: \b(?:channel|channelinterface|simple|module|network|moduleinterface|parameters|gates|types|submodules|connections|allowunconnected|extends|for|if|import|like|package|property|parent)\b
+    scope: keyword.other.ned
+  repo_property:
+  - match: '@[a-zA-Z]+'
+    scope: entity.name.tag.ned
+  repo_string:
+  - match: '"[^"]*"'
+    scope: string.quoted.msg
+  repo_type:
+  - match: \b(?:inout|input|output|bool|double|int|string|object|xml|-->|<--|<-->|\.\.|volatile|false|true|undefined|nan|inf|null|nullptr)\b
+    scope: storage.type.common.ned

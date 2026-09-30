@@ -1,0 +1,45 @@
+%YAML 1.2
+---
+# Untyped Plutus Core (source.uplc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/aiken-lang/vscode-aiken.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Untyped Plutus Core
+scope: source.uplc
+file_extensions:
+- uplc
+contexts:
+  main:
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_constant
+  - include: repo_types
+  - include: repo_entity
+  repo_boolean:
+  - match: \b(True|False)\b
+    scope: constant.language.boolean.uplc
+  repo_constant:
+  - include: repo_decimal_number
+  - include: repo_boolean
+  - match: '#[[:xdigit:]]+\b'
+    scope: constant.numeric.hexadecimal.uplc
+  repo_decimal_number:
+  - match: \b[[:digit:]][[:digit:]_]*(\.[[:digit:]]*)?\b
+    scope: constant.numeric.decimal.uplc
+  repo_entity:
+  - match: \b(addInteger|subtractInteger|multiplyInteger|divideInteger|quotientInteger|remainderInteger|modInteger|equalsInteger|lessThanInteger|lessThanEqualsInteger|appendByteString|consByteString|sliceByteString|lengthOfByteString|indexByteString|equalsByteString|lessThanByteString|lessThanEqualsByteString|sha2_256|sha3_256|blake2b_256|verifyEd25519Signature|verifyEcdsaSecp256k1Signature|verifySchnorrSecp256k1Signature|appendString|equalsString|encodeUtf8|decodeUtf8|ifThenElse|chooseUnit|trace|fstPair|sndPair|chooseList|mkCons|headList|tailList|nullList|chooseData|constrData|mapData|listData|iData|bData|unConstrData|unMapData|unListData|unIData|unBData|equalsData|serialiseData|mkPairData|mkNilData|mkNilPairData|bls12_381_G1_add|bls12_381_G1_neg|bls12_381_G1_scalarMul|bls12_381_G1_equal|bls12_381_G1_compress|bls12_381_G1_uncompress|bls12_381_G1_hashToGroup|bls12_381_G2_add|bls12_381_G2_neg|bls12_381_G2_scalarMul|bls12_381_G2_equal|bls12_381_G2_compress|bls12_381_G2_uncompress|bls12_381_G2_hashToGroup|bls12_381_millerLoop|bls12_381_mulMlResult|bls12_381_finalVerify|integerToByteString|byteStringToInteger|keccak_256|blake2b_224)\b
+    scope: entity.name.function.uplc
+  - match: \b([[:lower:]][[:word:]]*)\b
+    scope: variable.other.uplc
+  repo_keywords:
+  - match: \b(program|con|builtin|delay|force|error|lam)\b
+    scope: keyword.control.uplc
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.uplc
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.uplc
+  repo_types:
+  - match: \b(integer|bytestring|bool|unit|string|list|pair)\b
+    scope: entity.name.type.uplc

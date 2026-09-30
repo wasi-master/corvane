@@ -1,0 +1,191 @@
+%YAML 1.2
+---
+# M3U (source.m3u): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: M3U
+scope: source.m3u
+file_extensions:
+- m3u
+- m3u8
+contexts:
+  main:
+  - include: repo_main
+  repo_attr:
+  - match: ([^\s="',]+)\s*(=)\s*(?=[^\s,])
+    captures:
+      1: entity.other.attribute-name.m3u
+      2: keyword.operator.assignment.separator.key-value.m3u
+    push:
+    - meta_scope: meta.attribute.m3u
+    - match: (?!)
+      pop: true
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.m3u
+      push:
+      - meta_scope: string.quoted.double.m3u
+      - match: (")|([^"]+)$
+        pop: true
+        captures:
+          1: punctuation.definition.string.end.m3u
+          2: invalid.illegal.syntax.unclosed-string.m3u
+    - match: ''''
+      captures:
+        0: punctuation.definition.string.begin.m3u
+      push:
+      - meta_scope: string.quoted.single.m3u
+      - match: (')|([^']+)$
+        pop: true
+        captures:
+          1: punctuation.definition.string.end.m3u
+          2: invalid.illegal.syntax.unclosed-string.m3u
+    - match: '[^\s"'',][^\s,]*'
+  repo_attrList:
+  - include: scope:etc
+  - include: repo_attr
+  repo_comment:
+  - match: "(?:\\A\uFEFF?|^)(\\s+)?(?=#)"
+    captures:
+      1: punctuation.whitespace.leading.m3u
+    push:
+    - match: (?!)
+      pop: true
+    - match: (#)(EXTM3U8?)(?=$|\s)(\s+[^\r\n]*)?$
+      scope: comment.line.number-sign.directive.file-header.m3u
+      captures:
+        1: punctuation.definition.comment.m3u
+        2: keyword.control.start.file.m3u
+    - match: (#)(EXTINF)(:)
+      captures:
+        1: punctuation.definition.comment.m3u
+        2: keyword.operator.field.extinf.m3u
+      push:
+      - meta_scope: comment.line.number-sign.directive.extinf.m3u
+      - match: $
+        pop: true
+      - match: \s*([-+]?\d+(?:\.\d+)?)
+        captures:
+          1: constant.numeric.track-length.m3u
+        push:
+        - match: (?=,|\s*$)
+          pop: true
+        - include: repo_attr
+      - match: \s*(,)[ \t]*
+        captures:
+          1: punctuation.separator.title.m3u
+        push:
+        - meta_content_scope: markup.list.title.m3u
+        - match: (?=\s*$)
+          pop: true
+    - match: (#)(EXTBYT)(:)
+      captures:
+        1: punctuation.definition.comment.m3u
+        2: keyword.operator.field.extbyt.m3u
+      push:
+      - meta_scope: comment.line.number-sign.directive.extbyt.m3u
+      - match: $
+        pop: true
+      - include: repo_hex
+      - include: scope:etc
+    - match: (#)(EXTVLCOPT)(:)[ \t]*([-\w]+)(=)
+      captures:
+        1: punctuation.definition.comment.m3u
+        2: keyword.operator.field.vlc-option.m3u
+        4: variable.assignment.option.m3u
+      push:
+      - match: $
+        pop: true
+      - match: "(?xi) \\s* (?:\n\t([-+]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)) |\n\t(true|false|yes|no|on|off) |\n\t(\\S.*?)\n)(?=\\s*$)"
+        captures:
+          3: string.unquoted.vlc-option.m3u
+    - match: (#)(PLAYLIST|EXT(?:[A-Z]+))(?:(:)|(?=\s*$))
+      captures:
+        1: punctuation.definition.comment.m3u
+      push:
+      - meta_content_scope: string.unquoted.directive.m3u
+      - match: (?=\s*$)
+        pop: true
+    - match: "(?x)(\\#)\n(EXT-X-\n\t(?: CONTENT-STEERING\n\t|   DATERANGE\n\t|   DEFINE\n\t|   I-FRAME-STREAM-INF\n\t|   KEY\n\t|   MAP\n\t|   MEDIA\n\t|   PART-INF\n\t|   PART\n\t|   PRELOAD-HINT\n\t|   RENDITION-REPORT\n\t|   SERVER-CONTROL\n\t|   SESSION-DATA\n\t|   SESSION-KEY\n\t|   SKIP\n\t|   START\n\t|   STREAM-INF\n\t)\n)(:)"
+      captures:
+        1: punctuation.definition.comment.m3u
+      push:
+      - match: $
+        pop: true
+      - include: repo_attrList
+    - match: (#)(EXT-X-BYTERANGE)(:)[ \t]*
+      captures:
+        1: punctuation.definition.comment.m3u
+        2: keyword.operator.field.byterange.m3u
+      push:
+      - meta_scope: comment.line.number-sign.directive.byterange.hls.m3u
+      - match: $
+        pop: true
+      - match: (\d+)(?:(@)(\d+))?
+        scope: meta.byte-range.m3u
+        captures:
+          1: constant.numeric.integer.range-length.m3u
+          2: punctuation.separator.range.m3u
+          3: constant.numeric.integer.offset.m3u
+    - match: (#)(EXT-X(?:-[A-Z0-9]+)++)(?:(:)|(?=\s*$))
+      captures:
+        1: punctuation.definition.comment.m3u
+      push:
+      - match: (?=\s*$)
+        pop: true
+      - include: repo_unquoted
+    - match: '#'
+      captures:
+        0: punctuation.definition.comment.m3u
+      push:
+      - meta_scope: comment.line.number-sign.m3u
+      - match: $
+        pop: true
+  repo_hex:
+  - match: (?i)[-+]?0x[0-9A-F]+
+    scope: constant.numeric.integer.int.hexadecimal.hex.m3u
+  repo_main:
+  - include: repo_comment
+  - include: repo_mediaSpec
+  repo_mediaSpec:
+  - match: "(?:\\A\uFEFF?|^)(\\s+)?(?=[^\\s#])"
+    captures:
+      1: punctuation.whitespace.leading.m3u
+    push:
+    - meta_content_scope: meta.media-source.m3u
+    - match: (?=\s*$)
+      pop: true
+    - include: repo_url
+    - include: repo_path
+  repo_path:
+  - match: '[^\s:][^\r\n]*(?=\s*$)'
+    scope: constant.other.reference.link.underline.file.path.m3u
+  repo_resolution:
+  - match: (?:^||(?<=\s))(\d+)(x)(\d+)(?=$|\s)
+    scope: meta.screen-resolution.m3u
+    captures:
+      1: constant.numeric.integer.width.m3u
+      2: punctuation.separator.dimensions.m3u
+      3: constant.numeric.integer.height.m3u
+  repo_unquoted:
+  - include: repo_resolution
+  - include: repo_hex
+  - include: scope:etc
+  - include: scope:etc
+  - include: scope:etc
+  repo_url:
+  - match: '(?xi)\b
+
+      ((?=[A-Z])\w+(?:[-+.]\w+)*+) # URI scheme
+
+      ://                            # Separator
+
+      [^#?\s"]*                     # Pathname
+
+      (?:\?[^\s"#]*)?              # Query variable(s)
+
+      (?:\#[^\s"]*)?               # Fragment identifier'
+  repo_urlEncoded:
+  - match: (%)[0-9A-F]{2}
+    scope: constant.character.escape.url-encoded.m3u
+    captures:
+      1: punctuation.definition.escape.m3u

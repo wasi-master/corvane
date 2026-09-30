@@ -14,13 +14,17 @@ bundled-syntax-extended = ["dep:two-face"]
 bundled-tree-sitter = ["dep:corvane-grammars", "corvane-grammars/all"]
 # `cargo run -p corvane-highlight --features pack-builder --example dump-extended <out>`
 # writes the pack's syntaxes.packdump (packaging/packs.sh).
-pack-builder = ["dep:two-face", "syntect/dump-create"]
+pack-builder = ["dep:two-face", "syntect/dump-create", "syntect/yaml-load"]
 
 [dependencies]
 corvane-grammars = { workspace = true, optional = true }
 fancy-regex = "0.16"
+# gunzips grammar pack units (already in the app through GPUI)
+flate2 = "1"
 libloading.workspace = true
 regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 syntect.workspace = true
 tracing.workspace = true
 tree-sitter.workspace = true
@@ -32,4 +36,12 @@ corvane-grammars = { workspace = true, features = ["all"] }
 
 [[example]]
 name = "dump-extended"
+required-features = ["pack-builder"]
+
+[[example]]
+name = "list-syntaxes"
+required-features = ["pack-builder"]
+
+[[example]]
+name = "tm-build"
 required-features = ["pack-builder"]

@@ -1,0 +1,65 @@
+%YAML 1.2
+---
+# BQN (source.bqn): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/razetime/bqn-vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: BQN
+scope: source.bqn
+file_extensions:
+- bqn
+contexts:
+  main:
+  - include: repo_bracket
+  - include: repo_number
+  - include: repo_operator
+  - include: repo_variable
+  - include: repo_string
+  - include: repo_comment
+  - include: repo_entity
+  - include: repo_subject
+  repo_bracket:
+  - match: (\(|\))
+    scope: meta.bracket.bqn
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.bqn
+    push:
+    - meta_scope: comment.line.number-sign.bqn
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.definition.comment.bqn
+  repo_entity:
+  - match: "([\u02D9\u02DC\u02D8\xA8\xB4\u02DD`\u231C\u207C]|(\u203F\\K|\\b|^)_[A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF\U0001D563][_A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF\xAF\u03C0\u221E0-9]*[^_](\\b|(?=\u203F)))"
+    scope: keyword.operator.modifier1.bqn
+  repo_number:
+  - match: "(?<![A-Z_a-z0-9\u03C0\u221E\xAF])\xAF?(\xAF_*)?((\\d[\\d_]*(\\.\\d[\\d_]*)?|\u03C0_*)([eE]_*(\xAF_*)?\\d[\\d_]*)?|\u221E_*)(i_*(\xAF_*)?((\\d[\\d_]*(\\.\\d[\\d_]*)?|\u03C0_*)([eE]_*(\xAF_*)?\\d[\\d_]*)?|\u221E_*))?"
+    scope: constant.numeric.bqn
+  repo_operator:
+  - match: "([\u2218\u25CB\u22B8\u27DC\u233E\u2298\u25F6\u238A\u2389\u2687\u235F]|((?:[\U0001D557\U0001D53D\U0001D558\U0001D53E\U0001D568\U0001D54E\U0001D569\U0001D54F\U0001D564\U0001D54A\U0001D563\u203F])|\\b|^)_[A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF\U0001D563][_A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF\xAF\u03C0\u221E0-9]*_(\\b|(?=[\U0001D557\U0001D53D\U0001D558\U0001D53E\U0001D568\U0001D54E\U0001D569\U0001D54F\U0001D564\U0001D54A\U0001D563\u203F])))"
+    scope: keyword.control.modifier2.bqn
+  repo_string:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.bqn
+    push:
+    - meta_scope: string.quoted.double.bqn
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.bqn
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.bqn
+    push:
+    - meta_scope: string.quoted.double.bqn
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.bqn
+  repo_subject:
+  - match: "[\U0001D557\U0001D558\U0001D568\U0001D569\U0001D564]|\u2022?[a-z\xDF-\xF6\xF8-\xFF][A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF_0-9\u03C0\u221E\xAF]*"
+    scope: support.class.bqn
+  repo_variable:
+  - match: "[\U0001D53D\U0001D53E\U0001D54E\U0001D54F\U0001D54A+\\-\xD7\xF7\u22C6\u221A\u230A\u2308|\xAC\u2227\u2228<>\u2260=\u2264\u2265\u2261\u2262\u22A3\u22A2\u294A\u223E\u224D\u22C8\u2191\u2193\u2195\xAB\xBB\u233D\u2349/\u234B\u2352\u228F\u2291\u2290\u2292\u220A\u2377\u2294!\u2355\u234E]|\u2022?[A-Z\xC0-\xD6\xD8-\xDE][A-Z\xC0-\xD6\xD8-\xDEa-z\xDF-\xF6\xF8-\xFF_0-9\u03C0\u221E\xAF]*"
+    scope: variable.language.function.bqn

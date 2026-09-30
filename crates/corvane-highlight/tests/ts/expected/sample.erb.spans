@@ -22,7 +22,7 @@
 22: 2+2=Keyword 5+3=Keyword 9+2=Keyword
 23: 2+3=Keyword 6+8=Variable 17+6=AltVariable 24+8=Variable 38+3=Keyword
 24: 2+2=Keyword 5+6=Keyword 12+8=Variable 21+5=Variable 27+2=Keyword
-25: 4+3=Tag 22+8=Variable 38+5=Variable 63+6=AltVariable 70+4=Variable 79+4=Tag
+25: 4+3=Tag 17+3=Keyword 22+8=Variable 38+5=Variable 44+2=Keyword 59+3=Keyword 63+6=AltVariable 70+4=Variable 75+2=Keyword 79+4=Tag
 26: 2+2=Keyword 5+3=Keyword 9+2=Keyword
 27: 2+2=Keyword 6+6=Atom 14+6=Atom 22+4=Variable 27+2=Keyword 31+5=AltVariable 38+2=Keyword
 28: 4+5=Tag 10+10=Attribute 21+5=String 26+5=Variable 31+4=String 35+1=Tag 36+3=Keyword 40+5=AltVariable 46+11=Variable 58+5=Variable 68+5=String 74+2=Keyword 76+7=Tag

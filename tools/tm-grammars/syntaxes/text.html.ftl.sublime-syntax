@@ -1,0 +1,43 @@
+%YAML 1.2
+---
+# FreeMarker (text.html.ftl): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/FreeMarker.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: FreeMarker
+scope: text.html.ftl
+file_extensions:
+- ftl
+- ftlh
+contexts:
+  main:
+  - match: '[<\[]#--'
+    captures:
+      0: punctuation.definition.comment.ftl
+    push:
+    - meta_scope: comment.block.ftl
+    - match: --[>\]]
+      pop: true
+      captures:
+        0: punctuation.definition.comment.ftl
+  - match: ([<\[](#|@))(\w+(\.\w+)*)((\s+[^>\]]+)*?)\s*((\/)?([>\]]))
+    scope: meta.function.ftl
+    captures:
+      1: punctuation.definition.function.ftl
+      2: punctuation.definition.function.ftl
+      3: entity.name.function.ftl
+      5: variable.parameter.function.ftl
+      8: entity.name.function.ftl
+      9: punctuation.definition.function.ftl
+  - match: ([<\[]\/(#|@))(\w+(\.\w+)*)\s*([>\]])
+    scope: meta.function.ftl
+    captures:
+      1: punctuation.definition.function.ftl
+      2: punctuation.definition.function.ftl
+      3: entity.name.function.ftl
+      5: punctuation.definition.function.ftl
+  - match: (\$\{)\.?[a-zA-Z_\(][\w\(\)+-\/\*]+(\.?[\w\(\)+-\/\*]+)*(.*?|\?\?|\!)?(\})
+    scope: variable.other.readwrite.local.ftl
+    captures:
+      1: punctuation.definition.variable.ftl
+      3: entity.name.function.ftl
+      4: punctuation.definition.variable.ftl
+  - include: scope:text.html.basic

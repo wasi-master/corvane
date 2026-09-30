@@ -1,0 +1,487 @@
+%YAML 1.2
+---
+# Xmake (source.xmake): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/xmake-io/xmake-lua.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: Xmake
+scope: source.xmake
+file_extensions:
+- xmake.lua
+contexts:
+  main:
+  - match: \b(?:(local)\s+)?(function)\b(?![,:])
+    captures:
+      1: keyword.local.lua
+      2: keyword.control.lua
+    push:
+    - meta_scope: meta.function.lua
+    - match: (?<=[\)\-{}\[\]"'])
+      pop: true
+    - include: repo_comment
+    - match: (\()
+      captures:
+        1: punctuation.definition.parameters.begin.lua
+      push:
+      - meta_scope: meta.parameter.lua
+      - match: (\))|(?=[\-\.{}\[\]"'])
+        pop: true
+        captures:
+          1: punctuation.definition.parameters.finish.lua
+      - include: repo_comment
+      - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+        scope: variable.parameter.function.lua
+      - match: ','
+        scope: punctuation.separator.arguments.lua
+      - match: ':'
+        captures:
+          0: punctuation.separator.arguments.lua
+        push:
+        - match: (?=[\),])
+          pop: true
+        - include: repo_emmydoc.type
+    - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b\s*(?=:)
+      scope: entity.name.class.lua
+    - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b
+      scope: entity.name.function.lua
+  - match: (?<![\w\d.])0[xX][0-9A-Fa-f]+(\.[0-9A-Fa-f]*)?([eE]-?\d*)?([pP][-+]\d+)?
+    scope: constant.numeric.float.hexadecimal.lua
+  - match: (?<![\w\d.])0[xX]\.[0-9A-Fa-f]+([eE]-?\d*)?([pP][-+]\d+)?
+    scope: constant.numeric.float.hexadecimal.lua
+  - match: (?<![\w\d.])0[xX][0-9A-Fa-f]+(?![pPeE.0-9])
+    scope: constant.numeric.integer.hexadecimal.lua
+  - match: (?<![\w\d.])\d+(\.\d*)?([eE]-?\d*)?
+    scope: constant.numeric.float.lua
+  - match: (?<![\w\d.])\.\d+([eE]-?\d*)?
+    scope: constant.numeric.float.lua
+  - match: (?<![\w\d.])\d+(?![pPeE.0-9])
+    scope: constant.numeric.integer.lua
+  - include: repo_string
+  - match: \A(#!).*$\n?
+    scope: comment.line.shebang.lua
+    captures:
+      1: punctuation.definition.comment.lua
+  - include: repo_comment
+  - match: \b(goto)\s+([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.control.goto.lua
+      2: string.tag.lua
+  - match: (::)\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(::)
+    scope: string.tag.lua
+    captures:
+      1: punctuation.section.embedded.begin.lua
+      2: punctuation.section.embedded.end.lua
+  - match: <\s*(const|close)\s*>
+    captures:
+      0: storage.type.attribute.lua
+  - match: \<[a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*\>
+    scope: storage.type.generic.lua
+  - match: \b(break|do|else|for|if|elseif|goto|return|then|repeat|while|until|end|in)\b
+    scope: keyword.control.lua
+  - match: \b(local)\b
+    scope: keyword.local.lua
+  - match: \b(function)\b(?![,:])
+    scope: keyword.control.lua
+  - match: (?<![^.]\.|:)\b(false|nil(?!:)|true|_ENV|_G|_VERSION|math\.(pi|huge|maxinteger|mininteger)|utf8\.charpattern|io\.(stdin|stdout|stderr)|package\.(config|cpath|loaded|loaders|path|preload|searchers))\b|(?<![.])\.{3}(?!\.)
+    scope: constant.language.lua
+  - match: (?<![^.]\.|:)\b(self)\b
+    scope: variable.language.self.lua
+  - match: (?<![^.]\.|:)\b(assert|collectgarbage|dofile|error|getfenv|getmetatable|ipairs|load|loadfile|loadstring|module|next|pairs|pcall|print|rawequal|rawget|rawlen|rawset|require|select|setfenv|setmetatable|tonumber|tostring|type|unpack|xpcall)\b(?!\s*=(?!=))
+    scope: support.function.lua
+  - match: (?<![^.]\.|:)\b(async)\b(?!\s*=(?!=))
+    scope: entity.name.tag.lua
+  - match: (?<![^.]\.|:)\b(coroutine\.(create|isyieldable|close|resume|running|status|wrap|yield)|string\.(byte|char|dump|find|format|gmatch|gsub|len|lower|match|pack|packsize|rep|reverse|sub|unpack|upper)|table\.(concat|insert|maxn|move|pack|remove|sort|unpack)|math\.(abs|acos|asin|atan2?|ceil|cosh?|deg|exp|floor|fmod|frexp|ldexp|log|log10|max|min|modf|pow|rad|random|randomseed|sinh?|sqrt|tanh?|tointeger|type)|io\.(close|flush|input|lines|open|output|popen|read|tmpfile|type|write)|os\.(clock|date|difftime|execute|exit|getenv|remove|rename|setlocale|time|tmpname)|package\.(loadlib|seeall|searchpath)|debug\.(debug|[gs]etfenv|[gs]ethook|getinfo|[gs]etlocal|[gs]etmetatable|getregistry|[gs]etupvalue|[gs]etuservalue|set[Cc]stacklimit|traceback|upvalueid|upvaluejoin)|bit32\.(arshift|band|bnot|bor|btest|bxor|extract|replace|lrotate|lshift|rrotate|rshift)|utf8\.(char|codes|codepoint|len|offset)|add_moduledirs|add_packagedirs|add_platformdirs|add_plugindirs|add_repositories|add_requireconfs|add_requires|format|get_config|getenv|has_config|has_package|includes|ipairs|is_arch|is_config|is_cross|is_host|is_kind|is_mode|is_os|is_plat|is_subhost|pairs|print|printf|set_allowedarchs|set_allowedmodes|set_allowedplats|set_config|set_defaultarchs|set_defaultmode|set_defaultplat|set_description|set_project|set_xmakever|tonumber|tostring|type|unpack|hash\.(md5|sha1|sha256|strhash128|strhash32|uuid|uuid4|xxhash128|xxhash64)|linuxos\.(kernelver|name|version)|macos.version|os\.(arch|cpuinfo|curdir|date|default_njob|dirs|exists|filedirs|files|filesize|getenv|host|isdir|isfile|mclock|mtime|programdir|programfile|projectdir|projectfile|scriptdir|subarch|subhost|term|time|tmpdir)|path\.(absolute|basename|cygwin|cygwin_path|directory|envsep|extension|filename|instance_of|is_absolute|islastsep|join|joinenv|new|normalize|pattern|relative|sep|split|splitenv|translate|unix)|winos\.(registry_keys|registry_query|registry_values|version)|xmake\.(luajit|programdir|programfile|version)|add_arflags|add_asflags|add_cflags|add_cfuncs|add_cincludes|add_csnippets|add_ctypes|add_cuflags|add_cugencodes|add_culdflags|add_cxflags|add_cxxflags|add_cxxfuncs|add_cxxincludes|add_cxxsnippets|add_cxxtypes|add_dcflags|add_defines|add_deps|add_fcflags|add_features|add_frameworkdirs|add_frameworks|add_gcflags|add_imports|add_includedirs|add_ldflags|add_linkdirs|add_links|add_mflags|add_mrcflags|add_mxflags|add_mxxflags|add_ncflags|add_pcflags|add_rcflags|add_rpathdirs|add_scflags|add_shflags|add_sysincludedirs|add_syslinks|add_undefines|add_vectorexts|add_zcflags|after_check|before_check|on_check|set_category|set_configvar|set_default|set_languages|set_optimize|set_showmenu|set_values|set_warnings|add_bindirs|add_components|add_configs|add_extsources|add_linkgroups|add_linkorders|add_patches|add_resources|add_urls|add_versionfiles|add_versions|on_component|on_download|on_fetch|on_install|on_load|on_source|on_test|set_arch|set_base|set_cachedir|set_homepage|set_installdir|set_installtips|set_kind|set_license|set_parallelize|set_plat|set_policy|set_sourcedir|set_urls|after_build|after_build_file|after_build_files|after_buildcmd|after_buildcmd_file|after_buildcmd_files|after_clean|after_config|after_install|after_installcmd|after_link|after_linkcmd|after_load|after_package|after_run|after_test|after_uninstall|after_uninstallcmd|before_build|before_build_file|before_build_files|before_buildcmd|before_buildcmd_file|before_buildcmd_files|before_clean|before_config|before_install|before_installcmd|before_link|before_linkcmd|before_load|before_package|before_run|before_test|before_uninstall|before_uninstallcmd|on_build|on_build_file|on_build_files|on_buildcmd|on_buildcmd_file|on_buildcmd_files|on_clean|on_config|on_installcmd|on_link|on_linkcmd|on_package|on_run|on_uninstall|on_uninstallcmd|set_extensions|set_sourcekinds|add_cleanfiles|add_configfiles|add_extrafiles|add_filegroups|add_files|add_forceincludes|add_headerfiles|add_installfiles|add_languages|add_options|add_packages|add_rules|add_runenvs|add_tests|add_toolchains|add_values|del_files|remove_configfiles|remove_extrafiles|remove_files|remove_headerfiles|remove_installfiles|set_autogendir|set_basename|set_configdir|set_dependir|set_enabled|set_encodings|set_exceptions|set_extension|set_filename|set_fpmodels|set_group|set_objectdir|set_options|set_pcheader|set_pcxxheader|set_pmheader|set_pmxxheader|set_prefixdir|set_prefixname|set_rules|set_runargs|set_rundir|set_runenv|set_runtimes|set_strip|set_suffixname|set_symbols|set_targetdir|set_toolchains|set_toolset|set_version|add_toolset|set_archs|set_bindir|set_cross|set_formats|set_sdkdir)\b(?!\s*=(?!=))
+    scope: support.function.library.lua
+  - match: \b(and|or|not|\|\||\&\&|\!)\b
+    scope: keyword.operator.lua
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*(?:[({"']|\[\[))
+    scope: support.function.any-method.lua
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*\??:)
+    scope: entity.name.class.lua
+  - match: (?<=[^.]\.|:)\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*=\s*\b(function)\b)
+    scope: entity.other.attribute.lua
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*=\s*\b(function)\b)
+    scope: variable.other.lua
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b(?=\s*=\s*\b(function)\b)
+    scope: entity.name.function.lua
+  - match: \+|-|%|#|\*|\/|\^|==?|~=|!=|<=?|>=?|(?<!\.)\.{2}(?!\.)
+    scope: keyword.operator.lua
+  repo_comment:
+  - match: (^[ \t]+)?(?=--)
+    captures:
+      1: punctuation.whitespace.comment.leading.lua
+    push:
+    - match: (?!)((?!^)[ \t]+\n)?
+      pop: true
+      captures:
+        1: punctuation.whitespace.comment.trailing.lua
+    - match: --\[(=*)\[@@@
+      captures:
+        0: punctuation.definition.comment.begin.lua
+      push:
+      - match: (--)?\]\1\]
+        pop: true
+        captures:
+          0: punctuation.definition.comment.end.lua
+      - include: main
+    - match: --\[(=*)\[
+      captures:
+        0: punctuation.definition.comment.begin.lua
+      push:
+      - meta_scope: comment.block.lua
+      - match: (--)?\]\1\]
+        pop: true
+        captures:
+          0: punctuation.definition.comment.end.lua
+      - include: repo_emmydoc
+      - include: repo_ldoc_tag
+    - match: '----'
+      captures:
+        0: punctuation.definition.comment.lua
+      push:
+      - meta_scope: comment.line.double-dash.lua
+      - match: \n
+        pop: true
+    - match: '---'
+      captures:
+        0: punctuation.definition.comment.lua
+      push:
+      - meta_scope: comment.line.double-dash.documentation.lua
+      - match: \n
+        pop: true
+      - include: repo_emmydoc
+      - include: repo_ldoc_tag
+    - match: --
+      captures:
+        0: punctuation.definition.comment.lua
+      push:
+      - meta_scope: comment.line.double-dash.lua
+      - match: \n
+        pop: true
+      - include: repo_ldoc_tag
+  - match: \/\*
+    captures:
+      0: punctuation.definition.comment.begin.lua
+    push:
+    - meta_scope: comment.block.lua
+    - match: \*\/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.lua
+    - include: repo_emmydoc
+    - include: repo_ldoc_tag
+  repo_emmydoc:
+  - match: (?<=---)[ \t]*@class
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*)
+      scope: support.class.lua
+    - match: :|,
+      scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@enum
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*)
+      captures:
+        0: variable.lua
+      push:
+      - match: (?=\n)
+        pop: true
+  - match: (?<=---)[ \t]*@type
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@alias
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*)
+      captures:
+        0: variable.lua
+      push:
+      - match: (?=[\n#])
+        pop: true
+      - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*(@operator)\s*(\b[a-z]+)?
+    captures:
+      1: storage.type.annotation.lua
+      2: support.function.library.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@cast
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*)
+      captures:
+        0: variable.other.lua
+      push:
+      - match: (?=\n)
+        pop: true
+      - include: repo_emmydoc.type
+      - match: ([+-|])
+        scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@param
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b(\??)
+      captures:
+        1: entity.name.variable.lua
+        2: keyword.operator.lua
+      push:
+      - match: (?=[\n#])
+        pop: true
+      - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@return
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \?
+      scope: keyword.operator.lua
+    - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@field
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: (\b([a-zA-Z_][a-zA-Z0-9_]*)\b|(\[))(\??)
+      captures:
+        2: entity.name.variable.lua
+        3: keyword.operator.lua
+      push:
+      - match: (?=[\n#])
+        pop: true
+      - include: repo_string
+      - include: repo_emmydoc.type
+      - match: \]
+        scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@generic
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_][a-zA-Z0-9_]*)\b
+      captures:
+        0: storage.type.generic.lua
+      push:
+      - match: (?=\n)|(,)
+        pop: true
+        captures:
+          0: keyword.operator.lua
+      - match: ':'
+        scope: keyword.operator.lua
+      - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@vararg
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@overload
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_emmydoc.type
+  - match: (?<=---)[ \t]*@deprecated
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+  - match: (?<=---)[ \t]*@meta
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+  - match: (?<=---)[ \t]*@private
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+  - match: (?<=---)[ \t]*@protected
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+  - match: (?<=---)[ \t]*@package
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+  - match: (?<=---)[ \t]*@version
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b(5\.1|5\.2|5\.3|5\.4|JIT)\b
+      scope: support.class.lua
+    - match: ',|\>|\<'
+      scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@see
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: \b([a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*)
+      scope: support.class.lua
+    - match: '#'
+      scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@diagnostic
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - match: ([a-zA-Z_\-0-9]+)[ \t]*(:)?
+      captures:
+        1: keyword.other.unit
+        2: keyword.operator.unit
+      push:
+      - match: (?=\n)
+        pop: true
+      - match: \b([a-zA-Z_\*][a-zA-Z0-9_\-]*)
+        scope: support.class.lua
+      - match: ','
+        scope: keyword.operator.lua
+  - match: (?<=---)[ \t]*@module
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_string
+  - match: (?<=---)[ \t]*@(async|nodiscard)
+    scope: storage.type.annotation.lua
+  - match: (?<=---)\|\s*[\>\+]?
+    captures:
+      0: storage.type.annotation.lua
+    push:
+    - match: (?=[\n@#])
+      pop: true
+    - include: repo_string
+  repo_emmydoc.type:
+  - match: \bfun\b
+    captures:
+      0: keyword.control.lua
+    push:
+    - match: (?=[\s#])
+      pop: true
+    - match: '[\(\),:\?][ \t]*'
+      scope: keyword.operator.lua
+    - match: ([a-zA-Z_][a-zA-Z0-9_\.\*\[\]\<\>\,\-]*)(?<!,)[ \t]*(?=\??:)
+      scope: entity.name.variable.lua
+    - include: repo_emmydoc.type
+    - include: repo_string
+  - match: \<[a-zA-Z_\*][a-zA-Z0-9_\.\*\-]*\>
+    scope: storage.type.generic.lua
+  - match: \basync\b
+    scope: entity.name.tag.lua
+  - match: '[\{\}\:\,\?\|\`][ \t]*'
+    scope: keyword.operator.lua
+  - match: (?=[a-zA-Z_\.\*"'\[])
+    push:
+    - match: (?=[\s\)\,\?\:\}\|#])
+      pop: true
+    - match: ([a-zA-Z0-9_\.\*\[\]\<\>\,\-]+)(?<!,)[ \t]*
+      scope: support.type.lua
+    - match: (\.\.\.)[ \t]*
+      scope: constant.language.lua
+    - include: repo_string
+  repo_escaped_char:
+  - match: \\[abfnrtv\\"'\n]
+    scope: constant.character.escape.lua
+  - match: \\z[\n\t ]*
+    scope: constant.character.escape.lua
+  - match: \\\d{1,3}
+    scope: constant.character.escape.byte.lua
+  - match: \\x[0-9A-Fa-f][0-9A-Fa-f]
+    scope: constant.character.escape.byte.lua
+  - match: \\u\{[0-9A-Fa-f]+\}
+    scope: constant.character.escape.unicode.lua
+  - match: \\.
+    scope: invalid.illegal.character.escape.lua
+  repo_ldoc_tag:
+  - match: '[ \t]*(@)(alias|annotation|author|charset|class|classmod|comment|constructor|copyright|description|example|export|factory|field|file|fixme|function|include|lfunction|license|local|module|name|param|pragma|private|raise|release|return|script|section|see|set|static|submodule|summary|tfield|thread|tparam|treturn|todo|topic|type|usage|warning|within)\b'
+    captures:
+      1: punctuation.definition.block.tag.ldoc
+      2: storage.type.class.ldoc
+  repo_string:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.lua
+    push:
+    - meta_scope: string.quoted.single.lua
+    - match: '''[ \t]*|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lua
+    - include: repo_escaped_char
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.lua
+    push:
+    - meta_scope: string.quoted.double.lua
+    - match: '"[ \t]*|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lua
+    - include: repo_escaped_char
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.lua
+    push:
+    - meta_scope: string.quoted.double.lua
+    - match: '`[ \t]*|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lua
+  - match: (?<=\.cdef)\s*(\[(=*)\[)
+    captures:
+      0: string.quoted.other.multiline.lua
+      1: punctuation.definition.string.begin.lua
+    push:
+    - meta_content_scope: meta.embedded.lua
+    - match: (\]\2\])[ \t]*
+      pop: true
+      captures:
+        0: string.quoted.other.multiline.lua
+        1: punctuation.definition.string.end.lua
+    - include: scope:source.c
+  - match: (?<!--)\[(=*)\[
+    captures:
+      0: punctuation.definition.string.begin.lua
+    push:
+    - meta_scope: string.quoted.other.multiline.lua
+    - match: \]\1\][ \t]*
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lua

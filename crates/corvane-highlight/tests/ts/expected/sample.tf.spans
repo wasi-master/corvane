@@ -4,12 +4,12 @@
 4: 2+18=Type
 5: 4+3=AltVariable 12+6=AltVariable 21+15=String 38+7=AltVariable 48+8=String
 9: 0+8=Keyword 9+11=String
-10: 2+4=AltVariable 16+6=Variable
+10: 2+4=AltVariable 16+6=Type
 11: 2+11=AltVariable 16+31=String
 12: 2+7=AltVariable 16+6=String
 15: 0+8=Keyword 9+16=String 28+7=AltVariable 38+4=Atom
 17: 0+6=Keyword
-18: 2+11=AltVariable 16+1=String 19+3=Keyword 23+9=AltVariable 33+1=String 36+9=Keyword 46+9=AltVariable 56+1=String
+18: 2+11=AltVariable 16+1=String 19+3=Keyword 23+9=AltVariable 33+1=String 36+9=Type 46+9=Keyword 56+1=String
 19: 2+4=AltVariable 18+7=AltVariable 28+3=Keyword 32+9=AltVariable 43+9=AltVariable 55+11=String
 20: 2+40=Comment
 21: 2+10=AltVariable 16+6=String 24+5=String 31+4=String

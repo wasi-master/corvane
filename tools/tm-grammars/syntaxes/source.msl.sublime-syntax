@@ -1,0 +1,375 @@
+%YAML 1.2
+---
+# mIRC Script (source.msl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/gen-angry/language-msl via GitHub Linguist v9.7.0 (license: mit).
+name: mIRC Script
+scope: source.msl
+file_extensions:
+- mrc
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_group
+  - include: repo_alias
+  - include: repo_menu
+  - include: repo_events
+  - include: repo_dialog
+  repo_alias:
+  - match: (?i)^(alias)\x20+(?:(-l)\x20+)?(?!-l)([^\s]+)\s*
+    captures:
+      1: storage.type.alias.msl
+      2: storage.modifier.alias.msl
+      3: entity.name.function.msl
+    push:
+    - meta_scope: meta.alias.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  repo_calc_content:
+  - match: '[+\-*/%^]'
+    scope: keyword.operator.arithmetic.msl
+  - match: \(
+    push:
+    - meta_scope: meta.arithmetic.msl
+    - match: \)
+      pop: true
+    - include: repo_parameters
+    - include: repo_calc_content
+  repo_code_block:
+  - match: '{'
+    push:
+    - meta_scope: meta.code.block.msl
+    - match: '}'
+      pop: true
+    - include: repo_code_content
+  repo_code_content:
+  - include: repo_comments
+  - include: repo_variables
+  - include: repo_identifiers
+  - include: repo_conditionals
+  - include: repo_commands
+  - include: repo_code_block
+  repo_commands:
+  - match: (?i)(?:\x20+\|\x20+|(?<=else\x20)|^\x20*|\)|)\x20*(\/+)?([!|.]{1,2})?((?:win)?help|server|disconnect|/donotdisturb|join|hop|part|part(?:all)?|quit|list|links|quote|raw|(?:a|q)?me|(?:a|q|o|v|priv)?msg|action|(?:o|v)?notice|describe|query|sound|ctcp|dcc|wall(?:chops|voices)|uwho|sock(?:accept|close|list|listen|mark|open|pause|read|rename|udp|write)|b(?:read|replace|copy|set|trunc|unset|write)|com(?:close|list|open|reg)|dialog|did(?:tok)?|draw(?:copy|dot|fill|line|pic|rect|replace|rot|save|scroll|size|text)|f(?:open|list|seek|write|close)|(?:a|c|d|i|r|s)line|clear(?:all|ial)?|window|g(?:hide|(?:un)?load|move|opts|play|point|qreq|show|size|stop|talk)|h(?:add|dec|del|free|inc|load|make|save)|break|continue|goto|halt(?:def)?|return(?:ex)?|dec|inc|set|var|unset(?:all)|dec|inc|set|var|unset(?:all)?|(?:a|g|i|r)user|(?:d|r)level|ulist|flush|ial(?:clear|mark|fill)?|copy|flushini|(?:mk|rm)dir|rem(?:ini|ove)|rename|write(?:ini)?|aop|avoice|ban|channel|ignore|leave|mode|parseline|pop|protect|pvoice|say|updatenl|abook|ajinvite|alias|(?:a|c|m|t)nick|auto(?:join)?|background|beep|bindip|clipboard|colou?r|creq|ctcp(?:reply|s)|dccserver|dde(?:server)?|debug|disable|dll|dns|dqwindow|ebeeps|exit|echo|editbox|emailaddr|enable|events|filter|findtext|finger|firewall|flash|flood|fnord|font|fsend|fserve|fullname|fupdate|groups|hotlink|identd|linesep|load(?:buf)?|localinfo|log(?:view)?|mdi|menubar|noop|notify|pdcc|perform|play(?:ctrl)?|proxy|queryrn|registration|reload|remote|renwin|reset(?:error|idle)|run|save(?:buf|ini)?|scid|scon|setlayer|showmirc|signal|speak|splay|sreq|strip|switchbar|time(?:stamp|rs|r([^\s]+)?)|tips?|titlebar|tokenize|toolbar|tray|treebar|unload|url|vc(?:add|md|rem)|vol|xyzzy|away|close(?:msg)?|username|aclear|advertise|allnick|autoconnect|aquit|back|banlist|betaup|bin2txt|bw|channels|charset|config|cycleall|de(?:halfop|s?op|voice)|dock(?:panels)?|download|echo(?:monitor|x)|edit|encoding|fakeraw|fget|fullscreen|gcmem|globalkeys|p?google|halfop|highlight|icon|inick|inlineimage|kblayout|lag|linemarker|lock|logs|msgbox|mute|nextunread|nick(?:column|list)|nmsg|np|oline|options|paths|pause|plugins|priv|quick(?:connect|save)|raw(?:log|x)|re(?:alname|connect|freshsong|join|solve|start)|scripts|scrolltext|search|sendkeys|serverlist|set(?:config|option)|show(?:adiirc|menu)|slap|sleep|sop|statusbar|tab|themes|topicbox|usernick|txt2bin|un(?:ban|ignore|notify)|update|vars|viewlog|voice|w(?:down|jump|next|pause|play))(?=\b)
+    captures:
+      1: keyword.other.command.symbol.msl
+      2: keyword.other.command.symbol.msl
+      3: keyword.control.command.msl
+      4: support.variable.name.msl
+    push:
+    - match: (?=\z|\x20+\|\x20+[^\x20]|\x20}|$)
+      pop: true
+    - include: repo_switches
+    - include: repo_parameters
+  - match: (?i)(?:\x20+\|\x20+|(?<=else\x20)|^\x20*|\)|)\x20*(?!\|\|\x20)(\/+)?([!|.]{1,2})?(?:(?![{};%&$:]|if|else(?:if)?|while)([^\s]+))
+    captures:
+      1: keyword.other.command.symbol.msl
+      2: keyword.other.command.symbol.msl
+      3: support.function.name.msl
+    push:
+    - meta_scope: meta.cmd.msl
+    - match: (?=\z|\x20\|\x20[^\x20]|\x20}|$)
+      pop: true
+    - include: repo_switches
+    - include: repo_parameters
+  repo_comment_block:
+  - match: ^(?:\x20*)\/\*
+    push:
+    - meta_scope: comment.block.msl
+    - match: ^(?:\x20*)\*\/$
+      pop: true
+  repo_comment_documentation:
+  - match: ^(?:\x20*)(\/\*\*)$
+    push:
+    - meta_scope: comment.block.documentation.msl
+    - match: ^(?:\x20*)\*\/$
+      pop: true
+    - include: repo_documentation_block
+  repo_comment_line:
+  - match: ^(?:\x20*);.*$
+    scope: comment.line.semicolon.msl
+  - match: (?<=^|\x20\|\x20|)(?:\x20*);
+    push:
+    - meta_scope: comment.line.semicolon.msl
+    - match: (?=\z|\x20+\|\x20+[^\s]|\x20}|$)
+      pop: true
+  repo_comments:
+  - include: repo_comment_documentation
+  - include: repo_comment_block
+  - include: repo_comment_line
+  repo_conditionals:
+  - match: (?i)(?:(?<=\x20\|\x20|^|)\x20*(if|elseif|while)|(?:(?<=\))\x20+(&&|\|\|)))\x20+(?=\()
+    captures:
+      1: keyword.control.conditional.msl
+      2: keyword.control.conditional.msl
+    push:
+    - meta_scope: meta.conditional.msl
+    - match: (?=\)(?:\x20|$))
+      pop: true
+    - include: repo_conditionals_content
+    - include: repo_parameters
+  - match: (?i)(?<=\x20\|\x20|^)\x20*(else)\b
+    scope: keyword.control.conditional.msl
+  repo_conditionals_content:
+  - match: (?i)((?<=\x20)!?(?:==?=?|(?:<|>)=?|\/\/|\\|&|is(?:in(?:cs)?|wm(?:cs)?|(?:al)?num|letter|alpha|(?:low|upp)er|on|(?:a|h)?op|a?voice|reg|chan|ban|quiet|ignore|protected|notify|admin|owner|quiet|url))(?=\x20|\))|(?<=\()!(?=\$|%|&))
+    scope: keyword.operator.msl
+  - include: repo_constants
+  repo_constants:
+  - match: (?<=\x20|^|\(|,)-?\d+(\.\d+)?(?=\x20|$|\)|,)
+    scope: constant.numeric.msl
+  repo_dialog:
+  - match: (?i)^(dialog)\x20+(?:(-l)\x20+)?(?!-l)([^\s]+)\s*(?={)
+    captures:
+      1: storage.type.dialog.msl
+      2: storage.modifier.dialog.msl
+      3: entity.name.section.msl
+    push:
+    - meta_scope: meta.dialog.code.msl
+    - match: (?<=}$)
+      pop: true
+    - include: repo_dialog_content
+  repo_dialog_content:
+  - include: repo_comments
+  - match: (?i)^\x20*(title|icon|size|option|text|edit|button|check|radio|box|scroll|list|combo|icon|link|tab|menu|item)\x20+
+    captures:
+      1: keyword.control.dialog.control.msl
+    push:
+    - meta_content_scope: string.quoted.double.control.msl
+    - match: (?<=$)
+      pop: true
+    - include: repo_parameters
+  repo_documentation_block:
+  - match: (?i)\x20*\*\x20+(@(?:author|command|const(?:ant)?|copyright|deprecated|event|example|experimental|global|identifier|ignore|license|nobadges|param(?:eter)?|arg(?:ument)?|prop|returns?|see|switch|todo|version))\b
+    captures:
+      1: storage.type.class.msl
+  repo_events:
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:action|notice|(?:client)?text):(?:(%[^:]+)|[^:]+):(?:(%[^:]+)|[^:]+):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+      3: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:active|input|tabcomp|mscroll):(?:\*|#[^:]*|\?|=|!|@[^:]*|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:agent|appactive|connect(?:fail)?|disconnect|dns|exit|(?:un)?load|(?:midi|mp3|play|song|wave)end|nick|nosound|u?notify|ping|pong|quit|start|usermode|options|resume|song|suspend):)\s*
+    captures:
+      1: entity.name.type.event.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:(?:un)?ban|(?:de)?help|(?:de|server)?op|(?:de)?owner|(?:de)?voice|invite|join|kick|(?:server|raw)?mode|part|topic|(?:de)?admin):(?:\*|#[^:]*|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:chat|ctcpreply|error|file(?:rcvd|sent)|(?:get|send)fail|logon|serv|signal|snotice|sock(?:close|listen|open|read|write)|udp(?:read|write)|vcmd|wallops|download|(?:un)?zip):(?:(%[^:]+)|[^:]+):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:close|open):(?:\*|\?|=|!|@[^:]*|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:dccserver:(?:chat|send|fserve):)\s*
+    captures:
+      1: entity.name.type.event.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:dialog:[^:]+:(?:init|close|edit|sclick|dclick|menu|scroll|mouse|rclick|drop|\*|(%[^:]+)):(?:(%[^:]+)|[\d\-,\*]+):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+      3: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:hotlink:[^:]+:(?:\*|#[^:]*|\?|=|!|@[^:]*|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:(?:key(?:down|up)|char):(?:\*|@[^:]*|(%[^:]+)):(?:\*|\d+(?:,\d+)*|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+      3: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(on\x20+(?:me:)?[^:\s]+:parseline:(?:\*|in|out|(%[^:]+)):(?:(%[^:]+)|[^:]+):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+      3: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(raw\x20+[^:\s]+:(?:(%[^:]+)|[^:]+):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  - match: ^(?i)(ctcp\x20+[^:\s]+:(?:(%[^:]+)|[^:]+):(?:\*|#.*|\?|(%[^:]+)):)\s*
+    captures:
+      1: entity.name.type.event.msl
+      2: variable.other.normal.msl
+      3: variable.other.normal.msl
+    push:
+    - meta_scope: meta.event.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|(?<=}$)
+      pop: true
+    - include: repo_code_content
+  repo_group:
+  - match: (?i)^#[^\s]+ (on|off|end)(?:\b)
+    scope: keyword.other.groupname.msl
+  repo_identifiers:
+  - include: repo_identifiers_params
+  - include: repo_identifiers_no_params
+  repo_identifiers_no_params:
+  - match: (?:\x20*)\$&(?:\s+)
+    push:
+    - meta_scope: keyword.other.identifier.msl
+    - match: (?=\S)
+      pop: true
+  - match: (?<=\s|\(!|\(|\,|\.|^)\$\$?~?(0|\!|\*|\+\+?|[1-9]+(-?([0-9]+)|[^\s|\)|,]+)?|active((c|w)id)?|a?date|adiirc(dir([^\s,)]+)?|exe|ini)|address|admnick|agent(name|stat|ver)|album|anick|aop|app(active|bits|state)|artist|asctime|audio|auto|avoice|away(msg|time)?|banmask|batteryp?|beta|bit(rate|s)|bname|bnick|boldify|builddate|bw(downb?|name|recb?|sentb?|speed|upb?)|cal(ias|ler)|cancel|cb|cd|chan(modes|types)?|cid|clevel|cmd(box|line)|com(char|err|ment|pact)|cpu(cache|count|ident|load|mhz|name|vendor)|cr(eq|lf)?|ctimer?|ctrlenter|day(light)?|dbu(h|w)|dccignore|dccport|ddename|debug|devent|did|disk(free|total)|dlevel|dname|dock(panels)?|donotdisturb|dotnet|download(err)?|dqwindow|ebeeps|email(addr)?|error|event(id|parms)?|exiting|false|fe(of|rr)|filename|filtered|find(dirn|filen)|flinen|frequency|fromeditbox|full(address|date|name|screen|title)|genre|getdir|gfx(ram)?|globalidle|gmt|halted|highlight|hnick|host|hotline(pos)?|ia(ddress|l)|ident|idle|ifmatch2?|ignore|in(midi(.(pos|length|fname|pause))?|mode|mp3|paste|song(.(pos|length|fname|pause))?|wave(.(pos|length|fname|pause))?|who)|ip|is(admin|id|wine)|kblayout|key(char|rpt|val)|knick|lactive(cid|wid)?|lag|layer|leftwin(cid|wid)?|length|lf|locked|log(dir|stamp(fmt)?)|lquitmsg|ltimer|maddress|matchkey|max(lenl|lenm|lens)|me|mem(freep?|total)|menu(bar|context|type)?|mididir|mircdir([^\s,)]+)?|mircexe|mircini|mnick|modefirst|modelast|modespl|motherboard|mouse(.(x|y||mx|my|dx|dy|cx|cy|win|lb|key))?|mp3dir|msg(stamp|tags|x)|muted|mversion|naddress|nick(column|mode)?|network|newnick|no(tify)?|null|numeric|ok|online(server|total)?|op?nick|os(bits|build|edition|idle|installdate|major|minor|name|servicepack|version)?|parms|parse(line|type|utf)|passivedcc|pcre|percent(l|p)|pi|play(count|er(handle)?)|pnick|port(able)?|position|prefix(ctcp|emote|sys|user)?|progress|prop|protect|quickconnect|quitmessage|raddress|randomcolors|rating|raw(bytes|msgx?)|readn|realname|regerrstr|remote|result|screen(b|hz?|w)?|script(dir([^\s,)]+)?|line|s)?|server(ip|target)?|sfstate|show|signal|site|size|snicks|snotify|sock(err|br|name)|song(path)?|sreq|ssl(cert((remote)?sha(1|256)|valid)|(lib)?dll|ready|version)?|starting|status(bar)?|stripped|switchbar|target|tempfn|ticks(qpc)?|time(out|stamp(fmt)?|zone)|tips|title(bar)?|toolbar|topic|totaltracks|track|treebar|true|ulevel|up(days|dating|hours|mins)|url|user(mode|name)|v1|v2|vcmd(stat|ver)|version|volume(b|p)?|vnick|wavedir|wid|wildsite|window|year|yes|ziperr)(?=\s|\)|,)
+    scope: keyword.other.identifier.msl
+  - match: (?<=\s|\(|\,|\.|^)(\$\$?~?(?:\?(?:[^\s=]+)?|s?dir|hfile))(?:(=)("(?:[^"])*"))?(?=\s|\)|,)
+    captures:
+      1: keyword.other.identifier.msl
+      2: keyword.operator.msl
+      3: string.quoted.double.msl
+  - match: (?<=\s|\(!|\(|\,|\.|^)(\=\$\$?~?nick)(?=\b)
+    scope: keyword.other.identifier.msl
+  - match: (?<=\s|\(!|\(|\,|\.|^)(\$\$?(?!\x21)[^\s(),]+)(?=\b)
+    scope: support.function.name.msl
+  repo_identifiers_params:
+  - match: (?i)(?<=\s|\(!|\(|\,|\.|^)(\$\$?~?(\+|abook|a?cos|abs|date|add(ress|tok(cs)?)|adilang|admnick|agent|alias|and|ansi2mirc|aop|asc(time)?|a?sin|a?tan|avoice|banlist|base|bfind|bindip|bit(off|on)|boldify|bvar|bytes|calias|cb|ceil|chan(nel)?|chat|chr|click|cnick|colou?r|com(call|chan|press|val)?|cosh?|count(cs)?|cpuload|crc|ctime|date|dccignore|dde|decode|decompress|decrypt|deltok|dialog|did(reg|tok|wm)?|disk(menu)?|dll(call)?|dns|dockpanels|download|duration|editbox(history)?|emoticons|encode|encodingmenu|encrypt|envvar|eval(next)?|eventtarget|exec|exists|fgetc|file|find(dir|file|tok(cs)?)|fline|floor|font|fopen|fread|fserve?|get(dir|dot|tok)?|gfx(ram)?|gmt|group|hash|height|hexcolor|hfind|hget|highlight|hmac|hmatch|hnick|hotlink|hotp|hregex|hypot|ial(chan)?|ibl|iel|ignore|iil|inellipse|ini(ck|topic)?|inpoly|input|in(round)?rect|insert|instok|int(ersect)?|invitemenu|iptype|iql|ircv3caps|is(alias|bit|dde|dir|file|lower|tok(cs)?|upper|utf)|keylocked|left|len|level|line(height|s)?|link|lock|lo(f|g(10)?)|long(fn|ip)|loop|lower|maddress|mask|matchtok(cs)?|max|md5|menuicon|mid|min|mk(log|nick)?fn|mode|mp3|msfile|msgtags|nadmnick|(nh)?nick|no(file|p?nick|t(ags|ify)?|path|qt)?|numtok|nvnick|ocolor|onpoly|op?nick|ord?|pic|play|plugins|portfree|pos(cs)?|powmod|prefix(emote|user)|puttok|qt|query|r(ands?|ead(ini)?|egml(ex)?|em(ove(cs)?|tok(cs)?)|eplace(cs|x(cs)?)?|eptok(cs)?|gb|ight|ound|nick)?|samepath|scid|scon|screen(b|hz?|shot|w)?|script|sdir|send|server(vars)?|sfile|sha(1|2|256|384|512)|shortfn|sinh|slapsmenu|sline|snick|sock|sorttok(cs)?|sound|speak|spellcheck|sqrt|statusbar|str(ip)?|style|submenu|sysdir|tanh|timer|tip|token|toolbar|topicbox|totp|trust|ulist|unsafe|upper|uptime|url(get)?|utf(de|en)code|var|vc(md)?|vol|width|wildtok(cs)?|window|wmiquery|wrap|xor|zip))\(
+    captures:
+      1: keyword.other.identifier.msl
+    push:
+    - match: (?i)\)(?:\.([^\s|\)|,]+))?
+      pop: true
+      captures:
+        1: keyword.other.identifier.property.msl
+    - include: repo_parameters
+  - match: (?i)(?<=\s|\(!|\(|\,|\.|^)(\$\$?~?calc)\(
+    captures:
+      1: keyword.other.identifier.msl
+    push:
+    - match: \)
+      pop: true
+    - include: repo_parameters
+    - include: repo_calc_content
+  - match: (?i)(?<=\s|\(!|\(|\,|\.|^)(\$\$?~?iif)\(
+    captures:
+      1: keyword.other.identifier.msl
+    push:
+    - match: \)
+      pop: true
+    - include: repo_conditionals_content
+    - include: repo_parameters
+  - match: (?i)(?<=\s|\(!|\(|\,|\.|^)(\$\$?~?reg(?:ex|sub(?:ex)?))\(
+    captures:
+      1: keyword.other.identifier.msl
+    push:
+    - match: \)
+      pop: true
+    - match: (\/(?:(?!\/[gimsxAEDUuXSF]+?\)).)*\/([gimsxAEDUuXSF]+)?)
+      captures:
+        1: string.regexp.msl
+    - include: repo_parameters
+  - match: (?<=\s|\(!|\(|\,|\.|^)(\$\$?~?[^\s(),]+)\(
+    captures:
+      1: support.function.name.msl
+    push:
+    - match: (?i)\)(?:\.([^\s|\)|,]+))?
+      pop: true
+      captures:
+        1: keyword.other.identifier.property.msl
+    - include: repo_parameters
+  repo_menu:
+  - match: (?i)^(menu)\x20+((?:status|channel|query|nicklist|menubar|(?:channel)?link|@[^\x20,]+|\*)(?:,(?:status|channel|query|nicklist|menubar|(?:channel)?link|@[^\x20,]+))*|\*)\x20+{
+    captures:
+      1: storage.type.menu.msl
+      2: storage.modifier.function.msl
+    push:
+    - meta_scope: meta.menu.code.msl
+    - match: (?i)(?=\z|(?:^(?:on|raw|ctcp|dialog|\#[^\s]+|alias|menu)\b))|}$
+      pop: true
+    - include: repo_menu_content
+  repo_menu_content:
+  - include: repo_comments
+  - include: repo_parameters
+  - match: (?:^\s*|)\x20*((?:mouse|(?:s|d(?:r|m)?|u|r|lb|m)click)|leave|drop)(?:\x20*:\x20*)?
+    captures:
+      1: keyword.other.menu.item.msl
+    push:
+    - match: (?=\z|\x20}|$)
+      pop: true
+    - include: repo_code_content
+  - match: ^\x20*(?!$)
+    push:
+    - match: (?=\z|\x20}|$)
+      pop: true
+    - include: repo_parameters
+    - match: (?<=:|{)
+      push:
+      - match: (?=\z|\x20}|$)
+        pop: true
+      - include: repo_code_content
+  repo_parameters:
+  - include: repo_variables
+  - include: repo_identifiers
+  - include: repo_constants
+  repo_switches:
+  - match: (?<=\x20)[-+][[:alnum:]]+(?=\s)
+    scope: keyword.other.switch.msl
+  repo_variables:
+  - match: (?<![^(,\x20!])(%)[^\x20),]+
+    scope: variable.other.normal.msl
+  - match: (?<![^(,\x20!])(&)[^\x20),]+
+    scope: variable.other.binary.msl

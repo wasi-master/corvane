@@ -1,0 +1,182 @@
+%YAML 1.2
+---
+# Singularity (source.singularity): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/onnovalkering/vscode-singularity via GitHub Linguist v9.7.0 (license: mit).
+name: Singularity
+scope: source.singularity
+file_extensions:
+- Singularity
+contexts:
+  main:
+  - include: repo_interpolation
+  - include: repo_keyword
+  - include: repo_string
+  - include: repo_variable
+  - match: ^\s*\b(?i:(bootstrap))\b:.*?(.+?\b(as)\b.*)?
+    captures:
+      1: keyword.other.special-method.singularity
+      3: keyword.other.special-method.singularity
+  - match: ^\s*\b(?i:(from|registry|namespace))\b:.*?(.+?\b(as)\b.*)?
+    captures:
+      1: keyword.other.special-method.singularity
+      3: keyword.other.special-method.singularity
+  - match: '^\s*\b(?i:(stage|osversion|mirrorurl|include))\b:'
+    captures:
+      1: keyword.other.special-method.singularity
+  - match: ^\s*(%)\b(arguments|post|setup|environment|help|labels|test|runscript|files|startscript)\b
+    captures:
+      1: keyword.control.singularity
+      2: keyword.other.special-method.singularity
+  - match: ^\s*(%)\b(apprun|applabels|appinstall|appenv|apphelp|appfiles)\b
+    captures:
+      1: keyword.control.singularity
+      2: keyword.other.special-method.singularity
+  - match: ''''
+    captures:
+      1: punctuation.definition.string.begin.singularity
+    push:
+    - meta_scope: string.quoted.single.singularity
+    - match: ''''
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.singularity
+    - match: \\.
+      scope: constant.character.escaped.singularity
+  - match: '"'
+    captures:
+      1: punctuation.definition.string.begin.singularity
+    push:
+    - meta_scope: string.quoted.double.singularity
+    - match: '"'
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.singularity
+    - match: \\.
+      scope: constant.character.escaped.singularity
+  - match: ^(\s*)((#).*$\n?)
+    captures:
+      1: punctuation.whitespace.comment.leading.singularity
+      2: comment.line.number-sign.singularity
+      3: punctuation.definition.comment.singularity
+  repo_interpolation:
+  - match: \$\({2}
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.other.math.shell
+    - match: \){2}
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.interpolated.backtick.shell
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+    - match: \\[`\\$]
+      scope: constant.character.escape.shell
+    - match: (?<=\W)(?=#)(?!#{)
+      captures:
+        1: punctuation.whitespace.comment.leading.shell
+      push:
+      - match: (?!)
+        pop: true
+      - match: '#'
+        captures:
+          0: punctuation.definition.comment.shell
+        push:
+        - meta_scope: comment.line.number-sign.shell
+        - match: (?=`)
+          pop: true
+    - include: main
+  - match: \$\(
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.interpolated.dollar.shell
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+    - include: main
+  repo_keyword:
+  - match: (?<=^|;|&|\s)(if|then|else|elif|fi|for|in|do|done|select|case|continue|esac|while|until|return)(?=\s|;|&|$)
+    scope: keyword.control.shell
+  - match: (?<=^|;|&|\s)(?:export|declare|typeset|local|readonly)(?=\s|;|&|$)
+    scope: storage.modifier.shell
+  repo_string:
+  - match: \\.
+    scope: constant.character.escape.shell
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.quoted.single.shell
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+  - match: \$?"
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.quoted.double.shell
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+    - match: \\[\$`"\\\n]
+      scope: constant.character.escape.shell
+    - include: repo_variable
+    - include: repo_interpolation
+  - match: \$'
+    captures:
+      0: punctuation.definition.string.begin.shell
+    push:
+    - meta_scope: string.quoted.single.dollar.shell
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.shell
+    - match: \\(a|b|e|f|n|r|t|v|\\|')
+      scope: constant.character.escape.ansi-c.shell
+    - match: \\[0-9]{3}
+      scope: constant.character.escape.octal.shell
+    - match: \\x[0-9a-fA-F]{2}
+      scope: constant.character.escape.hex.shell
+    - match: \\c.
+      scope: constant.character.escape.control-char.shell
+  repo_variable:
+  - match: (\$)[a-zA-Z_][a-zA-Z0-9_]*
+    scope: variable.other.normal.shell
+    captures:
+      1: punctuation.definition.variable.shell
+  - match: (\$)[-*@#?$!0_]
+    scope: variable.other.special.shell
+    captures:
+      1: punctuation.definition.variable.shell
+  - match: (\$)[1-9]
+    scope: variable.other.positional.shell
+    captures:
+      1: punctuation.definition.variable.shell
+  - match: \${
+    captures:
+      0: punctuation.definition.variable.shell
+    push:
+    - meta_scope: variable.other.bracket.shell
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.variable.shell
+    - match: '!|:[-=?]?|\*|@|#{1,2}|%{1,2}|/'
+      scope: keyword.operator.expansion.shell
+    - match: (\[)([^\]]+)(\])
+      captures:
+        1: punctuation.section.array.shell
+        3: punctuation.section.array.shell
+    - include: repo_variable
+    - include: repo_string

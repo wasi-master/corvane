@@ -1,0 +1,141 @@
+%YAML 1.2
+---
+# Yul (source.yul): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/davidhq/SublimeEthereum.git via GitHub Linguist v9.7.0 (license: mit).
+name: Yul
+scope: source.yul
+file_extensions:
+- yul
+contexts:
+  main:
+  - match: \/\/.*
+    scope: comment
+  - match: (\/\*)
+    push:
+    - meta_scope: comment
+    - match: (\*\/)
+      pop: true
+  - match: \b(event|enum)\s+([A-Za-z_]\w*)\b
+    scope: keyword
+    captures:
+      2: entity.name.function
+  - match: \b(object)\s+(\"[A-Za-z_]\w*\")(?:\s+(is)\s+)?
+    captures:
+      1: keyword
+      2: string.quoted
+      3: keyword
+    push:
+    - meta_scope: scope
+    - match: \{
+      pop: true
+    - match: \"[A-Za-z_]\w*\"
+      scope: string.quoted
+    - include: repo_numbers
+  - match: \b(constructor|error|using|struct|type|modifier|fallback)(\s+[A-Za-z_]\w*)?\b
+    scope: keyword
+    captures:
+      2: entity.name.function
+  - match: \b(function)(\s+[A-Za-z_]\w*)?\b
+    scope: keyword
+    captures:
+      2: entity.name.function
+  - match: \.(selector)\b
+    captures:
+      1: markup.italic
+  - match: \bthis\b
+    scope: markup.italic
+  - match: \bsuper\b
+    scope: markup.italic
+  - match: \b(address(?:\s+payable)?|string|bytes?\d*|int\d*|uint\d*|bool|u?fixed\d+x\d+)\s*(?:\[(\d*)\])?\s*(?:\[(\d*)\])?\s*(?:(indexed|memory|storage|calldata|payable|immutable)?\s*(\b[A-Za-z_]\w*)?\s*)?(?=[,\)\n])
+    captures:
+      1: constant.language
+      2: constant.numeric
+      3: constant.numeric
+      4: keyword
+      5: variable.parameter
+  - match: \b(?:(indexed|memory|storage|calldata|payable|immutable)\s*(\b[A-Za-z_]\w*)?\s*)(?=[,\)\n])
+    captures:
+      1: keyword
+      2: variable.parameter
+  - match: \b(true|false)\b
+    scope: constant.language
+  - match: \b(address(?:\s*payable)?|string|bytes?\d*|int\d*|uint\d*|bool|u?fixed\d+x\d+)\b(?:(?:\s*\[(\d*)\])?(?:\s*\[(\d*)\])?(?:\s*\[(\d*)\])?\s*((?:private\s|public\s|internal\s|external\s|constant\s|immutable\s|memory\s|storage\s)*)\s*(?:[A-Za-z_]\w*)\s*(\=))?
+    captures:
+      1: constant.language
+      2: constant.numeric
+      3: constant.numeric
+      4: constant.numeric
+      5: keyword
+      6: keyword
+  - match: \b(payable)\s*\(
+    captures:
+      1: constant.language
+  - match: \b(from)\s*(?=[\'\"])
+    captures:
+      1: keyword
+  - match: \b(?:[A-Za-z_]\w*)\s+(as)\s+(?:[A-Za-z_]\w*)
+    captures:
+      1: keyword
+  - match: \b(global);
+    captures:
+      1: keyword
+  - match: \b(var|solidity|constant|pragma\s*(?:experimental|abicoder)?|code|data|hex|import|const|mstruct|mapping|payable|storage|memory|calldata|if|else|for|while|do|break|continue|returns?|try|catch|private|public|pure|view|internal|immutable|external|virtual|override|abstract|suicide|emit|is|throw|revert|assert|require|receive|delete)\b
+    scope: keyword
+  - include: repo_numbers
+  - match: \b(0[xX][a-fA-F0-9]+)\b
+    scope: constant.numeric
+  - match: (=|:=|!|>|<|\||&|\?|\^|~|\*|\+|\-|\/|\%)
+    scope: keyword.operator
+  - match: (\bhex\b|\bunicode\b)
+    scope: markup.italic
+  - match: \s\:\s
+    scope: keyword.operator
+  - match: \bnow\b
+    scope: support.type
+  - match: \b_;
+    scope: keyword
+  - match: \b(msg|block|tx)\.([A-Za-z_]\w*)\b
+    captures:
+      1: support.type
+      2: support.type
+  - match: \b(abi)\.([A-Za-z_]\w*)\b
+    scope: support.type
+  - match: \b(blockhash|gasleft)\s*\(
+    captures:
+      1: support.type
+  - match: \b([A-Za-z_]\w*)(?:\s*\[(\d*)\]\s*)?(?:\s*\[(\d*)\]\s*)?\(
+    captures:
+      1: entity.name.function
+      2: constant.numeric
+      3: constant.numeric
+  - match: (?:\.|(new\s+))([A-Za-z_]\w*)\{
+    captures:
+      1: keyword
+      2: entity.name.function
+  - match: \b(wei|gwei|ether|seconds|minutes|hours|days|weeks)\b
+    captures:
+      1: support.type
+  - match: \bnew\b
+    scope: keyword
+  - match: \banonymous\b
+    scope: keyword
+  - match: \bunchecked\b
+    scope: keyword
+  - match: \b(assembly|switch|let|case|default)\b
+    scope: keyword
+  - match: (?<!\\)[\"\']
+    push:
+    - meta_scope: string.quoted
+    - match: (?<!\\)[\"\']
+      pop: true
+    - include: repo_string
+  repo_numbers:
+  - match: \b(?:[+-]?\.?\d[\d_eE]*)(?:\.\d+[\deE]*)?\b
+    scope: constant.numeric
+  repo_string:
+  - match: \\"
+    scope: constant.character.escape
+  - match: \\'
+    scope: constant.character.escape
+  - match: .
+    scope: string.quoted

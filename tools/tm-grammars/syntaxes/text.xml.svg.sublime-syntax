@@ -1,0 +1,254 @@
+%YAML 1.2
+---
+# SVG (text.xml.svg): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: SVG
+scope: text.xml.svg
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_attr:
+  - match: '[A-Za-z_:][-\w.:]*'
+    push:
+    - match: (?=\s*(?:/?>|[^\s=]))|(?<=["'])
+      pop: true
+    - include: repo_attrValueCSS
+    - include: repo_attrValuePlain
+  repo_attrName:
+  - match: (?:^|)([-\w.]+)(:)(?=[-\w.:])
+    captures:
+      1: entity.other.attribute-name.namespace.xml.svg
+      2: punctuation.separator.namespace.xml.svg
+  - match: '[A-Za-z_:][-\w.:]*'
+    scope: entity.other.attribute-name.localname.xml.svg
+  repo_attrValueCSS:
+  - match: (?i)(?<=style)\s*(=)
+    captures:
+      1: punctuation.separator.key-value.xml.svg
+    push:
+    - match: (?=\s*(?:[%?/]?>))|(?<=["'])([^\s>]*)|(?:|^)\s*([^\s"'>]+)
+      pop: true
+      captures:
+        1: invalid.illegal.syntax.xml.svg
+        2: string.unquoted.xml.svg
+    - match: (?:|^)\s+(?!/?>)
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.xml.svg
+      push:
+      - meta_scope: string.quoted.double.xml.svg
+      - match: '"'
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.xml.svg
+      - match: '[^"]+'
+        scope: source.css.style.xml.svg
+    - match: ''''
+      captures:
+        0: punctuation.definition.string.begin.xml.svg
+      push:
+      - meta_scope: string.quoted.single.xml.svg
+      - match: ''''
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.xml.svg
+      - match: '[^'']+'
+        scope: source.css.style.xml.svg
+  repo_attrValuePlain:
+  - match: \s*(=)
+    captures:
+      1: punctuation.separator.key-value.xml.svg
+    push:
+    - match: (?=\s*(?:[%?/]?>))|(?<=["'])([^\s>]*)|(?:|^)\s*([^\s"'>]+)
+      pop: true
+      captures:
+        1: invalid.illegal.syntax.xml.svg
+        2: string.unquoted.xml.svg
+    - match: (?:|^)\s+(?!/?>)
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.xml.svg
+      push:
+      - meta_scope: string.quoted.double.xml.svg
+      - match: '"'
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.xml.svg
+      - include: repo_entity
+    - match: ''''
+      captures:
+        0: punctuation.definition.string.begin.xml.svg
+      push:
+      - meta_scope: string.quoted.single.xml.svg
+      - match: ''''
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.xml.svg
+      - include: repo_entity
+  repo_cdata:
+  - match: <!\[CDATA\[
+    captures:
+      0: punctuation.definition.string.begin.xml.svg
+    push:
+    - meta_scope: string.unquoted.cdata.xml.svg
+    - match: \]\]>
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.xml.svg
+  repo_commands:
+  - match: (?i)[MLHVCSQTAZ]
+    scope: keyword.operator.drawing-command.xml.svg
+  - match: -?(?:\d+(?:\.\d+)?|\.\d+)(?:[Ee][-+]?\d+)?
+    scope: constant.numeric.number.xml.svg
+  - match: ','
+    scope: punctuation.separator.coordinates.comma.xml.svg
+  repo_comment:
+  - match: <!--
+    captures:
+      0: punctuation.definition.comment.begin.xml.svg
+    push:
+    - meta_scope: comment.block.xml.svg
+    - match: -->
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.xml.svg
+    - match: --(?!>)
+      scope: invalid.illegal.bad-comment.xml.svg
+  repo_doctype:
+  - match: (<!)(DOCTYPE)\s+([:a-zA-Z_][-:\w.]*)
+    captures:
+      1: punctuation.definition.tag.begin.xml.svg
+      2: keyword.other.doctype.xml.svg
+      3: variable.language.documentroot.xml.svg
+    push:
+    - meta_scope: meta.tag.sgml.doctype.xml.svg
+    - match: \s*(>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.end.xml.svg
+    - include: scope:text.xml
+  repo_entity:
+  - include: scope:text.xml
+  - include: scope:text.xml
+  repo_main:
+  - include: repo_comment
+  - include: repo_cdata
+  - include: repo_doctype
+  - include: scope:text.xml
+  - include: scope:text.xml
+  - include: repo_entity
+  - include: repo_preprocessor
+  - include: repo_scriptTag
+  - include: repo_styleTag
+  - include: repo_tag
+  - include: repo_unescapedBracket
+  - include: repo_unmatchedTag
+  repo_preprocessor:
+  - match: (<\?)\s*
+    captures:
+      1: punctuation.definition.tag.begin.xml.svg
+    push:
+    - meta_scope: meta.tag.preprocessor.xml.svg
+    - match: \?>
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.xml.svg
+    - match: ''
+      push:
+      - match: ([-\w]+)|(?=\s*\?>)
+        pop: true
+        captures:
+          1: entity.name.tag.xml.svg
+    - include: repo_attr
+  repo_scriptTag:
+  - include: repo_scriptTagPlain
+  - include: repo_scriptTagJS
+  repo_scriptTagJS:
+  - match: (?i)(<)(script)(?=$|\s|/?>)
+    captures:
+      1: punctuation.definition.tag.opening.begin.xml.svg
+    push:
+    - meta_scope: meta.tag.script.xml.svg
+    - match: (?i)(</)(script)\s*(>)|(/>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.closing.begin.xml.svg
+        3: punctuation.definition.tag.closing.end.xml.svg
+        4: punctuation.definition.tag.self-closing.end.xml.svg
+    - include: repo_tagAttr
+    - match: (?<=>)
+      push:
+      - meta_content_scope: source.js.embedded.xml.svg
+      - match: (?i)(?=\s*</script\s*>)
+        pop: true
+      - include: scope:source.js
+      - include: repo_entity
+  repo_scriptTagPlain:
+  - match: "(?x)\n(<)((?i)script)\n(\n\t\\s+[^>]*?\n\t(?<=\\s)(?i:type)\\s*=\\s*\n\t([\"'])?\n\t(?! module\n\t|   application/(?:x-)?(?:ecma|java)script\n\t|   text/\n\t\t(?: javascript(?:1.[0-5])?\n\t\t|   (?:j|ecma|live)script\n\t\t|   x-(?:ecma|java)script\n\t\t)\n\t)\n\t(?: (?<=\")(?:[^\">]+)\"\n\t|   (?<=')(?:[^'>]+)'\n\t|   [^\\s\"'>]+\n\t)\n\t(?=\\s|/?>)\n)"
+    captures:
+      1: punctuation.definition.tag.opening.begin.xml.svg
+    push:
+    - meta_scope: meta.tag.script.xml.svg
+    - match: (?i)(</)(script)\s*(>)|(/>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.closing.begin.xml.svg
+        3: punctuation.definition.tag.closing.end.xml.svg
+        4: punctuation.definition.tag.self-closing.end.xml.svg
+    - include: repo_tagAttr
+    - include: repo_main
+  repo_styleTag:
+  - match: (?i)(<)(style)(?=$|\s|/?>)
+    captures:
+      1: punctuation.definition.tag.opening.begin.xml.svg
+    push:
+    - meta_scope: meta.tag.style.xml.svg
+    - match: (?i)(</)(style)\s*(>)|(/>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.closing.begin.xml.svg
+        3: punctuation.definition.tag.closing.end.xml.svg
+        4: punctuation.definition.tag.self-closing.end.xml.svg
+    - include: repo_tagAttr
+    - match: (?<=>)
+      push:
+      - meta_content_scope: source.css.embedded.xml.svg
+      - match: (?i)(?=\s*</style\s*>)
+        pop: true
+      - include: scope:source.css
+      - include: repo_entity
+  repo_tag:
+  - match: (?i)(<)([A-Za-z_:][-\w.:]*)(?=$|\s|/?>)
+    captures:
+      1: punctuation.definition.tag.opening.begin.xml.svg
+    push:
+    - match: (?i)(</)(\2)(?:\s*(>)|(?=\s*$))|(/>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.closing.begin.xml.svg
+        3: punctuation.definition.tag.closing.end.xml.svg
+        4: punctuation.definition.tag.self-closing.end.xml.svg
+    - include: repo_tagAttr
+    - include: repo_main
+  repo_tagAttr:
+  - match: (?!\s*/>)
+    push:
+    - match: '>|(?=\s*/>)'
+      pop: true
+      captures:
+        0: punctuation.definition.tag.opening.end.xml.svg
+    - include: repo_attr
+  repo_tagName:
+  - match: (?:^|)([A-Za-z_][-\w.]*)(:)(?=[-\w.:])
+    captures:
+      1: entity.name.tag.namespace.xml.svg
+      2: punctuation.separator.namespace.xml.svg
+  - match: '[A-Za-z_:][-\w.:]*'
+    scope: entity.name.tag.localname.xml.svg
+  repo_unescapedBracket:
+  - match: ^\s*(>)
+    scope: punctuation.definition.tag.closing.end.xml.svg
+  repo_unmatchedTag:
+  - match: (</)([A-Za-z_:][-\w.:]*)\s*(>)
+    scope: invalid.illegal.unmatched-tag.xml.svg

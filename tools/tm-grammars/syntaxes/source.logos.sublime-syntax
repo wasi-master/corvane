@@ -1,0 +1,19 @@
+%YAML 1.2
+---
+# Logos (source.logos): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Cykey/Sublime-Logos via GitHub Linguist v9.7.0 (license: mit).
+name: Logos
+scope: source.logos
+file_extensions:
+- xm
+- x
+- xi
+contexts:
+  main:
+  - match: '%(init|hookf|hook|subclass|group|class|new|ctor|end|config|orig|log|dtor|property|c)'
+    scope: keyword.source.logos
+  - match: '%c\(([A-Za-z$_]+)\)'
+    captures:
+      1: keyword.source.logos
+  - include: scope:source.objc
+  - include: scope:source.c++

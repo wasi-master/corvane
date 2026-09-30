@@ -1,0 +1,1111 @@
+%YAML 1.2
+---
+# Jai (source.jai): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/SogoCZE/Jails.git via GitHub Linguist v9.7.0 (license: mit).
+name: Jai
+scope: source.jai
+file_extensions:
+- jai
+contexts:
+  main:
+  - include: repo_block-comments
+  - include: repo_comments
+  - include: repo_imports
+  - include: repo_asm
+  - include: repo_strings
+  - include: repo_casts
+  - include: repo_keywords
+  - include: repo_proc
+  - include: repo_deprecated
+  - include: repo_fors
+  - include: repo_structs
+  - include: repo_enums
+  - include: repo_enum-members
+  - include: repo_composite-literals
+  - include: repo_symbols
+  - include: repo_numbers
+  - include: repo_declarations
+  - include: repo_more-directives
+  - include: repo_variables
+  - include: repo_more-numbers
+  repo_array:
+  - match: (\[)([^\]]*)(\])
+    captures:
+      1: punctuation.section.brackets.begin.jai
+      3: punctuation.section.brackets.end.jai
+  repo_asm:
+  - match: (#asm)\s*(([A-Z0-9]+)\s*(,[^}]*)?)?(\{)
+    captures:
+      1: keyword.other.directive.asm.jai
+      3: keyword.other.feature.asm.jai
+      5: punctuation.section.braces.begin.jai
+    push:
+    - meta_content_scope: source.asm.x86_64
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.section.braces.end.jai
+    - match: (===)
+      captures:
+        1: keyword.operator.pin.jai
+  repo_block-comments:
+  - match: (\/\*)
+    captures:
+      1: punctuation.definition.comment.jai
+    push:
+    - meta_scope: comment.block.jai
+    - match: (\*\/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.jai
+    - include: repo_block-comments
+    - match: (`)([^`]*)(`)
+      captures:
+        1: markup.quote.comment.jai
+        2: comment.block.backquoted.jai
+        3: markup.quote.comment.jai
+    - match: (\@)((?i)TODO)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.todo.jai
+        2: comment.block.annotation.todo.jai
+        3: comment.block.todo.jai
+    - match: (\@)((?i)Release)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.release.jai
+        2: comment.block.annotation.release.jai
+        3: comment.block.release.jai
+    - match: (\@)((?i)Note)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.note.jai
+        2: comment.block.annotation.note.jai
+        3: comment.block.note.jai
+    - match: (\@)((?i)Urgent)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.urgent.jai
+        2: comment.block.annotation.urgent.jai
+        3: comment.block.urgent.jai
+    - match: (\@)((?i)Speed)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.speed.jai
+        2: comment.block.annotation.speed.jai
+        3: comment.block.speed.jai
+    - match: (\@)((?i)Robustness)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.robustness.jai
+        2: comment.block.annotation.robustness.jai
+        3: comment.block.robustness.jai
+    - match: (\@)((?i)NoCheckin)([^@]*)
+      captures:
+        1: comment.block.punctuation.annotation.nocheckin.jai
+        2: comment.block.annotation.nocheckin.jai
+        3: comment.block.todo.jai
+    - match: (\@)(\w+)
+      captures:
+        1: comment.block.punctuation.annotation.jai
+        2: comment.block.annotation.jai
+    - match: (-) (\w+) ([0-9]{4}-[0-9]{2}-[0-9]{2})
+      scope: comment.block.signature.jai
+      captures:
+        1: comment.block.punctuation.signature.jai
+        2: comment.block.signature.name.jai
+        3: comment.block.signature.date.jai
+    - match: ^\s*(\[)( )(\])(.*)
+      captures:
+        1: comment.block.punctuation.checklist.brackets.todo.begin.jai
+        2: comment.block.punctuation.checklist.mark.todo.jai
+        3: comment.block.punctuation.checklist.brackets.todo.end.jai
+        4: comment.block.checklist.item.todo.jai
+    - match: ^\s*(\[)(\.)(\])(.*)
+      captures:
+        1: comment.block.punctuation.checklist.brackets.partial.begin.jai
+        2: comment.block.punctuation.checklist.mark.partial.jai
+        3: comment.block.punctuation.checklist.brackets.partial.end.jai
+        4: comment.block.checklist.item.partial.jai
+    - match: ^\s*(\[)([^ \.])(\])(.*)
+      captures:
+        1: comment.block.punctuation.checklist.brackets.done.begin.jai
+        2: comment.block.punctuation.checklist.mark.done.jai
+        3: comment.block.punctuation.checklist.brackets.done.end.jai
+        4: comment.block.checklist.item.done.jai
+  repo_block-comments-line:
+  - match: (`)([^`]*)(`)
+    captures:
+      1: markup.quote.comment.jai
+      2: comment.block.backquoted.jai
+      3: markup.quote.comment.jai
+  - match: (\@)((?i)TODO)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.todo.jai
+      2: comment.block.annotation.todo.jai
+      3: comment.block.todo.jai
+  - match: (\@)((?i)Release)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.release.jai
+      2: comment.block.annotation.release.jai
+      3: comment.block.release.jai
+  - match: (\@)((?i)Note)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.note.jai
+      2: comment.block.annotation.note.jai
+      3: comment.block.note.jai
+  - match: (\@)((?i)Urgent)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.urgent.jai
+      2: comment.block.annotation.urgent.jai
+      3: comment.block.urgent.jai
+  - match: (\@)((?i)Speed)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.speed.jai
+      2: comment.block.annotation.speed.jai
+      3: comment.block.speed.jai
+  - match: (\@)((?i)Robustness)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.robustness.jai
+      2: comment.block.annotation.robustness.jai
+      3: comment.block.robustness.jai
+  - match: (\@)((?i)NoCheckin)([^@]*)
+    captures:
+      1: comment.block.punctuation.annotation.nocheckin.jai
+      2: comment.block.annotation.nocheckin.jai
+      3: comment.block.nocheckin.jai
+  - match: (\@)(\w+)
+    captures:
+      1: comment.block.punctuation.annotation.jai
+      2: comment.block.annotation.jai
+  - match: (-)\s*(.*)\s*([0-9]{4}-[0-9]{2}-[0-9]{2})
+    scope: comment.block.signature.jai
+    captures:
+      1: comment.block.punctuation.signature.jai
+      2: comment.block.signature.name.jai
+      3: comment.block.signature.date.jai
+  repo_casts:
+  - match: \b(cast(,trunc)?(,no_check)?(,trunc)?)\s*(\()\s*((\**)[a-zA-Z_](?:\w|\\ *)*)\s*(\))
+    captures:
+      1: keyword.control.cast.jai
+      5: punctuation.section.parens.begin.jai
+      6: storage.type
+      7: keyword.operator.pointer.jai
+      8: punctuation.section.parens.begin.jai
+  - match: \b(xx|cast)\b
+    scope: keyword.control.cast.jai
+  repo_comma-joined-asm-features:
+  - match: (,)\s*([A-Z0-9]+)\s*
+    captures:
+      1: punctuation.separator.jai
+      2: keyword.other.feature.asm.jai
+  repo_comma-joined-variables:
+  - match: (,)\s*((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))
+    captures:
+      1: punctuation.separator.jai
+      2: variable.other.declaration.jai
+      3: support.variable.jai
+  repo_comments:
+  - match: (//)\s*(\[)( )(\])(.*)
+    captures:
+      1: punctuation.definition.comment.jai
+      2: comment.line.double-slash.punctuation.checklist.brackets.todo.begin.jai
+      3: comment.line.double-slash.punctuation.checklist.mark.todo.jai
+      4: comment.line.double-slash.punctuation.checklist.brackets.todo.end.jai
+      5: comment.line.double-slash.checklist.item.todo.jai
+  - match: (//)\s*(\[)(\.)(\])(.*)
+    captures:
+      1: punctuation.definition.comment.jai
+      2: comment.line.double-slash.punctuation.checklist.brackets.partial.begin.jai
+      3: comment.line.double-slash.punctuation.checklist.mark.partial.jai
+      4: comment.line.double-slash.punctuation.checklist.brackets.partial.end.jai
+      5: comment.line.double-slash.checklist.item.partial.jai
+  - match: (//)\s*(\[)([^ \.])(\])(.*)
+    captures:
+      1: punctuation.definition.comment.jai
+      2: comment.line.double-slash.punctuation.checklist.brackets.done.begin.jai
+      3: comment.line.double-slash.punctuation.checklist.mark.done.jai
+      4: comment.line.double-slash.punctuation.checklist.brackets.done.end.jai
+      5: comment.line.double-slash.checklist.item.done.jai
+  - match: (//)(.*)
+    captures:
+      1: comment.line.double-slash.jai
+      2: comment.line.double-slash.jai
+  repo_comments-line:
+  - match: (`)([^`]*)(`)
+    captures:
+      1: markup.quote.comment.jai
+      2: comment.line.double-slash.backquoted.jai
+      3: markup.quote.comment.jai
+  - match: (\@)((?i)TODO)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.todo.jai
+      2: comment.line.double-slash.annotation.todo.jai
+      3: comment.line.double-slash.todo.jai
+  - match: (\@)((?i)Release)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.release.jai
+      2: comment.line.double-slash.annotation.release.jai
+      3: comment.line.double-slash.release.jai
+  - match: (\@)((?i)Note)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.note.jai
+      2: comment.line.double-slash.annotation.note.jai
+      3: comment.line.double-slash.note.jai
+  - match: (\@)((?i)Urgent)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.urgent.jai
+      2: comment.line.double-slash.annotation.urgent.jai
+      3: comment.line.double-slash.urgent.jai
+  - match: (\@)((?i)Speed)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.speed.jai
+      2: comment.line.double-slash.annotation.speed.jai
+      3: comment.line.double-slash.speed.jai
+  - match: (\@)((?i)Robustness)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.robustness.jai
+      2: comment.line.double-slash.annotation.robustness.jai
+      3: comment.line.double-slash.robustness.jai
+  - match: (\@)((?i)NoCheckin)([^@]*)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.nocheckin.jai
+      2: comment.line.double-slash.annotation.nocheckin.jai
+      3: comment.line.double-slash.nocheckin.jai
+  - match: (\@)(\w+)
+    captures:
+      1: comment.line.double-slash.punctuation.annotation.jai
+      2: comment.line.double-slash.annotation.jai
+  - match: (-)\s*(.*)\s*([0-9]{4}-[0-9]{2}-[0-9]{2})
+    scope: comment.line.double-slash.signature.jai
+    captures:
+      1: comment.line.double-slash.punctuation.signature.jai
+      2: comment.line.double-slash.signature.name.jai
+      3: comment.line.double-slash.signature.date.jai
+  repo_composite-literals:
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)?\s*(\.)(\{)
+    captures:
+      1: storage.type.struct.jai
+      2: punctuation.accessor.jai
+      3: punctuation.section.braces.begin.jai
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)?\s*(\.)(\[)
+    captures:
+      1: storage.type.struct.jai
+      2: punctuation.accessor.jai
+      3: punctuation.section.bracket.begin.jai
+  repo_declarations:
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)((\s*,\s*[a-zA-Z_](?:\w|\\ *)*)*)\s*(:)\s*(\[[^\]]*\])?\s*((\**)((#type(,(isa|distinct))?)|[a-zA-Z_](?:\w|\\ *)*))?\s*(:)
+    captures:
+      1: variable.other.constant.declaration.jai
+      12: keyword.declaration.jai
+      4: keyword.declaration.jai
+      6: storage.type.jai
+      7: keyword.operator.pointer.jai
+      9: keyword.other.directive.jai
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(:)\s*(\[[^\]]*\])?\s*((\**)((#type(,(isa|distinct))?)|[a-zA-Z_](?:\w|\\ *)*))?\s*(:)
+    captures:
+      1: variable.other.constant.declaration.jai
+      10: keyword.declaration.jai
+      2: keyword.declaration.jai
+      4: storage.type.jai
+      5: keyword.operator.pointer.jai
+      7: keyword.other.directive.jai
+  - match: \b((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))((\s*,\s*[a-zA-Z_](?:\w|\\ *)*)*)\s*(:)\s*((struct)|(enum)|(enum_flags))\b\s*([a-zA-Z_](?:\w|\\ *)*)?
+    captures:
+      1: variable.other.declaration.jai
+      10: keyword.declaration.enum.jai
+      11: storage.type.jai
+      2: support.variable.jai
+      6: keyword.declaration.jai
+      8: keyword.declaration.struct.jai
+      9: keyword.declaration.enum.jai
+  - match: \b((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))\s*(:)\s*((struct)|(enum)|(enum_flags))\b\s*([a-zA-Z_](?:\w|\\ *)*)?
+    captures:
+      1: variable.other.declaration.jai
+      2: support.variable.jai
+      4: keyword.declaration.jai
+      6: keyword.declaration.struct.jai
+      7: keyword.declaration.enum.jai
+      8: keyword.declaration.enum.jai
+      9: storage.type.jai
+  - match: \b((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))((\s*,\s*[a-zA-Z_](?:\w|\\ *)*)*)\s*(:)\s*(\[[^\]]*\])?\s*((\**)((#type(,(isa|distinct))?)|[a-zA-Z_](?:\w|\\ *)*))?\s*(=)?
+    captures:
+      1: variable.other.declaration.jai
+      11: keyword.other.directive.jai
+      14: keyword.declaration.jai
+      2: support.variable.jai
+      6: keyword.declaration.jai
+      8: storage.type.jai
+      9: keyword.operator.pointer.jai
+  - match: \b((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))\s*(:)\s*(\[[^\]]*\])?\s*((\**)((#type(,(isa|distinct))?)|[a-zA-Z_](?:\w|\\ *)*))?\s*(=)?
+    captures:
+      1: variable.other.declaration.jai
+      12: keyword.declaration.jai
+      2: support.variable.jai
+      4: keyword.declaration.jai
+      6: storage.type.jai
+      7: keyword.operator.pointer.jai
+      9: keyword.other.directive.jai
+  repo_deprecated:
+  - match: (#deprecated\s*((")(([^"\\]|\\.)*)("))?)
+    captures:
+      1: invalid.deprecated.jai
+      3: punctuation.definition.string.deprecated.begin.jai
+      4: string-quoted.other.deprecated.jai
+      6: punctuation.definition.string.deprecated.end.jai
+  repo_enum-members:
+  - match: ([^\w])(\.)([a-zA-Z_](?:\w|\\ *)*)
+    captures:
+      2: punctuation.accessor.jai
+      3: variable.enum.jai
+  repo_enums:
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(enum(_flags)?)
+    captures:
+      1: entity.name.enum.jai
+      2: keyword.declaration.jai
+      3: keyword.declaration.enum.jai
+  repo_expression:
+  - include: repo_strings
+  - include: repo_casts
+  - include: repo_deprecated
+  - include: repo_enum-members
+  - include: repo_keywords
+  - include: repo_symbols
+  - include: repo_numbers
+  - include: repo_variables
+  - include: repo_more-numbers
+  repo_fors:
+  - match: \b(for)\s+([*<\s]*)\s*([a-zA-Z_](?:\w|\\ *)*)\s*(,)\s*([a-zA-Z_](?:\w|\\ *)*)\s*(:)
+    captures:
+      1: keyword.control.loop.for.jai
+      2: keyword.operator.jai
+      3: variable.other.declaration.jai
+      4: punctuation.separator.jai
+      5: variable.other.declaration.jai
+      6: keyword.declaration.jai
+  - match: \b(for)\s+([*<\s]*)\s*([a-zA-Z_](?:\w|\\ *)*)\s*(:)
+    captures:
+      1: keyword.control.loop.for.jai
+      2: keyword.operator.jai
+      3: variable.other.declaration.jai
+      4: keyword.declaration.jai
+  - match: \b(for)\s+([*<\s]*)
+    captures:
+      1: keyword.control.loop.for.jai
+      2: keyword.operator.jai
+  repo_imports:
+  - match: ^\s*([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(#import(,file|,dir|,string)?)\s+(")([^"]+)(")
+    captures:
+      1: entity.name.namespace.jai
+      2: keyword.declaration.jai
+      3: keyword.control.import.directive.jai
+      6: punctuation.definition.string.import.begin.jai
+      7: string-quoted.other.import.jai
+      8: punctuation.definition.string.import.end.jai
+  - match: (#import(,file|,dir|,string)?|#load)\s+(")([^"]+)(")
+    captures:
+      1: keyword.control.import.directive.jai
+      4: punctuation.definition.string.import.begin.jai
+      5: string-quoted.other.import.jai
+      6: punctuation.definition.string.import.end.jai
+  - match: (#import(,file|,dir|,string)?|#load)\s+("[^"]*)?$
+    captures:
+      1: keyword.control.import.directive.jai
+      4: punctuation.definition.string.import.begin.jai
+      5: string-quoted.other.import.jai
+  - match: ^\s*([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(#foreign_(system_)?library)\s+(")([^"]+)(")
+    captures:
+      1: constant.other.import.jai
+      2: keyword.declaration.jai
+      3: keyword.control.import.directive.jai
+      5: punctuation.definition.string.import.begin.jai
+      6: string-quoted.other.import.jai
+      7: punctuation.definition.string.import.end.jai
+  - match: ^\s*([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(#foreign_(system_)?library)\s+("[^"]*)?$
+    captures:
+      1: constant.other.import.jai
+      2: keyword.declaration.jai
+      3: keyword.control.import.directive.jai
+      5: punctuation.definition.string.import.begin.jai
+      6: string-quoted.other.import.jai
+  repo_keywords:
+  - match: \b(if|ifx|then|else|case)\b
+    scope: keyword.control.conditional.jai
+  - match: \b(return|break|continue)\b
+    scope: keyword.control.jump.jai
+  - match: \b(while)\b
+    scope: keyword.control.loop.while.jai
+  - match: \b(remove)\b
+    scope: keyword.control.loop.for.remove.jai
+  - match: \b(defer)\b
+    scope: keyword.control.defer.jai
+  - match: (#add_context|#align|#as|#assert|#bake(_arguments|_constants)?|#bytes|#caller_code|#caller_location|#code(,(null|typed))?|#compile_time|#complete|#dump|#elsewhere|#expand|#file|#filepath|#ifx|#if|\binline\b|#insert(,scope)?|#intrinsic|#modify|#module_parameters|#must|#no_abc|#no_aoc|#no_alias|#no_padding|#no_reset|#place|#placeholder|#procedure_name|#procedure_of_call|#program_export|#run|#exists|#v2|#Context|#specified|#symmetric|#this|#through|#type(,(isa|distinct))?|#type_info_none|#type_info_procedures_are_void_pointers|#type_info_no_size_complaint|#unshared)\b
+    scope: keyword.other.directive.jai
+  - match: (#scope_export|#scope_file|#scope_module)
+    scope: keyword.other.directive.scope.jai
+  - match: (#char)
+    scope: keyword.other.directive.string.jai
+  - match: \b(context|push_context)\b
+    scope: keyword.other.context.jai
+  - match: \b(using(,map|,except|,only)?)\b
+    scope: keyword.other.using.jai
+  - match: \b(temp)\b
+    scope: keyword.other.allocator.jai
+  - match: \b(true)\b
+    scope: constant.language.true.jai
+  - match: \b(false)\b
+    scope: constant.language.false.jai
+  - match: \b(null)\b
+    scope: constant.language.null.jai
+  - match: \b(struct)\b
+    scope: keyword.declaration.struct.jai
+  - match: \b(enum)\b
+    scope: keyword.declaration.enum.jai
+  - match: \b(union)\b
+    scope: keyword.declaration.union.jai
+  - match: \b(int|u8|u16|u32|u64|s8|s16|s32|s64|float|float32|float64|bool|string|void|Code|Type)\b
+    scope: storage.type.jai
+  repo_more-directives:
+  - match: (#foreign\s+([A-Z-a-z_]\w*(\s*(")(([^"\\]|\\.)*)("))?)|#compiler|#intrinsic|#runtime_support)
+    captures:
+      1: keyword.control.import.directive.decl.jai
+      3: constant.other.import.jai
+      5: punctuation.definition.string.import.begin.jai
+      6: string-quoted.other.import.jai
+      8: punctuation.definition.string.import.end.jai
+  repo_more-numbers:
+  - match: (0b[01_]+)
+    captures:
+      1: constant.numeric.jai
+  - match: (0x[a-fA-F_\d]+)
+    captures:
+      1: constant.numeric.jai
+  - match: (\d[\d_]*)
+    captures:
+      1: constant.numeric.jai
+  repo_numbers:
+  - match: '[(\[{:\s=.,/*+<>-](0b[01_]+)'
+    captures:
+      1: constant.numeric.jai
+  - match: '[(\[{:\s=.,/*+<>-](0x[a-fA-F_\d]+)'
+    captures:
+      1: constant.numeric.jai
+  - match: '[(\[\{:\s=.,/*+<>-](\d[\d_]*)'
+    captures:
+      1: constant.numeric.jai
+  repo_proc:
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(#type)\b\s*((inline)\s*|(no_inline)\s*)*(\()(.*)(\))\s*((->)([^{]+))?\s*(((#foreign\s+([a-zA-Z_](?:\w|\\ *)*(\s*(")(([^"\\]|\\.)*)("))?)|#compiler|#intrinsic|#runtime_support)\s*)+\s*(#deprecated\s*((")(([^"\\]|\\.)*)("))?)?\s*(;)?)?(\s*#c_call|\s*#no_context|\s*#symmetric)*
+    captures:
+      1: variable.other.constant.declaration.jai
+      11: punctuation.return.jai
+      12: meta.function.return-type.jai
+      13: keyword.control.import.directive.decl.jai
+      16: constant.other.import.jai
+      18: punctuation.definition.string.import.begin.jai
+      19: string-quoted.other.import.jai
+      2: keyword.declaration.jai
+      21: punctuation.definition.string.import.end.jai
+      22: invalid.deprecated.jai
+      24: punctuation.definition.string.deprecated.begin.jai
+      25: string-quoted.other.deprecated.jai
+      27: punctuation.definition.string.deprecated.end.jai
+      28: punctuation.terminator.jai
+      29: keyword.other.directive.jai
+      3: keyword.other.directive.jai
+      5: storage.modifier.jai
+      6: storage.modifier.jai
+      7: punctuation.section.parens.begin.jai
+      8: meta.function.parameters.jai
+      9: punctuation.section.parens.end.jai
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*((inline)\s*|(no_inline)\s*)*(\()(.*)(\))\s*((->)([^{]+))?\s*(#expand)(\s*(#no_debug))?
+    scope: meta.preprocessor.macro.declaration.jai
+    captures:
+      1: entity.name.function.preprocessor.jai
+      10: punctuation.return.jai
+      11: meta.function.return-type.jai
+      12: keyword.other.directive.jai
+      14: keyword.other.directive.jai
+      2: keyword.declaration.jai
+      4: storage.modifier.jai
+      5: storage.modifier.jai
+      6: punctuation.section.parens.begin.jai
+      7: meta.function.preprocessor.parameters.jai
+      8: punctuation.section.parens.end.jai
+  - match: \b((main|for_expansion|operator\s*([^ :]+))|[a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*((inline)\s*|(no_inline)\s*)*(\()(.*)(\))\s*((->)([^{]+))?\s*(((#foreign\s+([a-zA-Z_](?:\w|\\ *)*(\s*(")(([^"\\]|\\.)*)("))?)|#compiler|#intrinsic|#runtime_support)\s*)+\s*(#deprecated\s*((")(([^"\\]|\\.)*)("))?)?\s*(;)?)?(\s*#c_call|\s*#no_context|\s*#symmetric)*
+    scope: meta.function.declaration.jai
+    captures:
+      1: entity.name.function.jai
+      10: punctuation.section.parens.end.jai
+      12: punctuation.return.jai
+      13: meta.function.return-type.jai
+      14: keyword.control.import.directive.decl.jai
+      17: constant.other.import.jai
+      19: punctuation.definition.string.import.begin.jai
+      20: string-quoted.other.import.jai
+      22: punctuation.definition.string.import.end.jai
+      23: invalid.deprecated.jai
+      25: punctuation.definition.string.deprecated.begin.jai
+      26: string-quoted.other.deprecated.jai
+      28: punctuation.definition.string.deprecated.end.jai
+      29: punctuation.terminator.jai
+      3: keyword.operator.jai
+      30: keyword.other.directive.jai
+      4: keyword.declaration.jai
+      6: storage.modifier.jai
+      7: storage.modifier.jai
+      8: punctuation.section.parens.begin.jai
+      9: meta.function.parameters.jai
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(#bake(_arguments|_constants))\s+([a-zA-Z_](?:\w|\\ *)*)\s*(\()(.*)(\))
+    scope: meta.function.declaration.jai
+    captures:
+      1: entity.name.function.jai
+      2: keyword.declaration.jai
+      3: keyword.other.directive.jai
+      5: entity.name.function.jai
+      6: punctuation.section.parens.begin.jai
+      7: meta.function.parameters.jai
+      8: punctuation.section.parens.end.jai
+  - match: (([a-zA-Z_](?:\w|\\ *)*)(\.)(([a-zA-Z_](?:\w|\\ *)*)(\.))*)?\b([a-zA-Z_](?:\w|\\ *)*)\s*(\()
+    captures:
+      2: entity.name.namespace.jai
+      3: punctuation.accessor.jai
+      5: entity.name.namespace.member.jai
+      6: punctuation.accessor.jai
+      8: punctuation.section.parens.begin.jai
+    push:
+    - meta_scope: meta.function.call.jai
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.parens.end.jai
+    - include: main
+  - match: (([a-zA-Z_](?:\w|\\ *)*)(\.)(([a-zA-Z_](?:\w|\\ *)*)(\.))*)?\b([a-zA-Z_](?:\w|\\ *)*)\s*(\()(.*)
+    captures:
+      2: entity.name.namespace.jai
+      3: punctuation.accessor.jai
+      5: entity.name.namespace.member.jai
+      6: punctuation.accessor.jai
+      8: punctuation.section.parens.begin.jai
+      9: meta.function.parameters.jai
+    push:
+    - meta_scope: meta.function.call.jai
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.parens.end.jai
+    - include: main
+  repo_strings:
+  - match: (")(")
+    scope: string.quoted.double.empty.jai
+    captures:
+      1: punctuation.definition.string.empty.begin.jai
+      2: punctuation.definition.string.empty.end.jai
+  - match: (")
+    captures:
+      1: punctuation.definition.string.begin.jai
+    push:
+    - meta_scope: string.quoted.double.jai
+    - match: ("|$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.jai
+    - match: \\.
+      scope: constant.character.escape.jai
+    - match: '%[0-9]+'
+      scope: constant.other.placeholder.jai
+    - match: (%)%
+      captures:
+        1: constant.character.escape.jai
+    - match: '%'
+      scope: constant.other.placeholder.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(arm))\b
+    captures:
+      1: keyword.other.directive.string.arm.jai
+      2: constant.other.stringdelimiter.here.embed.arm.jai
+      4: constant.other.stringdelimiter.here.embed.language.arm.jai
+    push:
+    - meta_scope: string.here.embed.arm.jai
+    - meta_content_scope: string.unquoted.here.embed.arm.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.arm.jai
+        2: constant.other.stringdelimiter.here.embed.language.arm.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(bat))\b
+    captures:
+      1: keyword.other.directive.string.bat.jai
+      2: constant.other.stringdelimiter.here.embed.bat.jai
+      4: constant.other.stringdelimiter.here.embed.language.bat.jai
+    push:
+    - meta_scope: string.here.embed.bat.jai
+    - meta_content_scope: string.unquoted.here.embed.bat.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.bat.jai
+        2: constant.other.stringdelimiter.here.embed.language.bat.jai
+    - include: scope:source.batchfile
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(c(\+\+|pp)))\b
+    captures:
+      1: keyword.other.directive.string.cpp.jai
+      2: constant.other.stringdelimiter.here.embed.cpp.jai
+      4: constant.other.stringdelimiter.here.embed.language.cpp.jai
+    push:
+    - meta_scope: string.here.embed.cpp.jai
+    - meta_content_scope: string.unquoted.here.embed.cpp.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.cpp.jai
+        2: constant.other.stringdelimiter.here.embed.language.cpp.jai
+    - include: scope:source.c++
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(css))\b
+    captures:
+      1: keyword.other.directive.string.css.jai
+      2: constant.other.stringdelimiter.here.embed.css.jai
+      4: constant.other.stringdelimiter.here.embed.language.css.jai
+    push:
+    - meta_scope: string.here.embed.css.jai
+    - meta_content_scope: string.unquoted.here.embed.css.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.css.jai
+        2: constant.other.stringdelimiter.here.embed.language.css.jai
+    - include: scope:source.css
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(c(sharp|#|s)))\b
+    captures:
+      1: keyword.other.directive.string.cs.jai
+      2: constant.other.stringdelimiter.here.embed.cs.jai
+      4: constant.other.stringdelimiter.here.embed.language.cs.jai
+    push:
+    - meta_scope: string.here.embed.cs.jai
+    - meta_content_scope: string.unquoted.here.embed.cs.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.cs.jai
+        2: constant.other.stringdelimiter.here.embed.language.cs.jai
+    - include: scope:source.cs
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(c))\b
+    captures:
+      1: keyword.other.directive.string.c.jai
+      2: constant.other.stringdelimiter.here.embed.c.jai
+      4: constant.other.stringdelimiter.here.embed.language.c.jai
+    push:
+    - meta_scope: string.here.embed.c.jai
+    - meta_content_scope: string.unquoted.here.embed.c.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.c.jai
+        2: constant.other.stringdelimiter.here.embed.language.c.jai
+    - include: scope:source.c
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(glsl))\b
+    captures:
+      1: keyword.other.directive.string.glsl.jai
+      2: constant.other.stringdelimiter.here.embed.glsl.jai
+      4: constant.other.stringdelimiter.here.embed.language.glsl.jai
+    push:
+    - meta_scope: string.here.embed.glsl.jai
+    - meta_content_scope: string.unquoted.here.embed.glsl.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.glsl.jai
+        2: constant.other.stringdelimiter.here.embed.language.glsl.jai
+    - include: scope:source.glsl
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(guy))\b
+    captures:
+      1: keyword.other.directive.string.guy.jai
+      2: constant.other.stringdelimiter.here.embed.guy.jai
+      4: constant.other.stringdelimiter.here.embed.language.guy.jai
+    push:
+    - meta_scope: string.here.embed.guy.jai
+    - meta_content_scope: string.unquoted.here.embed.guy.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.guy.jai
+        2: constant.other.stringdelimiter.here.embed.language.guy.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(hlsl))\b
+    captures:
+      1: keyword.other.directive.string.hlsl.jai
+      2: constant.other.stringdelimiter.here.embed.hlsl.jai
+      4: constant.other.stringdelimiter.here.embed.language.hlsl.jai
+    push:
+    - meta_scope: string.here.embed.hlsl.jai
+    - meta_content_scope: string.unquoted.here.embed.hlsl.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.hlsl.jai
+        2: constant.other.stringdelimiter.here.embed.language.hlsl.jai
+    - include: scope:source.hlsl
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(jai))\b
+    captures:
+      1: keyword.other.directive.string.jai.jai
+      2: constant.other.stringdelimiter.here.embed.jai.jai
+      4: constant.other.stringdelimiter.here.embed.language.jai.jai
+    push:
+    - meta_scope: string.here.embed.jai.jai
+    - meta_content_scope: string.unquoted.here.embed.jai.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.jai.jai
+        2: constant.other.stringdelimiter.here.embed.language.jai.jai
+    - include: main
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(java))\b
+    captures:
+      1: keyword.other.directive.string.java.jai
+      2: constant.other.stringdelimiter.here.embed.java.jai
+      4: constant.other.stringdelimiter.here.embed.language.java.jai
+    push:
+    - meta_scope: string.here.embed.java.jai
+    - meta_content_scope: string.unquoted.here.embed.java.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.java.jai
+        2: constant.other.stringdelimiter.here.embed.language.java.jai
+    - include: scope:source.java
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(jsonc))\b
+    captures:
+      1: keyword.other.directive.string.jsonc.jai
+      2: constant.other.stringdelimiter.here.embed.jsonc.jai
+      4: constant.other.stringdelimiter.here.embed.language.jsonc.jai
+    push:
+    - meta_scope: string.here.embed.jsonc.jai
+    - meta_content_scope: string.unquoted.here.embed.jsonc.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.jsonc.jai
+        2: constant.other.stringdelimiter.here.embed.language.jsonc.jai
+    - include: scope:source.json.comments
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(json))\b
+    captures:
+      1: keyword.other.directive.string.json.jai
+      2: constant.other.stringdelimiter.here.embed.json.jai
+      4: constant.other.stringdelimiter.here.embed.language.json.jai
+    push:
+    - meta_scope: string.here.embed.json.jai
+    - meta_content_scope: string.unquoted.here.embed.json.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.json.jai
+        2: constant.other.stringdelimiter.here.embed.language.json.jai
+    - include: scope:source.json
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((js|javascript)))\b
+    captures:
+      1: keyword.other.directive.string.js.jai
+      2: constant.other.stringdelimiter.here.embed.js.jai
+      4: constant.other.stringdelimiter.here.embed.language.js.jai
+    push:
+    - meta_scope: string.here.embed.js.jai
+    - meta_content_scope: string.unquoted.here.embed.js.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.js.jai
+        2: constant.other.stringdelimiter.here.embed.language.js.jai
+    - include: scope:source.js
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(lua))\b
+    captures:
+      1: keyword.other.directive.string.lua.jai
+      2: constant.other.stringdelimiter.here.embed.lua.jai
+      4: constant.other.stringdelimiter.here.embed.language.lua.jai
+    push:
+    - meta_scope: string.here.embed.lua.jai
+    - meta_content_scope: string.unquoted.here.embed.lua.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.lua.jai
+        2: constant.other.stringdelimiter.here.embed.language.lua.jai
+    - include: scope:source.lua
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(make(file)?))\b
+    captures:
+      1: keyword.other.directive.string.makefile.jai
+      2: constant.other.stringdelimiter.here.embed.makefile.jai
+      4: constant.other.stringdelimiter.here.embed.language.makefile.jai
+    push:
+    - meta_scope: string.here.embed.makefile.jai
+    - meta_content_scope: string.unquoted.here.embed.makefile.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.makefile.jai
+        2: constant.other.stringdelimiter.here.embed.language.makefile.jai
+    - include: scope:source.makefile
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((metal|msl)))\b
+    captures:
+      1: keyword.other.directive.string.metal.jai
+      2: constant.other.stringdelimiter.here.embed.metal.jai
+      4: constant.other.stringdelimiter.here.embed.language.metal.jai
+    push:
+    - meta_scope: string.here.embed.metal.jai
+    - meta_content_scope: string.unquoted.here.embed.metal.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.metal.jai
+        2: constant.other.stringdelimiter.here.embed.language.metal.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((powershell|psl)))\b
+    captures:
+      1: keyword.other.directive.string.psl.jai
+      2: constant.other.stringdelimiter.here.embed.psl.jai
+      4: constant.other.stringdelimiter.here.embed.language.psl.jai
+    push:
+    - meta_scope: string.here.embed.psl.jai
+    - meta_content_scope: string.unquoted.here.embed.psl.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.psl.jai
+        2: constant.other.stringdelimiter.here.embed.language.psl.jai
+    - include: scope:source.powershell
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(py(thon)?))\b
+    captures:
+      1: keyword.other.directive.string.python.jai
+      2: constant.other.stringdelimiter.here.embed.python.jai
+      4: constant.other.stringdelimiter.here.embed.language.python.jai
+    push:
+    - meta_scope: string.here.embed.python.jai
+    - meta_content_scope: string.unquoted.here.embed.python.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.python.jai
+        2: constant.other.stringdelimiter.here.embed.language.python.jai
+    - include: scope:source.python
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(shaderlab))\b
+    captures:
+      1: keyword.other.directive.string.shaderlab.jai
+      2: constant.other.stringdelimiter.here.embed.shaderlab.jai
+      4: constant.other.stringdelimiter.here.embed.language.shaderlab.jai
+    push:
+    - meta_scope: string.here.embed.shaderlab.jai
+    - meta_content_scope: string.unquoted.here.embed.shaderlab.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.shaderlab.jai
+        2: constant.other.stringdelimiter.here.embed.language.shaderlab.jai
+    - include: scope:source.shaderlab
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(shader))\b
+    captures:
+      1: keyword.other.directive.string.shader.jai
+      2: constant.other.stringdelimiter.here.embed.shader.jai
+      4: constant.other.stringdelimiter.here.embed.language.shader.jai
+    push:
+    - meta_scope: string.here.embed.shader.jai
+    - meta_content_scope: string.unquoted.here.embed.shader.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.shader.jai
+        2: constant.other.stringdelimiter.here.embed.language.shader.jai
+    - include: scope:source.glsl
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(sh(ell)?))\b
+    captures:
+      1: keyword.other.directive.string.sh.jai
+      2: constant.other.stringdelimiter.here.embed.sh.jai
+      4: constant.other.stringdelimiter.here.embed.language.sh.jai
+    push:
+    - meta_scope: string.here.embed.sh.jai
+    - meta_content_scope: string.unquoted.here.embed.sh.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.sh.jai
+        2: constant.other.stringdelimiter.here.embed.language.sh.jai
+    - include: scope:source.shell
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(sql))\b
+    captures:
+      1: keyword.other.directive.string.sql.jai
+      2: constant.other.stringdelimiter.here.embed.sql.jai
+      4: constant.other.stringdelimiter.here.embed.language.sql.jai
+    push:
+    - meta_scope: string.here.embed.sql.jai
+    - meta_content_scope: string.unquoted.here.embed.sql.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.sql.jai
+        2: constant.other.stringdelimiter.here.embed.language.sql.jai
+    - include: scope:source.sql
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(toml))\b
+    captures:
+      1: keyword.other.directive.string.toml.jai
+      2: constant.other.stringdelimiter.here.embed.toml.jai
+      4: constant.other.stringdelimiter.here.embed.language.toml.jai
+    push:
+    - meta_scope: string.here.embed.toml.jai
+    - meta_content_scope: string.unquoted.here.embed.toml.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.toml.jai
+        2: constant.other.stringdelimiter.here.embed.language.toml.jai
+    - include: scope:source.toml
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((ts|typescript)))\b
+    captures:
+      1: keyword.other.directive.string.ts.jai
+      2: constant.other.stringdelimiter.here.embed.ts.jai
+      4: constant.other.stringdelimiter.here.embed.language.ts.jai
+    push:
+    - meta_scope: string.here.embed.ts.jai
+    - meta_content_scope: string.unquoted.here.embed.ts.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.ts.jai
+        2: constant.other.stringdelimiter.here.embed.language.ts.jai
+    - include: scope:source.ts
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((vdf|valve)))\b
+    captures:
+      1: keyword.other.directive.string.vdf.jai
+      2: constant.other.stringdelimiter.here.embed.vdf.jai
+      4: constant.other.stringdelimiter.here.embed.language.vdf.jai
+    push:
+    - meta_scope: string.here.embed.vdf.jai
+    - meta_content_scope: string.unquoted.here.embed.vdf.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.vdf.jai
+        2: constant.other.stringdelimiter.here.embed.language.vdf.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(x(86_)?64))\b
+    captures:
+      1: keyword.other.directive.string.x64.jai
+      2: constant.other.stringdelimiter.here.embed.x64.jai
+      4: constant.other.stringdelimiter.here.embed.language.x64.jai
+    push:
+    - meta_scope: string.here.embed.x64.jai
+    - meta_content_scope: string.unquoted.here.embed.x64.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.x64.jai
+        2: constant.other.stringdelimiter.here.embed.language.x64.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(yaml))\b
+    captures:
+      1: keyword.other.directive.string.yaml.jai
+      2: constant.other.stringdelimiter.here.embed.yaml.jai
+      4: constant.other.stringdelimiter.here.embed.language.yaml.jai
+    push:
+    - meta_scope: string.here.embed.yaml.jai
+    - meta_content_scope: string.unquoted.here.embed.yaml.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.yaml.jai
+        2: constant.other.stringdelimiter.here.embed.language.yaml.jai
+    - include: scope:source.yaml
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(html))\b
+    captures:
+      1: keyword.other.directive.string.html.jai
+      2: constant.other.stringdelimiter.here.embed.html.jai
+      4: constant.other.stringdelimiter.here.embed.language.html.jai
+    push:
+    - meta_scope: string.here.embed.html.jai
+    - meta_content_scope: string.unquoted.here.embed.html.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.html.jai
+        2: constant.other.stringdelimiter.here.embed.language.html.jai
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?((md|markdown)))\b
+    captures:
+      1: keyword.other.directive.string.md.jai
+      2: constant.other.stringdelimiter.here.embed.md.jai
+      4: constant.other.stringdelimiter.here.embed.language.md.jai
+    push:
+    - meta_scope: string.here.embed.md.jai
+    - meta_content_scope: string.unquoted.here.embed.md.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.md.jai
+        2: constant.other.stringdelimiter.here.embed.language.md.jai
+    - include: scope:text.md
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(xml))\b
+    captures:
+      1: keyword.other.directive.string.xml.jai
+      2: constant.other.stringdelimiter.here.embed.xml.jai
+      4: constant.other.stringdelimiter.here.embed.language.xml.jai
+    push:
+    - meta_scope: string.here.embed.xml.jai
+    - meta_content_scope: string.unquoted.here.embed.xml.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.xml.jai
+        2: constant.other.stringdelimiter.here.embed.language.xml.jai
+    - include: scope:text.xml
+  - match: (#string)\s+((?i)([A-Za-z_]\w*)?(xsl))\b
+    captures:
+      1: keyword.other.directive.string.xsl.jai
+      2: constant.other.stringdelimiter.here.embed.xsl.jai
+      4: constant.other.stringdelimiter.here.embed.language.xsl.jai
+    push:
+    - meta_scope: string.here.embed.xsl.jai
+    - meta_content_scope: string.unquoted.here.embed.xsl.jai
+    - match: \s*(\3)(\4)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.embed.xsl.jai
+        2: constant.other.stringdelimiter.here.embed.language.xsl.jai
+    - include: scope:text.xml.xsl
+  - match: (#string)\s+([A-Za-z_]\w*)
+    captures:
+      1: keyword.other.directive.string.jai
+      2: constant.other.stringdelimiter.here.jai
+    push:
+    - meta_scope: string.here.jai
+    - meta_content_scope: string.unquoted.here.jai
+    - match: \s*(\2)
+      pop: true
+      captures:
+        1: constant.other.stringdelimiter.here.jai
+  repo_structs:
+  - match: \b([a-zA-Z_](?:\w|\\ *)*)\s*(::)\s*(struct)
+    captures:
+      1: entity.name.struct.jai
+      2: keyword.declaration.jai
+      3: keyword.declaration.struct.jai
+  repo_symbols:
+  - match: (\})\s*(=)\s*(\.)([a-zA-Z_](?:\w|\\ *)*)
+    captures:
+      1: punctuation.section.braces.end.jai
+      2: keyword.declaration.jai
+      3: punctuation.accessor.jai
+      4: variable.enum.jai
+  - match: (::|:=|:)
+    scope: keyword.declaration.jai
+  - match: (=|\+|-|\*|/|<|>|~|\||&|!|\^)+
+    scope: keyword.operator.jai
+  - match: '%'
+    scope: keyword.operator.percent.jai
+  - match: (\.\.)
+    scope: punctuation.jai
+  - match: \(
+    scope: punctuation.section.parens.begin.jai
+  - match: \)
+    scope: punctuation.section.parens.end.jai
+  - match: \{
+    scope: punctuation.section.braces.begin.jai
+  - match: \}
+    scope: punctuation.section.braces.end.jai
+  - match: \[
+    scope: punctuation.section.brackets.begin.jai
+  - match: \]
+    scope: punctuation.section.brackets.end.jai
+  - match: (\.)
+    scope: punctuation.accessor.jai
+  - match: (,)
+    scope: punctuation.separator.jai
+  - match: (;)
+    scope: punctuation.terminator.jai
+  repo_variables:
+  - match: \b((it_index|it)|([a-zA-Z_](?:\w|\\ *)*))(\.[a-zA-Z0-9_.]+)?\b
+    captures:
+      1: variable.other.jai
+      2: support.variable.jai

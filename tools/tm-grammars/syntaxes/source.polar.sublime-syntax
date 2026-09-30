@@ -1,0 +1,195 @@
+%YAML 1.2
+---
+# Polar (source.polar): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/osohq/polar-grammar.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Polar
+scope: source.polar
+file_extensions:
+- polar
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_rule
+  - include: repo_rule-type
+  - include: repo_inline-query
+  - include: repo_resource-block
+  - include: repo_test-block
+  - include: repo_fixture
+  repo_boolean:
+  - match: \b(true|false)\b
+    scope: constant.language.boolean
+  repo_comment:
+  - match: '#.*'
+    scope: comment.line.number-sign
+  repo_fixture:
+  - match: \bfixture\b
+    scope: keyword.control
+  - match: \btest\b
+    captures:
+      0: keyword.control
+    push:
+    - match: \bfixture\b
+      pop: true
+      captures:
+        0: keyword.control
+  repo_inline-query:
+  - match: \?=
+    captures:
+      0: keyword.control
+    push:
+    - meta_scope: meta.inline-query
+    - match: ;
+      pop: true
+    - include: repo_term
+  repo_keyword:
+  - match: \b(cut|or|debug|print|in|forall|if|and|of|not|matches|type|on|global)\b
+    scope: constant.character
+  repo_number:
+  - match: \b[+-]?\d+(?:(\.)\d+(?:e[+-]?\d+)?|(?:e[+-]?\d+))\b
+    scope: constant.numeric.float
+  - match: \b(\+|\-)[\d]+\b
+    scope: constant.numeric.integer
+  - match: \b[\d]+\b
+    scope: constant.numeric.natural
+  repo_object-literal:
+  - match: ([a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*)\s*\{
+    captures:
+      1: entity.name.type.resource
+    push:
+    - meta_scope: constant.other.object-literal
+    - match: \}
+      pop: true
+    - include: repo_string
+    - include: repo_number
+    - include: repo_boolean
+  repo_operator:
+  - match: (\+|-|\*|\/|<|>|=|!)
+    captures:
+      1: keyword.control
+  repo_resource-block:
+  - match: (?<resourceType>[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*){0}((?:(resource|actor)\s+(\g<resourceType>)(?:\s+(extends)\s+(\g<resourceType>(?:\s*,\s*\g<resourceType>)*)\s*,?\s*)?)|(global))\s*{
+    captures:
+      3: keyword.control
+      4: entity.name.type
+      5: keyword.control
+      7: keyword.control
+    push:
+    - meta_scope: meta.resource-block
+    - match: \}
+      pop: true
+    - match: ;
+      scope: punctuation.separator.sequence.declarations
+    - match: \{
+      push:
+      - meta_scope: meta.relation-declaration
+      - match: \}
+        pop: true
+      - include: repo_specializer
+      - include: repo_comment
+      - match: ','
+        scope: punctuation.separator.sequence.dict
+    - include: repo_term
+  repo_rule:
+  - include: repo_rule-functor
+  - match: \bif\b
+    captures:
+      0: keyword.control.if
+    push:
+    - match: ;
+      pop: true
+    - include: repo_term
+  - match: ;
+  repo_rule-functor:
+  - match: ([a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*)\s*\(
+    captures:
+      1: support.function.rule
+    push:
+    - match: \)
+      pop: true
+    - include: repo_specializer
+    - match: ','
+      scope: punctuation.separator.sequence.list
+    - include: repo_term
+  repo_rule-type:
+  - match: \btype\b
+    captures:
+      0: keyword.other.type-decl
+    push:
+    - meta_scope: meta.rule-type
+    - match: ;
+      pop: true
+    - include: repo_rule-functor
+  repo_specializer:
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*\s*:\s*([a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z0-9_]+)*)'
+    captures:
+      1: entity.name.type.resource
+  repo_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape
+  repo_term:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_number
+  - include: repo_keyword
+  - include: repo_operator
+  - include: repo_boolean
+  - include: repo_object-literal
+  - match: \[
+    push:
+    - meta_scope: meta.bracket.list
+    - match: \]
+      pop: true
+    - include: repo_term
+    - match: ','
+      scope: punctuation.separator.sequence.list
+  - match: \{
+    push:
+    - meta_scope: meta.bracket.dict
+    - match: \}
+      pop: true
+    - include: repo_term
+    - match: ','
+      scope: punctuation.separator.sequence.dict
+  - match: \(
+    push:
+    - meta_scope: meta.parens
+    - match: \)
+      pop: true
+    - include: repo_term
+  repo_test-block:
+  - match: (test)\s+("[^"]*")\s*\{
+    captures:
+      1: keyword.control
+      2: string.quoted.double
+    push:
+    - meta_scope: meta.test-block
+    - match: \}
+      pop: true
+    - match: (setup)\s*\{
+      captures:
+        1: keyword.control
+      push:
+      - meta_scope: meta.test-setup
+      - match: \}
+        pop: true
+      - include: repo_rule
+      - include: repo_comment
+      - include: repo_fixture
+    - include: repo_rule
+    - match: \b(assert|assert_not)\b
+      scope: keyword.other
+    - include: repo_comment
+    - include: repo_rule-functor
+    - match: \biff\b
+      captures:
+        0: keyword.control
+      push:
+      - match: ;
+        pop: true
+      - include: repo_term
+    - match: ;

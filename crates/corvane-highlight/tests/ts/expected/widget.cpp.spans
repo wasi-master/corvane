@@ -35,8 +35,8 @@
 45: 1+4=Type 6+3=Variable 12+2=String 15+33=String 49+1=String
 46: 1+4=Type 6+5=Variable 14+5=String 20+18=String 39+4=String
 47: 1+4=Type 6+5=Variable 14+5=String
-48: 0+23=String
-49: 0+15=String
+48: 0+2=String 2+6=Keyword 8+1=String 10+1=String 11+4=Keyword 15+1=String 16+7=Type
+49: 0+2=String 2+5=Keyword 7+1=String 8+2=AltVariable 10+1=String 12+1=String 13+1=AltVariable
 50: 0+1=String 2+4=String
 51: 1+4=Type 6+3=Variable 12+13=String 27+3=Variable 33+9=String 44+3=Variable 50+9=String 61+4=Variable 68+7=String
 52: 1+8=Type 10+2=Variable 15+4=String

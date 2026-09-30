@@ -1,0 +1,171 @@
+%YAML 1.2
+---
+# Pact (source.pact): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/kadena-io/pact-atom.git via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Pact
+scope: source.pact
+file_extensions:
+- pact
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_sexp
+  - include: repo_reserved
+  - include: repo_type
+  - include: repo_string
+  - include: repo_list
+  - include: repo_object
+  - include: repo_literal
+  - include: repo_symbol
+  - include: repo_metas
+  - include: repo_let
+  repo_arglist:
+  - match: (?<=\()
+    push:
+    - match: (?=\))
+      pop: true
+    - match: ([\w%#+\-_&\$@<>=\?\*!\|/]+)
+      scope: variable.name.arg.pact
+    - include: repo_type
+  repo_atom:
+  - match: ([\w%#+-_&\$@<>=\?\*!\|/]+)
+  repo_comment:
+  - match: (;).*$\n?
+    scope: comment.line.semicolon.pact
+    captures:
+      1: punctuation.definition.comment.pact
+  repo_deflam:
+  - match: (?<=\()(defun|defpact|defcap)\s+([\w%#+\-_&\$@<>=\?\*!\|/]+)
+    captures:
+      1: keyword.reserved.pact
+      2: entity.function.name.pact
+    push:
+    - meta_scope: meta.definition.global.pact
+    - match: \)
+      pop: true
+    - include: repo_arglist
+    - include: repo_type
+  repo_defsimple:
+  - match: (?<=\()(defconst|defschema|deftable|module|interface)\s+([\w%#+-_&\$@<>=\?\*!\|/]+)\b
+    captures:
+      1: keyword.reserved.pact
+      2: entity.function.name.pact
+    push:
+    - meta_scope: meta.definition.global.pact
+    - match: (?=\))
+      pop: true
+    - include: main
+  repo_let:
+  - match: \((let\*?)\s
+    captures:
+      1: keyword.let.pact
+    push:
+    - meta_scope: meta.let.declaration.pact
+    - match: \)
+      pop: true
+    - match: \(
+      push:
+      - meta_scope: meta.let.bindings.pact
+      - match: (?=\))
+        pop: true
+      - match: \(([\w%#+\-_&\$@<>=\?\*!\|/]+)\b
+        captures:
+          1: variable.let.pact
+        push:
+        - meta_scope: meta.let.binding.pact
+        - match: \)
+          pop: true
+        - include: main
+  repo_list:
+  - match: (\[)
+    captures:
+      1: punctuation.section.list.begin.pact
+    push:
+    - meta_scope: meta.list.pact
+    - match: (\](?=[\}\]\)\s]*(?:;|$)))|(\])
+      pop: true
+      captures:
+        1: punctuation.section.list.end.trailing.pact
+        2: punctuation.section.list.end.pact
+    - include: main
+  repo_literal:
+  - match: (true|false)
+    scope: constant.language.boolean.pact
+  - match: \b(-?\d+\.\d+)\b
+    scope: constant.numeric.double.pact
+  - match: \b(-?\d+)\b
+    scope: constant.numeric.integer.pact
+  - match: (:=?)
+    scope: constant.language.binder.pact
+  repo_metas:
+  - match: '@\w+'
+    scope: variable.language.metas.pact
+  repo_object:
+  - match: (\{)
+    captures:
+      1: punctuation.section.object.begin.pact
+    push:
+    - meta_scope: meta.object.pact
+    - match: (\}(?=[\}\]\)\s]*(?:;|$)))|(\})
+      pop: true
+      captures:
+        1: punctuation.section.object.end.trailing.pact
+        2: punctuation.section.object.end.pact
+    - match: (:=)
+      captures:
+        1: constant.binder.pact
+      push:
+      - match: ([\w%#+\-_&\$@<>=\?\*!\|/]+)
+        pop: true
+        captures:
+          1: variable.binder.pact
+    - include: main
+  repo_reserved:
+  - match: \b(module|interface|list|let|let\*|defun|defpact|defconst|defschema|deftable|defcap|step|use|step-with-rollback|invariants?|properties|property|defproperty|bless|implements)\b
+    scope: keyword.reserved.pact
+  repo_sexp:
+  - match: (\()
+    captures:
+      1: punctuation.section.expression.begin.pact
+    push:
+    - meta_scope: meta.expression.pact
+    - match: (\))(\n)|(\)(?=[\}\]\)\s]*(?:;|$)))|(\))
+      pop: true
+      captures:
+        1: punctuation.section.expression.end.trailing.pact
+        2: meta.after-expression.pact
+        3: punctuation.section.expression.end.trailing.pact
+        4: punctuation.section.expression.end.pact
+    - include: repo_deflam
+    - include: repo_defsimple
+    - include: repo_string
+    - include: repo_reserved
+    - include: repo_literal
+    - include: repo_list
+    - include: repo_object
+    - include: repo_let
+    - include: repo_sexp
+    - match: (?<=\()(.+?)(?=\s|\))
+      captures:
+        1: entity.name.function.pact
+    - include: main
+  repo_string:
+  - match: (?<!\\)(")
+    captures:
+      1: punctuation.definition.string.begin.pact
+    push:
+    - meta_scope: string.quoted.double.pact
+    - match: (?<!\\)(")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.pact
+  repo_symbol:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.symbol.pact
+    - match: (?=\s|[],:"'.)])
+      pop: true
+  repo_type:
+  - match: (?:[:])(integer|decimal|time|bool|string|list|value|keyset|guard|(object|table)?\{[\w%#+\-\._&\$@<>=\?\*!\|/]+\}|object|table)
+    captures:
+      1: keyword.reserved.type.pact

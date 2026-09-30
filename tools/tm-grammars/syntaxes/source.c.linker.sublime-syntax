@@ -1,0 +1,39 @@
+%YAML 1.2
+---
+# Linker Script (source.c.linker): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/donno2048/Linker.tmLanguage via GitHub Linguist v9.7.0 (license: mit).
+name: Linker Script
+scope: source.c.linker
+file_extensions:
+- ld
+- lds
+- x
+- ld.script
+contexts:
+  main:
+  - include: scope:source.c
+  - match: \b(?:S(?:E(?:ARCH_DIR|CTIONS)|IZEOF(?:_HEADERS)?|TARTUP)|IN(?:HIBIT_COMMON_ALLOCATION|CLUDE|PUT)|D(?:ATA_SEGMENT_(?:ALIGN|END)|EFINED)|O(?:UTPUT(?:_(?:FORMAT|ARCH))?|RIGIN)|C(?:REATE_OBJECT_SYMBOL|ONSTRUCTOR)S|(?:FORCE_COMMON_ALLOCATIO|HIDDE)N|E(?:X(?:CLUDE_FILE|TERN)|NTRY)|P(?:ROVIDE(?:_HIDDEN)?|HDRS)|A(?:BSOLUTE|SSERT|LIGN|DDR)|N(?:OCROSSREFS|EXT)|L(?:OADADDR|ENGTH)|M(?:EMORY|AX|IN)|sizeof_headers|l(?:en)?|o(?:rg)?|TARGET|BLOCK|GROUP)\b
+    scope: support.function.ld
+  - match: (BYTE|SHORT|LONG|S?QUAD)\s*\(([^\)]*)\)
+    captures:
+      1: storage.type.ld
+      2: constant.numeric.ld
+  - match: ((?=.*[^A-Z])[^\s\(;\:\{\}]*)\s*\(([^\),"]*)\)
+    captures:
+      1: variable.other.source.ld
+      2: constant.other.section.ld
+  - match: ([^\s\(;\:\{\}]*)(\s+[^\(\s\:\}]+|\s*\([^\)]*\))?\s*\:\s*(AT\s*\([^\)]*\))?
+    captures:
+      1: constant.other.section.ld
+      2: constant.numeric.address.ld
+      3: keyword.other.at.ld
+  - match: \}\s*\>\s*([^\s\>\:]*)\s*(AT\s*)?(?:\>\s*)?([^\=\>]*)?\=\s*([^\s;\}]*)
+    captures:
+      1: constant.numeric.memory.ld
+      2: keyword.other.at.ld
+      4: constant.numeric.memory.ld
+      5: constant.numeric.address.ld
+  - match: ([^\s\(;\{\}]*)\s*\(\s*([RrWwXx\!]{,4})\s*\)
+    captures:
+      1: constant.numeric.memory.ld
+      2: support.constant.permissions.ld

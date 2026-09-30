@@ -77,6 +77,7 @@ const fn cstr(s: &'static str) -> *const c_char {
 
 macro_rules! grammars {
     ($(
+        $(#[$attr:meta])*
         $name:literal ($feature:literal) => $language:expr,
         extensions: [$($ext:literal),* $(,)?],
         filenames: [$($file:literal),* $(,)?],
@@ -94,6 +95,7 @@ macro_rules! grammars {
             let mut grammars = Vec::new();
             $(
                 #[cfg(feature = $feature)]
+                $(#[$attr])*
                 grammars.push(Grammar {
                     name: cstr(concat!($name, "\0")),
                     language: $language.into_raw(),

@@ -1,8 +1,8 @@
 1: 0+31=Comment
 2: 0+6=Comment 7+8=Comment 17+6=String
 4: 0+6=Keyword 8+6=Variable 16+4=Keyword 21+25=String
-6: 0+37=Comment
-7: 0+48=Comment
+6: 0+4=Comment 4+6=Keyword 10+27=Comment
+7: 0+4=Comment 4+7=Keyword 11+37=Comment
 8: 0+8=Keyword 9+5=Type
 9: 4+5=Keyword 10+8=Variable 19+7=Type 27+8=Variable
 10: 4+5=Keyword 10+9=Variable 20+7=Type 28+7=Keyword 36+5=AltVariable 43+7=Type 51+6=AltVariable 59+6=Type 66+8=AltVariable

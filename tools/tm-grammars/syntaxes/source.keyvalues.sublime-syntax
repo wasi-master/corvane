@@ -1,0 +1,66 @@
+%YAML 1.2
+---
+# Valve Data Format (source.keyvalues): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Valve Data Format
+scope: source.keyvalues
+file_extensions:
+- vdf
+- vmf
+contexts:
+  main:
+  - include: repo_main
+  repo_block:
+  - match: '{'
+    captures:
+      0: punctuation.definition.block.begin.keyvalues
+    push:
+    - meta_scope: meta.structure.block.keyvalues
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.block.end.keyvalues
+    - include: repo_main
+  repo_comment:
+  - match: /
+    captures:
+      0: punctuation.definition.comment.keyvalues
+    push:
+    - meta_scope: comment.line.slash.keyvalues
+    - match: $
+      pop: true
+  repo_main:
+  - include: repo_block
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_number
+  repo_number:
+  - match: \b\d+\b$
+    scope: constant.numeric.integer.keyvalues
+  repo_string:
+  - include: repo_string_parts
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.keyvalues
+    push:
+    - meta_scope: string.quoted.double.keyvalues
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.keyvalues
+    - include: repo_string_parts
+  - match: '[^\s{}]+'
+    scope: string.unquoted.keyvalues
+  repo_string_parts:
+  - match: (?<!\w)(#)\w+
+    scope: entity.name.tag.include.keyvalues
+    captures:
+      1: punctuation.definition.include.keyvalues
+  - match: (\|)(\S+)(\|)
+    scope: string.unquoted.file-path.keyvalues
+    captures:
+      0: constant.language.directory.keyvalues
+      1: punctuation.definition.directory.begin.keyvalues
+      3: punctuation.definition.directory.end.keyvalues
+  - match: \\[\\nt"]
+    scope: constant.character.escape.keyvalues

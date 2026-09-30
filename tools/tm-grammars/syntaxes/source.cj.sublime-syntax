@@ -1,0 +1,326 @@
+%YAML 1.2
+---
+# Cangjie (source.cj): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Zxilly/playground-cj.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Cangjie
+scope: source.cj
+file_extensions:
+- cj
+contexts:
+  main:
+  - include: repo_strings
+  - include: repo_mark
+  - include: repo_package
+  - include: repo_import
+  - include: repo_quoteToken
+  - include: repo_originStrings
+  - include: repo_comments
+  - include: repo_code
+  - include: repo_at
+  - include: repo_function
+  - include: repo_macro
+  - include: repo_classlike-declaration
+  - include: repo_variable
+  - include: repo_qualified-type
+  - include: repo_type
+  repo_at:
+  - match: '@'
+    scope: keyword.control.Cangjie
+  repo_block:
+  - match: \{
+    push:
+    - match: \}
+      pop: true
+    - include: repo_comments
+    - include: repo_strings
+    - include: repo_keywords
+    - include: repo_function
+    - include: repo_variable
+    - include: repo_constants
+    - include: repo_block
+  repo_classlike-declaration:
+  - match: \b(class|interface|struct|enum|extend|type)\s+
+    push:
+    - meta_scope: support.class.Cangjie
+    - match: (?=\b[0-9])|(?=\b(VArray|const|differentiable|grad|vjp|valWithGrad|adjoint|adjointOf|when|except|include|primal|stage|main|false|IntNative|mut|Nothing|prop|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|as|in|match|where|spawn|synchronized|macro|quote|static|internal|external|operator|foreign|inout)\s)|`[a-zA-Z_][a-zA-Z0-9_]*`|(?=[^\w\s])|\b[a-zA-Z_][a-zA-Z0-9_]*
+      pop: true
+  - match: \b(func)\s+
+    push:
+    - meta_scope: support.function.Cangjie
+    - match: (?=\b[0-9])|(?=\b(VArray|const|differentiable|grad|vjp|valWithGrad|adjoint|adjointOf|when|except|include|primal|stage|main|false|IntNative|mut|Nothing|prop|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|as|in|match|where|spawn|synchronized|macro|quote|static|internal|external|operator|foreign|inout)\s)|`[a-zA-Z_][a-zA-Z0-9_]*`|(?=[^\w\s])|\b[a-zA-Z_][a-zA-Z0-9_]*
+      pop: true
+  - match: \b(let|var)\s+
+    push:
+    - meta_scope: support.variable.Cangjie
+    - match: (?=\b[0-9])|(?=\b(VArray|const|differentiable|grad|vjp|valWithGrad|adjoint|adjointOf|when|except|include|primal|stage|main|false|IntNative|mut|Nothing|prop|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|as|in|match|where|spawn|synchronized|macro|quote|static|internal|external|operator|foreign|inout)\s)|`[a-zA-Z_][a-zA-Z0-9_]*`|(?=[^\w\s])|\b[a-zA-Z_][a-zA-Z0-9_]*
+      pop: true
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\<[\*\<\,\w\s]*\>)
+    scope: support.class.Cangjie
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*<:[\s*[a-zA-Z_][a-zA-Z0-9_]*\s*&\s*]*)
+    scope: support.class.Cangjie
+  - match: \b(case)\s+
+    push:
+    - meta_scope: keyword.operator.Cangjie
+    - match: (?=(\=\>))|[\n\r]
+      pop: true
+    - include: repo_memberAccess
+    - include: repo_classlike-declaration
+    - include: repo_function
+    - include: repo_strings
+    - include: repo_keywords
+    - include: repo_qualified-type
+    - include: repo_constants
+    - include: repo_type
+    - include: repo_variable
+  repo_code:
+  - include: repo_keywords
+  - include: repo_constants
+  - include: repo_strings
+  repo_comments:
+  - match: (/\*)|(/\*/\*)
+    captures:
+      0: punctuation.definition.comment.begin.Cangjie
+    push:
+    - meta_scope: comment.block.Cangjie
+    - match: (\*/)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.Cangjie
+    - match: (/\*)|(/\*/\*)
+      push:
+      - meta_scope: comment.block.Cangjie
+      - match: (\*/)
+        pop: true
+  - match: //
+    push:
+    - meta_scope: comment.line.Cangjie
+    - match: '
+
+        '
+      pop: true
+  repo_constants:
+  - match: \b0[bB][01]([01_]*)?(u8|u16|u32|u64|i8|i16|i32|i64)?\b
+    scope: constant.numeric.binary.integer.Cangjie
+  - match: \b0[oO][0-7]([0-7_]*)?(u8|u16|u32|u64|i8|i16|i32|i64)?\b
+    scope: constant.numeric.octal.integer.Cangjie
+  - match: \b[0-9]([0-9_]*)?(u8|u16|u32|u64|i8|i16|i32|i64)?\b
+    scope: constant.numeric.decimal.integer.Cangjie
+  - match: \b0[xX][0-9a-fA-F]([0-9a-fA-F_]*)?(u8|u16|u32|u64|i8|i16|i32|i64)?(?!\.)\b
+    scope: constant.numeric.hexadecimal.integer.Cangjie
+  - match: (\b([0-9]([0-9_]*)?[eE][-]?[0-9]([0-9_]*)?)|((?<!\.)\.[0-9]([0-9_]*)?([eE][-]?[0-9]([0-9_]*)?)?)|\b([0-9]([0-9_]*)?\.[0-9]([0-9_]*)?([eE][-]?[0-9]([0-9_]*)?)?))(f16|f32|f64)?
+    scope: constant.numeric.decimal.float.Cangjie
+  - match: \b0[xX](\.[0-9a-fA-F]([0-9a-fA-F_]*)?|[0-9a-fA-F]([0-9a-fA-F_]*)?\.[0-9a-fA-F]([0-9a-fA-F_]*)?|[0-9a-fA-F]([0-9a-fA-F_]*)?)([pP][-]?[0-9]([0-9_]*)?)
+    scope: constant.numeric.hexadecimal.float.Cangjie
+  - match: \bb'([^'\\]|\\[tbrn'\\"fv0]|\\u\{[0-9a-fA-F]{1,2}\})'
+    scope: constant.character.escape.string.byte.Cangjie
+  - match: \bb"([^"\\]|\\[tbrn'\\"fv0]|\\u\{[0-9a-fA-F]{1,2}\})*"
+    scope: constant.character.escape.string.byteArray.Cangjie
+  repo_escape_string:
+  - match: (\\\\)|(\\u\{[0-9a-fA-F]{1,8}\})|(\\[a|b|t|r|n|"|\'|f|v|\$|0])
+    scope: constant.character.escape.string.byteArray.Cangjie
+  repo_function:
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\(.*)
+    scope: support.function.Cangjie
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\<[\*\<\,\w\s]*\>\s*\(.*)
+    scope: support.function.Cangjie
+  - match: \boperator\s+func\s+((\(\))|(\[\])|(\*\*)|(\<\<)|(\>\>)|(\>\=)|(\<\=)|(\!\=)|(\=\=)|\!|\-|\*|\/|\%|\+|\<|\>|\&|\^|\|)
+    scope: support.function.Cangjie
+  - match: \b(grad|@vjp|adjointOf|valWithGrad)\([a-zA-Z_][a-zA-Z0-9_]*
+    scope: support.function.Cangjie
+  repo_import:
+  - match: \b(import)\b\s*\b\s
+    captures:
+      1: keyword.control.import.Cangjie
+    push:
+    - meta_scope: keyword.control.Cangjie
+    - meta_content_scope: storage.type.import.Cangjie
+    - match: (?=\b[0-9])|(?=[^\w\s.,`*{}])|(?=\b(public|internal|protected|private|override|abstract|open|redef|sealed)\b(\x20)*[^.,\s])|(?=\b(VArray|const|differentiable|grad|vjp|valWithGrad|adjoint|adjointOf|when|except|include|primal|stage|main|false|IntNative|mut|Nothing|prop|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|in|match|where|spawn|synchronized|macro|quote|static|external|operator|foreign|inout)\s)
+      pop: true
+      captures:
+        1: punctuation.terminator.Cangjie
+    - match: ^(import)
+      push:
+      - meta_scope: keyword.control.char
+      - match: \n|[^(\s(as)\s)]
+        pop: true
+      - match: (\s)
+        push:
+        - meta_scope: constant.character.escape.char
+        - match: (\s)
+          pop: true
+    - include: repo_comments
+    - match: (?<=\.)\s*\.|\.(?=\s*;)
+      scope: invalid.illegal.character_not_allowed_here.Cangjie
+    - match: (?<!\.)\s*\*
+      scope: invalid.illegal.character_not_allowed_here.Cangjie
+    - match: (?<!_)_(?=\s*(\.|;))|\b\d+|-+
+      scope: invalid.illegal.character_not_allowed_here.Cangjie
+    - match: '(?x)\b(?<!\$)
+
+        (false|IntNative|mut|Nothing|prop|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|in|match|where|spawn|synchronized|macro|quote|static|external|operator|foreign)\b'
+      scope: invalid.illegal.character_not_allowed_here.Cangjie
+    - match: \.|\*
+      scope: punctuation.separator.Cangjie
+    - match: \*
+      scope: variable.language.wildcard.Cangjie
+    - include: repo_keywords_to_identifier
+    - include: repo_keywords
+  repo_insertValue:
+  - match: \$\{
+    push:
+    - meta_scope: keyword.operator.Cangjie
+    - match: \}|\n|\r
+      pop: true
+    - include: repo_comments
+    - include: repo_strings
+    - include: repo_keywords
+    - include: repo_function
+    - include: repo_variable
+    - include: repo_constants
+    - include: repo_block
+  repo_keywords:
+  - match: \b(VArray|const|differentiable|grad|vjp|valWithGrad|adjoint|adjointOf|when|except|include|primal|stage|main|false|IntNative|mut|Nothing|prop|redef|true|UIntNative|unsafe|Int8|Int16|Int32|Int64|UInt8|UInt16|UInt32|UInt64|Float16|Float32|Float64|Rune|Bool|Unit|struct|enum|This|package|import|class|interface|extend|func|let|var|sealed|type|init|this|super|if|else|case|try|catch|finally|for|do|while|throw|return|continue|break|is|as|in|match|where|spawn|synchronized|macro|quote|static|public|internal|private|protected|internal|external|override|abstract|open|operator|foreign|inout)\b
+    scope: keyword.control.Cangjie
+  - match: (\;|!in)
+    scope: keyword.control.Cangjie
+  - match: (\b(Option|String)\b)
+    scope: support.class.Cangjie.keyword
+  repo_keywords_to_identifier:
+  - match: \b(public|internal|private|protected|override|abstract|open|redef|sealed)\b
+  repo_macro:
+  - match: (?<=(@))[A-Za-z_][A-Za-z0-9_.]*
+    scope: support.function.Cangjie.macro
+  repo_mark:
+  - match: \b(`?\w+`?)(?=\s*:)
+    scope: support.variable.Cangjie
+  repo_memberAccess:
+  - match: \b(([a-zA-Z_][a-zA-Z0-9_]*)|(`[a-zA-Z_][a-zA-Z0-9_]*`))(?=\.)
+    scope: support.class.Cangjie
+  repo_originStrings:
+  - match: (?<!#)(#{2})+"
+    captures:
+      1: punctuation.definition.string.begin.Cangjie
+    push:
+    - meta_scope: string.quoted.double.Cangjie
+    - meta_content_scope: punctuation.definition.string.begin.Cangjie
+    - match: '"(?<!#)(#{2})+'
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.Cangjie
+  - match: (?<!#)#(#{2})*"
+    captures:
+      1: punctuation.definition.string.begin.Cangjie
+    push:
+    - meta_scope: string.quoted.double.Cangjie
+    - meta_content_scope: punctuation.definition.string.begin.Cangjie
+    - match: '"(?<!#)#(#{2})*'
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.Cangjie
+  repo_package:
+  - match: \b(package)\b\s*
+    captures:
+      1: keyword.control.package.Cangjie
+    push:
+    - meta_scope: keyword.control.Cangjie
+    - meta_content_scope: storage.type.package.Cangjie
+    - match: '(?=[^.\w\s])|\R|\Z|
+
+        '
+      pop: true
+      captures:
+        1: punctuation.terminator.Cangjie
+    - include: repo_keywords_to_identifier
+    - include: repo_comments
+    - include: repo_keywords
+  repo_qualified-type:
+  - match: ':'
+    push:
+    - match: (?=[^*\<,\|\w\s]|\R|\n)
+      pop: true
+    - include: repo_mark
+    - include: repo_keywords
+    - include: repo_constants
+    - match: (?<=,)\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=(!?)\s*:)
+      scope: support.variable.Cangjie
+    - match: '`[a-zA-Z_][a-zA-Z0-9_]*`|[a-zA-Z_][a-zA-Z0-9_]*'
+      scope: support.class.Cangjie
+  repo_quoteToken:
+  - match: \bquote\s*\(
+    push:
+    - match: (?<!\\)\)
+      pop: true
+    - include: repo_quoteToken_inside
+    - include: repo_quoteToken_content
+  repo_quoteToken_content:
+  - match: .
+    scope: string.quoted.single.Cangjie
+  repo_quoteToken_inside:
+  - match: (?<!\\)\(
+    push:
+    - meta_scope: string.quoted.single.Cangjie
+    - match: (?<!\\)\)
+      pop: true
+    - include: repo_quoteToken_inside
+  repo_string_mutil:
+  - match: (?<!\\)"""
+    push:
+    - meta_scope: string.quoted.double.Cangjie
+    - match: '"""'
+      pop: true
+    - include: repo_insertValue
+    - include: repo_escape_string
+  repo_string_single:
+  - match: (?<!\\)(r)?\'
+    push:
+    - meta_scope: string.quoted.single.Cangjie
+    - match: \'|\n|\r
+      pop: true
+    - include: repo_escape_string
+    - include: repo_insertValue
+  - match: (r)?\'(?<!\\)[\s\S](?<!\\)\'
+    scope: string.quoted.single.Cangjie
+  - match: (?<!\\)(r)?"
+    push:
+    - meta_scope: string.quoted.double.Cangjie
+    - match: '"|\n|\r'
+      pop: true
+    - include: repo_insertValue
+    - include: repo_escape_string
+  - match: (?<!\\)J"
+    push:
+    - meta_scope: string.quoted.double.Cangjie
+    - match: '"|\n|\r'
+      pop: true
+    - include: repo_escape_string
+  - match: (?<!\\)b"
+    push:
+    - meta_scope: constant.character.escape.string.byteArray.Cangjie
+    - match: '"|\n|\r'
+      pop: true
+    - include: repo_escape_string
+  - match: (?<!\\)b'
+    push:
+    - meta_scope: constant.character.escape.string.byteArray.Cangjie
+    - match: '''|\n|\r'
+      pop: true
+    - include: repo_escape_string
+  repo_strings:
+  - include: repo_string_mutil
+  - include: repo_string_single
+  repo_type:
+  - match: (?<!<)<
+    push:
+    - match: (?=[^,*\<\>\w\s]|[\n\r])
+      pop: true
+    - include: repo_keywords
+    - include: repo_strings
+    - match: '[a-zA-Z_][a-zA-Z0-9_]*\s*(?=[\)|\||\&|\n|;])'
+      scope: support.variable.Cangjie
+    - match: '`[a-zA-Z_][a-zA-Z0-9_]*`|[a-zA-Z_][a-zA-Z0-9_]*'
+      scope: support.class.Cangjie
+    - include: repo_function
+    - include: repo_constants
+  repo_variable:
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*|`[a-zA-Z_][a-zA-Z0-9_]*`)
+    scope: support.variable.Cangjie

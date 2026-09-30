@@ -64,6 +64,12 @@ pub mod sizes {
 
     /// `v` CSS pixels at the current zoom.
     #[inline]
+    /// A CSS `box-shadow` blur length as GPUI's shadow `blur_radius`: CSS
+    /// blurs with a Gaussian of σ = blur / 2, GPUI takes σ itself.
+    pub fn css_blur(v: f32) -> Pixels {
+        zpx(v / 2.)
+    }
+
     pub fn zpx(v: f32) -> Pixels {
         px(v * zoom_factor())
     }

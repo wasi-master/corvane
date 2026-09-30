@@ -77,6 +77,8 @@ pub struct DialogFrame {
     /// submit button when nothing else asks for focus): its focus ring and
     /// `:focus` background show.
     pub focus_primary: bool,
+    /// `focusCloseButtonOnOpen`: the header's close button holds focus.
+    pub focus_close: bool,
 }
 
 impl Default for DialogFrame {
@@ -87,6 +89,7 @@ impl Default for DialogFrame {
             footer: None,
             show_header: true,
             focus_primary: false,
+            focus_close: false,
         }
     }
 }
@@ -462,6 +465,7 @@ fn dialog_impl(
         footer,
         show_header,
         focus_primary,
+        focus_close,
     } = frame;
     let viewport = window.viewport_size();
     deferred(
@@ -500,7 +504,7 @@ fn dialog_impl(
                         .shadow(vec![BoxShadow {
                             color: t.shadow,
                             offset: point(zpx(0.), zpx(2.)),
-                            blur_radius: zpx(7.),
+                            blur_radius: css_blur(7.),
                             spread_radius: zpx(0.),
                             inset: false,
                         }])
@@ -535,10 +539,33 @@ fn dialog_impl(
                                         let on_close = on_close.clone();
                                         div()
                                             .id("dialog-close")
+                                            .relative()
                                             .icon_button_label("Close")
                                             .size(zpx(16.))
                                             .cursor_pointer()
                                             .on_click(move |_, window, cx| on_close(window, cx))
+                                            // Chromium's focus ring: 2 px out,
+                                            // 2 px wide, a 1 px dark halo
+                                            .when(focus_close, |d| {
+                                                d.child(
+                                                    div()
+                                                        .absolute()
+                                                        .top(zpx(-5.))
+                                                        .left(zpx(-5.))
+                                                        .right(zpx(-5.))
+                                                        .bottom(zpx(-5.))
+                                                        .border_1()
+                                                        .border_color(rgb(0x101010))
+                                                        .rounded(zpx(6.))
+                                                        .child(
+                                                            div()
+                                                                .size_full()
+                                                                .border_2()
+                                                                .border_color(t.focus)
+                                                                .rounded(zpx(5.)),
+                                                        ),
+                                                )
+                                            })
                                             .child(octicon(Octicon::X, t.text_secondary))
                                     }),
                             )
@@ -599,17 +626,20 @@ fn dialog_impl(
                                                         .child(button)
                                                         .into_any_element()
                                                 } else {
-                                                    crate::widgets::button(b.id, b.label, cx)
-                                                        .min_w(zpx(120.))
-                                                        .when(disabled, |d| {
-                                                            d.opacity(0.6).cursor_default()
+                                                    if disabled {
+                                                        crate::widgets::button_disabled(
+                                                            b.id, b.label, cx,
+                                                        )
+                                                    } else {
+                                                        crate::widgets::button(b.id, b.label, cx)
+                                                    }
+                                                    .min_w(zpx(120.))
+                                                    .when(!disabled, |d| {
+                                                        d.on_click(move |_, window, cx| {
+                                                            on_click(window, cx)
                                                         })
-                                                        .when(!disabled, |d| {
-                                                            d.on_click(move |_, window, cx| {
-                                                                on_click(window, cx)
-                                                            })
-                                                        })
-                                                        .into_any_element()
+                                                    })
+                                                    .into_any_element()
                                                 }
                                             })),
                                     ),

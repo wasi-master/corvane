@@ -1,0 +1,172 @@
+%YAML 1.2
+---
+# Creole (text.html.creole): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Siddley/Creole via GitHub Linguist v9.7.0 (license: mit).
+name: Creole
+scope: text.html.creole
+file_extensions:
+- creole
+contexts:
+  main:
+  - include: repo_block_raw
+  - include: repo_heading
+  - include: repo_inline
+  - match: ^ *([*])+(?=\s)
+    captures:
+      1: punctuation.definition.list_item.creole
+    push:
+    - meta_scope: markup.list.unnumbered.creole
+    - match: ^(?=\S)
+      pop: true
+      captures:
+        1: punctuation.definition.list_item.creole
+    - include: repo_list-paragraph
+    - include: repo_inline
+  - match: ^[ ]*(#)(?=\s)
+    captures:
+      1: punctuation.definition.list_item.creole
+    push:
+    - meta_scope: markup.list.numbered.creole
+    - match: ^(?=\S)
+      pop: true
+      captures:
+        1: punctuation.definition.list_item.creole
+    - include: repo_list-paragraph
+    - include: repo_inline
+  - match: ^(?=<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b)(?!.*?</\1>)
+    push:
+    - meta_scope: meta.disable-markdown
+    - match: (?<=^</\1>$\n)
+      pop: true
+    - include: scope:text.html.basic
+  - match: ^(?=<(p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|script|noscript|form|fieldset|iframe|math|ins|del)\b)
+    push:
+    - meta_scope: meta.disable-markdown
+    - match: $\n?
+      pop: true
+    - include: scope:text.html.basic
+  - match: ^ *-{4,} *$\n?
+    scope: punctuation.definition.horizonlal-rule.creole
+  repo_ampersand:
+  - match: '&(?!([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);)'
+    scope: meta.other.valid-ampersand.markdown
+  repo_block_raw:
+  - match: ^(\{\{\{)\s*$\n?
+    captures:
+      1: punctuation.definition.raw.creole
+    push:
+    - meta_scope: markup.raw.block.creole
+    - match: ^(\}\}\})\s*$\n?
+      pop: true
+      captures:
+        1: punctuation.definition.raw.creole
+  repo_bold:
+  - match: "(?x)\n\t\t\t\t\t\t(?<!\\*|^)(\\*\\*)(?=\\S)\t\t\t\t\t\t# opening **\n\t\t\t\t\t\t(?=\t\t\t\t\t\t\t\t\t\t\t\t# zero-width positive lookahead\n\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t    <[^>]*+>\t\t\t\t\t\t# match any HTML tag\n\t\t\t\t\t\t\t  | ~[\\\\*{}\\[\\]#\\|/>]?+\t\t\t\t\t# or escape characters\n\t\t\t\t\t\t\t  | \\[\t\t\t\t\t\t\t\t\t\t# or literal [\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t        (?<square>\t\t\t\t# named group\n\t\t\t\t\t\t\t\t\t\t\t[^\\[\\]~]\t\t\t\t\t# don't match these\n\t\t\t\t\t\t\t\t          | ~.\t\t\t\t\t\t\t# or escaped characters\n\t\t\t\t\t\t\t\t          | \\[ \\g<square>*+ \\]\t# or nested group\n\t\t\t\t\t\t\t\t        )*+\n\t\t\t\t\t\t\t\t\t\\]\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t  | (?!(?<=\\S)\\1).\t\t\t\t\t\t# or everything else\n\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t(?<=\\S)\\1\t\t\t\t\t\t\t\t# closing **\n\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\t# close positive lookahead\n\t\t\t\t\t"
+    captures:
+      1: punctuation.definition.bold.creole
+    push:
+    - meta_scope: markup.bold.creole
+    - match: (?<=\S)(\1)
+      pop: true
+      captures:
+        1: punctuation.definition.bold.creole
+    - match: (?=<[^>]*?>)
+      push:
+      - include: scope:text.html.basic
+      - match: (?<=>)
+        pop: true
+    - include: repo_inline
+  repo_bracket:
+  - match: <(?![a-z/?\$!])
+    scope: meta.other.valid-bracket.creole
+  repo_escape:
+  - match: ~[*#{}\|\[\]\\/>]+
+    scope: constant.character.escape.creole
+  repo_heading:
+  - match: (={1,6})(?!=)\s*(?=\S)
+    captures:
+      1: punctuation.definition.heading.creole
+    push:
+    - meta_scope: markup.heading.creole
+    - meta_content_scope: entity.name.section.creole
+    - match: \s*(=*) *$\n?
+      pop: true
+      captures:
+        1: punctuation.definition.heading.creole
+    - include: repo_inline
+  repo_image-inline:
+  - match: "(?x:\n\t\t\t\t(\\{\\{)\t\t\t\t\t\t# opening double curly bracket\n\t\t\t\t(\\s*[^\\s\\|]+[^\\|]+?)\t\t# the url; anything except pipe (at least 1 not whitespace)\n\t\t\t\t((\\|)\t\t\t\t\t\t# pipe separator\n\t\t\t\t(\\s*[^\\|\\s]+[^\\|]+)\t\t\t# title text\n\t\t\t\t\t)?\t\t\t\t\t\t# pipe and title are optional\n\t\t\t\t(\\}\\})\t\t\t\t\t\t# close double curly bracket (end image)\n\t\t\t )"
+    scope: meta.image.inline.creole
+    captures:
+      1: punctuation.definition.image.creole
+      2: markup.underline.link.creole
+      4: punctuation.definition.image.creole
+      5: string.other.image.title.creole
+      6: punctuation.definition.image.creole
+  repo_inline:
+  - include: repo_inline_raw
+  - include: repo_link-inline
+  - include: repo_link-inet
+  - include: repo_link-email
+  - include: repo_line-break
+  - include: repo_image-inline
+  - include: repo_italic
+  - include: repo_bold
+  - include: repo_escape
+  - include: repo_bracket
+  - include: repo_ampersand
+  repo_inline_raw:
+  - match: (\{\{\{).*?(\}\}\})
+    scope: markup.raw.inline.creole
+    captures:
+      1: punctuation.definition.raw.creole
+      2: punctuation.definition.raw.creole
+  repo_italic:
+  - match: "(?x)\n\t\t\t\t\t\t(\\/\\/)(?=\\S)\t\t\t\t\t\t\t\t\t# opening //\n\t\t\t\t\t\t(?=\t\t\t\t\t\t\t\t\t\t\t\t# zero-width positive lookahead\n\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t    <[^>]*+>\t\t\t\t\t\t# match any HTML tag\n\t\t\t\t\t\t\t  | ~[\\\\*{}\\[\\]#\\|/>]?+\t\t\t\t\t# or escape characters\n\t\t\t\t\t\t\t  | \\[\t\t\t\t\t\t\t\t\t\t# or literal [\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t        (?<square>\t\t\t\t# named group\n\t\t\t\t\t\t\t\t\t\t\t[^\\[\\]~]\t\t\t\t\t# don't match these\n\t\t\t\t\t\t\t\t          | ~.\t\t\t\t\t\t\t# or escaped characters\n\t\t\t\t\t\t\t\t          | \\[ \\g<square>*+ \\]\t# or nested group\n\t\t\t\t\t\t\t\t        )*+\n\t\t\t\t\t\t\t\t\t\\]\n\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t  | (?!(?<=\\S)\\1).\t\t\t\t\t\t# or everything else\n\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t(?<=\\S)\\1\t\t\t\t\t\t\t\t# closing //\n\t\t\t\t\t\t)\t\t\t\t\t\t\t\t\t\t\t\t# close positive lookahead\n\t\t\t\t\t"
+    captures:
+      1: punctuation.definition.italic.creole
+    push:
+    - meta_scope: markup.italic.creole
+    - match: (?<=\S)(\1)((?!\1)|(?=\1\1))
+      pop: true
+      captures:
+        1: punctuation.definition.italic.creole
+    - match: (?=<[^>]*?>)
+      push:
+      - include: scope:text.html.basic
+      - match: (?<=>)
+        pop: true
+    - include: repo_inline
+  repo_line-break:
+  - match: ' *(\\\\){1} *'
+    scope: punctuation.definition.line-break.creole
+  repo_link-email:
+  - match: (<)((?:mailto:)?[-.\w]+@[-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+)(>)
+    scope: meta.link.email.lt-gt.creole
+    captures:
+      1: invalid.illegal.punctuation.link.creole
+      2: markup.underline.link.creole
+      4: invalid.illegal.punctuation.link.creole
+  repo_link-inet:
+  - match: (<)?((?:https?|ftp)://[^\s>]+)(>)?
+    scope: meta.link.inet.creole
+    captures:
+      1: invalid.illegal.punctuation.link.creole
+      2: markup.underline.link.creole
+      3: invalid.illegal.punctuation.link.creole
+  repo_link-inline:
+  - match: "(?x:\n\t\t\t\t(\\[\\[)\t\t\t\t\t\t# opening double square bracket\n\t\t\t\t(\\s*[^\\s\\|]+[^\\|]+?)\t\t# the url; anything except pipe (at least 1 not whitespace)\n\t\t\t\t((\\|)\t\t\t\t\t\t# pipe separator\n\t\t\t\t(\\s*[^\\|\\s]+[^\\|]+)\t\t\t# title text\n\t\t\t\t\t)?\t\t\t\t\t\t# pipe and title are optional\n\t\t\t\t(\\]\\])\t\t\t\t\t\t# close double square bracket (end link)\n\t\t\t )"
+    scope: meta.link.inline.creole
+    captures:
+      1: punctuation.definition.link.creole
+      2: markup.underline.link.creole
+      4: punctuation.definition.link.creole
+      5: string.other.link.title.creole
+      6: punctuation.definition.link.creole
+  repo_list-paragraph:
+  - match: \s+(?=\S)
+    push:
+    - meta_scope: meta.paragraph.list.creole
+    - match: ^\s*$
+      pop: true
+    - include: repo_inline

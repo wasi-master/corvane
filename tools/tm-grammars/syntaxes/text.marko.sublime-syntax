@@ -1,0 +1,786 @@
+%YAML 1.2
+---
+# Marko (text.marko): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/marko-js/marko-tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: Marko
+scope: text.marko
+file_extensions:
+- marko
+contexts:
+  main:
+  - match: ^\s*(style)(\b[^\s]*\.css)?\s+({)
+    captures:
+      1: support.type.builtin.marko
+      2: storage.modifier.marko.css
+      3: punctuation.section.scope.begin.marko.css
+    push:
+    - meta_scope: meta.embedded.css
+    - meta_content_scope: source.css
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko.css
+    - include: scope:source.css
+  - match: ^\s*(style)(\b[^\s]*\.less)\s+({)
+    captures:
+      1: support.type.builtin.marko
+      2: storage.modifier.marko.css
+      3: punctuation.section.scope.begin.marko.css
+    push:
+    - meta_scope: meta.embedded.less
+    - meta_content_scope: source.less
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko.css
+    - include: scope:source.css.less
+  - match: ^\s*(style)(\b[^\s]*\.scss)\s+({)
+    captures:
+      1: support.type.builtin.marko
+      2: storage.modifier.marko.css
+      3: punctuation.section.scope.begin.marko.css
+    push:
+    - meta_scope: meta.embedded.scss
+    - meta_content_scope: source.scss
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko.css
+    - include: scope:source.css.scss
+  - match: ^\s*(style)(\b[^\s]*\.[tj]s)\s+({)
+    captures:
+      1: support.type.builtin.marko
+      2: storage.modifier.marko.css
+      3: punctuation.section.scope.begin.marko.css
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko.css
+    - include: scope:source.ts
+  - match: ^\s*(?:((?:static|server|client)\b)|(?=(?:class|import|export)\b))
+    captures:
+      1: keyword.control.static.marko
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: (?=\n|$)
+      pop: true
+    - include: scope:source.ts
+  - include: repo_content-concise-mode
+  repo_attr-value:
+  - match: \s*(:?=)\s*
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: (?=[,;\]]|/>|(?<=[^=>])>|(?<!^|[!~*%&^|?:]|[!~*%&^|?/<>+=-]=|[=>]>|[^.]\.|[^-]-|[^+]\+|[a-zA-Z0-9%).<\]}]\s/|[^.$\w]await|[^.$\w]async|[^.$\w]class|[^.$\w]function|[^.$\w]keyof|[^.$\w]new|[^.$\w]readonly|[^.$\w]infer|[^.$\w]typeof|[^.$\w]void)\s+(?![\n{(+!~*%&^|?:]|[<>/=-]=|[=>]>|\.[^.]|-[^-]|/[^>]|(?:in|instanceof|satisfies|as|extends)\s+[^:=/,;>]))
+      pop: true
+    - include: repo_javascript-expression
+  repo_attrs:
+  - include: repo_javascript-comments
+  - match: (?:(key|on[a-zA-Z0-9_$-]+|[a-zA-Z0-9_$]+Change|no-update(?:-body)?(?:-if)?)|([a-zA-Z0-9_$][a-zA-Z0-9_$-]*)|(#[a-zA-Z0-9_$][a-zA-Z0-9_$-]*))(:[a-zA-Z0-9_$][a-zA-Z0-9_$-]*)?
+    captures:
+      1: support.type.attribute-name.marko
+      2: entity.other.attribute-name.marko
+      3: support.function.attribute-name.marko
+      4: support.function.attribute-name.marko
+    push:
+    - meta_scope: meta.marko-attribute
+    - include: repo_html-args-or-method
+    - include: repo_attr-value
+    - match: (?=.|$)
+      pop: true
+  - match: (\.\.\.)
+    captures:
+      1: keyword.operator.spread.marko
+    push:
+    - meta_scope: meta.marko-spread-attribute
+    - meta_content_scope: source.ts
+    - match: (?=[,;\]]|/>|(?<=[^=>])>|(?<!^|[!~*%&^|?:]|[!~*%&^|?/<>+=-]=|[=>]>|[^.]\.|[^-]-|[^+]\+|[a-zA-Z0-9%).<\]}]\s/|[^.$\w]await|[^.$\w]async|[^.$\w]class|[^.$\w]function|[^.$\w]keyof|[^.$\w]new|[^.$\w]readonly|[^.$\w]infer|[^.$\w]typeof|[^.$\w]void)\s+(?![\n{(+!~*%&^|?:]|[<>/=-]=|[=>]>|\.[^.]|-[^-]|/[^>]|(?:in|instanceof|satisfies|as|extends)\s+[^:=/,;>]))
+      pop: true
+    - include: repo_javascript-expression
+  - match: \s*(,(?!,))
+    captures:
+      1: punctuation.separator.comma.marko
+    push:
+    - match: (?=\S)
+      pop: true
+      captures:
+        1: punctuation.separator.comma.marko
+  - include: repo_invalid
+  repo_cdata:
+  - match: \s*<!\[CDATA\[
+    captures:
+      0: punctuation.definition.tag.begin.marko
+    push:
+    - meta_scope: meta.tag.metadata.cdata.marko
+    - meta_content_scope: string.other.inline-data.marko
+    - match: ']]>'
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+  repo_concise-attr-group:
+  - match: \s*(\[)
+    captures:
+      1: punctuation.section.scope.begin.marko
+    push:
+    - match: ']'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko
+    - include: repo_concise-attr-group
+    - match: \s+
+      push:
+      - match: (?=\S)
+        pop: true
+    - include: repo_attrs
+    - include: repo_invalid
+  repo_concise-comment-block:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-comment-block
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-embedded-comment
+  repo_concise-comment-line:
+  - match: \s*(--+)
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-comment-line
+    - include: repo_content-embedded-comment
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+  repo_concise-html-block:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-html-block
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-html-mode
+  repo_concise-html-line:
+  - match: \s*(--+)(?=\s+\S)(.*)($)
+    scope: meta.section.marko-html-line
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+      3: punctuation.section.embedded.scope.end.marko
+  repo_concise-open-tag-content:
+  - include: repo_invalid-close-tag
+  - include: repo_tag-before-attrs
+  - include: repo_concise-semi-eol
+  - match: (?!^)[, \t]
+    push:
+    - match: (?=--)|(?=\n)
+      pop: true
+    - include: repo_concise-semi-eol
+    - include: repo_concise-attr-group
+    - match: '[ \t]+'
+      push:
+      - match: (?=\S|\n)
+        pop: true
+    - include: repo_attrs
+    - include: repo_invalid
+  repo_concise-script-block:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-script-block
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-embedded-script
+  repo_concise-script-line:
+  - match: \s*(--+)
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-script-line
+    - include: repo_content-embedded-script
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+  repo_concise-semi-eol:
+  - match: \s*(;)
+    captures:
+      1: punctuation.terminator.marko
+    push:
+    - match: $
+      pop: true
+    - include: repo_javascript-comments
+    - include: repo_html-comment
+    - include: repo_invalid
+  repo_concise-style-block:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-block
+    - meta_content_scope: source.css
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-embedded-style
+  repo_concise-style-block-less:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-block
+    - meta_content_scope: source.less
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-embedded-style-less
+  repo_concise-style-block-scss:
+  - match: \s*(--+)\s*$
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-block
+    - meta_content_scope: source.scss
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+    - include: repo_content-embedded-style-scss
+  repo_concise-style-line:
+  - match: \s*(--+)
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-line
+    - meta_content_scope: source.css
+    - include: repo_content-embedded-style
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+  repo_concise-style-line-less:
+  - match: \s*(--+)
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-line
+    - meta_content_scope: source.less
+    - include: repo_content-embedded-style-less
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+  repo_concise-style-line-scss:
+  - match: \s*(--+)
+    captures:
+      1: punctuation.section.embedded.scope.begin.marko
+    push:
+    - meta_scope: meta.section.marko-style-line
+    - meta_content_scope: source.scss
+    - include: repo_content-embedded-style-scss
+    - match: $
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scope.end.marko
+  repo_content-concise-mode:
+  - include: repo_scriptlet
+  - include: repo_javascript-comments
+  - include: repo_cdata
+  - include: repo_doctype
+  - include: repo_declaration
+  - include: repo_html-comment
+  - include: repo_concise-html-block
+  - include: repo_concise-html-line
+  - include: repo_invalid-close-tag
+  - include: repo_tag-html
+  - match: ^(\s*)(?=html-comment\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-comment-block
+    - include: repo_concise-comment-line
+  - match: ^(\s*)(?=(?:html-)?style\b[^\s]*\.less\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-style-block-less
+    - include: repo_concise-style-line-less
+  - match: ^(\s*)(?=(?:html-)?style\b[^\s]*\.scss\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-style-block-scss
+    - include: repo_concise-style-line-scss
+  - match: ^(\s*)(?=(?:html-)?style\b[^\s]*\.[tj]s\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-script-block
+    - include: repo_concise-script-line
+  - match: ^(\s*)(?=(?:html-)?style\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-style-block
+    - include: repo_concise-style-line
+  - match: ^(\s*)(?=(?:html-)?script\b)
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_concise-script-block
+    - include: repo_concise-script-line
+  - match: ^([ \t]*)(?=[a-zA-Z0-9_$@.#])
+    push:
+    - match: ^(?!(?=^(?:\s*[})\]`]|\*/|\s*$|\1\s+(\S|$))))
+      pop: true
+    - include: repo_concise-open-tag-content
+    - include: repo_content-concise-mode
+  repo_content-embedded-comment:
+  - include: repo_placeholder
+  - match: .
+    scope: comment.block.marko
+  repo_content-embedded-script:
+  - include: repo_placeholder
+  - include: scope:source.ts
+  repo_content-embedded-style:
+  - include: repo_placeholder
+  - include: scope:source.css
+  repo_content-embedded-style-less:
+  - include: repo_placeholder
+  - include: scope:source.css.less
+  repo_content-embedded-style-scss:
+  - include: repo_placeholder
+  - include: scope:source.css.scss
+  repo_content-html-mode:
+  - include: repo_scriptlet
+  - include: repo_cdata
+  - include: repo_doctype
+  - include: repo_declaration
+  - include: repo_javascript-comments-after-whitespace
+  - include: repo_html-comment
+  - include: repo_invalid-close-tag
+  - include: repo_tag-html
+  - match: \\.
+    scope: text.marko
+  - include: repo_placeholder
+  - match: .+?
+    scope: text.marko
+  repo_declaration:
+  - match: (<\?)\s*([a-zA-Z0-9_$-]*)
+    captures:
+      1: punctuation.definition.tag.marko
+      2: entity.name.tag.marko
+    push:
+    - meta_scope: meta.tag.metadata.processing.xml.marko
+    - match: (\??>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.marko
+        2: entity.name.tag.marko
+    - match: ((?:[^\s=?>]+|\?(?!>))+)(=)(?:("(?:[^"\\]+|\\.)*")|('(?:[^'\\]+|\\.)*')|((?:[^\s?>]+|\?(?!>))+))
+      captures:
+        1: entity.other.attribute-name.marko
+        2: punctuation.separator.key-value.html
+        3: string.quoted.double.marko
+        4: string.quoted.single.marko
+        5: string.unquoted.marko
+  repo_doctype:
+  - match: \s*<!(?=(?i:DOCTYPE\s))
+    captures:
+      0: punctuation.definition.tag.begin.marko
+    push:
+    - meta_scope: meta.tag.metadata.doctype.marko
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - match: (?i:DOCTYPE)
+      scope: entity.name.tag.marko
+    - match: '"'
+      push:
+      - meta_scope: string.quoted.double.marko
+      - match: '"'
+        pop: true
+    - match: '[^\s>]+'
+      scope: entity.other.attribute-name.marko
+  repo_html-args-or-method:
+  - include: repo_tag-type-params
+  - match: \s*(?=\()
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: (?<=\))
+      pop: true
+    - include: scope:source.ts
+  - match: (?<=\))\s*(?={)
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: (?<=})
+      pop: true
+    - include: scope:source.ts
+  repo_html-comment:
+  - match: \s*(<!(--)?)
+    captures:
+      1: punctuation.definition.comment.marko
+    push:
+    - meta_scope: comment.block.marko
+    - match: \2>
+      pop: true
+      captures:
+        0: punctuation.definition.comment.marko
+  repo_invalid:
+  - match: \S
+    scope: invalid.illegal.character-not-allowed-here.marko
+  repo_invalid-close-tag:
+  - match: \s*</[^>]*
+    push:
+    - meta_scope: invalid.illegal.character-not-allowed-here.marko
+    - match: '>'
+      pop: true
+  repo_javascript-comments:
+  - match: \s*(?=/\*)
+    push:
+    - meta_content_scope: source.ts
+    - match: (?<=\*/)
+      pop: true
+    - include: scope:source.ts
+  - match: \s*//.*$
+  repo_javascript-comments-after-whitespace:
+  - match: (?:^|\s+)(?=/\*)
+    push:
+    - meta_content_scope: source.ts
+    - match: (?<=\*/)
+      pop: true
+    - include: scope:source.ts
+  - match: (?:^|\s+)//.*$
+  repo_javascript-expression:
+  - include: repo_javascript-comments
+  - match: (?:\s*\b(?:as|await|extends|in|instanceof|satisfies|keyof|new|typeof|void))+\s+(?![:=/,;>])[a-zA-Z0-9_$@#]*
+  - match: (?<![a-zA-Z0-9%).<\]}])\s*/(?:[^\\\[/]+|\\.|\[(?:[^\\\]]+|\\.)*\])*/[a-zA-Z]*
+    captures:
+      0: string.regexp.ts
+  - include: scope:source.ts
+  repo_javascript-placeholder:
+  - match: \${
+    captures:
+      0: punctuation.definition.template-expression.begin.ts
+    push:
+    - meta_content_scope: source.ts
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.template-expression.end.ts
+    - include: scope:source.ts
+  repo_open-tag-content:
+  - include: repo_invalid-close-tag
+  - include: repo_tag-before-attrs
+  - match: (?!/?>)
+    push:
+    - match: (?=/?>)
+      pop: true
+    - include: repo_attrs
+  repo_placeholder:
+  - match: \$!?{
+    captures:
+      0: punctuation.definition.template-expression.begin.ts
+    push:
+    - meta_content_scope: source.ts
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.template-expression.end.ts
+    - include: scope:source.ts
+  repo_scriptlet:
+  - match: ^\s*(\$)\s+
+    captures:
+      1: keyword.control.scriptlet.marko
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: $
+      pop: true
+    - include: scope:source.ts
+  repo_tag-before-attrs:
+  - include: repo_tag-name
+  - include: repo_tag-shorthand-class-or-id
+  - match: /(?![/*])
+    captures:
+      0: punctuation.separator.tag-variable.marko
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: (?=[,;(|/><]|:?=|\s+[^:]|$)
+      pop: true
+    - match: '[a-zA-Z$_][0-9a-zA-Z$_]*'
+      scope: variable.other.constant.object.ts
+    - match: '{'
+      captures:
+        0: punctuation.definition.binding-pattern.object.ts
+      push:
+      - match: '}'
+        pop: true
+        captures:
+          0: punctuation.definition.binding-pattern.object.ts
+      - include: scope:source.ts
+      - include: repo_javascript-expression
+    - match: \[
+      captures:
+        0: punctuation.definition.binding-pattern.array.ts
+      push:
+      - match: ']'
+        pop: true
+        captures:
+          0: punctuation.definition.binding-pattern.array.ts
+      - include: scope:source.ts
+      - include: repo_javascript-expression
+    - match: \s*(:)(?!=)
+      captures:
+        1: keyword.operator.type.annotation.ts
+      push:
+      - match: (?=[,;\](]|/>|(?<=[^=>])>|(?<!^|[!~*%&^|?:]|[!~*%&^|?/<>+=-]=|[=>]>|[^.]\.|[^-]-|[^+]\+|[a-zA-Z0-9%).<\]}]\s/|[^.$\w]await|[^.$\w]async|[^.$\w]class|[^.$\w]function|[^.$\w]keyof|[^.$\w]new|[^.$\w]readonly|[^.$\w]infer|[^.$\w]typeof|[^.$\w]void)\s+(?![\n{+!~*%&^|?:]|[<>/=-]=|[=>]>|\.[^.]|-[^-]|/[^>]|(?:in|instanceof|satisfies|as|extends)\s+[^:=/,;>]))
+        pop: true
+      - include: scope:source.ts
+      - include: repo_javascript-expression
+    - include: repo_javascript-expression
+  - match: \s*\|
+    captures:
+      0: punctuation.section.scope.begin.marko
+    push:
+    - meta_content_scope: source.ts
+    - match: \|
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.marko
+    - include: scope:source.ts
+    - include: scope:source.ts
+    - include: scope:source.ts
+    - include: scope:source.ts
+    - include: scope:source.ts
+    - match: (:)
+      captures:
+        1: keyword.operator.type.annotation.ts
+      push:
+      - meta_scope: meta.type.annotation.ts
+      - match: (?=[,|])|(?==[^>])
+        pop: true
+      - include: scope:source.ts
+    - include: scope:source.ts
+    - match: ','
+      scope: punctuation.separator.parameter.ts
+    - include: scope:source.ts
+  - include: repo_html-args-or-method
+  - include: repo_attr-value
+  repo_tag-html:
+  - match: \s*(<)(?=(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr|const|debug|id|let|lifecycle|log|return)\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: /?>
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+  - match: \s*(<)(?=html-comment\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>|</html-comment>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - match: \s*(?:</>|</html-comment>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-comment
+  - match: \s*(<)(?=((?:html-)?style)\b[^\s]*\.less\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - meta_content_scope: source.less
+      - match: \s*(</)((?:html-)?style)?(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-style-less
+  - match: \s*(<)(?=((?:html-)?style)\b[^\s]*\.scss\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - meta_content_scope: source.scss
+      - match: \s*(</)((?:html-)?style)?(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-style-scss
+  - match: \s*(<)(?=((?:html-)?style)\b[^\s]*\.[tj]s\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - meta_content_scope: source.ts
+      - match: \s*(</)((?:html-)?style)?(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-script
+  - match: \s*(<)(?=((?:html-)?style)\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - meta_content_scope: source.css
+      - match: \s*(</)((?:html-)?style)?(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-style
+  - match: \s*(<)(?=((?:html-)?script)\b)
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - meta_content_scope: source.ts
+      - match: \s*(</)((?:html-)?script)?(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          3: punctuation.definition.tag.end.marko
+      - include: repo_content-embedded-script
+  - match: \s*(<)(?=[.#$]|([a-zA-Z0-9_$@-]+))
+    captures:
+      1: punctuation.definition.tag.begin.marko
+    push:
+    - match: />|(?<=</>)|(?<=</\2>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.marko
+    - include: repo_open-tag-content
+    - match: '>'
+      captures:
+        0: punctuation.definition.tag.end.marko
+      push:
+      - match: \s*(</)([a-zA-Z0-9_$:@.#-]+)?([^>]*)(>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag.begin.marko
+          4: punctuation.definition.tag.end.marko
+      - include: repo_content-html-mode
+  repo_tag-name:
+  - match: (style)\b(\.[a-zA-Z0-9$_-]+(?:\.[a-zA-Z0-9$_-]+)*)|([a-zA-Z0-9_@](?:[a-zA-Z0-9_@-]+|:(?!=))*)
+    captures:
+      1: support.type.builtin.marko
+      2: storage.type.marko.css
+    push:
+    - include: repo_tag-type-args
+    - match: (?=.)
+      pop: true
+  - match: (?=[a-zA-Z0-9$_]|-[^-])
+    push:
+    - match: (?=[^a-zA-Z0-9$_-]|$)
+      pop: true
+    - include: repo_javascript-placeholder
+    - match: (?:[a-zA-Z0-9_-]+|\$(?!{))+
+      scope: entity.name.tag.marko
+  repo_tag-shorthand-class-or-id:
+  - match: (?=[#.])
+    push:
+    - match: $|(?=--|[^a-zA-Z0-9_$#.-])
+      pop: true
+    - include: repo_javascript-placeholder
+    - match: (?:[#.a-zA-Z0-9_-]+|\$(?!{))+
+      scope: entity.other.attribute-name.marko
+  repo_tag-type-args:
+  - match: (?=<)
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - match: "(?<=>)(?=[ \t]*<)"
+      push:
+      - include: repo_tag-type-params
+      - match: (?=.)
+        pop: true
+    - include: scope:source.ts
+    - match: (?<=>)
+      pop: true
+  repo_tag-type-params:
+  - match: "(?!^)[ \t]*(?=<)"
+    push:
+    - meta_scope: meta.embedded.ts
+    - meta_content_scope: source.ts
+    - include: scope:source.ts
+    - match: (?<=>)
+      pop: true

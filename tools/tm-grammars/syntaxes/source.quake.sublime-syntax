@@ -1,0 +1,32 @@
+%YAML 1.2
+---
+# Quake (source.quake): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/quake via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Quake
+scope: source.quake
+file_extensions:
+- m3makefile
+- m3overrides
+contexts:
+  main:
+  - match: \b(and|contains|else|end|for|foreach|if|in|is|local|not|or|proc|readonly|return)\b
+    scope: keyword.quake
+  - match: \b[0-9]+\b
+    scope: constant.numeric.integer.quake
+  - match: '%.*$'
+    scope: comment.line.percentage.quake
+  - include: repo_block_comment
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.quake
+    - match: '"'
+      pop: true
+    - match: \\[0-7]{3}|\\[\\fnrt\"\']
+      scope: constant.character.escape.quake
+  repo_block_comment:
+  - match: \/\*
+    push:
+    - meta_scope: comment.block.quake
+    - match: \*\/
+      pop: true
+    - include: repo_block_comment

@@ -1,0 +1,119 @@
+%YAML 1.2
+---
+# Velocity Template Language (source.velocity): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/animecyc/AtomLanguageVelocity via GitHub Linguist v9.7.0 (license: mit).
+name: Velocity Template Language
+scope: source.velocity
+file_extensions:
+- vtl
+contexts:
+  main:
+  - include: repo_operators
+  - include: repo_comments
+  - include: repo_constants
+  - include: repo_blocks
+  - include: repo_variables
+  repo_blocks:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_strings_double_quote
+    - include: repo_strings_single_quote
+    - include: main
+  - match: (#\{?(?:set|foreach|if|else(?:if)?|define|end|include|parse|evaluate|stop|break)\}?)
+    captures:
+      1: keyword.control.velocity
+  - match: (#macro)[\s]?\([\s]?([a-zA-Z_]*)
+    captures:
+      1: keyword.control.velocity
+      2: entity.name.function.velocity
+  - match: '#@?([a-zA-Z_][a-zA-Z0-9_]*)'
+    scope: entity.name.function.velocity
+  repo_comments:
+  - match: '#\*\*(?!#)'
+    captures:
+      0: punctuation.definition.comment.velocity
+    push:
+    - meta_scope: punctuation.definition.comment.velocity
+    - match: \*#
+      pop: true
+      captures:
+        0: punctuation.definition.comment.velocity
+    - match: \*\s+?(?:(@)([a-zA-Z]*))\s
+      captures:
+        1: keyword.other.documentation.param.javadoc
+        2: punctuation.definition.keyword.javadoc
+  - match: '#\*'
+    captures:
+      0: punctuation.definition.comment.velocity
+    push:
+    - meta_scope: punctuation.definition.comment.velocity
+    - match: \*#
+      pop: true
+      captures:
+        0: punctuation.definition.comment.velocity
+  - match: '##(.+)?'
+    scope: punctuation.definition.comment.velocity
+  repo_constants:
+  - match: (false|true)
+    scope: constant.language.java
+  - match: ((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)
+    scope: constant.numeric.java
+  repo_operators:
+  - match: (!|&&|\|\|)
+    scope: keyword.operator.logical.java
+  - match: (\-|\+|\*|/|%)
+    scope: keyword.operator.arithmetic.java
+  - match: (==|!=|<=|>=|<[^a-zA-Z/]|[^a-zA-Z/]>|<>)
+    scope: keyword.operator.comparison.java
+  - match: (=|\s+in\s+)
+    scope: keyword.operator.assignment.java
+  repo_strings_double_quote:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double.velocity
+    - match: \"
+      pop: true
+    - match: \\"
+      scope: constant.character.escape.velocity
+    - include: repo_variables
+  repo_strings_single_quote:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.velocity
+    - match: ''''
+      pop: true
+    - match: \'
+      scope: constant.character.escape.velocity
+  repo_variables:
+  - match: \$(!?)\{
+    captures:
+      0: punctuation.definition.variable.velocity
+      1: keyword.operator.silent
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.variable.velocity
+    - match: (?:([a-zA-Z_][a-zA-Z_\-0-9]*)|(\.)(?:((?:[a-zA-Z_][a-zA-Z_\-0-9]*)(?=\())|((?:[a-zA-Z_][a-zA-Z_\-0-9]*))))
+      captures:
+        1: variable.other.velocity
+        2: keyword.operator.dereference.velocity
+        3: entity.name.function.velocity
+        4: entity.other.attribute-name.velocity
+    - match: \(
+      captures:
+        0: punctuation.definition.method-parameters.begin.velocity
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.definition.method-parameters.end.velocity
+      - include: repo_strings_double_quote
+      - include: repo_strings_single_quote
+      - include: main
+  - match: ((\$)[a-zA-Z][a-zA-Z0-9_]*)\b(?:((\.)[a-zA-Z][a-zA-Z0-9]*))*
+    scope: variable.other.velocity
+  - match: \$[a-zA-Z\-_][a-zA-Z\-_0-9]*
+    scope: variable.other.velocity

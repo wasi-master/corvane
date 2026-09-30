@@ -1,0 +1,246 @@
+%YAML 1.2
+---
+# Scaml (source.scaml): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/scalate/Scalate.tmbundle via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Scaml
+scope: source.scaml
+file_extensions:
+- scaml
+contexts:
+  main:
+  - match: ^\s*[&!]?==
+    push:
+    - meta_content_scope: string.quoted.double.scala
+    - match: $\n?
+      pop: true
+    - include: repo_interpolated_scala
+  - match: ^(\s*):scala$
+    push:
+    - meta_scope: source.scala.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.scala
+  - match: ^(!!!)($|\s.*)
+    scope: meta.prolog.scaml
+    captures:
+      1: punctuation.definition.prolog.scaml
+  - match: :javascript
+    push:
+    - meta_scope: source.js.embedded.scaml
+    - match: ^(\s+)?%
+      pop: true
+    - include: scope:source.js
+  - match: ^(\s*):javascript$
+    push:
+    - meta_scope: source.embedded.filter.js
+    - match: ^\1$
+      pop: true
+    - include: scope:source.js
+  - match: ^(\s*):scala$
+    push:
+    - meta_scope: source.scala.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.scala
+  - match: ^ *(/)\s*\S.*$\n?
+    scope: comment.line.slash.scaml
+    captures:
+      1: punctuation.section.comment.scaml
+  - match: ^( *)(/)\s*$
+    captures:
+      2: punctuation.section.comment.scaml
+    push:
+    - meta_scope: comment.block.scaml
+    - match: ^(?!\1  )
+      pop: true
+    - include: main
+  - match: ^\s*(?:((%)(('[^']+')|([\w\_\-:]+)))|(?=\.\w|#\w))
+    captures:
+      1: meta.tag.scaml
+      2: punctuation.definition.tag.scaml
+      3: entity.name.tag.scaml
+    push:
+    - match: $|(?!(\>\<|\<?\>?)(\.|#|\{|\[|[&!]?=|~|/))
+      pop: true
+      captures:
+        1: meta.tag.scaml
+        2: punctuation.definition.tag.scaml
+        3: entity.name.tag.scaml
+    - match: '[&!]?=='
+      push:
+      - meta_content_scope: string.quoted.double.scala
+      - match: $\n?
+        pop: true
+      - include: repo_interpolated_scala
+    - match: (\.[\w-]+)
+      scope: meta.selector.css
+      captures:
+        1: entity.other.attribute-name.class
+    - match: (#[\w-]+)
+      scope: meta.selector.css
+      captures:
+        1: entity.other.attribute-name.id
+    - match: \{(?=.*\}||.*\|\s*$)
+      push:
+      - meta_scope: meta.section.attributes.scaml
+      - match: \}|$|^(?!.*\|\s*$)
+        pop: true
+      - include: scope:source.scala
+      - include: repo_continuation
+    - match: \[(?=.*\]|.*\|\s*$)
+      push:
+      - meta_scope: meta.section.object.scaml
+      - match: \]|$|^(?!.*\|\s*$)
+        pop: true
+      - include: scope:source.scala
+      - include: repo_continuation
+    - include: repo_interpolated_scala_line
+    - include: repo_scalaline
+    - match: /
+      scope: punctuation.terminator.tag.scaml
+  - match: ^(\s*):scala$
+    push:
+    - meta_scope: source.scala.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.scala
+  - match: ^(\s*):scala$
+    push:
+    - meta_scope: source.scala.embedded.filter.scaml
+    - match: ^\1([^\s]*)$
+      pop: true
+    - include: scope:source.scala
+  - match: ^(\s*):(style|sass)$
+    push:
+    - meta_scope: source.sass.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.sass
+  - match: ^(\s*):(java)?script$
+    push:
+    - meta_scope: source.js.embedded.filter.scaml
+    - match: ^\1([^\s]*)$
+      pop: true
+    - include: repo_javascript_filter
+  - match: ^(\s*):plain$
+    push:
+    - meta_scope: text.plain.embedded.filter.scaml
+    - match: ^\1([^\s]*)$
+      pop: true
+  - match: ^(\s*)(:scala)
+    captures:
+      2: keyword.control.filter.scaml
+    push:
+    - meta_scope: source.scala.embedded.filter.scaml
+    - match: ^(?!\1  )
+      pop: true
+    - include: scope:source.scala
+  - match: ^(\s*)(:javascript)
+    captures:
+      2: keyword.control.filter.scaml
+    push:
+    - meta_scope: source.js.jquery.embedded.filter.scaml
+    - match: ^(?!\1  )
+      pop: true
+  - match: ^(\s*)(:sass)
+    captures:
+      2: keyword.control.filter.scaml
+    push:
+    - meta_scope: source.embedded.filter.sass
+    - match: ^(?!\1  )
+      pop: true
+    - include: scope:source.sass
+  - match: ^(\s*):(styles|sass)$
+    push:
+    - meta_scope: source.sass.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.sass
+  - match: ^(\s*):(java)?script$
+    push:
+    - meta_scope: source.js.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+    - include: scope:source.js
+  - match: ^(\s*):plain$
+    push:
+    - meta_scope: text.plain.embedded.filter.scaml
+    - match: ^\1$
+      pop: true
+  - match: ^\s*(\\.)
+    captures:
+      1: meta.escape.scaml
+  - match: ^\s*(?=[&!]?=|-|~)
+    push:
+    - match: $
+      pop: true
+    - include: repo_interpolated_scala_line
+    - include: repo_scalaline
+  repo_continuation:
+  - match: (\|)\s*\n
+    captures:
+      1: punctuation.separator.continuation.scaml
+  repo_interpolated_scala:
+  - match: '#\{(\})'
+    scope: source.scala.embedded.source
+    captures:
+      0: punctuation.section.embedded.scala
+      1: source.scala.embedded.source.empty
+  - match: '#\{'
+    captures:
+      0: punctuation.section.embedded.scala
+    push:
+    - meta_scope: source.scala.embedded.source
+    - match: (\})
+      pop: true
+      captures:
+        0: punctuation.section.embedded.scala
+    - include: repo_nest_curly_and_self
+    - include: scope:source.scala
+  - match: (#@)[a-zA-Z_]\w*
+    scope: variable.other.readwrite.instance.scala
+    captures:
+      1: punctuation.definition.variable.scala
+  - match: (#@@)[a-zA-Z_]\w*
+    scope: variable.other.readwrite.class.scala
+    captures:
+      1: punctuation.definition.variable.scala
+  - match: (#\$)[a-zA-Z_]\w*
+    scope: variable.other.readwrite.global.scala
+    captures:
+      1: punctuation.definition.variable.scala
+  repo_interpolated_scala_line:
+  - match: '!?=='
+    push:
+    - meta_scope: meta.line.scala.interpolated.scaml
+    - match: $
+      pop: true
+    - include: repo_interpolated_scala
+  repo_javascript_filter:
+  - include: repo_interpolated_scala
+  - include: scope:source.js
+  repo_nest_curly_and_self:
+  - match: \{
+    captures:
+      0: punctuation.section.scope.scala
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.scope.scala
+    - include: repo_nest_curly_and_self
+  - include: scope:source.scala
+  repo_scalaline:
+  - match: '!=|&=|==|=|-|~'
+    push:
+    - meta_scope: meta.line.scala.scaml
+    - meta_content_scope: source.scala.embedded.scaml
+    - match: ((do|\{)( \|[^|]+\|)?)$|$|^(?!.*\|\s*$)
+      pop: true
+      captures:
+        1: source.scala.embedded.html
+        2: keyword.control.scala.start-block
+    - match: '#.*$'
+      scope: comment.line.number-sign.scala
+    - include: scope:source.scala
+    - include: repo_continuation

@@ -22,13 +22,13 @@
 24: 0+3=Variable 4+4=Variable 11+12=String
 25: 0+17=String
 26: 0+5=Keyword 6+3=Variable 12+16=String
-27: 0+5=Keyword 6+4=Variable 13+7=String 22+4=Variable 27+10=String 39+3=Variable 47+11=String
-28: 0+5=Keyword 6+4=Variable 13+7=String 23+7=String 32+4=Variable 37+5=AltVariable 43+6=String 51+5=String
+27: 0+5=Keyword 6+4=Variable 13+7=String 22+4=Variable 27+10=String 39+3=Variable 42+1=String 44+1=String 47+11=String
+28: 0+5=Keyword 6+4=Variable 13+7=String 22+8=String 32+4=Variable 37+5=AltVariable 43+7=String 51+5=String
 29: 0+5=Keyword 6+5=Variable 14+11=String
-30: 0+14=String 17+5=Variable
+30: 0+14=String 16+1=String 17+5=Variable 22+1=String
 31: 0+21=String
-32: 0+5=Keyword 6+6=Variable 15+4=Variable 20+4=Tag 24+1=String 25+5=Attribute 31+1=String 32+1=Variable 34+3=Variable 38+1=String 39+1=Tag 50+6=Tag
-33: 0+5=Keyword 6+6=Variable 15+3=String 23+3=AltVariable 28+3=String 34+3=AltVariable 39+3=String
+32: 0+5=Keyword 6+6=Variable 15+4=Variable 19+1=String 20+4=Tag 24+1=String 25+5=Attribute 31+1=String 32+1=Variable 34+3=Variable 38+1=String 39+1=Tag 42+7=Variable 50+6=Tag 56+1=String
+33: 0+5=Keyword 6+6=Variable 15+3=String 20+1=String 22+1=String 23+3=AltVariable 27+5=String 34+3=AltVariable 37+1=String 39+3=String
 34: 0+5=Keyword 6+7=Variable 16+37=String
 36: 0+5=Keyword 6+3=Variable 13+2=String 16+1=String 18+2=String
 37: 0+5=Keyword 6+3=Variable 14+1=Atom 15+2=String

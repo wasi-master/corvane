@@ -1,0 +1,227 @@
+%YAML 1.2
+---
+# Lark (source.lark): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-grammars via GitHub Linguist v9.7.0 (license: isc).
+name: Lark
+scope: source.lark
+file_extensions:
+- lark
+contexts:
+  main:
+  - match: \A#!
+    captures:
+      0: punctuation.definition.comment.shebang.lark
+    push:
+    - meta_scope: comment.line.number-sign.shebang.lark
+    - match: $
+      pop: true
+  - include: repo_main
+  repo_alias:
+  - match: (->)\s*((!?[_?]|!)?[a-zA-Z][_a-zA-Z0-9]*)?
+    scope: meta.alias.lark
+    captures:
+      1: storage.type.alias.lark
+      2: entity.name.alias.lark
+  repo_comma:
+  - match: ','
+    scope: punctuation.delimiter.separator.list.comma.lark
+  repo_comment:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.lark
+    push:
+    - meta_scope: comment.line.double-slash.lark
+    - match: $
+      pop: true
+  repo_definition:
+  - match: ^\s*((!?[_?]|!)?[A-Z][_A-Z0-9]*)\s*(\.[-+.\d]+\s*)?(:)
+    captures:
+      1: entity.name.terminal.lark
+      4: keyword.operator.assignment.lark
+    push:
+    - meta_scope: meta.definition.terminal.lark
+    - match: (?!|^\s*$)(?=^\s*[^\s|])
+      pop: true
+    - include: repo_definition-innards
+  - match: ^\s*((!?[_?]|!)?[a-z][_a-z0-9]*)\s*(\.[-+.\d]+\s*)?(:)
+    captures:
+      1: entity.name.rule.lark
+      4: keyword.operator.assignment.lark
+    push:
+    - meta_scope: meta.definition.rule.lark
+    - match: (?!|^\s*$)(?=^\s*[^\s|])
+      pop: true
+    - include: repo_definition-innards
+  repo_definition-innards:
+  - include: repo_groups
+  - include: repo_alias
+  - include: repo_operators
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_regexp
+  - include: repo_flags
+  - include: repo_range
+  - include: repo_template-usage
+  - include: repo_name
+  - include: repo_comma
+  repo_directives:
+  - match: (?:^|)\s*((%)import)(?=\s|$)
+    captures:
+      1: keyword.control.directive.import.lark
+      2: punctuation.definition.directive.lark
+    push:
+    - meta_scope: meta.directive.import.lark
+    - match: $
+      pop: true
+    - match: \s+(\.?\w+(?:\.\w+)*+)(?=\s|$)[ \t]*
+      captures:
+        0: meta.module-reference.lark
+        1: string.unquoted.module.import.lark
+      push:
+      - meta_scope: meta.import-specification.lark
+      - match: (?=$)
+        pop: true
+      - include: repo_alias
+      - include: repo_name-list
+      - include: repo_comment
+    - include: repo_comment
+  - match: (?:^|)\s*((%)(?!_)([A-Za-z_]+))(?=\s|$)
+    captures:
+      2: punctuation.definition.directive.lark
+    push:
+    - match: (?!|^\s*$)(?=^\s*[^\s|])
+      pop: true
+    - include: repo_definition-innards
+  repo_dot:
+  - match: \.
+    scope: punctuation.delimiter.separator.period.dot.lark
+  repo_flags:
+  - match: (?<=/|")[imslux]+
+    scope: storage.modifier.flags.lark
+  repo_groups:
+  - match: \(
+    captures:
+      0: punctuation.section.group.round.bracket.begin.lark
+    push:
+    - meta_scope: meta.group.lark
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.round.bracket.end.lark
+    - include: repo_definition-innards
+  - match: \[
+    captures:
+      0: punctuation.section.group.square.bracket.begin.lark
+    push:
+    - meta_scope: meta.group.lark
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.group.square.bracket.end.lark
+    - include: repo_definition-innards
+  repo_main:
+  - include: repo_comment
+  - include: repo_template
+  - include: repo_definition
+  - include: repo_directives
+  repo_name:
+  - match: (!?[_?]|!)?(?:[A-Z][_A-Z0-9]*|[a-z][_a-z0-9]*)
+    scope: variable.definition.reference.lark
+  repo_name-list:
+  - match: \s*(\()
+    captures:
+      1: punctuation.definition.name-list.round.bracket.begin.lark
+    push:
+    - meta_scope: meta.name-list.lark
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.name-list.round.bracket.end.lark
+    - include: repo_name
+    - include: repo_comma
+    - include: repo_comment
+  repo_name-prefix:
+  - match: (?:|^)(!?[_?]|!)
+    scope: storage.modifier.tree-shaping.lark
+    captures:
+      1: punctuation.definition.name.lark
+  repo_number:
+  - match: -?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?
+    scope: constant.numeric.decimal.lark
+  repo_operators:
+  - match: \|
+    scope: keyword.operator.logical.or.lark
+  - match: '[+*?]'
+    scope: keyword.operator.quantifier.lark
+  - match: (~)\s*(\d+)(?:(\.\.)(\d+))?
+    scope: meta.exact-quantity.lark
+    captures:
+      1: keyword.operator.quantifier.arbitrary.lark
+      3: punctuation.separator.range.quantities.lark
+  repo_priority:
+  - match: (?:|^)\.
+    push:
+    - meta_scope: meta.priority.lark
+    - match: $|(?=:)
+      pop: true
+    - include: repo_number
+  repo_range:
+  - match: (?<=")\.\.
+    scope: punctuation.separator.range.characters.lark
+  repo_regexp:
+  - match: /(?!/)
+    captures:
+      0: punctuation.definition.string.begin.lark
+    push:
+    - meta_scope: string.regexp.lark
+    - match: /
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lark
+    - include: scope:source.regexp.python
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.lark
+    push:
+    - meta_scope: string.quoted.double.lark
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.lark
+    - match: \\.
+      scope: constant.character.escape.lark
+  repo_template:
+  - match: ^\s*((!?[_?]|!)?\w+)\s*(?={.*?}\s*:)
+    captures:
+      1: entity.name.template.function.lark
+    push:
+    - meta_scope: meta.definition.template.lark
+    - match: (?!|^\s*$)(?=^\s*[^\s|])
+      pop: true
+    - include: repo_template-args
+    - include: repo_definition-innards
+  repo_template-args:
+  - match: \s*({)
+    captures:
+      1: punctuation.definition.parameters.begin.lark
+    push:
+    - meta_scope: meta.function.parameters.lark
+    - match: (})(?:\s*(:))?|(?=\s*$)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.lark
+        2: keyword.operator.assignment.lark
+    - include: repo_template-usage
+    - match: \w+
+      scope: variable.parameter.template.argument.lark
+    - include: repo_definition-innards
+  repo_template-usage:
+  - match: ((!?[_?]|!)?\w+)\s*(?={)
+    captures:
+      1: entity.name.template.function.lark
+    push:
+    - meta_scope: meta.function-call.lark
+    - match: (?!)
+      pop: true
+    - include: repo_template-args

@@ -1,0 +1,189 @@
+%YAML 1.2
+---
+# YASnippet (source.yasnippet): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-emacs-lisp via GitHub Linguist v9.7.0 (license: isc).
+name: YASnippet
+scope: source.yasnippet
+file_extensions:
+- yasnippet
+contexts:
+  main:
+  - match: \A(?=\s*(?:$|#))
+    push:
+    - meta_scope: meta.prologue.yasnippet
+    - match: (?:^|)(?=\s*(?:[^\s#]|#+\s*--\s*$))
+      pop: true
+    - include: repo_prologue-lines
+  - include: repo_body
+  repo_body:
+  - match: ^\s*((#+)\s*(--)\s*$\n?|(?=[^\s#]))
+    captures:
+      1: comment.line.number-sign.yasnippet
+      2: punctuation.definition.comment.number-sign.yasnippet
+      3: punctuation.terminator.double-dash.yasnippet
+    push:
+    - meta_scope: meta.snippet-body.yasnippet
+    - match: (?=A)B
+      pop: true
+    - include: repo_tab-stops
+    - include: repo_indentation-marker
+    - include: repo_placeholder-fields
+    - include: repo_escaped-characters
+    - include: repo_embedded-lisp
+  repo_directives:
+  - match: (?<=[\s#])(key|name|group|uuid)\s*(:)(?:\s*(\S.*))?
+    captures:
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+      3: string.unquoted.yasnippet
+  - match: (?<=[\s#])(condition|expand-env)\s*(:)(?:\s*(\S.*))?
+    captures:
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+      3: source.embedded.emacs.lisp
+  - match: (?<=[\s#])(binding)\s*(:)(?:\s*(\S.*))?
+    scope: meta.directive.keybinding.yasnippet
+    captures:
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+  - match: (?<=[\s#])(type)\s*(:)(?:\s*(command))(?=\s*$)
+    captures:
+      0: meta.directive.type.yasnippet
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+      3: constant.language.type-specifier.yasnippet
+    push:
+    - match: (?=A)B
+      pop: true
+    - match: ''
+      push:
+      - match: ^(?=\s*#+\s*--\s*$)
+        pop: true
+      - include: repo_prologue-lines
+    - match: ^\s*(#+)\s*(--)\s*$\n?
+      captures:
+        0: comment.line.number-sign.yasnippet
+        1: punctuation.definition.comment.number-sign.yasnippet
+        2: punctuation.terminator.double-dash.yasnippet
+      push:
+      - meta_scope: meta.snippet-body.yasnippet
+      - meta_content_scope: source.embedded.emacs.lisp
+      - match: (?=A)B
+        pop: true
+      - include: scope:source.emacs.lisp
+  - match: (?<=[\s#])(type)\s*(:)(?:\s*(?!command\s*$)(\S.*))
+    scope: meta.directive.type.yasnippet
+    captures:
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+      3: constant.language.type-specifier.yasnippet
+  - match: (?<=[\s#])(contributor|atom-description-more-url)\s*(:)(?:\s*(\S.*))
+    captures:
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+  - match: (?<=[\s#])([^:\s#]+)\s*(:)(?:\s*(\S.*))?
+    scope: meta.directive.other.yasnippet
+    captures:
+      1: variable.assignment.custom.yasnippet
+      2: punctuation.separator.dictionary.key-value.colon.yasnippet
+      3: string.unquoted.yasnippet
+  repo_embedded-lisp:
+  - match: '`'
+    captures:
+      0: punctuation.section.begin.embedded.yasnippet
+    push:
+    - meta_scope: string.interpolated.yasnippet
+    - meta_content_scope: source.embedded.emacs.lisp
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.section.end.embedded.yasnippet
+    - include: scope:source.emacs.lisp
+  repo_escaped-characters:
+  - match: (\\)\\
+    scope: constant.character.escape.backslash.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)\$
+    scope: constant.character.escape.dollar-sign.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)`
+    scope: constant.character.escape.backtick.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)'
+    scope: constant.character.escape.quote.single.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)"
+    scope: constant.character.escape.quote.double.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)[{}]
+    scope: constant.character.escape.bracket.curly.brace.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  - match: (\\)[\(\)]
+    scope: constant.character.escape.bracket.round.parenthesis.yasnippet
+    captures:
+      1: punctuation.definition.escape.yasnippet
+  repo_indentation-marker:
+  - match: (\$)>
+    scope: keyword.operator.indentation-marker.yasnippet
+    captures:
+      1: punctuation.definition.variable.sigil.dollar-sign.yasnippet
+  repo_numbered-placeholder:
+  - match: (\${)([0-9]+)(:)
+    captures:
+      1: punctuation.section.embedded.field.begin.yasnippet
+      2: constant.numeric.integer.int.decimal.yasnippet
+      3: punctuation.separator.colon.field.yasnippet
+    push:
+    - meta_content_scope: string.unquoted.default-text.yasnippet
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.embedded.field.end.yasnippet
+    - include: repo_placeholder-innards
+  repo_placeholder-fields:
+  - include: repo_numbered-placeholder
+  - include: repo_unnumbered-placeholder
+  repo_placeholder-innards:
+  - include: repo_escaped-characters
+  - include: repo_embedded-lisp
+  - include: repo_placeholder-fields
+  - match: \${1,2}(?=\()
+    captures:
+      0: keyword.operator.transformation.yasnippet
+    push:
+    - meta_scope: meta.transformation.yasnippet
+    - meta_content_scope: source.embedded.emacs.lisp
+    - match: (?<=\))
+      pop: true
+    - include: scope:source.emacs.lisp
+  repo_prologue-lines:
+  - match: ^\s*(#+)(?!\s*--\s*$)
+    captures:
+      1: punctuation.definition.comment.number-sign.yasnippet
+    push:
+    - match: $
+      pop: true
+    - match: (?=-\*-)
+      push:
+      - meta_content_scope: comment.line.modeline.yasnippet
+      - match: $
+        pop: true
+      - include: scope:source.emacs.lisp
+    - include: repo_directives
+  repo_tab-stops:
+  - match: (\$)([0-9]+)
+    captures:
+      1: punctuation.definition.variable.sigil.dollar-sign.yasnippet
+  repo_unnumbered-placeholder:
+  - match: (\${)(:)
+    captures:
+      1: punctuation.section.embedded.field.begin.yasnippet
+      2: punctuation.separator.colon.field.yasnippet
+    push:
+    - meta_scope: meta.placeholder-field.unnumbered.yasnippet
+    - meta_content_scope: string.unquoted.default-text.yasnippet
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.embedded.field.end.yasnippet
+    - include: repo_placeholder-innards

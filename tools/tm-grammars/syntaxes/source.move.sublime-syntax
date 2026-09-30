@@ -1,0 +1,752 @@
+%YAML 1.2
+---
+# Move (source.move): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/damirka/vscode-move-syntax.git via GitHub Linguist v9.7.0 (license: mit).
+name: Move
+scope: source.move
+file_extensions:
+- move
+contexts:
+  main:
+  - include: repo_address
+  - include: repo_comments
+  - include: repo_extend_module
+  - include: repo_module
+  - include: repo_script
+  - include: repo_annotation
+  - include: repo_entry
+  - include: repo_public-scope
+  - include: repo_public
+  - include: repo_native
+  - include: repo_import
+  - include: repo_friend
+  - include: repo_const
+  - include: repo_struct
+  - include: repo_has_ability
+  - include: repo_enum
+  - include: repo_macro
+  - include: repo_fun
+  - include: repo_spec
+  repo_=== DEPRECATED_BELOW ===: []
+  repo_abilities:
+  - match: \b(store|key|drop|copy)\b
+    scope: support.type.ability.move
+  repo_address:
+  - match: \b(address)\b
+    captures:
+      1: storage.modifier.type.address.keyword.move
+    push:
+    - meta_scope: meta.address_block.move
+    - match: (?<=})
+      pop: true
+    - include: repo_comments
+    - match: (?<=address)
+      push:
+      - meta_scope: meta.address.definition.move
+      - match: (?=[{])
+        pop: true
+      - include: repo_comments
+      - include: repo_address_literal
+      - match: \b(\w+)\b
+        scope: entity.name.type.move
+    - include: repo_module
+  repo_address_literal:
+  - match: \b0x[A-Fa-f0-9]+\b
+    scope: support.constant.address.base16.move
+  repo_annotation:
+  - match: '#\['
+    push:
+    - meta_scope: support.constant.annotation.move
+    - match: \]
+      pop: true
+    - include: repo_comments
+    - match: \b(\w+)\s*(?=\=)
+      scope: meta.annotation.name.move
+    - match: '='
+      push:
+      - meta_scope: meta.annotation.value.move
+      - match: (?=[,\]])
+        pop: true
+      - include: repo_literals
+  repo_as:
+  - match: \b(as)\b
+    scope: keyword.control.as.move
+  repo_as-import:
+  - match: \b(as)\b
+    scope: meta.import.as.move
+  repo_block:
+  - match: '{'
+    push:
+    - meta_scope: meta.block.move
+    - match: '}'
+      pop: true
+    - include: repo_expr
+  repo_block-comments:
+  - match: /\*[\*!](?![\*/])
+    push:
+    - meta_scope: comment.block.documentation.move
+    - match: \*/
+      pop: true
+  - match: /\*
+    push:
+    - meta_scope: comment.block.move
+    - match: \*/
+      pop: true
+  repo_capitalized:
+  - match: \b([A-Z][a-zA-Z_0-9]*)\b
+    scope: entity.name.type.use.move
+  repo_comments:
+  - include: repo_doc-comments
+  - include: repo_line-comments
+  - include: repo_block-comments
+  repo_const:
+  - match: \b(const)\b
+    captures:
+      1: storage.modifier.const.move
+    push:
+    - meta_scope: meta.const.move
+    - match: ;
+      pop: true
+    - include: repo_comments
+    - include: repo_primitives
+    - include: repo_literals
+    - include: repo_types
+    - match: \b([A-Z][A-Z_0-9]+)\b
+      scope: constant.other.move
+    - include: repo_error_const
+  repo_control:
+  - match: \b(return|while|loop|if|else|break|continue|abort)\b
+    scope: keyword.control.move
+  repo_doc-comments:
+  - match: ///
+    push:
+    - meta_scope: comment.block.documentation.move
+    - match: $
+      pop: true
+    - match: '`(\w+)`'
+      captures:
+        1: markup.underline.link.move
+  repo_entry:
+  - match: \b(entry)\b
+    scope: storage.modifier.visibility.entry.move
+  repo_enum:
+  - match: \b(enum)\b
+    captures:
+      1: keyword.control.enum.move
+    push:
+    - meta_scope: meta.enum.move
+    - match: (?<=})
+      pop: true
+    - include: repo_comments
+    - include: repo_escaped_identifier
+    - include: repo_type_param
+    - match: \b[A-Z][a-zA-Z_0-9]*\b
+      scope: entity.name.type.enum.move
+    - include: repo_has
+    - include: repo_abilities
+    - match: '{'
+      push:
+      - meta_scope: meta.enum.definition.move
+      - match: '}'
+        pop: true
+      - include: repo_comments
+      - match: \b([A-Z][A-Za-z_0-9]*)\b(?=\s*\()
+        scope: entity.name.function.enum.move
+      - match: \b([A-Z][A-Za-z_0-9]*)\b
+        scope: entity.name.type.enum.move
+      - match: \(
+        push:
+        - meta_scope: meta.enum.tuple.move
+        - match: \)
+          pop: true
+        - include: repo_comments
+        - include: repo_expr_generic
+        - include: repo_capitalized
+        - include: repo_types
+      - match: '{'
+        push:
+        - meta_scope: meta.enum.struct.move
+        - match: '}'
+          pop: true
+        - include: repo_comments
+        - include: repo_escaped_identifier
+        - include: repo_expr_generic
+        - include: repo_capitalized
+        - include: repo_types
+  repo_error_const:
+  - match: \b(E[A-Z][A-Za-z0-9_]*)\b
+    scope: variable.other.error.const.move
+  repo_escaped_identifier:
+  - match: '`'
+    push:
+    - meta_scope: variable.language.escaped.move
+    - match: '`'
+      pop: true
+  repo_expr:
+  - include: repo_comments
+  - include: repo_escaped_identifier
+  - include: repo_expr_generic
+  - include: repo_packed_field
+  - include: repo_import
+  - include: repo_as
+  - include: repo_mut
+  - include: repo_let
+  - include: repo_types
+  - include: repo_literals
+  - include: repo_control
+  - include: repo_move_copy
+  - include: repo_self_access
+  - include: repo_module_access
+  - include: repo_label
+  - include: repo_macro_call
+  - include: repo_local_call
+  - include: repo_method_call
+  - include: repo_path_access
+  - include: repo_match_expression
+  - match: \$(?=[a-z])
+    scope: keyword.operator.macro.dollar.move
+  - match: (?<=[$])[a-z][A-Z_0-9a-z]*
+    scope: variable.other.meta.move
+  - match: \b([A-Z][A-Z_]+)\b
+    scope: constant.other.move
+  - include: repo_error_const
+  - match: \b([A-Z][a-zA-Z_0-9]*)\b
+    scope: entity.name.type.move
+  - include: repo_paren
+  - include: repo_block
+  repo_expr_generic:
+  - match: <(?=([\sa-z_,0-9A-Z<>]+>))
+    push:
+    - meta_scope: meta.expression.generic.type.move
+    - match: '>'
+      pop: true
+    - include: repo_comments
+    - include: repo_types
+    - include: repo_capitalized
+    - include: repo_expr_generic
+  repo_extend_module:
+  - match: \b(extend)\b
+    captures:
+      1: storage.modifier.type.extend.move
+    push:
+    - meta_scope: meta.extend_module.move
+    - match: (?<=[;}])
+      pop: true
+    - include: repo_comments
+    - include: repo_module
+  repo_friend:
+  - match: \b(friend)\b
+    captures:
+      1: storage.modifier.type.move
+    push:
+    - meta_scope: meta.friend.move
+    - match: ;
+      pop: true
+    - include: repo_comments
+    - include: repo_address_literal
+    - match: \b([a-zA-Z][A-Za-z_0-9]*)\b
+      scope: entity.name.type.module.move
+  repo_fun:
+  - include: repo_fun_signature
+  - include: repo_block
+  repo_fun_body:
+  - match: '{'
+    push:
+    - meta_scope: meta.fun_body.move
+    - match: (?<=})
+      pop: true
+    - include: repo_expr
+  repo_fun_call:
+  - match: \b(\w+)\s*(?:<[\w\s,]+>)?\s*[(]
+    captures:
+      1: entity.name.function.call.move
+    push:
+    - meta_scope: meta.fun_call.move
+    - match: '[)]'
+      pop: true
+    - include: repo_comments
+    - include: repo_self_access
+    - include: repo_module_access
+    - include: repo_move_copy
+    - include: repo_literals
+    - include: repo_fun_call
+    - include: repo_block
+    - include: repo_mut
+    - include: repo_as
+  repo_fun_signature:
+  - match: \b(fun)\b
+    captures:
+      1: storage.modifier.fun.move
+    push:
+    - meta_scope: meta.fun_signature.move
+    - match: (?=[;{])
+      pop: true
+    - include: repo_comments
+    - include: repo_module_access
+    - include: repo_capitalized
+    - include: repo_types
+    - include: repo_mut
+    - match: (?<=\bfun)
+      push:
+      - meta_scope: meta.function_name.move
+      - match: (?=[<(])
+        pop: true
+      - include: repo_comments
+      - include: repo_escaped_identifier
+      - match: \b(\w+)\b
+        scope: entity.name.function.move
+    - include: repo_fun_type_param
+    - match: '[(]'
+      push:
+      - meta_scope: meta.parentheses.move
+      - match: '[)]'
+        pop: true
+      - include: repo_comments
+      - include: repo_self_access
+      - include: repo_expr_generic
+      - include: repo_escaped_identifier
+      - include: repo_module_access
+      - include: repo_capitalized
+      - include: repo_types
+      - include: repo_mut
+    - match: \b(acquires)\b
+      scope: storage.modifier
+  repo_fun_type_param:
+  - match: <
+    push:
+    - meta_scope: meta.fun_generic_param.move
+    - match: '>'
+      pop: true
+    - include: repo_comments
+    - include: repo_types
+    - include: repo_phantom
+    - include: repo_capitalized
+    - include: repo_module_access
+    - include: repo_abilities
+  repo_has:
+  - match: \b(has)\b
+    scope: keyword.control.ability.has.move
+  repo_has_ability:
+  - match: (?<=[})])\s+(has)\b
+    captures:
+      1: storage.modifier.type.move
+    push:
+    - meta_scope: meta.has.ability.move
+    - match: ;
+      pop: true
+    - include: repo_comments
+    - include: repo_abilities
+  repo_ident:
+  - match: \b([a-zA-Z][A-Z_a-z0-9]*)\b
+    scope: meta.identifier.move
+  repo_import:
+  - match: \b(use)\b
+    captures:
+      1: storage.modifier.type.move
+    push:
+    - meta_scope: meta.import.move
+    - match: ;
+      pop: true
+    - include: repo_comments
+    - include: repo_use_fun
+    - include: repo_address_literal
+    - include: repo_as-import
+    - match: \b([A-Z]\w*)\b
+      scope: entity.name.type.move
+    - match: '{'
+      push:
+      - match: '}'
+        pop: true
+      - include: repo_comments
+      - include: repo_as-import
+      - match: \b([A-Z]\w*)\b
+        scope: entity.name.type.move
+    - match: \b(\w+)\b
+      scope: meta.entity.name.type.module.move
+  repo_label:
+  - match: '''[a-z][a-z_0-9]*'
+    scope: string.quoted.single.label.move
+  repo_let:
+  - match: \b(let)\b
+    scope: keyword.control.move
+  repo_line-comments:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.move
+    - match: $
+      pop: true
+  repo_literals:
+  - match: '@[0-9][0-9_]*'
+    scope: support.constant.address.decimal.move
+  - match: '@0x[A-F0-9a-f]+'
+    scope: support.constant.address.base16.move
+  - match: '@[a-zA-Z][a-zA-Z_0-9]*'
+    scope: support.constant.address.name.move
+  - match: \b(0x[_a-fA-F0-9]+)([ui](8|16|32|64|128|256))?\b
+    scope: meta.constant.numeric.hex.move
+    captures:
+      1: constant.numeric.hex.move
+      2: entity.name.type.integer.move
+  - match: \b([0-9][_0-9]*)([ui](8|16|32|64|128|256))?\b
+    scope: meta.constant.numeric.move
+    captures:
+      1: constant.numeric.decimal.move
+      2: entity.name.type.integer.move
+  - match: '"'
+    push:
+    - meta_scope: meta.string.literal.move
+    - match: '"'
+      pop: true
+    - match: \\x[a-fA-F0-9][A-Fa-f0-9]
+      scope: constant.character.escape.hex.move
+    - match: \\.
+      scope: constant.character.escape.move
+    - match: .
+      scope: string.quoted.double.raw.move
+  - match: \bb"
+    push:
+    - meta_scope: meta.vector.literal.ascii.move
+    - match: '"'
+      pop: true
+    - match: \\x[a-fA-F0-9][A-Fa-f0-9]
+      scope: constant.character.escape.hex.move
+    - match: \\.
+      scope: constant.character.escape.move
+    - match: .
+      scope: string.quoted.double.raw.move
+  - match: x"
+    push:
+    - meta_scope: meta.vector.literal.hex.move
+    - match: '"'
+      pop: true
+    - match: '[A-Fa-f0-9]+'
+      scope: constant.character.move
+  - match: \b(?:true|false)\b
+    scope: constant.language.boolean.move
+  - match: (\bvector\b)\[
+    captures:
+      1: support.type.vector.move
+    push:
+    - meta_scope: meta.vector.literal.move
+    - match: \]
+      pop: true
+      captures:
+        1: support.type.vector.move
+    - include: repo_expr
+  repo_local_call:
+  - match: \b([a-z][_a-z0-9]*)(?=[<\(])
+    scope: entity.name.function.call.local.move
+  repo_macro:
+  - match: \b(macro)\b
+    captures:
+      1: keyword.control.macro.move
+    push:
+    - meta_scope: meta.macro.move
+    - match: (?<=})
+      pop: true
+    - include: repo_comments
+    - include: repo_fun
+  repo_macro_call:
+  - match: (\b|\.)([a-z][A-Za-z0-9_]*)(!)
+    scope: meta.macro.call
+    captures:
+      2: support.function.macro.move
+      3: support.function.operator.macro.move
+  repo_match_expression:
+  - match: \b(match)\b
+    captures:
+      1: keyword.control.match.move
+    push:
+    - meta_scope: meta.match.move
+    - match: (?<=})
+      pop: true
+    - include: repo_comments
+    - include: repo_escaped_identifier
+    - include: repo_types
+    - match: '{'
+      push:
+      - meta_scope: meta.match.block.move
+      - match: '}'
+        pop: true
+      - match: =>
+        scope: operator.match.move
+      - include: repo_expr
+    - include: repo_expr
+  repo_method_call:
+  - match: \.([a-z][_a-z0-9]*)(?=[<\(])
+    scope: meta.path.call.move
+    captures:
+      1: entity.name.function.call.path.move
+  repo_module:
+  - match: \b(module)\b
+    captures:
+      1: storage.modifier.type.move
+    push:
+    - meta_scope: meta.module.move
+    - match: (?<=[;}])
+      pop: true
+    - include: repo_comments
+    - match: (?<=\b(module)\b)
+      push:
+      - match: (?=[;{])
+        pop: true
+      - include: repo_comments
+      - include: repo_escaped_identifier
+      - match: (?<=\b(module))
+        push:
+        - meta_scope: constant.other.move
+        - match: (?=[(::){])
+          pop: true
+        - include: repo_comments
+        - include: repo_escaped_identifier
+      - match: (?<=::)
+        push:
+        - meta_scope: entity.name.type.move
+        - match: (?=[\s;{])
+          pop: true
+        - include: repo_comments
+        - include: repo_escaped_identifier
+    - match: '{'
+      push:
+      - meta_scope: meta.module_scope.move
+      - match: '}'
+        pop: true
+      - include: repo_comments
+      - include: repo_annotation
+      - include: repo_entry
+      - include: repo_public-scope
+      - include: repo_public
+      - include: repo_native
+      - include: repo_import
+      - include: repo_friend
+      - include: repo_const
+      - include: repo_struct
+      - include: repo_has_ability
+      - include: repo_enum
+      - include: repo_macro
+      - include: repo_fun
+      - include: repo_spec
+  repo_module_access:
+  - match: \b(\w+)::(\w+)\b
+    scope: meta.module_access.move
+    captures:
+      1: meta.entity.name.type.accessed.module.move
+      2: entity.name.function.call.move
+  repo_move_copy:
+  - match: \b(move|copy)\b
+    scope: variable.language.move
+  repo_mut:
+  - match: \b(mut)\b
+    scope: storage.modifier.mut.move
+  repo_native:
+  - match: \b(native)\b
+    scope: storage.modifier.visibility.native.move
+  repo_packed_field:
+  - match: '[a-z][a-z0-9_]+\s*:\s*(?=\s)'
+    scope: meta.struct.field.move
+  repo_paren:
+  - match: \(
+    push:
+    - meta_scope: meta.paren.move
+    - match: \)
+      pop: true
+    - include: repo_expr
+  repo_path_access:
+  - match: \.[a-z][_a-z0-9]*\b
+    scope: meta.path.access.move
+  repo_phantom:
+  - match: \b(phantom)\b
+    scope: keyword.control.phantom.move
+  repo_primitives:
+  - match: \b([ui](8|16|32|64|128|256)|address|bool|signer)\b
+    scope: support.type.primitives.move
+  repo_public:
+  - match: \b(public)\b
+    scope: storage.modifier.visibility.public.move
+  repo_public-scope:
+  - match: (?<=\b(public))\s*\(
+    push:
+    - meta_scope: meta.public.scoped.move
+    - match: \)
+      pop: true
+    - include: repo_comments
+    - match: \b(friend|script|package)\b
+      scope: keyword.control.public.scope.move
+  repo_resource_methods:
+  - match: \b(borrow_global|borrow_global_mut|exists|move_from|move_to_sender|move_to)\b
+    scope: support.function.typed.move
+  repo_script:
+  - match: \b(script)\b
+    captures:
+      1: storage.modifier.script.move
+    push:
+    - meta_scope: meta.script.move
+    - match: (?<=})
+      pop: true
+    - include: repo_comments
+    - match: '{'
+      push:
+      - meta_scope: meta.script_scope.move
+      - match: '}'
+        pop: true
+      - include: repo_const
+      - include: repo_comments
+      - include: repo_import
+      - include: repo_fun
+  repo_self_access:
+  - match: \b(Self)::(\w+)\b
+    scope: meta.self_access.move
+    captures:
+      1: variable.language.self.move
+      2: entity.name.function.call.move
+  repo_spec:
+  - match: \b(spec)\b
+    captures:
+      1: storage.modifier.spec.move
+    push:
+    - meta_scope: meta.spec.move
+    - match: (?<=[;}])
+      pop: true
+    - match: \b(module|schema|struct|fun)
+      scope: storage.modifier.spec.target.move
+    - match: \b(define)
+      scope: storage.modifier.spec.define.move
+    - match: \b(\w+)\b
+      scope: entity.name.function.move
+    - match: '{'
+      push:
+      - match: '}'
+        pop: true
+      - include: repo_comments
+      - include: repo_spec_block
+      - include: repo_spec_types
+      - include: repo_spec_define
+      - include: repo_spec_keywords
+      - include: repo_control
+      - include: repo_fun_call
+      - include: repo_literals
+      - include: repo_types
+      - include: repo_let
+  repo_spec_block:
+  - match: '{'
+    push:
+    - meta_scope: meta.spec_block.move
+    - match: '}'
+      pop: true
+    - include: repo_comments
+    - include: repo_spec_block
+    - include: repo_spec_types
+    - include: repo_fun_call
+    - include: repo_literals
+    - include: repo_control
+    - include: repo_types
+    - include: repo_let
+  repo_spec_define:
+  - match: \b(define)\b
+    captures:
+      1: keyword.control.move.spec
+    push:
+    - meta_scope: meta.spec_define.move
+    - match: (?=[;{])
+      pop: true
+    - include: repo_comments
+    - include: repo_spec_types
+    - include: repo_types
+    - match: (?<=\bdefine)
+      push:
+      - match: (?=[(])
+        pop: true
+      - include: repo_comments
+      - match: \b(\w+)\b
+        scope: entity.name.function.move
+  repo_spec_keywords:
+  - match: \b(global|pack|unpack|pragma|native|include|ensures|requires|invariant|apply|aborts_if|modifies)\b
+    scope: keyword.control.move.spec
+  repo_spec_types:
+  - match: \b(range|num|vector|bool|u8|u16|u32|u64|u128|u256|address)\b
+    scope: support.type.vector.move
+  repo_struct:
+  - match: \b(struct)\b
+    captures:
+      1: storage.modifier.type.move
+    push:
+    - meta_scope: meta.struct.move
+    - match: (?<=[};\)])
+      pop: true
+    - include: repo_comments
+    - include: repo_escaped_identifier
+    - include: repo_has
+    - include: repo_abilities
+    - match: \b[A-Z][a-zA-Z_0-9]*\b
+      scope: entity.name.type.struct.move
+    - match: \(
+      push:
+      - meta_scope: meta.struct.paren.move
+      - match: \)
+        pop: true
+      - include: repo_comments
+      - include: repo_capitalized
+      - include: repo_types
+    - include: repo_type_param
+    - match: \(
+      push:
+      - meta_scope: meta.struct.paren.move
+      - match: (?<=[)])
+        pop: true
+      - include: repo_comments
+      - include: repo_types
+    - match: '{'
+      push:
+      - meta_scope: meta.struct.body.move
+      - match: '}'
+        pop: true
+      - include: repo_comments
+      - include: repo_self_access
+      - include: repo_escaped_identifier
+      - include: repo_module_access
+      - include: repo_expr_generic
+      - include: repo_capitalized
+      - include: repo_types
+    - include: repo_has_ability
+  repo_struct_pack:
+  - match: (?<=[A-Za-z0-9_>])\s*{
+    push:
+    - meta_scope: meta.struct.pack.move
+    - match: '}'
+      pop: true
+    - include: repo_comments
+  repo_type_param:
+  - match: <
+    push:
+    - meta_scope: meta.generic_param.move
+    - match: '>'
+      pop: true
+    - include: repo_comments
+    - include: repo_phantom
+    - include: repo_capitalized
+    - include: repo_module_access
+    - include: repo_abilities
+  repo_types:
+  - include: repo_primitives
+  - include: repo_vector
+  repo_use_fun:
+  - match: \b(fun)\b
+    captures:
+      1: storage.modifier.fun.move
+    push:
+    - meta_scope: meta.import.fun.move
+    - match: (?=;)
+      pop: true
+    - include: repo_comments
+    - match: \b(as)\b
+      scope: keyword.control.as.move
+    - match: \b(Self)\b
+      scope: variable.language.self.use.fun.move
+    - match: \b([a-z][a-z_0-9]*)\b
+      scope: meta.entity.name.function.use.move
+    - include: repo_types
+    - include: repo_escaped_identifier
+    - include: repo_capitalized
+  repo_vector:
+  - match: \b(vector)\b
+    scope: support.type.vector.move

@@ -1,0 +1,2 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/strace/).
+; Source: nvim-treesitter@728e031f6b11 queries/strace (Apache-2.0)
