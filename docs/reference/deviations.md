@@ -46,6 +46,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Create a Branch can put a configured prefix (such as `feature/`) in front of the suggested name, unless the name already starts with it; empty by default in every preset, GHD has no such setting. Flag: `264-branch-name-prefix`.
 - While a merge runs (Merge into…, Update from Default Branch) the toolbar's branch button spins and reads "Merging <branch>" (tooltip "Merging <branch> into <current>"), like its "Switching to Branch" state; GHD shows nothing until the merge ends. Flag: `265-merge-progress-in-branch-button`.
 - Clicking a branch in the branch list can ask "Switch to <branch>?" first (Corvane addition, off in the Corvane preset; `ConfirmSwitchBranchDialog`, `Popup::ConfirmSwitchBranch`); GHD checks out at once. Flag: `266-confirm-branch-switch`.
+- A branch's context menu in the branch list offers "Rebase Current Branch onto <branch>…" (disabled for the current branch, an invalid HEAD or a running operation), which opens the rebase choose-branch step with that branch selected and previewed; GHD's branch menu (`generateBranchContextMenuItems`) has no rebase entry. Flag: `267-branch-menu-rebase-onto`.
 
 ## Tutorial
 

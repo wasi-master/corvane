@@ -456,6 +456,20 @@ registry! {
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
 
+    /// Branch context menu: Rebase Current Branch onto <branch>….
+    BRANCH_MENU_REBASE_ONTO = 267 "branch-menu-rebase-onto" {
+        title: "Rebase onto a branch from the branch list",
+        summary: "A branch's context menu in the branch list offers \"Rebase Current Branch onto \
+                  <branch>…\", which opens the rebase dialog with that branch selected.",
+        ghd_behaviour: "Rebasing starts from Branch › Rebase Current Branch… only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21657)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

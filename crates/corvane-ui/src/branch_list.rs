@@ -18,6 +18,8 @@
 //! Rows can tell local-only, tracked and remote-only branches apart by icon
 //! (`262-branch-list-local-remote-icons`), and a filter-row toggle can
 //! narrow the list to remote branches (`263-branch-list-remote-only`).
+//! The context menu can start a rebase onto the branch
+//! (`267-branch-menu-rebase-onto`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -631,13 +633,28 @@ impl BranchFoldout {
                     {
                         use crate::context_menu::MenuItem;
                         let local = branch.kind == BranchKind::Local;
+                        // `267-branch-menu-rebase-onto`
+                        let rebase_onto = AppState::global(cx)
+                            .read(cx)
+                            .flags
+                            .bool(corvane_core::flags::ids::BRANCH_MENU_REBASE_ONTO)
+                            .then(|| branch.name.clone());
+                        let can_rebase = !current && {
+                            let s = AppState::global(cx).read(cx);
+                            s.repo_states.get(&id).is_some_and(|r| {
+                                r.mco.is_none()
+                                    && r.info
+                                        .as_ref()
+                                        .is_some_and(|i| matches!(i.tip, Tip::Valid { .. }))
+                            })
+                        };
                         let (rename, copy, worktree, delete) = (
                             branch.name.clone(),
                             branch.name.clone(),
                             branch.name.clone(),
                             branch.name.clone(),
                         );
-                        let items = vec![
+                        let mut items = vec![
                             MenuItem::new("Rename…", move |_, cx| {
                                 Dispatcher::close_foldout(cx);
                                 Dispatcher::show_popup(
@@ -664,17 +681,34 @@ impl BranchFoldout {
                                 )
                             }),
                             MenuItem::separator(),
-                            MenuItem::new("Delete…", move |_, cx| {
-                                Dispatcher::close_foldout(cx);
-                                Dispatcher::show_popup(
-                                    Popup::DeleteBranch {
-                                        repo: id,
-                                        name: delete.clone(),
-                                    },
-                                    cx,
-                                )
-                            }),
                         ];
+                        if let Some(base) = rebase_onto {
+                            items.push(
+                                MenuItem::new(
+                                    format!("Rebase Current Branch onto {base}…"),
+                                    move |_, cx| {
+                                        Dispatcher::close_foldout(cx);
+                                        Dispatcher::start_rebase_flow_onto(
+                                            id,
+                                            Some(base.clone()),
+                                            cx,
+                                        );
+                                    },
+                                )
+                                .enabled(can_rebase),
+                            );
+                            items.push(MenuItem::separator());
+                        }
+                        items.extend([MenuItem::new("Delete…", move |_, cx| {
+                            Dispatcher::close_foldout(cx);
+                            Dispatcher::show_popup(
+                                Popup::DeleteBranch {
+                                    repo: id,
+                                    name: delete.clone(),
+                                },
+                                cx,
+                            )
+                        })]);
                         crate::native_menu::show_context_menu(items, ev.position, window, cx);
                     }
                     #[cfg(not(target_os = "macos"))]
