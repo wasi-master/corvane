@@ -10,6 +10,19 @@
 //! Compare-to-branch and the unpushed indicator come with the remote
 //! milestone (TODO.md). Drop tooltips ("Copy to …", "Squash N commits")
 //! are not shown; the drop targets highlight instead.
+//!
+//! Deviations (`docs/reference/deviations.md` › History): the commit menus
+//! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
+//! list scrolls back to the top when the branch changes (flag `241`); Revert
+//! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
+//! Commit (flag `243`); a commit with a description gets a mark after its
+//! summary (flag `252`); compact rows drop the author line (flag `140`); the
+//! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
+//! the branch tip (flag `440`); a toggle before the compare box lists first
+//! parents only (flag `142`); the compare list offers matching tags (flag
+//! `444`); pushed tags can be deleted after a confirmation (flag `445`);
+//! Cherry-pick Without Committing (flag `147`); Create Patch File(s) (flag
+//! `148`).
 
 use std::rc::Rc;
 
@@ -33,13 +46,31 @@ use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::ListRowA11y;
+use crate::widgets::{GhdTooltip, IconButtonA11y, ListRowA11y};
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button};
 
 /// `RowHeight` in `commit-list.tsx`
 #[allow(non_snake_case)]
 pub fn COMMIT_ROW_HEIGHT() -> Pixels {
     zpx(50.)
+}
+
+/// `140`: summary-only commit rows, 30 px tall.
+fn compact_rows(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::COMPACT_COMMIT_ROWS)
+    })
+}
+
+/// The commit row height: [`COMMIT_ROW_HEIGHT`], or 30 px for compact rows.
+pub fn commit_row_height(cx: &App) -> Pixels {
+    if compact_rows(cx) {
+        zpx(30.)
+    } else {
+        COMMIT_ROW_HEIGHT()
+    }
 }
 
 /// GHD `CommitDragData`: what a commit drag carries (drop targets in the
@@ -127,7 +158,7 @@ impl Render for CommitDragElement {
         div()
             .relative()
             .w(zpx(300.))
-            .h(COMMIT_ROW_HEIGHT())
+            .h(commit_row_height(cx))
             .mt(zpx(22.))
             .children(tooltip)
             .child(
@@ -199,6 +230,10 @@ pub struct HistorySidebar {
     focused_branch: Option<String>,
     /// Merge call to action dropdown choice (`selectedOperation`).
     merge_option: MultiCommitOperationKind,
+    list_scroll: UniformListScrollHandle,
+    /// Repository and tip (branch name or detached sha) the list last showed;
+    /// a change scrolls it back to the top (flag `241`).
+    shown_tip: Option<(u64, String)>,
 }
 
 impl HistorySidebar {
@@ -216,6 +251,8 @@ impl HistorySidebar {
             compare_was_focused: false,
             focused_branch: None,
             merge_option: MultiCommitOperationKind::Merge,
+            list_scroll: UniformListScrollHandle::new(),
+            shown_tip: None,
         }
     }
 
@@ -260,13 +297,37 @@ impl HistorySidebar {
             .filter(|r| Some(*r) != current.as_ref())
             .cloned()
             .collect();
-        group_branches(
+        let mut groups = group_branches(
             &branches,
             default,
             &recent,
             &query,
             crate::branch_list::sort_by_date(cx),
-        )
+        );
+        // `444`: tags matching the filter, after the branches
+        if !query.is_empty() && s.flags.bool(corvane_core::flags::ids::COMPARE_TAGS) {
+            let tags: Vec<corvane_core::Branch> = rs
+                .compare
+                .tags
+                .iter()
+                .filter(|t| corvane_core::filter::fuzzy_score(&query, t).is_some())
+                .map(|t| corvane_core::Branch {
+                    name: t.clone(),
+                    kind: corvane_core::BranchKind::Local,
+                    full_name: format!("refs/tags/{t}"),
+                    tip: None,
+                    upstream: None,
+                    tip_time: None,
+                })
+                .collect();
+            if !tags.is_empty() {
+                groups.push(crate::branch_list::BranchGroup {
+                    title: "Tags",
+                    branches: tags,
+                });
+            }
+        }
+        groups
     }
 
     fn compare_branch_names(&self, id: u64, cx: &App) -> Vec<String> {
@@ -442,7 +503,17 @@ impl HistorySidebar {
                                 })
                                 .ok();
                             })
-                            .child(octicon(Octicon::GitBranch, t.text).mr(SPACING_HALF()))
+                            .child(
+                                octicon(
+                                    if b.full_name.starts_with("refs/tags/") {
+                                        Octicon::Tag
+                                    } else {
+                                        Octicon::GitBranch
+                                    },
+                                    t.text,
+                                )
+                                .mr(SPACING_HALF()),
+                            )
                             .child(
                                 div()
                                     .flex_1()
@@ -833,10 +904,39 @@ impl HistorySidebar {
             .repo_states
             .get(&id)
             .is_some_and(|r| r.compare.is_comparing());
+        let (copy_items, revert_no_commit, pick_no_commit, patches) = {
+            let flags = &self.state.read(cx).flags;
+            (
+                flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
+                flags.bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CHERRY_PICK_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CREATE_PATCH_FILES),
+            )
+        };
+        // `240`: newest first, whatever the click order
+        let shas_text = {
+            let s = self.state.read(cx);
+            let mut shas = selection.clone();
+            if let Some(rs) = s.repo_states.get(&id) {
+                shas.sort_by_key(|sha| {
+                    rs.commits
+                        .iter()
+                        .position(|c| &c.sha == sha)
+                        .unwrap_or(usize::MAX)
+                });
+            }
+            shas.join("\n")
+        };
         let weak = cx.weak_entity();
-        let (s1, s2, s3) = (selection.clone(), selection.clone(), selection);
+        let (s1, s2, s3, s4) = (
+            selection.clone(),
+            selection.clone(),
+            selection.clone(),
+            selection.clone(),
+        );
+        let (s5, s6) = (selection.clone(), selection);
         let onto = commit.sha.clone();
-        let items = vec![
+        let mut items = vec![
             MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
                 Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx)
             })
@@ -853,6 +953,39 @@ impl HistorySidebar {
             })
             .enabled(!busy && !comparing),
         ];
+        if revert_no_commit {
+            // `242`: newest first, staged, not committed
+            items.push(
+                MenuItem::new(
+                    format!("Revert Changes in {count} Commits Without Committing"),
+                    move |_, cx| Dispatcher::revert_commits_without_committing(id, s4.clone(), cx),
+                )
+                .enabled(!busy && !comparing),
+            );
+        }
+        if pick_no_commit {
+            // `147`: onto the current branch, staged, not committed
+            items.push(
+                MenuItem::new(
+                    format!("Cherry-pick {count} Commits Without Committing"),
+                    move |_, cx| Dispatcher::cherry_pick_without_committing(id, s5.clone(), cx),
+                )
+                .enabled(!busy),
+            );
+        }
+        if patches {
+            // `148`
+            items.push(MenuItem::new(
+                format!("Create {count} Patch Files…"),
+                move |_, cx| create_patch_files(id, s6.clone(), cx),
+            ));
+        }
+        if copy_items {
+            items.push(MenuItem::separator());
+            items.push(MenuItem::new("Copy SHAs", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(shas_text.clone()))
+            }));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -865,7 +998,7 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (html_url, is_head, busy) = {
+        let (html_url, is_head, busy, copy_items, revert_no_commit, unpushed, checkout_head) = {
             let s = self.state.read(cx);
             let html_url = s
                 .repository(id)
@@ -882,6 +1015,32 @@ impl HistorySidebar {
                 html_url,
                 is_head,
                 rs.is_some_and(|r| r.mco.is_some()) || comparing,
+                s.flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
+                s.flags
+                    .bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
+                // `243`: one of the current branch's commits its upstream lacks
+                s.flags
+                    .bool(corvane_core::flags::ids::PUSH_UP_TO_COMMIT)
+                    .then(|| {
+                        let tracked = rs
+                            .and_then(|r| r.info.as_ref())
+                            .and_then(|i| i.current_branch())
+                            .is_some_and(|b| b.upstream.is_some());
+                        let ahead = rs
+                            .filter(|_| tracked)
+                            .and_then(|r| r.ahead_behind)
+                            .map_or(0, |ab| ab.ahead as usize);
+                        !comparing
+                            && rs
+                                .and_then(|r| r.commits.iter().position(|c| c.sha == commit.sha))
+                                .is_some_and(|ix| ix < ahead)
+                    }),
+                // `440`: the branch tip can be checked out (detaching HEAD)
+                s.flags.bool(corvane_core::flags::ids::CHECKOUT_HEAD_COMMIT)
+                    && rs
+                        .and_then(|r| r.info.as_ref())
+                        .and_then(|i| i.current_branch())
+                        .is_some(),
             )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
@@ -907,7 +1066,7 @@ impl HistorySidebar {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
             })
-            .enabled(!is_head),
+            .enabled(!is_head || checkout_head),
             MenuItem::new("Reorder Commit", {
                 let sha = sha.clone();
                 move |_, cx| {
@@ -922,6 +1081,19 @@ impl HistorySidebar {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
             }),
+        ]);
+        if revert_no_commit {
+            items.push(MenuItem::new(
+                "Revert Changes in Commit Without Committing",
+                {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::revert_commits_without_committing(id, vec![sha.clone()], cx)
+                    }
+                },
+            ));
+        }
+        items.extend([
             MenuItem::separator(),
             MenuItem::new("Create Branch from Commit", {
                 let sha = sha.clone();
@@ -953,49 +1125,128 @@ impl HistorySidebar {
             items.push(MenuItem::separator());
             // GHD `getDeleteTagsMenuItem`: only tags still in `tagsToPush`
             // (created here, not pushed) can be deleted
-            let unpushed: Vec<String> = self
-                .state
-                .read(cx)
-                .repository(id)
-                .map(|r| r.tags_to_push.clone())
-                .unwrap_or_default();
+            let (unpushed, delete_pushed) = {
+                let s = self.state.read(cx);
+                (
+                    s.repository(id)
+                        .map(|r| r.tags_to_push.clone())
+                        .unwrap_or_default(),
+                    s.flags.bool(corvane_core::flags::ids::DELETE_PUSHED_TAGS),
+                )
+            };
+            // `445`: the others after a confirmation that can include the remote
+            let delete = move |tag: &String| {
+                let is_unpushed = unpushed.contains(tag);
+                let tag = tag.clone();
+                (
+                    is_unpushed || delete_pushed,
+                    move |_: &mut Window, cx: &mut App| {
+                        if is_unpushed {
+                            Dispatcher::delete_tag(id, tag.clone(), cx)
+                        } else {
+                            Dispatcher::show_popup(
+                                Popup::ConfirmDeletePushedTag {
+                                    repo: id,
+                                    tag: tag.clone(),
+                                },
+                                cx,
+                            )
+                        }
+                    },
+                )
+            };
             if commit.tags.len() == 1 {
                 let tag = commit.tags[0].clone();
-                let enabled = unpushed.contains(&tag);
-                items.push(
-                    MenuItem::new(format!("Delete tag {tag}"), move |_, cx| {
-                        Dispatcher::delete_tag(id, tag.clone(), cx)
-                    })
-                    .enabled(enabled),
-                );
+                let (enabled, action) = delete(&tag);
+                items.push(MenuItem::new(format!("Delete tag {tag}"), action).enabled(enabled));
             } else {
                 let entries = commit
                     .tags
                     .iter()
                     .map(|tag| {
-                        let enabled = unpushed.contains(tag);
-                        let tag = tag.clone();
-                        MenuItem::new(tag.clone(), move |_, cx| {
-                            Dispatcher::delete_tag(id, tag.clone(), cx)
-                        })
-                        .enabled(enabled)
+                        let (enabled, action) = delete(tag);
+                        MenuItem::new(tag.clone(), action).enabled(enabled)
                     })
                     .collect();
                 items.push(MenuItem::submenu("Delete tag…", entries));
             }
         }
-        items.extend([
+        items.push(
             MenuItem::new("Cherry-pick Commit…", {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::start_cherry_pick_flow(id, vec![sha.clone()], cx)
             })
             .enabled(!busy),
+        );
+        let (pick_no_commit, patches) = {
+            let flags = &self.state.read(cx).flags;
+            (
+                flags.bool(corvane_core::flags::ids::CHERRY_PICK_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CREATE_PATCH_FILES),
+            )
+        };
+        if pick_no_commit {
+            // `147`: onto the current branch (not the HEAD commit itself)
+            items.push(
+                MenuItem::new("Cherry-pick Commit Without Committing", {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
+                    }
+                })
+                .enabled(!busy && !is_head),
+            );
+        }
+        if patches {
+            // `148`
+            items.push(MenuItem::new("Create Patch File…", {
+                let sha = sha.clone();
+                move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
+            }));
+        }
+        if let Some(unpushed) = unpushed {
+            items.push(
+                MenuItem::new("Push Up to This Commit", {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
+                })
+                .enabled(unpushed && !busy),
+            );
+        }
+        items.extend([
             MenuItem::separator(),
             MenuItem::new("Copy SHA", {
                 let sha = sha.clone();
                 move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
             }),
         ]);
+        let commit_url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
+        if copy_items {
+            // `240`: the title, the full message and the GitHub URL
+            let title = commit.summary.clone();
+            let message = if commit.body.is_empty() {
+                commit.summary.clone()
+            } else {
+                format!("{}\n\n{}", commit.summary, commit.body)
+            };
+            items.push(MenuItem::new("Copy Commit Title", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(title.clone()))
+            }));
+            items.push(MenuItem::new("Copy Commit Message", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(message.clone()))
+            }));
+            items.push(
+                MenuItem::new("Copy Commit URL", {
+                    let url = commit_url.clone();
+                    move |_, cx| {
+                        if let Some(url) = &url {
+                            cx.write_to_clipboard(ClipboardItem::new_string(url.clone()));
+                        }
+                    }
+                })
+                .enabled(commit_url.is_some()),
+            );
+        }
         let tags = commit.tags.join(" ");
         items.push(
             MenuItem::new(
@@ -1010,7 +1261,7 @@ impl HistorySidebar {
         );
         items.push(
             MenuItem::new("View on GitHub", {
-                let url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
+                let url = commit_url;
                 move |_, cx| {
                     if let Some(url) = &url {
                         Dispatcher::open_url(url, cx);
@@ -1202,6 +1453,25 @@ impl HistorySidebar {
                 .child(message)
                 .into_any_element();
         }
+        // `241`: another branch (or repository) starts at the newest commit
+        let tip = rs
+            .and_then(|r| r.info.as_ref())
+            .map(|info| match &info.tip {
+                corvane_core::Tip::Detached { sha } => sha.clone(),
+                tip => tip.branch_name().unwrap_or_default().to_string(),
+            });
+        let scroll_to_top = s
+            .flags
+            .bool(corvane_core::flags::ids::HISTORY_SCROLLS_TO_TOP_ON_BRANCH_CHANGE);
+        if let Some(tip) = tip {
+            let key = Some((id, tip));
+            if self.shown_tip != key {
+                if scroll_to_top && self.shown_tip.is_some() {
+                    self.list_scroll.scroll_to_item(0, ScrollStrategy::Top);
+                }
+                self.shown_tip = key;
+            }
+        }
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
         let count = commits.len();
@@ -1301,7 +1571,7 @@ impl HistorySidebar {
                 })
                 .flex_1()
                 .min_h_0()
-                .with_scrollbar(),
+                .with_scrollbar_handle(&self.list_scroll),
             )
             .when(in_reorder, |d| d.child(self.reorder_hint(cx)))
             .into_any_element()
@@ -1414,6 +1684,14 @@ pub(crate) fn commit_row_contents(
         commit.summary.clone()
     };
     let empty = commit.summary.is_empty();
+    // `252`: a mark after the summary when the commit has a description
+    let body_mark = !commit.body.trim().is_empty()
+        && corvane_core::AppState::try_global(cx).is_some_and(|s| {
+            s.read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::COMMIT_BODY_INDICATOR)
+        });
+    let compact = compact_rows(cx);
     let byline = format!(
         "{} • {}",
         commit.author.name,
@@ -1433,79 +1711,165 @@ pub(crate) fn commit_row_contents(
             div()
                 .flex_1()
                 .min_w(zpx(50.))
-                .mt(zpx(-4.))
+                .when(!compact, |d| d.mt(zpx(-4.)))
                 .flex()
                 .flex_col()
                 .child(
                     div()
-                        .text_size(FONT_SIZE())
-                        .line_height(zpx(18.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .truncate()
-                        .when(empty, |d| d.text_color(secondary))
-                        .child(summary),
-                )
-                .child(
-                    div()
-                        .mt(zpx(3.))
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(zpx(4.))
-                        .child(avatar_image(
-                            avatar_lookup(&commit.author.email, cx),
-                            zpx(16.),
-                            cx,
-                        ))
                         .child(
                             div()
-                                .flex_1()
                                 .min_w_0()
+                                .text_size(FONT_SIZE())
+                                .line_height(zpx(18.))
+                                .font_weight(FontWeight::SEMIBOLD)
                                 .truncate()
-                                .text_size(FONT_SIZE_SM())
-                                .line_height(zpx(16.5))
-                                .text_color(secondary)
-                                .child(byline),
-                        ),
-                ),
+                                .when(empty, |d| d.text_color(secondary))
+                                .child(summary),
+                        )
+                        .when(body_mark, |d| {
+                            d.child(
+                                div()
+                                    .flex_none()
+                                    .ml(SPACING_HALF())
+                                    .child(octicon(Octicon::KebabHorizontal, secondary)),
+                            )
+                        }),
+                )
+                .when(!compact, |d| {
+                    d.child(
+                        div()
+                            .mt(zpx(3.))
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(zpx(4.))
+                            .child(avatar_image(
+                                avatar_lookup(&commit.author.email, cx),
+                                zpx(16.),
+                                cx,
+                            ))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .truncate()
+                                    .text_size(FONT_SIZE_SM())
+                                    .line_height(zpx(16.5))
+                                    .text_color(secondary)
+                                    .child(byline),
+                            ),
+                    )
+                }),
         )
         // `.commit-indicators .tag-indicator`: the first tag as a 16 px pill
         // (5 px padding, 6 px radius, no icon); more tags peek out behind it
         // as a 10 px tab (`.tag-indicator-more`)
         .when(!commit.tags.is_empty(), |d| {
+            let pill = div()
+                .ml(SPACING())
+                .h(zpx(16.))
+                .max_w(gpui_kit::relative(0.5))
+                .flex()
+                .flex_row()
+                .text_color(badge_text)
+                .text_size(FONT_SIZE())
+                .line_height(zpx(16.))
+                .child(
+                    div()
+                        .min_w_0()
+                        .px(SPACING_HALF())
+                        .h(zpx(16.))
+                        .rounded(BORDER_RADIUS())
+                        .bg(badge_bg)
+                        .truncate()
+                        .child(commit.tags[0].clone()),
+                )
+                .when(commit.tags.len() > 1, |d| {
+                    d.child(
+                        div()
+                            .flex_none()
+                            .w(SPACING())
+                            .ml(zpx(-5.))
+                            .h(zpx(16.))
+                            .rounded_r(BORDER_RADIUS())
+                            .bg(badge_bg),
+                    )
+                });
+            // `254`: hovering the pill lists every tag
+            if tags_tooltip(cx) {
+                d.child(
+                    pill.id(SharedString::from(format!("tags-{}", commit.sha)))
+                        .ghd_tooltip(commit.tags.join("\n")),
+                )
+            } else {
+                d.child(pill)
+            }
+        })
+}
+
+/// `254`: the commit's tags as a tooltip on the tag pill and the details' tag list.
+pub(crate) fn tags_tooltip(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAGS_TOOLTIP)
+    })
+}
+
+/// Flag `142`: a 27 px toggle before the compare box that lists first
+/// parents only; accent-coloured with a dot while on (the Changes filter
+/// button's `.active` look), disabled while comparing.
+fn first_parent_button(on: bool, comparing: bool, cx: &App) -> AnyElement {
+    let t = cx.ghd();
+    let label = if comparing {
+        "First-parent history does not apply to a comparison"
+    } else if on {
+        "Showing first-parent commits only"
+    } else {
+        "Show first-parent commits only"
+    };
+    div()
+        .id("history-first-parent")
+        .icon_button_label(label)
+        .ghd_tooltip(label)
+        .relative()
+        .size(zpx(27.))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .border_1()
+        .border_color(t.secondary_button_border)
+        .rounded(BORDER_RADIUS())
+        .bg(t.secondary_button_background)
+        .when(comparing, |d| d.opacity(0.6))
+        .when(!comparing, |d| {
+            d.cursor_pointer()
+                .on_click(move |_, _, cx| Dispatcher::set_history_first_parent(!on, cx))
+        })
+        .child(octicon(
+            Octicon::Filter,
+            if on {
+                t.box_selected_active_background
+            } else {
+                t.secondary_button_text
+            },
+        ))
+        .when(on, |d| {
             d.child(
                 div()
-                    .ml(SPACING())
-                    .h(zpx(16.))
-                    .max_w(gpui_kit::relative(0.5))
-                    .flex()
-                    .flex_row()
-                    .text_color(badge_text)
-                    .text_size(FONT_SIZE())
-                    .line_height(zpx(16.))
-                    .child(
-                        div()
-                            .min_w_0()
-                            .px(SPACING_HALF())
-                            .h(zpx(16.))
-                            .rounded(BORDER_RADIUS())
-                            .bg(badge_bg)
-                            .truncate()
-                            .child(commit.tags[0].clone()),
-                    )
-                    .when(commit.tags.len() > 1, |d| {
-                        d.child(
-                            div()
-                                .flex_none()
-                                .w(SPACING())
-                                .ml(zpx(-5.))
-                                .h(zpx(16.))
-                                .rounded_r(BORDER_RADIUS())
-                                .bg(badge_bg),
-                        )
-                    }),
+                    .absolute()
+                    .top(zpx(3.))
+                    .right(zpx(3.))
+                    .size(zpx(5.))
+                    .rounded_full()
+                    .bg(t.box_selected_active_background),
             )
         })
+        .into_any_element()
 }
 
 /// `CommitListItem`
@@ -1588,7 +1952,7 @@ fn commit_row(
         )
         .relative()
         .w_full()
-        .h(COMMIT_ROW_HEIGHT())
+        .h(commit_row_height(cx))
         .flex_none()
         .bg(bg)
         // `.has-highlighted-commits .list-item:not(.highlighted) { opacity: 30% }`
@@ -1776,6 +2140,18 @@ impl Render for HistorySidebar {
             _ => self.commit_list(cx).into_any_element(),
         };
         let t = cx.ghd();
+        // `142`: the first-parent toggle before the compare box
+        let (first_parent_toggle, comparing) = {
+            let s = self.state.read(cx);
+            (
+                s.flags
+                    .bool(corvane_core::flags::ids::HISTORY_FIRST_PARENT)
+                    .then_some(s.settings.history_first_parent),
+                s.selected
+                    .and_then(|id| s.repo_states.get(&id))
+                    .is_some_and(|rs| rs.compare.is_comparing()),
+            )
+        };
         div()
             .size_full()
             .flex()
@@ -1809,24 +2185,50 @@ impl Render for HistorySidebar {
                     .bg(t.box_alt_background)
                     .border_b_1()
                     .border_color(t.box_border)
+                    .when_some(first_parent_toggle, |d, on| {
+                        d.flex()
+                            .flex_row()
+                            .gap(SPACING_HALF())
+                            .child(first_parent_button(on, comparing, cx))
+                    })
                     .child({
                         // `FancyTextBox`: 27 px, `--box-border-color` frame,
                         // a 9 px branch glyph 7 px in, the text at 27 px
                         let focused = self.compare.read(cx).focus_handle(cx).is_focused(window);
-                        crate::widgets::filter_text_box(
-                            "compare-branch",
-                            &self.compare,
-                            Some(octicon(Octicon::GitBranch, t.text).size(zpx(9.))),
-                            window,
-                            cx,
+                        div().flex_1().min_w_0().child(
+                            crate::widgets::filter_text_box(
+                                "compare-branch",
+                                &self.compare,
+                                Some(octicon(Octicon::GitBranch, t.text).size(zpx(9.))),
+                                window,
+                                cx,
+                            )
+                            .h(zpx(27.))
+                            .pl(zpx(7.))
+                            .gap(zpx(1.))
+                            .when(!focused, |d| d.border_color(t.box_border)),
                         )
-                        .h(zpx(27.))
-                        .pl(zpx(7.))
-                        .gap(zpx(1.))
-                        .when(!focused, |d| d.border_color(t.box_border))
                     }),
             )
             .child(body)
             .children(self.context_menu.clone())
     }
+}
+
+/// Flag `148`: ask for a folder, then write the patches there.
+fn create_patch_files(id: u64, shas: Vec<String>, cx: &mut App) {
+    let receiver = cx.prompt_for_paths(PathPromptOptions {
+        files: false,
+        directories: true,
+        multiple: false,
+        prompt: Some("Save Patches".into()),
+    });
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        if let Ok(Ok(Some(paths))) = receiver.await
+            && let Some(dir) = paths.into_iter().next()
+        {
+            cx.update(|cx| Dispatcher::create_patch_files(id, shas, dir, cx));
+        }
+    })
+    .detach();
 }

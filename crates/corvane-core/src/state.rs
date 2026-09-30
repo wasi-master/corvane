@@ -227,6 +227,19 @@ pub enum Popup {
     WarnLocalChangesBeforeUndo {
         repo: u64,
     },
+    /// Flag `445`: delete a tag that is not in `tagsToPush`.
+    ConfirmDeletePushedTag {
+        repo: u64,
+        tag: String,
+    },
+    /// Flag `441`: the commit being undone carries tags.
+    WarnTaggedCommitBeforeUndo {
+        repo: u64,
+        tags: Vec<String>,
+        /// History's Undo Commit goes on to the local-changes warning;
+        /// the Changes view's Undo button undoes straight away.
+        warn_local: bool,
+    },
     /// `CreateBranch`; `target_sha` when created from a commit in History.
     CreateBranch {
         repo: u64,
@@ -540,9 +553,15 @@ pub enum RetryAction {
     Push {
         force_with_lease: bool,
         branch: Option<String>,
+        /// Push only up to this commit (flag `243`).
+        up_to: Option<String>,
     },
     Pull,
     Fetch,
+    /// Rebase the current branch onto `base` (flag `447`).
+    Rebase {
+        base: String,
+    },
 }
 
 impl RetryAction {
@@ -557,6 +576,7 @@ impl RetryAction {
             RetryAction::Push { .. } => "push",
             RetryAction::Pull => "pull",
             RetryAction::Fetch => "fetch",
+            RetryAction::Rebase { .. } => "rebase",
         }
     }
 }
@@ -631,6 +651,9 @@ pub struct DeleteBranchPreview {
     pub has_stash: bool,
 }
 
+/// How many incoming commits [`RepositoryState::incoming_commits`] keeps.
+pub const INCOMING_COMMITS_LIMIT: usize = 10;
+
 /// Per-repository cache (`IRepositoryState`, trimmed).
 #[derive(Clone, Debug, Default)]
 pub struct RepositoryState {
@@ -663,6 +686,10 @@ pub struct RepositoryState {
     pub diff_old_contents: Option<Arc<Vec<String>>>,
     /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
     pub last_commit: Option<LastCommit>,
+    /// Summaries of the upstream's commits the current branch lacks
+    /// (`HEAD..upstream`, newest first, at most [`INCOMING_COMMITS_LIMIT`]),
+    /// for the Pull button's tooltip (flag `246`).
+    pub incoming_commits: Vec<String>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
     /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).
@@ -747,6 +774,12 @@ pub struct RepositoryState {
     /// summary's counts; everything else dims.
     pub highlighted_shas: Vec<String>,
     pub mco_undo: Option<crate::mco::McoUndo>,
+    /// Flag `145`: the message of a squash that failed, keyed by its commits
+    /// (onto, then the squashed ones), offered again by the next squash of them.
+    pub squash_draft: Option<(Vec<String>, String)>,
+    /// Flag `146`: commits (summary, author time) a squash / reorder just
+    /// rewrote; the next history load selects their new shas.
+    pub rewritten_selection: Vec<(String, Option<i64>)>,
     /// `changesState.conflictState`
     pub conflict_state: Option<crate::mco::ConflictState>,
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.

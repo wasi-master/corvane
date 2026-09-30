@@ -2674,7 +2674,7 @@ impl ChangesSidebar {
                 .child(
                     div().p(SPACING()).pl(zpx(0.)).child(
                         crate::widgets::small_button("undo-commit", "Undo", cx)
-                            .on_click(move |_, _, cx| Dispatcher::undo_commit(id, cx)),
+                            .on_click(move |_, _, cx| Dispatcher::request_undo_last_commit(id, cx)),
                     ),
                 ),
         )

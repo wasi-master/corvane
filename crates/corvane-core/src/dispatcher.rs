@@ -664,7 +664,24 @@ impl Dispatcher {
                         .and_then(|_| {
                             corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
                         });
+                    // `246`: what a pull would bring in
+                    let incoming_commits = info
+                        .current_branch()
+                        .and_then(|b| b.upstream.as_deref())
+                        .filter(|_| ahead_behind.is_some_and(|ab| ab.behind > 0))
+                        .and_then(|upstream| {
+                            corvane_git::get_commits_in_range(
+                                &info.workdir,
+                                "HEAD",
+                                upstream,
+                                crate::state::INCOMING_COMMITS_LIMIT,
+                            )
+                            .ok()
+                        })
+                        .map(|commits| commits.into_iter().map(|c| c.summary).collect())
+                        .unwrap_or_default();
                     RefreshExtras {
+                        incoming_commits,
                         recent_branches: recent,
                         default_branch,
                         stash,
@@ -758,6 +775,7 @@ impl Dispatcher {
                                 // GHD `mostRecentLocalCommit`: the undo bar
                                 // follows the branch's unpushed commits
                                 repo_state.last_commit = extras.last_local_commit;
+                                repo_state.incoming_commits = extras.incoming_commits;
                                 // `mainWorktreePath` bookkeeping for the
                                 // missing-worktree fallback (applied below)
                                 main_worktree = repo_state
@@ -1084,10 +1102,24 @@ impl Dispatcher {
 
     // ---- history (GHD `_loadHistory`, `_loadNextCommitBatch`, `_changeCommitSelection`) ----
 
+    /// Flag `142`: whether History lists first parents only.
+    pub fn history_first_parent(s: &AppState) -> bool {
+        s.settings.history_first_parent && s.flags.bool(crate::flags::ids::HISTORY_FIRST_PARENT)
+    }
+
+    /// Flag `142`: switch History to first parents only (or back) and
+    /// reload the selected repository's list.
+    pub fn set_history_first_parent(on: bool, cx: &mut App) {
+        Self::update_settings(cx, |s| s.history_first_parent = on);
+        if let Some(id) = Self::state(cx).read(cx).selected {
+            Self::load_commits(id, false, cx);
+        }
+    }
+
     /// Load the first page of HEAD's history, or the next one when `more`.
     pub fn load_commits(id: u64, more: bool, cx: &mut App) {
         let state = Self::state(cx);
-        let (workdir, skip) = {
+        let (workdir, skip, first_parent) = {
             let s = state.read(cx);
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
@@ -1099,15 +1131,23 @@ impl Dispatcher {
             (
                 info.workdir.clone(),
                 if more { rs.commits.len() } else { 0 },
+                Self::history_first_parent(s),
             )
         };
         state.update(cx, |s, _| s.repo_state_mut(id).commits_loading = true);
         let task = cx.background_executor().spawn(async move {
-            corvane_git::get_commits(&workdir, "HEAD", skip, corvane_git::COMMIT_BATCH_SIZE)
+            corvane_git::get_commits_with(
+                &workdir,
+                "HEAD",
+                skip,
+                corvane_git::COMMIT_BATCH_SIZE,
+                first_parent,
+            )
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
+                let mut rewritten = Vec::new();
                 let reselect = Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
                     rs.commits_loading = false;
@@ -1124,6 +1164,14 @@ impl Dispatcher {
                                     .selected_commits
                                     .iter()
                                     .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
+                            // flag `146`: a squash / reorder rewrote the
+                            // selection; pick the new commits instead
+                            if !more {
+                                let wanted = std::mem::take(&mut rs.rewritten_selection);
+                                if missing {
+                                    rewritten = crate::mco::find_rewritten(&rs.commits, &wanted);
+                                }
+                            }
                             if missing {
                                 rs.selected_commit = None;
                                 rs.selected_commits.clear();
@@ -1145,6 +1193,10 @@ impl Dispatcher {
                         Ok(!more && !rs.selected_commits.is_empty() && !comparing)
                     }
                 });
+                if !rewritten.is_empty() {
+                    Self::select_commits(id, rewritten, cx);
+                    return;
+                }
                 match reselect {
                     Err(Some(first)) => Self::select_commits(id, vec![first], cx),
                     Ok(true) => Self::load_changeset(id, cx),
@@ -1466,6 +1518,25 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Flag `443`: undo one file's changes from commit `sha` in the working
+    /// tree (`corvane_git::revert_file_in_commit`), then refresh.
+    pub fn revert_file_in_commit(
+        id: u64,
+        sha: String,
+        path: String,
+        old_path: Option<String>,
+        cx: &mut App,
+    ) {
+        Self::run_history_op(
+            id,
+            "Could not revert the file",
+            move |git, workdir| {
+                corvane_git::revert_file_in_commit(git, &workdir, &sha, &path, old_path.as_deref())
+            },
+            cx,
+        );
+    }
+
     pub(crate) fn working_directory_dirty(id: u64, cx: &App) -> bool {
         Self::state(cx)
             .read(cx)
@@ -1495,6 +1566,101 @@ impl Dispatcher {
             move |git, workdir| corvane_git::revert_commit(git, &workdir, &sha, is_merge),
             cx,
         );
+    }
+
+    /// Corvane addition (flag `242`): revert `shas` without committing, the
+    /// newest first, and show Changes with the result staged. Needs a clean
+    /// working directory, so a conflict can roll everything back.
+    pub fn revert_commits_without_committing(id: u64, mut shas: Vec<String>, cx: &mut App) {
+        const TITLE: &str = "Could not revert changes";
+        if Self::working_directory_dirty(id, cx) {
+            Self::show_error(
+                TITLE,
+                "Commit or stash your changes before reverting without committing.",
+                cx,
+            );
+            return;
+        }
+        let any_merge = shas
+            .iter()
+            .any(|sha| Self::commit_by_sha(id, sha, cx).is_some_and(|c| c.is_merge()));
+        if let Some(rs) = Self::state(cx).read(cx).repo_states.get(&id) {
+            shas.sort_by_key(|sha| {
+                rs.commits
+                    .iter()
+                    .position(|c| &c.sha == sha)
+                    .unwrap_or(usize::MAX)
+            });
+        }
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            TITLE,
+            move |git, workdir| {
+                corvane_git::revert_commits_no_commit(git, &workdir, &shas, any_merge)
+            },
+            cx,
+        );
+    }
+
+    /// `shas` sorted oldest first by their place in the loaded history.
+    fn oldest_first(id: u64, mut shas: Vec<String>, cx: &App) -> Vec<String> {
+        if let Some(rs) = Self::state(cx).read(cx).repo_states.get(&id) {
+            shas.sort_by_key(|sha| {
+                std::cmp::Reverse(rs.commits.iter().position(|c| &c.sha == sha))
+            });
+        }
+        shas
+    }
+
+    /// Corvane addition (flag `147`): apply `shas` to the current branch
+    /// without committing (oldest first) and show Changes with the result
+    /// staged. Needs a clean working directory, so a conflict can roll back.
+    pub fn cherry_pick_without_committing(id: u64, shas: Vec<String>, cx: &mut App) {
+        const TITLE: &str = "Could not cherry-pick";
+        if Self::working_directory_dirty(id, cx) {
+            Self::show_error(
+                TITLE,
+                "Commit or stash your changes before cherry-picking without committing.",
+                cx,
+            );
+            return;
+        }
+        let any_merge = shas
+            .iter()
+            .any(|sha| Self::commit_by_sha(id, sha, cx).is_some_and(|c| c.is_merge()));
+        let shas = Self::oldest_first(id, shas, cx);
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            TITLE,
+            move |git, workdir| corvane_git::cherry_pick_no_commit(git, &workdir, &shas, any_merge),
+            cx,
+        );
+    }
+
+    /// Corvane addition (flag `148`): `git format-patch` each of `shas`
+    /// (oldest first) into `dir`, then reveal the first patch in Finder.
+    pub fn create_patch_files(id: u64, shas: Vec<String>, dir: PathBuf, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let shas = Self::oldest_first(id, shas, cx);
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::format_patches(git, &workdir, &shas, &dir) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(files) => {
+                    if let Some(first) = files.first() {
+                        cx.reveal_path(first);
+                    }
+                }
+                Err(err) => Self::show_error("Could not create patch files", err.to_string(), cx),
+            });
+        })
+        .detach();
     }
 
     /// `Reset to Commit…`: warn first when the working directory is dirty.
@@ -1586,14 +1752,15 @@ impl Dispatcher {
     }
 
     /// GHD `_createTag`: the new tag joins `tagsToPush`.
-    pub fn create_tag(id: u64, name: String, sha: String, cx: &mut App) {
+    /// `message` is empty unless flag `244` shows the Message field.
+    pub fn create_tag(id: u64, name: String, sha: String, message: String, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
         let tag = name.clone();
         let task = cx
             .background_executor()
-            .spawn(async move { corvane_git::create_tag(git, &workdir, &name, &sha) });
+            .spawn(async move { corvane_git::create_tag(git, &workdir, &name, &sha, &message) });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
@@ -1671,14 +1838,108 @@ impl Dispatcher {
         });
     }
 
-    /// `Undo Commit…` from history: warn about local changes first.
+    /// `Undo Commit…` from history: warn about the commit's tags (flag
+    /// `441`), then about local changes.
     pub fn request_undo_commit(id: u64, cx: &mut App) {
-        let confirm = Self::state(cx).read(cx).settings.confirm_undo_commit;
-        if confirm && Self::working_directory_dirty(id, cx) {
-            Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
-        } else {
-            Self::undo_commit(id, cx);
+        let tags = Self::undo_warning_tags(id, cx);
+        if !tags.is_empty() {
+            return Self::show_popup(
+                Popup::WarnTaggedCommitBeforeUndo {
+                    repo: id,
+                    tags,
+                    warn_local: true,
+                },
+                cx,
+            );
         }
+        Self::request_undo_commit_after_tags(id, cx);
+    }
+
+    /// The Changes view's Undo button: the tag warning (flag `441`) only.
+    pub fn request_undo_last_commit(id: u64, cx: &mut App) {
+        let tags = Self::undo_warning_tags(id, cx);
+        if tags.is_empty() {
+            return Self::undo_commit(id, cx);
+        }
+        Self::show_popup(
+            Popup::WarnTaggedCommitBeforeUndo {
+                repo: id,
+                tags,
+                warn_local: false,
+            },
+            cx,
+        );
+    }
+
+    /// Flag `441`: HEAD's tags, empty when the flag is off.
+    fn undo_warning_tags(id: u64, cx: &App) -> Vec<String> {
+        {
+            let s = Self::state(cx).read(cx);
+            s.flags
+                .bool(crate::flags::ids::WARN_UNDO_TAGGED_COMMIT)
+                .then(|| {
+                    // the history list starts at HEAD
+                    let commit = s.repo_states.get(&id)?.commits.first()?;
+                    Some(commit.tags.clone())
+                })
+                .flatten()
+                .unwrap_or_default()
+        }
+    }
+
+    /// The local-changes half of [`Self::request_undo_commit`].
+    pub fn request_undo_commit_after_tags(id: u64, cx: &mut App) {
+        let (confirm, overlap_only) = {
+            let s = Self::state(cx).read(cx);
+            (
+                s.settings.confirm_undo_commit,
+                s.flags.bool(crate::flags::ids::UNDO_WARNS_ONLY_ON_OVERLAP),
+            )
+        };
+        if !(confirm && Self::working_directory_dirty(id, cx)) {
+            return Self::undo_commit(id, cx);
+        }
+        // `247`: warn only when the commit touches a file with local changes
+        let context = Self::repo_context(id, cx).filter(|_| overlap_only);
+        let Some((git, workdir)) = context else {
+            return Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
+        };
+        let local: Vec<String> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| rs.status.as_ref())
+            .map(|st| {
+                st.files
+                    .iter()
+                    .flat_map(|f| std::iter::once(f.path.clone()).chain(f.old_path.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::get_changed_files(git, &workdir, "HEAD") });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let changed = task.await;
+            cx.update(|cx| {
+                let overlap = match changed {
+                    Ok(changeset) => paths_overlap(
+                        changeset
+                            .files
+                            .iter()
+                            .flat_map(|f| std::iter::once(&f.path).chain(f.old_path.as_ref())),
+                        &local,
+                    ),
+                    Err(_) => true,
+                };
+                if overlap {
+                    Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
+                } else {
+                    Self::undo_commit(id, cx);
+                }
+            });
+        })
+        .detach();
     }
 
     /// `_startAmendingRepository`: switch to Changes and load the message.
@@ -3551,6 +3812,7 @@ struct RefreshExtras {
     worktrees: Vec<corvane_models::WorktreeEntry>,
     upstream_rewritten: bool,
     last_local_commit: Option<crate::state::LastCommit>,
+    incoming_commits: Vec<String>,
 }
 
 /// Node's `path.resolve(path)`: made absolute against the current directory,
@@ -3569,6 +3831,26 @@ fn resolve_path(path: &std::path::Path) -> PathBuf {
         }
     }
     out
+}
+
+/// Whether any of `committed` is among `local` (flag `247`).
+fn paths_overlap<'a>(mut committed: impl Iterator<Item = &'a String>, local: &[String]) -> bool {
+    committed.any(|p| local.contains(p))
+}
+
+#[cfg(test)]
+mod paths_overlap_tests {
+    use super::paths_overlap;
+
+    #[test]
+    fn overlap_needs_a_shared_path() {
+        let local = vec!["a.txt".to_string(), "old.txt".to_string()];
+        let committed = ["b.txt".to_string(), "c.txt".to_string()];
+        assert!(!paths_overlap(committed.iter(), &local));
+        let committed = ["b.txt".to_string(), "old.txt".to_string()];
+        assert!(paths_overlap(committed.iter(), &local));
+        assert!(!paths_overlap([].iter(), &local));
+    }
 }
 
 #[cfg(test)]

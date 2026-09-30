@@ -27,7 +27,8 @@ pub use branch_ops::{
     commits_ahead, commits_not_in, configured_default_branch, create_branch, create_desktop_stash,
     delete_local_branch, delete_remote_branch, desktop_stash_message, drop_stash,
     find_default_branch, get_stashes, is_local_changes_overwritten, merge_branch,
-    parse_recent_branches, pop_stash, recent_branches, remote_head, rename_branch, stashed_files,
+    merge_branch_with_message, parse_recent_branches, pop_stash, recent_branches, remote_head,
+    rename_branch, stashed_files,
 };
 pub use commit::{
     CommitOptions, add_paths, commit, discard_changes, format_message, head_sha, merge_trailers,
@@ -45,7 +46,8 @@ pub use diff::{
 };
 pub use error::{GitError, dubious_ownership_path};
 pub use history_ops::{
-    ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
+    ResetMode, checkout_commit, cherry_pick_no_commit, create_tag, delete_tag, format_patches,
+    reset_to, revert_commit, revert_commits_no_commit, revert_file_in_commit,
 };
 pub use ignore::{
     append_ignore_files, append_ignore_rules, escape_gitignore_pattern, read_gitignore,
@@ -53,9 +55,9 @@ pub use ignore::{
 };
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
-    get_commit_range_changed_files, get_commits, get_commits_in_range, merge_base,
-    merge_base_changed_files, merge_base_file_diff, most_recent_local_commit,
-    parse_raw_log_with_numstat,
+    get_commit_range_changed_files, get_commits, get_commits_in_range, get_commits_with,
+    merge_base, merge_base_changed_files, merge_base_file_diff, most_recent_local_commit,
+    parse_raw_log_with_numstat, tag_names,
 };
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
@@ -69,21 +71,22 @@ pub use patch::{
 pub use paths::git_dir;
 pub use process::{CancelToken, GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{
-    CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
-    abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,
-    cherry_pick_snapshot, commits_between, commits_in_range, conflict_marker_counts,
-    continue_cherry_pick, continue_rebase, create_merge_commit, determine_mergeability,
-    merge_commits_exist_after, merge_head_set, rebase, rebase_head_set, rebase_internal_state,
-    rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
+    CherryPickResult, CherryPickSnapshot, RebaseOptions, RebaseResult, RebaseSnapshot,
+    abort_cherry_pick, abort_rebase, abort_squash_merge, binary_paths, cherry_pick,
+    cherry_pick_head_found, cherry_pick_snapshot, commits_between, commits_in_range,
+    conflict_marker_counts, continue_cherry_pick, continue_rebase, create_merge_commit,
+    determine_mergeability, merge_commits_exist_after, merge_head_set, open_merge_tool, rebase,
+    rebase_head_set, rebase_internal_state, rebase_snapshot, reorder, squash, squash_msg_set,
+    stage_manual_conflict_resolution, stash_tip,
 };
 pub use remote_ops::{
     AskpassEnv, FetchOptions, ProgressParser, RemoteFailure, add_remote, classify_remote_failure,
-    cloned_at, config_value, fast_forward_branch_from_remote, fast_forward_branches,
-    fast_forward_if_only_behind, fetch, fetch_refspec, fetch_with, fetch_with_prune_tags,
-    find_default_remote, get_remotes, install_lfs_hooks, is_stale_remote_ref_failure, is_using_lfs,
-    is_using_lfs_by_attributes, last_fetched, lfs_available, lfs_hooks_installed,
-    parse_progress_line, prune_remote, pull, pull_with_rebase, push, remote_failure,
-    remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
+    cloned_at, config_value, delete_remote_tag, fast_forward_branch_from_remote,
+    fast_forward_branches, fast_forward_if_only_behind, fetch, fetch_refspec, fetch_with,
+    fetch_with_prune_tags, find_default_remote, get_remotes, install_lfs_hooks,
+    is_stale_remote_ref_failure, is_using_lfs, is_using_lfs_by_attributes, last_fetched,
+    lfs_available, lfs_hooks_installed, parse_progress_line, prune_remote, pull, pull_with_rebase,
+    push, remote_failure, remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
     upstream_tip_in_reflog,
 };
 pub use repo::{

@@ -3,6 +3,19 @@
 //! (`styles/ui/history/_expandable-commit-summary.scss`, `_commit-details.scss`):
 //! title + expander, description, meta row (author, sha + copy, +adds −dels,
 //! tags), then a resizable 250 px file list next to the commit's diff.
+//!
+//! Deviation (`docs/reference/deviations.md` › History, flag `245`): the file
+//! list multi-selects with ⌘/⇧-click, and a multi-selection's context menu
+//! copies all the paths; GHD's history file list selects one file. Open with
+//! Default Program opens the file as of the commit (flag `248`), not the
+//! working copy. A file gone from disk keeps its Copy path items (flag
+//! `249`). A multi-commit selection's summary shows the range's +added
+//! -deleted line totals (flag `251`). The meta row adds the author date and
+//! links the SHA to the commit on GitHub (flag `253`); the tags' tooltip
+//! lists every tag (flag `254`). The title and description show `code`
+//! spans and link URLs and SHAs (flag `141`), where GHD's `RichText` links
+//! only URLs, issues and mentions. A file's menu can revert that file's
+//! changes from the commit (flag `443`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -41,6 +54,17 @@ pub struct SelectedCommitView {
     file_list_focus: FocusHandle,
     /// `file_list_focus` held focus at the last render (active selection colours).
     file_list_focused: bool,
+    /// Flag `245`: the ⌘/⇧-clicked files (file-list order) and the commit
+    /// selection they belong to; stale once the commit selection changes.
+    multi_files: Option<(Vec<String>, Vec<String>)>,
+}
+
+/// How a click in the commit file list changes the selection.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FileClick {
+    Plain,
+    Toggle,
+    Range,
 }
 
 impl SelectedCommitView {
@@ -66,7 +90,105 @@ impl SelectedCommitView {
             file_list_width,
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
+            multi_files: None,
         }
+    }
+
+    /// The multi-selected files (flag `245`), empty when fewer than two.
+    fn multi_selected(&self, id: u64, cx: &App) -> Vec<String> {
+        let s = self.state.read(cx);
+        if !s
+            .flags
+            .bool(corvane_core::flags::ids::COMMIT_FILES_MULTI_SELECT)
+        {
+            return Vec::new();
+        }
+        match (&self.multi_files, s.repo_states.get(&id)) {
+            (Some((commits, paths)), Some(rs))
+                if *commits == rs.selected_commits
+                    && paths.len() > 1
+                    && rs
+                        .commit_selected_file
+                        .as_ref()
+                        .is_some_and(|f| paths.contains(f)) =>
+            {
+                paths.clone()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// ⌘-click toggles `path`, ⇧-click selects from the diffed file to
+    /// `path`, a plain click leaves a single selection.
+    fn click_file(&mut self, id: u64, path: String, click: FileClick, cx: &mut Context<Self>) {
+        let (order, anchor, commits) = {
+            let s = self.state.read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let order: Vec<String> = rs
+                .changeset
+                .as_ref()
+                .map(|c| c.files.iter().map(|f| f.path.clone()).collect())
+                .unwrap_or_default();
+            (
+                order,
+                rs.commit_selected_file.clone(),
+                rs.selected_commits.clone(),
+            )
+        };
+        let mut current = self.multi_selected(id, cx);
+        if current.is_empty() {
+            current.extend(anchor.clone());
+        }
+        let next = match (click, anchor) {
+            (FileClick::Range, Some(anchor)) => {
+                match (
+                    order.iter().position(|p| *p == anchor),
+                    order.iter().position(|p| *p == path),
+                ) {
+                    (Some(from), Some(to)) => {
+                        corvane_core::list_selection::selection_between(&order, from, to)
+                    }
+                    _ => vec![path.clone()],
+                }
+            }
+            (FileClick::Toggle, _) => {
+                if current.contains(&path) {
+                    if current.len() > 1 {
+                        current.retain(|p| *p != path);
+                    }
+                } else {
+                    current.push(path.clone());
+                }
+                current
+            }
+            _ => vec![path.clone()],
+        };
+        let mut next: Vec<String> = order.into_iter().filter(|p| next.contains(p)).collect();
+        if next.is_empty() {
+            next.push(path.clone());
+        }
+        // the diff shows the clicked file, or stays on one still selected
+        let diffed =
+            if next.contains(&path) {
+                Some(path)
+            } else {
+                let current =
+                    self.state.read(cx).repo_states.get(&id).and_then(|rs| {
+                        rs.commit_selected_file.clone().filter(|f| next.contains(f))
+                    });
+                if current.is_some() {
+                    None
+                } else {
+                    next.first().cloned()
+                }
+            };
+        self.multi_files = (next.len() > 1).then_some((commits, next));
+        if let Some(path) = diffed {
+            Dispatcher::select_commit_file(id, path, cx);
+        }
+        cx.notify();
     }
 
     /// `ExpandableCommitSummary` for a contiguous multi-commit selection:
@@ -88,6 +210,17 @@ impl SelectedCommitView {
             .collect();
         let not_in_diff = shas_not_in_diff.len();
         let in_diff = selected - not_in_diff;
+        // `251`: the range's line totals follow the count
+        let totals = s
+            .flags
+            .bool(corvane_core::flags::ids::MULTI_COMMIT_LINE_TOTALS)
+            .then(|| {
+                rs.changeset
+                    .as_ref()
+                    .map(|c| (c.lines_added, c.lines_deleted))
+            })
+            .flatten()
+            .filter(|(a, d)| *a > 0 || *d > 0);
         // `onHighlightShas`: hovering either count dims the other rows.
         let highlight = |shas: Vec<String>| {
             move |hovered: &bool, _: &mut Window, cx: &mut App| {
@@ -115,11 +248,36 @@ impl SelectedCommitView {
                         .text_size(FONT_SIZE_MD())
                         .font_weight(FontWeight::SEMIBOLD)
                         .line_height(zpx(16.))
+                        .flex()
+                        .flex_row()
                         .on_hover(highlight(shas_in_diff))
                         .child(format!(
                             "Showing changes from {in_diff} {}",
                             if in_diff == 1 { "commit" } else { "commits" }
-                        )),
+                        ))
+                        .when_some(totals, |d, (added, deleted)| {
+                            d.child(
+                                div()
+                                    .ml_auto()
+                                    .pl(SPACING())
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .gap(SPACING_HALF())
+                                    .font_weight(FontWeight::NORMAL)
+                                    .text_size(FONT_SIZE_SM())
+                                    .child(
+                                        div().text_color(t.color_new).child(format!(
+                                            "+{}",
+                                            crate::format::format_count(added)
+                                        )),
+                                    )
+                                    .child(div().text_color(t.color_deleted).child(format!(
+                                        "-{}",
+                                        crate::format::format_count(deleted)
+                                    ))),
+                            )
+                        }),
                 )
                 .when(not_in_diff > 0, |d| {
                     // `renderCommitsNotReachable` (`.commit-unreachable-info`)
@@ -183,6 +341,23 @@ impl SelectedCommitView {
             .as_ref()
             .map(|c| (c.lines_added, c.lines_deleted))
             .unwrap_or((0, 0));
+        // `253`: the author date, and the SHA links to the commit on GitHub
+        let extras = s
+            .flags
+            .bool(corvane_core::flags::ids::COMMIT_DETAILS_EXTRAS);
+        let commit_url = extras
+            .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
+            .flatten()
+            .map(|g| format!("{}/commit/{}", g.html_url, commit.sha));
+        // `141`: `code` spans, URLs and (GitHub repositories) SHAs
+        let rich = s
+            .flags
+            .bool(corvane_core::flags::ids::COMMIT_MESSAGE_RICH_TEXT)
+            .then(|| {
+                s.repository(id)
+                    .and_then(|r| r.github.as_ref())
+                    .map(|g| g.html_url.clone())
+            });
         let empty = commit.summary.is_empty();
         let title = if empty {
             "Empty commit message".to_string()
@@ -225,7 +400,17 @@ impl SelectedCommitView {
                         .line_height(zpx(16.))
                         .when(empty, |d| d.text_color(t.text_secondary))
                         // the expander follows the title (`margin-left: 10px`)
-                        .child(div().min_w_0().child(title))
+                        .child(div().min_w_0().child(match &rich {
+                            Some(base) if !empty => crate::markdown::rich_text(
+                                "commit-title",
+                                &corvane_core::markdown::commit_message_rich_text(
+                                    &title,
+                                    base.as_deref(),
+                                ),
+                                cx,
+                            ),
+                            _ => title.into_any_element(),
+                        }))
                         .child(
                             div()
                                 .id("commit-summary-expander")
@@ -279,7 +464,17 @@ impl SelectedCommitView {
                                                 .font_family(mono_font())
                                                 .text_size(FONT_SIZE_SM())
                                                 .line_height(zpx(16.5))
-                                                .child(description),
+                                                .child(match &rich {
+                                                    Some(base) => crate::markdown::rich_text(
+                                                        "commit-description",
+                                                        &corvane_core::markdown::commit_message_rich_text(
+                                                            &description,
+                                                            base.as_deref(),
+                                                        ),
+                                                        cx,
+                                                    ),
+                                                    None => description.into_any_element(),
+                                                }),
                                         ),
                                 ),
                             )
@@ -302,14 +497,41 @@ impl SelectedCommitView {
                                         ))
                                         .child(commit.author.name.clone()),
                                 )
+                                .when(extras, |d| {
+                                    let date = commit.author.date();
+                                    d.child(
+                                        meta_item(div())
+                                            .id("commit-date")
+                                            .ghd_tooltip(crate::relative_time::relative(date))
+                                            .child(octicon(Octicon::History, t.text))
+                                            .child(
+                                                div()
+                                                    .pl(SPACING_HALF())
+                                                    .child(crate::format::format_date_time(date)),
+                                            ),
+                                    )
+                                })
                                 .child(
                                     meta_item(div())
                                         .child(octicon(Octicon::GitCommit, t.text))
-                                        .child(div().pl(SPACING_HALF()).child(if expanded {
-                                            commit.sha.clone()
-                                        } else {
-                                            commit.short_sha().to_string()
-                                        }))
+                                        .child({
+                                            let label = if expanded {
+                                                commit.sha.clone()
+                                            } else {
+                                                commit.short_sha().to_string()
+                                            };
+                                            match commit_url {
+                                                Some(url) => div().pl(SPACING_HALF()).child(
+                                                    link_button("commit-sha-link", label, cx)
+                                                        .text_size(FONT_SIZE_SM())
+                                                        .ghd_tooltip("View on GitHub")
+                                                        .on_click(move |_, _, cx| {
+                                                            cx.open_url(&url)
+                                                        }),
+                                                ),
+                                                None => div().pl(SPACING_HALF()).child(label),
+                                            }
+                                        })
                                         .child({
                                             let sha = commit.sha.clone();
                                             // `.copy-button`: 16 × 14 with a 12 px icon
@@ -373,12 +595,17 @@ impl SelectedCommitView {
                                     )
                                 })
                                 .when(!commit.tags.is_empty(), |d| {
-                                    d.child(
-                                        meta_item(div())
-                                            .min_w_0()
-                                            .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
-                                            .child(div().truncate().child(commit.tags.join(", "))),
-                                    )
+                                    let tags = meta_item(div())
+                                        .id("commit-tags")
+                                        .min_w_0()
+                                        .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
+                                        .child(div().truncate().child(commit.tags.join(", ")));
+                                    // `254`: hovering lists every tag
+                                    d.child(if crate::history::tags_tooltip(cx) {
+                                        tags.ghd_tooltip(commit.tags.join("\n"))
+                                    } else {
+                                        tags
+                                    })
                                 }),
                         )
                         .with_scrollbar(),
@@ -397,6 +624,8 @@ impl SelectedCommitView {
             .map(|c| c.files.clone())
             .unwrap_or_default();
         let selected = rs.and_then(|r| r.commit_selected_file.clone());
+        let multi = std::rc::Rc::new(self.multi_selected(id, cx));
+        let weak = cx.weak_entity();
         if rs.and_then(|r| r.changeset.as_ref()).is_some() && files.is_empty() {
             return div()
                 .size_full()
@@ -453,9 +682,21 @@ impl SelectedCommitView {
                             range
                                 .map(|ix| {
                                     let file = &files[ix];
-                                    let is_selected =
-                                        selected.as_deref() == Some(file.path.as_str());
-                                    commit_file_row(id, file, is_selected, &focus, focused, cx)
+                                    let is_selected = if multi.is_empty() {
+                                        selected.as_deref() == Some(file.path.as_str())
+                                    } else {
+                                        multi.contains(&file.path)
+                                    };
+                                    commit_file_row(
+                                        id,
+                                        file,
+                                        is_selected,
+                                        &focus,
+                                        focused,
+                                        &multi,
+                                        &weak,
+                                        cx,
+                                    )
                                 })
                                 .collect()
                         })
@@ -474,6 +715,7 @@ impl SelectedCommitView {
 fn open_commit_file_menu(
     id: u64,
     path: &str,
+    multi: &[String],
     position: Point<Pixels>,
     window: &mut Window,
     cx: &mut App,
@@ -483,6 +725,28 @@ fn open_commit_file_menu(
     let Some(repo) = state.repository(id) else {
         return;
     };
+    // flag `245`: a multi-selection copies all its paths
+    if multi.len() > 1 && multi.iter().any(|p| p == path) {
+        let full = multi
+            .iter()
+            .map(|p| repo.path.join(p).to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let relative = multi.join("\n");
+        let items = vec![
+            MenuItem::new("Copy File Paths", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
+            }),
+            MenuItem::new("Copy Relative File Paths", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
+            }),
+        ];
+        #[cfg(target_os = "macos")]
+        crate::native_menu::show_context_menu(items, position, window, cx);
+        #[cfg(not(target_os = "macos"))]
+        let _ = (items, position, window);
+        return;
+    }
     let full = repo.path.join(path);
     let editor_label = state.editor_label();
     let rs = state.repo_states.get(&id);
@@ -492,8 +756,65 @@ fn open_commit_file_menu(
         .and_then(|r| r.last_commit.as_ref())
         .is_some_and(|c| selected.first() == Some(&c.sha));
     let github = repo.github.clone();
-    let items = if !full.exists() {
-        vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)]
+    // `248`: open the file as of the (newest) selected commit
+    let historical = state
+        .flags
+        .bool(corvane_core::flags::ids::OPEN_HISTORICAL_FILE)
+        .then(|| {
+            rs.and_then(|rs| {
+                rs.commits
+                    .iter()
+                    .find(|c| selected.contains(&c.sha))
+                    .map(|c| c.sha.clone())
+            })
+            .or_else(|| selected.first().cloned())
+        })
+        .flatten();
+    // `443`: Revert Changes to This File, for a single selected commit
+    let revert_file = state
+        .flags
+        .bool(corvane_core::flags::ids::REVERT_FILE_IN_COMMIT)
+        .then(|| {
+            let sha = selected.first().filter(|_| selected.len() == 1)?.clone();
+            let old_path = rs
+                .and_then(|r| r.changeset.as_ref())
+                .and_then(|c| c.files.iter().find(|f| f.path == path))
+                .and_then(|f| f.old_path.clone());
+            let path = path.to_string();
+            Some(MenuItem::new(
+                "Revert Changes to This File",
+                move |_, cx| {
+                    Dispatcher::revert_file_in_commit(
+                        id,
+                        sha.clone(),
+                        path.clone(),
+                        old_path.clone(),
+                        cx,
+                    )
+                },
+            ))
+        })
+        .flatten();
+    let mut items = if !full.exists() {
+        let mut items =
+            vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
+        // `249`: the paths can still be copied
+        if state
+            .flags
+            .bool(corvane_core::flags::ids::COPY_PATH_OF_MISSING_FILE)
+        {
+            let (full, relative) = (full.to_string_lossy().to_string(), path.to_string());
+            items.extend([
+                MenuItem::separator(),
+                MenuItem::new("Copy File Path", move |_, cx| {
+                    cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
+                }),
+                MenuItem::new("Copy Relative File Path", move |_, cx| {
+                    cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
+                }),
+            ]);
+        }
+        items
     } else {
         let (reveal, editor, default, copy_full) =
             (full.clone(), full.clone(), full.clone(), full.clone());
@@ -513,8 +834,17 @@ fn open_commit_file_menu(
                 Dispatcher::open_in_editor(editor.clone(), cx)
             }),
             // `isSafeFileExtension` is always true on macOS
-            MenuItem::new("Open with Default Program", move |_, cx| {
-                cx.open_with_system(&default)
+            MenuItem::new("Open with Default Program", {
+                let path = relative.clone();
+                move |_, cx| match &historical {
+                    Some(sha) => Dispatcher::open_commit_file_with_default_program(
+                        id,
+                        sha.clone(),
+                        path.clone(),
+                        cx,
+                    ),
+                    None => cx.open_with_system(&default),
+                }
             }),
             MenuItem::separator(),
             MenuItem::new("Copy File Path", move |_, cx| {
@@ -534,18 +864,24 @@ fn open_commit_file_menu(
             .enabled(selected.len() == 1 && !local && github.is_some()),
         ]
     };
+    if let Some(item) = revert_file {
+        items.extend([MenuItem::separator(), item]);
+    }
     #[cfg(target_os = "macos")]
     crate::native_menu::show_context_menu(items, position, window, cx);
     #[cfg(not(target_os = "macos"))]
     let _ = (items, position, window);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn commit_file_row(
     id: u64,
     file: &CommittedFileChange,
     is_selected: bool,
     focus: &FocusHandle,
     list_focused: bool,
+    multi: &std::rc::Rc<Vec<String>>,
+    view: &WeakEntity<SelectedCommitView>,
     cx: &App,
 ) -> AnyElement {
     let t = cx.ghd();
@@ -560,30 +896,55 @@ fn commit_file_row(
     };
     let path = file.path.clone();
     let menu_path = file.path.clone();
+    let multi_select = AppState::global(cx)
+        .read(cx)
+        .flags
+        .bool(corvane_core::flags::ids::COMMIT_FILES_MULTI_SELECT);
+    let click_kind = move |m: &Modifiers| {
+        if !multi_select {
+            FileClick::Plain
+        } else if m.secondary() {
+            FileClick::Toggle
+        } else if m.shift {
+            FileClick::Range
+        } else {
+            FileClick::Plain
+        }
+    };
     div()
         .id(SharedString::from(format!("commit-file-{}", file.path)))
         // GHD `SelectedCommits.onContextMenu`
         .on_mouse_down(MouseButton::Right, {
             let focus = focus.clone();
+            let multi = multi.clone();
+            let view = view.clone();
             move |ev: &MouseDownEvent, window, cx| {
                 cx.stop_propagation();
                 // a right-click focuses the list and selects the file first
                 // (`List.onRowMouseDown`)
                 window.focus(&focus, cx);
                 if !is_selected {
-                    Dispatcher::select_commit_file(id, menu_path.clone(), cx);
+                    view.update(cx, |this, cx| {
+                        this.click_file(id, menu_path.clone(), FileClick::Plain, cx)
+                    })
+                    .ok();
                 }
-                open_commit_file_menu(id, &menu_path, ev.position, window, cx);
+                let multi: &[String] = if is_selected { &multi } else { &[] };
+                open_commit_file_menu(id, &menu_path, multi, ev.position, window, cx);
             }
         })
         // presses select at once and focus the list
         .on_mouse_down(MouseButton::Left, {
             let focus = focus.clone();
             let path = file.path.clone();
-            move |_, window, cx| {
+            let view = view.clone();
+            move |ev: &MouseDownEvent, window, cx| {
                 window.focus(&focus, cx);
-                if !is_selected {
-                    Dispatcher::select_commit_file(id, path.clone(), cx);
+                if click_kind(&ev.modifiers) == FileClick::Plain && !is_selected {
+                    view.update(cx, |this, cx| {
+                        this.click_file(id, path.clone(), FileClick::Plain, cx)
+                    })
+                    .ok();
                 }
             }
         })
@@ -620,7 +981,14 @@ fn commit_file_row(
             !(is_selected && (list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
             move |d| d.hover(move |s| s.bg(hover_bg)),
         )
-        .on_click(move |_, _, cx| Dispatcher::select_commit_file(id, path.clone(), cx))
+        .on_click({
+            let view = view.clone();
+            move |ev: &ClickEvent, _, cx| {
+                let click = click_kind(&ev.modifiers());
+                view.update(cx, |this, cx| this.click_file(id, path.clone(), click, cx))
+                    .ok();
+            }
+        })
         .child(
             // GHD `PathText` keeps the file name visible and truncates the
             // directory part when the row is too narrow.

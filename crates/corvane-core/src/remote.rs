@@ -158,6 +158,51 @@ impl Dispatcher {
             .cloned()
     }
 
+    /// Flag `445`: delete a tag that may have been pushed — from `remote`
+    /// first (`push --delete`, so a failure keeps the local tag), then
+    /// locally; with `remote` `None` only locally.
+    pub fn delete_pushed_tag(id: u64, tag: String, remote: Option<Remote>, cx: &mut App) {
+        let Some(remote) = remote else {
+            return Self::delete_tag(id, tag, cx);
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        if !Self::begin_network(id, cx) {
+            return;
+        }
+        Self::arm_credential_helper(&remote.url, cx);
+        let askpass = Self::askpass_env(cx);
+        Self::set_progress(
+            id,
+            Some(PushPullProgress {
+                kind: PushPullKind::Push,
+                title: format!("Deleting tag {tag} from {}", remote.name),
+                description: None,
+                value: 0.,
+            }),
+            cx,
+        );
+        let tag_for_task = tag.clone();
+        Self::run_network(
+            id,
+            cx,
+            move |_| {
+                corvane_git::delete_remote_tag(
+                    git,
+                    &workdir,
+                    &remote.name,
+                    &tag_for_task,
+                    askpass.as_ref(),
+                )
+            },
+            move |result, cx| match result {
+                Ok(()) => Self::delete_tag(id, tag, cx),
+                Err(err) => Self::show_error("Could not delete tag", err.to_string(), cx),
+            },
+        );
+    }
+
     /// GHD `getCurrentBranchForcePushState`
     pub fn force_push_state(id: u64, cx: &App) -> ForcePushState {
         Self::force_push_state_in(Self::state(cx).read(cx), id)
@@ -932,9 +977,29 @@ impl Dispatcher {
         then: impl FnOnce(PushOutcome, &mut App) + 'static,
         cx: &mut App,
     ) {
+        Self::push_inner(id, force_with_lease, branch, None, then, cx);
+    }
+
+    /// Corvane addition (flag `243`, history "Push Up to This Commit"):
+    /// push the current branch's upstream only up to `sha`,
+    /// `push <remote> <sha>:refs/heads/<upstream branch>`. No force, so a
+    /// commit that is not ahead of the upstream is refused by git; unpushed
+    /// tags stay behind (they may point past `sha`).
+    pub fn push_up_to(id: u64, sha: String, cx: &mut App) {
+        Self::push_inner(id, false, None, Some(sha), |_, _| {}, cx);
+    }
+
+    pub(crate) fn push_inner(
+        id: u64,
+        force_with_lease: bool,
+        branch: Option<String>,
+        up_to: Option<String>,
+        then: impl FnOnce(PushOutcome, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         if Self::behind_background_fetch(id, cx) {
             return Self::after_network(id, cx, move |cx| {
-                Self::push_then(id, force_with_lease, branch, then, cx)
+                Self::push_inner(id, force_with_lease, branch, up_to, then, cx)
             });
         }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -988,6 +1053,14 @@ impl Dispatcher {
         let Some(branch) = branch else {
             return then(PushOutcome::NotAttempted, cx);
         };
+        if up_to.is_some() && branch.upstream.is_none() {
+            Self::show_error(
+                "Could not push",
+                "The current branch has not been published yet.",
+                cx,
+            );
+            return then(PushOutcome::NotAttempted, cx);
+        }
         if !Self::begin_network(id, cx) {
             return then(PushOutcome::NotAttempted, cx);
         }
@@ -1023,15 +1096,21 @@ impl Dispatcher {
             }),
             cx,
         );
-        let local = branch.name.clone();
+        let local = up_to.clone().unwrap_or_else(|| branch.name.clone());
         let remote_branch = branch
             .upstream_short()
-            .and_then(|u| u.split_once('/').map(|(_, b)| b.to_string()));
+            .and_then(|u| u.split_once('/').map(|(_, b)| b.to_string()))
+            .map(|b| match up_to {
+                Some(_) => format!("refs/heads/{b}"),
+                None => b,
+            });
         let remote_url = remote.url.clone();
         // GHD `pushRepo(…, gitStore.tagsToPush)`: unpushed tags ride along
+        // (not on a partial push: they may point past its commit)
         let tags: Vec<String> = Self::state(cx)
             .read(cx)
             .repository(id)
+            .filter(|_| up_to.is_none())
             .map(|r| r.tags_to_push.clone())
             .unwrap_or_default();
         let pushed_tags = !tags.is_empty();
@@ -1043,6 +1122,7 @@ impl Dispatcher {
         let retry = RetryAction::Push {
             force_with_lease,
             branch: Some(branch.name.clone()),
+            up_to,
         };
         Self::run_network(
             id,

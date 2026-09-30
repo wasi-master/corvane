@@ -5,6 +5,12 @@
 //! Outcomes are classified from the repository state after git exits
 //! (`REBASE_HEAD`, `CHERRY_PICK_HEAD`, `MERGE_HEAD`) rather than by matching
 //! dugite's stderr regexes, which is more robust across git versions.
+//!
+//! Deviation: with `keep_messages` (flag `448`) rebases use
+//! `commit.cleanup=scissors` so `#` message lines survive a conflict
+//! (GHD `lib/git/rebase.ts` keeps git's `strip`); cherry-picks likewise
+//! (flag `449`, GHD `lib/git/cherry-pick.ts`). Squash can `--autostash`
+//! (flag `149`; GHD refuses to start with local changes).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -61,6 +67,9 @@ pub struct CherryPickSnapshot {
 pub struct RebaseSnapshot {
     pub commits: Vec<CommitOneLine>,
     pub progress: McoProgress,
+    /// A branch at the rebase's `onto` commit ([`branch_at`]), for a rebase
+    /// started elsewhere.
+    pub base_branch: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +123,20 @@ pub fn rebase_internal_state(workdir: &Path) -> Option<RebaseInternalState> {
     })
 }
 
+/// The stash's newest entry (`refs/stash`), to tell whether an autostash
+/// could not be reapplied and was kept there.
+pub fn stash_tip(git: Arc<GitBinary>, workdir: &Path) -> Option<String> {
+    GitCommand::new(git)
+        .args(["rev-parse", "-q", "--verify", "refs/stash"])
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .run()
+        .ok()
+        .and_then(|o| o.stdout_string().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 /// GHD `formatRebaseValue`: clamp to 0..=1 with two decimals.
 pub fn format_rebase_value(value: f32) -> f32 {
     (value.clamp(0., 1.) * 100.).round() / 100.
@@ -133,7 +156,7 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
     if next == 0 || last == 0 {
         return None;
     }
-    let commits = commits_between(git, workdir, &base_branch_tip, &original_branch_tip)
+    let commits = commits_between(git.clone(), workdir, &base_branch_tip, &original_branch_tip)
         .ok()
         .flatten()?;
     if commits.is_empty() {
@@ -143,7 +166,10 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
         .get(next - 1)
         .map(|c| c.summary.clone())
         .unwrap_or_default();
+    let target = read_trimmed(dir.join("head-name"));
+    let base_branch = branch_at(git, workdir, &base_branch_tip, target.as_deref());
     Some(RebaseSnapshot {
+        base_branch,
         progress: McoProgress {
             value: format_rebase_value(next as f32 / last as f32),
             position: next,
@@ -152,6 +178,36 @@ pub fn rebase_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<RebaseSnap
         },
         commits,
     })
+}
+
+/// A branch whose tip is `sha` (`for-each-ref --points-at`), local ones
+/// first, never `except` (a full ref name) or a remote's `HEAD`.
+pub fn branch_at(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    sha: &str,
+    except: Option<&str>,
+) -> Option<String> {
+    let out = GitCommand::new(git)
+        .args([
+            "for-each-ref",
+            "--points-at",
+            sha,
+            "--format=%(refname)",
+            "refs/heads",
+            "refs/remotes",
+        ])
+        .current_dir(workdir)
+        .run()
+        .ok()?;
+    let text = out.stdout_string().ok()?;
+    let refs: Vec<&str> = text
+        .lines()
+        .filter(|r| Some(*r) != except && !r.ends_with("/HEAD"))
+        .collect();
+    let local = refs.iter().find_map(|r| r.strip_prefix("refs/heads/"));
+    let remote = refs.iter().find_map(|r| r.strip_prefix("refs/remotes/"));
+    local.or(remote).map(str::to_string)
 }
 
 // ---------------------------------------------------------------------------
@@ -376,6 +432,25 @@ pub fn stage_manual_conflict_resolution(
     Ok(())
 }
 
+/// Corvane addition (flag `150`): `git mergetool --no-prompt -- <path>` with
+/// the user's `merge.tool`; blocks until the tool exits (git stages the file
+/// when the tool reports success). Refuses without a configured
+/// `merge.tool`, since git would otherwise fall back to terminal tools.
+pub fn open_merge_tool(git: Arc<GitBinary>, workdir: &Path, path: &str) -> Result<()> {
+    if crate::config_value(git.clone(), workdir, "merge.tool").is_none() {
+        return Err(GitError::Gix(
+            "No merge tool is configured. Set one with git config --global merge.tool <tool> \
+             (for example bc, kdiff3, opendiff or p4merge)."
+                .into(),
+        ));
+    }
+    GitCommand::new(git)
+        .args(["mergetool", "--no-prompt", "--", path])
+        .current_dir(workdir)
+        .run()?;
+    Ok(())
+}
+
 /// Stage tracked files before continuing an operation: manual resolutions
 /// first, then `add` for everything else (GHD `continueRebase` /
 /// `continueCherryPick` / `createMergeCommit` share this).
@@ -480,6 +555,28 @@ fn stderr_says_unresolved(stderr: &str) -> bool {
 // rebase
 // ---------------------------------------------------------------------------
 
+/// The cut line git writes above the conflict hint in `scissors` cleanup mode.
+const SCISSORS: &str = "------------------------ >8 ------------------------";
+
+/// `-c commit.cleanup=scissors` when `keep`: commit messages are kept as
+/// written (lines starting with `#` included) and only the conflict hint git
+/// appends below a cut line is dropped. Git's default, `strip`, drops every
+/// `#` line, so a message whose summary starts with `#` ends up empty after
+/// a conflict ("Aborting commit due to empty commit message").
+fn cleanup_config(keep: bool) -> &'static [&'static str] {
+    if keep {
+        &["-c", "commit.cleanup=scissors"]
+    } else {
+        &[]
+    }
+}
+
+/// The stopped pick's message has the cut line, i.e. it was started with
+/// [`cleanup_config`]; a rebase started elsewhere keeps git's default.
+fn message_has_scissors(path: &Path) -> bool {
+    std::fs::read_to_string(path).is_ok_and(|m| m.lines().any(|l| l.contains(SCISSORS)))
+}
+
 /// GHD `GitRebaseParser`: `Rebasing (n/m)` on stderr.
 pub fn parse_rebase_progress(line: &str, commits: &[CommitOneLine]) -> Option<McoProgress> {
     let rest = line.trim().strip_prefix("Rebasing (")?;
@@ -529,15 +626,18 @@ fn classify_rebase(workdir: &Path, result: Result<crate::process::GitOutput>) ->
 }
 
 /// GHD `rebase`: `git rebase <base> <target>` with progress from stderr.
+/// `keep_messages`: see [`cleanup_config`].
 pub fn rebase(
     git: Arc<GitBinary>,
     workdir: &Path,
     base_branch: &str,
     target_branch: &str,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     let result = GitCommand::new(git)
+        .args(cleanup_config(keep_messages))
         .args([
             "-c",
             "rebase.backend=merge",
@@ -572,12 +672,15 @@ pub fn continue_rebase(
     files: &[WorkingDirectoryFileChange],
     resolutions: &BTreeMap<String, ManualConflictResolution>,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> Result<RebaseResult> {
     stage_for_continue(git.clone(), workdir, files, resolutions)?;
     if !rebase_head_set(workdir) {
         return Ok(RebaseResult::Aborted);
     }
+    let keep_messages =
+        keep_messages && message_has_scissors(&git_dir(workdir).join("rebase-merge/message"));
     let status = crate::status::get_status(git.clone(), workdir, None)?;
     let tracked_after = status
         .files
@@ -591,6 +694,7 @@ pub fn continue_rebase(
         "--continue"
     };
     let result = GitCommand::new(git)
+        .args(cleanup_config(keep_messages))
         .args(["rebase", action])
         .env("GIT_EDITOR", ":")
         .current_dir(workdir)
@@ -602,9 +706,20 @@ pub fn continue_rebase(
     Ok(classify_rebase(workdir, result))
 }
 
+/// Options for the interactive rebases behind squash and reorder.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RebaseOptions {
+    /// See [`cleanup_config`] (flag `448`).
+    pub keep_messages: bool,
+    /// `--autostash`: local changes are stashed first and reapplied after
+    /// (flag `149`).
+    pub autostash: bool,
+}
+
 /// GHD `rebaseInteractive`: replay `todo` with `sequence.editor=cat todo >`.
 /// `last_retained_ref` is the commit before the first rewritten one, or
 /// `None` to rebase from the root.
+#[allow(clippy::too_many_arguments)]
 pub fn rebase_interactive(
     git: Arc<GitBinary>,
     workdir: &Path,
@@ -612,6 +727,7 @@ pub fn rebase_interactive(
     last_retained_ref: Option<&str>,
     git_editor: Option<&str>,
     commits: &[CommitOneLine],
+    options: RebaseOptions,
     mut on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     let todo_path = todo.to_string_lossy();
@@ -620,16 +736,21 @@ pub fn rebase_interactive(
     }
     let sequence_editor = format!("sequence.editor=cat \"{todo_path}\" >");
     let base = last_retained_ref.unwrap_or("--root");
+    let mut args = vec![
+        "-c",
+        &sequence_editor,
+        "-c",
+        "rebase.backend=merge",
+        "rebase",
+        "-i",
+    ];
+    if options.autostash {
+        args.push("--autostash");
+    }
+    args.push(base);
     let result = GitCommand::new(git)
-        .args([
-            "-c",
-            &sequence_editor,
-            "-c",
-            "rebase.backend=merge",
-            "rebase",
-            "-i",
-            base,
-        ])
+        .args(cleanup_config(options.keep_messages))
+        .args(args)
         .env_remove("GIT_SEQUENCE_EDITOR")
         .env("GIT_EDITOR", git_editor.unwrap_or(":"))
         .current_dir(workdir)
@@ -759,6 +880,7 @@ fn temp_file(prefix: &str, contents: &str) -> Result<PathBuf> {
 
 /// GHD `squash`: squash `to_squash` onto `squash_onto` with `message`
 /// (summary line + body) via interactive rebase.
+#[allow(clippy::too_many_arguments)]
 pub fn squash(
     git: Arc<GitBinary>,
     workdir: &Path,
@@ -766,6 +888,7 @@ pub fn squash(
     squash_onto: &Commit,
     last_retained_ref: Option<&str>,
     message: &str,
+    options: RebaseOptions,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_squash.is_empty() {
@@ -808,6 +931,11 @@ pub fn squash(
             summary: c.summary.clone(),
         })
         .collect();
+    // without a message git's own (with its `#` notes) would be kept
+    let options = RebaseOptions {
+        keep_messages: options.keep_messages && editor.is_some(),
+        ..options
+    };
     let result = rebase_interactive(
         git,
         workdir,
@@ -815,6 +943,7 @@ pub fn squash(
         last_retained_ref,
         editor.as_deref(),
         &involved,
+        options,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -831,6 +960,7 @@ pub fn reorder(
     to_move: &[Commit],
     before: Option<&Commit>,
     last_retained_ref: Option<&str>,
+    options: RebaseOptions,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_move.is_empty() {
@@ -858,6 +988,7 @@ pub fn reorder(
         last_retained_ref,
         None,
         &commits,
+        options,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -912,10 +1043,13 @@ fn classify_cherry_pick(
 }
 
 /// GHD `cherryPick`: `cherry-pick <shas> --empty=keep -m 1` (oldest first).
+/// `keep_messages` adds `--cleanup=scissors` (see [`cleanup_config`]; the
+/// sequencer remembers it for the later picks).
 pub fn cherry_pick(
     git: Arc<GitBinary>,
     workdir: &Path,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> CherryPickResult {
     if commits.is_empty() {
@@ -933,6 +1067,9 @@ pub fn cherry_pick(
     }
     args.push("-m".into());
     args.push("1".into());
+    if keep_messages {
+        args.push("--cleanup=scissors".into());
+    }
     let mut count = 0;
     let result = GitCommand::new(git)
         .args(&args)
@@ -1035,12 +1172,17 @@ pub fn cherry_pick_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<Cherr
     }
 }
 
-/// GHD `continueCherryPick`
+/// GHD `continueCherryPick`. With `keep_messages` and a stopped pick started
+/// that way (its `MERGE_MSG` has the cut line), the pick is committed here
+/// with `--cleanup=scissors` and the sequencer, if any, continued after it:
+/// `cherry-pick --continue` itself commits a single pick with `strip`,
+/// dropping `#` lines, and `commit --no-edit` keeps git's conflict note.
 pub fn continue_cherry_pick(
     git: Arc<GitBinary>,
     workdir: &Path,
     files: &[WorkingDirectoryFileChange],
     resolutions: &BTreeMap<String, ManualConflictResolution>,
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> Result<CherryPickResult> {
     stage_for_continue(git.clone(), workdir, files, resolutions)?;
@@ -1057,6 +1199,39 @@ pub fn continue_cherry_pick(
         .iter()
         .filter(|f| f.status.kind != FileStatusKind::Untracked)
         .count();
+    let dir = git_dir(workdir);
+    if keep_messages && message_has_scissors(&dir.join("MERGE_MSG")) {
+        // the editor "runs" (`:`), so `scissors` cuts at the line
+        let committed = GitCommand::new(git.clone())
+            .args(["commit", "--allow-empty", "--cleanup=scissors"])
+            .env("GIT_EDITOR", ":")
+            .current_dir(workdir)
+            .run();
+        match committed {
+            Ok(out) => {
+                for line in out.stdout_string().unwrap_or_default().lines() {
+                    if let Some(p) = parse_cherry_pick_progress(line, &commits, &mut count) {
+                        on_progress(p);
+                    }
+                }
+            }
+            Err(GitError::Failed { stderr, .. }) => return Ok(CherryPickResult::Error(stderr)),
+            Err(err) => return Err(err),
+        }
+        if !dir.join("sequencer").join("todo").exists() {
+            return Ok(CherryPickResult::CompletedWithoutError);
+        }
+        let result = GitCommand::new(git)
+            .args(["cherry-pick", "--continue"])
+            .env("GIT_EDITOR", ":")
+            .current_dir(workdir)
+            .run_streaming_stdout(|line| {
+                if let Some(p) = parse_cherry_pick_progress(line, &commits, &mut count) {
+                    on_progress(p);
+                }
+            });
+        return Ok(classify_cherry_pick(workdir, result));
+    }
     let result = if tracked_after == 0 {
         warn!("no tracked changes to commit; continuing cherry-pick with an empty commit");
         GitCommand::new(git)
@@ -1197,14 +1372,14 @@ mod tests {
             .unwrap();
         assert_eq!(commits.len(), 1);
         let mut seen = Vec::new();
-        let result = rebase(git.clone(), path, "main", "feature", &commits, |p| {
+        let result = rebase(git.clone(), path, "main", "feature", &commits, false, |p| {
             seen.push(p)
         });
         assert_eq!(result, RebaseResult::CompletedWithoutError);
         assert!(!seen.is_empty(), "progress lines were parsed");
         assert!(path.join("m.txt").exists());
         assert_eq!(
-            rebase(git, path, "main", "feature", &commits, |_| {}),
+            rebase(git, path, "main", "feature", &commits, false, |_| {}),
             RebaseResult::AlreadyUpToDate
         );
     }
@@ -1218,10 +1393,19 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         commit_file(path, "a.txt", "main\n", "main change");
         run(path, &["checkout", "-q", "feature"]);
-        let result = rebase(git.clone(), path, "main", "feature", &[], |_| {});
+        let result = rebase(git.clone(), path, "main", "feature", &[], false, |_| {});
         assert_eq!(result, RebaseResult::ConflictsEncountered);
         let state = rebase_internal_state(path).unwrap();
         assert_eq!(state.target_branch, "feature");
+        assert_eq!(
+            branch_at(
+                git.clone(),
+                path,
+                &state.base_branch_tip,
+                Some("refs/heads/feature")
+            ),
+            Some("main".to_string())
+        );
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         let conflicted = status
             .files
@@ -1234,8 +1418,16 @@ mod tests {
         // resolve by taking our side (the base branch during a rebase)
         let mut resolutions = BTreeMap::new();
         resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
-        let result =
-            continue_rebase(git.clone(), path, &status.files, &resolutions, &[], |_| {}).unwrap();
+        let result = continue_rebase(
+            git.clone(),
+            path,
+            &status.files,
+            &resolutions,
+            &[],
+            false,
+            |_| {},
+        )
+        .unwrap();
         assert_eq!(result, RebaseResult::CompletedWithoutError);
         assert!(!rebase_head_set(path));
         assert_eq!(
@@ -1247,7 +1439,7 @@ mod tests {
         run(path, &["checkout", "-q", "-b", "other", "HEAD~1"]);
         commit_file(path, "a.txt", "other\n", "other change");
         assert_eq!(
-            rebase(git.clone(), path, "main", "other", &[], |_| {}),
+            rebase(git.clone(), path, "main", "other", &[], false, |_| {}),
             RebaseResult::ConflictsEncountered
         );
         abort_rebase(git, path).unwrap();
@@ -1256,6 +1448,48 @@ mod tests {
             std::fs::read_to_string(path.join("a.txt")).unwrap(),
             "other\n"
         );
+    }
+
+    #[test]
+    fn rebase_keeps_hash_messages_across_a_conflict() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(path.join("a.txt"), "feature\n").unwrap();
+        run(path, &["add", "."]);
+        run(
+            path,
+            &["commit", "-q", "-m", "#12 feature", "-m", "# kept too"],
+        );
+        run(path, &["checkout", "-q", "main"]);
+        commit_file(path, "a.txt", "main\n", "main change");
+        run(path, &["checkout", "-q", "feature"]);
+        assert_eq!(
+            rebase(git.clone(), path, "main", "feature", &[], true, |_| {}),
+            RebaseResult::ConflictsEncountered
+        );
+        let status = crate::status::get_status(git.clone(), path, None).unwrap();
+        let mut resolutions = BTreeMap::new();
+        resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
+        let result = continue_rebase(
+            git.clone(),
+            path,
+            &status.files,
+            &resolutions,
+            &[],
+            true,
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(result, RebaseResult::CompletedWithoutError);
+        let out = GitCommand::new(git)
+            .args(["log", "-1", "--format=%B"])
+            .current_dir(path)
+            .run()
+            .unwrap()
+            .stdout_string()
+            .unwrap();
+        assert_eq!(out.trim_end(), "#12 feature\n\n# kept too");
     }
 
     #[test]
@@ -1291,6 +1525,7 @@ mod tests {
             &full(&all[1]),
             Some(&all[0].sha),
             "combined\n\nsecond + third",
+            RebaseOptions::default(),
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);
@@ -1311,6 +1546,7 @@ mod tests {
             &[full(&all[2])],
             Some(&full(&all[1])),
             Some(&all[0].sha),
+            RebaseOptions::default(),
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);
@@ -1331,7 +1567,7 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         let mut progress = Vec::new();
         assert_eq!(
-            cherry_pick(git.clone(), path, &feature, |p| progress.push(p)),
+            cherry_pick(git.clone(), path, &feature, false, |p| progress.push(p)),
             CherryPickResult::CompletedWithoutError
         );
         assert!(path.join("f.txt").exists());
@@ -1345,7 +1581,7 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         commit_file(path, "a.txt", "main\n", "main edits a");
         assert_eq!(
-            cherry_pick(git.clone(), path, &picks, |_| {}),
+            cherry_pick(git.clone(), path, &picks, false, |_| {}),
             CherryPickResult::ConflictsEncountered
         );
         assert!(cherry_pick_head_found(path));
@@ -1357,6 +1593,160 @@ mod tests {
         );
         abort_cherry_pick(git, path).unwrap();
         assert!(!cherry_pick_head_found(path));
+    }
+
+    #[test]
+    fn cherry_pick_keeps_hash_messages_across_a_conflict() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(path.join("a.txt"), "feature\n").unwrap();
+        run(path, &["add", "."]);
+        run(path, &["commit", "-q", "-m", "#7 edits a", "-m", "# body"]);
+        commit_file(path, "b.txt", "b\n", "#8 adds b");
+        let picks = commits_in_range(git.clone(), path, "main..feature")
+            .unwrap()
+            .unwrap();
+        run(path, &["checkout", "-q", "main"]);
+        commit_file(path, "a.txt", "main\n", "main edits a");
+        let log = |n: &str| {
+            GitCommand::new(git.clone())
+                .args(["log", n, "--format=%B"])
+                .current_dir(path)
+                .run()
+                .unwrap()
+                .stdout_string()
+                .unwrap()
+        };
+        let resolve = |side: ManualConflictResolution| {
+            let status = crate::status::get_status(git.clone(), path, None).unwrap();
+            let mut resolutions = BTreeMap::new();
+            resolutions.insert("a.txt".to_string(), side);
+            continue_cherry_pick(git.clone(), path, &status.files, &resolutions, true, |_| {})
+                .unwrap()
+        };
+        // two picks, the first conflicts: the sequencer goes on afterwards
+        assert_eq!(
+            cherry_pick(git.clone(), path, &picks, true, |_| {}),
+            CherryPickResult::ConflictsEncountered
+        );
+        assert_eq!(
+            resolve(ManualConflictResolution::Theirs),
+            CherryPickResult::CompletedWithoutError
+        );
+        assert!(!cherry_pick_head_found(path));
+        assert_eq!(log("-2"), "#8 adds b\n\n#7 edits a\n\n# body\n\n");
+        // one pick resolved to our side: an empty commit, same message
+        run(path, &["reset", "-q", "--hard", "HEAD~2"]);
+        assert_eq!(
+            cherry_pick(git.clone(), path, &picks[..1], true, |_| {}),
+            CherryPickResult::ConflictsEncountered
+        );
+        assert_eq!(
+            resolve(ManualConflictResolution::Ours),
+            CherryPickResult::CompletedWithoutError
+        );
+        assert_eq!(log("-1"), "#7 edits a\n\n# body\n\n");
+    }
+
+    #[test]
+    fn squash_with_autostash_keeps_local_changes() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        commit_file(path, "b.txt", "b\n", "second");
+        commit_file(path, "c.txt", "c\n", "third");
+        let all = commits_in_range(git.clone(), path, "HEAD")
+            .unwrap()
+            .unwrap();
+        let identity = corvane_models::CommitIdentity {
+            name: "T".into(),
+            email: "t@example.com".into(),
+            seconds: 0,
+            offset: 0,
+        };
+        let full = |one: &CommitOneLine| Commit {
+            sha: one.sha.clone(),
+            summary: one.summary.clone(),
+            body: String::new(),
+            author: identity.clone(),
+            committer: identity.clone(),
+            parents: Vec::new(),
+            tags: Vec::new(),
+        };
+        std::fs::write(path.join("a.txt"), "local\n").unwrap();
+        let result = squash(
+            git.clone(),
+            path,
+            &[full(&all[2])],
+            &full(&all[1]),
+            Some(&all[0].sha),
+            "combined",
+            RebaseOptions {
+                autostash: true,
+                ..RebaseOptions::default()
+            },
+            |_| {},
+        );
+        assert_eq!(result, RebaseResult::CompletedWithoutError);
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "local\n"
+        );
+        assert_eq!(stash_tip(git.clone(), path), None);
+        assert_eq!(
+            commits_in_range(git, path, "HEAD").unwrap().unwrap().len(),
+            2
+        );
+    }
+
+    #[test]
+    fn squash_merge_uses_the_given_message() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        commit_file(path, "f.txt", "f\n", "feature one");
+        commit_file(path, "a.txt", "feature\n", "feature two");
+        run(path, &["checkout", "-q", "main"]);
+        let log = || {
+            GitCommand::new(git.clone())
+                .args(["log", "-1", "--format=%B"])
+                .current_dir(path)
+                .run()
+                .unwrap()
+                .stdout_string()
+                .unwrap()
+        };
+        assert_eq!(
+            crate::merge_branch_with_message(
+                git.clone(),
+                path,
+                "feature",
+                true,
+                Some("Feature\n\nall of it")
+            )
+            .unwrap(),
+            crate::MergeOutcome::Success
+        );
+        assert_eq!(log().trim_end(), "Feature\n\nall of it");
+        // conflicting: the message waits in SQUASH_MSG for the commit
+        run(path, &["reset", "-q", "--hard", "HEAD~1"]);
+        commit_file(path, "a.txt", "main\n", "main edits a");
+        assert_eq!(
+            crate::merge_branch_with_message(git.clone(), path, "feature", true, Some("Squashed"))
+                .unwrap(),
+            crate::MergeOutcome::Conflicts
+        );
+        let status = crate::status::get_status(git.clone(), path, None).unwrap();
+        let conflicted: Vec<_> = status
+            .files
+            .iter()
+            .filter(|f| f.status.kind == FileStatusKind::Conflicted)
+            .cloned()
+            .collect();
+        let mut resolutions = BTreeMap::new();
+        resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
+        create_merge_commit(git.clone(), path, &conflicted, &resolutions).unwrap();
+        assert_eq!(log().trim_end(), "Squashed");
     }
 
     #[test]

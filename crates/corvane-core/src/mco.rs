@@ -522,6 +522,54 @@ impl Dispatcher {
         Some((branch.name.clone(), branch.tip.clone()))
     }
 
+    /// [`Self::current_branch_and_tip`] for an operation the user started:
+    /// with flag `250` a missing branch (detached HEAD, rebase in progress)
+    /// shows an error titled `title` instead of doing nothing.
+    fn current_branch_or_explain(
+        id: u64,
+        title: &str,
+        cx: &mut App,
+    ) -> Option<(String, Option<String>)> {
+        let found = Self::current_branch_and_tip(id, cx);
+        if found.is_none() {
+            let message = {
+                let s = Self::state(cx).read(cx);
+                let rs = s.repo_states.get(&id);
+                let loaded = rs.is_some_and(|r| r.info.is_some());
+                let rebasing = rs
+                    .and_then(|r| r.status.as_ref())
+                    .is_some_and(|st| st.rebase_in_progress);
+                (loaded && s.flags.bool(crate::flags::ids::NO_BRANCH_EXPLAINED)).then_some(
+                    if rebasing {
+                        "A rebase is in progress. Finish or abort it first."
+                    } else {
+                        "You are not on a branch (detached HEAD). Check out a branch first."
+                    },
+                )
+            };
+            if let Some(message) = message {
+                Self::show_error(title, message, cx);
+            }
+        }
+        found
+    }
+
+    /// Flag `448`: rebases keep `#` lines in commit messages.
+    fn rebase_keeps_messages(cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REBASE_KEEPS_HASH_MESSAGES)
+    }
+
+    /// Flag `449`: cherry-picks keep `#` lines and drop git's conflict note.
+    fn cherry_pick_keeps_messages(cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CHERRY_PICK_KEEPS_MESSAGES)
+    }
+
     fn working_directory_files(id: u64, cx: &App) -> Vec<WorkingDirectoryFileChange> {
         Self::state(cx)
             .read(cx)
@@ -619,9 +667,16 @@ impl Dispatcher {
             RetryAction::Push {
                 force_with_lease,
                 branch,
+                up_to: Some(sha),
+            } => Self::push_inner(id, force_with_lease, branch, Some(sha), |_, _| {}, cx),
+            RetryAction::Push {
+                force_with_lease,
+                branch,
+                up_to: None,
             } => Self::push(id, force_with_lease, branch, cx),
             RetryAction::Pull => Self::pull(id, cx),
             RetryAction::Fetch => Self::fetch(id, false, cx),
+            RetryAction::Rebase { base } => Self::start_rebase(id, base, false, cx),
         }
     }
 
@@ -661,6 +716,27 @@ impl Dispatcher {
             return;
         };
         let current = Self::current_branch_and_tip(id, cx);
+        if matches!(mco.detail, McoDetail::Squash { .. }) {
+            Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).squash_draft = None);
+        }
+        // flag `146`: find the rewritten commits again once history reloads
+        let rewritten: Vec<(String, Option<i64>)> = match &mco.detail {
+            McoDetail::Squash { message, .. } => {
+                vec![(
+                    message.lines().next().unwrap_or("").trim().to_string(),
+                    None,
+                )]
+            }
+            McoDetail::Reorder { commits, .. } => commits
+                .iter()
+                .map(|c| (c.summary.clone(), Some(c.author.seconds)))
+                .collect(),
+            _ => Vec::new(),
+        };
+        Self::state(cx).update(cx, |s, _| {
+            let on = s.flags.bool(crate::flags::ids::SELECT_REWRITTEN_COMMITS);
+            s.repo_state_mut(id).rewritten_selection = if on { rewritten } else { Vec::new() };
+        });
         let banner = match &mco.detail {
             McoDetail::Squash { .. } => Banner::SuccessfulSquash { repo: id, count },
             McoDetail::Reorder { .. } => Banner::SuccessfulReorder { repo: id, count },
@@ -764,6 +840,23 @@ impl Dispatcher {
             }
             RebaseResult::Error(message) => {
                 let kind = Self::mco(id, cx).map(|m| m.kind());
+                // flag `145`: keep the squash message for the next try
+                if let Some(McoDetail::Squash {
+                    commits,
+                    target_commit,
+                    message: draft,
+                    ..
+                }) = Self::mco(id, cx).map(|m| m.detail)
+                    && Self::state(cx)
+                        .read(cx)
+                        .flags
+                        .bool(crate::flags::ids::SQUASH_KEEPS_DRAFT)
+                {
+                    let key = squash_draft_key(&target_commit.sha, commits.iter().map(|c| &c.sha));
+                    Self::state(cx).update(cx, |s, _| {
+                        s.repo_state_mut(id).squash_draft = Some((key, draft));
+                    });
+                }
                 Self::end_mco(id, cx);
                 Self::show_error(
                     format!("{} failed", kind.map(|k| k.label()).unwrap_or("Operation")),
@@ -851,6 +944,22 @@ impl Dispatcher {
         let Some((target, tip)) = Self::current_branch_and_tip(id, cx) else {
             return;
         };
+        // flag `447`: git refuses to rebase over local changes; offer the
+        // stash first, and rebase once it is made (GHD's retry forgets to)
+        if Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REBASE_STASH_AND_CONTINUE)
+            && Self::blocked_by_local_changes(
+                id,
+                RetryAction::Rebase {
+                    base: base_branch.clone(),
+                },
+                cx,
+            )
+        {
+            return;
+        }
         let commits = Self::state(cx)
             .read(cx)
             .repo_states
@@ -913,6 +1022,7 @@ impl Dispatcher {
         Self::set_mco_step(id, McoStep::ShowProgress, cx);
         info!(id, %base_branch, %target_branch, "starting rebase");
         let (base_for_result, target_for_result) = (base_branch.clone(), target_branch.clone());
+        let keep_messages = Self::rebase_keeps_messages(cx);
         Self::run_with_progress(
             id,
             cx,
@@ -923,6 +1033,7 @@ impl Dispatcher {
                     &base_branch,
                     &target_branch,
                     &commits,
+                    keep_messages,
                     on_progress,
                 );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
@@ -1039,6 +1150,47 @@ impl Dispatcher {
                 cx.notify();
             }
         });
+    }
+
+    /// Conflicts dialog › Resolve All (flag `446`): `resolution` for every
+    /// file that still has conflicts. Nothing is written until Continue, and
+    /// each file keeps its Undo.
+    pub fn set_all_manual_resolutions(id: u64, resolution: ManualConflictResolution, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            let Some(status) = rs.status.as_ref() else {
+                return;
+            };
+            let Some(conflict) = rs.conflict_state.as_mut() else {
+                return;
+            };
+            let paths: Vec<String> = conflicted_files(status, &conflict.manual_resolutions)
+                .into_iter()
+                .map(|f| f.path.clone())
+                .collect();
+            for path in paths {
+                conflict.manual_resolutions.insert(path, resolution);
+            }
+            cx.notify();
+        });
+    }
+
+    /// Conflicts dialog › Open in Merge Tool (flag `150`): the user's
+    /// `merge.tool` on one file; refresh once it closes.
+    pub fn open_in_merge_tool(id: u64, path: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        spawn_bg(
+            cx,
+            move || corvane_git::open_merge_tool(git, &workdir, &path),
+            move |result, cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not open the merge tool", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
     }
 
     fn note_resolved_conflicts(id: u64, cx: &mut App) {
@@ -1179,6 +1331,8 @@ impl Dispatcher {
             mco.conflicts.our_branch.clone(),
             mco.conflicts.their_branch.clone(),
         );
+        let keep_messages = Self::rebase_keeps_messages(cx);
+        let keep_pick_messages = Self::cherry_pick_keeps_messages(cx);
         match mco.detail.clone() {
             McoDetail::Merge {
                 squash,
@@ -1230,6 +1384,7 @@ impl Dispatcher {
                             &files,
                             &resolutions,
                             &commits,
+                            keep_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| RebaseResult::Error(e.to_string()));
@@ -1265,6 +1420,7 @@ impl Dispatcher {
                             &files,
                             &resolutions,
                             &one_line,
+                            keep_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| RebaseResult::Error(e.to_string()));
@@ -1291,6 +1447,7 @@ impl Dispatcher {
                             &workdir,
                             &files,
                             &resolutions,
+                            keep_pick_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| CherryPickResult::Error(e.to_string()));
@@ -1316,6 +1473,18 @@ impl Dispatcher {
 
     /// `_mergeBranch` (+ `initializeMergeOperation`).
     pub fn merge_branch(id: u64, branch: String, squash: bool, cx: &mut App) {
+        Self::merge_branch_with_message(id, branch, squash, None, cx)
+    }
+
+    /// [`Self::merge_branch`]; a squash merge commits with `message` when
+    /// given (flag `450`'s message fields).
+    pub fn merge_branch_with_message(
+        id: u64,
+        branch: String,
+        squash: bool,
+        message: Option<String>,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -1337,7 +1506,13 @@ impl Dispatcher {
         spawn_bg(
             cx,
             move || {
-                let result = corvane_git::merge_branch(git.clone(), &workdir, &branch, squash);
+                let result = corvane_git::merge_branch_with_message(
+                    git.clone(),
+                    &workdir,
+                    &branch,
+                    squash,
+                    message.as_deref(),
+                );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
                 (result, status)
             },
@@ -1391,7 +1566,8 @@ impl Dispatcher {
 
     /// History › Cherry-pick Commit(s)…: open the choose-target-branch step.
     pub fn start_cherry_pick_flow(id: u64, shas: Vec<String>, cx: &mut App) {
-        let Some((current, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((current, tip)) = Self::current_branch_or_explain(id, "Could not cherry-pick", cx)
+        else {
             return;
         };
         let commits = Self::commits_oldest_first(id, &shas, cx);
@@ -1526,6 +1702,7 @@ impl Dispatcher {
         });
         let local_name = target.name_without_remote().to_string();
         let count = commits.len();
+        let keep_messages = Self::cherry_pick_keeps_messages(cx);
         let commits_for_result = commits.clone();
         Self::run_with_progress(
             id,
@@ -1535,7 +1712,13 @@ impl Dispatcher {
                     return (CherryPickResult::Error(err.to_string()), None, None, false);
                 }
                 let undo_sha = corvane_git::head_sha(git.clone(), &workdir).ok();
-                let result = corvane_git::cherry_pick(git.clone(), &workdir, &commits, on_progress);
+                let result = corvane_git::cherry_pick(
+                    git.clone(),
+                    &workdir,
+                    &commits,
+                    keep_messages,
+                    on_progress,
+                );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
                 (result, status, undo_sha, true)
             },
@@ -1665,6 +1848,13 @@ impl Dispatcher {
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
             };
+            // flag `145`: a failed squash of the same commits left its message
+            let draft = rs
+                .squash_draft
+                .as_ref()
+                .filter(|(key, _)| *key == squash_draft_key(&onto, to_squash.iter()))
+                .filter(|_| s.flags.bool(crate::flags::ids::SQUASH_KEEPS_DRAFT))
+                .map(|(_, message)| split_message(message));
             let mut involved = to_squash.clone();
             involved.push(onto.clone());
             let Some(last_retained) = Self::last_retained_ref(rs, &involved) else {
@@ -1689,12 +1879,9 @@ impl Dispatcher {
                     parts.push(text);
                 }
             }
-            (
-                last_retained,
-                onto_commit.summary.clone(),
-                parts.join("\n\n"),
-                to_squash.len() + 1,
-            )
+            let (summary, description) =
+                draft.unwrap_or_else(|| (onto_commit.summary.clone(), parts.join("\n\n")));
+            (last_retained, summary, description, to_squash.len() + 1)
         };
         spawn_bg(
             cx,
@@ -1735,18 +1922,27 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        if Self::blocked_by_local_changes(
-            id,
-            RetryAction::Squash {
-                to_squash: to_squash.clone(),
-                onto: onto.clone(),
-                message: message.clone(),
-            },
-            cx,
-        ) {
+        // flag `149`: git stashes local changes around the squash instead
+        let autostash = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::SQUASH_AUTOSTASH)
+            && !Self::working_directory_files(id, cx).is_empty();
+        if !autostash
+            && Self::blocked_by_local_changes(
+                id,
+                RetryAction::Squash {
+                    to_squash: to_squash.clone(),
+                    onto: onto.clone(),
+                    message: message.clone(),
+                },
+                cx,
+            )
+        {
             return;
         }
-        let Some((branch, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((branch, tip)) = Self::current_branch_or_explain(id, "Could not squash", cx)
+        else {
             return;
         };
         let (commits, target_commit, last_retained) = {
@@ -1797,6 +1993,10 @@ impl Dispatcher {
             });
         }
         let count = commits.len() + 1;
+        let options = corvane_git::RebaseOptions {
+            keep_messages: Self::rebase_keeps_messages(cx),
+            autostash,
+        };
         let run = move |cx: &mut App| {
             let (git, workdir) = (git.clone(), workdir.clone());
             let branch = branch.clone();
@@ -1810,6 +2010,9 @@ impl Dispatcher {
                 id,
                 cx,
                 move |on_progress| {
+                    let stash_before = options
+                        .autostash
+                        .then(|| corvane_git::stash_tip(git.clone(), &workdir));
                     let result = corvane_git::squash(
                         git.clone(),
                         &workdir,
@@ -1817,12 +2020,18 @@ impl Dispatcher {
                         &target_commit,
                         last_retained.as_deref(),
                         &message,
+                        options,
                         on_progress,
                     );
+                    // the autostash went back into the stash: reapplying it conflicted
+                    let stash_kept = result == RebaseResult::CompletedWithoutError
+                        && stash_before.is_some_and(|before| {
+                            corvane_git::stash_tip(git.clone(), &workdir) != before
+                        });
                     let status = corvane_git::get_status(git, &workdir, None).ok();
-                    (result, status)
+                    (result, status, stash_kept)
                 },
-                move |(result, status), cx| {
+                move |(result, status, stash_kept), cx| {
                     Self::process_rebase_result(
                         id,
                         result,
@@ -1831,7 +2040,14 @@ impl Dispatcher {
                         Some(branch),
                         Some("squash commit".into()),
                         cx,
-                    )
+                    );
+                    if stash_kept {
+                        Self::show_error(
+                            "Local changes kept in the stash",
+                            "The commits were squashed, but your local changes conflicted with the result. They are kept in git's stash as \"autostash\" (git stash list).",
+                            cx,
+                        );
+                    }
                 },
             );
         };
@@ -1907,7 +2123,8 @@ impl Dispatcher {
         ) {
             return;
         }
-        let Some((branch, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((branch, tip)) = Self::current_branch_or_explain(id, "Could not reorder", cx)
+        else {
             return;
         };
         let (commits, before_commit, last_retained) = {
@@ -1958,6 +2175,7 @@ impl Dispatcher {
         }
         let count = commits.len();
         let last_retained_for_run = last_retained.clone();
+        let keep_messages = Self::rebase_keeps_messages(cx);
         let run = move |cx: &mut App| {
             let (git, workdir) = (git.clone(), workdir.clone());
             let branch = branch.clone();
@@ -1976,6 +2194,10 @@ impl Dispatcher {
                         &commits,
                         before_commit.as_ref(),
                         last_retained.as_deref(),
+                        corvane_git::RebaseOptions {
+                            keep_messages,
+                            autostash: false,
+                        },
                         on_progress,
                     );
                     let status = corvane_git::get_status(git, &workdir, None).ok();
@@ -2144,15 +2366,22 @@ impl Dispatcher {
                     let Some(snapshot) = rebase_snapshot else {
                         return;
                     };
+                    // flag `454`: name the branch at `onto` (GHD shows none)
+                    let base = snapshot.base_branch.filter(|_| {
+                        Self::state(cx)
+                            .read(cx)
+                            .flags
+                            .bool(crate::flags::ids::REBASE_BASE_NAME_RESOLVED)
+                    });
                     (
                         McoDetail::Rebase {
-                            base_branch: None,
+                            base_branch: base.clone(),
                             commits: snapshot.commits,
                         },
                         Some(target_branch.clone()),
                         Some(original_branch_tip.clone()),
                         Some(snapshot.progress),
-                        None,
+                        base,
                         Some(target_branch.clone()),
                     )
                 }
@@ -2211,6 +2440,39 @@ impl Dispatcher {
     }
 }
 
+/// Flag `146`: the newest commit matching each (summary, author time) pair,
+/// in the given order; empty unless every one is found.
+pub(crate) fn find_rewritten(commits: &[Commit], wanted: &[(String, Option<i64>)]) -> Vec<String> {
+    let found: Vec<String> = wanted
+        .iter()
+        .filter_map(|(summary, seconds)| {
+            commits
+                .iter()
+                .find(|c| &c.summary == summary && seconds.is_none_or(|t| c.author.seconds == t))
+                .map(|c| c.sha.clone())
+        })
+        .collect();
+    if found.len() == wanted.len() {
+        found
+    } else {
+        Vec::new()
+    }
+}
+
+/// Flag `145`: the commits of a squash, order-independent.
+fn squash_draft_key<'a>(onto: &str, squashed: impl Iterator<Item = &'a String>) -> Vec<String> {
+    let mut key: Vec<String> = squashed.cloned().collect();
+    key.sort();
+    key.insert(0, onto.to_string());
+    key
+}
+
+/// A message's summary line and description (after the blank line).
+fn split_message(message: &str) -> (String, String) {
+    let (summary, rest) = message.split_once('\n').unwrap_or((message, ""));
+    (summary.trim().to_string(), rest.trim().to_string())
+}
+
 fn last_retained_for_warn(mco: &Option<MultiCommitOperation>) -> Option<String> {
     match mco.as_ref().map(|m| &m.detail) {
         Some(McoDetail::Squash {
@@ -2226,6 +2488,53 @@ fn last_retained_for_warn(mco: &Option<MultiCommitOperation>) -> Option<String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rewritten_commits_are_found_by_summary_and_time() {
+        let commit = |sha: &str, summary: &str, seconds: i64| {
+            let who = corvane_models::CommitIdentity {
+                name: "T".into(),
+                email: "t@example.com".into(),
+                seconds,
+                offset: 0,
+            };
+            Commit {
+                sha: sha.into(),
+                summary: summary.into(),
+                body: String::new(),
+                author: who.clone(),
+                committer: who,
+                parents: Vec::new(),
+                tags: Vec::new(),
+            }
+        };
+        let log = [
+            commit("n2", "b", 2),
+            commit("n1", "a", 1),
+            commit("old", "a", 5),
+        ];
+        let wanted = vec![("a".to_string(), Some(1)), ("b".to_string(), None)];
+        assert_eq!(find_rewritten(&log, &wanted), ["n1", "n2"]);
+        assert!(find_rewritten(&log, &[("c".to_string(), None)]).is_empty());
+    }
+
+    #[test]
+    fn squash_drafts_match_the_same_commits() {
+        let (a, b) = ("a".to_string(), "b".to_string());
+        assert_eq!(
+            squash_draft_key("o", [&a, &b].into_iter()),
+            squash_draft_key("o", [&b, &a].into_iter())
+        );
+        assert_ne!(
+            squash_draft_key("o", [&a].into_iter()),
+            squash_draft_key("a", ["o".to_string()].iter())
+        );
+        assert_eq!(
+            split_message("Title\n\nbody\nmore"),
+            ("Title".to_string(), "body\nmore".to_string())
+        );
+        assert_eq!(split_message("Title"), ("Title".to_string(), String::new()));
+    }
 
     #[test]
     fn conflict_state_follows_repository_markers() {

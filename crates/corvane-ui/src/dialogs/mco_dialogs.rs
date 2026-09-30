@@ -5,6 +5,15 @@
 //! `dialog/{progress,conflicts,confirm-abort,warn-force-push}-dialog.tsx`,
 //! plus `local-changes-overwritten-dialog.tsx` and the squash message popup
 //! (`commit-message` in a dialog).
+//!
+//! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
+//! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
+//! branches with a local branch in the rebase list (flag `451`); Copy File
+//! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
+//! the stopped commit above the conflicts list (flag `453`); the rebase list
+//! preselects the default branch (flag `143`); the squash message popup can
+//! go back to the target commit's message (flag `144`); Open in Merge Tool in
+//! a conflicted file's menu (flag `150`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -14,7 +23,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::branch_list::group_branches;
+use crate::branch_list::{group_branches, remote_counterparts};
 use crate::context_menu::MenuItem;
 use crate::dialog::{
     DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
@@ -65,6 +74,31 @@ impl McoDialog {
                 corvane_core::McoDetail::Rebase { base_branch, .. } => base_branch.clone(),
                 _ => None,
             });
+        // flag `143`: the rebase list starts on the default branch (when that
+        // is not the current one) and previews it
+        let preselected = {
+            let s = state.read(cx);
+            let rs = s.repo_states.get(&repo);
+            let rebase_choosing = rs.and_then(|r| r.mco.as_ref()).is_some_and(|m| {
+                m.step == McoStep::ChooseBranch
+                    && matches!(m.detail, corvane_core::McoDetail::Rebase { .. })
+            });
+            let current = rs
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.current_branch())
+                .map(|b| b.name.clone());
+            rs.and_then(|r| r.default_branch.clone()).filter(|d| {
+                selected_branch.is_none()
+                    && rebase_choosing
+                    && Some(d) != current.as_ref()
+                    && s.flags
+                        .bool(corvane_core::flags::ids::REBASE_PRESELECTS_DEFAULT_BRANCH)
+            })
+        };
+        if let Some(branch) = &preselected {
+            Dispatcher::preview_rebase(repo, branch.clone(), cx);
+        }
+        let selected_branch = selected_branch.or(preselected);
         Self {
             state,
             repo,
@@ -99,7 +133,7 @@ impl McoDialog {
             let s = self.state.read(cx);
             let rs = s.repo_states.get(&repo);
             let info = rs.and_then(|r| r.info.as_ref());
-            let groups = match (info, rs) {
+            let mut groups = match (info, rs) {
                 (Some(info), Some(rs)) => group_branches(
                     &info.branches,
                     rs.default_branch.as_deref(),
@@ -109,6 +143,13 @@ impl McoDialog {
                 ),
                 _ => Vec::new(),
             };
+            // flag `451`: `origin/main` too, not only the local `main`
+            if let Some(info) = info
+                && s.flags
+                    .bool(corvane_core::flags::ids::REBASE_ONTO_REMOTE_BRANCH)
+            {
+                groups.extend(remote_counterparts(&info.branches, &query));
+            }
             (groups, rs.and_then(|r| r.rebase_preview.clone()))
         };
         let selected = self.selected_branch.clone();
@@ -538,6 +579,38 @@ impl McoDialog {
         let close = move |_: &mut Window, cx: &mut App| Dispatcher::hide_conflicts(repo, cx);
 
         let mut content = div().w(zpx(460.)).flex().flex_col();
+        // flag `453`: which commit stopped (the progress step's details)
+        // (a cherry-pick's count only moves once a pick is done, so it is
+        // left out rather than naming the previous commit)
+        if matches!(
+            kind,
+            MultiCommitOperationKind::Rebase
+                | MultiCommitOperationKind::Squash
+                | MultiCommitOperationKind::Reorder
+        ) && mco.progress.total > 0
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CONFLICTS_SHOW_CURRENT_COMMIT)
+        {
+            let p = &mco.progress;
+            content = content.child(
+                div()
+                    .mb(SPACING())
+                    .flex()
+                    .flex_row()
+                    .min_w_0()
+                    .gap(SPACING_HALF())
+                    .child(
+                        div()
+                            .flex_none()
+                            .font_weight(FontWeight::BOLD)
+                            .child(format!("Commit {} of {}:", p.position, p.total)),
+                    )
+                    .child(div().truncate().child(p.current_summary.clone())),
+            );
+        }
         if resolved_count > 0 {
             // `DialogSuccess`
             content = content.child(
@@ -580,17 +653,70 @@ impl McoDialog {
                     .child(div().pl(SPACING()).child("All conflicts resolved")),
             );
         } else {
+            // flag `446`: Resolve All ▾ next to the count (a choice per file,
+            // written on Continue; each file keeps its Undo)
+            let resolve_all = (conflicted_count > 1
+                && self
+                    .state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::RESOLVE_ALL_CONFLICTS))
+            .then(|| {
+                let items = vec![
+                    MenuItem::new(
+                        match &our {
+                            Some(b) => format!("Resolve All Using {b}"),
+                            None => "Resolve All Using Ours".to_string(),
+                        },
+                        move |_, cx| {
+                            Dispatcher::set_all_manual_resolutions(
+                                repo,
+                                ManualConflictResolution::Ours,
+                                cx,
+                            )
+                        },
+                    ),
+                    MenuItem::new(
+                        match &their {
+                            Some(b) => format!("Resolve All Using {b}"),
+                            None => "Resolve All Using Theirs".to_string(),
+                        },
+                        move |_, cx| {
+                            Dispatcher::set_all_manual_resolutions(
+                                repo,
+                                ManualConflictResolution::Theirs,
+                                cx,
+                            )
+                        },
+                    ),
+                ];
+                button("resolve-all", "Resolve All", cx)
+                    .gap(SPACING_HALF())
+                    .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
+                    .on_click(cx.listener(move |_, ev: &ClickEvent, window, cx| {
+                        let position = ev.mouse_position().unwrap_or_default();
+                        show_menu(items.clone(), position, window, cx);
+                    }))
+            });
             content = content
                 .child(
                     div()
                         .mb(SPACING_DOUBLE())
-                        .text_size(FONT_SIZE_MD())
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(if conflicted_count == 1 {
-                            "1 conflicted file".to_string()
-                        } else {
-                            format!("{conflicted_count} conflicted files")
-                        }),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_size(FONT_SIZE_MD())
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child(if conflicted_count == 1 {
+                                    "1 conflicted file".to_string()
+                                } else {
+                                    format!("{conflicted_count} conflicted files")
+                                }),
+                        )
+                        .children(resolve_all),
                 )
                 .child(
                     div()
@@ -932,10 +1058,30 @@ fn unmerged_file_row(
                         .px(SPACING_HALF())
                         .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                         .on_click(cx.listener(
-                            move |_, ev: &ClickEvent, window, cx| {
+                            move |this, ev: &ClickEvent, window, cx| {
+                                let (copy_paths, merge_tool) = {
+                                    let flags = &this.state.read(cx).flags;
+                                    (
+                                        flags.bool(
+                                            corvane_core::flags::ids::CONFLICT_MENU_COPY_PATHS,
+                                        ),
+                                        flags.bool(corvane_core::flags::ids::OPEN_IN_MERGE_TOOL),
+                                    )
+                                };
                                 let mut menu_items = Vec::new();
+                                // flag `150`: `git mergetool` on this file
+                                if merge_tool {
+                                    let path = rel_path.clone();
+                                    menu_items.push(MenuItem::new(
+                                        "Open in Merge Tool",
+                                        move |_, cx| {
+                                            Dispatcher::open_in_merge_tool(repo, path.clone(), cx)
+                                        },
+                                    ));
+                                }
                                 if let Some(p) = menu_path.clone() {
                                     let p2 = p.clone();
+                                    let absolute = p.to_string_lossy().into_owned();
                                     menu_items.push(MenuItem::new(
                                         "Open with Default Program",
                                         move |_, cx| {
@@ -948,9 +1094,29 @@ fn unmerged_file_row(
                                             cx.reveal_path(&p2);
                                         },
                                     ));
+                                    // flag `452`: the changes list's copy items
+                                    if copy_paths {
+                                        let relative = rel_path.clone();
+                                        menu_items.push(MenuItem::separator());
+                                        menu_items.push(MenuItem::new(
+                                            "Copy File Path",
+                                            move |_, cx| {
+                                                cx.write_to_clipboard(ClipboardItem::new_string(
+                                                    absolute.clone(),
+                                                ))
+                                            },
+                                        ));
+                                        menu_items.push(MenuItem::new(
+                                            "Copy Relative File Path",
+                                            move |_, cx| {
+                                                cx.write_to_clipboard(ClipboardItem::new_string(
+                                                    relative.clone(),
+                                                ))
+                                            },
+                                        ));
+                                    }
                                     menu_items.push(MenuItem::separator());
                                 }
-                                let _ = &rel_path;
                                 menu_items.extend(items.iter().cloned());
                                 let position = ev.mouse_position().unwrap_or_default();
                                 show_menu(menu_items, position, window, cx);
@@ -1165,6 +1331,8 @@ pub struct SquashCommitMessageDialog {
     count: usize,
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
+    /// Flag `144`: the target commit's summary and description.
+    target_message: Option<(String, String)>,
 }
 
 impl SquashCommitMessageDialog {
@@ -1175,10 +1343,13 @@ impl SquashCommitMessageDialog {
         onto: String,
         summary: String,
         description: String,
+        target_body: Option<String>,
         count: usize,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        // the prefilled summary is the target's (`getSquashedCommitDescription`)
+        let target_message = target_body.map(|body| (summary.clone(), body));
         let summary_state =
             cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         summary_state.update(cx, |s, cx| s.set_value(summary, window, cx));
@@ -1206,6 +1377,7 @@ impl SquashCommitMessageDialog {
             count,
             summary: summary_state,
             description: description_state,
+            target_message,
         }
     }
 }
@@ -1237,7 +1409,27 @@ impl Render for SquashCommitMessageDialog {
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child(Textarea::new(&self.description)),
-            );
+            )
+            .when_some(self.target_message.clone(), |d, (summary, body)| {
+                d.child(
+                    div().child(
+                        link_button(
+                            "squash-keep-target",
+                            "Use only the target commit's message",
+                            cx,
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                this.summary
+                                    .update(cx, |s, cx| s.set_value(summary.clone(), window, cx));
+                                this.description
+                                    .update(cx, |s, cx| s.set_value(body.clone(), window, cx));
+                                cx.notify();
+                            },
+                        )),
+                    ),
+                )
+            });
         let title = format!("Squash {count} Commits");
         dialog(
             "dialog-squash-message",

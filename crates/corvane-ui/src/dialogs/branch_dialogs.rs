@@ -13,13 +13,14 @@
 //! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
 //! `ConfirmSwitchBranchDialog` is a Corvane addition (`266-confirm-branch-switch`).
 //! Switch Branch can discard the changes instead (`268-switch-branch-discard`).
+//! Squash and merge has commit message fields (flag `450`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
 };
 use std::time::{Duration, UNIX_EPOCH};
 
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -1102,6 +1103,9 @@ pub struct MergeBranchDialog {
     /// The branch list takes focus when a row is pressed.
     list_focus: FocusHandle,
     selected: Option<String>,
+    /// Squash and merge's commit message (flag `450`).
+    summary: Entity<InputState>,
+    description: Entity<TextareaState>,
 }
 
 impl MergeBranchDialog {
@@ -1118,6 +1122,15 @@ impl MergeBranchDialog {
         // `FilterList` autofocuses its filter box
         let handle = filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        let summary =
+            cx.new(|cx| InputState::new(window, cx).placeholder("Commit summary (optional)"));
+        let description = cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .rows(3)
+                .placeholder("Description")
+        });
+        cx.observe(&summary, |_, _, cx| cx.notify()).detach();
+        cx.observe(&description, |_, _, cx| cx.notify()).detach();
         Self {
             state,
             repo,
@@ -1125,6 +1138,8 @@ impl MergeBranchDialog {
             filter,
             list_focus: cx.focus_handle(),
             selected: None,
+            summary,
+            description,
         }
     }
 }
@@ -1298,6 +1313,44 @@ impl Render for MergeBranchDialog {
             && selected.as_deref() != Some(current.as_str());
         let selected_for_ok = selected.clone();
         let squash = self.squash;
+        // flag `450`: squash and merge takes a commit message (empty: git's
+        // "Squashed commit of the following" list, as GHD)
+        let message_fields = squash
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::SQUASH_MERGE_MESSAGE);
+        let message = message_fields
+            .then(|| {
+                let summary = self.summary.read(cx).value().trim().to_string();
+                let description = self.description.read(cx).value().to_string();
+                (!summary.is_empty()).then(|| corvane_git::format_message(&summary, &description))
+            })
+            .flatten();
+        let fields = message_fields.then(|| {
+            div()
+                .flex()
+                .flex_col()
+                .gap(SPACING())
+                .mb(SPACING())
+                .child(text_box(
+                    "squash-merge-summary",
+                    &self.summary,
+                    None,
+                    window,
+                    cx,
+                ))
+                .child(
+                    div()
+                        .border_1()
+                        .border_color(t.box_border_contrast)
+                        .rounded(BORDER_RADIUS())
+                        .bg(t.box_background)
+                        .overflow_hidden()
+                        .child(Textarea::new(&self.description)),
+                )
+        });
         let content = div().flex().flex_col().child(list);
         let label = if squash {
             "Squash and merge"
@@ -1312,6 +1365,7 @@ impl Render for MergeBranchDialog {
             .pb(SPACING_DOUBLE())
             .border_t_1()
             .border_color(t.box_border)
+            .children(fields)
             .children(status)
             .child(split_button(
                 "merge-ok",
@@ -1322,7 +1376,13 @@ impl Render for MergeBranchDialog {
                         return;
                     };
                     Dispatcher::close_popup(cx);
-                    Dispatcher::merge_branch(repo, branch, squash, cx);
+                    Dispatcher::merge_branch_with_message(
+                        repo,
+                        branch,
+                        squash,
+                        message.clone(),
+                        cx,
+                    );
                 },
                 cx,
             ))

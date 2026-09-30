@@ -569,6 +569,21 @@ pub fn push(
     Ok(())
 }
 
+/// Corvane addition (flag `445`): `git push <remote> --delete
+/// refs/tags/<tag>`.
+pub fn delete_remote_tag(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    tag: &str,
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    remote_command(git, workdir, askpass)
+        .args(["push", remote, "--delete", &format!("refs/tags/{tag}")])
+        .run()?;
+    Ok(())
+}
+
 /// GHD `getBranchesDifferingFromUpstream` + `fastForwardBranches`: local
 /// branches that are strictly behind their upstream get fast-forwarded with
 /// `fetch . --show-forced-updates --no-write-fetch-head --stdin`.
@@ -1191,5 +1206,40 @@ mod tests {
         // amending the pushed commit rewrites it away
         run(&work, &["commit", "-q", "--amend", "-m", "merge, amended"]);
         assert!(upstream_tip_in_reflog(git, &work, "main", upstream));
+    }
+
+    #[test]
+    fn deletes_a_tag_from_the_remote() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        let work = dir.path().join("work");
+        run(
+            dir.path(),
+            &["init", "-q", "--bare", "-b", "main", bare.to_str().unwrap()],
+        );
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", work.to_str().unwrap()],
+        );
+        run(&work, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(work.join("a.txt"), "one\n").unwrap();
+        run(&work, &["add", "."]);
+        run(&work, &["commit", "-q", "-m", "first"]);
+        run(&work, &["tag", "v1"]);
+        add_remote(git.clone(), &work, "origin", bare.to_str().unwrap()).unwrap();
+        run(&work, &["push", "-q", "origin", "main", "v1"]);
+        let remote_tags = || {
+            GitCommand::new(git.clone())
+                .args(["tag", "-l"])
+                .current_dir(&bare)
+                .run()
+                .unwrap()
+                .stdout_string()
+                .unwrap()
+        };
+        assert_eq!(remote_tags().trim(), "v1");
+        delete_remote_tag(git.clone(), &work, "origin", "v1", None).unwrap();
+        assert_eq!(remote_tags().trim(), "");
     }
 }

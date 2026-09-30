@@ -29,6 +29,23 @@ fn identity(sig: gix::actor::SignatureRef<'_>) -> CommitIdentity {
     }
 }
 
+/// Every tag's short name (`refs/tags/` stripped), sorted
+/// case-insensitively. Feeds the compare list's Tags group (flag `444`).
+pub fn tag_names(workdir: &Path) -> Result<Vec<String>> {
+    let repo = gix::open(workdir)?;
+    let refs = repo
+        .references()
+        .map_err(|e| GitError::Gix(e.to_string()))?;
+    let mut names: Vec<String> = refs
+        .tags()
+        .map_err(|e| GitError::Gix(e.to_string()))?
+        .flatten()
+        .map(|r| r.name().shorten().to_string())
+        .collect();
+    names.sort_by_key(|n| n.to_lowercase());
+    Ok(names)
+}
+
 /// Commits reachable from `revision` (a ref name or sha), newest first,
 /// `skip` then at most `limit` of them.
 pub fn get_commits(
@@ -36,6 +53,18 @@ pub fn get_commits(
     revision: &str,
     skip: usize,
     limit: usize,
+) -> Result<Vec<Commit>> {
+    get_commits_with(workdir, revision, skip, limit, false)
+}
+
+/// [`get_commits`], following only first parents when `first_parent`
+/// (`git log --first-parent`).
+pub fn get_commits_with(
+    workdir: &Path,
+    revision: &str,
+    skip: usize,
+    limit: usize,
+    first_parent: bool,
 ) -> Result<Vec<Commit>> {
     let repo = gix::open(workdir)?;
     let Some(tip) = repo.rev_parse_single(revision).ok() else {
@@ -52,8 +81,11 @@ pub fn get_commits(
             }
         }
     }
-    let walk = repo
-        .rev_walk([tip.detach()])
+    let mut walk = repo.rev_walk([tip.detach()]);
+    if first_parent {
+        walk = walk.first_parent_only();
+    }
+    let walk = walk
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
             gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
         ))
@@ -313,7 +345,7 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
 /// The empty tree, used as the parent of a root commit (GHD `NullTreeSHA`).
 pub const NULL_TREE_SHA: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
-fn is_bad_revision(err: &crate::error::GitError) -> bool {
+pub(crate) fn is_bad_revision(err: &crate::error::GitError) -> bool {
     matches!(err, crate::error::GitError::Failed { stderr, .. }
         if stderr.contains("bad revision") || stderr.contains("unknown revision"))
 }
@@ -599,9 +631,36 @@ mod tests {
         assert_eq!(commits[1].author.name, "Ada");
         assert_eq!(commits[1].author.seconds, 1704164645);
         assert_eq!(commits[0].parents, vec![commits[1].sha.clone()]);
+        assert_eq!(tag_names(dir.path()).unwrap(), ["v1"]);
         let page = get_commits(dir.path(), "HEAD", 1, 10).unwrap();
         assert_eq!(page.len(), 1);
         assert_eq!(page[0].summary, "first");
+    }
+
+    #[test]
+    fn first_parent_skips_merged_commits() {
+        let (dir, _) = repo();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(dir.path())
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["checkout", "-q", "-b", "topic"]);
+        std::fs::write(dir.path().join("c.txt"), "c\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "topic work"]);
+        run(&["checkout", "-q", "main"]);
+        run(&["merge", "-q", "--no-ff", "-m", "merge topic", "topic"]);
+        let all = get_commits(dir.path(), "HEAD", 0, 10).unwrap();
+        assert!(all.iter().any(|c| c.summary == "topic work"));
+        let first = get_commits_with(dir.path(), "HEAD", 0, 10, true).unwrap();
+        let summaries: Vec<_> = first.iter().map(|c| c.summary.as_str()).collect();
+        assert_eq!(summaries, ["merge topic", "second", "first"]);
     }
 
     #[test]

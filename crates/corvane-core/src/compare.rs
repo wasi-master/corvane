@@ -47,6 +47,9 @@ pub struct CompareState {
     /// (`AheadBehindStore`), filled while the list is open.
     pub branch_counts: HashMap<String, AheadBehind>,
     pub counts_loaded: bool,
+    /// Flag `444`: the repository's tags, loaded with the counts, offered
+    /// in the list while filtering.
+    pub tags: Vec<String>,
 }
 
 impl Default for CompareState {
@@ -59,6 +62,7 @@ impl Default for CompareState {
             merge_status: None,
             branch_counts: HashMap::new(),
             counts_loaded: false,
+            tags: Vec::new(),
         }
     }
 }
@@ -97,7 +101,7 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        let (current, branches, loaded) = {
+        let (current, branches, loaded, with_tags) = {
             let s = Self::state(cx).read(cx);
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
@@ -114,6 +118,7 @@ impl Dispatcher {
                     .map(|b| (b.name.clone(), b.full_name.clone()))
                     .collect::<Vec<_>>(),
                 rs.compare.counts_loaded,
+                s.flags.bool(crate::flags::ids::COMPARE_TAGS),
             )
         };
         if loaded {
@@ -121,7 +126,15 @@ impl Dispatcher {
         }
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).compare.counts_loaded = true);
         let task = cx.background_executor().spawn(async move {
-            branches
+            let tags = if with_tags {
+                corvane_git::tag_names(&workdir).unwrap_or_else(|err| {
+                    warn!(%err, "compare: could not list tags");
+                    Vec::new()
+                })
+            } else {
+                Vec::new()
+            };
+            let counts = branches
                 .into_iter()
                 .filter_map(|(name, full)| {
                     corvane_git::symmetric_ahead_behind(git.clone(), &workdir, &current, &full)
@@ -129,13 +142,16 @@ impl Dispatcher {
                         .flatten()
                         .map(|ab| (name, ab))
                 })
-                .collect::<HashMap<String, AheadBehind>>()
+                .collect::<HashMap<String, AheadBehind>>();
+            (counts, tags)
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let counts = task.await;
+            let (counts, tags) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, cx| {
-                    s.repo_state_mut(id).compare.branch_counts = counts;
+                    let compare = &mut s.repo_state_mut(id).compare;
+                    compare.branch_counts = counts;
+                    compare.tags = tags;
                     cx.notify();
                 });
             });

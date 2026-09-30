@@ -1,9 +1,15 @@
 //! History-operation dialogs: `ui/reset/warning-before-reset.tsx`,
 //! `ui/checkout/confirm-checkout-commit.tsx`, `ui/create-tag/create-tag-dialog.tsx`,
 //! `ui/undo/warn-local-changes-before-undo.tsx`.
+//!
+//! Deviation (`docs/reference/deviations.md` › History): Create a Tag has an
+//! optional Message field (flag `244`); GHD always tags with an empty message.
+//! Undoing a tagged commit warns first (flag `441`); ⌘⏎ submits Create a Tag
+//! from its Message field (flag `442`). A pushed tag can be deleted, from the
+//! remote too, after a confirmation (flag `445`).
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{InputEvent, InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -225,6 +231,8 @@ pub struct CreateTagDialog {
     repo: u64,
     sha: String,
     name: Entity<InputState>,
+    /// Flag `244`: the annotated tag's message.
+    message: Entity<TextareaState>,
 }
 
 /// GHD `MaxTagNameLength`
@@ -237,23 +245,85 @@ impl CreateTagDialog {
         // `RefNameTextBox` autoFocus
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
-        Self { repo, sha, name }
+        let message = cx.new(|cx| TextareaState::new(window, cx).rows(4));
+        // ⏎ in Name submits the form, as GHD's `<form onSubmit>`; `442`: ⌘⏎
+        // submits from the Message field too
+        let cmd_enter = |cx: &App| {
+            AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CMD_ENTER_SUBMITS_CREATE_TAG)
+        };
+        cx.subscribe(&name, move |this, _, ev: &InputEvent, cx| {
+            if let InputEvent::PressEnter { secondary, .. } = ev
+                && (!secondary || cmd_enter(cx))
+            {
+                this.submit(cx);
+            }
+        })
+        .detach();
+        cx.subscribe(&message, move |this, _, ev: &InputEvent, cx| {
+            if let InputEvent::PressEnter {
+                secondary: true, ..
+            } = ev
+                && cmd_enter(cx)
+            {
+                this.submit(cx);
+            }
+        })
+        .detach();
+        Self {
+            repo,
+            sha,
+            name,
+            message,
+        }
+    }
+
+    /// The trimmed name and its error (`getCurrentError`).
+    fn name_and_error(&self, cx: &App) -> (String, Option<String>) {
+        let name = self.name.read(cx).value().trim().to_string();
+        let error = (name.len() > MAX_TAG_NAME_LENGTH).then(|| {
+            format!("The tag name cannot be longer than {MAX_TAG_NAME_LENGTH} characters")
+        });
+        (name, error)
+    }
+
+    /// The message, empty unless flag `244` shows the Message field.
+    fn message_text(&self, cx: &App) -> String {
+        if AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAG_MESSAGE)
+        {
+            self.message.read(cx).value().trim().to_string()
+        } else {
+            String::new()
+        }
+    }
+
+    /// `createTag`
+    fn submit(&mut self, cx: &mut Context<Self>) {
+        let (name, error) = self.name_and_error(cx);
+        if error.is_some() || name.is_empty() {
+            return;
+        }
+        let message = self.message_text(cx);
+        Dispatcher::close_popup(cx);
+        Dispatcher::create_tag(self.repo, name, self.sha.clone(), message, cx);
     }
 }
 
 impl Render for CreateTagDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
-        let name = self.name.read(cx).value().trim().to_string();
-        let error = if name.len() > MAX_TAG_NAME_LENGTH {
-            Some(format!(
-                "The tag name cannot be longer than {MAX_TAG_NAME_LENGTH} characters"
-            ))
-        } else {
-            None
-        };
+        let (name, error) = self.name_and_error(cx);
         let disabled = error.is_some() || name.is_empty();
-        let (repo, sha) = (self.repo, self.sha.clone());
+        let this = cx.weak_entity();
+        let with_message = AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAG_MESSAGE);
         let t = cx.ghd();
         let content = div()
             .flex()
@@ -268,7 +338,19 @@ impl Render for CreateTagDialog {
                 )
             })
             .child(div().child("Name"))
-            .child(text_box("tag-name", &self.name, None, window, cx));
+            .child(text_box("tag-name", &self.name, None, window, cx))
+            .when(with_message, |d| {
+                d.child(div().mt(SPACING_HALF()).child("Message (optional)"))
+                    .child(
+                        div()
+                            .border_1()
+                            .border_color(t.box_border_contrast)
+                            .rounded(BORDER_RADIUS())
+                            .bg(t.box_background)
+                            .overflow_hidden()
+                            .child(Textarea::new(&self.message)),
+                    )
+            });
         dialog(
             "dialog-create-tag",
             "Create a Tag",
@@ -287,11 +369,9 @@ impl Render for CreateTagDialog {
                     primary: true,
                     disabled,
                     on_click: Box::new(move |_, cx| {
-                        if disabled {
-                            return;
+                        if !disabled {
+                            this.update(cx, |this, cx| this.submit(cx)).ok();
                         }
-                        Dispatcher::close_popup(cx);
-                        Dispatcher::create_tag(repo, name.clone(), sha.clone(), cx);
                     }),
                 },
             ],
@@ -372,6 +452,163 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
                         }
                         Dispatcher::close_popup(cx);
                         Dispatcher::undo_commit(repo, cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+/// Flag `441`: the commit being undone carries tags, which would be left on
+/// a commit no branch contains (Corvane addition; GHD undoes silently).
+pub struct WarnTaggedCommitBeforeUndoDialog {
+    repo: u64,
+    tags: Vec<String>,
+    warn_local: bool,
+}
+
+impl WarnTaggedCommitBeforeUndoDialog {
+    pub fn new(repo: u64, tags: Vec<String>, warn_local: bool) -> Self {
+        Self {
+            repo,
+            tags,
+            warn_local,
+        }
+    }
+}
+
+impl Render for WarnTaggedCommitBeforeUndoDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, warn_local) = (self.repo, self.warn_local);
+        let (noun, pronoun) = if self.tags.len() == 1 {
+            ("tag", "It stays")
+        } else {
+            ("tags", "They stay")
+        };
+        let text = format!(
+            "This commit has the {noun} {}. {pronoun} on the commit after it is undone, and \
+             that commit will no longer be on any branch. Do you want to continue anyway?",
+            self.tags
+                .iter()
+                .map(|t| format!("\u{201c}{t}\u{201d}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        dialog_with_kind(
+            "dialog-warn-undo-tagged",
+            DialogKind::Warning,
+            "Undo Commit",
+            div().child(text),
+            vec![
+                DialogButton {
+                    id: "undo-tagged-cancel",
+                    label: "Cancel".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "undo-tagged-continue",
+                    label: "Continue".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        if warn_local {
+                            Dispatcher::request_undo_commit_after_tags(repo, cx);
+                        } else {
+                            Dispatcher::undo_commit(repo, cx);
+                        }
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+/// Flag `445`: delete a tag Corvane did not create-and-hold (not in
+/// `tagsToPush`), optionally from the remote too (Corvane addition; GHD only
+/// deletes unpushed tags). The remote box starts unticked.
+pub struct ConfirmDeletePushedTagDialog {
+    repo: u64,
+    tag: String,
+    remote: Option<corvane_core::Remote>,
+    from_remote: bool,
+}
+
+impl ConfirmDeletePushedTagDialog {
+    pub fn new(repo: u64, tag: String, cx: &App) -> Self {
+        Self {
+            repo,
+            tag,
+            remote: Dispatcher::current_remote(repo, cx),
+            from_remote: false,
+        }
+    }
+}
+
+impl Render for ConfirmDeletePushedTagDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, tag) = (self.repo, self.tag.clone());
+        let remote = self.remote.clone().filter(|_| self.from_remote);
+        let content = div()
+            .flex()
+            .flex_col()
+            .child(div().mb(SPACING()).child(format!(
+                "Are you sure you want to delete the tag {}?",
+                self.tag
+            )))
+            .when_some(self.remote.clone(), |d, r| {
+                d.child(
+                    div()
+                        .id("delete-tag-remote")
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(SPACING_HALF())
+                        .cursor_pointer()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.from_remote = !this.from_remote;
+                            cx.notify();
+                        }))
+                        .child(checkbox(
+                            "delete-tag-remote-box",
+                            self.from_remote,
+                            false,
+                            cx,
+                        ))
+                        .child(format!("Also delete it from {}", r.name)),
+                )
+            });
+        dialog_with_kind(
+            "dialog-delete-pushed-tag",
+            DialogKind::Warning,
+            "Delete Tag",
+            content,
+            vec![
+                DialogButton {
+                    id: "delete-tag-cancel",
+                    label: "Cancel".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "delete-tag-confirm",
+                    label: "Delete".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::delete_pushed_tag(repo, tag.clone(), remote.clone(), cx);
                     }),
                 },
             ],

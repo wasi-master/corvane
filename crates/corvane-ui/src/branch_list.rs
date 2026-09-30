@@ -218,6 +218,29 @@ pub fn group_branches(
     groups
 }
 
+/// Remote-tracking branches that [`group_branches`] hides behind their local
+/// branch (`origin/main` when `main` exists), for the rebase list (flag
+/// `451`): rebasing onto the fetched remote needs no pull of the local one.
+pub fn remote_counterparts(branches: &[Branch], query: &str) -> Option<BranchGroup> {
+    let query = query.trim();
+    let mut remotes: Vec<Branch> = branches
+        .iter()
+        .filter(|b| b.kind == BranchKind::Remote && !b.name.ends_with("/HEAD"))
+        .filter(|b| {
+            branches
+                .iter()
+                .any(|l| l.kind == BranchKind::Local && l.name == b.name_without_remote())
+        })
+        .filter(|b| query.is_empty() || fuzzy_score(query, &b.name).is_some())
+        .cloned()
+        .collect();
+    remotes.sort_by_key(|b| b.name.to_lowercase());
+    (!remotes.is_empty()).then_some(BranchGroup {
+        title: "Remote Branches",
+        branches: remotes,
+    })
+}
+
 impl BranchFoldout {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
