@@ -52,8 +52,9 @@ pub use discard_selection::DiscardSelectionDialog;
 pub use flags::FlagsDialog;
 pub use fork_dialogs::{ChooseForkSettingsDialog, CreateForkDialog, fork_settings_description};
 pub use history_dialogs::{
-    CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
-    UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog, WarnTaggedCommitBeforeUndoDialog,
+    CheckoutCommitDialog, ConfirmDeletePushedTagDialog, ConfirmDiscardStashDialog, CreateTagDialog,
+    ResetToCommitDialog, UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
+    WarnTaggedCommitBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use open_pull_request::OpenPullRequestDialog;
@@ -278,6 +279,9 @@ impl DialogHost {
                 .into(),
             Popup::WarnLocalChangesBeforeUndo { repo } => cx
                 .new(|_| WarnLocalChangesBeforeUndoDialog::new(*repo))
+                .into(),
+            Popup::ConfirmDeletePushedTag { repo, tag } => cx
+                .new(|cx| ConfirmDeletePushedTagDialog::new(*repo, tag.clone(), cx))
                 .into(),
             Popup::WarnTaggedCommitBeforeUndo {
                 repo,

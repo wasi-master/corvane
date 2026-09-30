@@ -204,6 +204,11 @@ pub enum Popup {
     WarnLocalChangesBeforeUndo {
         repo: u64,
     },
+    /// Flag `445`: delete a tag that is not in `tagsToPush`.
+    ConfirmDeletePushedTag {
+        repo: u64,
+        tag: String,
+    },
     /// Flag `441`: the commit being undone carries tags.
     WarnTaggedCommitBeforeUndo {
         repo: u64,

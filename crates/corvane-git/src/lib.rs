@@ -79,8 +79,8 @@ pub use rebase_ops::{
 };
 pub use remote_ops::{
     AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, config_value,
-    fast_forward_branches, fetch, fetch_refspec, find_default_remote, get_remotes,
-    install_lfs_hooks, is_using_lfs, last_fetched, lfs_available, lfs_hooks_installed,
+    delete_remote_tag, fast_forward_branches, fetch, fetch_refspec, find_default_remote,
+    get_remotes, install_lfs_hooks, is_using_lfs, last_fetched, lfs_available, lfs_hooks_installed,
     parse_progress_line, pull, pull_with_rebase, push, remote_failure, remove_remote,
     set_remote_url, update_remote_head,
 };

@@ -737,6 +737,20 @@ registry! {
         upstream: &[Upstream::issue(15702)],
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/compare.rs", "crates/corvane-git/src/log.rs"],
     },
+    /// Delete pushed tags, optionally from the remote.
+    DELETE_PUSHED_TAGS = 445 "delete-pushed-tags" {
+        title: "Delete pushed tags",
+        summary: "A commit's Delete tag items are enabled for every tag, not only ones created here \
+                  and not pushed yet. Those others ask first, with an unticked option to delete the \
+                  tag from the remote too (git push <remote> --delete).",
+        ghd_behaviour: "Only tags created in the app and not yet pushed can be deleted.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15858)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

@@ -20,7 +20,7 @@
 //! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
 //! the branch tip (flag `440`); a toggle before the compare box lists first
 //! parents only (flag `142`); the compare list offers matching tags (flag
-//! `444`).
+//! `444`); pushed tags can be deleted after a confirmation (flag `445`).
 
 use std::rc::Rc;
 
@@ -1094,32 +1094,47 @@ impl HistorySidebar {
             items.push(MenuItem::separator());
             // GHD `getDeleteTagsMenuItem`: only tags still in `tagsToPush`
             // (created here, not pushed) can be deleted
-            let unpushed: Vec<String> = self
-                .state
-                .read(cx)
-                .repository(id)
-                .map(|r| r.tags_to_push.clone())
-                .unwrap_or_default();
+            let (unpushed, delete_pushed) = {
+                let s = self.state.read(cx);
+                (
+                    s.repository(id)
+                        .map(|r| r.tags_to_push.clone())
+                        .unwrap_or_default(),
+                    s.flags.bool(corvane_core::flags::ids::DELETE_PUSHED_TAGS),
+                )
+            };
+            // `445`: the others after a confirmation that can include the remote
+            let delete = move |tag: &String| {
+                let is_unpushed = unpushed.contains(tag);
+                let tag = tag.clone();
+                (
+                    is_unpushed || delete_pushed,
+                    move |_: &mut Window, cx: &mut App| {
+                        if is_unpushed {
+                            Dispatcher::delete_tag(id, tag.clone(), cx)
+                        } else {
+                            Dispatcher::show_popup(
+                                Popup::ConfirmDeletePushedTag {
+                                    repo: id,
+                                    tag: tag.clone(),
+                                },
+                                cx,
+                            )
+                        }
+                    },
+                )
+            };
             if commit.tags.len() == 1 {
                 let tag = commit.tags[0].clone();
-                let enabled = unpushed.contains(&tag);
-                items.push(
-                    MenuItem::new(format!("Delete tag {tag}"), move |_, cx| {
-                        Dispatcher::delete_tag(id, tag.clone(), cx)
-                    })
-                    .enabled(enabled),
-                );
+                let (enabled, action) = delete(&tag);
+                items.push(MenuItem::new(format!("Delete tag {tag}"), action).enabled(enabled));
             } else {
                 let entries = commit
                     .tags
                     .iter()
                     .map(|tag| {
-                        let enabled = unpushed.contains(tag);
-                        let tag = tag.clone();
-                        MenuItem::new(tag.clone(), move |_, cx| {
-                            Dispatcher::delete_tag(id, tag.clone(), cx)
-                        })
-                        .enabled(enabled)
+                        let (enabled, action) = delete(tag);
+                        MenuItem::new(tag.clone(), action).enabled(enabled)
                     })
                     .collect();
                 items.push(MenuItem::submenu("Delete tag…", entries));

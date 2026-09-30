@@ -123,6 +123,51 @@ impl Dispatcher {
             .cloned()
     }
 
+    /// Flag `445`: delete a tag that may have been pushed — from `remote`
+    /// first (`push --delete`, so a failure keeps the local tag), then
+    /// locally; with `remote` `None` only locally.
+    pub fn delete_pushed_tag(id: u64, tag: String, remote: Option<Remote>, cx: &mut App) {
+        let Some(remote) = remote else {
+            return Self::delete_tag(id, tag, cx);
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        if !Self::begin_network(id, cx) {
+            return;
+        }
+        Self::arm_credential_helper(&remote.url, cx);
+        let askpass = Self::askpass_env(cx);
+        Self::set_progress(
+            id,
+            Some(PushPullProgress {
+                kind: PushPullKind::Push,
+                title: format!("Deleting tag {tag} from {}", remote.name),
+                description: None,
+                value: 0.,
+            }),
+            cx,
+        );
+        let tag_for_task = tag.clone();
+        Self::run_network(
+            id,
+            cx,
+            move |_| {
+                corvane_git::delete_remote_tag(
+                    git,
+                    &workdir,
+                    &remote.name,
+                    &tag_for_task,
+                    askpass.as_ref(),
+                )
+            },
+            move |result, cx| match result {
+                Ok(()) => Self::delete_tag(id, tag, cx),
+                Err(err) => Self::show_error("Could not delete tag", err.to_string(), cx),
+            },
+        );
+    }
+
     /// GHD `getCurrentBranchForcePushState`
     pub fn force_push_state(id: u64, cx: &App) -> ForcePushState {
         Self::force_push_state_in(Self::state(cx).read(cx), id)
