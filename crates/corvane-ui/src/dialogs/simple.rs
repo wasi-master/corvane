@@ -1,7 +1,10 @@
 //! Error / InstallGit / CLIInstalled (GHD `ui/cli-installed/cli-installed.tsx`)
 //! dialogs: static content, one or two buttons.
+//!
+//! Deviation: the error dialog can have a "Copy" button (its text cannot be
+//! selected), `281-error-dialog-copy`.
 
-use corvane_core::{Dispatcher, Popup};
+use corvane_core::{AppState, Dispatcher, Popup};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -60,22 +63,42 @@ impl Render for SimpleDialog {
                 cx,
             )
             .into_any_element(),
-            Popup::Error { title, message } => dialog(
-                "dialog-error",
-                title.clone(),
-                div().child(message.clone()),
-                vec![DialogButton {
+            Popup::Error { title, message } => {
+                let mut buttons = Vec::new();
+                if AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::ERROR_DIALOG_COPY)
+                {
+                    let text = format!("{title}\n\n{message}");
+                    buttons.push(DialogButton {
+                        id: "error-copy",
+                        label: "Copy".into(),
+                        primary: false,
+                        disabled: false,
+                        on_click: Box::new(move |_, cx| {
+                            cx.write_to_clipboard(ClipboardItem::new_string(text.clone()))
+                        }),
+                    });
+                }
+                buttons.push(DialogButton {
                     id: "error-close",
                     label: "Close".into(),
                     primary: true,
                     disabled: false,
                     on_click: Box::new(close),
-                }],
-                close,
-                window,
-                cx,
-            )
-            .into_any_element(),
+                });
+                dialog(
+                    "dialog-error",
+                    title.clone(),
+                    div().child(message.clone()),
+                    buttons,
+                    close,
+                    window,
+                    cx,
+                )
+                .into_any_element()
+            }
             Popup::CLIInstalled { path } => dialog(
                 "cli-installed",
                 "Command Line Tool Installed",
