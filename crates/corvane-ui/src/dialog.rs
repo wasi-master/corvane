@@ -347,6 +347,37 @@ pub fn dialog_framed(
     )
 }
 
+/// [`dialog_with_kind`] with chrome variations (`DialogFrame`).
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_kind_framed(
+    id: &'static str,
+    kind: DialogKind,
+    title: impl Into<SharedString>,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    frame: DialogFrame,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    let title: SharedString = title.into();
+    dialog_impl(
+        id,
+        kind,
+        false,
+        true,
+        div().child(title.clone()).into_any_element(),
+        Some(title),
+        content,
+        None,
+        buttons,
+        frame,
+        on_close,
+        window,
+        cx,
+    )
+}
+
 /// `Dialog loading={…}`: a spinner in the header while the dialog works.
 #[allow(clippy::too_many_arguments)]
 pub fn dialog_loading(

@@ -311,11 +311,13 @@ impl RepositorySettingsDialog {
                     .rounded(BORDER_RADIUS())
                     .bg(t.box_background)
                     .overflow_hidden()
-                    .child(
-                        Textarea::new(&self.gitignore)
-                            .h(zpx(128.))
-                            .font_family(crate::theme::mono_font()),
-                    ),
+                    // `.text-area-component textarea`: the sans-serif body font
+                    // at its normal line height, 0 / 5 px padding
+                    .px(zpx(5.))
+                    .py(zpx(2.))
+                    .text_size(FONT_SIZE())
+                    .line_height(zpx(14.))
+                    .child(Textarea::new(&self.gitignore).appearance(false).h(zpx(124.))),
             )
             .into_any_element()
     }
@@ -342,6 +344,9 @@ impl RepositorySettingsDialog {
         } else {
             text_box("repo-settings-name", &self.name, None, window, cx).into_any_element()
         };
+        // `GitConfigUserForm`: only the account-email select carries the
+        // "Email" label; the text box shows unlabeled (`emailIsOther`)
+        let email_labeled = !disabled && !emails.is_empty();
         let email_field: AnyElement = if disabled {
             readonly_field(global.email.clone().unwrap_or_default(), cx).into_any_element()
         } else if emails.is_empty() {
@@ -430,7 +435,11 @@ impl RepositorySettingsDialog {
                     .flex_col()
                     .gap(SPACING())
                     .child(labeled("Name", name_field, cx))
-                    .child(labeled("Email", email_field, cx)),
+                    .child(if email_labeled {
+                        labeled("Email", email_field, cx).into_any_element()
+                    } else {
+                        email_field
+                    }),
             )
             .into_any_element()
     }

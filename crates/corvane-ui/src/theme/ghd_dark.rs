@@ -104,6 +104,7 @@ pub fn theme() -> GhdTheme {
         form_error_background: c(RED_900_DARKEN_3),
         form_error_border: c(RED_900),
         form_error_text: c(GRAY_100),
+        input_error_text: c(0xf97583),
         dialog_warning: c(YELLOW_600),
         dialog_information: c(BLUE_400),
         dialog_error: c(RED_600),

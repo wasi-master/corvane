@@ -342,6 +342,8 @@ pub struct GhdTheme {
     pub form_error_background: Hsla,
     pub form_error_border: Hsla,
     pub form_error_text: Hsla,
+    /// `--input-error-text-color` (`InputError` under a field).
+    pub input_error_text: Hsla,
     pub dialog_warning: Hsla,
     pub dialog_information: Hsla,
     pub dialog_error: Hsla,
