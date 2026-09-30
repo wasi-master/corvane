@@ -16,6 +16,11 @@
 //! badge, and the body as Markdown (max 500 px, scrolling), with a pointer at
 //! the hovered row. Corvane adds the list item's "opened … by author" line
 //! under the title.
+//!
+//! Deviation (flag `pull-requests-signed-out`): with no account for the
+//! repository's endpoint the empty list shows "Sign in to see pull requests"
+//! with a sign-in link and the refresh button is disabled (GHD shows "You're
+//! all set!" and a refresh button that does nothing).
 
 use corvane_core::filter::fuzzy_score;
 use corvane_core::{Dispatcher, Popup, PullRequest, parse_iso8601};
@@ -488,6 +493,61 @@ pub fn quick_view(
             .w(zpx(12.))
             .h(zpx(16.)),
         )
+}
+
+/// The blank slate when no account can load the pull requests (flag
+/// `pull-requests-signed-out`; GHD shows `NoPullRequests`' "You're all
+/// set!"): a sign-in prompt for the repository's endpoint.
+pub fn signed_out_pull_requests(repository_name: String, endpoint: String, cx: &App) -> AnyElement {
+    let t = cx.ghd();
+    let enterprise = endpoint != "https://api.github.com";
+    let service = if enterprise {
+        "GitHub Enterprise"
+    } else {
+        "GitHub.com"
+    };
+    div()
+        .id("no-pull-requests-signed-out")
+        .w_full()
+        .flex()
+        .flex_col()
+        .items_center()
+        .text_center()
+        .p(SPACING())
+        .text_size(FONT_SIZE())
+        .child(
+            crate::widgets::blankslate_image("empty-no-pull-requests.svg", cx)
+                .w(zpx(200.))
+                .mb(SPACING()),
+        )
+        .child(
+            div()
+                .font_weight(FontWeight::SEMIBOLD)
+                .child("Sign in to see pull requests"),
+        )
+        .child(
+            div()
+                .pb(SPACING())
+                .flex()
+                .flex_row()
+                .flex_wrap()
+                .items_center()
+                .justify_center()
+                .gap(zpx(3.))
+                .child("Pull requests in")
+                .child(code_ref(repository_name, cx))
+                .child(format!("are loaded with a {service} account.")),
+        )
+        .child(
+            div().text_size(FONT_SIZE_SM()).text_color(t.text).child(
+                crate::widgets::link_button("no-prs-sign-in", format!("Sign in to {service}"), cx)
+                    .on_click(move |_, _, cx| {
+                        Dispatcher::close_foldout(cx);
+                        Dispatcher::show_popup(Popup::SignIn { enterprise }, cx)
+                    }),
+            ),
+        )
+        .into_any_element()
 }
 
 /// `NoPullRequests`
