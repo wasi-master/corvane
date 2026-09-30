@@ -179,6 +179,16 @@ pub enum Popup {
         summary: String,
         description: String,
     },
+    /// Corvane `275-confirm-commit-to-default-branch`: committing on the
+    /// default branch; "Commit" goes on to `UnknownAuthors` when
+    /// `unknown_co_authors` is not empty.
+    ConfirmCommitToDefaultBranch {
+        repo: u64,
+        branch: String,
+        summary: String,
+        description: String,
+        unknown_co_authors: Vec<String>,
+    },
     /// `ConfirmDiscardSelection`: lines picked from the diff gutter menu.
     ConfirmDiscardSelection {
         repo: u64,

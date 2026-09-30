@@ -9,6 +9,8 @@
 //!   list (they are still committed).
 //! - ↑ / ↓ in an empty summary recall recent commit messages
 //!   (`273-recall-commit-messages`).
+//! - committing on the default branch asks first
+//!   (`275-confirm-commit-to-default-branch`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1839,6 +1841,33 @@ impl ChangesSidebar {
         let summary = self.summary.read(cx).value().to_string();
         let description = self.description.read(cx).value().to_string();
         let unknown = self.unknown_co_authors(cx);
+        // `275-confirm-commit-to-default-branch` (not when amending)
+        let default_branch = {
+            let s = self.state.read(cx);
+            s.selected_state()
+                .filter(|_| {
+                    s.flags
+                        .bool(corvane_core::flags::ids::CONFIRM_COMMIT_TO_DEFAULT_BRANCH)
+                })
+                .filter(|rs| rs.commit_to_amend.is_none())
+                .and_then(|rs| {
+                    let current = rs.info.as_ref()?.current_branch()?.name.clone();
+                    (rs.default_branch.as_deref() == Some(current.as_str())).then_some(current)
+                })
+        };
+        if let Some(branch) = default_branch {
+            Dispatcher::show_popup(
+                Popup::ConfirmCommitToDefaultBranch {
+                    repo: id,
+                    branch,
+                    summary,
+                    description,
+                    unknown_co_authors: unknown,
+                },
+                cx,
+            );
+            return;
+        }
         if !unknown.is_empty() {
             Dispatcher::show_popup(
                 Popup::UnknownAuthors {

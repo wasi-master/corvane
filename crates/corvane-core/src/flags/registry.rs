@@ -348,6 +348,19 @@ registry! {
         upstream: &[Upstream::issue(19329)],
         code: &["crates/corvane-ui/src/workspace.rs"],
     },
+    /// Confirmation before committing on the default branch.
+    CONFIRM_COMMIT_TO_DEFAULT_BRANCH = 275 "confirm-commit-to-default-branch" {
+        title: "Confirm commits to the default branch",
+        summary: "Committing (not amending) while the default branch is checked out asks \
+                  \"Commit to Default Branch\" first.",
+        ghd_behaviour: "Commits to the default branch without asking.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21857)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/dialogs/confirm_commit_to_default_branch.rs"],
+    },
 
     // ---- 300 GitHub ----
 
