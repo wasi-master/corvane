@@ -22,6 +22,9 @@ gpui_kit::actions!(
         OpenSelectedFileWithDefaultProgram,
         // ⌥⌘S: unified ⇄ split diff (`612-diff-mode-shortcut`)
         ToggleDiffDisplayMode,
+        // ⌥⌘C / ⇧⌥⌘C in a file list (`613-copy-path-shortcuts`)
+        CopySelectedFilePaths,
+        CopySelectedRelativeFilePaths,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
