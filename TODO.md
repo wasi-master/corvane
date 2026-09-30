@@ -8,15 +8,12 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab, Prompts › "Overriding commit message with generated message"). Not planned; keep menu/tab out of Corvane to avoid dead UI.
 
-## Diff viewer
-
-- [ ] Tree-sitter as an opt-in highlighter (decided 2026-09-30): Settings › Appearance › Syntax highlighting "GitHub Desktop" (default: the CodeMirror ports + syntect fallback, GHD-exact) | "Tree-sitter" (Zed-style highlight queries mapped onto the same `--syntax-*` colours). Grammars ship in an on-demand pack so the default binary does not grow (compiled grammars are native code: dylib pack loaded by an ad-hoc signed app without hardened runtime, or WASM via tree-sitter's wasm store; pick one). Record the non-GHD mode in `docs/reference/deviations.md`; the parity harness keeps running in the default mode.
-
 ## Platform
 
 - [ ] **[PLAT]** Windows: in-app menu bar (`ui/app-menu/`), 28 px custom title bar, `x-github-desktop-auth` style protocol registration, Credential Manager, NSIS via Velopack, editor/shell detection (`lib/editors/win32.ts`)
 - [ ] **[PLAT]** Linux: Wayland/X11 via `gpui_wgpu`, secret-service keyring, AppImage/deb/flatpak, editor/shell detection (`lib/editors/linux.ts`)
 - [ ] **[PLAT]** macOS 14 support via raw GPUI (currently blocked by gpui-kit's 15+ floor)
+- [ ] **[PLAT]** Tree-sitter grammar packs for Linux / Windows: `packaging/packs.sh` builds the macOS dylib only; `corvane-grammars` builds as `.so` / `.dll` unchanged and the loader and manifest (`target` = `linux-x86_64`, `windows-x86_64`, …) are platform-neutral, so a per-target build + upload step is what is missing
 
 ## Packs (PLAN.md §3.7)
 
@@ -36,7 +33,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 New Corvane-only extras land behind a flag that is off in the Corvane preset and on in Everything (`everything: ON` in `crates/corvane-core/src/flags/registry.rs`). Candidates:
 
 - [ ] Opt out of update checks (desktop/desktop#3410; `corvane_core::updater::updates_enabled`), `5xx`
-- [ ] Tree-sitter highlighter as a `1xx` select once the Diff viewer item above lands
 - [ ] Flags dialog: ↑ / ↓ row navigation, a "Reset to preset" per category, a link that opens the flag's deviations.md entry
 
 ## Accessibility
