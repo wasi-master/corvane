@@ -451,6 +451,19 @@ registry! {
         upstream: &[Upstream::issue(22039)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Fetch passes `--write-commit-graph`.
+    FETCH_WRITES_COMMIT_GRAPH = 235 "fetch-writes-commit-graph" {
+        title: "Fetch updates the commit-graph",
+        summary: "Fetch passes --write-commit-graph, so git extends the commit-graph file that \
+                  speeds up history, ahead/behind and merge-base computations in big repositories.",
+        ghd_behaviour: "Plain fetch; the commit-graph is only written by git's own maintenance.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22045)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

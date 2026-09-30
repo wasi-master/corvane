@@ -22,6 +22,7 @@
 //! (`233-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
 //! A pull skips `remote set-head -a` while the remote's HEAD resolves
 //! (`234-remote-head-once`; GHD runs it after every pull).
+//! Fetch can extend the commit-graph (`235-fetch-writes-commit-graph`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -396,6 +397,19 @@ impl Dispatcher {
 
     // ---- fetch ----
 
+    /// The Corvane additions to a fetch of repository `id`.
+    fn fetch_options(s: &crate::state::AppState, id: u64) -> corvane_git::FetchOptions {
+        corvane_git::FetchOptions {
+            // `225-fetch-prune-tags`: drop tags deleted on the remote, but
+            // never while tags created here wait to be pushed (they would
+            // be lost)
+            prune_tags: s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS)
+                && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty()),
+            // `235-fetch-writes-commit-graph`
+            write_commit_graph: s.flags.bool(crate::flags::ids::FETCH_WRITES_COMMIT_GRAPH),
+        }
+    }
+
     /// `_fetch(FetchType::UserInitiatedTask | BackgroundTask)`
     pub fn fetch(id: u64, background: bool, cx: &mut App) {
         if !background && Self::behind_background_fetch(id, cx) {
@@ -438,13 +452,7 @@ impl Dispatcher {
         }
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
-        // `225-fetch-prune-tags`: drop tags deleted on the remote, but never
-        // while tags created here wait to be pushed (they would be lost)
-        let prune_tags = {
-            let s = Self::state(cx).read(cx);
-            s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS)
-                && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty())
-        };
+        let options = Self::fetch_options(Self::state(cx).read(cx), id);
         Self::run_network(
             id,
             cx,
@@ -454,11 +462,11 @@ impl Dispatcher {
                         report(progress)
                     }
                 };
-                let result = corvane_git::fetch_with_prune_tags(
+                let result = corvane_git::fetch_with(
                     git.clone(),
                     &workdir,
                     &remote_name,
-                    prune_tags,
+                    options,
                     askpass.as_ref(),
                     &mut |value, text| {
                         report(PushPullProgress {
@@ -509,7 +517,6 @@ impl Dispatcher {
                 return;
             }
             let Some(git) = s.git.clone() else { return };
-            let prune_tags = s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS);
             let use_helper = s.settings.use_external_credential_helper;
             let repos: Vec<_> = s
                 .repositories
@@ -520,13 +527,7 @@ impl Dispatcher {
                         .get(&r.id)
                         .is_some_and(|rs| rs.push_pull_in_progress)
                 })
-                .map(|r| {
-                    (
-                        r.name(),
-                        r.path.clone(),
-                        prune_tags && r.tags_to_push.is_empty(),
-                    )
-                })
+                .map(|r| (r.name(), r.path.clone(), Self::fetch_options(s, r.id)))
                 .collect();
             let github_hosts: Vec<String> = std::iter::once("github.com".to_string())
                 .chain(s.accounts.iter().map(|a| a.host()))
@@ -541,7 +542,7 @@ impl Dispatcher {
             cx,
             move || {
                 let mut failures = Vec::new();
-                for (name, path, prune_tags) in repos {
+                for (name, path, options) in repos {
                     let Ok(info) = corvane_git::open_repository(&path) else {
                         continue;
                     };
@@ -558,11 +559,11 @@ impl Dispatcher {
                     corvane_git::set_credential_helper(
                         use_helper && !github_hosts.contains(&host_of(&remote.url)),
                     );
-                    match corvane_git::fetch_with_prune_tags(
+                    match corvane_git::fetch_with(
                         git.clone(),
                         &info.workdir,
                         &remote.name,
-                        prune_tags,
+                        options,
                         askpass.as_ref(),
                         &mut |_, _| {},
                     ) {

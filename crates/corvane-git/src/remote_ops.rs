@@ -360,10 +360,40 @@ pub fn fetch_with_prune_tags(
     askpass: Option<&AskpassEnv>,
     on_progress: ProgressFn<'_>,
 ) -> Result<()> {
+    let options = FetchOptions {
+        prune_tags,
+        ..FetchOptions::default()
+    };
+    fetch_with(git, workdir, remote, options, askpass, on_progress)
+}
+
+/// Corvane additions to GHD's fixed `fetch` arguments; the default is GHD's
+/// command.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FetchOptions {
+    /// `--prune-tags` (see [`fetch_with_prune_tags`]).
+    pub prune_tags: bool,
+    /// `--write-commit-graph`: git extends the commit-graph file, which
+    /// speeds up history walks and ahead/behind counts (desktop#22045).
+    pub write_commit_graph: bool,
+}
+
+/// [`fetch`] with [`FetchOptions`].
+pub fn fetch_with(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    options: FetchOptions,
+    askpass: Option<&AskpassEnv>,
+    on_progress: ProgressFn<'_>,
+) -> Result<()> {
     let mut parser = ProgressParser::fetch();
     let mut args = vec!["fetch", "--progress", "--prune"];
-    if prune_tags {
+    if options.prune_tags {
         args.push("--prune-tags");
+    }
+    if options.write_commit_graph {
+        args.push("--write-commit-graph");
     }
     args.extend(["--recurse-submodules=on-demand", remote]);
     remote_command(git, workdir, askpass)
@@ -944,6 +974,13 @@ mod tests {
         assert!(has_tag());
         fetch_with_prune_tags(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
         assert!(!has_tag());
+        let graph = FetchOptions {
+            write_commit_graph: true,
+            ..FetchOptions::default()
+        };
+        fetch_with(git.clone(), &work, "origin", graph, None, &mut |_, _| {}).unwrap();
+        let objects = git_dir(&work).join("objects").join("info");
+        assert!(objects.join("commit-graph").exists() || objects.join("commit-graphs").exists());
         assert!(last_fetched(&work).is_some());
         let ab = crate::symmetric_ahead_behind(git.clone(), &work, "main", "origin/main")
             .unwrap()
