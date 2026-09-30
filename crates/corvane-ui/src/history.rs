@@ -13,7 +13,8 @@
 //!
 //! Deviations (`.docs/deviations.md` › History): the commit menus
 //! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
-//! list scrolls back to the top when the branch changes (flag `241`).
+//! list scrolls back to the top when the branch changes (flag `241`); Revert
+//! Changes in Commit(s) Without Committing (flag `242`).
 
 use std::rc::Rc;
 
@@ -834,11 +835,13 @@ impl HistorySidebar {
             .repo_states
             .get(&id)
             .is_some_and(|r| r.compare.is_comparing());
-        let copy_items = self
-            .state
-            .read(cx)
-            .flags
-            .bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS);
+        let (copy_items, revert_no_commit) = {
+            let flags = &self.state.read(cx).flags;
+            (
+                flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
+                flags.bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
+            )
+        };
         // `240`: newest first, whatever the click order
         let shas_text = {
             let s = self.state.read(cx);
@@ -854,7 +857,12 @@ impl HistorySidebar {
             shas.join("\n")
         };
         let weak = cx.weak_entity();
-        let (s1, s2, s3) = (selection.clone(), selection.clone(), selection);
+        let (s1, s2, s3, s4) = (
+            selection.clone(),
+            selection.clone(),
+            selection.clone(),
+            selection,
+        );
         let onto = commit.sha.clone();
         let mut items = vec![
             MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
@@ -873,6 +881,16 @@ impl HistorySidebar {
             })
             .enabled(!busy && !comparing),
         ];
+        if revert_no_commit {
+            // `242`: newest first, staged, not committed
+            items.push(
+                MenuItem::new(
+                    format!("Revert Changes in {count} Commits Without Committing"),
+                    move |_, cx| Dispatcher::revert_commits_without_committing(id, s4.clone(), cx),
+                )
+                .enabled(!busy && !comparing),
+            );
+        }
         if copy_items {
             items.push(MenuItem::separator());
             items.push(MenuItem::new("Copy SHAs", move |_, cx| {
@@ -891,7 +909,7 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (html_url, is_head, busy, copy_items) = {
+        let (html_url, is_head, busy, copy_items, revert_no_commit) = {
             let s = self.state.read(cx);
             let html_url = s
                 .repository(id)
@@ -909,6 +927,8 @@ impl HistorySidebar {
                 is_head,
                 rs.is_some_and(|r| r.mco.is_some()) || comparing,
                 s.flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
+                s.flags
+                    .bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
             )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
@@ -949,6 +969,19 @@ impl HistorySidebar {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
             }),
+        ]);
+        if revert_no_commit {
+            items.push(MenuItem::new(
+                "Revert Changes in Commit Without Committing",
+                {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::revert_commits_without_committing(id, vec![sha.clone()], cx)
+                    }
+                },
+            ));
+        }
+        items.extend([
             MenuItem::separator(),
             MenuItem::new("Create Branch from Commit", {
                 let sha = sha.clone();
