@@ -2,6 +2,9 @@
 //! `ui/rename-branch/rename-branch-dialog.tsx`, `ui/delete-branch/delete-branch-dialog.tsx`,
 //! `ui/stash-changes/{stash-and-switch-branch,overwrite-stashed-changes}-dialog.tsx`
 //! and the merge `ChooseBranch` step (`merge-choose-branch-dialog.tsx`).
+//!
+//! Deviations: Create a Branch can start from any branch through an "Other
+//! branch…" choice (`255-create-branch-from-any-branch`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -54,6 +57,8 @@ pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
 enum StartPoint {
     DefaultBranch,
     CurrentBranch,
+    /// `255-create-branch-from-any-branch`: a branch picked from a list.
+    Other,
 }
 
 pub struct CreateBranchDialog {
@@ -62,6 +67,10 @@ pub struct CreateBranchDialog {
     target_sha: Option<String>,
     name: Entity<InputState>,
     start_point: StartPoint,
+    /// `255-create-branch-from-any-branch`: the "Other branch…" picker.
+    other_filter: Entity<InputState>,
+    other_focus: FocusHandle,
+    other_branch: Option<String>,
     /// Cherry-pick › New Branch: "Cherry-pick to New Branch" / "Create Branch and Cherry-pick".
     cherry_pick: bool,
 }
@@ -84,12 +93,17 @@ impl CreateBranchDialog {
         // `RefNameTextBox` autoFocus
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        let other_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.observe(&other_filter, |_, _, cx| cx.notify()).detach();
         Self {
             state,
             repo,
             target_sha,
             name,
             start_point: StartPoint::DefaultBranch,
+            other_filter,
+            other_focus: cx.focus_handle(),
+            other_branch: None,
             cherry_pick: false,
         }
     }
@@ -146,8 +160,14 @@ impl Render for CreateBranchDialog {
             )
         };
         let exists = existing.contains(&name);
-        let disabled = name.is_empty() || exists;
         let current = tip.branch_name().map(|s| s.to_string());
+        let from_any = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CREATE_BRANCH_FROM_ANY_BRANCH);
+        // "Other branch…" chosen but no branch picked yet
+        let mut needs_pick = false;
 
         // Where the branch starts from (`renderBranchDescription`).
         let mut description: Vec<AnyElement> = Vec::new();
@@ -178,92 +198,158 @@ impl Render for CreateBranchDialog {
                 ),
                 Tip::Valid { branch } => {
                     let current_name = branch.name.clone();
-                    match &default_branch {
-                        Some(default) if *default != current_name => {
-                            let selected = self.start_point;
-                            start_point = Some(if selected == StartPoint::DefaultBranch {
-                                default.clone()
-                            } else {
-                                current_name.clone()
-                            });
-                            description.push(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .child(div().mb(zpx(5.)).child("Create branch based on…"))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(
-                                                segmented_option(
-                                                    "start-default",
-                                                    default.clone(),
-                                                    "The default branch in your repository. Pick this to start on something new that's not dependent on your current branch.",
-                                                    selected == StartPoint::DefaultBranch,
-                                                    true,
-                                                    false,
-                                                    cx,
-                                                )
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.start_point = StartPoint::DefaultBranch;
-                                                    cx.notify();
-                                                })),
-                                            )
-                                            .child(
-                                                segmented_option(
-                                                    "start-current",
-                                                    current_name.clone(),
-                                                    "The currently checked out branch. Pick this if you need to build on work done on this branch.",
-                                                    selected == StartPoint::CurrentBranch,
-                                                    false,
-                                                    true,
-                                                    cx,
-                                                )
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.start_point = StartPoint::CurrentBranch;
-                                                    cx.notify();
-                                                })),
-                                            ),
-                                    )
-                                    .into_any_element(),
-                            );
-                        }
-                        _ => {
-                            let is_default = default_branch.as_deref() == Some(current_name.as_str());
-                            let mut parts: Vec<Inline> = vec![
-                                "Your new branch will be based on your currently checked out branch (".into(),
-                                ref_chip(current_name.clone(), cx).into_any_element().into(),
-                                "). ".into(),
-                            ];
-                            if is_default {
-                                parts.push(ref_chip(current_name.clone(), cx).into_any_element().into());
-                                // `defaultBranchLink`
-                                parts.push(" is the ".into());
-                                parts.push(
-                                    crate::widgets::link_button(
-                                        "create-branch-default-link",
-                                        "default branch",
-                                        cx,
-                                    )
-                                    .on_click(|_, _, cx| {
-                                        cx.open_url(
-                                            "https://help.github.com/articles/setting-the-default-branch/",
-                                        )
-                                    })
-                                    .into_any_element()
-                                    .into(),
-                                );
-                                parts.push(" for your repository.".into());
+                    let other_default =
+                        default_branch.clone().filter(|d| *d != current_name);
+                    if other_default.is_some() || from_any {
+                        // without a separate default branch, "default"
+                        // means the current one
+                        let selected = match self.start_point {
+                            StartPoint::DefaultBranch if other_default.is_none() => {
+                                StartPoint::CurrentBranch
                             }
-                            description.push(paragraph(parts).into_any_element());
+                            s => s,
+                        };
+                        start_point = match selected {
+                            StartPoint::DefaultBranch => other_default.clone(),
+                            StartPoint::CurrentBranch => Some(current_name.clone()),
+                            StartPoint::Other => {
+                                needs_pick = self.other_branch.is_none();
+                                self.other_branch.clone()
+                            }
+                        };
+                        let mut options: Vec<(&'static str, String, &'static str, StartPoint)> =
+                            Vec::new();
+                        if let Some(default) = &other_default {
+                            options.push((
+                                "start-default",
+                                default.clone(),
+                                "The default branch in your repository. Pick this to start on something new that's not dependent on your current branch.",
+                                StartPoint::DefaultBranch,
+                            ));
                         }
+                        options.push((
+                            "start-current",
+                            current_name.clone(),
+                            "The currently checked out branch. Pick this if you need to build on work done on this branch.",
+                            StartPoint::CurrentBranch,
+                        ));
+                        if from_any {
+                            options.push((
+                                "start-other",
+                                match (&self.other_branch, selected) {
+                                    (Some(other), StartPoint::Other) => {
+                                        format!("Other branch: {other}")
+                                    }
+                                    _ => "Other branch…".to_string(),
+                                },
+                                "Any local or remote branch, picked from the list below.",
+                                StartPoint::Other,
+                            ));
+                        }
+                        let last = options.len() - 1;
+                        let picker = (selected == StartPoint::Other).then(|| {
+                            let groups = {
+                                let s = self.state.read(cx);
+                                let query = self.other_filter.read(cx).value().trim().to_string();
+                                match s.repo_states.get(&self.repo) {
+                                    Some(rs) => rs
+                                        .info
+                                        .as_ref()
+                                        .map(|info| {
+                                            group_branches(
+                                                &info.branches,
+                                                rs.default_branch.as_deref(),
+                                                &rs.recent_branches,
+                                                &query,
+                                            )
+                                        })
+                                        .unwrap_or_default(),
+                                    None => Vec::new(),
+                                }
+                            };
+                            let on_select = cx.listener(|this, name: &String, _, cx| {
+                                this.other_branch = Some(name.clone());
+                                cx.notify();
+                            });
+                            branch_picker(
+                                "create-branch-other",
+                                &self.other_filter,
+                                &self.other_focus,
+                                groups,
+                                "",
+                                self.other_branch.as_deref(),
+                                std::rc::Rc::new(on_select),
+                                window,
+                                cx,
+                            )
+                            .mt(SPACING())
+                            .border_1()
+                            .border_color(cx.ghd().box_border)
+                            .rounded(BORDER_RADIUS())
+                            .pt(SPACING())
+                        });
+                        description.push(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .child(div().mb(zpx(5.)).child("Create branch based on…"))
+                                .child(div().flex().flex_col().children(
+                                    options.into_iter().enumerate().map(
+                                        |(ix, (id, title, detail, point))| {
+                                            segmented_option(
+                                                id,
+                                                title,
+                                                detail,
+                                                selected == point,
+                                                ix == 0,
+                                                ix == last,
+                                                cx,
+                                            )
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.start_point = point;
+                                                cx.notify();
+                                            }))
+                                        },
+                                    ),
+                                ))
+                                .children(picker)
+                                .into_any_element(),
+                        );
+                    } else {
+                        let is_default = default_branch.as_deref() == Some(current_name.as_str());
+                        let mut parts: Vec<Inline> = vec![
+                            "Your new branch will be based on your currently checked out branch (".into(),
+                            ref_chip(current_name.clone(), cx).into_any_element().into(),
+                            "). ".into(),
+                        ];
+                        if is_default {
+                            parts.push(ref_chip(current_name.clone(), cx).into_any_element().into());
+                            // `defaultBranchLink`
+                            parts.push(" is the ".into());
+                            parts.push(
+                                crate::widgets::link_button(
+                                    "create-branch-default-link",
+                                    "default branch",
+                                    cx,
+                                )
+                                .on_click(|_, _, cx| {
+                                    cx.open_url(
+                                        "https://help.github.com/articles/setting-the-default-branch/",
+                                    )
+                                })
+                                .into_any_element()
+                                .into(),
+                            );
+                            parts.push(" for your repository.".into());
+                        }
+                        description.push(paragraph(parts).into_any_element());
                     }
                 }
                 Tip::Unknown => {}
             }
         }
         let _ = current;
+        let disabled = name.is_empty() || exists || needs_pick;
 
         let repo = self.repo;
         let unborn = matches!(tip, Tip::Unborn { .. });
