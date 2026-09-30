@@ -5,6 +5,8 @@
 //!
 //! Deviation: when every discarded entry is a submodule nothing goes to the
 //! Trash, so the Trash sentence is left out (`276-discard-submodule-no-trash-hint`).
+//! A second opt-out snoozes the confirmation for this repository for the
+//! flag's minutes (`476-discard-confirm-snooze`).
 
 use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
@@ -24,6 +26,8 @@ pub struct DiscardChangesDialog {
     paths: Vec<String>,
     all: bool,
     dont_show_again: bool,
+    /// `476-discard-confirm-snooze`
+    snooze: bool,
     /// The autofocused checkbox's ring, until a mouse press.
     focus_visible: bool,
 }
@@ -35,6 +39,7 @@ impl DiscardChangesDialog {
             paths,
             all,
             dont_show_again: false,
+            snooze: false,
             focus_visible: true,
         }
     }
@@ -69,6 +74,13 @@ impl Render for DiscardChangesDialog {
                             })
                     })
         };
+        // `476-discard-confirm-snooze` (not for Discard All)
+        let snooze_minutes = corvane_core::AppState::global(cx)
+            .read(cx)
+            .flags
+            .number(corvane_core::flags::ids::DISCARD_CONFIRM_SNOOZE);
+        let snooze = self.snooze;
+        let snooze_weak = cx.weak_entity();
         let file_list = if count > MAX_FILES_TO_LIST {
             div().mb(SPACING()).child(format!(
                 "Are you sure you want to discard all {count} changed files?"
@@ -147,6 +159,22 @@ impl Render for DiscardChangesDialog {
                     },
                     cx,
                 ))
+                .when(snooze_minutes > 0, |d| {
+                    d.child(crate::widgets::checkbox_row(
+                        "discard-snooze",
+                        snooze,
+                        format!("Do not show this message again for {snooze_minutes} minutes"),
+                        move |value, _, cx| {
+                            snooze_weak
+                                .update(cx, |this, cx| {
+                                    this.snooze = value;
+                                    cx.notify();
+                                })
+                                .ok();
+                        },
+                        cx,
+                    ))
+                })
             });
         let repo = self.repo;
         let paths = self.paths.clone();
@@ -173,6 +201,8 @@ impl Render for DiscardChangesDialog {
                     on_click: Box::new(move |_, cx| {
                         if dont_show_again {
                             Dispatcher::update_settings(cx, |s| s.confirm_discard_changes = false);
+                        } else if snooze && !all {
+                            Dispatcher::snooze_discard_confirm(repo, cx);
                         }
                         Dispatcher::discard_changes(repo, paths.clone(), cx);
                         Dispatcher::close_popup(cx);

@@ -2654,8 +2654,9 @@ impl Dispatcher {
                 .unwrap_or(0);
             (s.settings.confirm_discard_changes, total)
         };
-        if confirm {
-            let all = paths.len() == total;
+        let all = paths.len() == total;
+        // `476-discard-confirm-snooze`: never for Discard All
+        if confirm && (all || !Self::discard_confirm_snoozed(id, cx)) {
             Self::show_popup(
                 Popup::DiscardChanges {
                     repo: id,
@@ -2669,6 +2670,30 @@ impl Dispatcher {
         }
     }
 
+    /// Corvane `476-discard-confirm-snooze`: the confirmation is snoozed for
+    /// this repository.
+    fn discard_confirm_snoozed(id: u64, cx: &App) -> bool {
+        let s = Self::state(cx).read(cx);
+        s.flags.number(crate::flags::ids::DISCARD_CONFIRM_SNOOZE) > 0
+            && s.repo_states
+                .get(&id)
+                .and_then(|r| r.discard_confirm_snoozed_until)
+                .is_some_and(|until| Instant::now() < until)
+    }
+
+    /// Corvane `476-discard-confirm-snooze`: skip the confirmation for the
+    /// flag's number of minutes.
+    pub fn snooze_discard_confirm(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, _| {
+            let minutes = s.flags.number(crate::flags::ids::DISCARD_CONFIRM_SNOOZE);
+            let Ok(minutes) = u64::try_from(minutes) else {
+                return;
+            };
+            s.repo_state_mut(id).discard_confirm_snoozed_until =
+                Some(Instant::now() + std::time::Duration::from_secs(minutes * 60));
+        });
+    }
+
     /// GHD `onDiscardChangesFromSelection` (diff gutter menu): confirm first
     /// unless the user opted out.
     pub fn request_discard_selection(
@@ -2677,7 +2702,9 @@ impl Dispatcher {
         selection: corvane_models::DiffSelection,
         cx: &mut App,
     ) {
-        if Self::state(cx).read(cx).settings.confirm_discard_changes {
+        if Self::state(cx).read(cx).settings.confirm_discard_changes
+            && !Self::discard_confirm_snoozed(id, cx)
+        {
             Self::show_popup(
                 Popup::ConfirmDiscardSelection {
                     repo: id,

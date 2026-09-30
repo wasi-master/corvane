@@ -821,6 +821,22 @@ registry! {
         code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-platform/src/editors.rs"],
     },
 
+    /// Snooze the discard confirmation.
+    DISCARD_CONFIRM_SNOOZE = 476 "discard-confirm-snooze" {
+        title: "Snooze the discard confirmation",
+        summary: "The Confirm Discard Changes dialog offers \"Do not show this message again for N \
+                  minutes\": discarding in that repository then skips the confirmation for N \
+                  minutes (this session; Discard All Changes still asks). 0 hides the option.",
+        ghd_behaviour: "Only \"Do not show this message again\", for good.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 120, unit: Some("min") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(10),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20747)],
+        code: &["crates/corvane-ui/src/dialogs/discard_changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

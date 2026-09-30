@@ -579,6 +579,9 @@ pub struct RepositoryState {
     pub last_commit: Option<LastCommit>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
+    /// `476-discard-confirm-snooze`: discarding (not all changes) skips the
+    /// confirmation until then (this session only).
+    pub discard_confirm_snoozed_until: Option<Instant>,
     /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).
     pub show_co_authored_by: bool,
     pub co_authors: Vec<corvane_models::Author>,
