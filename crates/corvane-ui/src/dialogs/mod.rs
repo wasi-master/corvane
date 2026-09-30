@@ -7,7 +7,7 @@ mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod change_repository_alias;
 mod ci_check_run_rerun;
-mod clone_repository;
+pub(crate) mod clone_repository;
 mod crash_report_found;
 mod create_repository;
 mod discard_changes;

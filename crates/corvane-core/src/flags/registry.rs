@@ -279,6 +279,23 @@ registry! {
         upstream: &[Upstream::issue(2652)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
+    /// Add › Clone Repository… carries the repository list's filter text.
+    CLONE_PREFILLS_FILTER = 113 "clone-prefills-filter" {
+        title: "Clone dialog takes the repository filter",
+        summary: "Add › Clone Repository… in the repository list opens the clone dialog with the \
+                  list's filter text in its GitHub tabs' filter box, so a repository that is not \
+                  cloned yet can be found without typing its name again.",
+        ghd_behaviour: "The clone dialog's filter starts empty.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20685)],
+        code: &[
+            "crates/corvane-ui/src/repository_list.rs",
+            "crates/corvane-ui/src/dialogs/clone_repository.rs",
+        ],
+    },
 
     // ---- 200 Repository ----
 

@@ -405,6 +405,18 @@ impl RepositoryFoldout {
         let _ = (items, position, window);
     }
 
+    /// Corvane (`113-clone-prefills-filter`): the filter text that Add ›
+    /// Clone Repository… puts in the clone dialog's filter box.
+    fn clone_filter(&self, cx: &App) -> Option<String> {
+        let text = self.filter.read(cx).value().trim().to_string();
+        let enabled = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_PREFILLS_FILTER);
+        (enabled && !text.is_empty()).then_some(text)
+    }
+
     fn add_menu(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let item = |id: &'static str, label: &'static str, on_click: fn(&mut Window, &mut App)| {
@@ -534,10 +546,14 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
 
 /// The Add button's items (`onNewRepositoryButtonClick`).
 #[cfg(target_os = "macos")]
-fn add_menu_items() -> Vec<crate::context_menu::MenuItem> {
+fn add_menu_items(clone_filter: Option<String>) -> Vec<crate::context_menu::MenuItem> {
     use crate::context_menu::MenuItem;
     vec![
-        MenuItem::new("Clone Repository…", |_, cx| {
+        MenuItem::new("Clone Repository…", move |_, cx| {
+            // Corvane (`113-clone-prefills-filter`)
+            if let Some(text) = &clone_filter {
+                crate::dialogs::clone_repository::prefill_filter(text.clone());
+            }
             Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
         }),
         MenuItem::new("Create New Repository…", |_, cx| {
@@ -643,9 +659,9 @@ impl Render for RepositoryFoldout {
                                 // contextual menu at the pointer
                                 #[cfg(target_os = "macos")]
                                 {
-                                    let _ = this;
+                                    let clone_filter = this.clone_filter(cx);
                                     crate::native_menu::show_context_menu(
-                                        add_menu_items(),
+                                        add_menu_items(clone_filter),
                                         ev.position(),
                                         window,
                                         cx,

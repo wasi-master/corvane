@@ -155,6 +155,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - The repository list can have a filter button next to its filter box (Corvane addition) whose menu shows only repositories with uncommitted changes and / or commits to push or pull, from the rows' indicators; the Recent group is left out while a status filter is on. Flag: `110-repository-status-filter`.
 - The repository list's Recent group shows a configurable number of repositories (3 by default as in GHD, 0 hides the group); at least 3 are remembered either way. Flag: `111-recent-repositories-count`.
 - Opening the repository list selects the filter text it remembers, so typing replaces it (GHD puts the caret after it). Flag: `112-repository-filter-selects-text`.
+- Add › Clone Repository… in the repository list opens the clone dialog with the list's filter text in its GitHub tabs' filter box (GHD starts it empty). Flag: `113-clone-prefills-filter`.
 
 ## Scrolling
 
