@@ -243,6 +243,17 @@ pub fn set_mono_font(family: &'static str) {
     let _ = MONO_FAMILY.set(family);
 }
 
+/// Font features for text under a CSS `zoom` (GHD's `#no-repositories {
+/// zoom: 1.2 }`): Chromium lays that text out at the unzoomed size
+/// and scales it, so SF's size-dependent tracking stays the unzoomed size's
+/// (vendored gpui-pre-macos reads the private `czom` tag, zoom × 100).
+pub fn css_zoom_features(zoom: f32) -> gpui_kit::FontFeatures {
+    gpui_kit::FontFeatures(std::sync::Arc::new(vec![(
+        "czom".into(),
+        (zoom * 100.).round() as u32,
+    )]))
+}
+
 /// GitHub Desktop colour tokens.
 #[derive(Clone, Debug)]
 pub struct GhdTheme {
