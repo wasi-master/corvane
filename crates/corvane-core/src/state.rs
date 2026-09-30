@@ -692,6 +692,8 @@ pub struct FileListFilter {
     pub new_files: bool,
     pub modified: bool,
     pub deleted: bool,
+    /// Corvane `280-renamed-files-filter`.
+    pub renamed: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -701,6 +703,8 @@ pub enum FilterOption {
     NewFiles,
     ModifiedFiles,
     DeletedFiles,
+    /// Corvane `280-renamed-files-filter`.
+    RenamedFiles,
 }
 
 impl FileListFilter {
@@ -711,6 +715,7 @@ impl FileListFilter {
             FilterOption::NewFiles => self.new_files,
             FilterOption::ModifiedFiles => self.modified,
             FilterOption::DeletedFiles => self.deleted,
+            FilterOption::RenamedFiles => self.renamed,
         }
     }
 
@@ -721,6 +726,7 @@ impl FileListFilter {
             FilterOption::NewFiles => self.new_files = on,
             FilterOption::ModifiedFiles => self.modified = on,
             FilterOption::DeletedFiles => self.deleted = on,
+            FilterOption::RenamedFiles => self.renamed = on,
         }
     }
 
@@ -732,6 +738,7 @@ impl FileListFilter {
             self.new_files,
             self.modified,
             self.deleted,
+            self.renamed,
         ]
         .iter()
         .filter(|b| **b)

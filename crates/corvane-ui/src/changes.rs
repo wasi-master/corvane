@@ -16,6 +16,7 @@
 //!   (`278-ignore-menu-counts`).
 //! - "Copy Diff" puts the selected files' changes on the clipboard as a patch
 //!   (`279-copy-diff`).
+//! - the Filter Options popover has "Renamed files" (`280-renamed-files-filter`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1424,6 +1425,9 @@ impl ChangesSidebar {
         let filter = self.filter_options(cx);
         let text_active = !self.filter.read(cx).value().trim().is_empty();
         let active = filter.count_active() > 0 || text_active;
+        // `280-renamed-files-filter` (kept while active, to be cleared)
+        let renamed_option =
+            s.flags.bool(corvane_core::flags::ids::RENAMED_FILES_FILTER) || filter.renamed;
         let bounds = self.filter_button_bounds.get();
         let close =
             |this: &mut Self, _: &MouseDownEvent, _: &mut Window, cx: &mut Context<Self>| {
@@ -1537,7 +1541,13 @@ impl ChangesSidebar {
                                         .child(option_row(
                                             FilterOption::DeletedFiles,
                                             "Deleted files",
-                                        )),
+                                        ))
+                                        .when(renamed_option, |d| {
+                                            d.child(option_row(
+                                                FilterOption::RenamedFiles,
+                                                "Renamed files",
+                                            ))
+                                        }),
                                 )
                                 .when(active, |d| {
                                     d.child(div().pt(SPACING_HALF()).pb(SPACING()).child(

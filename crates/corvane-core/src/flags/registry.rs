@@ -416,6 +416,18 @@ registry! {
         upstream: &[Upstream::issue(17746)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
     },
+    /// "Renamed files" in the changes list's Filter Options.
+    RENAMED_FILES_FILTER = 280 "renamed-files-filter" {
+        title: "\"Renamed files\" filter option",
+        summary: "The changes list's Filter Options popover has a sixth option, \"Renamed files\".",
+        ghd_behaviour: "Included / excluded, new, modified and deleted files only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21147)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
+    },
 
     // ---- 300 GitHub ----
 
