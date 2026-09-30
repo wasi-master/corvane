@@ -305,7 +305,8 @@ pub fn stage_partial_files(
         // the new path) against the working copy (after the reset the new
         // path is untracked and `diff -- path` would be empty).
         recreate_rename_in_index(git.clone(), workdir, file)?;
-        let diff = crate::diff::working_directory_diff(git.clone(), workdir, file, false, false)?;
+        let diff =
+            crate::diff::working_directory_diff(git.clone(), workdir, file, false, false, false)?;
         apply_hunks_to_index(git.clone(), workdir, file, &diff)?;
     }
     Ok(())
@@ -405,7 +406,8 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let mut status = crate::get_status(git.clone(), path, None).unwrap();
         let file = &mut status.files[0];
-        let diff = crate::working_directory_diff(git.clone(), path, file, false, false).unwrap();
+        let diff =
+            crate::working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
         // select only the first change (lines: 0 hunk, 1 del ONE, 2 add ONE, 3 ctx, 4 del, 5 add)
         file.selection = DiffSelection::none().with_range(1, 2, true);
         assert_eq!(file.selection.kind(), DiffSelectionType::Partial);
@@ -470,10 +472,12 @@ mod tests {
                 .collect()
         };
         // GHD: index to working tree, the staged edit is missing
-        let ghd = crate::working_directory_diff(git.clone(), path, file, false, false).unwrap();
+        let ghd =
+            crate::working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
         assert_eq!(changed(&ghd), ["j", "J"]);
         // `174-renamed-diff-against-head`: HEAD's old blob to the working copy
-        let diff = crate::working_directory_diff(git.clone(), path, file, false, true).unwrap();
+        let diff =
+            crate::working_directory_diff(git.clone(), path, file, false, true, false).unwrap();
         assert_eq!(changed(&diff), ["a", "A", "j", "J"]);
         // commit only the first change (lines: 0 hunk, 1 del a, 2 add A, …)
         file.selection = DiffSelection::none().with_range(1, 2, true);

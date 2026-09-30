@@ -37,16 +37,23 @@ pub const MAX_DIFF_LINES: usize = 50_000;
 /// diffs `HEAD:<old path>` to the working copy instead (`HEAD -M -- old new`),
 /// the change the commit will record, falling back to GHD's diff when git
 /// does not pair the two paths as one rename.
+///
+/// `as_text` adds `--text` (Corvane `181-binary-diff-as-text`): a file git
+/// takes for binary is diffed line by line anyway.
 pub fn working_directory_diff(
     git: Arc<GitBinary>,
     workdir: &Path,
     file: &WorkingDirectoryFileChange,
     hide_whitespace: bool,
     renamed_against_head: bool,
+    as_text: bool,
 ) -> Result<Diff> {
     let mut args = vec!["diff"];
     if hide_whitespace {
         args.push("-w");
+    }
+    if as_text {
+        args.push("--text");
     }
     args.extend(["--no-ext-diff", "--patch-with-raw", "-z", "--no-color"]);
     let base = || {
@@ -597,7 +604,8 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         for file in &status.files {
-            let diff = working_directory_diff(git.clone(), path, file, false, false).unwrap();
+            let diff =
+                working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
             let Diff::Text { hunks, .. } = diff else {
                 panic!("text diff for {}", file.path)
             };
@@ -652,6 +660,38 @@ mod tests {
             working_file_lines(dir.path(), "real.txt", true).map(|l| l.len()),
             Some(2)
         );
+    }
+
+    #[test]
+    fn binary_file_as_text() {
+        use std::process::Command;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
+        std::fs::write(path.join("data.bin"), b"one\0\ntwo\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "init"]);
+        std::fs::write(path.join("data.bin"), b"one\0\nTWO\n").unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        let file = &status.files[0];
+        let binary = working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
+        assert_eq!(binary, Diff::Binary);
+        let text = working_directory_diff(git, path, file, false, false, true).unwrap();
+        assert!(matches!(text, Diff::Text { .. }));
     }
 
     #[test]
