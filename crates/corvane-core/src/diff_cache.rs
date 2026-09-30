@@ -19,47 +19,95 @@ use corvane_models::{ChangesetData, FileStatusKind, WorkingDirectoryFileChange};
 
 use crate::dispatcher::LoadedDiff;
 
-/// A small most-recently-used list; linear search is cheaper than hashing
-/// for a few dozen keys.
+/// A small most-recently-used list with a size budget; linear search is
+/// cheaper than hashing for a few dozen keys.
 struct Lru<K, V> {
     cap: usize,
-    entries: VecDeque<(K, V)>,
+    /// Approximate bytes held; the oldest entries go past this.
+    budget: usize,
+    bytes: usize,
+    entries: VecDeque<(K, V, usize)>,
 }
 
 impl<K: PartialEq, V: Clone> Lru<K, V> {
-    const fn new(cap: usize) -> Self {
+    const fn new(cap: usize, budget: usize) -> Self {
         Self {
             cap,
+            budget,
+            bytes: 0,
             entries: VecDeque::new(),
         }
     }
 
     fn get(&mut self, key: &K) -> Option<V> {
-        let ix = self.entries.iter().position(|(k, _)| k == key)?;
+        let ix = self.entries.iter().position(|(k, _, _)| k == key)?;
         let entry = self.entries.remove(ix)?;
         let value = entry.1.clone();
         self.entries.push_front(entry);
         Some(value)
     }
 
-    fn insert(&mut self, key: K, value: V) {
-        if let Some(ix) = self.entries.iter().position(|(k, _)| *k == key) {
-            self.entries.remove(ix);
+    /// Keep `value` (`size` bytes); one larger than a quarter of the budget
+    /// is not kept.
+    fn insert(&mut self, key: K, value: V, size: usize) {
+        if let Some(ix) = self.entries.iter().position(|(k, _, _)| *k == key)
+            && let Some((_, _, old)) = self.entries.remove(ix)
+        {
+            self.bytes -= old;
         }
-        self.entries.push_front((key, value));
-        self.entries.truncate(self.cap);
+        if size > self.budget / 4 {
+            return;
+        }
+        self.entries.push_front((key, value, size));
+        self.bytes += size;
+        while self.entries.len() > self.cap || self.bytes > self.budget {
+            let Some((_, _, size)) = self.entries.pop_back() else {
+                break;
+            };
+            self.bytes -= size;
+        }
     }
+}
+
+const MB: usize = 1024 * 1024;
+
+/// Approximate heap bytes of a loaded diff and its contents.
+fn loaded_size((diff, new, old): &LoadedDiff) -> usize {
+    let lines = |l: &Option<Arc<Vec<String>>>| {
+        l.as_ref()
+            .map_or(0, |l| l.iter().map(|s| s.len() + 24).sum::<usize>())
+    };
+    let diff_bytes = match &**diff {
+        corvane_models::Diff::Text { hunks, .. }
+        | corvane_models::Diff::LargeText { hunks, .. } => hunks
+            .iter()
+            .flat_map(|h| &h.lines)
+            .map(|l| l.text.len() + 48)
+            .sum(),
+        corvane_models::Diff::Image { previous, current } => {
+            previous.as_ref().map_or(0, |i| i.bytes.len())
+                + current.as_ref().map_or(0, |i| i.bytes.len())
+        }
+        _ => 0,
+    };
+    diff_bytes + lines(new) + lines(old)
+}
+
+fn changeset_size(data: &ChangesetData) -> usize {
+    data.files.iter().map(|f| f.path.len() + 96).sum()
 }
 
 type ChangesetKey = (PathBuf, Vec<String>);
 type CommitDiffKey = (PathBuf, Vec<String>, String, bool);
 
+// at most ~72 MB together, far less in practice (a diff's shared contents
+// are counted in full although the view holds the same allocation)
 static CHANGESETS: LazyLock<Mutex<Lru<ChangesetKey, Arc<ChangesetData>>>> =
-    LazyLock::new(|| Mutex::new(Lru::new(256)));
+    LazyLock::new(|| Mutex::new(Lru::new(256, 8 * MB)));
 static COMMIT_DIFFS: LazyLock<Mutex<Lru<CommitDiffKey, LoadedDiff>>> =
-    LazyLock::new(|| Mutex::new(Lru::new(64)));
+    LazyLock::new(|| Mutex::new(Lru::new(64, 32 * MB)));
 static WORKING_DIFFS: LazyLock<Mutex<Lru<WorkingKey, LoadedDiff>>> =
-    LazyLock::new(|| Mutex::new(Lru::new(64)));
+    LazyLock::new(|| Mutex::new(Lru::new(64, 32 * MB)));
 
 /// The changed files of `shas` (one commit or a range) in `workdir`.
 pub fn changeset(workdir: &Path, shas: &[String]) -> Option<Arc<ChangesetData>> {
@@ -69,7 +117,8 @@ pub fn changeset(workdir: &Path, shas: &[String]) -> Option<Arc<ChangesetData>> 
 
 pub fn store_changeset(workdir: &Path, shas: &[String], data: Arc<ChangesetData>) {
     if let Ok(mut cache) = CHANGESETS.lock() {
-        cache.insert((workdir.to_path_buf(), shas.to_vec()), data);
+        let size = changeset_size(&data);
+        cache.insert((workdir.to_path_buf(), shas.to_vec()), data, size);
     }
 }
 
@@ -97,6 +146,7 @@ pub fn store_commit_diff(
     diff: LoadedDiff,
 ) {
     if let Ok(mut cache) = COMMIT_DIFFS.lock() {
+        let size = loaded_size(&diff);
         cache.insert(
             (
                 workdir.to_path_buf(),
@@ -105,6 +155,7 @@ pub fn store_commit_diff(
                 hide_whitespace,
             ),
             diff,
+            size,
         );
     }
 }
@@ -169,7 +220,8 @@ pub fn store_working_diff(workdir: &Path, path: &str, stamp: WorkingStamp, diff:
         return;
     }
     if let Ok(mut cache) = WORKING_DIFFS.lock() {
-        cache.insert((workdir.to_path_buf(), path.to_string(), stamp), diff);
+        let size = loaded_size(&diff);
+        cache.insert((workdir.to_path_buf(), path.to_string(), stamp), diff, size);
     }
 }
 
@@ -179,18 +231,34 @@ mod tests {
 
     #[test]
     fn lru_keeps_the_most_recent_entries() {
-        let mut lru = Lru::new(2);
-        lru.insert(1, "a");
-        lru.insert(2, "b");
+        let mut lru = Lru::new(2, 100);
+        lru.insert(1, "a", 10);
+        lru.insert(2, "b", 10);
         assert_eq!(lru.get(&1), Some("a"));
-        lru.insert(3, "c");
+        lru.insert(3, "c", 10);
         // 2 was the least recently used
         assert_eq!(lru.get(&2), None);
         assert_eq!(lru.get(&1), Some("a"));
         assert_eq!(lru.get(&3), Some("c"));
-        lru.insert(3, "d");
+        lru.insert(3, "d", 10);
         assert_eq!(lru.get(&3), Some("d"));
         assert_eq!(lru.entries.len(), 2);
+        assert_eq!(lru.bytes, 20);
+    }
+
+    #[test]
+    fn lru_stays_within_its_budget() {
+        let mut lru = Lru::new(10, 100);
+        for key in 0..5 {
+            lru.insert(key, key, 24);
+        }
+        // 5 × 24 > 100: the oldest went
+        assert_eq!(lru.bytes, 96);
+        assert_eq!(lru.get(&0), None);
+        assert_eq!(lru.get(&4), Some(4));
+        // over a quarter of the budget: not kept
+        lru.insert(9, 9, 26);
+        assert_eq!(lru.get(&9), None);
     }
 
     #[test]
