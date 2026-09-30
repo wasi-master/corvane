@@ -185,6 +185,7 @@ fn category_icon(category: Category) -> Octicon {
         Category::Accessibility => Octicon::Accessibility,
         Category::ChangesAndDiffs => Octicon::FileDiff,
         Category::HistoryAndBranches => Octicon::History,
+        Category::Performance => Octicon::Zap,
         Category::Experimental => Octicon::Telescope,
     }
 }

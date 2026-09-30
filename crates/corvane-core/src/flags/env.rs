@@ -113,7 +113,7 @@ mod tests {
     #[test]
     fn parses_every_key_form_and_value_spelling() {
         let (env, errors) = parse(
-            " preset=github-desktop , 201-commit-templates=off, fs-watcher ,203=250,\
+            " preset=github-desktop , 201-commit-templates=off, fs-watcher ,904=250,\
              302-pr-quick-view-width=min-400, product-name=Foo Bar,,",
         );
         assert!(errors.is_empty(), "{errors:?}");
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn bad_entries_are_reported_and_skipped() {
         let (env, errors) = parse(
-            "preset=custom,bogus=1,203=9000,201-commit-templates=maybe,203,commit-templates=on",
+            "preset=custom,bogus=1,904=9000,201-commit-templates=maybe,904,commit-templates=on",
         );
         assert_eq!(env.preset, None);
         assert_eq!(env.values.len(), 1);
@@ -139,7 +139,7 @@ mod tests {
         assert_eq!(errors.len(), 5, "{errors:?}");
         assert!(errors[0].contains("preset must be one of"));
         assert!(errors[1].contains("unknown flag `bogus`"));
-        assert!(errors[2].contains("203-fs-watcher-debounce-ms: 9000 is outside"));
+        assert!(errors[2].contains("904-fs-watcher-debounce-ms: 9000 is outside"));
         assert!(errors[3].contains("is not on or off"));
         assert!(errors[4].contains("needs a value"));
     }

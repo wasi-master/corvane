@@ -169,7 +169,7 @@ Cargo features `bundled-syntax-extended`, `bundled-tree-sitter`, `bundled-git` s
 
 ### 3.9 Feature flags (`corvane_core::flags`)
 
-- Every switchable deviation from GHD and every Corvane-only extra is a flag in `crates/corvane-core/src/flags/registry.rs`: numeric id in a category block (100 Appearance, 200 Repository, 300 GitHub, 400 Window & menus, 500 Settings & updates, 600 Accessibility, 900 Experimental) + slug (`201-commit-templates`), kind (toggle / select / number / text), a value per preset, restart flag, `desktop/desktop` upstream refs. "on" = the deviation is active.
+- Every switchable deviation from GHD and every Corvane-only extra is a flag in `crates/corvane-core/src/flags/registry.rs`: numeric id in a category block (100 Appearance, 200 Repository, 300 GitHub, 400 Window & menus, 500 Settings & updates, 600 Accessibility, 700 Changes & diffs, 800 History & branches, 900 Performance, 1000 Experimental) + slug (`201-commit-templates`), kind (toggle / select / number / text), a value per preset, restart flag, `desktop/desktop` upstream refs. "on" = the deviation is active.
 - Resolution: preset base (**GitHub Desktop** · **Familiar** · **Corvane**, the default · **Everything**) → stored overrides (redb key `flags`) → `CORVANE_FLAGS` for one session (locks). `AppState.flags` is the snapshot every view reads; `Dispatcher::update_flags` is the single write path. Lower crates take parameters, never read flags.
 - UI: Corvane › Flags… (⌘⇧,), a chrome://flags-style dialog (`crates/corvane-ui/src/dialogs/flags.rs`); `docs/reference/flags.md` is generated from the registry (`UPDATE_FLAGS_DOC=1 cargo test -p corvane-core flags_doc`). The parity harness runs with `preset=github-desktop`.
 

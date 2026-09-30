@@ -454,19 +454,6 @@ registry! {
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/watcher.rs"],
     },
 
-    /// The watcher's debounce.
-    FS_WATCHER_DEBOUNCE_MS = 203 "fs-watcher-debounce-ms" {
-        title: "Filesystem watcher debounce",
-        summary: "How long the watcher waits after the last change before refreshing.",
-        ghd_behaviour: "No watcher.",
-        nature: Nature::Feature,
-        kind: Kind::Number { min: 50, max: 5000, unit: Some("ms") },
-        corvane: Value::Number(300), ghd: Value::Number(300),
-        familiar: Value::Number(300), everything: Value::Number(300),
-        restart: false, visible: false, availability: available,
-        upstream: &[],
-        code: &["crates/corvane-core/src/watcher.rs"],
-    },
 
     /// The clone dialog's `owner/name` 404.
     CLONE_SHORTHAND_NOT_FOUND = 204 "clone-shorthand-not-found" {
@@ -1382,21 +1369,6 @@ registry! {
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
 
-    /// The Git LFS check reads .gitattributes instead of `git lfs track`.
-    LFS_DETECT_BY_ATTRIBUTES = 264 "lfs-detect-by-attributes" {
-        title: "Fast Git LFS detection",
-        summary: "Whether a newly added repository uses Git LFS is decided from its committed \
-                  .gitattributes files (plus the root one and info/attributes) instead of \
-                  `git lfs track`, which walks every directory, untracked ones included.",
-        ghd_behaviour: "Runs `git lfs track --json`, which can take minutes in a worktree with \
-                        many untracked files.",
-        nature: Nature::Feature,
-        kind: Kind::Bool,
-        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
-        restart: false, visible: false, availability: available,
-        upstream: &[Upstream::issue(5198)],
-        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
-    },
 
     /// Remove a left-over index.lock from the error dialog.
     REMOVE_STALE_INDEX_LOCK = 265 "remove-stale-index-lock" {
@@ -4089,7 +4061,7 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
 
-    // ---- 900 Experimental ----
+    // ---- 900 Performance ----
 
     /// Diffs of neighbouring files and commits computed ahead of time.
     PREFETCH_DIFFS = 901 "prefetch-diffs" {
@@ -4138,6 +4110,38 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-git/src/status.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+
+    /// The watcher's debounce.
+    FS_WATCHER_DEBOUNCE_MS = 904 "fs-watcher-debounce-ms" {
+        title: "Filesystem watcher debounce",
+        summary: "How long the watcher waits after the last change before refreshing.",
+        ghd_behaviour: "No watcher.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 50, max: 5000, unit: Some("ms") },
+        corvane: Value::Number(300), ghd: Value::Number(300),
+        familiar: Value::Number(300), everything: Value::Number(300),
+        restart: false, visible: false, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-core/src/watcher.rs"],
+    },
+
+    /// The Git LFS check reads .gitattributes instead of `git lfs track`.
+    LFS_DETECT_BY_ATTRIBUTES = 905 "lfs-detect-by-attributes" {
+        title: "Fast Git LFS detection",
+        summary: "Whether a newly added repository uses Git LFS is decided from its committed \
+                  .gitattributes files (plus the root one and info/attributes) instead of \
+                  `git lfs track`, which walks every directory, untracked ones included.",
+        ghd_behaviour: "Runs `git lfs track --json`, which can take minutes in a worktree with \
+                        many untracked files.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(5198)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    // ---- 1000 Experimental ----
 }
 
 /// Ids and slugs that once existed; never reused.

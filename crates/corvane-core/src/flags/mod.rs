@@ -5,7 +5,7 @@
 //! in a category block (`100` Appearance, `200` Repository, `300` GitHub,
 //! `400` Window & menus, `500` Settings & updates, `600` Keyboard &
 //! accessibility, `700` Changes & diffs, `800` History & branches, `900`
-//! Experimental) plus a slug, shown as `201-commit-templates`. Flags are
+//! Performance, `1000` Experimental) plus a slug, shown as `201-commit-templates`. Flags are
 //! toggles, selects, numbers or free text, and "on" always means Corvane's
 //! deviation is active, so the **GitHub Desktop** preset turns every flag to
 //! its GHD-exact value.
@@ -79,11 +79,13 @@ pub enum Category {
     Accessibility,
     ChangesAndDiffs,
     HistoryAndBranches,
+    /// Speed and resource use: the same result, sooner or with less work.
+    Performance,
     Experimental,
 }
 
 impl Category {
-    pub const ALL: [Category; 9] = [
+    pub const ALL: [Category; 10] = [
         Category::Appearance,
         Category::Repository,
         Category::GitHub,
@@ -92,6 +94,7 @@ impl Category {
         Category::Accessibility,
         Category::ChangesAndDiffs,
         Category::HistoryAndBranches,
+        Category::Performance,
         Category::Experimental,
     ];
 
@@ -106,7 +109,8 @@ impl Category {
             Category::Accessibility => 600,
             Category::ChangesAndDiffs => 700,
             Category::HistoryAndBranches => 800,
-            Category::Experimental => 900,
+            Category::Performance => 900,
+            Category::Experimental => 1000,
         }
     }
 
@@ -121,7 +125,8 @@ impl Category {
             6 => Category::Accessibility,
             7 => Category::ChangesAndDiffs,
             8 => Category::HistoryAndBranches,
-            9 => Category::Experimental,
+            9 => Category::Performance,
+            10 => Category::Experimental,
             _ => return None,
         })
     }
@@ -136,6 +141,7 @@ impl Category {
             Category::Accessibility => "Keyboard & accessibility",
             Category::ChangesAndDiffs => "Changes & diffs",
             Category::HistoryAndBranches => "History & branches",
+            Category::Performance => "Performance",
             Category::Experimental => "Experimental",
         }
     }

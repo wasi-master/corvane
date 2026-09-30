@@ -140,7 +140,7 @@ impl Dispatcher {
 
     /// Watch the repository's worktree; each debounced change triggers a
     /// refresh. `202-fs-watcher` turns this off (GHD only refreshes on focus
-    /// and after its own actions); `203-fs-watcher-debounce-ms` is the wait.
+    /// and after its own actions); `904-fs-watcher-debounce-ms` is the wait.
     pub fn start_watching(id: u64, cx: &mut App) {
         let state = Self::state(cx);
         let (path, debounce, leading) = {

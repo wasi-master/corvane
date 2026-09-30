@@ -10,7 +10,7 @@
 //! (`244-background-fetch`; GHD: GitHub repositories only).
 //! Fetch can prune tags deleted on the remote (`248-fetch-prune-tags`).
 //! The LFS check can read `.gitattributes` instead of running
-//! `git lfs track` (`264-lfs-detect-by-attributes`).
+//! `git lfs track` (`905-lfs-detect-by-attributes`).
 //! The background fetch can run without progress in the push/pull button,
 //! and a push, pull or fetch asked for meanwhile waits for it
 //! (`245-push-during-background-fetch`; GHD disables the button).
@@ -1449,7 +1449,7 @@ impl Dispatcher {
             return;
         }
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).lfs_checked = true);
-        // `264-lfs-detect-by-attributes`: read the .gitattributes files instead
+        // `905-lfs-detect-by-attributes`: read the .gitattributes files instead
         // of `git lfs track`, which walks the whole worktree
         let by_attributes = Self::state(cx)
             .read(cx)
