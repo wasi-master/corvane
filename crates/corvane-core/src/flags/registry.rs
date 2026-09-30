@@ -485,6 +485,19 @@ registry! {
         upstream: &[Upstream::issue(20245)],
         code: &["crates/corvane-ui/src/dialogs/sign_in.rs", "crates/corvane-github/src/endpoint.rs"],
     },
+    /// Pull requests whose fork was deleted.
+    PULL_REQUESTS_FROM_DELETED_FORKS = 393 "pull-requests-from-deleted-forks" {
+        title: "Pull requests from deleted forks",
+        summary: "Open pull requests whose head repository was deleted stay in the Pull \
+                  Requests list and check out from the base repository's pull/N/head into pr/N.",
+        ghd_behaviour: "Leaves them out of the list.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14090)],
+        code: &["crates/corvane-core/src/pull_requests.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

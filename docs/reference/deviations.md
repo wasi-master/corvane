@@ -33,6 +33,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Re-run checks**: the check-run popover hides Re-run and the per-job re-run when the stored record of the pull request's base repository says the account can only read it (GHD `CICheckRunPopover` shows them and the request fails). Flag: `390-rerun-needs-push-access`.
 - **Pull Requests tab signed out**: with no account for the repository's endpoint the empty tab shows "Sign in to see pull requests" with a Sign in link (the `SignIn` popup for GitHub.com or Enterprise) and the refresh button is disabled; cached pull requests still list (GHD `NoPullRequests` says "You're all set!" and the refresh button does nothing). Flag: `391-pull-requests-signed-out`.
 - **Plain-HTTP Enterprise**: an Enterprise address typed with `http://` keeps plain HTTP for the API, the sign-in flows and web links (`Endpoint::enterprise(_, allow_http)`); off except in the Everything preset, since the token is then sent unencrypted (GHD forces HTTPS since 3.4.7). Flag: `392-enterprise-plain-http`.
+- **Pull requests from deleted forks**: open pull requests whose head repository is `null` stay in the list; checking one out fetches `refs/pull/<n>/head` from the base repository's remote into `pr/<n>` (reused when it exists) (GHD `pull-request-store` drops them). Flag: `393-pull-requests-from-deleted-forks`.
 
 ## Repository
 
