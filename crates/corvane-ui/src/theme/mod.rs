@@ -242,7 +242,7 @@ pub fn set_mono_font(family: &'static str) {
 pub struct GhdTheme {
     pub name: &'static str,
     pub appearance: Appearance,
-    /// The title bar is drawn light (flag `189-light-toolbar`); GHD's is
+    /// The title bar is drawn light (flag `109-light-toolbar`); GHD's is
     /// always the dark gradient.
     pub light_title_bar: bool,
 
@@ -480,9 +480,9 @@ impl Global for GhdTheme {}
 /// Flag-driven changes to a palette, applied by [`GhdTheme::with_variants`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ThemeVariants {
-    /// Flag `188-colour-blind-diff`: blue additions, orange deletions.
+    /// Flag `108-colour-blind-diff`: blue additions, orange deletions.
     pub colour_blind_diff: bool,
-    /// Flag `189-light-toolbar`: the Light theme's title bar and toolbar
+    /// Flag `109-light-toolbar`: the Light theme's title bar and toolbar
     /// are light too.
     pub light_toolbar: bool,
 }

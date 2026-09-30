@@ -49,7 +49,7 @@ pub enum Hit {
         name: String,
         highlight: Vec<usize>,
     },
-    /// `458-add-local-path-completion`: a folder completing a typed path.
+    /// `223-add-local-path-completion`: a folder completing a typed path.
     Folder {
         completion: String,
         name: String,
@@ -155,7 +155,7 @@ pub fn attempt_branch(text: &str, branches: &[String]) -> Option<Autocompletion>
     })
 }
 
-/// `458-add-local-path-completion`: the whole of `text` is a path whose
+/// `223-add-local-path-completion`: the whole of `text` is a path whose
 /// last segment filters the folders next to it. `None` when nothing matches.
 pub fn attempt_path(text: &str) -> Option<Autocompletion> {
     let hits: Vec<Hit> = corvane_core::folder_completions(text, DEFAULT_MAX_HITS)

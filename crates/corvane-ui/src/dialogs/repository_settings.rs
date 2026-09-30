@@ -4,7 +4,7 @@
 //!
 //! Deviation (flag `edit-global-ignore-file`): Ignored Files links to the
 //! global excludes file, opened in the external editor.
-//! Deviation (flag `421-line-endings-setting`): Git Config ends in a "Line
+//! Deviation (flag `239-line-endings-setting`): Git Config ends in a "Line
 //! endings (core.autocrlf)" select stored in the repository's own config.
 
 use std::rc::Rc;
@@ -49,7 +49,7 @@ pub struct RepositorySettingsDialog {
     loaded: bool,
     /// Fork Behavior tab (`forkContributionTarget`).
     fork_target: corvane_core::ForkContributionTarget,
-    /// `421-line-endings-setting`: the chosen `--local` `core.autocrlf`
+    /// `239-line-endings-setting`: the chosen `--local` `core.autocrlf`
     /// (`None`: the global config's).
     autocrlf: Option<&'static str>,
 }
@@ -62,7 +62,7 @@ fn autocrlf_choice(data: &corvane_core::RepositorySettingsData) -> Option<&'stat
         .find_map(|(c, _)| c.filter(|c| c.eq_ignore_ascii_case(value)))
 }
 
-/// `421-line-endings-setting`: `core.autocrlf` choices (`None` = unset).
+/// `239-line-endings-setting`: `core.autocrlf` choices (`None` = unset).
 const AUTOCRLF_CHOICES: [(Option<&str>, &str); 4] = [
     (None, "Use my global Git config"),
     (Some("true"), "Check out CRLF, commit LF (true)"),
@@ -281,7 +281,7 @@ impl RepositorySettingsDialog {
         let data = self.data(cx);
         match data.and_then(|d| d.remote) {
             Some(remote) => {
-                // flag `286-upstream-remote-in-settings` (Corvane addition,
+                // flag `236-upstream-remote-in-settings` (Corvane addition,
                 // desktop/desktop#6877): the `upstream` remote a fork
                 // workflow adds, read-only under the primary one
                 let s = self.state.read(cx);
@@ -353,7 +353,7 @@ impl RepositorySettingsDialog {
         }
     }
 
-    /// Flag `287-gitignore-templates` (Corvane addition, desktop/desktop#2197):
+    /// Flag `237-gitignore-templates` (Corvane addition, desktop/desktop#2197):
     /// a bundled `.gitignore` template (the Create a New Repository list)
     /// fills an empty box or is appended under a `# <Name>` line; nothing is
     /// written until Save.
@@ -429,7 +429,7 @@ impl RepositorySettingsDialog {
             .when(templates, |d| d.child(self.gitignore_template_select(cx)))
             .child(
                 // `textarea.gitignore { height: 130px }`; flag
-                // `185-taller-text-areas` doubles it
+                // `107-taller-text-areas` doubles it
                 div()
                     .h(zpx(height))
                     .border_1()
@@ -607,7 +607,7 @@ impl RepositorySettingsDialog {
             .into_any_element()
     }
 
-    /// `421-line-endings-setting`: the repository's `core.autocrlf`.
+    /// `239-line-endings-setting`: the repository's `core.autocrlf`.
     fn line_endings_field(&self, cx: &Context<Self>) -> impl IntoElement {
         let selected = AUTOCRLF_CHOICES
             .iter()

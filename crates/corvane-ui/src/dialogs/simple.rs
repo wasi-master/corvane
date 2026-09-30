@@ -2,8 +2,8 @@
 //! dialogs: static content, one or two buttons.
 //!
 //! Deviation: the error dialog can have a "Copy" button (its text cannot be
-//! selected), `281-error-dialog-copy`.
-//! Deviation (`512-remove-stale-index-lock`): an error caused by a left-over
+//! selected), `413-error-dialog-copy`.
+//! Deviation (`265-remove-stale-index-lock`): an error caused by a left-over
 //! `index.lock` offers "Remove Lock File".
 
 use corvane_core::{AppState, Dispatcher, Popup};
@@ -101,7 +101,7 @@ impl Render for SimpleDialog {
                 )
                 .into_any_element()
             }
-            // Corvane (`512-remove-stale-index-lock`): GHD shows the plain error
+            // Corvane (`265-remove-stale-index-lock`): GHD shows the plain error
             Popup::IndexLockExists {
                 title,
                 message,

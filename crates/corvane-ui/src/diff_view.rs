@@ -17,31 +17,31 @@
 //! row's new-file line when the editor can jump to a line (GHD
 //! `onContextMenuText` has Copy, Select All and the expansion item only).
 //!
-//! Deviation (`173-file-mode-change-message`): a mode-only change says "The
+//! Deviation (`742-file-mode-change-message`): a mode-only change says "The
 //! file mode changed from … to …" instead of GHD's "No content changes found".
 //!
-//! Deviation (`175-unified-diff-for-added-files`): in Split mode a new or
+//! Deviation (`744-unified-diff-for-added-files`): in Split mode a new or
 //! deleted file still shows the unified layout, full width.
 //!
-//! Deviation (`670-diff-font-size`): the rows' font size can be set (9–16 px
+//! Deviation (`751-diff-font-size`): the rows' font size can be set (9–16 px
 //! in the 20 px rows); GHD's is fixed at 11 px.
 //!
-//! Deviation (`177-intra-line-graphemes`): intra-line ranges cover whole
+//! Deviation (`746-intra-line-graphemes`): intra-line ranges cover whole
 //! grapheme clusters, so a combining mark stays with its base character.
 //!
-//! Deviation (`179-intra-line-max-length`): the line length beyond which no
+//! Deviation (`747-intra-line-max-length`): the line length beyond which no
 //! intra-line range is computed can be changed (GHD: 1024, fixed).
 //!
-//! Deviation (`180-diff-show-whitespace`): spaces can be marked with dots
+//! Deviation (`748-diff-show-whitespace`): spaces can be marked with dots
 //! and tabs with a line.
 //!
-//! Deviation (`181-binary-diff-as-text`): a binary working-directory file
+//! Deviation (`749-binary-diff-as-text`): a binary working-directory file
 //! offers "Show the diff as text anyway." (`git diff --text`, read-only).
 //!
-//! Deviation (`182-diff-expand-whole-file`): diffs can open with the whole
+//! Deviation (`750-diff-expand-whole-file`): diffs can open with the whole
 //! file expanded (files up to 20 000 lines).
 //!
-//! Deviation (`107-diff-loading-indicator`): while a working-directory diff
+//! Deviation (`740-diff-loading-indicator`): while a working-directory diff
 //! takes longer than [`LOADING_INDICATOR_DELAY`] to compute, a spinner covers
 //! the pane (GHD keeps showing the previous diff, or nothing).
 
@@ -79,7 +79,7 @@ use crate::widgets::{
     Inline, button, checkbox_row, code_ref, link_button, paragraph, primary_button, radio_row,
 };
 
-/// `182-diff-expand-whole-file` leaves longer files collapsed.
+/// `750-diff-expand-whole-file` leaves longer files collapsed.
 const MAX_AUTO_EXPAND_LINES: usize = 20_000;
 
 #[allow(non_snake_case)]
@@ -233,7 +233,7 @@ struct Snapshot {
     key: (u64, String, u64),
     hide_whitespace: bool,
     confirm_discard: bool,
-    /// `181-binary-diff-as-text`: a binary file shown with `--text`.
+    /// `749-binary-diff-as-text`: a binary file shown with `--text`.
     as_text: bool,
 }
 
@@ -289,7 +289,7 @@ pub struct DiffView {
     text_bounds: TextBounds,
     /// The zoom factor the list's row heights were measured at.
     zoom_seen: f32,
-    /// The rows' font size (`670-diff-font-size`; GHD's 11 px otherwise).
+    /// The rows' font size (`751-diff-font-size`; GHD's 11 px otherwise).
     text_size: Pixels,
     list_state: ListState,
     rows: Rc<Vec<Row>>,
@@ -376,7 +376,7 @@ impl DiffView {
         }
     }
 
-    /// `107-diff-loading-indicator`: a spinner over the pane once the
+    /// `740-diff-loading-indicator`: a spinner over the pane once the
     /// working-directory diff has been loading for a moment.
     fn loading_overlay(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
         let loading = self.source == DiffSource::WorkingDirectory && {
@@ -657,7 +657,7 @@ impl DiffView {
         }
     }
 
-    /// Corvane (`614-navigation-shortcuts`): ⌘3 puts keyboard focus here.
+    /// Corvane (`612-navigation-shortcuts`): ⌘3 puts keyboard focus here.
     pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         window.focus(&self.focus_handle, cx);
     }
@@ -685,7 +685,7 @@ impl DiffView {
             Some(hunks) => from_hunks(hunks, self.contents.as_ref().map(|c| c.len())),
             None => Vec::new(),
         });
-        // `182-diff-expand-whole-file`: start expanded, like "Expand Whole
+        // `750-diff-expand-whole-file`: start expanded, like "Expand Whole
         // File" (not for large diffs or files)
         if matches!(snap.diff, Diff::Text { .. })
             && self
@@ -1531,7 +1531,7 @@ impl DiffView {
 
     /// GHD `renderText` with no hunks.
     fn empty_panel(&self, snap: &Snapshot, cx: &App) -> AnyElement {
-        // `173-file-mode-change-message`
+        // `742-file-mode-change-message`
         if let Some((old, new)) = snap.diff.warnings().and_then(|w| w.mode_change.as_ref())
             && self
                 .state
@@ -1557,7 +1557,7 @@ impl DiffView {
     fn binary_panel(&self, snap: &Snapshot, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let full_path = snap.repo_path.join(&snap.path);
-        // `181-binary-diff-as-text`
+        // `749-binary-diff-as-text`
         let as_text = (self.source == DiffSource::WorkingDirectory
             && self
                 .state
@@ -1843,7 +1843,7 @@ impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // View › Zoom changed the row heights the list has cached
         let zoom = crate::theme::sizes::zoom_factor();
-        // … and so does `670-diff-font-size`
+        // … and so does `751-diff-font-size`
         let text_size = match self
             .state
             .read(cx)
@@ -1875,7 +1875,7 @@ impl Render for DiffView {
         }
         let split = {
             let s = self.state.read(cx);
-            // `175-unified-diff-for-added-files`: one side would be empty
+            // `744-unified-diff-for-added-files`: one side would be empty
             let one_sided = matches!(
                 snap.kind,
                 FileStatusKind::New | FileStatusKind::Untracked | FileStatusKind::Deleted
@@ -1900,7 +1900,7 @@ impl Render for DiffView {
             }
             Diff::Text { .. } | Diff::LargeText { .. } | Diff::Empty => self.empty_panel(&snap, cx),
             Diff::Binary => self.binary_panel(&snap, cx),
-            // `184-tga-image-diff` off: GHD does not know TGA images
+            // `755-tga-image-diff` off: GHD does not know TGA images
             Diff::Image { previous, current }
                 if [previous, current]
                     .into_iter()
@@ -2072,7 +2072,7 @@ impl DiffView {
         let t = cx.ghd();
         // `canSelect`: working-directory files that are not conflicted.
         // a binary file shown as text cannot be committed line by line
-        // (`181-binary-diff-as-text`: the partial patch is taken without `--text`)
+        // (`749-binary-diff-as-text`: the partial patch is taken without `--text`)
         let selectable = self.source == DiffSource::WorkingDirectory
             && snap.kind != FileStatusKind::Conflicted
             && !snap.as_text;

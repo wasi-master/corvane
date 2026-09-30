@@ -3,13 +3,13 @@
 //! "New Worktree", the Main / Linked groups, and the context menus shared
 //! with the toolbar button (`ui/toolbar/worktree-dropdown.tsx`).
 //!
-//! Corvane addition (flag `288-worktree-paths`): rows have a tooltip with the
+//! Corvane addition (flag `240-worktree-paths`): rows have a tooltip with the
 //! name and full path, and the filter also matches the path, so worktrees
 //! with the same folder name can be told apart.
 //! Deviation: worktrees git reports `prunable` (directory deleted outside
-//! git) are not listed (`426-hide-prunable-worktrees`); a new worktree's
+//! git) are not listed (`243-hide-prunable-worktrees`); a new worktree's
 //! default folder is the one holding the main worktree, not the clone
-//! folder (`427-worktree-dir-beside-repository`).
+//! folder (`242-worktree-dir-beside-repository`).
 
 use std::path::PathBuf;
 
@@ -81,7 +81,7 @@ pub fn worktree_menu_items(
     items
 }
 
-/// The worktrees the foldout lists: with `426-hide-prunable-worktrees` not
+/// The worktrees the foldout lists: with `243-hide-prunable-worktrees` not
 /// those git reports `prunable` (their directory is gone; GHD lists them and
 /// selecting one fails).
 pub fn listed_worktrees(state: &AppState, worktrees: &[WorktreeEntry]) -> Vec<WorktreeEntry> {
@@ -425,9 +425,9 @@ impl Render for WorktreeFoldout {
 }
 
 /// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir).
-/// With `427-worktree-dir-beside-repository`: the folder holding the
+/// With `242-worktree-dir-beside-repository`: the folder holding the
 /// repository's main worktree, so new worktrees become its siblings;
-/// otherwise flag `289-worktree-location`'s template.
+/// otherwise flag `241-worktree-location`'s template.
 pub fn default_worktree_dir(state: &AppState, repo: u64) -> PathBuf {
     let beside = state
         .flags

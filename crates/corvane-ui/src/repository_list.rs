@@ -21,11 +21,11 @@ pub struct RepositoryFoldout {
     state: Entity<AppState>,
     filter: Entity<InputState>,
     add_menu_open: bool,
-    /// Corvane (`110-repository-status-filter`): only repositories with
+    /// Corvane (`207-repository-status-filter`): only repositories with
     /// uncommitted changes / commits to push or pull.
     only_changed: bool,
     only_ahead_behind: bool,
-    /// Corvane (`313-repository-fork-filter`): only forks / only the rest.
+    /// Corvane (`208-repository-fork-filter`): only forks / only the rest.
     only_forks: bool,
     only_sources: bool,
     /// GHD `FilterList` keyboard selection: the row ↓ / ↑ moved to from
@@ -65,7 +65,7 @@ impl RepositoryFoldout {
         self.highlighted = None;
         let handle = self.filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
-        // Corvane (`112-repository-filter-selects-text`): the remembered
+        // Corvane (`210-repository-filter-selects-text`): the remembered
         // filter text is selected, so typing replaces it
         if self
             .state
@@ -136,18 +136,18 @@ impl RepositoryFoldout {
         let state = self.state.read(cx);
         let raw_query = self.filter.read(cx).value().trim().to_string();
         let query = raw_query.to_lowercase();
-        // Corvane (`116-regex-repository-filter`): `/pattern/`
+        // Corvane (`211-regex-repository-filter`): `/pattern/`
         let regex = state
             .flags
             .bool(corvane_core::flags::ids::REGEX_REPOSITORY_FILTER)
             .then(|| corvane_core::filter::regex_query(&raw_query))
             .flatten();
-        // Corvane (`110-repository-status-filter`)
+        // Corvane (`207-repository-status-filter`)
         let status_filter = state
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER)
             && (self.only_changed || self.only_ahead_behind);
-        // Corvane (`313-repository-fork-filter`)
+        // Corvane (`208-repository-fork-filter`)
         let fork_filter = state
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER)
@@ -171,7 +171,7 @@ impl RepositoryFoldout {
 
         let mut groups: Vec<Group> = Vec::new();
         if query.is_empty() && !status_filter && !fork_filter {
-            // Corvane (`111-recent-repositories-count`; GHD shows 3)
+            // Corvane (`209-recent-repositories-count`; GHD shows 3)
             let shown = usize::try_from(
                 state
                     .flags
@@ -219,7 +219,7 @@ impl RepositoryFoldout {
                 repos: other,
             });
         }
-        // Corvane (`117-flat-repository-results`): while a query is typed,
+        // Corvane (`212-flat-repository-results`): while a query is typed,
         // one list without group headers, best match first
         if !query.is_empty()
             && state
@@ -265,7 +265,7 @@ impl RepositoryFoldout {
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_LIST_BEHIND_ACCENT);
         let (ahead_behind, has_changes) = indicators(self.state.read(cx), id);
-        // Corvane (`119-repository-list-branch`): the checked-out branch
+        // Corvane (`214-repository-list-branch`): the checked-out branch
         // (the loaded state for an opened repository, else the background
         // indicator refresh) joins the dimmed detail
         let branch = {
@@ -361,7 +361,7 @@ impl RepositoryFoldout {
                     .text_size(FONT_SIZE())
                     .when(repo.alias.is_some(), |d| d.italic())
                     .child({
-                        // Corvane (`115-duplicate-names-show-path`): the
+                        // Corvane (`213-duplicate-names-show-path`): the
                         // telling folders, dimmed, after the name
                         let name = repo.name();
                         match detail {
@@ -440,7 +440,7 @@ impl RepositoryFoldout {
                                         )
                                     })
                                     .when(ab.behind > 0, |d| {
-                                        // flag `186-repository-list-behind-accent`:
+                                        // flag `215-repository-list-behind-accent`:
                                         // commits to pull show in the success colour
                                         let color = if behind_accent && !selected {
                                             t.status_success
@@ -469,7 +469,7 @@ impl RepositoryFoldout {
             })
     }
 
-    /// Corvane (`110-repository-status-filter`): the filter options menu.
+    /// Corvane (`207-repository-status-filter`): the filter options menu.
     fn open_filter_menu(
         &mut self,
         position: Point<Pixels>,
@@ -505,7 +505,7 @@ impl RepositoryFoldout {
                 ),
             ]);
         }
-        // Corvane (`313-repository-fork-filter`)
+        // Corvane (`208-repository-fork-filter`)
         if flags.bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER) {
             if !items.is_empty() {
                 items.push(MenuItem::separator());
@@ -525,7 +525,7 @@ impl RepositoryFoldout {
         let _ = (items, position, window);
     }
 
-    /// Corvane (`113-clone-prefills-filter`): the filter text that Add ›
+    /// Corvane (`225-clone-prefills-filter`): the filter text that Add ›
     /// Clone Repository… puts in the clone dialog's filter box.
     fn clone_filter(&self, cx: &App) -> Option<String> {
         let text = self.filter.read(cx).value().trim().to_string();
@@ -640,7 +640,7 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
         }),
         MenuItem::separator(),
-        // `425-view-on-remote`: "View on Remote" for other hosts
+        // `262-view-on-remote`: "View on Remote" for other hosts
         MenuItem::new(
             if repo.github.is_none() && remote_page {
                 "View on Remote"
@@ -671,7 +671,7 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             },
         ),
     ]);
-    // Corvane (`118-remove-all-missing-repositories`): on a missing row,
+    // Corvane (`216-remove-all-missing-repositories`): on a missing row,
     // remove every repository Corvane cannot find (without confirmation,
     // as GHD removes one missing repository)
     let missing_ids: Vec<u64> = state
@@ -705,7 +705,7 @@ fn add_menu_items(clone_filter: Option<String>) -> Vec<crate::context_menu::Menu
     use crate::context_menu::MenuItem;
     vec![
         MenuItem::new("Clone Repository…", move |_, cx| {
-            // Corvane (`113-clone-prefills-filter`)
+            // Corvane (`225-clone-prefills-filter`)
             if let Some(text) = &clone_filter {
                 crate::dialogs::clone_repository::prefill_filter(text.clone());
             }
@@ -728,8 +728,8 @@ impl Render for RepositoryFoldout {
         let groups = self.groups(cx);
         let has_repos = !self.state.read(cx).repositories.is_empty();
         let add_open = self.add_menu_open;
-        // the filter button: `110-repository-status-filter` or
-        // `313-repository-fork-filter`
+        // the filter button: `207-repository-status-filter` or
+        // `208-repository-fork-filter`
         let (status_filter, filtering) = {
             let flags = &self.state.read(cx).flags;
             let status = flags.bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER);
@@ -790,7 +790,7 @@ impl Render for RepositoryFoldout {
                         window,
                         cx,
                     ))
-                    // Corvane (`110-repository-status-filter`): a menu of
+                    // Corvane (`207-repository-status-filter`): a menu of
                     // status filters, blue while one is on
                     .when(status_filter, |d| {
                         d.child(
@@ -886,7 +886,7 @@ impl Render for RepositoryFoldout {
                             .id(("repo-group", group_ix))
                             .flex()
                             .flex_col()
-                            // a flat result list (`117-flat-repository-results`)
+                            // a flat result list (`212-flat-repository-results`)
                             // has no header
                             .when(!group.title.is_empty(), |d| {
                                 d.child(
@@ -937,7 +937,7 @@ fn indicators(s: &AppState, id: u64) -> (Option<corvane_core::AheadBehind>, bool
     (ab, changes)
 }
 
-/// Corvane (`115-duplicate-names-show-path`): for repositories whose names
+/// Corvane (`213-duplicate-names-show-path`): for repositories whose names
 /// repeat within `repos`, the trailing directories of their parent paths
 /// that tell them apart (`fork-a` for `~/fork-a/app` beside `~/fork-b/app`).
 fn duplicate_name_paths(repos: &[Repository]) -> HashMap<u64, String> {
@@ -979,7 +979,7 @@ fn duplicate_name_paths(repos: &[Repository]) -> HashMap<u64, String> {
     out
 }
 
-/// Corvane (`614-navigation-shortcuts`): the repositories in the list's
+/// Corvane (`612-navigation-shortcuts`): the repositories in the list's
 /// order without the Recent group (owner groups by owner, then Other; by
 /// name within a group), for ⇧⌘] / ⇧⌘[.
 pub fn list_order(state: &AppState) -> Vec<u64> {

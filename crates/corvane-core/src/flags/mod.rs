@@ -3,7 +3,8 @@
 //! Every deviation from GitHub Desktop 3.6.6 that can be switched off, and
 //! every Corvane-only extra, is a flag in [`registry::REGISTRY`]: a numeric id
 //! in a category block (`100` Appearance, `200` Repository, `300` GitHub,
-//! `400` Window & menus, `500` Settings & updates, `600` Accessibility, `900`
+//! `400` Window & menus, `500` Settings & updates, `600` Keyboard &
+//! accessibility, `700` Changes & diffs, `800` History & branches, `900`
 //! Experimental) plus a slug, shown as `201-commit-templates`. Flags are
 //! toggles, selects, numbers or free text, and "on" always means Corvane's
 //! deviation is active, so the **GitHub Desktop** preset turns every flag to
@@ -76,17 +77,21 @@ pub enum Category {
     WindowAndMenus,
     SettingsAndUpdates,
     Accessibility,
+    ChangesAndDiffs,
+    HistoryAndBranches,
     Experimental,
 }
 
 impl Category {
-    pub const ALL: [Category; 7] = [
+    pub const ALL: [Category; 9] = [
         Category::Appearance,
         Category::Repository,
         Category::GitHub,
         Category::WindowAndMenus,
         Category::SettingsAndUpdates,
         Category::Accessibility,
+        Category::ChangesAndDiffs,
+        Category::HistoryAndBranches,
         Category::Experimental,
     ];
 
@@ -99,6 +104,8 @@ impl Category {
             Category::WindowAndMenus => 400,
             Category::SettingsAndUpdates => 500,
             Category::Accessibility => 600,
+            Category::ChangesAndDiffs => 700,
+            Category::HistoryAndBranches => 800,
             Category::Experimental => 900,
         }
     }
@@ -112,6 +119,8 @@ impl Category {
             4 => Category::WindowAndMenus,
             5 => Category::SettingsAndUpdates,
             6 => Category::Accessibility,
+            7 => Category::ChangesAndDiffs,
+            8 => Category::HistoryAndBranches,
             9 => Category::Experimental,
             _ => return None,
         })
@@ -124,7 +133,9 @@ impl Category {
             Category::GitHub => "GitHub",
             Category::WindowAndMenus => "Window & menus",
             Category::SettingsAndUpdates => "Settings & updates",
-            Category::Accessibility => "Accessibility",
+            Category::Accessibility => "Keyboard & accessibility",
+            Category::ChangesAndDiffs => "Changes & diffs",
+            Category::HistoryAndBranches => "History & branches",
             Category::Experimental => "Experimental",
         }
     }

@@ -4,13 +4,13 @@
 //! flag `205-add-local-validates-while-typing` checks it on every change and
 //! keeps Add Repository disabled until the path is a repository.
 //!
-//! Deviation (`457-add-local-multiple`): Choose… can pick several folders;
+//! Deviation (`222-add-local-multiple`): Choose… can pick several folders;
 //! more than one adds every picked repository at once.
 //!
-//! Deviation (`459-alias-when-adding`): an optional Alias field names the
+//! Deviation (`224-alias-when-adding`): an optional Alias field names the
 //! repository as it is added (GHD: Create Alias afterwards).
 //!
-//! Deviation (`458-add-local-path-completion`): the Local Path box
+//! Deviation (`223-add-local-path-completion`): the Local Path box
 //! autocompletes folder names (↑/↓, Enter/Tab, Esc) like the Add Worktree
 //! branch box.
 
@@ -37,9 +37,9 @@ pub struct AddExistingRepositoryDialog {
     /// The last `validatePath` result that warrants a warning
     /// (`showNonGitRepositoryWarning` / `isRepositoryBare`).
     warning: Option<PathStatus>,
-    /// `458-add-local-path-completion` popup.
+    /// `223-add-local-path-completion` popup.
     autocomplete: Option<Autocompletion>,
-    /// `459-alias-when-adding`.
+    /// `224-alias-when-adding`.
     alias: Entity<InputState>,
 }
 
@@ -200,7 +200,7 @@ impl AddExistingRepositoryDialog {
     }
 }
 
-/// `457-add-local-multiple`: add every picked folder that is a repository
+/// `222-add-local-multiple`: add every picked folder that is a repository
 /// and name the ones that are not.
 fn add_several(paths: Vec<PathBuf>, cx: &mut App) {
     let (repos, others): (Vec<PathBuf>, Vec<PathBuf>) = paths

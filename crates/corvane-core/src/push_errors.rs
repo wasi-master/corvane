@@ -4,7 +4,7 @@
 //! without the `workflow` scope (`refusedWorkflowUpdate`) and SAML SSO
 //! re-authorization (`samlReauthRequired`).
 //!
-//! Corvane addition (`232-plain-language-remote-errors`): a pull from an
+//! Corvane addition (`255-plain-language-remote-errors`): a pull from an
 //! upstream branch that was deleted, and a clone into a folder the user may
 //! not write to, get a plain-language sentence before git's own message
 //! ([`plain_remote_error`], [`plain_clone_error`]); GHD shows git's text

@@ -47,7 +47,7 @@ pub struct CompareState {
     /// (`AheadBehindStore`), filled while the list is open.
     pub branch_counts: HashMap<String, AheadBehind>,
     pub counts_loaded: bool,
-    /// Flag `444`: the repository's tags, loaded with the counts, offered
+    /// Flag `825`: the repository's tags, loaded with the counts, offered
     /// in the list while filtering.
     pub tags: Vec<String>,
 }

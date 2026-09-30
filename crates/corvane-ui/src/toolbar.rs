@@ -8,8 +8,8 @@
 //! width is saved when the drag ends (GHD writes it on every move).
 //!
 //! The branch button also shows a running merge ("Merging <branch>",
-//! `265-merge-progress-in-branch-button`); GHD shows only checkouts.
-//! Deviation (`docs/reference/deviations.md` › History, flag `246`): the Pull
+//! `412-merge-progress-in-branch-button`); GHD shows only checkouts.
+//! Deviation (`docs/reference/deviations.md` › History, flag `257`): the Pull
 //! button's tooltip lists the incoming commits' summaries (GHD
 //! `push-pull-button.tsx` has none).
 
@@ -36,7 +36,7 @@ pub struct ToolbarButtonModel {
     pub description: SharedString,
     /// Bold main line (repository / branch name).
     pub title: SharedString,
-    /// Corvane (`114-alias-italic-in-toolbar`): an aliased repository's
+    /// Corvane (`410-alias-italic-in-toolbar`): an aliased repository's
     /// name is italic, as in the repository list.
     pub title_italic: bool,
     pub width: Option<Pixels>,
@@ -60,7 +60,7 @@ pub struct ToolbarButtonModel {
     /// GHD `ToolbarButton` `tooltip`, shown south of the button.
     pub tooltip: Option<SharedString>,
     /// The tooltip keeps its maximum width while its text changes (flag
-    /// `187-steady-progress-tooltip`).
+    /// `411-steady-progress-tooltip`).
     pub tooltip_fixed_width: bool,
 }
 
@@ -200,7 +200,7 @@ pub fn toolbar_models(
             None if repo.is_some() => Octicon::DeviceDesktop,
             None => Octicon::Repo,
         },
-        // Corvane (`312-owner-in-repository-button`): a GitHub repository's
+        // Corvane (`409-owner-in-repository-button`): a GitHub repository's
         // owner in place of "Current Repository"
         description: match repo.and_then(|r| r.github.as_ref()) {
             Some(gh)
@@ -263,7 +263,7 @@ pub fn toolbar_models(
     // `checkoutProgress`: title = target branch, description = "Switching to Branch"
     let switching_to = repo_state.and_then(|s| s.checkout_target.clone());
     let switching_to_tooltip = switching_to.clone();
-    // `265-merge-progress-in-branch-button`: a running merge (Merge into…,
+    // `412-merge-progress-in-branch-button`: a running merge (Merge into…,
     // Update from Default Branch) spins the button, "Merging <branch>"
     let merging_from = repo_state
         .and_then(|s| s.mco.as_ref())
@@ -494,7 +494,7 @@ pub fn toolbar_models(
     buttons
 }
 
-/// Flag `246`: the Pull button's tooltip lists the incoming commits.
+/// Flag `257`: the Pull button's tooltip lists the incoming commits.
 fn incoming_tooltip(
     behind: u32,
     repo_state: Option<&corvane_core::RepositoryState>,
@@ -836,7 +836,7 @@ pub fn toolbar_button(
         .into_any_element()
 }
 
-/// Flag `488-toolbar-open-buttons` (Corvane addition, desktop/desktop#21171):
+/// Flag `408-toolbar-open-buttons` (Corvane addition, desktop/desktop#21171):
 /// icon buttons after Push / Pull that open the repository in the external
 /// editor and the shell, like Repository › Open in … (GHD has no such
 /// toolbar buttons).

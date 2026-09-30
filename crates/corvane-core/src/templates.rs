@@ -2,7 +2,7 @@
 //! (GHD `ui/add-repository/gitignores.ts` + `licenses.ts`, data from
 //! `assets/templates/`, see the README there).
 //!
-//! Corvane addition (`455-add-license`): Repository › Add License… writes
+//! Corvane addition (`221-add-license`): Repository › Add License… writes
 //! one of the license templates into an existing repository
 //! ([`write_license`]); GHD offers licenses only when creating one.
 
@@ -132,7 +132,7 @@ pub fn existing_license_file(dir: &std::path::Path) -> Option<String> {
     })
 }
 
-/// `455-add-license`: write `text` to `<dir>/LICENSE`. Never replaces a
+/// `221-add-license`: write `text` to `<dir>/LICENSE`. Never replaces a
 /// file: an existing license file (see [`existing_license_file`]) is an
 /// error, and the file is created with `create_new`.
 pub fn write_license(dir: &std::path::Path, text: &str) -> Result<std::path::PathBuf, String> {

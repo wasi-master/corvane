@@ -2,12 +2,12 @@
 //! fuzzy text match of `lib/fuzzy-find.ts` (fuzzaldrin-plus, approximated:
 //! ordered subsequence with bonuses for consecutive and boundary hits).
 //!
-//! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
+//! Deviation: [`hidden_by`] hides files matching the `706-changes-hide-globs`
 //! patterns from the list (view only; they are still committed), and the
-//! `280-renamed-files-filter` option keeps renamed files; [`sort_files`]
-//! orders the list by status or file name (`282-changes-sort-order`), and
+//! `705-renamed-files-filter` option keeps renamed files; [`sort_files`]
+//! orders the list by status or file name (`703-changes-sort-order`), and
 //! [`path_match`] can match the filter text as a substring, a suffix or the
-//! exact path / file name instead of fuzzily (`283-changes-filter-match`).
+//! exact path / file name instead of fuzzily (`704-changes-filter-match`).
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -58,7 +58,7 @@ pub fn fuzzy_match(query: &str, text: &str) -> Option<(f32, Vec<usize>)> {
     Some((score, hits))
 }
 
-/// `283-changes-filter-match`: how the changes filter text matches a path.
+/// `704-changes-filter-match`: how the changes filter text matches a path.
 /// `mode` is the flag value: `fuzzy` (GHD), `substring`, `suffix` (the path
 /// ends with the text) or `exact` (the whole path or the file name). Case is
 /// ignored; hits are char positions in `path`, as for [`fuzzy_match`]. Non-fuzzy
@@ -91,7 +91,7 @@ pub fn path_match(mode: &str, query: &str, path: &str) -> Option<(f32, Vec<usize
     }
 }
 
-/// Corvane (`116-regex-repository-filter`): a filter text written as
+/// Corvane (`211-regex-repository-filter`): a filter text written as
 /// `/pattern/` is a case-insensitive regular expression; `None` for any
 /// other text or an invalid pattern (the caller falls back to plain text).
 pub fn regex_query(text: &str) -> Option<regex::Regex> {
@@ -155,7 +155,7 @@ pub fn matches_options(filter: &FileListFilter, file: &WorkingDirectoryFileChang
     true
 }
 
-/// The `272-changes-hide-globs` flag text split into patterns: separated by
+/// The `706-changes-hide-globs` flag text split into patterns: separated by
 /// commas or whitespace, empty ones dropped.
 pub fn hide_patterns(text: &str) -> Vec<String> {
     text.split(|c: char| c == ',' || c.is_whitespace())
@@ -241,7 +241,7 @@ pub fn filtered_files<'a>(
     scored.into_iter().map(|(_, f)| f).collect()
 }
 
-/// `282-changes-sort-order`: how the changes list orders its files before
+/// `703-changes-sort-order`: how the changes list orders its files before
 /// the filter ranks them. Unknown flag values keep git's path order.
 pub fn sort_files(files: &mut [WorkingDirectoryFileChange], order: &str) {
     fn rank(kind: FileStatusKind) -> u8 {

@@ -236,7 +236,7 @@ impl Dispatcher {
         {
             Self::refresh_pull_requests(id, false, cx);
         }
-        // `233-prompt-indicator-refresh`: the repository list shows fresh
+        // `217-prompt-indicator-refresh`: the repository list shows fresh
         // indicators (GHD waits for the 15-minute updater)
         if opened
             && foldout == Foldout::Repository
@@ -264,7 +264,7 @@ impl Dispatcher {
         });
     }
 
-    /// `512-remove-stale-index-lock`: the error dialog's "Remove Lock File":
+    /// `265-remove-stale-index-lock`: the error dialog's "Remove Lock File":
     /// delete `lock` unless a git process is running in the repository.
     pub fn remove_index_lock(lock: PathBuf, cx: &mut App) {
         Self::close_popup(cx);
@@ -327,7 +327,7 @@ impl Dispatcher {
         {
             return;
         }
-        // Corvane (`512-remove-stale-index-lock`): a left-over index.lock can
+        // Corvane (`265-remove-stale-index-lock`): a left-over index.lock can
         // be removed from the error (GHD shows git's words only)
         if Self::state(cx)
             .read(cx)
@@ -498,7 +498,7 @@ impl Dispatcher {
         // GHD stores `Path.resolve(path)`: absolute, `.`/`..` folded lexically
         let path = resolve_path(&path);
         let state = Self::state(cx);
-        // `459-alias-when-adding`
+        // `224-alias-when-adding`
         let alias = Self::take_pending_alias(&path, cx);
         let then = move |id: u64, cx: &mut App| {
             if let Some(alias) = alias {
@@ -570,7 +570,7 @@ impl Dispatcher {
             s.selected = Some(id);
             s.recent.retain(|r| *r != id);
             s.recent.insert(0, id);
-            // `111-recent-repositories-count` shows up to that many; at
+            // `209-recent-repositories-count` shows up to that many; at
             // least GHD's 3 are kept (removing the selected repository
             // falls back to the most recent one)
             let shown =
@@ -578,7 +578,7 @@ impl Dispatcher {
                     .unwrap_or(RECENT_REPOSITORIES_LENGTH);
             s.recent.truncate(shown.max(RECENT_REPOSITORIES_LENGTH));
             s.foldout = None;
-            // flag `290-close-dialogs-on-repository-switch` (Corvane addition,
+            // flag `218-close-dialogs-on-repository-switch` (Corvane addition,
             // desktop/desktop#9847): a dialog bound to another repository
             // closes; an operation in progress (conflicts, a credentials
             // prompt) keeps its dialog
@@ -753,7 +753,7 @@ impl Dispatcher {
                     let desktop_stash = stashes
                         .iter()
                         .position(|s| s.branch.is_some() && s.branch == current);
-                    // Corvane (`417-show-latest-other-stash`): without one of
+                    // Corvane (`728-show-latest-other-stash`): without one of
                     // its own, the branch shows the newest stash that no
                     // Desktop made (`git stash` on the command line)
                     let stash = desktop_stash
@@ -773,7 +773,7 @@ impl Dispatcher {
                         .and_then(|_| {
                             corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
                         });
-                    // `246`: what a pull would bring in
+                    // `257`: what a pull would bring in
                     let incoming_commits = info
                         .current_branch()
                         .and_then(|b| b.upstream.as_deref())
@@ -801,7 +801,7 @@ impl Dispatcher {
                             .unwrap_or_default()
                         })
                         .unwrap_or_default();
-                    // `513-branch-upstream-gone`, `514-branch-list-ahead-behind`
+                    // `852-branch-upstream-gone`, `853-branch-list-ahead-behind`
                     let branch_tracking = if track_branches {
                         corvane_git::branch_tracking(git.clone(), &info.workdir).unwrap_or_default()
                     } else {
@@ -818,7 +818,7 @@ impl Dispatcher {
                         stashed_branches,
                         rebase_snapshot,
                         cherry_pick_snapshot,
-                        // `231-clone-counts-as-fetch`: a clone writes no
+                        // `253-clone-counts-as-fetch`: a clone writes no
                         // FETCH_HEAD, so GHD says "never fetched" until the
                         // first fetch
                         last_fetched: corvane_git::last_fetched(&info.workdir).or_else(|| {
@@ -829,7 +829,7 @@ impl Dispatcher {
                         pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                         worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
                             .unwrap_or_default(),
-                        // `238-force-push-after-outside-rewrite`
+                        // `260-force-push-after-outside-rewrite`
                         upstream_rewritten: detect_rewrite
                             && ahead_behind.is_some_and(|ab| ab.ahead > 0 && ab.behind > 0)
                             && info.current_branch().is_some_and(|b| {
@@ -1072,7 +1072,7 @@ impl Dispatcher {
     /// ⇧-click: select the visible range between the anchor and `path`.
     pub fn extend_file_selection(id: u64, path: String, order: Vec<String>, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
-            // `172-shift-click-keeps-selection`
+            // `707-shift-click-keeps-selection`
             let keep = s.flags.bool(crate::flags::ids::SHIFT_CLICK_KEEPS_SELECTION);
             let rs = s.repo_state_mut(id);
             let anchor = rs.selected_file.clone().unwrap_or_else(|| path.clone());
@@ -1154,7 +1154,7 @@ impl Dispatcher {
         }
     }
 
-    /// `181-binary-diff-as-text`: "Show diff anyway" on a binary file
+    /// `749-binary-diff-as-text`: "Show diff anyway" on a binary file
     /// reloads its diff with `git diff --text`.
     pub fn show_binary_diff_as_text(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, _| {
@@ -1283,12 +1283,12 @@ impl Dispatcher {
 
     // ---- history (GHD `_loadHistory`, `_loadNextCommitBatch`, `_changeCommitSelection`) ----
 
-    /// Flag `142`: whether History lists first parents only.
+    /// Flag `807`: whether History lists first parents only.
     pub fn history_first_parent(s: &AppState) -> bool {
         s.settings.history_first_parent && s.flags.bool(crate::flags::ids::HISTORY_FIRST_PARENT)
     }
 
-    /// Flag `142`: switch History to first parents only (or back) and
+    /// Flag `807`: switch History to first parents only (or back) and
     /// reload the selected repository's list.
     pub fn set_history_first_parent(on: bool, cx: &mut App) {
         Self::update_settings(cx, |s| s.history_first_parent = on);
@@ -1345,7 +1345,7 @@ impl Dispatcher {
                                     .selected_commits
                                     .iter()
                                     .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
-                            // flag `146`: a squash / reorder rewrote the
+                            // flag `830`: a squash / reorder rewrote the
                             // selection; pick the new commits instead
                             if !more {
                                 let wanted = std::mem::take(&mut rs.rewritten_selection);
@@ -1719,7 +1719,7 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Flag `443`: undo one file's changes from commit `sha` in the working
+    /// Flag `814`: undo one file's changes from commit `sha` in the working
     /// tree (`corvane_git::revert_file_in_commit`), then refresh.
     pub fn revert_file_in_commit(
         id: u64,
@@ -1769,7 +1769,7 @@ impl Dispatcher {
         );
     }
 
-    /// Corvane addition (flag `242`): revert `shas` without committing, the
+    /// Corvane addition (flag `815`): revert `shas` without committing, the
     /// newest first, and show Changes with the result staged. Needs a clean
     /// working directory, so a conflict can roll everything back.
     pub fn revert_commits_without_committing(id: u64, mut shas: Vec<String>, cx: &mut App) {
@@ -1814,7 +1814,7 @@ impl Dispatcher {
         shas
     }
 
-    /// Corvane addition (flag `147`): apply `shas` to the current branch
+    /// Corvane addition (flag `820`): apply `shas` to the current branch
     /// without committing (oldest first) and show Changes with the result
     /// staged. Needs a clean working directory, so a conflict can roll back.
     pub fn cherry_pick_without_committing(id: u64, shas: Vec<String>, cx: &mut App) {
@@ -1840,7 +1840,7 @@ impl Dispatcher {
         );
     }
 
-    /// Corvane addition (flag `148`): `git format-patch` each of `shas`
+    /// Corvane addition (flag `821`): `git format-patch` each of `shas`
     /// (oldest first) into `dir`, then reveal the first patch in Finder.
     pub fn create_patch_files(id: u64, shas: Vec<String>, dir: PathBuf, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -1885,7 +1885,7 @@ impl Dispatcher {
         );
     }
 
-    /// The push/pull foldout's "Reset to <upstream>" (`229-reset-to-remote`;
+    /// The push/pull foldout's "Reset to <upstream>" (`261-reset-to-remote`;
     /// GHD has no such command): confirm, then [`Self::reset_to_remote`].
     pub fn request_reset_to_remote(id: u64, cx: &mut App) {
         let popup = {
@@ -1953,7 +1953,7 @@ impl Dispatcher {
     }
 
     /// GHD `_createTag`: the new tag joins `tagsToPush`.
-    /// `message` is empty unless flag `244` shows the Message field.
+    /// `message` is empty unless flag `823` shows the Message field.
     pub fn create_tag(id: u64, name: String, sha: String, message: String, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
@@ -1991,7 +1991,7 @@ impl Dispatcher {
         );
     }
 
-    /// `459-alias-when-adding`: give the repository at `path` this alias once
+    /// `224-alias-when-adding`: give the repository at `path` this alias once
     /// it is added (by New / Add / Clone); an empty alias does nothing.
     pub fn alias_when_added(path: &Path, alias: String, cx: &mut App) {
         let alias = alias.trim().to_string();
@@ -2040,7 +2040,7 @@ impl Dispatcher {
     }
 
     /// `Undo Commit…` from history: warn about the commit's tags (flag
-    /// `441`), then about local changes.
+    /// `819`), then about local changes.
     pub fn request_undo_commit(id: u64, cx: &mut App) {
         let tags = Self::undo_warning_tags(id, cx);
         if !tags.is_empty() {
@@ -2056,7 +2056,7 @@ impl Dispatcher {
         Self::request_undo_commit_after_tags(id, cx);
     }
 
-    /// The Changes view's Undo button: the tag warning (flag `441`) only.
+    /// The Changes view's Undo button: the tag warning (flag `819`) only.
     pub fn request_undo_last_commit(id: u64, cx: &mut App) {
         let tags = Self::undo_warning_tags(id, cx);
         if tags.is_empty() {
@@ -2072,7 +2072,7 @@ impl Dispatcher {
         );
     }
 
-    /// Flag `441`: HEAD's tags, empty when the flag is off.
+    /// Flag `819`: HEAD's tags, empty when the flag is off.
     fn undo_warning_tags(id: u64, cx: &App) -> Vec<String> {
         {
             let s = Self::state(cx).read(cx);
@@ -2100,7 +2100,7 @@ impl Dispatcher {
         if !(confirm && Self::working_directory_dirty(id, cx)) {
             return Self::undo_commit(id, cx);
         }
-        // `247`: warn only when the commit touches a file with local changes
+        // `818`: warn only when the commit touches a file with local changes
         let context = Self::repo_context(id, cx).filter(|_| overlap_only);
         let Some((git, workdir)) = context else {
             return Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
@@ -2308,7 +2308,7 @@ impl Dispatcher {
         let submodules = Self::submodule_update_plan(id, cx);
         let git_for_submodules = git.clone();
         let workdir_for_submodules = workdir.clone();
-        // Corvane (`420-pop-stash-on-return`): coming back to a branch with
+        // Corvane (`729-pop-stash-on-return`): coming back to a branch with
         // a clean working directory restores the stash left on it (GHD keeps
         // it until Restore is clicked)
         let pop_stash_for = (Self::state(cx)
@@ -2413,7 +2413,7 @@ impl Dispatcher {
         .detach();
     }
 
-    /// `310-submodules-follow-checkout`: when the flag is on, the submodules
+    /// `263-submodules-follow-checkout`: when the flag is on, the submodules
     /// to leave alone after a checkout or merge (those the Changes list shows
     /// changed now) and the askpass environment for cloning new ones.
     pub(crate) fn submodule_update_plan(
@@ -2469,7 +2469,7 @@ impl Dispatcher {
         } else {
             None
         };
-        // Corvane (`311-undo-delete-branch`): a deleted local branch can be
+        // Corvane (`861-undo-delete-branch`): a deleted local branch can be
         // recreated from the banner (GHD has no undo)
         let undo = (branch.kind == corvane_models::BranchKind::Local
             && Self::state(cx)
@@ -2490,7 +2490,7 @@ impl Dispatcher {
                 flags.bool(crate::flags::ids::EXPLAIN_BRANCH_IN_OTHER_WORKTREE),
             )
         };
-        // Corvane (`414-fetch-after-deleting-current-branch`): the default
+        // Corvane (`862-fetch-after-deleting-current-branch`): the default
         // branch this worktree switched to is brought up to date, so a merged
         // pull request shows up in it (GHD does not fetch)
         let fetch_remote = default
@@ -2502,7 +2502,7 @@ impl Dispatcher {
             id,
             "Could not delete branch",
             move |git, workdir| {
-                // Corvane (`415-explain-branch-in-other-worktree`): git's
+                // Corvane (`863-explain-branch-in-other-worktree`): git's
                 // refusal to use a branch another worktree has checked out
                 // says what to do instead (GHD shows git's words)
                 let explain = |err: corvane_git::GitError, switching: bool| match err
@@ -2571,7 +2571,7 @@ impl Dispatcher {
         );
     }
 
-    /// The "Deleted branch" banner's Undo (`311-undo-delete-branch`):
+    /// The "Deleted branch" banner's Undo (`861-undo-delete-branch`):
     /// recreate `branch` at the commit it pointed at.
     pub fn restore_deleted_branch(id: u64, branch: String, sha: String, cx: &mut App) {
         let restored = branch.clone();
@@ -2586,7 +2586,7 @@ impl Dispatcher {
         );
     }
 
-    /// Delete Branch dialog warnings (`258-delete-branch-warnings`): commits
+    /// Delete Branch dialog warnings (`860-delete-branch-warnings`): commits
     /// only this branch has, and a stash recorded for it.
     pub fn preview_delete_branch(id: u64, name: String, cx: &mut App) {
         let Some(branch) = Self::branch_by_name(id, &name, cx) else {
@@ -2701,7 +2701,7 @@ impl Dispatcher {
 
     /// Branch › Update from Default Branch: merge the default branch in.
     ///
-    /// Deviation (`219-update-from-default-fetches`): GHD merges the local
+    /// Deviation (`858-update-from-default-fetches`): GHD merges the local
     /// default branch as it is (`app/src/ui/app.tsx`
     /// `updateBranchWithContributionTargetBranch`), which may be behind its
     /// remote; with the flag on, its remote is fetched first and the
@@ -2753,7 +2753,7 @@ impl Dispatcher {
 
     /// Bring `branch` into the current branch for Update from Default Branch.
     ///
-    /// Deviation (`222-update-from-default-rebases`): with `pull.rebase` set
+    /// Deviation (`859-update-from-default-rebases`): with `pull.rebase` set
     /// the current branch is rebased onto it (GHD always merges).
     fn update_from_branch(id: u64, branch: String, cx: &mut App) {
         let rebase = {
@@ -3118,7 +3118,7 @@ impl Dispatcher {
 
     // ---- create / clone ----
 
-    /// `455-add-license`: write the named license template to `LICENSE` in
+    /// `221-add-license`: write the named license template to `LICENSE` in
     /// the repository's worktree, filled in like Create a New Repository
     /// does. An existing license file is never replaced.
     pub fn add_license(repo: u64, license: String, cx: &mut App) {
@@ -3169,7 +3169,7 @@ impl Dispatcher {
 
     /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
     /// `keep_existing` leaves files already in the folder alone
-    /// (`456-create-repository-in-folder`).
+    /// (`220-create-repository-in-folder`).
     #[allow(clippy::too_many_arguments)]
     pub fn create_repository(
         path: PathBuf,
@@ -3255,7 +3255,7 @@ impl Dispatcher {
     }
 
     /// `clone_repository`, `depth` making a shallow clone
-    /// (`269-shallow-clone`, the Clone dialog's checkbox).
+    /// (`233-shallow-clone`, the Clone dialog's checkbox).
     pub fn clone_repository_with(
         url: String,
         path: PathBuf,
@@ -3356,13 +3356,13 @@ impl Dispatcher {
                     Err(corvane_git::GitError::Cancelled(_)) => info!("clone cancelled"),
                     Err(err) => {
                         let flags = &Self::state(cx).read(cx).flags;
-                        // `232-plain-language-remote-errors`
+                        // `255-plain-language-remote-errors`
                         let error = flags
                             .bool(crate::flags::ids::PLAIN_LANGUAGE_REMOTE_ERRORS)
                             .then(|| crate::push_errors::plain_clone_error(&err, &path))
                             .flatten()
                             .unwrap_or_else(|| err.to_string());
-                        // `361-clone-failure-keeps-input`: back to the dialog
+                        // `235-clone-failure-keeps-input`: back to the dialog
                         if flags.bool(crate::flags::ids::CLONE_FAILURE_KEEPS_INPUT) {
                             Self::show_popup(Popup::CloneRepositoryRetry { url, path, error }, cx)
                         } else {
@@ -3375,7 +3375,7 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Stop the running clone (`227-clone-cancel`; GHD cannot: removing the
+    /// Stop the running clone (`234-clone-cancel`; GHD cannot: removing the
     /// cloning repository leaves `git clone` running). git removes the
     /// directory it created; the view says "Cancelling…" until it exits.
     pub fn cancel_clone(cx: &mut App) {
@@ -3396,7 +3396,7 @@ impl Dispatcher {
         });
     }
 
-    /// Open a link. With a `571-browser` application set, web links open in
+    /// Open a link. With a `511-browser` application set, web links open in
     /// it (`open -a <app> <url>`); other schemes keep the system handler.
     pub fn open_url(url: &str, cx: &mut App) {
         let browser = Self::state(cx)
@@ -3501,7 +3501,7 @@ impl Dispatcher {
                     .collect()
             })
             .unwrap_or_default();
-        // Corvane (`220-commit-and-push`): push once the commit succeeded;
+        // Corvane (`736-commit-and-push`): push once the commit succeeded;
         // not after an amend, whose rewritten tip may need a force push
         let push_after = options.push_after_commit
             && !amend
@@ -3509,7 +3509,7 @@ impl Dispatcher {
                 .read(cx)
                 .flags
                 .bool(crate::flags::ids::COMMIT_AND_PUSH);
-        // `309-amend-force-push-if-pushed`: the amended commit and the
+        // `259-amend-force-push-if-pushed`: the amended commit and the
         // upstream, to check that the rewritten commit had been pushed
         let pushed_check = {
             let s = Self::state(cx).read(cx);
@@ -3681,7 +3681,7 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Switch Branch › "Discard my changes" (`268-switch-branch-discard`):
+    /// Switch Branch › "Discard my changes" (`865-switch-branch-discard`):
     /// discard every change (new files to the Trash), then check `branch`
     /// out. A failed discard stops before the checkout.
     pub fn discard_all_and_checkout(id: u64, branch: String, cx: &mut App) {
@@ -3741,7 +3741,7 @@ impl Dispatcher {
             (s.settings.confirm_discard_changes, total)
         };
         let all = paths.len() == total;
-        // `476-discard-confirm-snooze`: never for Discard All
+        // `723-discard-confirm-snooze`: never for Discard All
         if confirm && (all || !Self::discard_confirm_snoozed(id, cx)) {
             Self::show_popup(
                 Popup::DiscardChanges {
@@ -3756,7 +3756,7 @@ impl Dispatcher {
         }
     }
 
-    /// Corvane `476-discard-confirm-snooze`: the confirmation is snoozed for
+    /// Corvane `723-discard-confirm-snooze`: the confirmation is snoozed for
     /// this repository.
     fn discard_confirm_snoozed(id: u64, cx: &App) -> bool {
         let s = Self::state(cx).read(cx);
@@ -3767,7 +3767,7 @@ impl Dispatcher {
                 .is_some_and(|until| Instant::now() < until)
     }
 
-    /// Corvane `476-discard-confirm-snooze`: skip the confirmation for the
+    /// Corvane `723-discard-confirm-snooze`: skip the confirmation for the
     /// flag's number of minutes.
     pub fn snooze_discard_confirm(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, _| {
@@ -3888,7 +3888,7 @@ impl Dispatcher {
         Self::ignore_patterns(id, patterns, cx);
     }
 
-    /// Corvane `279-copy-diff`: the changes of `paths` as a patch on the
+    /// Corvane `714-copy-diff`: the changes of `paths` as a patch on the
     /// clipboard (`corvane_git::working_directory_patch`).
     pub fn copy_diff(id: u64, paths: Vec<String>, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -3937,7 +3937,7 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Corvane `470-assume-unchanged`: mark `paths` assume-unchanged, or with
+    /// Corvane `715-assume-unchanged`: mark `paths` assume-unchanged, or with
     /// `paths: None` clear the mark from every file that has it; then refresh.
     pub fn set_assume_unchanged(id: u64, paths: Option<Vec<String>>, assume: bool, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -4490,7 +4490,7 @@ fn forget_remote_names(info: &mut corvane_models::RepositoryInfo) {
     }
 }
 
-/// `221-new-untracked-files-excluded`: untracked files that were not listed
+/// `709-new-untracked-files-excluded`: untracked files that were not listed
 /// before start left out of the next commit (GHD includes every new file).
 fn exclude_new_untracked(
     status: &mut corvane_models::WorkingDirectoryStatus,
@@ -4523,7 +4523,7 @@ fn resolve_path(path: &std::path::Path) -> PathBuf {
     out
 }
 
-/// Whether any of `committed` is among `local` (flag `247`).
+/// Whether any of `committed` is among `local` (flag `818`).
 fn paths_overlap<'a>(mut committed: impl Iterator<Item = &'a String>, local: &[String]) -> bool {
     committed.any(|p| local.contains(p))
 }

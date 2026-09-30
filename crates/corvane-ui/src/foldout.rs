@@ -82,7 +82,7 @@ type ItemClick = Box<dyn Fn(&mut Window, &mut App)>;
 
 /// GHD `PushPullButtonDropDown`: Fetch, and Force push when the branch has
 /// diverged from its upstream (`styles/ui/toolbar/_push-pull-button.scss`).
-/// Corvane addition (`229-reset-to-remote`): "Reset to <upstream>" while the
+/// Corvane addition (`261-reset-to-remote`): "Reset to <upstream>" while the
 /// branch has commits the upstream lacks.
 fn push_pull_dropdown(cx: &App) -> AnyElement {
     let t = cx.ghd();

@@ -1,6 +1,6 @@
 //! Root view: title bar, toolbar, resizable sidebar + content, foldouts, dialogs.
 //!
-//! Deviation: `428-smaller-minimum-sizes` lowers the sidebar minimum from
+//! Deviation: `407-smaller-minimum-sizes` lowers the sidebar minimum from
 //! GHD's 220 px (`ui/app.tsx` `sidebarWidth`) to 120 px.
 
 use std::cell::Cell;
@@ -86,16 +86,16 @@ pub struct Workspace {
     /// once when it opens).
     last_foldout: Option<corvane_core::Foldout>,
     /// A tab click or View › Show Changes / History asked for the section's
-    /// list to take focus at the next render (`615-focus-list-on-section-switch`).
+    /// list to take focus at the next render (`603-focus-list-on-section-switch`).
     focus_section_list: bool,
-    /// The launch has not placed focus yet (`616-launch-focuses-commit-summary`).
+    /// The launch has not placed focus yet (`604-launch-focuses-commit-summary`).
     launch_focus_pending: bool,
-    /// History shows the diff alone (`109-history-review-mode`).
+    /// History shows the diff alone (`801-history-review-mode`).
     review_mode: bool,
 }
 
 /// GHD `sidebarWidth` minimum (220 px), or 120 px with
-/// `428-smaller-minimum-sizes`.
+/// `407-smaller-minimum-sizes`.
 fn sidebar_min_width(state: &AppState) -> Pixels {
     if state
         .flags
@@ -253,7 +253,7 @@ impl Workspace {
     }
 
     /// The branch foldout's filter text while it is open on the Branches tab
-    /// (`261-new-branch-from-filter`: Branch › New Branch… prefills it).
+    /// (`847-new-branch-from-filter`: Branch › New Branch… prefills it).
     pub fn open_branch_filter(&self, cx: &App) -> Option<String> {
         let s = self.state.read(cx);
         (s.foldout == Some(corvane_core::Foldout::Branch)
@@ -287,7 +287,7 @@ impl Workspace {
         self.history.update(cx, |h, cx| h.focus_compare(window, cx));
     }
 
-    /// Corvane (`614-navigation-shortcuts`, ⌃⌘P): the branch foldout on
+    /// Corvane (`612-navigation-shortcuts`, ⌃⌘P): the branch foldout on
     /// its Pull Requests tab (the Branches list for a non-GitHub repository).
     pub fn show_pull_requests_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         Dispatcher::change_branches_tab(corvane_core::BranchesTab::PullRequests, cx);
@@ -298,7 +298,7 @@ impl Workspace {
             .update(cx, |f, cx| f.focus_filter(window, cx));
     }
 
-    /// Corvane (`614-navigation-shortcuts`, ⌘3): focus the diff on the right.
+    /// Corvane (`612-navigation-shortcuts`, ⌘3): focus the diff on the right.
     pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         match self.section {
             Section::Changes => self.diff_view.update(cx, |d, cx| d.focus(window, cx)),
@@ -308,7 +308,7 @@ impl Workspace {
         }
     }
 
-    /// Corvane (`614-navigation-shortcuts`, ⌥↓ / ⌥↑ in the diff): the
+    /// Corvane (`612-navigation-shortcuts`, ⌥↓ / ⌥↑ in the diff): the
     /// next / previous file of the section's file list, clamped at the ends.
     pub fn step_file(&mut self, delta: isize, cx: &mut Context<Self>) {
         match self.section {
@@ -341,7 +341,7 @@ impl Workspace {
     }
 
     /// The user switched sections (a tab, ⌘1 / ⌘2, ⌃Tab). Corvane
-    /// (`615-focus-list-on-section-switch`): the section's list takes focus,
+    /// (`603-focus-list-on-section-switch`): the section's list takes focus,
     /// where GHD leaves it on the body.
     pub fn switch_section(&mut self, section: Section, cx: &mut Context<Self>) {
         self.set_section(section, cx);
@@ -356,7 +356,7 @@ impl Workspace {
         }
     }
 
-    /// Corvane (`616-launch-focuses-commit-summary`): once the first
+    /// Corvane (`604-launch-focuses-commit-summary`): once the first
     /// repository's status has loaded after launch, the commit summary takes
     /// focus when there are changes to commit and nothing else is open.
     fn place_launch_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -417,7 +417,7 @@ impl Workspace {
             .child(tab_bar(
                 vec![
                     TabModel {
-                        // Corvane (`108-stash-dot-on-changes-tab`): the
+                        // Corvane (`727-stash-dot-on-changes-tab`): the
                         // branch has a stash, seen from History
                         dot: self.section == Section::History
                             && self
@@ -482,7 +482,7 @@ impl Workspace {
                 .cloned()
         });
         let showing_stash = rs.is_some_and(|r| r.showing_stash);
-        // `419-restore-stash-suggestion`
+        // `726-restore-stash-suggestion`
         let restore_stash = state
             .flags
             .bool(corvane_core::flags::ids::RESTORE_STASH_SUGGESTION)
@@ -549,7 +549,7 @@ impl Workspace {
                         repo.map(|r| r.id),
                         repo.map(|r| r.path.clone()),
                         s.editor_label(),
-                        // flag `285-no-changes-open-in-shell` (Corvane
+                        // flag `724-no-changes-open-in-shell` (Corvane
                         // addition; GHD `NoChanges` has no shell action)
                         s.flags
                             .bool(corvane_core::flags::ids::NO_CHANGES_OPEN_IN_SHELL)
@@ -600,7 +600,7 @@ impl Workspace {
                         primary: false,
                     });
                 }
-                // `274-no-changes-view-pull-request`: GHD shows no remote
+                // `725-no-changes-view-pull-request`: GHD shows no remote
                 // action while the branch has an open pull request
                 let open_pr = repo_id
                     .filter(|_| {
@@ -642,7 +642,7 @@ impl Workspace {
                         primary: false,
                     });
                 }
-                // Corvane (`419-restore-stash-suggestion`): the branch's
+                // Corvane (`726-restore-stash-suggestion`): the branch's
                 // stash can be restored from here, first and highlighted
                 if restore_stash && let Some(id) = repo_id {
                     actions.insert(
@@ -670,7 +670,7 @@ impl Workspace {
         }
     }
 
-    /// Corvane (`109-history-review-mode`): View › Toggle History Review
+    /// Corvane (`801-history-review-mode`): View › Toggle History Review
     /// Mode (⌃⌘S) hides the repository sidebar and the commit's file list
     /// in History, so the diff gets the whole width.
     pub fn toggle_review_mode(&mut self, cx: &mut Context<Self>) {

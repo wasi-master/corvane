@@ -96,7 +96,7 @@ pub struct InitOptions {
     /// `.gitattributes` contents; GHD always writes one when missing.
     pub git_attributes: Option<String>,
     /// Leave an existing README.md / .gitignore / LICENSE alone instead of
-    /// replacing it (`456-create-repository-in-folder`, where the folder
+    /// replacing it (`220-create-repository-in-folder`, where the folder
     /// usually has files already).
     pub keep_existing: bool,
 }
@@ -240,7 +240,7 @@ pub fn parse_clone_progress(line: &str) -> CloneProgress {
 }
 
 /// `git clone --progress --recurse-submodules <url> <path>` streaming progress;
-/// `depth` adds `--depth <n>` (a shallow clone, `269-shallow-clone`). A
+/// `depth` adds `--depth <n>` (a shallow clone, `233-shallow-clone`). A
 /// cancelled `cancel` token stops git, which removes what it created.
 pub fn clone(
     git: Arc<GitBinary>,

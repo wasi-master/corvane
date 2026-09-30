@@ -5,7 +5,7 @@
 //! optional "Undo" / "View conflicts" link and, when dismissable, an ✕.
 //! `update_banner` is GHD's `UpdateAvailable` banner.
 //!
-//! Deviation (`311-undo-delete-branch`): "Deleted branch" / "Restored
+//! Deviation (`861-undo-delete-branch`): "Deleted branch" / "Restored
 //! branch" banners, with an Undo that recreates the deleted branch, are
 //! Corvane's (GHD deletes branches without a way back).
 

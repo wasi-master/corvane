@@ -479,7 +479,7 @@ impl DialogHost {
                 description,
                 count,
             } => {
-                // flag `144`: the target commit's own description, for "Keep
+                // flag `827`: the target commit's own description, for "Keep
                 // Target's Message"
                 let target_body = {
                     let s = state.read(cx);

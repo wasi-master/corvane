@@ -17,16 +17,16 @@ pub struct MenuOptions {
     pub show_release_notes: bool,
     /// Flag `206-import-from-github-desktop`.
     pub show_import: bool,
-    /// Flag `396-view-upstream-on-github`.
+    /// Flag `321-view-upstream-on-github`.
     pub show_view_upstream: bool,
-    /// Flag `486-window-menu-main-window`.
+    /// Flag `405-window-menu-main-window`.
     pub show_main_window: bool,
-    /// Flag `455-add-license`.
+    /// Flag `221-add-license`.
     pub show_add_license: bool,
-    /// Flag `423-fetch-all-repositories`.
+    /// Flag `247-fetch-all-repositories`.
     pub fetch_all: bool,
     /// Flags that add key bindings and their View menu items
-    /// (`614-navigation-shortcuts`, `109-history-review-mode`).
+    /// (`612-navigation-shortcuts`, `801-history-review-mode`).
     pub keymap: corvane_ui::keymap::KeymapFlags,
 }
 
@@ -101,14 +101,14 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
         MenuItem::action("Show Branches List", ShowBranchesList),
         MenuItem::action("Show Worktrees List", ShowWorktreesList),
     ];
-    // Corvane (`614-navigation-shortcuts`)
+    // Corvane (`612-navigation-shortcuts`)
     if keymap.navigation_shortcuts {
         view.push(MenuItem::action(
             "Show Pull Requests List",
             ShowPullRequestsList,
         ));
     }
-    // Corvane (`109-history-review-mode`)
+    // Corvane (`801-history-review-mode`)
     if keymap.history_review_mode {
         view.push(MenuItem::action(
             "Toggle History Review Mode",
@@ -201,7 +201,7 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
     ]);
 }
 
-/// Window menu; flag `486-window-menu-main-window` appends "Corvane", which
+/// Window menu; flag `405-window-menu-main-window` appends "Corvane", which
 /// shows the main window again after ⌘W or the red close button.
 fn window_items(show_main_window: bool) -> Vec<MenuItem> {
     let mut items = vec![

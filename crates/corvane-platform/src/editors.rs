@@ -6,7 +6,7 @@
 //! command line tool in their bundle; other editors just open the file.
 //! `EXTRA_EDITORS` (flag `extra-editors`) adds editors GHD does not list.
 //! Deviation: [`code_workspace_file`] lets VS Code and its forks open a
-//! repository's only `*.code-workspace` file (`475-vscode-workspace-file`).
+//! repository's only `*.code-workspace` file (`509-vscode-workspace-file`).
 
 use std::path::{Path, PathBuf};
 
@@ -110,7 +110,7 @@ const EXTRA_EDITORS: &[(&str, &[&str])] = &[
     ("Antigravity", &["com.google.antigravity"]),
 ];
 
-/// Editors that open VS Code `.code-workspace` files (`475-vscode-workspace-file`).
+/// Editors that open VS Code `.code-workspace` files (`509-vscode-workspace-file`).
 const CODE_WORKSPACE_EDITORS: &[&str] = &[
     "Visual Studio Code",
     "Visual Studio Code (Insiders)",
@@ -119,7 +119,7 @@ const CODE_WORKSPACE_EDITORS: &[&str] = &[
     "Windsurf",
 ];
 
-/// Corvane `475-vscode-workspace-file`: the one `*.code-workspace` file at
+/// Corvane `509-vscode-workspace-file`: the one `*.code-workspace` file at
 /// the top of `dir` when `editor` is VS Code or a fork of it; `None` when
 /// there is none or several.
 pub fn code_workspace_file(editor: &FoundEditor, dir: &Path) -> Option<PathBuf> {

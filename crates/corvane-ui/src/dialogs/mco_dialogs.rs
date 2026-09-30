@@ -6,14 +6,14 @@
 //! plus `local-changes-overwritten-dialog.tsx` and the squash message popup
 //! (`commit-message` in a dialog).
 //!
-//! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
+//! Deviations: the conflicts step's Resolve All menu (flag `839`, GHD
 //! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
-//! branches with a local branch in the rebase list (flag `451`); Copy File
-//! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
-//! the stopped commit above the conflicts list (flag `453`); the rebase list
-//! preselects the default branch (flag `143`); the squash message popup can
-//! go back to the target commit's message (flag `144`); Open in Merge Tool in
-//! a conflicted file's menu (flag `150`).
+//! branches with a local branch in the rebase list (flag `832`); Copy File
+//! Path items in a conflicted file's menu (flag `840`, GHD `unmerged-file.tsx`);
+//! the stopped commit above the conflicts list (flag `841`); the rebase list
+//! preselects the default branch (flag `831`); the squash message popup can
+//! go back to the target commit's message (flag `827`); Open in Merge Tool in
+//! a conflicted file's menu (flag `842`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -74,7 +74,7 @@ impl McoDialog {
                 corvane_core::McoDetail::Rebase { base_branch, .. } => base_branch.clone(),
                 _ => None,
             });
-        // flag `143`: the rebase list starts on the default branch (when that
+        // flag `831`: the rebase list starts on the default branch (when that
         // is not the current one) and previews it
         let preselected = {
             let s = state.read(cx);
@@ -143,7 +143,7 @@ impl McoDialog {
                 ),
                 _ => Vec::new(),
             };
-            // flag `451`: `origin/main` too, not only the local `main`
+            // flag `832`: `origin/main` too, not only the local `main`
             if let Some(info) = info
                 && s.flags
                     .bool(corvane_core::flags::ids::REBASE_ONTO_REMOTE_BRANCH)
@@ -579,7 +579,7 @@ impl McoDialog {
         let close = move |_: &mut Window, cx: &mut App| Dispatcher::hide_conflicts(repo, cx);
 
         let mut content = div().w(zpx(460.)).flex().flex_col();
-        // flag `453`: which commit stopped (the progress step's details)
+        // flag `841`: which commit stopped (the progress step's details)
         // (a cherry-pick's count only moves once a pick is done, so it is
         // left out rather than naming the previous commit)
         if matches!(
@@ -653,7 +653,7 @@ impl McoDialog {
                     .child(div().pl(SPACING()).child("All conflicts resolved")),
             );
         } else {
-            // flag `446`: Resolve All ▾ next to the count (a choice per file,
+            // flag `839`: Resolve All ▾ next to the count (a choice per file,
             // written on Continue; each file keeps its Undo)
             let resolve_all = (conflicted_count > 1
                 && self
@@ -1069,7 +1069,7 @@ fn unmerged_file_row(
                                     )
                                 };
                                 let mut menu_items = Vec::new();
-                                // flag `150`: `git mergetool` on this file
+                                // flag `842`: `git mergetool` on this file
                                 if merge_tool {
                                     let path = rel_path.clone();
                                     menu_items.push(MenuItem::new(
@@ -1094,7 +1094,7 @@ fn unmerged_file_row(
                                             Dispatcher::show_in_finder(&p2, cx);
                                         },
                                     ));
-                                    // flag `452`: the changes list's copy items
+                                    // flag `840`: the changes list's copy items
                                     if copy_paths {
                                         let relative = rel_path.clone();
                                         menu_items.push(MenuItem::separator());
@@ -1331,7 +1331,7 @@ pub struct SquashCommitMessageDialog {
     count: usize,
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
-    /// Flag `144`: the target commit's summary and description.
+    /// Flag `827`: the target commit's summary and description.
     target_message: Option<(String, String)>,
 }
 
@@ -1353,7 +1353,7 @@ impl SquashCommitMessageDialog {
         let summary_state =
             cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         summary_state.update(cx, |s, cx| s.set_value(summary, window, cx));
-        // flag `185-taller-text-areas`: 12 lines instead of GHD's 6
+        // flag `107-taller-text-areas`: 12 lines instead of GHD's 6
         let rows = if AppState::global(cx)
             .read(cx)
             .flags

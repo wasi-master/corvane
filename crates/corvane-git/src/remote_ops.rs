@@ -604,7 +604,7 @@ pub fn push(
     Ok(())
 }
 
-/// Corvane addition (flag `445`): `git push <remote> --delete
+/// Corvane addition (flag `826`): `git push <remote> --delete
 /// refs/tags/<tag>`.
 pub fn delete_remote_tag(
     git: Arc<GitBinary>,

@@ -44,7 +44,7 @@ pub struct Settings {
     pub confirm_checkout_commit: bool,
     /// GHD `askForConfirmationOnUndoCommit`.
     pub confirm_undo_commit: bool,
-    /// Flag `142`: History lists first parents only (`git log --first-parent`).
+    /// Flag `807`: History lists first parents only (`git log --first-parent`).
     pub history_first_parent: bool,
     /// GHD `uncommittedChangesStrategy` ("If I have changes and I switch branches…").
     pub uncommitted_changes_strategy: UncommittedChangesStrategy,

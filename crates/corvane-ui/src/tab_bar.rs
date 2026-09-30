@@ -74,7 +74,7 @@ pub struct TabModel {
     pub id: &'static str,
     pub label: SharedString,
     pub count: Option<usize>,
-    /// Corvane (`108-stash-dot-on-changes-tab`): a blue dot after the label.
+    /// Corvane (`727-stash-dot-on-changes-tab`): a blue dot after the label.
     pub dot: bool,
 }
 

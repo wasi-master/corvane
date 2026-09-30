@@ -2,45 +2,45 @@
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
 //!
 //! Deviations (GHD `app/src/ui/changes/commit-message.tsx`):
-//! - a detached HEAD gets a commit warning (`270-detached-head-commit-warning`).
+//! - a detached HEAD gets a commit warning (`730-detached-head-commit-warning`).
 //! - Open in editor / default program act on every selected file, and the
-//!   list menu has "Open All in <editor>" (`271-open-multiple-files`).
-//! - files matching the `272-changes-hide-globs` patterns are left out of the
+//!   list menu has "Open All in <editor>" (`712-open-multiple-files`).
+//! - files matching the `706-changes-hide-globs` patterns are left out of the
 //!   list (they are still committed).
 //! - ↑ / ↓ in an empty summary recall recent commit messages
-//!   (`273-recall-commit-messages`).
+//!   (`731-recall-commit-messages`).
 //! - committing on the default branch asks first
-//!   (`275-confirm-commit-to-default-branch`).
-//! - the summary can be capped at 72 characters (`277-summary-max-length`).
+//!   (`732-confirm-commit-to-default-branch`).
+//! - the summary can be capped at 72 characters (`733-summary-max-length`).
 //! - "Ignore All .x Files" items give the number of changed .x files
-//!   (`278-ignore-menu-counts`).
+//!   (`718-ignore-menu-counts`).
 //! - "Copy Diff" puts the selected files' changes on the clipboard as a patch
-//!   (`279-copy-diff`).
-//! - the Filter Options popover has "Renamed files" (`280-renamed-files-filter`).
+//!   (`714-copy-diff`).
+//! - the Filter Options popover has "Renamed files" (`705-renamed-files-filter`).
 //! - rows can show the file name without its directory
-//!   (`170-changes-file-names-only`).
-//! - the list can be ordered by status or file name (`282-changes-sort-order`).
+//!   (`702-changes-file-names-only`).
+//! - the list can be ordered by status or file name (`703-changes-sort-order`).
 //! - the filter text can match as a substring, suffix or exact name
-//!   (`283-changes-filter-match`).
+//!   (`704-changes-filter-match`).
 //! - a "Committing as Name <email>" line can sit above the summary
-//!   (`171-commit-author-line`).
+//!   (`734-commit-author-line`).
 //! - included paths Windows cannot check out get a warning
-//!   (`284-windows-invalid-names-warning`).
+//!   (`716-windows-invalid-names-warning`).
 //! - the file menu can mark files assume-unchanged, the list menu clears the
-//!   marks (`470-assume-unchanged`).
+//!   marks (`715-assume-unchanged`).
 //! - a commit made outside Corvane with the drafted summary clears the draft
-//!   (`471-clear-message-after-outside-commit`).
-//! - the undo bar has a commit context menu (`472-undo-bar-menu`).
-//! - an optional tag field tags the new commit (`473-commit-tag-field`).
-//! - a single file's menu has "Open With…" (`474-open-file-with`).
+//!   (`738-clear-message-after-outside-commit`).
+//! - the undo bar has a commit context menu (`739-undo-bar-menu`).
+//! - an optional tag field tags the new commit (`737-commit-tag-field`).
+//! - a single file's menu has "Open With…" (`713-open-file-with`).
 //! - rows show "+N -M" before the status icon and the header the totals
 //!   (GHD `changes-list.tsx` has none; flag `changes-line-counts`).
 //! - a single file's menu adds "Ignore File In" (a nearer `.gitignore`,
 //!   `info/exclude`, the global excludes file; flag `ignore-file-targets`).
 //! - "Name <email>" in the co-authors box adds a co-author without a GitHub
-//!   account (`422-free-form-co-authors`).
+//!   account (`735-free-form-co-authors`).
 //! - the "N changed files" row ends in a spinner while Discard Changes runs
-//!   or a status refresh is slow (`416-changes-busy-indicator`).
+//!   or a status refresh is slow (`708-changes-busy-indicator`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -85,10 +85,10 @@ use crate::widgets::{
     primary_button, text_box_with_menu,
 };
 
-/// `271-open-multiple-files`: the most files one "Open …" item launches.
+/// `712-open-multiple-files`: the most files one "Open …" item launches.
 pub(crate) const MAX_BULK_OPEN: usize = 25;
 
-/// GHD `MaxTagNameLength` (`473-commit-tag-field`).
+/// GHD `MaxTagNameLength` (`737-commit-tag-field`).
 const MAX_TAG_NAME_LENGTH: usize = 245;
 
 /// Which commit-form field an autocompletion / spellcheck result belongs to.
@@ -119,7 +119,7 @@ struct PendingSpell {
 }
 
 /// A co-author's token id: the lower-cased login, or the lower-cased email
-/// of a `422-free-form-co-authors` author without one.
+/// of a `735-free-form-co-authors` author without one.
 fn co_author_id(author: &Author) -> Option<String> {
     match author {
         Author::Known {
@@ -142,12 +142,12 @@ pub struct ChangesSidebar {
     co_authors: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
-    /// `473-commit-tag-field`: the optional tag field, and the tag to create
+    /// `737-commit-tag-field`: the optional tag field, and the tag to create
     /// once the repository's commit (nonce past the stored one) lands.
     tag: Entity<InputState>,
     pending_tag: Option<(u64, u64, String)>,
     /// Repository and newest commit last seen
-    /// (`471-clear-message-after-outside-commit`).
+    /// (`738-clear-message-after-outside-commit`).
     seen_head: (Option<u64>, Option<String>),
     seen_amend_nonce: u64,
     /// Repository and `commit.template` text the form was last prefilled for.
@@ -185,10 +185,10 @@ pub struct ChangesSidebar {
     /// `isRuleFailurePopoverOpen`: the commit-message rule failures popover.
     rule_failure_popover_open: bool,
     rule_hint_bounds: Rc<Cell<Bounds<Pixels>>>,
-    /// `273-recall-commit-messages`: index into the recent messages the form
+    /// `731-recall-commit-messages`: index into the recent messages the form
     /// shows; `None` once the user edits it.
     recalled: Option<usize>,
-    /// When the running status refresh started (`416-changes-busy-indicator`).
+    /// When the running status refresh started (`708-changes-busy-indicator`).
     refresh_since: Cell<Option<std::time::Instant>>,
 }
 
@@ -216,7 +216,7 @@ impl ChangesSidebar {
                 .selected_state()
                 .map(|rs| rs.commit_nonce)
                 .unwrap_or(0);
-            // `473-commit-tag-field`: tag the commit that just landed
+            // `737-commit-tag-field`: tag the commit that just landed
             if let Some((repo, before, _)) = &this.pending_tag {
                 let landed = state
                     .read(cx)
@@ -235,7 +235,7 @@ impl ChangesSidebar {
                 this.seen_commit_nonce = nonce;
                 this.clear_form(window, cx);
             }
-            // `471-clear-message-after-outside-commit`: a new HEAD commit made
+            // `738-clear-message-after-outside-commit`: a new HEAD commit made
             // elsewhere with the drafted summary clears the draft
             let head = {
                 let s = state.read(cx);
@@ -327,7 +327,7 @@ impl ChangesSidebar {
             this.on_input_event(CommitField::Summary, ev, cx)
         })
         .detach();
-        // `277-summary-max-length`: like `maxlength`, the part of an edit
+        // `733-summary-max-length`: like `maxlength`, the part of an edit
         // that goes past the limit is dropped
         cx.subscribe_in(
             &summary,
@@ -569,7 +569,7 @@ impl ChangesSidebar {
         let (text, caret) = self.field_text_and_caret(CommitField::CoAuthors, cx);
         let free_start = self.co_author_free_start(cx).min(text.len());
         let free = &text[free_start..];
-        // Corvane (`422-free-form-co-authors`): "Name <email>" becomes a
+        // Corvane (`735-free-form-co-authors`): "Name <email>" becomes a
         // co-author without a GitHub account, and Space only turns a word
         // typed with @ into a handle, so a name can be typed with spaces
         let free_form = self
@@ -1145,7 +1145,7 @@ impl ChangesSidebar {
         self.refresh_spelling(CommitField::Description, cx);
     }
 
-    /// `273-recall-commit-messages`: ↑ (`delta` 1, older) / ↓ (-1, newer) in
+    /// `731-recall-commit-messages`: ↑ (`delta` 1, older) / ↓ (-1, newer) in
     /// the summary field, shell-history style. Starts only from an untouched
     /// form (summary empty, description empty or the commit template); ↓ past
     /// the newest message restores the untouched form. Returns whether the
@@ -1261,7 +1261,7 @@ impl ChangesSidebar {
         cx.notify();
     }
 
-    /// Corvane (`615-focus-list-on-section-switch`).
+    /// Corvane (`603-focus-list-on-section-switch`).
     pub fn list_focus_handle(&self) -> FocusHandle {
         self.list_focus.clone()
     }
@@ -1326,7 +1326,7 @@ impl ChangesSidebar {
         (!paths.is_empty()).then_some((id, paths))
     }
 
-    /// Corvane (`607-cmd-backspace-discards-files`): ⌘⌫ discards the
+    /// Corvane (`605-cmd-backspace-discards-files`): ⌘⌫ discards the
     /// highlighted files, confirming as the context menu's Discard Changes
     /// does (GHD binds ⌘⌫ to Repository › Remove everywhere).
     fn discard_highlighted(&mut self, cx: &mut Context<Self>) {
@@ -1343,7 +1343,7 @@ impl ChangesSidebar {
         }
     }
 
-    /// Corvane (`608-open-file-shortcuts`): the first highlighted file on
+    /// Corvane (`606-open-file-shortcuts`): the first highlighted file on
     /// disk (a deleted file has nothing to open, as in the context menu).
     fn highlighted_file_on_disk(&self, cx: &App) -> Option<PathBuf> {
         let (id, paths) = self.highlighted_files(cx)?;
@@ -1356,7 +1356,7 @@ impl ChangesSidebar {
             .flatten()
     }
 
-    /// Corvane (`613-copy-path-shortcuts`): the context menu's Copy Paths /
+    /// Corvane (`611-copy-path-shortcuts`): the context menu's Copy Paths /
     /// Copy Relative Paths for the highlighted files, one per line.
     fn copy_highlighted_paths(&self, absolute: bool, cx: &mut Context<Self>) {
         let Some((id, paths)) = self.highlighted_files(cx) else {
@@ -1475,7 +1475,7 @@ impl ChangesSidebar {
                 },
             ),
         ];
-        // Corvane: `220-commit-and-push`
+        // Corvane: `736-commit-and-push`
         if push_option {
             items.push(MenuItem::checkbox(
                 "Push After Committing",
@@ -1502,11 +1502,11 @@ impl ChangesSidebar {
         let Some(status) = rs.status.as_ref() else {
             return (Vec::new(), 0);
         };
-        // `272-changes-hide-globs`
+        // `706-changes-hide-globs`
         let hide = corvane_core::filter::hide_patterns(
             s.flags.text(corvane_core::flags::ids::CHANGES_HIDE_GLOBS),
         );
-        // `282-changes-sort-order`
+        // `703-changes-sort-order`
         let order = s.flags.text(corvane_core::flags::ids::CHANGES_SORT_ORDER);
         let mut sorted = None;
         if order != "path" {
@@ -1515,7 +1515,7 @@ impl ChangesSidebar {
             sorted = Some(files);
         }
         let files = sorted.as_deref().unwrap_or(&status.files);
-        // `283-changes-filter-match`
+        // `704-changes-filter-match`
         let mode = s.flags.text(corvane_core::flags::ids::CHANGES_FILTER_MATCH);
         let visible = filtered_files(files, &text, &rs.file_list_filter, &hide, mode)
             .into_iter()
@@ -1645,7 +1645,7 @@ impl ChangesSidebar {
         let filter = self.filter_options(cx);
         let text_active = !self.filter.read(cx).value().trim().is_empty();
         let active = filter.count_active() > 0 || text_active;
-        // `280-renamed-files-filter` (kept while active, to be cleared)
+        // `705-renamed-files-filter` (kept while active, to be cleared)
         let renamed_option =
             s.flags.bool(corvane_core::flags::ids::RENAMED_FILES_FILTER) || filter.renamed;
         let bounds = self.filter_button_bounds.get();
@@ -1930,7 +1930,7 @@ impl ChangesSidebar {
                 })
                 .enabled(!deleted),
             ];
-            // `474-open-file-with`
+            // `713-open-file-with`
             if open_file_with {
                 items.push(
                     MenuItem::new("Open With…", move |_, cx| {
@@ -1955,7 +1955,7 @@ impl ChangesSidebar {
             return;
         }
 
-        // `278-ignore-menu-counts`: changed files per extension
+        // `718-ignore-menu-counts`: changed files per extension
         let extension_count = |ext: &str| {
             status_files
                 .iter()
@@ -2078,7 +2078,7 @@ impl ChangesSidebar {
                 Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx)
             }));
         }
-        // `470-assume-unchanged`: tracked files only (the index must know them)
+        // `715-assume-unchanged`: tracked files only (the index must know them)
         if assume_unchanged {
             let tracked = targets.iter().all(|f| {
                 matches!(
@@ -2113,7 +2113,7 @@ impl ChangesSidebar {
             }));
         }
         items.push(MenuItem::separator());
-        // `279-copy-diff`
+        // `714-copy-diff`
         let copy_diff_item = copy_diff.then(|| {
             let paths = paths.clone();
             MenuItem::new(
@@ -2126,7 +2126,7 @@ impl ChangesSidebar {
             )
         });
         if open_many && targets.len() > 1 {
-            // `271-open-multiple-files`: the open items act on the selection
+            // `712-open-multiple-files`: the open items act on the selection
             let existing: Vec<PathBuf> = targets
                 .iter()
                 .filter(|f| f.status.kind != FileStatusKind::Deleted)
@@ -2171,7 +2171,7 @@ impl ChangesSidebar {
                 .as_ref()
                 .map(|st| st.files.iter().map(|f| f.path.clone()).collect())
                 .unwrap_or_default();
-            // `271-open-multiple-files`: every changed file still on disk
+            // `712-open-multiple-files`: every changed file still on disk
             let openable: Option<Vec<PathBuf>> = s
                 .flags
                 .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
@@ -2219,7 +2219,7 @@ impl ChangesSidebar {
             ));
         }
         if assume_unchanged {
-            // `470-assume-unchanged`: the way back for files the list no
+            // `715-assume-unchanged`: the way back for files the list no
             // longer shows
             items.push(MenuItem::separator());
             items.push(MenuItem::new(
@@ -2230,7 +2230,7 @@ impl ChangesSidebar {
         self.open_menu(items, position, window, cx);
     }
 
-    /// `473-commit-tag-field`: the repository's commit nonce and the trimmed
+    /// `737-commit-tag-field`: the repository's commit nonce and the trimmed
     /// tag name, when the field is shown and filled in with a valid length.
     fn tag_to_create(&self, cx: &App) -> Option<(u64, String)> {
         let s = self.state.read(cx);
@@ -2252,11 +2252,11 @@ impl ChangesSidebar {
         let summary = self.summary.read(cx).value().to_string();
         let description = self.description.read(cx).value().to_string();
         let unknown = self.unknown_co_authors(cx);
-        // `473-commit-tag-field`
+        // `737-commit-tag-field`
         self.pending_tag = self
             .tag_to_create(cx)
             .map(|(nonce, name)| (id, nonce, name));
-        // `275-confirm-commit-to-default-branch` (not when amending)
+        // `732-confirm-commit-to-default-branch` (not when amending)
         let default_branch = {
             let s = self.state.read(cx);
             s.selected_state()
@@ -2449,7 +2449,7 @@ impl ChangesSidebar {
             )
     }
 
-    /// `416-changes-busy-indicator`: a spinner at the end of the "N changed
+    /// `708-changes-busy-indicator`: a spinner at the end of the "N changed
     /// files" row while Discard Changes runs, or once a status refresh has
     /// taken [`BUSY_INDICATOR_DELAY`] (GHD shows neither).
     fn busy_indicator(&self, cx: &Context<Self>) -> Option<AnyElement> {
@@ -2840,7 +2840,7 @@ impl ChangesSidebar {
         )
     }
 
-    /// Corvane addition (`270-detached-head-commit-warning`): a `CommitWarning`
+    /// Corvane addition (`730-detached-head-commit-warning`): a `CommitWarning`
     /// while HEAD is detached, since the commit lands on no branch.
     fn detached_head_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -2896,7 +2896,7 @@ impl ChangesSidebar {
         )
     }
 
-    /// `284-windows-invalid-names-warning`: included (not deleted) files whose
+    /// `716-windows-invalid-names-warning`: included (not deleted) files whose
     /// path Windows rejects.
     fn windows_names_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -2934,7 +2934,7 @@ impl ChangesSidebar {
         ))
     }
 
-    /// `171-commit-author-line`: the identity the next commit is made with.
+    /// `734-commit-author-line`: the identity the next commit is made with.
     fn author_line(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
         let s = self.state.read(cx);
@@ -3427,7 +3427,7 @@ impl ChangesSidebar {
     }
 
     /// `#undo-commit`: "Committed N ago / summary" + Undo, after a commit.
-    /// `472-undo-bar-menu`: the History commit menu's items for HEAD that
+    /// `739-undo-bar-menu`: the History commit menu's items for HEAD that
     /// make sense here.
     fn open_undo_bar_menu(
         &mut self,
@@ -3487,7 +3487,7 @@ impl ChangesSidebar {
         Some(
             div()
                 .id("undo-commit-bar")
-                // `472-undo-bar-menu`
+                // `739-undo-bar-menu`
                 .when(menu, |d| {
                     d.on_mouse_down(
                         MouseButton::Right,
@@ -3619,7 +3619,7 @@ impl ChangesSidebar {
             let show = s.selected_state().is_some_and(|rs| rs.show_co_authored_by);
             (is_github, is_github && show)
         };
-        // `473-commit-tag-field` (not while amending)
+        // `737-commit-tag-field` (not while amending)
         let tag_field = {
             let s = self.state.read(cx);
             s.flags.bool(corvane_core::flags::ids::COMMIT_TAG_FIELD)
@@ -4057,7 +4057,7 @@ impl Render for ChangesSidebar {
     }
 }
 
-/// `271-open-multiple-files`: "Open N Files in <editor>" / "… with Default
+/// `712-open-multiple-files`: "Open N Files in <editor>" / "… with Default
 /// Program" for a multi-selection; disabled past [`MAX_BULK_OPEN`].
 fn open_many_items(files: &[PathBuf], editor_label: &str) -> Vec<MenuItem> {
     let n = files.len();
@@ -4089,7 +4089,7 @@ pub(crate) fn open_all_in_editor_item(label: String, files: Vec<PathBuf>) -> Men
     .enabled(enabled)
 }
 
-/// `277-summary-max-length`: GitHub truncates longer summaries.
+/// `733-summary-max-length`: GitHub truncates longer summaries.
 const SUMMARY_MAX_CHARS: usize = 72;
 
 /// The byte range to drop so `text` fits in `max` chars: the chars just

@@ -22,7 +22,7 @@ use crate::persistence::StoreExt;
 use crate::remote::spawn_bg;
 use crate::state::Popup;
 
-/// Where new worktrees go by default under the `289-worktree-location`
+/// Where new worktrees go by default under the `241-worktree-location`
 /// template: `{clone-dir}` is Settings' clone directory, `{repo}` the
 /// repository's name, and a leading `~` the home directory. The flag's
 /// default, `{clone-dir}`, is GHD's behaviour.

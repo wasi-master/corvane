@@ -15,13 +15,13 @@
 //! instead. When a lookup fails otherwise (offline, rate limit) the shorthand
 //! is cloned as `https://github.com/owner/name.git`.
 //!
-//! Deviation (`360-clone-local-sources`): a local folder (`/path`, `~/path`)
+//! Deviation (`232-clone-local-sources`): a local folder (`/path`, `~/path`)
 //! or `file://` URL is cloned as typed once [`resolve_local`] finds a
 //! repository there, and "no Git repository at that path" is reported
 //! before git runs (GHD turns `/a/b` into `https://github.com/a/b.git` and
 //! rejects longer paths).
 //!
-//! Deviation (`355-clone-prefers-ssh`): the SSH URL can be preferred for
+//! Deviation (`226-clone-prefers-ssh`): the SSH URL can be preferred for
 //! every lookup, not only for a typed SSH URL (GHD has no protocol setting).
 
 use std::path::PathBuf;
@@ -36,11 +36,11 @@ use crate::remote::spawn_bg;
 /// The `DialogError` GHD shows when the repository can't be found.
 pub const REPOSITORY_NOT_FOUND: &str = "We couldn't find that repository. Check that you are logged in, the network is accessible, and the URL or repository alias are spelled correctly.";
 
-/// `360-clone-local-sources`: the source is not a repository on disk.
+/// `232-clone-local-sources`: the source is not a repository on disk.
 pub const LOCAL_SOURCE_NOT_FOUND: &str =
     "There's no Git repository at that path. Check the path and try again.";
 
-/// `360-clone-local-sources`: the folder a local clone source names: an
+/// `232-clone-local-sources`: the folder a local clone source names: an
 /// absolute path, `~/…`, or a `file://` URL (`file:///abs`,
 /// `file://localhost/abs`, `%20` for spaces).
 pub fn local_source(input: &str) -> Option<PathBuf> {
@@ -57,7 +57,7 @@ pub fn local_source(input: &str) -> Option<PathBuf> {
     input.starts_with('/').then(|| PathBuf::from(input))
 }
 
-/// `360-clone-local-sources`: `None` when `input` is not a local source,
+/// `232-clone-local-sources`: `None` when `input` is not a local source,
 /// else what to clone (a `file://` URL as typed, a path expanded) or
 /// [`LOCAL_SOURCE_NOT_FOUND`].
 pub fn resolve_local(input: &str) -> Option<Result<CloneInfo, &'static str>> {
@@ -155,7 +155,7 @@ pub fn resolve(
 /// `resolve`; with `strict_shorthand` off (the GHD value of
 /// `204-clone-shorthand-not-found`) an `owner/name` every account answers
 /// 404 for is handed to git as typed instead of failing here. `prefer_ssh`
-/// (`355-clone-prefers-ssh`) asks the API for the SSH URL even when the
+/// (`226-clone-prefers-ssh`) asks the API for the SSH URL even when the
 /// input is not an SSH URL.
 pub fn resolve_with(
     input: &str,
@@ -239,7 +239,7 @@ pub fn resolve_with(
 impl Dispatcher {
     /// Resolve what the Clone dialog should clone (GHD `resolveCloneInfo`)
     /// on a background thread. `prefer_ssh` asks for the SSH clone URL
-    /// (`355-clone-prefers-ssh`, decided by the dialog).
+    /// (`226-clone-prefers-ssh`, decided by the dialog).
     pub fn resolve_clone_info(
         input: String,
         prefer_ssh: bool,

@@ -37,7 +37,7 @@ pub enum Popup {
         title: String,
         message: String,
     },
-    /// `512-remove-stale-index-lock`: an error caused by a left-over
+    /// `265-remove-stale-index-lock`: an error caused by a left-over
     /// `index.lock`, with a button to remove it.
     IndexLockExists {
         title: String,
@@ -197,7 +197,7 @@ pub enum Popup {
         summary: String,
         description: String,
     },
-    /// Corvane `275-confirm-commit-to-default-branch`: committing on the
+    /// Corvane `732-confirm-commit-to-default-branch`: committing on the
     /// default branch; "Commit" goes on to `UnknownAuthors` when
     /// `unknown_co_authors` is not empty.
     ConfirmCommitToDefaultBranch {
@@ -218,7 +218,7 @@ pub enum Popup {
         repo: u64,
         sha: String,
     },
-    /// Corvane addition (`229-reset-to-remote`): confirm resetting the
+    /// Corvane addition (`261-reset-to-remote`): confirm resetting the
     /// current branch to its upstream (`reset --hard`).
     ResetToRemote {
         repo: u64,
@@ -244,12 +244,12 @@ pub enum Popup {
     WarnLocalChangesBeforeUndo {
         repo: u64,
     },
-    /// Flag `445`: delete a tag that is not in `tagsToPush`.
+    /// Flag `826`: delete a tag that is not in `tagsToPush`.
     ConfirmDeletePushedTag {
         repo: u64,
         tag: String,
     },
-    /// Flag `441`: the commit being undone carries tags.
+    /// Flag `819`: the commit being undone carries tags.
     WarnTaggedCommitBeforeUndo {
         repo: u64,
         tags: Vec<String>,
@@ -311,7 +311,7 @@ pub enum Popup {
         branch: String,
     },
     /// Corvane: confirm a checkout from the branch list
-    /// (`266-confirm-branch-switch`).
+    /// (`864-confirm-branch-switch`).
     ConfirmSwitchBranch {
         repo: u64,
         branch: String,
@@ -546,7 +546,7 @@ pub struct RepositorySettingsData {
     pub global: Identity,
     /// `core.autocrlf` (line endings written to `.gitignore`).
     pub autocrlf: bool,
-    /// `--local` `core.autocrlf` (`421-line-endings-setting`).
+    /// `--local` `core.autocrlf` (`239-line-endings-setting`).
     pub local_autocrlf: Option<String>,
 }
 
@@ -572,12 +572,12 @@ pub enum RetryAction {
     Push {
         force_with_lease: bool,
         branch: Option<String>,
-        /// Push only up to this commit (flag `243`).
+        /// Push only up to this commit (flag `816`).
         up_to: Option<String>,
     },
     Pull,
     Fetch,
-    /// Rebase the current branch onto `base` (flag `447`).
+    /// Rebase the current branch onto `base` (flag `833`).
     Rebase {
         base: String,
     },
@@ -653,11 +653,11 @@ pub struct CloneState {
     pub description: String,
     /// 0..1, `None` = indeterminate.
     pub value: Option<f32>,
-    /// Stops the clone (`227-clone-cancel`, `Dispatcher::cancel_clone`).
+    /// Stops the clone (`234-clone-cancel`, `Dispatcher::cancel_clone`).
     pub cancel: corvane_git::CancelToken,
 }
 
-/// What deleting a branch would lose (`258-delete-branch-warnings`).
+/// What deleting a branch would lose (`860-delete-branch-warnings`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeleteBranchPreview {
     pub branch: String,
@@ -698,7 +698,7 @@ pub struct RepositoryState {
     pub selected_files: Vec<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
-    /// `181-binary-diff-as-text`: the path whose diff was asked for with
+    /// `749-binary-diff-as-text`: the path whose diff was asked for with
     /// `--text` ("Show diff anyway" on a binary file).
     pub diff_as_text: Option<String>,
     /// Bumped whenever `diff` is replaced, so views can cache derived rows.
@@ -713,18 +713,18 @@ pub struct RepositoryState {
     pub last_commit: Option<LastCommit>,
     /// Summaries of the upstream's commits the current branch lacks
     /// (`HEAD..upstream`, newest first, at most [`INCOMING_COMMITS_LIMIT`]),
-    /// for the Pull button's tooltip (flag `246`).
+    /// for the Pull button's tooltip (flag `257`).
     pub incoming_commits: Vec<String>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
-    /// `476-discard-confirm-snooze`: discarding (not all changes) skips the
+    /// `723-discard-confirm-snooze`: discarding (not all changes) skips the
     /// confirmation until then (this session only).
     pub discard_confirm_snoozed_until: Option<Instant>,
     /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).
     pub show_co_authored_by: bool,
     pub co_authors: Vec<corvane_models::Author>,
     pub committing: bool,
-    /// Discard Changes is running (`416-changes-busy-indicator`).
+    /// Discard Changes is running (`708-changes-busy-indicator`).
     pub discarding: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,
@@ -772,19 +772,19 @@ pub struct RepositoryState {
     /// Branch a checkout is switching to (`checkoutProgress.target`).
     pub checkout_target: Option<String>,
     /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`);
-    /// with `417-show-latest-other-stash`, else the newest stash no Desktop made.
+    /// with `728-show-latest-other-stash`, else the newest stash no Desktop made.
     pub stash: Option<corvane_models::StashEntry>,
     /// Local branches' upstream state by name, read while
-    /// `513-branch-upstream-gone` or `514-branch-list-ahead-behind` is on.
+    /// `852-branch-upstream-gone` or `853-branch-list-ahead-behind` is on.
     pub branch_tracking: Arc<std::collections::HashMap<String, corvane_git::BranchTracking>>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
     /// Branches with a GitHub Desktop / Corvane stash (the branch list's
-    /// stash icon, `418-branch-list-stash-icon`).
+    /// stash icon, `854-branch-list-stash-icon`).
     pub stashed_branches: Vec<String>,
     /// Merge dialog preview.
     pub merge_preview: Option<crate::mco::MergePreview>,
-    /// Delete Branch dialog warnings (`258-delete-branch-warnings`).
+    /// Delete Branch dialog warnings (`860-delete-branch-warnings`).
     pub delete_branch_preview: Option<DeleteBranchPreview>,
     /// `pullRequestState`: the Preview Pull Request dialog's data.
     pub pull_request_preview: Option<crate::pull_request_preview::PullRequestPreview>,
@@ -811,10 +811,10 @@ pub struct RepositoryState {
     /// summary's counts; everything else dims.
     pub highlighted_shas: Vec<String>,
     pub mco_undo: Option<crate::mco::McoUndo>,
-    /// Flag `145`: the message of a squash that failed, keyed by its commits
+    /// Flag `828`: the message of a squash that failed, keyed by its commits
     /// (onto, then the squashed ones), offered again by the next squash of them.
     pub squash_draft: Option<(Vec<String>, String)>,
-    /// Flag `146`: commits (summary, author time) a squash / reorder just
+    /// Flag `830`: commits (summary, author time) a squash / reorder just
     /// rewrote; the next history load selects their new shas.
     pub rewritten_selection: Vec<(String, Option<i64>)>,
     /// `changesState.conflictState`
@@ -823,13 +823,13 @@ pub struct RepositoryState {
     pub force_push_branches: HashMap<String, String>,
     /// The current branch is ahead of and behind its upstream, and its
     /// reflog holds the upstream's tip: commits pushed from here were
-    /// rewritten outside Corvane (`238-force-push-after-outside-rewrite`).
+    /// rewritten outside Corvane (`260-force-push-after-outside-rewrite`).
     pub upstream_rewritten: bool,
 
     // ---- remote (`isPushPullFetchInProgress`, `pushPullFetchProgress`, `lastFetched`) ----
     pub push_pull_in_progress: bool,
     /// The running network operation is a background fetch that shows no
-    /// progress (`228-push-during-background-fetch`).
+    /// progress (`245-push-during-background-fetch`).
     pub quiet_background_fetch: bool,
     pub push_pull_progress: Option<crate::remote::PushPullProgress>,
     pub last_fetched: Option<std::time::SystemTime>,
@@ -857,7 +857,7 @@ pub struct FileListFilter {
     pub new_files: bool,
     pub modified: bool,
     pub deleted: bool,
-    /// Corvane `280-renamed-files-filter`.
+    /// Corvane `705-renamed-files-filter`.
     pub renamed: bool,
 }
 
@@ -868,7 +868,7 @@ pub enum FilterOption {
     NewFiles,
     ModifiedFiles,
     DeletedFiles,
-    /// Corvane `280-renamed-files-filter`.
+    /// Corvane `705-renamed-files-filter`.
     RenamedFiles,
 }
 
@@ -934,7 +934,7 @@ impl RepositoryState {
     }
 
     /// [`Self::stash`] when a Desktop made it for this branch: the entry a new
-    /// stash replaces (a `git stash` shown by `417-show-latest-other-stash`
+    /// stash replaces (a `git stash` shown by `728-show-latest-other-stash`
     /// is never dropped to make room).
     pub fn desktop_stash(&self) -> Option<&corvane_models::StashEntry> {
         self.stash.as_ref().filter(|s| s.branch.is_some())
@@ -962,7 +962,7 @@ pub struct AppState {
     pub foldout: Option<Foldout>,
     pub popup: Option<Popup>,
     pub cloning: Option<CloneState>,
-    /// `459-alias-when-adding`: aliases typed in New / Add / Clone, applied
+    /// `224-alias-when-adding`: aliases typed in New / Add / Clone, applied
     /// when the repository at that (resolved) path is added.
     pub pending_aliases: Vec<(PathBuf, String)>,
     pub sign_in: Option<SignInState>,

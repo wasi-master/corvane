@@ -13,18 +13,18 @@
 //! hides it at once (`onMouseLeavePullRequestQuickView`).
 //!
 //! Deviations: dates are the tip's committer date (GHD: author date); Other
-//! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
-//! The filter ignores an `owner:` prefix (`260-branch-filter-strips-owner`).
+//! Branches can be sorted newest first (`848-branch-list-sort-by-date`).
+//! The filter ignores an `owner:` prefix (`849-branch-filter-strips-owner`).
 //! Rows can tell local-only, tracked and remote-only branches apart by icon
-//! (`262-branch-list-local-remote-icons`), and a filter-row toggle can
-//! narrow the list to remote branches (`263-branch-list-remote-only`).
+//! (`850-branch-list-local-remote-icons`), and a filter-row toggle can
+//! narrow the list to remote branches (`851-branch-list-remote-only`).
 //! The context menu can start a rebase onto the branch
-//! (`267-branch-menu-rebase-onto`).
-//! Deviation (`513-branch-upstream-gone`): a local branch whose upstream was
+//! (`856-branch-menu-rebase-onto`).
+//! Deviation (`852-branch-upstream-gone`): a local branch whose upstream was
 //! deleted on the remote shows a cloud-offline icon after its name.
-//! Deviation (`514-branch-list-ahead-behind`): local branch rows show their
+//! Deviation (`853-branch-list-ahead-behind`): local branch rows show their
 //! commits to push / pull ("2↑ 1↓") or an upload icon when unpublished.
-//! Deviation (`418-branch-list-stash-icon`): a local branch with a Desktop
+//! Deviation (`854-branch-list-stash-icon`): a local branch with a Desktop
 //! stash shows the stash icon after its name (GHD `branch-list-item.tsx` does
 //! not).
 
@@ -84,7 +84,7 @@ pub struct BranchFoldout {
     selected_row: Option<String>,
     list_focus: FocusHandle,
     list_focused: bool,
-    /// `263-branch-list-remote-only`: the list shows remote branches only.
+    /// `851-branch-list-remote-only`: the list shows remote branches only.
     remote_only: bool,
 }
 
@@ -105,7 +105,7 @@ pub struct BranchGroup {
     pub branches: Vec<Branch>,
 }
 
-/// Flag `260-branch-filter-strips-owner`: `owner:branch` (GitHub's
+/// Flag `849-branch-filter-strips-owner`: `owner:branch` (GitHub's
 /// copy-branch-name format) filters by `branch`. `:` can't appear in a ref
 /// name, so nothing that could match is lost.
 fn strip_owner_prefix(query: &str, cx: &App) -> String {
@@ -124,7 +124,7 @@ fn strip_owner_prefix(query: &str, cx: &App) -> String {
     }
 }
 
-/// Flag `263-branch-list-remote-only`: every remote branch matching `query`
+/// Flag `851-branch-list-remote-only`: every remote branch matching `query`
 /// (those with a local counterpart too), in one "Remote Branches" group.
 fn remote_group(branches: &[Branch], query: &str, cx: &App) -> Vec<BranchGroup> {
     let mut remote: Vec<Branch> = branches
@@ -147,7 +147,7 @@ fn remote_group(branches: &[Branch], query: &str, cx: &App) -> Vec<BranchGroup> 
     }
 }
 
-/// Flag `257-branch-list-sort-by-date`: Other Branches newest first.
+/// Flag `848-branch-list-sort-by-date`: Other Branches newest first.
 pub fn sort_by_date(cx: &App) -> bool {
     AppState::try_global(cx).is_some_and(|s| {
         s.read(cx)
@@ -228,7 +228,7 @@ pub fn group_branches(
 
 /// Remote-tracking branches that [`group_branches`] hides behind their local
 /// branch (`origin/main` when `main` exists), for the rebase list (flag
-/// `451`): rebasing onto the fetched remote needs no pull of the local one.
+/// `832`): rebasing onto the fetched remote needs no pull of the local one.
 pub fn remote_counterparts(branches: &[Branch], query: &str) -> Option<BranchGroup> {
     let query = query.trim();
     let mut remotes: Vec<Branch> = branches
@@ -377,7 +377,7 @@ impl BranchFoldout {
         )
     }
 
-    /// The Branches tab's filter text (`261-new-branch-from-filter`), with
+    /// The Branches tab's filter text (`847-new-branch-from-filter`), with
     /// an `owner:` prefix stripped as the list does.
     pub fn filter_text(&self, cx: &App) -> String {
         strip_owner_prefix(self.filter.read(cx).value().trim(), cx)
@@ -571,8 +571,8 @@ impl BranchFoldout {
             .into_any_element()
     }
 
-    /// `stashed`: the branch has a Desktop stash (`418-branch-list-stash-icon`);
-    /// `tracking`: its upstream state (`513-branch-upstream-gone`).
+    /// `stashed`: the branch has a Desktop stash (`854-branch-list-stash-icon`);
+    /// `tracking`: its upstream state (`852-branch-upstream-gone`).
     fn row(
         &self,
         id: u64,
@@ -582,7 +582,7 @@ impl BranchFoldout {
         tracking: Option<corvane_git::BranchTracking>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
-        // `514-branch-list-ahead-behind`: unpublished, or commits to push / pull
+        // `853-branch-list-ahead-behind`: unpublished, or commits to push / pull
         let ahead_behind = self
             .state
             .read(cx)
@@ -674,7 +674,7 @@ impl BranchFoldout {
             })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
-                // `266-confirm-branch-switch`
+                // `864-confirm-branch-switch`
                 if AppState::global(cx)
                     .read(cx)
                     .flags
@@ -706,7 +706,7 @@ impl BranchFoldout {
                     {
                         use crate::context_menu::MenuItem;
                         let local = branch.kind == BranchKind::Local;
-                        // `267-branch-menu-rebase-onto`
+                        // `856-branch-menu-rebase-onto`
                         let rebase_onto = AppState::global(cx)
                             .read(cx)
                             .flags
@@ -727,7 +727,7 @@ impl BranchFoldout {
                             branch.name.clone(),
                             branch.name.clone(),
                         );
-                        // Corvane addition (`230-update-branch-from-upstream`)
+                        // Corvane addition (`857-update-branch-from-upstream`)
                         let update = (local && !current)
                             .then(|| branch.upstream_short())
                             .flatten()
@@ -826,7 +826,7 @@ impl BranchFoldout {
                     if current {
                         Octicon::Check
                     } else if distinguish_remote {
-                        // `262-branch-list-local-remote-icons`
+                        // `850-branch-list-local-remote-icons`
                         match (branch.kind, branch.upstream.is_some()) {
                             (BranchKind::Remote, _) => Octicon::Server,
                             (BranchKind::Local, false) => Octicon::DeviceDesktop,

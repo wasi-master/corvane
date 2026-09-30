@@ -2,10 +2,10 @@
 //! name, description, path, README, and the bundled Git Ignore / License
 //! templates (`corvane_core::templates`).
 //!
-//! Deviation (`459-alias-when-adding`): an optional Alias field names the
+//! Deviation (`224-alias-when-adding`): an optional Alias field names the
 //! new repository in the list (GHD: Create Alias afterwards).
 //!
-//! Deviation (`456-create-repository-in-folder`): an "in this folder"
+//! Deviation (`220-create-repository-in-folder`): an "in this folder"
 //! checkbox creates the repository in the Local Path folder itself (GHD
 //! always adds a `<name>` subfolder); files already there (README.md,
 //! .gitignore, LICENSE) are kept rather than replaced.
@@ -42,9 +42,9 @@ pub struct CreateRepositoryDialog {
     license: Option<String>,
     gitignore_names: Vec<String>,
     licenses: Vec<corvane_core::templates::License>,
-    /// `456-create-repository-in-folder`: create in Local Path itself.
+    /// `220-create-repository-in-folder`: create in Local Path itself.
     in_folder: bool,
-    /// `459-alias-when-adding`.
+    /// `224-alias-when-adding`.
     alias: Entity<InputState>,
 }
 

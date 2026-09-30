@@ -7,7 +7,7 @@
 //!
 //! Deviation: while the repository is still conflicted, a new merge, rebase
 //! or update from the default branch is refused with an explanation (GHD
-//! starts it and shows git's error; `424-no-merge-while-conflicted`).
+//! starts it and shows git's error; `838-no-merge-while-conflicted`).
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
@@ -264,14 +264,14 @@ pub enum Banner {
     ReorderUndone {
         count: usize,
     },
-    /// Corvane (`311-undo-delete-branch`): "Deleted branch **{branch}**" +
+    /// Corvane (`861-undo-delete-branch`): "Deleted branch **{branch}**" +
     /// Undo, which recreates it at `sha`.
     BranchDeleted {
         repo: u64,
         branch: String,
         sha: String,
     },
-    /// Corvane (`311-undo-delete-branch`): after that Undo.
+    /// Corvane (`861-undo-delete-branch`): after that Undo.
     BranchRestored {
         branch: String,
     },
@@ -351,7 +351,7 @@ fn operation_description(kind: MultiCommitOperationKind) -> &'static str {
 
 impl Dispatcher {
     /// Whether the repository is still in a conflicted merge, rebase or
-    /// cherry-pick and `424-no-merge-while-conflicted` is on: the merge,
+    /// cherry-pick and `838-no-merge-while-conflicted` is on: the merge,
     /// rebase and update-from-default entry points then do not start another
     /// operation (GHD starts it and shows git's error).
     pub fn merge_blocked_by_conflicts(id: u64, cx: &App) -> bool {
@@ -536,7 +536,7 @@ impl Dispatcher {
     }
 
     /// [`Self::current_branch_and_tip`] for an operation the user started:
-    /// with flag `250` a missing branch (detached HEAD, rebase in progress)
+    /// with flag `822` a missing branch (detached HEAD, rebase in progress)
     /// shows an error titled `title` instead of doing nothing.
     fn current_branch_or_explain(
         id: u64,
@@ -567,7 +567,7 @@ impl Dispatcher {
         found
     }
 
-    /// Flag `448`: rebases keep `#` lines in commit messages.
+    /// Flag `834`: rebases keep `#` lines in commit messages.
     fn rebase_keeps_messages(cx: &App) -> bool {
         Self::state(cx)
             .read(cx)
@@ -575,7 +575,7 @@ impl Dispatcher {
             .bool(crate::flags::ids::REBASE_KEEPS_HASH_MESSAGES)
     }
 
-    /// Flag `449`: cherry-picks keep `#` lines and drop git's conflict note.
+    /// Flag `836`: cherry-picks keep `#` lines and drop git's conflict note.
     fn cherry_pick_keeps_messages(cx: &App) -> bool {
         Self::state(cx)
             .read(cx)
@@ -732,7 +732,7 @@ impl Dispatcher {
         if matches!(mco.detail, McoDetail::Squash { .. }) {
             Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).squash_draft = None);
         }
-        // flag `146`: find the rewritten commits again once history reloads
+        // flag `830`: find the rewritten commits again once history reloads
         let rewritten: Vec<(String, Option<i64>)> = match &mco.detail {
             McoDetail::Squash { message, .. } => {
                 vec![(
@@ -853,7 +853,7 @@ impl Dispatcher {
             }
             RebaseResult::Error(message) => {
                 let kind = Self::mco(id, cx).map(|m| m.kind());
-                // flag `145`: keep the squash message for the next try
+                // flag `828`: keep the squash message for the next try
                 if let Some(McoDetail::Squash {
                     commits,
                     target_commit,
@@ -890,7 +890,7 @@ impl Dispatcher {
 
     /// The choose-branch step with `base_branch` already selected (the
     /// branch list's "Rebase Current Branch onto…",
-    /// `267-branch-menu-rebase-onto`).
+    /// `856-branch-menu-rebase-onto`).
     pub fn start_rebase_flow_onto(id: u64, base_branch: Option<String>, cx: &mut App) {
         let Some((current, tip)) = Self::current_branch_and_tip(id, cx) else {
             return;
@@ -919,7 +919,7 @@ impl Dispatcher {
     }
 
     /// Update from Default Branch with `pull.rebase` set
-    /// (`222-update-from-default-rebases`): rebase the current branch onto
+    /// (`859-update-from-default-rebases`): rebase the current branch onto
     /// `base_branch` without the choose-branch step.
     pub(crate) fn rebase_onto(id: u64, base_branch: String, cx: &mut App) {
         let Some((current, _)) = Self::current_branch_and_tip(id, cx) else {
@@ -1001,7 +1001,7 @@ impl Dispatcher {
         let Some((target, tip)) = Self::current_branch_and_tip(id, cx) else {
             return;
         };
-        // flag `447`: git refuses to rebase over local changes; offer the
+        // flag `833`: git refuses to rebase over local changes; offer the
         // stash first, and rebase once it is made (GHD's retry forgets to)
         if Self::state(cx)
             .read(cx)
@@ -1209,7 +1209,7 @@ impl Dispatcher {
         });
     }
 
-    /// Conflicts dialog › Resolve All (flag `446`): `resolution` for every
+    /// Conflicts dialog › Resolve All (flag `839`): `resolution` for every
     /// file that still has conflicts. Nothing is written until Continue, and
     /// each file keeps its Undo.
     pub fn set_all_manual_resolutions(id: u64, resolution: ManualConflictResolution, cx: &mut App) {
@@ -1232,7 +1232,7 @@ impl Dispatcher {
         });
     }
 
-    /// Conflicts dialog › Open in Merge Tool (flag `150`): the user's
+    /// Conflicts dialog › Open in Merge Tool (flag `842`): the user's
     /// `merge.tool` on one file; refresh once it closes.
     pub fn open_in_merge_tool(id: u64, path: String, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -1534,7 +1534,7 @@ impl Dispatcher {
     }
 
     /// [`Self::merge_branch`]; a squash merge commits with `message` when
-    /// given (flag `450`'s message fields).
+    /// given (flag `837`'s message fields).
     pub fn merge_branch_with_message(
         id: u64,
         branch: String,
@@ -1571,7 +1571,7 @@ impl Dispatcher {
                     squash,
                     message.as_deref(),
                 );
-                // `310-submodules-follow-checkout`
+                // `263-submodules-follow-checkout`
                 let submodule_error = match (&result, submodules) {
                     (Ok(corvane_git::MergeOutcome::Success), Some((skip, askpass))) => {
                         corvane_git::update_submodules(
@@ -1923,7 +1923,7 @@ impl Dispatcher {
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
             };
-            // flag `145`: a failed squash of the same commits left its message
+            // flag `828`: a failed squash of the same commits left its message
             let draft = rs
                 .squash_draft
                 .as_ref()
@@ -1997,7 +1997,7 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        // flag `149`: git stashes local changes around the squash instead
+        // flag `829`: git stashes local changes around the squash instead
         let autostash = Self::state(cx)
             .read(cx)
             .flags
@@ -2441,7 +2441,7 @@ impl Dispatcher {
                     let Some(snapshot) = rebase_snapshot else {
                         return;
                     };
-                    // flag `454`: name the branch at `onto` (GHD shows none)
+                    // flag `835`: name the branch at `onto` (GHD shows none)
                     let base = snapshot.base_branch.filter(|_| {
                         Self::state(cx)
                             .read(cx)
@@ -2515,7 +2515,7 @@ impl Dispatcher {
     }
 }
 
-/// Flag `146`: the newest commit matching each (summary, author time) pair,
+/// Flag `830`: the newest commit matching each (summary, author time) pair,
 /// in the given order; empty unless every one is found.
 pub(crate) fn find_rewritten(commits: &[Commit], wanted: &[(String, Option<i64>)]) -> Vec<String> {
     let found: Vec<String> = wanted
@@ -2534,7 +2534,7 @@ pub(crate) fn find_rewritten(commits: &[Commit], wanted: &[(String, Option<i64>)
     }
 }
 
-/// Flag `145`: the commits of a squash, order-independent.
+/// Flag `828`: the commits of a squash, order-independent.
 fn squash_draft_key<'a>(onto: &str, squashed: impl Iterator<Item = &'a String>) -> Vec<String> {
     let mut key: Vec<String> = squashed.cloned().collect();
     key.sort();

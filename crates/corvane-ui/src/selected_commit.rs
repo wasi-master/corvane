@@ -4,20 +4,20 @@
 //! title + expander, description, meta row (author, sha + copy, +adds −dels,
 //! tags), then a resizable 250 px file list next to the commit's diff.
 //!
-//! Deviation (`docs/reference/deviations.md` › History, flag `245`): the file
+//! Deviation (`docs/reference/deviations.md` › History, flag `810`): the file
 //! list multi-selects with ⌘/⇧-click, and a multi-selection's context menu
 //! copies all the paths; GHD's history file list selects one file. Open with
-//! Default Program opens the file as of the commit (flag `248`), not the
+//! Default Program opens the file as of the commit (flag `811`), not the
 //! working copy. A file gone from disk keeps its Copy path items (flag
-//! `249`). A multi-commit selection's summary shows the range's +added
-//! -deleted line totals (flag `251`). The meta row adds the author date and
-//! links the SHA to the commit on GitHub (flag `253`); the tags' tooltip
-//! lists every tag (flag `254`). The title and description show `code`
-//! spans and link URLs and SHAs (flag `141`), where GHD's `RichText` links
+//! `812`). A multi-commit selection's summary shows the range's +added
+//! -deleted line totals (flag `813`). The meta row adds the author date and
+//! links the SHA to the commit on GitHub (flag `805`); the tags' tooltip
+//! lists every tag (flag `806`). The title and description show `code`
+//! spans and link URLs and SHAs (flag `804`), where GHD's `RichText` links
 //! only URLs, issues and mentions. A file's menu can revert that file's
-//! changes from the commit (flag `443`).
+//! changes from the commit (flag `814`).
 //! A file's context menu adds "Open All Files of Commit in <editor>"
-//! (`271-open-multiple-files`).
+//! (`712-open-multiple-files`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -60,10 +60,10 @@ pub struct SelectedCommitView {
     file_list_focus: FocusHandle,
     /// `file_list_focus` held focus at the last render (active selection colours).
     file_list_focused: bool,
-    /// Flag `245`: the ⌘/⇧-clicked files (file-list order) and the commit
+    /// Flag `810`: the ⌘/⇧-clicked files (file-list order) and the commit
     /// selection they belong to; stale once the commit selection changes.
     multi_files: Option<(Vec<String>, Vec<String>)>,
-    /// Corvane (`109-history-review-mode`): the file list is hidden.
+    /// Corvane (`801-history-review-mode`): the file list is hidden.
     file_list_hidden: bool,
 }
 
@@ -103,7 +103,7 @@ impl SelectedCommitView {
         }
     }
 
-    /// Corvane (`613-copy-path-shortcuts`): Copy File Path / Copy Relative
+    /// Corvane (`611-copy-path-shortcuts`): Copy File Path / Copy Relative
     /// File Path for the selected commit file.
     fn copy_selected_path(&self, absolute: bool, cx: &mut Context<Self>) {
         let text = {
@@ -123,7 +123,7 @@ impl SelectedCommitView {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 
-    /// Corvane (`109-history-review-mode`): hide or show the file list.
+    /// Corvane (`801-history-review-mode`): hide or show the file list.
     pub fn set_file_list_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
         if self.file_list_hidden != hidden {
             self.file_list_hidden = hidden;
@@ -131,12 +131,12 @@ impl SelectedCommitView {
         }
     }
 
-    /// Corvane (`614-navigation-shortcuts`): focus the commit's diff.
+    /// Corvane (`612-navigation-shortcuts`): focus the commit's diff.
     pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.diff.update(cx, |diff, cx| diff.focus(window, cx));
     }
 
-    /// Corvane (`608-open-file-shortcuts`): the selected commit file, when
+    /// Corvane (`606-open-file-shortcuts`): the selected commit file, when
     /// it exists in the working directory (the context menu's condition).
     fn selected_file_on_disk(&self, cx: &App) -> Option<std::path::PathBuf> {
         let s = self.state.read(cx);
@@ -148,7 +148,7 @@ impl SelectedCommitView {
         full.exists().then_some(full)
     }
 
-    /// The multi-selected files (flag `245`), empty when fewer than two.
+    /// The multi-selected files (flag `810`), empty when fewer than two.
     fn multi_selected(&self, id: u64, cx: &App) -> Vec<String> {
         let s = self.state.read(cx);
         if !s
@@ -264,7 +264,7 @@ impl SelectedCommitView {
             .collect();
         let not_in_diff = shas_not_in_diff.len();
         let in_diff = selected - not_in_diff;
-        // `251`: the range's line totals follow the count
+        // `813`: the range's line totals follow the count
         let totals = s
             .flags
             .bool(corvane_core::flags::ids::MULTI_COMMIT_LINE_TOTALS)
@@ -395,7 +395,7 @@ impl SelectedCommitView {
             .as_ref()
             .map(|c| (c.lines_added, c.lines_deleted))
             .unwrap_or((0, 0));
-        // `253`: the author date, and the SHA links to the commit on GitHub
+        // `805`: the author date, and the SHA links to the commit on GitHub
         let extras = s
             .flags
             .bool(corvane_core::flags::ids::COMMIT_DETAILS_EXTRAS);
@@ -403,7 +403,7 @@ impl SelectedCommitView {
             .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
             .flatten()
             .map(|g| format!("{}/commit/{}", g.html_url, commit.sha));
-        // `141`: `code` spans, URLs and (GitHub repositories) SHAs
+        // `804`: `code` spans, URLs and (GitHub repositories) SHAs
         let rich = s
             .flags
             .bool(corvane_core::flags::ids::COMMIT_MESSAGE_RICH_TEXT)
@@ -654,7 +654,7 @@ impl SelectedCommitView {
                                         .min_w_0()
                                         .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
                                         .child(div().truncate().child(commit.tags.join(", ")));
-                                    // `254`: hovering lists every tag
+                                    // `806`: hovering lists every tag
                                     d.child(if crate::history::tags_tooltip(cx) {
                                         tags.ghd_tooltip(commit.tags.join("\n"))
                                     } else {
@@ -779,7 +779,7 @@ fn open_commit_file_menu(
     let Some(repo) = state.repository(id) else {
         return;
     };
-    // flag `245`: a multi-selection copies all its paths
+    // flag `810`: a multi-selection copies all its paths
     if multi.len() > 1 && multi.iter().any(|p| p == path) {
         let full = multi
             .iter()
@@ -810,7 +810,7 @@ fn open_commit_file_menu(
         .and_then(|r| r.last_commit.as_ref())
         .is_some_and(|c| selected.first() == Some(&c.sha));
     let github = repo.github.clone();
-    // `248`: open the file as of the (newest) selected commit
+    // `811`: open the file as of the (newest) selected commit
     let historical = state
         .flags
         .bool(corvane_core::flags::ids::OPEN_HISTORICAL_FILE)
@@ -824,7 +824,7 @@ fn open_commit_file_menu(
             .or_else(|| selected.first().cloned())
         })
         .flatten();
-    // `443`: Revert Changes to This File, for a single selected commit
+    // `814`: Revert Changes to This File, for a single selected commit
     let revert_file = state
         .flags
         .bool(corvane_core::flags::ids::REVERT_FILE_IN_COMMIT)
@@ -849,7 +849,7 @@ fn open_commit_file_menu(
             ))
         })
         .flatten();
-    // `271-open-multiple-files`: every file of the commit still on disk
+    // `712-open-multiple-files`: every file of the commit still on disk
     let open_all = state
         .flags
         .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
@@ -869,7 +869,7 @@ fn open_commit_file_menu(
     let mut items = if !full.exists() {
         let mut items =
             vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
-        // `249`: the paths can still be copied
+        // `812`: the paths can still be copied
         if state
             .flags
             .bool(corvane_core::flags::ids::COPY_PATH_OF_MISSING_FILE)
@@ -1188,7 +1188,7 @@ impl Render for SelectedCommitView {
                 d.child(diff_header(&path, kind, &self.diff, cx))
             })
             .child(self.diff.clone());
-        // Corvane (`109-history-review-mode`): the diff alone, full width
+        // Corvane (`801-history-review-mode`): the diff alone, full width
         if self.file_list_hidden {
             return div()
                 .size_full()

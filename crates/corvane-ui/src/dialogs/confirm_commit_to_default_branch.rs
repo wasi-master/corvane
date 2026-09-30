@@ -1,4 +1,4 @@
-//! Corvane addition (`275-confirm-commit-to-default-branch`, no GHD
+//! Corvane addition (`732-confirm-commit-to-default-branch`, no GHD
 //! counterpart): committing on the repository's default branch asks first.
 //! Laid out like `unknown_authors.rs`.
 

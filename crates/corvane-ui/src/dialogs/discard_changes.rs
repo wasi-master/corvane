@@ -4,9 +4,9 @@
 //! (`showDiscardChangesSetting: false`); then Cancel holds focus.
 //!
 //! Deviation: when every discarded entry is a submodule nothing goes to the
-//! Trash, so the Trash sentence is left out (`276-discard-submodule-no-trash-hint`).
+//! Trash, so the Trash sentence is left out (`721-discard-submodule-no-trash-hint`).
 //! A second opt-out snoozes the confirmation for this repository for the
-//! flag's minutes (`476-discard-confirm-snooze`).
+//! flag's minutes (`723-discard-confirm-snooze`).
 //! Flag `discard-skips-trash`): discarded files are deleted
 //! instead of moved to the Trash, and the hint says they cannot be restored.
 
@@ -28,7 +28,7 @@ pub struct DiscardChangesDialog {
     paths: Vec<String>,
     all: bool,
     dont_show_again: bool,
-    /// `476-discard-confirm-snooze`
+    /// `723-discard-confirm-snooze`
     snooze: bool,
     /// The autofocused checkbox's ring, until a mouse press.
     focus_visible: bool,
@@ -65,7 +65,7 @@ impl Render for DiscardChangesDialog {
         let focus_visible = self.focus_visible;
         let weak = cx.weak_entity();
         let count = self.paths.len();
-        // `276-discard-submodule-no-trash-hint`
+        // `721-discard-submodule-no-trash-hint`
         let only_submodules = {
             let s = corvane_core::AppState::global(cx).read(cx);
             s.flags
@@ -80,7 +80,7 @@ impl Render for DiscardChangesDialog {
                             })
                     })
         };
-        // `476-discard-confirm-snooze` (not for Discard All)
+        // `723-discard-confirm-snooze` (not for Discard All)
         let snooze_minutes = corvane_core::AppState::global(cx)
             .read(cx)
             .flags

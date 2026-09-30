@@ -154,7 +154,7 @@ pub struct RowContext {
     /// The text selection (ordered), if any.
     pub text_selection: Option<TextSelectionSnapshot>,
     pub text_bounds: TextBounds,
-    /// `180-diff-show-whitespace`: marks spaces and tabs in the text.
+    /// `748-diff-show-whitespace`: marks spaces and tabs in the text.
     pub show_whitespace: bool,
 }
 
@@ -504,7 +504,7 @@ fn merge_highlights(
     out
 }
 
-/// `180-diff-show-whitespace`: a centred dot on every space and a line
+/// `748-diff-show-whitespace`: a centred dot on every space and a line
 /// across every expanded tab (`tabs`: where they start).
 fn paint_whitespace(layout: &TextLayout, tabs: &[u32], color: Hsla, window: &mut Window) {
     let Some(line) = layout.line_layout_for_index(0) else {
@@ -1049,12 +1049,12 @@ pub fn relative_changes(a: &str, b: &str) -> (Range<usize>, Range<usize>) {
 /// How [`build_split_rows`] computes intra-line ranges.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IntraLineOptions {
-    /// `177-intra-line-graphemes`: widen each range to whole grapheme
+    /// `746-intra-line-graphemes`: widen each range to whole grapheme
     /// clusters, so a combining mark is not split from its base character
     /// (GHD compares UTF-16 code units).
     pub graphemes: bool,
     /// Lines this long or longer get no intra-line range
-    /// ([`MAX_INTRA_LINE_DIFF_LEN`]; `179-intra-line-max-length`, `None` for
+    /// ([`MAX_INTRA_LINE_DIFF_LEN`]; `747-intra-line-max-length`, `None` for
     /// no limit).
     pub max_len: Option<usize>,
 }

@@ -48,7 +48,7 @@ pub struct RepoCommitOptions {
     pub sign_off_commits: bool,
     pub allow_empty_commit: bool,
     /// Corvane: push the branch once a commit succeeds (flag
-    /// `220-commit-and-push`).
+    /// `736-commit-and-push`).
     #[serde(default)]
     pub push_after_commit: bool,
 }
@@ -1112,7 +1112,7 @@ impl Commit {
     }
 }
 
-/// Corvane `273-recall-commit-messages`: up to `limit` (summary, description)
+/// Corvane `731-recall-commit-messages`: up to `limit` (summary, description)
 /// pairs of `commits` (newest first) for recalling into the commit form.
 /// Merge commits and repeated summaries are skipped; `Co-authored-by`
 /// trailers are dropped from the description.
@@ -1376,7 +1376,7 @@ pub fn image_media_type(path: &str) -> Option<&'static str> {
         "webp" => "image/webp",
         "bmp" => "image/bmp",
         "avif" => "image/avif",
-        // Corvane `184-tga-image-diff` (the UI shows it as binary when off)
+        // Corvane `755-tga-image-diff` (the UI shows it as binary when off)
         "tga" => "image/x-tga",
         _ => return None,
     })

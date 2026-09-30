@@ -376,7 +376,7 @@ fn main() {
             }
         });
         cx.on_action(|_: &OpenFlags, cx| Dispatcher::open_flags(None, cx));
-        // Corvane (`612-diff-mode-shortcut`): Diff Settings › Unified / Split
+        // Corvane (`610-diff-mode-shortcut`): Diff Settings › Unified / Split
         cx.on_action(|_: &ToggleDiffDisplayMode, cx| {
             let split = corvane_core::AppState::global(cx)
                 .read(cx)
@@ -532,7 +532,7 @@ fn main() {
                 window_size,
                 cx,
             ))),
-            // GHD's 960 × 660; `428-smaller-minimum-sizes`: 600 × 400
+            // GHD's 960 × 660; `407-smaller-minimum-sizes`: 600 × 400
             window_min_size: Some(
                 if state
                     .read(cx)
@@ -655,12 +655,12 @@ fn main() {
                     .ok();
             }
         });
-        // Corvane (`109-history-review-mode`)
+        // Corvane (`801-history-review-mode`)
         let ws = workspace.clone();
         cx.on_action(move |_: &ToggleHistoryReviewMode, cx| {
             ws.update(cx, |w, cx| w.toggle_review_mode(cx))
         });
-        // Corvane (`614-navigation-shortcuts`)
+        // Corvane (`612-navigation-shortcuts`)
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowPullRequestsList, cx| {
             if let Some(window) = cx.active_window() {
@@ -755,7 +755,7 @@ fn main() {
         let ws = workspace.clone();
         cx.on_action(move |_: &NewBranch, cx| {
             if let Some(id) = selected(cx) {
-                // `261-new-branch-from-filter`: like the foldout's New Branch
+                // `847-new-branch-from-filter`: like the foldout's New Branch
                 // button, start from the branch filter's text
                 let from_filter = corvane_core::AppState::global(cx)
                     .read(cx)
@@ -926,7 +926,7 @@ fn main() {
                     .ok();
             }
         });
-        // `--hidden` (flag `487-launch-hidden`, Corvane addition): start with
+        // `--hidden` (flag `406-launch-hidden`, Corvane addition): start with
         // the window ordered out, as after ⌘W; the Dock icon shows it
         let launch_hidden = hidden_argument(std::env::args())
             && corvane_core::AppState::global(cx)

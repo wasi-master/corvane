@@ -4,16 +4,16 @@
 //! and the merge `ChooseBranch` step (`merge-choose-branch-dialog.tsx`).
 //!
 //! Deviations: Create a Branch can start from any branch through an "Other
-//! branch…" choice (`255-create-branch-from-any-branch`) and preselects the
+//! branch…" choice (`843-create-branch-from-any-branch`) and preselects the
 //! current branch while there are uncommitted changes
-//! (`256-create-branch-with-changes-from-current`).
+//! (`844-create-branch-with-changes-from-current`).
 //! Delete Branch warns about unmerged commits and a stash on the branch
-//! (`258-delete-branch-warnings`).
-//! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
-//! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
-//! `ConfirmSwitchBranchDialog` is a Corvane addition (`266-confirm-branch-switch`).
-//! Switch Branch can discard the changes instead (`268-switch-branch-discard`).
-//! Squash and merge has commit message fields (flag `450`).
+//! (`860-delete-branch-warnings`).
+//! Create and Rename refuse `head` in any case (`846-reject-head-branch-name`).
+//! Create a Branch can prefill a name prefix (`845-branch-name-prefix`).
+//! `ConfirmSwitchBranchDialog` is a Corvane addition (`864-confirm-branch-switch`).
+//! Switch Branch can discard the changes instead (`865-switch-branch-discard`).
+//! Squash and merge has commit message fields (flag `837`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -56,7 +56,7 @@ pub fn sanitize_ref_name(input: &str) -> String {
     out.replace("..", "-").replace("@{", "-").replace("//", "/")
 }
 
-/// Flag `259-reject-head-branch-name`: `head` in any case names `HEAD`
+/// Flag `846-reject-head-branch-name`: `head` in any case names `HEAD`
 /// on a case-insensitive file system, so the new branch detaches HEAD.
 fn reserved_head_name(name: &str, cx: &App) -> bool {
     name.eq_ignore_ascii_case("head")
@@ -81,7 +81,7 @@ pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
 enum StartPoint {
     DefaultBranch,
     CurrentBranch,
-    /// `255-create-branch-from-any-branch`: a branch picked from a list.
+    /// `843-create-branch-from-any-branch`: a branch picked from a list.
     Other,
 }
 
@@ -91,7 +91,7 @@ pub struct CreateBranchDialog {
     target_sha: Option<String>,
     name: Entity<InputState>,
     start_point: StartPoint,
-    /// `255-create-branch-from-any-branch`: the "Other branch…" picker.
+    /// `843-create-branch-from-any-branch`: the "Other branch…" picker.
     other_filter: Entity<InputState>,
     other_focus: FocusHandle,
     other_branch: Option<String>,
@@ -109,7 +109,7 @@ impl CreateBranchDialog {
         cx: &mut Context<Self>,
     ) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx));
-        // `264-branch-name-prefix`
+        // `845-branch-name-prefix`
         let prefix = state
             .read(cx)
             .flags
@@ -130,7 +130,7 @@ impl CreateBranchDialog {
         window.focus(&handle, cx);
         let other_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&other_filter, |_, _, cx| cx.notify()).detach();
-        // `256-create-branch-with-changes-from-current`: uncommitted changes
+        // `844-create-branch-with-changes-from-current`: uncommitted changes
         // come along, so start where they were written
         let start_point = {
             let s = state.read(cx);
@@ -669,7 +669,7 @@ impl Render for DeleteBranchDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let t = cx.ghd();
-        // `258-delete-branch-warnings`: what the deletion would lose
+        // `860-delete-branch-warnings`: what the deletion would lose
         let warnings: Vec<String> = {
             let s = self.state.read(cx);
             s.repo_states
@@ -815,7 +815,7 @@ pub struct StashAndSwitchBranchDialog {
     repo: u64,
     branch: String,
     action: UncommittedChangesStrategy,
-    /// `268-switch-branch-discard`: "Discard my changes" is chosen
+    /// `865-switch-branch-discard`: "Discard my changes" is chosen
     /// (overrides `action`).
     discard: bool,
 }
@@ -1042,7 +1042,7 @@ impl Render for ConfirmOverwriteStashDialog {
 
 // ---------------------------------------------------------------------------
 
-/// Corvane addition (`266-confirm-branch-switch`): "Switch to <branch>?"
+/// Corvane addition (`864-confirm-branch-switch`): "Switch to <branch>?"
 /// before a checkout started from the branch list.
 pub struct ConfirmSwitchBranchDialog {
     repo: u64,
@@ -1104,7 +1104,7 @@ pub struct MergeBranchDialog {
     /// The branch list takes focus when a row is pressed.
     list_focus: FocusHandle,
     selected: Option<String>,
-    /// Squash and merge's commit message (flag `450`).
+    /// Squash and merge's commit message (flag `837`).
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
 }
@@ -1314,7 +1314,7 @@ impl Render for MergeBranchDialog {
             && selected.as_deref() != Some(current.as_str());
         let selected_for_ok = selected.clone();
         let squash = self.squash;
-        // flag `450`: squash and merge takes a commit message (empty: git's
+        // flag `837`: squash and merge takes a commit message (empty: git's
         // "Squashed commit of the following" list, as GHD)
         let message_fields = squash
             && self

@@ -75,7 +75,7 @@ pub fn stage_files(
     Ok(())
 }
 
-/// Corvane `470-assume-unchanged`: `update-index --[no-]assume-unchanged`
+/// Corvane `715-assume-unchanged`: `update-index --[no-]assume-unchanged`
 /// for tracked `paths`, so git stops (or resumes) reporting their changes.
 pub fn set_assume_unchanged(
     git: Arc<GitBinary>,

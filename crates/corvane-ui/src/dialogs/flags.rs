@@ -111,6 +111,8 @@ fn category_icon(category: Category) -> Octicon {
         Category::WindowAndMenus => Octicon::DeviceDesktop,
         Category::SettingsAndUpdates => Octicon::Gear,
         Category::Accessibility => Octicon::Accessibility,
+        Category::ChangesAndDiffs => Octicon::FileDiff,
+        Category::HistoryAndBranches => Octicon::History,
         Category::Experimental => Octicon::Telescope,
     }
 }

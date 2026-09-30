@@ -12,26 +12,26 @@ use crate::actions::*;
 /// The flags that add or remove key bindings.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct KeymapFlags {
-    /// `607-cmd-backspace-discards-files`: ⌘⌫ in the changes list discards
+    /// `605-cmd-backspace-discards-files`: ⌘⌫ in the changes list discards
     /// the selected files instead of removing the repository.
     pub discard_selected_files: bool,
-    /// `608-open-file-shortcuts`: ⇧⌘A / ⌥⌘O in the changes and commit file
+    /// `606-open-file-shortcuts`: ⇧⌘A / ⌥⌘O in the changes and commit file
     /// lists open the selected file in the editor / default program.
     pub open_file_shortcuts: bool,
-    /// `609-no-push-shortcut`: ⌘P does not push.
+    /// `607-no-push-shortcut`: ⌘P does not push.
     pub no_push_shortcut: bool,
-    /// `610-open-in-shell-alt-shortcut`: ⌥⌘T also opens the shell.
+    /// `608-open-in-shell-alt-shortcut`: ⌥⌘T also opens the shell.
     pub open_in_shell_alt_shortcut: bool,
-    /// `611-emacs-list-keys`: ⌃N / ⌃P move through the changes and history lists.
+    /// `609-emacs-list-keys`: ⌃N / ⌃P move through the changes and history lists.
     pub emacs_list_keys: bool,
-    /// `612-diff-mode-shortcut`: ⌥⌘S switches between unified and split diffs.
+    /// `610-diff-mode-shortcut`: ⌥⌘S switches between unified and split diffs.
     pub diff_mode_shortcut: bool,
-    /// `613-copy-path-shortcuts`: ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
+    /// `611-copy-path-shortcuts`: ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
     pub copy_path_shortcuts: bool,
-    /// `614-navigation-shortcuts`: ⌃⌘P pull requests, ⇧⌘] / ⇧⌘[ next /
+    /// `612-navigation-shortcuts`: ⌃⌘P pull requests, ⇧⌘] / ⇧⌘[ next /
     /// previous repository, ⌘3 the diff, ⌥↓ / ⌥↑ files from the diff.
     pub navigation_shortcuts: bool,
-    /// `109-history-review-mode`: ⌃⌘S hides History's lists.
+    /// `801-history-review-mode`: ⌃⌘S hides History's lists.
     pub history_review_mode: bool,
 }
 

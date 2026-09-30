@@ -5,31 +5,31 @@
 //! initialisation prompt (`InitializeLFS`).
 //!
 //! Deviations (flags): a failed force push keeps the "Force push"
-//! recommendation (`223-force-push-kept-on-failure`; GHD clears it first).
+//! recommendation (`258-force-push-kept-on-failure`; GHD clears it first).
 //! The background fetch can be off or cover any remote
-//! (`224-background-fetch`; GHD: GitHub repositories only).
-//! Fetch can prune tags deleted on the remote (`225-fetch-prune-tags`).
+//! (`244-background-fetch`; GHD: GitHub repositories only).
+//! Fetch can prune tags deleted on the remote (`248-fetch-prune-tags`).
 //! The LFS check can read `.gitattributes` instead of running
-//! `git lfs track` (`226-lfs-detect-by-attributes`).
+//! `git lfs track` (`264-lfs-detect-by-attributes`).
 //! The background fetch can run without progress in the push/pull button,
 //! and a push, pull or fetch asked for meanwhile waits for it
-//! (`228-push-during-background-fetch`; GHD disables the button).
+//! (`245-push-during-background-fetch`; GHD disables the button).
 //! A local branch that is not checked out can be fast-forwarded from its
-//! upstream (`230-update-branch-from-upstream`).
+//! upstream (`857-update-branch-from-upstream`).
 //! Repository › Fetch All Repositories fetches every listed repository
-//! (`423-fetch-all-repositories`).
+//! (`247-fetch-all-repositories`).
 //! Indicators refresh right after launch and on opening the repository list
-//! (`233-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
+//! (`217-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
 //! A pull skips `remote set-head -a` while the remote's HEAD resolves
-//! (`234-remote-head-once`; GHD runs it after every pull).
-//! Fetch can extend the commit-graph (`235-fetch-writes-commit-graph`).
-//! Fetch and pull can leave submodules alone (`236-sync-skips-submodules`).
+//! (`251-remote-head-once`; GHD runs it after every pull).
+//! Fetch can extend the commit-graph (`249-fetch-writes-commit-graph`).
+//! Fetch and pull can leave submodules alone (`250-sync-skips-submodules`).
 //! The background fetch can fast-forward a clean branch that is only behind
-//! (`237-background-fetch-fast-forwards`).
+//! (`246-background-fetch-fast-forwards`).
 //! Force push is also recommended after a rewrite outside Corvane
-//! (`238-force-push-after-outside-rewrite`).
+//! (`260-force-push-after-outside-rewrite`).
 //! A fetch or pull blocked by a stale remote-tracking ref prunes the remote
-//! and retries once (`239-prune-stale-refs-and-retry`).
+//! and retries once (`252-prune-stale-refs-and-retry`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -78,7 +78,7 @@ pub enum PushPullKind {
 pub struct RepoIndicator {
     pub ahead_behind: Option<AheadBehind>,
     pub changed_files: usize,
-    /// The checked-out branch, for `119-repository-list-branch`.
+    /// The checked-out branch, for `214-repository-list-branch`.
     pub branch: Option<String>,
 }
 
@@ -164,7 +164,7 @@ impl Dispatcher {
             .cloned()
     }
 
-    /// Flag `445`: delete a tag that may have been pushed — from `remote`
+    /// Flag `826`: delete a tag that may have been pushed — from `remote`
     /// first (`push --delete`, so a failure keeps the local tag), then
     /// locally; with `remote` `None` only locally.
     pub fn delete_pushed_tag(id: u64, tag: String, remote: Option<Remote>, cx: &mut App) {
@@ -229,7 +229,7 @@ impl Dispatcher {
             .as_ref()
             .and_then(|i| i.current_branch())
             .is_some_and(|b| rs.force_push_branches.get(b.name_without_remote()) == b.tip.as_ref());
-        // `238-force-push-after-outside-rewrite`: GHD recommends a force
+        // `260-force-push-after-outside-rewrite`: GHD recommends a force
         // push only after its own amend or rebase
         let rewritten_outside = rs.upstream_rewritten
             && s.flags
@@ -261,7 +261,7 @@ impl Dispatcher {
         })
     }
 
-    /// `228-push-during-background-fetch`: a push, pull or fetch asked for
+    /// `245-push-during-background-fetch`: a push, pull or fetch asked for
     /// while a background fetch runs waits for it (GHD disables the button
     /// and drops the request).
     fn behind_background_fetch(id: u64, cx: &App) -> bool {
@@ -447,7 +447,7 @@ impl Dispatcher {
                 );
             }
             _ => {
-                // `232-plain-language-remote-errors`: say what went wrong
+                // `255-plain-language-remote-errors`: say what went wrong
                 // before git's message
                 let plain = Self::state(cx)
                     .read(cx)
@@ -462,7 +462,7 @@ impl Dispatcher {
 
     // ---- fetch ----
 
-    /// `239-prune-stale-refs-and-retry`: when a fetch or pull failed because
+    /// `252-prune-stale-refs-and-retry`: when a fetch or pull failed because
     /// a stale remote-tracking ref blocks a new one, run `git remote prune`
     /// and say to try once more (`retry` is cleared). GHD shows the error.
     fn prune_before_retry<T>(
@@ -487,14 +487,14 @@ impl Dispatcher {
     /// The Corvane additions to a fetch of repository `id`.
     fn fetch_options(s: &crate::state::AppState, id: u64) -> corvane_git::FetchOptions {
         corvane_git::FetchOptions {
-            // `225-fetch-prune-tags`: drop tags deleted on the remote, but
+            // `248-fetch-prune-tags`: drop tags deleted on the remote, but
             // never while tags created here wait to be pushed (they would
             // be lost)
             prune_tags: s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS)
                 && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty()),
-            // `235-fetch-writes-commit-graph`
+            // `249-fetch-writes-commit-graph`
             write_commit_graph: s.flags.bool(crate::flags::ids::FETCH_WRITES_COMMIT_GRAPH),
-            // `236-sync-skips-submodules`
+            // `250-sync-skips-submodules`
             skip_submodules: s.flags.bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES),
         }
     }
@@ -538,7 +538,7 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return then(false, cx);
         }
-        // `228-push-during-background-fetch`: the background fetch leaves the
+        // `245-push-during-background-fetch`: the background fetch leaves the
         // push/pull button alone
         let quiet = background
             && Self::state(cx)
@@ -621,7 +621,7 @@ impl Dispatcher {
                         value: 0.9,
                     });
                     let _ = corvane_git::fast_forward_branches(git.clone(), &workdir);
-                    // `237-background-fetch-fast-forwards`: a clean branch
+                    // `246-background-fetch-fast-forwards`: a clean branch
                     // that is only behind catches up (GHD leaves it for Pull)
                     if fast_forward_current {
                         match corvane_git::fast_forward_if_only_behind(git, &workdir) {
@@ -652,7 +652,7 @@ impl Dispatcher {
         );
     }
 
-    /// Repository › Fetch All Repositories (`423-fetch-all-repositories`;
+    /// Repository › Fetch All Repositories (`247-fetch-all-repositories`;
     /// GHD has none): fetch every listed repository with a remote, one at a
     /// time on a background thread, skipping those with a network operation
     /// running; failures are collected into one error.
@@ -836,7 +836,7 @@ impl Dispatcher {
                         break result;
                     }
                 };
-                // `234-remote-head-once`: `set-head -a` asks the server for
+                // `251-remote-head-once`: `set-head -a` asks the server for
                 // every ref, which takes minutes on huge repositories; skip
                 // it while the remote's HEAD already resolves
                 if result.is_ok()
@@ -899,7 +899,7 @@ impl Dispatcher {
 
     // ---- update a branch from its upstream ----
 
-    /// The branch list's "Update from <upstream>" (`230-update-branch-from-upstream`;
+    /// The branch list's "Update from <upstream>" (`857-update-branch-from-upstream`;
     /// GHD has none): fast-forward a local branch that is not checked out.
     pub fn update_branch_from_upstream(id: u64, name: String, cx: &mut App) {
         let target = {
@@ -1013,7 +1013,7 @@ impl Dispatcher {
         Self::push_inner(id, force_with_lease, branch, None, then, cx);
     }
 
-    /// Corvane addition (flag `243`, history "Push Up to This Commit"):
+    /// Corvane addition (flag `816`, history "Push Up to This Commit"):
     /// push the current branch's upstream only up to `sha`,
     /// `push <remote> <sha>:refs/heads/<upstream branch>`. No force, so a
     /// commit that is not ahead of the upstream is refused by git; unpushed
@@ -1099,7 +1099,7 @@ impl Dispatcher {
         }
         // GHD clears the "force push recommended" mark before the push runs,
         // so a failed force push leaves a plain Push button (desktop#16352);
-        // `223-force-push-kept-on-failure` clears it after success only
+        // `258-force-push-kept-on-failure` clears it after success only
         let keep_force_push_on_failure = Self::state(cx)
             .read(cx)
             .flags
@@ -1147,7 +1147,7 @@ impl Dispatcher {
             .map(|r| r.tags_to_push.clone())
             .unwrap_or_default();
         let pushed_tags = !tags.is_empty();
-        // GHD's plain fetch after a push, plus `235` / `236`
+        // GHD's plain fetch after a push, plus `249` / `250`
         let fetch_options = corvane_git::FetchOptions {
             prune_tags: false,
             ..Self::fetch_options(Self::state(cx).read(cx), id)
@@ -1449,7 +1449,7 @@ impl Dispatcher {
             return;
         }
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).lfs_checked = true);
-        // `226-lfs-detect-by-attributes`: read the .gitattributes files instead
+        // `264-lfs-detect-by-attributes`: read the .gitattributes files instead
         // of `git lfs track`, which walks the whole worktree
         let by_attributes = Self::state(cx)
             .read(cx)
@@ -1519,7 +1519,7 @@ impl Dispatcher {
             }
         })
         .detach();
-        // `233-prompt-indicator-refresh`: the first indicator refresh runs
+        // `217-prompt-indicator-refresh`: the first indicator refresh runs
         // right after launch (GHD's updater starts on its delayed cadence)
         let first_indicators = if Self::state(cx)
             .read(cx)
@@ -1542,14 +1542,14 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Fetch the selected GitHub repository (see `224-background-fetch`) when
+    /// Fetch the selected GitHub repository (see `244-background-fetch`) when
     /// its last fetch is older than the interval (`shouldBackgroundFetch`).
     fn background_fetch_tick(cx: &mut App) {
         let (id, last_fetched, busy) = {
             let s = Self::state(cx).read(cx);
             let Some(id) = s.selected else { return };
             let Some(repo) = s.repository(id) else { return };
-            // GHD fetches GitHub repositories only; `224-background-fetch`
+            // GHD fetches GitHub repositories only; `244-background-fetch`
             // can also turn it off or extend it to any remote
             let fetch = match s.flags.text(crate::flags::ids::BACKGROUND_FETCH) {
                 "off" => false,
@@ -1583,7 +1583,7 @@ impl Dispatcher {
     }
 
     /// [`Self::refresh_indicators`] unless indicators were refreshed less
-    /// than a minute ago (`233-prompt-indicator-refresh`, on opening the
+    /// than a minute ago (`217-prompt-indicator-refresh`, on opening the
     /// repository list).
     pub fn refresh_indicators_if_stale(cx: &mut App) {
         let fresh = LAST_INDICATOR_REFRESH

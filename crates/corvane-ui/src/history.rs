@@ -12,17 +12,17 @@
 //! are not shown; the drop targets highlight instead.
 //!
 //! Deviations (`docs/reference/deviations.md` › History): the commit menus
-//! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
-//! list scrolls back to the top when the branch changes (flag `241`); Revert
-//! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
-//! Commit (flag `243`); a commit with a description gets a mark after its
-//! summary (flag `252`); compact rows drop the author line (flag `140`); the
-//! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
-//! the branch tip (flag `440`); a toggle before the compare box lists first
-//! parents only (flag `142`); the compare list offers matching tags (flag
-//! `444`); pushed tags can be deleted after a confirmation (flag `445`);
-//! Cherry-pick Without Committing (flag `147`); Create Patch File(s) (flag
-//! `148`).
+//! add Copy Commit Title / Message / URL and Copy SHAs (flag `809`); the
+//! list scrolls back to the top when the branch changes (flag `808`); Revert
+//! Changes in Commit(s) Without Committing (flag `815`); Push Up to This
+//! Commit (flag `816`); a commit with a description gets a mark after its
+//! summary (flag `803`); compact rows drop the author line (flag `802`); the
+//! tag pill's tooltip lists every tag (flag `806`); Checkout Commit works on
+//! the branch tip (flag `817`); a toggle before the compare box lists first
+//! parents only (flag `807`); the compare list offers matching tags (flag
+//! `825`); pushed tags can be deleted after a confirmation (flag `826`);
+//! Cherry-pick Without Committing (flag `820`); Create Patch File(s) (flag
+//! `821`).
 
 use std::rc::Rc;
 
@@ -55,7 +55,7 @@ pub fn COMMIT_ROW_HEIGHT() -> Pixels {
     zpx(50.)
 }
 
-/// `140`: summary-only commit rows, 30 px tall.
+/// `802`: summary-only commit rows, 30 px tall.
 fn compact_rows(cx: &App) -> bool {
     corvane_core::AppState::try_global(cx).is_some_and(|s| {
         s.read(cx)
@@ -232,7 +232,7 @@ pub struct HistorySidebar {
     merge_option: MultiCommitOperationKind,
     list_scroll: UniformListScrollHandle,
     /// Repository and tip (branch name or detached sha) the list last showed;
-    /// a change scrolls it back to the top (flag `241`).
+    /// a change scrolls it back to the top (flag `808`).
     shown_tip: Option<(u64, String)>,
 }
 
@@ -256,7 +256,7 @@ impl HistorySidebar {
         }
     }
 
-    /// Corvane (`615-focus-list-on-section-switch`).
+    /// Corvane (`603-focus-list-on-section-switch`).
     pub fn list_focus_handle(&self) -> FocusHandle {
         self.list_focus.clone()
     }
@@ -309,7 +309,7 @@ impl HistorySidebar {
             &query,
             crate::branch_list::sort_by_date(cx),
         );
-        // `444`: tags matching the filter, after the branches
+        // `825`: tags matching the filter, after the branches
         if !query.is_empty() && s.flags.bool(corvane_core::flags::ids::COMPARE_TAGS) {
             let tags: Vec<corvane_core::Branch> = rs
                 .compare
@@ -715,7 +715,7 @@ impl HistorySidebar {
                 ),
             }
         };
-        // `424-no-merge-while-conflicted`: no second merge while conflicted
+        // `838-no-merge-while-conflicted`: no second merge while conflicted
         let disabled = behind == 0
             || merge_status == Some(Mergeability::Invalid)
             || Dispatcher::merge_blocked_by_conflicts(id, cx);
@@ -919,7 +919,7 @@ impl HistorySidebar {
                 flags.bool(corvane_core::flags::ids::CREATE_PATCH_FILES),
             )
         };
-        // `240`: newest first, whatever the click order
+        // `809`: newest first, whatever the click order
         let shas_text = {
             let s = self.state.read(cx);
             let mut shas = selection.clone();
@@ -960,7 +960,7 @@ impl HistorySidebar {
             .enabled(!busy && !comparing),
         ];
         if revert_no_commit {
-            // `242`: newest first, staged, not committed
+            // `815`: newest first, staged, not committed
             items.push(
                 MenuItem::new(
                     format!("Revert Changes in {count} Commits Without Committing"),
@@ -970,7 +970,7 @@ impl HistorySidebar {
             );
         }
         if pick_no_commit {
-            // `147`: onto the current branch, staged, not committed
+            // `820`: onto the current branch, staged, not committed
             items.push(
                 MenuItem::new(
                     format!("Cherry-pick {count} Commits Without Committing"),
@@ -980,7 +980,7 @@ impl HistorySidebar {
             );
         }
         if patches {
-            // `148`
+            // `821`
             items.push(MenuItem::new(
                 format!("Create {count} Patch Files…"),
                 move |_, cx| create_patch_files(id, s6.clone(), cx),
@@ -1024,7 +1024,7 @@ impl HistorySidebar {
                 s.flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
                 s.flags
                     .bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
-                // `243`: one of the current branch's commits its upstream lacks
+                // `816`: one of the current branch's commits its upstream lacks
                 s.flags
                     .bool(corvane_core::flags::ids::PUSH_UP_TO_COMMIT)
                     .then(|| {
@@ -1041,7 +1041,7 @@ impl HistorySidebar {
                                 .and_then(|r| r.commits.iter().position(|c| c.sha == commit.sha))
                                 .is_some_and(|ix| ix < ahead)
                     }),
-                // `440`: the branch tip can be checked out (detaching HEAD)
+                // `817`: the branch tip can be checked out (detaching HEAD)
                 s.flags.bool(corvane_core::flags::ids::CHECKOUT_HEAD_COMMIT)
                     && rs
                         .and_then(|r| r.info.as_ref())
@@ -1140,7 +1140,7 @@ impl HistorySidebar {
                     s.flags.bool(corvane_core::flags::ids::DELETE_PUSHED_TAGS),
                 )
             };
-            // `445`: the others after a confirmation that can include the remote
+            // `826`: the others after a confirmation that can include the remote
             let delete = move |tag: &String| {
                 let is_unpushed = unpushed.contains(tag);
                 let tag = tag.clone();
@@ -1192,7 +1192,7 @@ impl HistorySidebar {
             )
         };
         if pick_no_commit {
-            // `147`: onto the current branch (not the HEAD commit itself)
+            // `820`: onto the current branch (not the HEAD commit itself)
             items.push(
                 MenuItem::new("Cherry-pick Commit Without Committing", {
                     let sha = sha.clone();
@@ -1204,7 +1204,7 @@ impl HistorySidebar {
             );
         }
         if patches {
-            // `148`
+            // `821`
             items.push(MenuItem::new("Create Patch File…", {
                 let sha = sha.clone();
                 move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
@@ -1228,7 +1228,7 @@ impl HistorySidebar {
         ]);
         let commit_url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
         if copy_items {
-            // `240`: the title, the full message and the GitHub URL
+            // `809`: the title, the full message and the GitHub URL
             let title = commit.summary.clone();
             let message = if commit.body.is_empty() {
                 commit.summary.clone()
@@ -1459,7 +1459,7 @@ impl HistorySidebar {
                 .child(message)
                 .into_any_element();
         }
-        // `241`: another branch (or repository) starts at the newest commit
+        // `808`: another branch (or repository) starts at the newest commit
         let tip = rs
             .and_then(|r| r.info.as_ref())
             .map(|info| match &info.tip {
@@ -1690,7 +1690,7 @@ pub(crate) fn commit_row_contents(
         commit.summary.clone()
     };
     let empty = commit.summary.is_empty();
-    // `252`: a mark after the summary when the commit has a description
+    // `803`: a mark after the summary when the commit has a description
     let body_mark = !commit.body.trim().is_empty()
         && corvane_core::AppState::try_global(cx).is_some_and(|s| {
             s.read(cx)
@@ -1804,7 +1804,7 @@ pub(crate) fn commit_row_contents(
                             .bg(badge_bg),
                     )
                 });
-            // `254`: hovering the pill lists every tag
+            // `806`: hovering the pill lists every tag
             if tags_tooltip(cx) {
                 d.child(
                     pill.id(SharedString::from(format!("tags-{}", commit.sha)))
@@ -1816,7 +1816,7 @@ pub(crate) fn commit_row_contents(
         })
 }
 
-/// `254`: the commit's tags as a tooltip on the tag pill and the details' tag list.
+/// `806`: the commit's tags as a tooltip on the tag pill and the details' tag list.
 pub(crate) fn tags_tooltip(cx: &App) -> bool {
     corvane_core::AppState::try_global(cx).is_some_and(|s| {
         s.read(cx)
@@ -1825,7 +1825,7 @@ pub(crate) fn tags_tooltip(cx: &App) -> bool {
     })
 }
 
-/// Flag `142`: a 27 px toggle before the compare box that lists first
+/// Flag `807`: a 27 px toggle before the compare box that lists first
 /// parents only; accent-coloured with a dot while on (the Changes filter
 /// button's `.active` look), disabled while comparing.
 fn first_parent_button(on: bool, comparing: bool, cx: &App) -> AnyElement {
@@ -2146,7 +2146,7 @@ impl Render for HistorySidebar {
             _ => self.commit_list(cx).into_any_element(),
         };
         let t = cx.ghd();
-        // `142`: the first-parent toggle before the compare box
+        // `807`: the first-parent toggle before the compare box
         let (first_parent_toggle, comparing) = {
             let s = self.state.read(cx);
             (
@@ -2221,7 +2221,7 @@ impl Render for HistorySidebar {
     }
 }
 
-/// Flag `148`: ask for a folder, then write the patches there.
+/// Flag `821`: ask for a folder, then write the patches there.
 fn create_patch_files(id: u64, shas: Vec<String>, cx: &mut App) {
     let receiver = cx.prompt_for_paths(PathPromptOptions {
         files: false,

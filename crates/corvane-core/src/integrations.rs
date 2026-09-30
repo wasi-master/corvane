@@ -5,7 +5,7 @@
 //! `repository-settings.tsx#onSubmit`.
 //!
 //! Deviation: View on GitHub also opens a non-GitHub repository's default
-//! remote as a web page (`remote_web_url`, `425-view-on-remote`); GHD
+//! remote as a web page (`remote_web_url`, `262-view-on-remote`); GHD
 //! disables it.
 
 use std::path::{Path, PathBuf};
@@ -41,7 +41,7 @@ pub struct RepositorySettingsSave {
     pub gitignore: Option<String>,
     /// Where the author identity lives, with the local name/email to store.
     pub git_config: Option<(GitConfigLocation, String, String)>,
-    /// `421-line-endings-setting`: the `--local` `core.autocrlf` to store
+    /// `239-line-endings-setting`: the `--local` `core.autocrlf` to store
     /// (`None`: remove it, so the global value applies).
     pub autocrlf: Option<Option<String>>,
 }
@@ -52,7 +52,7 @@ pub fn issue_creation_url(html_url: &str) -> String {
 }
 
 /// The web page of a remote that is not a GitHub repository
-/// (`425-view-on-remote`): an `http(s)` URL without its credentials and
+/// (`262-view-on-remote`): an `http(s)` URL without its credentials and
 /// `.git`, and SSH / scp-style / `git://` URLs as `https://host/path`.
 /// `None` for local paths and anything else without a host.
 pub fn remote_web_url(url: &str) -> Option<String> {
@@ -162,7 +162,7 @@ impl Dispatcher {
         );
     }
 
-    /// Flag `248`: History › Open with Default Program opens `path` as it
+    /// Flag `811`: History › Open with Default Program opens `path` as it
     /// is at `sha`, written to a read-only file under the temporary
     /// directory, rather than today's working copy.
     pub fn open_commit_file_with_default_program(id: u64, sha: String, path: String, cx: &mut App) {
@@ -252,7 +252,7 @@ impl Dispatcher {
             move || match line {
                 Some(line) => editors::launch_at_line(&editor, &path, line),
                 None => {
-                    // `475-vscode-workspace-file`: a repository opens its only
+                    // `509-vscode-workspace-file`: a repository opens its only
                     // workspace file instead of the folder
                     let target = workspace_file
                         .then(|| editors::code_workspace_file(&editor, &path))
@@ -358,7 +358,7 @@ impl Dispatcher {
     }
 
     /// Repository › Show in Finder (`revealInFileManager`), and every Reveal
-    /// in Finder item. With a `570-file-manager` application set, it opens
+    /// in Finder item. With a `510-file-manager` application set, it opens
     /// the folder (a file's parent folder) with `open -a <app>` instead.
     pub fn show_in_finder(path: &Path, cx: &mut App) {
         let app = Self::state(cx)
@@ -388,7 +388,7 @@ impl Dispatcher {
 
     /// Repository › Open With… (`_openWithSystemDialog`): pick an application,
     /// then `open -a <app> <repository>`. Also a changed file's "Open With…"
-    /// (Corvane `474-open-file-with`), whose error names the file.
+    /// (Corvane `713-open-file-with`), whose error names the file.
     pub fn open_with(path: PathBuf, cx: &mut App) {
         let (title, what) = if path.is_dir() {
             ("Unable to Open Repository", "the repository")
@@ -435,7 +435,7 @@ impl Dispatcher {
         Some((gh, branch))
     }
 
-    /// Repository › View on GitHub; with `425-view-on-remote` a repository
+    /// Repository › View on GitHub; with `262-view-on-remote` a repository
     /// that is not on GitHub opens its default remote's web page instead.
     pub fn view_on_github(id: u64, cx: &mut App) {
         if let Some((gh, _)) = Self::github_and_branch(id, cx) {
@@ -446,7 +446,7 @@ impl Dispatcher {
     }
 
     /// Repository › View Upstream on GitHub (Corvane addition, flag
-    /// `396-view-upstream-on-github`): the parent of a fork. Nothing happens
+    /// `321-view-upstream-on-github`): the parent of a fork. Nothing happens
     /// for a repository that is not a fork.
     pub fn view_upstream_on_github(id: u64, cx: &mut App) {
         let url = Self::github_and_branch(id, cx).and_then(|(gh, _)| gh.parent.map(|p| p.html_url));
@@ -456,7 +456,7 @@ impl Dispatcher {
     }
 
     /// The default remote's web page (`remote_web_url`) of a loaded
-    /// repository that is not on GitHub, when `425-view-on-remote` is on.
+    /// repository that is not on GitHub, when `262-view-on-remote` is on.
     pub fn non_github_remote_web_url(id: u64, cx: &App) -> Option<String> {
         let s = Self::state(cx).read(cx);
         if !s.flags.bool(crate::flags::ids::VIEW_ON_REMOTE) || s.repository(id)?.github.is_some() {
@@ -953,7 +953,7 @@ fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
 }
 
-/// Where a file as of commit `short_sha` is written (flag `248`):
+/// Where a file as of commit `short_sha` is written (flag `811`):
 /// `<tmp>/corvane-history/<short sha>/<repository-relative path>`. `None` for
 /// a path that would leave that directory.
 fn historical_file_path(tmp: &Path, short_sha: &str, path: &str) -> Option<PathBuf> {
