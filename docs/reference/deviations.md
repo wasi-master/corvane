@@ -158,6 +158,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - The repository list's Recent group shows a configurable number of repositories (3 by default as in GHD, 0 hides the group); at least 3 are remembered either way. Flag: `111-recent-repositories-count`.
 - Opening the repository list selects the filter text it remembers, so typing replaces it (GHD puts the caret after it). Flag: `112-repository-filter-selects-text`.
 - Add › Clone Repository… in the repository list opens the clone dialog with the list's filter text in its GitHub tabs' filter box (GHD starts it empty). Flag: `113-clone-prefills-filter`.
+- Repositories that share a name within a repository list group show, dimmed after the name, the parent folders that tell them apart (GHD: identical rows, the path only in the tooltip). Flag: `115-duplicate-names-show-path`.
 
 ## Scrolling
 

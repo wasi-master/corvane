@@ -1,6 +1,8 @@
 //! Repository foldout: filter + "Add ▾", then grouped 29 px rows
 //! (`ui/repositories-list/*.tsx`, `styles/ui/_repository-list.scss`).
 
+use std::collections::HashMap;
+
 use corvane_core::{AppState, Dispatcher, Popup, Repository};
 use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
@@ -198,6 +200,7 @@ impl RepositoryFoldout {
         repo: &Repository,
         selected: bool,
         highlighted: bool,
+        detail: Option<String>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let t = cx.ghd();
@@ -286,7 +289,30 @@ impl RepositoryFoldout {
                     .truncate()
                     .text_size(FONT_SIZE())
                     .when(repo.alias.is_some(), |d| d.italic())
-                    .child(repo.name()),
+                    .child({
+                        // Corvane (`115-duplicate-names-show-path`): the
+                        // telling folders, dimmed, after the name
+                        let name = repo.name();
+                        match detail {
+                            Some(detail) => {
+                                let start = name.len() + 2;
+                                let text = format!("{name}  {detail}");
+                                let end = text.len();
+                                let dim = HighlightStyle {
+                                    color: Some(if selected || highlighted {
+                                        t.box_selected_text
+                                    } else {
+                                        t.text_secondary
+                                    }),
+                                    ..Default::default()
+                                };
+                                StyledText::new(text)
+                                    .with_highlights([(start..end, dim)])
+                                    .into_any_element()
+                            }
+                            None => name.into_any_element(),
+                        }
+                    }),
             )
             // `.repo-indicators`: ahead / behind arrows, then the changes dot
             .when(has_changes || ahead_behind.is_some(), |d| {
@@ -581,6 +607,11 @@ impl Render for RepositoryFoldout {
         let filtering = self.only_changed || self.only_ahead_behind;
         let highlighted = self.highlighted;
         let mut row_ix = 0;
+        let show_paths = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::DUPLICATE_NAMES_SHOW_PATH);
 
         div()
             .id("repository-list")
@@ -708,6 +739,11 @@ impl Render for RepositoryFoldout {
                     .children(groups.into_iter().enumerate().map(|(group_ix, group)| {
                         let first = row_ix;
                         row_ix += group.repos.len();
+                        let mut details = if show_paths {
+                            duplicate_name_paths(&group.repos)
+                        } else {
+                            HashMap::new()
+                        };
                         // a repository can be listed under Recent and its
                         // owner: the group id keeps the rows' ids (and a11y
                         // nodes) unique
@@ -733,6 +769,7 @@ impl Render for RepositoryFoldout {
                                     repo,
                                     selected == Some(repo.id),
                                     highlighted == Some(first + ix),
+                                    details.remove(&repo.id),
                                     cx,
                                 )
                             }))
@@ -759,6 +796,48 @@ fn indicators(s: &AppState, id: u64) -> (Option<corvane_core::AheadBehind>, bool
         .or_else(|| indicator.map(|i| i.changed_files > 0))
         .unwrap_or(false);
     (ab, changes)
+}
+
+/// Corvane (`115-duplicate-names-show-path`): for repositories whose names
+/// repeat within `repos`, the trailing directories of their parent paths
+/// that tell them apart (`fork-a` for `~/fork-a/app` beside `~/fork-b/app`).
+fn duplicate_name_paths(repos: &[Repository]) -> HashMap<u64, String> {
+    let parents = |r: &Repository| -> Vec<String> {
+        r.path
+            .parent()
+            .map(|p| {
+                p.components()
+                    .rev()
+                    .filter_map(|c| match c {
+                        std::path::Component::Normal(s) => Some(s.to_string_lossy().into_owned()),
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let mut out = HashMap::new();
+    for repo in repos {
+        let name = repo.name().to_lowercase();
+        let others: Vec<Vec<String>> = repos
+            .iter()
+            .filter(|r| r.id != repo.id && r.name().to_lowercase() == name)
+            .map(parents)
+            .collect();
+        if others.is_empty() {
+            continue;
+        }
+        let mine = parents(repo);
+        for k in 1..=mine.len() {
+            let unique = others.iter().all(|p| p.len() < k || p[..k] != mine[..k]);
+            if unique || k == mine.len() {
+                let shown: Vec<&str> = mine[..k].iter().rev().map(String::as_str).collect();
+                out.insert(repo.id, shown.join("/"));
+                break;
+            }
+        }
+    }
+    out
 }
 
 /// Corvane (`614-navigation-shortcuts`): the repositories in the list's
@@ -798,7 +877,28 @@ fn commit_grammar(n: u32) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::step_repository;
+    use super::{duplicate_name_paths, step_repository};
+
+    fn repo(id: u64, path: &str) -> corvane_core::Repository {
+        corvane_core::Repository::new(id, path)
+    }
+
+    #[test]
+    fn duplicate_names_get_the_parent_dirs_that_differ() {
+        let repos = [
+            repo(1, "/w/fork-a/app"),
+            repo(2, "/w/fork-b/app"),
+            repo(3, "/x/src/lib"),
+            repo(4, "/y/src/lib"),
+            repo(5, "/w/solo"),
+        ];
+        let paths = duplicate_name_paths(&repos);
+        assert_eq!(paths.get(&1).map(String::as_str), Some("fork-a"));
+        assert_eq!(paths.get(&2).map(String::as_str), Some("fork-b"));
+        assert_eq!(paths.get(&3).map(String::as_str), Some("x/src"));
+        assert_eq!(paths.get(&4).map(String::as_str), Some("y/src"));
+        assert!(!paths.contains_key(&5));
+    }
 
     #[test]
     fn steps_wrap_around_the_list() {

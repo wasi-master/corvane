@@ -309,6 +309,19 @@ registry! {
         upstream: &[Upstream::issue(17770)],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// Same-named repositories in a group show the parent folders that differ.
+    DUPLICATE_NAMES_SHOW_PATH = 115 "duplicate-names-show-path" {
+        title: "Same-named repositories show their folder",
+        summary: "When repositories in one group of the repository list share a name, each row \
+                  adds, dimmed, the parent folders that tell them apart (fork-a beside fork-b).",
+        ghd_behaviour: "Identical rows; only the tooltip's path tells them apart.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15937)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 200 Repository ----
 
