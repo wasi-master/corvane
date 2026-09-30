@@ -330,14 +330,36 @@ impl Dispatcher {
 
     /// `_fetch(FetchType::UserInitiatedTask | BackgroundTask)`
     pub fn fetch(id: u64, background: bool, cx: &mut App) {
+        Self::fetch_remote_then(id, None, background, |_, _| {}, cx);
+    }
+
+    /// `fetch` from `remote` (default: the current branch's remote), then
+    /// `then(fetched)` once it finished or did not start.
+    pub fn fetch_remote_then(
+        id: u64,
+        remote: Option<&str>,
+        background: bool,
+        then: impl FnOnce(bool, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
-            return;
+            return then(false, cx);
         };
-        let Some(remote) = Self::current_remote(id, cx) else {
-            return;
+        let remote = match remote {
+            Some(name) => Self::state(cx)
+                .read(cx)
+                .repo_states
+                .get(&id)
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.remotes.iter().find(|r| r.name == name))
+                .cloned(),
+            None => Self::current_remote(id, cx),
+        };
+        let Some(remote) = remote else {
+            return then(false, cx);
         };
         if !Self::begin_network(id, cx) {
-            return;
+            return then(false, cx);
         }
         Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
@@ -384,6 +406,7 @@ impl Dispatcher {
                 result
             },
             move |result, cx| {
+                let fetched = result.is_ok();
                 if let Err(err) = result {
                     Self::handle_remote_error(
                         id,
@@ -396,6 +419,7 @@ impl Dispatcher {
                     );
                 }
                 Self::refresh_repository(id, cx);
+                then(fetched, cx);
             },
         );
     }

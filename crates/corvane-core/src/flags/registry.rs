@@ -466,6 +466,20 @@ registry! {
         upstream: &[Upstream::issue(21951)],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Update from Default Branch fetches and merges the remote-tracking branch.
+    UPDATE_FROM_DEFAULT_FETCHES = 219 "update-from-default-fetches" {
+        title: "Update from the default branch's remote",
+        summary: "Branch › Update from Default Branch fetches the default branch's remote first \
+                  and merges its remote-tracking branch (origin/main), so the latest commits on \
+                  the remote are brought in even when the local default branch is behind.",
+        ghd_behaviour: "Merges the local default branch as it is, which may be behind its remote.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13709), Upstream::issue(19559), Upstream::issue(21545)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 300 GitHub ----
 

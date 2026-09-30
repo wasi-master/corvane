@@ -1908,15 +1908,60 @@ impl Dispatcher {
     }
 
     /// Branch › Update from Default Branch: merge the default branch in.
+    ///
+    /// Deviation (`219-update-from-default-fetches`): GHD merges the local
+    /// default branch as it is (`app/src/ui/app.tsx`
+    /// `updateBranchWithContributionTargetBranch`), which may be behind its
+    /// remote; with the flag on, its remote is fetched first and the
+    /// remote-tracking branch is merged.
     pub fn update_from_default_branch(id: u64, cx: &mut App) {
-        let default = Self::state(cx)
-            .read(cx)
-            .repo_states
-            .get(&id)
-            .and_then(|r| r.default_branch.clone());
-        if let Some(default) = default {
-            Self::merge_branch(id, default, false, cx);
+        let (default, fetch_first) = {
+            let s = Self::state(cx).read(cx);
+            (
+                s.repo_states
+                    .get(&id)
+                    .and_then(|r| r.default_branch.clone()),
+                s.flags.bool(crate::flags::ids::UPDATE_FROM_DEFAULT_FETCHES),
+            )
+        };
+        let Some(default) = default else { return };
+        let tracking = fetch_first
+            .then(|| Self::branch_by_name(id, &default, cx))
+            .flatten()
+            .and_then(|b| match b.kind {
+                corvane_models::BranchKind::Local => Some((
+                    b.upstream_remote_name()?.to_owned(),
+                    b.upstream_short()?.to_owned(),
+                )),
+                corvane_models::BranchKind::Remote => {
+                    let remote = b
+                        .remote_name
+                        .clone()
+                        .or_else(|| b.name.split_once('/').map(|(r, _)| r.to_owned()))?;
+                    Some((remote, b.name))
+                }
+            })
+            // the remote-tracking branch must exist to be merged
+            .filter(|(_, short)| Self::branch_by_name(id, short, cx).is_some());
+        match tracking {
+            Some((remote, short)) => Self::fetch_remote_then(
+                id,
+                Some(&remote),
+                false,
+                move |fetched, cx| {
+                    if fetched {
+                        Self::update_from_branch(id, short, cx);
+                    }
+                },
+                cx,
+            ),
+            None => Self::update_from_branch(id, default, cx),
         }
+    }
+
+    /// Bring `branch` into the current branch for Update from Default Branch.
+    fn update_from_branch(id: u64, branch: String, cx: &mut App) {
+        Self::merge_branch(id, branch, false, cx);
     }
 
     /// Branch › Stash All Changes (`createStashForCurrentBranch`).
