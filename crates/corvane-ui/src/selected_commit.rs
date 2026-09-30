@@ -45,6 +45,8 @@ pub struct SelectedCommitView {
     file_list_focus: FocusHandle,
     /// `file_list_focus` held focus at the last render (active selection colours).
     file_list_focused: bool,
+    /// Corvane (`109-history-review-mode`): the file list is hidden.
+    file_list_hidden: bool,
 }
 
 impl SelectedCommitView {
@@ -70,6 +72,7 @@ impl SelectedCommitView {
             file_list_width,
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
+            file_list_hidden: false,
         }
     }
 
@@ -91,6 +94,14 @@ impl SelectedCommitView {
             }
         };
         cx.write_to_clipboard(ClipboardItem::new_string(text));
+    }
+
+    /// Corvane (`109-history-review-mode`): hide or show the file list.
+    pub fn set_file_list_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        if self.file_list_hidden != hidden {
+            self.file_list_hidden = hidden;
+            cx.notify();
+        }
     }
 
     /// Corvane (`614-navigation-shortcuts`): focus the commit's diff.
@@ -772,6 +783,27 @@ impl Render for SelectedCommitView {
                 .child("No commit selected")
                 .into_any_element();
         };
+        let diff_pane = div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .min_h_0()
+            .when_some(selected_file, |d, (path, kind)| {
+                d.child(diff_header(&path, kind, &self.diff, cx))
+            })
+            .child(self.diff.clone());
+        // Corvane (`109-history-review-mode`): the diff alone, full width
+        if self.file_list_hidden {
+            return div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .min_h_0()
+                .bg(t.background)
+                .children(self.summary(id, cx))
+                .child(diff_pane)
+                .into_any_element();
+        }
         div()
             .size_full()
             .flex()
@@ -825,19 +857,7 @@ impl Render for SelectedCommitView {
                                 )),
                             ),
                     )
-                    .child(
-                        resizable_panel().child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .flex_col()
-                                .min_h_0()
-                                .when_some(selected_file, |d, (path, kind)| {
-                                    d.child(diff_header(&path, kind, &self.diff, cx))
-                                })
-                                .child(self.diff.clone()),
-                        ),
-                    ),
+                    .child(resizable_panel().child(diff_pane)),
             )
             .into_any_element()
     }

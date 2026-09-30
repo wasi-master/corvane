@@ -34,6 +34,13 @@ pub fn install(
             ShowPullRequestsList,
         ));
     }
+    // Corvane (`109-history-review-mode`)
+    if keymap.history_review_mode {
+        view.push(MenuItem::action(
+            "Toggle History Review Mode",
+            ToggleHistoryReviewMode,
+        ));
+    }
     view.extend([
         MenuItem::separator(),
         MenuItem::action("Go to Summary", GoToSummary),

@@ -87,6 +87,8 @@ pub struct Workspace {
     focus_section_list: bool,
     /// The launch has not placed focus yet (`616-launch-focuses-commit-summary`).
     launch_focus_pending: bool,
+    /// History shows the diff alone (`109-history-review-mode`).
+    review_mode: bool,
 }
 
 impl Workspace {
@@ -191,6 +193,7 @@ impl Workspace {
             last_foldout: None,
             focus_section_list: false,
             launch_focus_pending: true,
+            review_mode: false,
             dialogs,
             diff_view,
             welcome,
@@ -590,8 +593,35 @@ impl Workspace {
         }
     }
 
+    /// Corvane (`109-history-review-mode`): View › Toggle History Review
+    /// Mode (⌃⌘S) hides the repository sidebar and the commit's file list
+    /// in History, so the diff gets the whole width.
+    pub fn toggle_review_mode(&mut self, cx: &mut Context<Self>) {
+        self.review_mode = !self.review_mode;
+        cx.notify();
+    }
+
+    fn review_mode_active(&self, cx: &App) -> bool {
+        self.review_mode
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::HISTORY_REVIEW_MODE)
+    }
+
     fn repository_view(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        if self.section == Section::History && self.review_mode_active(cx) {
+            return div()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .border_t_1()
+                .border_color(t.box_border)
+                .child(self.content(cx))
+                .into_any_element();
+        }
         div()
             .flex_1()
             .min_h_0()
@@ -622,6 +652,7 @@ impl Workspace {
                     )
                     .child(resizable_panel().child(self.content(cx))),
             )
+            .into_any_element()
     }
 
     /// `maybeRenderTutorialPanel`: the repository view with the tutorial
@@ -734,6 +765,9 @@ impl Render for Workspace {
             self.section = section;
         }
         self.place_launch_focus(window, cx);
+        let review = self.review_mode_active(cx);
+        self.selected_commit
+            .update(cx, |v, cx| v.set_file_list_hidden(review, cx));
         if std::mem::take(&mut self.focus_section_list) {
             let handle = match self.section {
                 Section::Changes => self.changes.read(cx).list_focus_handle(),

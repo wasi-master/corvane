@@ -644,6 +644,11 @@ fn main() {
                     .ok();
             }
         });
+        // Corvane (`109-history-review-mode`)
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ToggleHistoryReviewMode, cx| {
+            ws.update(cx, |w, cx| w.toggle_review_mode(cx))
+        });
         // Corvane (`614-navigation-shortcuts`)
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowPullRequestsList, cx| {

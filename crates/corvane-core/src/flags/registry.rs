@@ -220,6 +220,24 @@ registry! {
         upstream: &[Upstream::issue(8589)],
         code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/tab_bar.rs"],
     },
+    /// History review mode: the diff alone, full width.
+    HISTORY_REVIEW_MODE = 109 "history-review-mode" {
+        title: "History review mode",
+        summary: "View › Toggle History Review Mode (⌃⌘S) hides the repository sidebar and the \
+                  commit's file list in History so the diff gets the whole width; ⌥↓ / ⌥↑ \
+                  (flag 614) still step through the files.",
+        ghd_behaviour: "The sidebar and file list always take their width.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8456)],
+        code: &[
+            "crates/corvane-ui/src/workspace.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+            "crates/corvane/src/menus.rs",
+        ],
+    },
 
     // ---- 200 Repository ----
 
