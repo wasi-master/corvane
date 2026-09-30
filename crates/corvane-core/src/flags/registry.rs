@@ -1039,6 +1039,24 @@ registry! {
         upstream: &[Upstream::issue(11924), Upstream::issue(17680)],
         code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane-ui/src/changes.rs"],
     },
+    /// ⇧⌘A / ⌥⌘O open the file selected in a file list.
+    OPEN_FILE_SHORTCUTS = 608 "open-file-shortcuts" {
+        title: "Shortcuts that open the selected file",
+        summary: "With the changes list or a commit's file list focused, ⇧⌘A opens the selected \
+                  file in the external editor (instead of the repository) and ⌥⌘O opens it with \
+                  its default program.",
+        ghd_behaviour: "Only the file context menu opens a file; ⇧⌘A always opens the repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13691), Upstream::issue(4655), Upstream::issue(20773)],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/changes.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+        ],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

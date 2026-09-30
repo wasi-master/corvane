@@ -15,6 +15,7 @@ use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
+use crate::actions::{OpenSelectedFileInEditor, OpenSelectedFileWithDefaultProgram};
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -67,6 +68,18 @@ impl SelectedCommitView {
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
         }
+    }
+
+    /// Corvane (`608-open-file-shortcuts`): the selected commit file, when
+    /// it exists in the working directory (the context menu's condition).
+    fn selected_file_on_disk(&self, cx: &App) -> Option<std::path::PathBuf> {
+        let s = self.state.read(cx);
+        let rs = s.selected_state()?;
+        let full = s
+            .selected_repository()?
+            .path
+            .join(rs.commit_selected_file.as_ref()?);
+        full.exists().then_some(full)
     }
 
     /// `ExpandableCommitSummary` for a contiguous multi-commit selection:
@@ -748,16 +761,33 @@ impl Render for SelectedCommitView {
                         resizable_panel()
                             .size(self.file_list_width)
                             .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
-                            .child(crate::active_resizable::active_resizable(
-                                "commit-file-list-resizable",
-                                &self.resizable,
-                                Some(&self.file_list_focus),
-                                crate::active_resizable::ResizableDescription::new(
-                                    "Selected commit file list",
-                                    FILE_LIST_MIN()..FILE_LIST_MAX(),
-                                ),
-                                self.file_list(id, cx),
-                            )),
+                            .child(
+                                crate::active_resizable::active_resizable(
+                                    "commit-file-list-resizable",
+                                    &self.resizable,
+                                    Some(&self.file_list_focus),
+                                    crate::active_resizable::ResizableDescription::new(
+                                        "Selected commit file list",
+                                        FILE_LIST_MIN()..FILE_LIST_MAX(),
+                                    ),
+                                    self.file_list(id, cx),
+                                )
+                                .key_context("CommitFileList")
+                                .on_action(cx.listener(
+                                    |this, _: &OpenSelectedFileInEditor, _, cx| {
+                                        if let Some(path) = this.selected_file_on_disk(cx) {
+                                            Dispatcher::open_in_editor(path, cx)
+                                        }
+                                    },
+                                ))
+                                .on_action(cx.listener(
+                                    |this, _: &OpenSelectedFileWithDefaultProgram, _, cx| {
+                                        if let Some(path) = this.selected_file_on_disk(cx) {
+                                            cx.open_with_system(&path)
+                                        }
+                                    },
+                                )),
+                            ),
                     )
                     .child(
                         resizable_panel().child(

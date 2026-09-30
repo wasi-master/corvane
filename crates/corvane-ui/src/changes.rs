@@ -34,10 +34,11 @@ use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
 use crate::actions::{
-    Commit, DiscardSelectedFiles, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles,
-    SelectFirstFile, SelectLastFile, SelectNextFile, SelectPreviousFile, SpellAddToDictionary,
-    SpellSuggestion0, SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4,
-    ToggleCoAuthors, ToggleCommitSpellcheck, ToggleIncludeSelected,
+    Commit, DiscardSelectedFiles, ExtendSelectionDown, ExtendSelectionUp, OpenSelectedFileInEditor,
+    OpenSelectedFileWithDefaultProgram, SelectAllFiles, SelectFirstFile, SelectLastFile,
+    SelectNextFile, SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0, SpellSuggestion1,
+    SpellSuggestion2, SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors, ToggleCommitSpellcheck,
+    ToggleIncludeSelected,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
@@ -1140,6 +1141,19 @@ impl ChangesSidebar {
         if let Some((id, paths)) = self.highlighted_files(cx) {
             Dispatcher::request_discard_changes(id, paths, cx);
         }
+    }
+
+    /// Corvane (`608-open-file-shortcuts`): the first highlighted file on
+    /// disk (a deleted file has nothing to open, as in the context menu).
+    fn highlighted_file_on_disk(&self, cx: &App) -> Option<PathBuf> {
+        let (id, paths) = self.highlighted_files(cx)?;
+        let s = self.state.read(cx);
+        let status = s.repo_states.get(&id)?.status.as_ref()?;
+        let first = paths.first()?;
+        let file = status.files.iter().find(|f| &f.path == first)?;
+        (file.status.kind != FileStatusKind::Deleted)
+            .then(|| s.repository(id).map(|r| r.path.join(first)))
+            .flatten()
     }
 
     /// Space (GHD `onToggleInclude` for the row's `onKeyDown`): include the
@@ -3307,6 +3321,18 @@ impl Render for ChangesSidebar {
                     .on_action(cx.listener(|this, _: &DiscardSelectedFiles, _, cx| {
                         this.discard_highlighted(cx)
                     }))
+                    .on_action(cx.listener(|this, _: &OpenSelectedFileInEditor, _, cx| {
+                        if let Some(path) = this.highlighted_file_on_disk(cx) {
+                            Dispatcher::open_in_editor(path, cx)
+                        }
+                    }))
+                    .on_action(cx.listener(
+                        |this, _: &OpenSelectedFileWithDefaultProgram, _, cx| {
+                            if let Some(path) = this.highlighted_file_on_disk(cx) {
+                                cx.open_with_system(&path)
+                            }
+                        },
+                    ))
                     .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
                         let (files, _) = this.visible_files(cx);
                         if let Some(id) = this.state.read(cx).selected {
