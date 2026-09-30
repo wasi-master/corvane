@@ -376,6 +376,19 @@ registry! {
         upstream: &[Upstream::issue(18388)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// History › Open with Default Program opens the file as of the commit.
+    OPEN_HISTORICAL_FILE = 248 "open-historical-file" {
+        title: "History opens the commit's version of a file",
+        summary: "Open with Default Program in a commit's file list opens the file as it is in \
+                  that commit (a read-only copy in the temporary directory), not the working copy.",
+        ghd_behaviour: "Opens the file in the working directory, whatever its current state.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21117)],
+        code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/integrations.rs"],
+    },
 
     // ---- 300 GitHub ----
 

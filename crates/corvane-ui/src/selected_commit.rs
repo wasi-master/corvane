@@ -6,7 +6,9 @@
 //!
 //! Deviation (`docs/reference/deviations.md` › History, flag `245`): the file
 //! list multi-selects with ⌘/⇧-click, and a multi-selection's context menu
-//! copies all the paths; GHD's history file list selects one file.
+//! copies all the paths; GHD's history file list selects one file. Open with
+//! Default Program opens the file as of the commit (flag `248`), not the
+//! working copy.
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -642,6 +644,20 @@ fn open_commit_file_menu(
         .and_then(|r| r.last_commit.as_ref())
         .is_some_and(|c| selected.first() == Some(&c.sha));
     let github = repo.github.clone();
+    // `248`: open the file as of the (newest) selected commit
+    let historical = state
+        .flags
+        .bool(corvane_core::flags::ids::OPEN_HISTORICAL_FILE)
+        .then(|| {
+            rs.and_then(|rs| {
+                rs.commits
+                    .iter()
+                    .find(|c| selected.contains(&c.sha))
+                    .map(|c| c.sha.clone())
+            })
+            .or_else(|| selected.first().cloned())
+        })
+        .flatten();
     let items = if !full.exists() {
         vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)]
     } else {
@@ -663,8 +679,17 @@ fn open_commit_file_menu(
                 Dispatcher::open_in_editor(editor.clone(), cx)
             }),
             // `isSafeFileExtension` is always true on macOS
-            MenuItem::new("Open with Default Program", move |_, cx| {
-                cx.open_with_system(&default)
+            MenuItem::new("Open with Default Program", {
+                let path = relative.clone();
+                move |_, cx| match &historical {
+                    Some(sha) => Dispatcher::open_commit_file_with_default_program(
+                        id,
+                        sha.clone(),
+                        path.clone(),
+                        cx,
+                    ),
+                    None => cx.open_with_system(&default),
+                }
             }),
             MenuItem::separator(),
             MenuItem::new("Copy File Path", move |_, cx| {
