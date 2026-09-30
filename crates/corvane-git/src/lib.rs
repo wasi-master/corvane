@@ -48,8 +48,8 @@ pub use history_ops::{
     ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
 };
 pub use ignore::{
-    append_ignore_files, append_ignore_rules, escape_gitignore_pattern, read_gitignore,
-    save_gitignore,
+    IgnoreTarget, append_ignore_files, append_ignore_rules, append_ignore_rules_to,
+    escape_gitignore_pattern, excludes_file, gitignore_dirs_above, read_gitignore, save_gitignore,
 };
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,

@@ -437,6 +437,21 @@ registry! {
         upstream: &[Upstream::issue(3618)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/repo.rs", "crates/corvane-models/src/lib.rs"],
     },
+    /// "Ignore File In" submenu.
+    IGNORE_FILE_TARGETS = 217 "ignore-file-targets" {
+        title: "Choose the ignore file",
+        summary: "A changed file's context menu adds Ignore File In: the .gitignore of a folder \
+                  above the file (anchored to that folder), .git/info/exclude (this clone only) or \
+                  the global excludes file (core.excludesFile, else ~/.config/git/ignore; the file \
+                  name is ignored in every repository).",
+        ghd_behaviour: "Ignore items always write to the .gitignore at the repository root.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12171), Upstream::issue(16028)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
+    },
 
     // ---- 300 GitHub ----
 

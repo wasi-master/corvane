@@ -3,6 +3,8 @@
 //!
 //! Deviation (flag `changes-line-counts`): rows show "+N -M" before the
 //! status icon and the header the totals (GHD `changes-list.tsx` has none).
+//! Deviation (flag `ignore-file-targets`): a single file's menu adds "Ignore
+//! File In" (a nearer `.gitignore`, `info/exclude`, the global excludes file).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1616,6 +1618,39 @@ impl ChangesSidebar {
                     MenuItem::submenu("Ignore Folder (Add to .gitignore)", folders)
                         .enabled(!is_gitignore),
                 );
+            }
+            // Corvane: ignore from a nearer .gitignore, info/exclude or the
+            // global excludes file (flag `ignore-file-targets`)
+            if self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::IGNORE_FILE_TARGETS)
+            {
+                use corvane_git::IgnoreTarget;
+                let mut targets: Vec<(String, IgnoreTarget)> =
+                    corvane_git::gitignore_dirs_above(&repo_path, &path)
+                        .into_iter()
+                        .map(|dir| (format!("{dir}/.gitignore"), IgnoreTarget::Directory(dir)))
+                        .collect();
+                targets.push((
+                    ".git/info/exclude (This Repository Only)".into(),
+                    IgnoreTarget::InfoExclude,
+                ));
+                targets.push((
+                    "Global Ignore File (All Repositories)".into(),
+                    IgnoreTarget::ExcludesFile,
+                ));
+                let entries: Vec<MenuItem> = targets
+                    .into_iter()
+                    .map(|(label, target)| {
+                        let p = path.clone();
+                        MenuItem::new(label, move |_, cx| {
+                            Dispatcher::ignore_file_in(id, p.clone(), target.clone(), cx)
+                        })
+                    })
+                    .collect();
+                items.push(MenuItem::submenu("Ignore File In", entries).enabled(!is_gitignore));
             }
         } else {
             let ignorable: Vec<String> = paths

@@ -2817,6 +2817,32 @@ impl Dispatcher {
         .detach();
     }
 
+    /// "Ignore File In" (flag `ignore-file-targets`): ignore one path from
+    /// another ignore file than the root `.gitignore`, then refresh.
+    pub fn ignore_file_in(id: u64, path: String, target: corvane_git::IgnoreTarget, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let skip_existing = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::IGNORE_SKIPS_EXISTING_RULES);
+        let patterns = vec![target.pattern_for(&path)];
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::append_ignore_rules_to(git, &workdir, &target, &patterns, skip_existing)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not update the ignore file", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
     // ---- sign-in (GHD `SignInStore`) ----
 
     pub(crate) fn set_sign_in_step(step: SignInStep, cx: &mut App) {
