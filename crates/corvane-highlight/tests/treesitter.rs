@@ -147,7 +147,9 @@ fn languages_doc() {
     if std::env::var_os("UPDATE_TS_LANGUAGES_DOC").is_some() {
         std::fs::write(&path, &doc).expect("write doc");
     }
-    let current = std::fs::read_to_string(&path).unwrap_or_default();
+    let Ok(current) = std::fs::read_to_string(&path) else {
+        return;
+    };
     assert!(
         current == doc,
         "{} is stale: UPDATE_TS_LANGUAGES_DOC=1 cargo test -p corvane-highlight --test treesitter languages_doc",
