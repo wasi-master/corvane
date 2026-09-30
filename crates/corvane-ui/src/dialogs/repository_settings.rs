@@ -319,8 +319,53 @@ impl RepositorySettingsDialog {
         }
     }
 
+    /// Flag `287-gitignore-templates` (Corvane addition, desktop/desktop#2197):
+    /// a bundled `.gitignore` template (the Create a New Repository list)
+    /// fills an empty box or is appended under a `# <Name>` line; nothing is
+    /// written until Save.
+    fn gitignore_template_select(&self, cx: &Context<Self>) -> AnyElement {
+        let names = corvane_core::templates::gitignore_names();
+        let options: Vec<SharedString> = names.iter().map(|n| n.clone().into()).collect();
+        let gitignore = self.gitignore.clone();
+        let on_select: SelectHandler = Rc::new(move |ix, window, cx| {
+            let Some(name) = names.get(ix) else {
+                return;
+            };
+            let Some(template) = corvane_core::templates::gitignore_text(name) else {
+                return;
+            };
+            gitignore.update(cx, |s, cx| {
+                let current = s.value().to_string();
+                let value = if current.trim().is_empty() {
+                    template
+                } else {
+                    format!("{}\n\n# {name}\n{template}", current.trim_end())
+                };
+                s.set_value(value, window, cx);
+            });
+        });
+        labeled(
+            "Add a template",
+            select_button(
+                "repo-settings-gitignore-template",
+                "Choose a template…",
+                options,
+                None,
+                false,
+                on_select,
+                cx,
+            ),
+            cx,
+        )
+        .into_any_element()
+    }
+
     fn ignored_files_tab(&self, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let templates = AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::GITIGNORE_TEMPLATES);
         let height = if AppState::global(cx)
             .read(cx)
             .flags
@@ -347,6 +392,7 @@ impl RepositorySettingsDialog {
                 .into_any_element()
                 .into(),
             ]))
+            .when(templates, |d| d.child(self.gitignore_template_select(cx)))
             .child(
                 // `textarea.gitignore { height: 130px }`; flag
                 // `185-taller-text-areas` doubles it

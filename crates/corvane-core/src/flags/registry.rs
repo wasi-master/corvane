@@ -366,6 +366,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
     },
 
+    /// Repository Settings › Ignored Files offers the bundled templates.
+    GITIGNORE_TEMPLATES = 287 "gitignore-templates" {
+        title: "Repository Settings: .gitignore templates",
+        summary: "Repository Settings › Ignored Files has an \"Add a template\" list (the \
+                  Create a New Repository .gitignore templates) that fills an empty box or \
+                  appends the template.",
+        ghd_behaviour: "Templates only when creating a repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(2197)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
