@@ -147,3 +147,13 @@ jobs:
       # account tokens go through the secret service, never to disk in plain text
       - name: keyring round trip (gnome-keyring)
         run: dbus-run-session -- packaging/linux/keyring-test.sh
+      # the .deb layout from the debug binary the tests built (release.yml
+      # packages the release build)
+      - name: package smoke test (.deb)
+        run: |
+          PACKAGE_BIN=target/debug/corvane packaging/linux/package.sh
+          deb="$(ls target/linux/corvane_*_amd64.deb)"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb" | grep -E 'usr/lib/corvane/corvane$|usr/lib/corvane/bin/corvane$|usr/bin/corvane -> |applications/com.wasimaster.corvane.desktop$'
+          CORVANE_CLI_DRY_RUN=1 packaging/linux/corvane.sh open . | grep -q '^x-corvane://openLocalRepo/'
+
