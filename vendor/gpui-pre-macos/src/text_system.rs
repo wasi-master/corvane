@@ -77,6 +77,11 @@ struct MacTextSystemState {
     /// Corvane patch: fonts requested with the private `czom` feature (CSS
     /// `zoom` × 100): their text is shaped at `size / zoom` and scaled back.
     layout_zoom: HashMap<FontId, f32>,
+    /// Corvane patch: the sized copies `layout_line` shapes with, by (font,
+    /// size bits). CoreText keeps a font's glyph caches only while the font
+    /// is alive; a fresh copy per line rebuilt them for every shaped line
+    /// (`TFont::InitASCIIDataCache`, a third of a diff's first frame).
+    sized_fonts: HashMap<(FontId, u32), CTFont>,
 }
 
 impl MacTextSystem {
@@ -92,6 +97,7 @@ impl MacTextSystem {
             postscript_names_by_font_id: HashMap::default(),
             weight_variants: HashMap::default(),
             layout_zoom: HashMap::default(),
+            sized_fonts: HashMap::default(),
         }))
     }
 }
@@ -668,7 +674,11 @@ impl MacTextSystemState {
                 } else {
                     shaping_size
                 };
-                let sized = font.native_font().clone_with_font_size(font_size.into());
+                let sized = self
+                    .sized_fonts
+                    .entry((run.font_id, f32::from(font_size).to_bits()))
+                    .or_insert_with(|| font.native_font().clone_with_font_size(font_size.into()))
+                    .clone();
                 unsafe {
                     string.set_attribute(cf_range, kCTFontAttributeName, &sized);
                 }

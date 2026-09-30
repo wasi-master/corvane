@@ -458,6 +458,8 @@ impl WrappedLineLayout {
 pub(crate) struct LineLayoutCache {
     previous_frame: Mutex<FrameCache>,
     current_frame: RwLock<FrameCache>,
+    /// Corvane patch: lines the last frame did not use, kept for a while.
+    retired: Mutex<RetiredLines>,
     platform_text_system: Arc<dyn PlatformTextSystem>,
     /// Advances when [`TextSystem::add_fonts`] successfully changes the font database.
     font_generation: Arc<AtomicUsize>,
@@ -484,6 +486,19 @@ struct FrameCache {
     used_wrapped_lines_by_hash: Vec<Arc<HashedCacheKey>>,
 }
 
+/// Corvane patch: shaped lines that dropped out of the frame caches (a tab
+/// switched away from, rows scrolled out of view), in two generations of at
+/// most [`RETIRED_GENERATION`] lines. Switching back or scrolling back reuses
+/// them instead of shaping every line again (CoreText, the bulk of such a
+/// frame).
+#[derive(Default)]
+struct RetiredLines {
+    young: FxHashMap<Arc<CacheKey>, Arc<LineLayout>>,
+    old: FxHashMap<Arc<CacheKey>, Arc<LineLayout>>,
+}
+
+const RETIRED_GENERATION: usize = 2048;
+
 #[derive(Clone, Default)]
 pub(crate) struct LineLayoutIndex {
     font_generation: usize,
@@ -502,6 +517,7 @@ impl LineLayoutCache {
         Self {
             previous_frame: Mutex::default(),
             current_frame: RwLock::default(),
+            retired: Mutex::default(),
             platform_text_system,
             font_generation,
             cached_font_generation: AtomicUsize::new(cached_font_generation),
@@ -588,6 +604,13 @@ impl LineLayoutCache {
         let mut curr_frame = self.current_frame.write();
         let mut prev_frame = self.previous_frame.lock();
         std::mem::swap(&mut *prev_frame, &mut *curr_frame);
+        // what the frame before last had and the last frame did not reuse
+        let mut retired = self.retired.lock();
+        retired.young.extend(curr_frame.lines.drain());
+        if retired.young.len() > RETIRED_GENERATION {
+            retired.old = std::mem::take(&mut retired.young);
+        }
+        drop(retired);
         curr_frame.lines.clear();
         curr_frame.wrapped_lines.clear();
         curr_frame.used_lines.clear();
@@ -691,7 +714,14 @@ impl LineLayoutCache {
         }
 
         let mut current_frame = RwLockUpgradableReadGuard::upgrade(current_frame);
-        if let Some((key, layout)) = self.previous_frame.lock().lines.remove_entry(key) {
+        let reused = self.previous_frame.lock().lines.remove_entry(key).or_else(|| {
+            let mut retired = self.retired.lock();
+            retired
+                .young
+                .remove_entry(key)
+                .or_else(|| retired.old.remove_entry(key))
+        });
+        if let Some((key, layout)) = reused {
             current_frame.lines.insert(key.clone(), layout.clone());
             current_frame.used_lines.push(key);
             layout
@@ -885,6 +915,7 @@ impl LineLayoutCache {
 
         *current_frame = FrameCache::default();
         *self.previous_frame.lock() = FrameCache::default();
+        *self.retired.lock() = RetiredLines::default();
         self.cached_font_generation
             .store(font_generation, Ordering::Release);
         font_generation
