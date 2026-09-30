@@ -1,4 +1,7 @@
 //! `git status --porcelain=2 -z` (GHD `lib/status-parser.ts` + `lib/git/status.ts`).
+//!
+//! Deviations behind flags: [`StatusOptions`] (`respect-show-untracked-files`)
+//! and [`working_directory_line_stats`] (`changes-line-counts`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -15,20 +18,47 @@ use crate::process::GitCommand;
 /// GHD `conflictStatusCodes`.
 const CONFLICT_CODES: &[&str] = &["DD", "AU", "UD", "UA", "DU", "AA", "UU"];
 
+/// Corvane deviations from GHD's status invocation, set from flags by the
+/// dispatcher's refresh. The default is GHD's behaviour.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StatusOptions {
+    /// `status.showUntrackedFiles=no` (or false) hides untracked files
+    /// (`--untracked-files=no`); GHD always passes `--untracked-files=all`.
+    /// Flag `respect-show-untracked-files`.
+    pub respect_show_untracked_files: bool,
+}
+
 /// Run status and build the model. `previous` carries over per-file selections.
 pub fn get_status(
     git: Arc<GitBinary>,
     workdir: &Path,
     previous: Option<&WorkingDirectoryStatus>,
 ) -> Result<WorkingDirectoryStatus> {
+    get_status_with(git, workdir, previous, StatusOptions::default())
+}
+
+/// [`get_status`] with Corvane's [`StatusOptions`].
+pub fn get_status_with(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    previous: Option<&WorkingDirectoryStatus>,
+    options: StatusOptions,
+) -> Result<WorkingDirectoryStatus> {
+    let hide_untracked = options.respect_show_untracked_files
+        && crate::remote_ops::config_value(git.clone(), workdir, "status.showUntrackedFiles")
+            .is_some_and(|v| {
+                matches!(
+                    v.to_ascii_lowercase().as_str(),
+                    "no" | "false" | "off" | "0"
+                )
+            });
+    let untracked = if hide_untracked {
+        "--untracked-files=no"
+    } else {
+        "--untracked-files=all"
+    };
     let out = GitCommand::new(git.clone())
-        .args([
-            "status",
-            "--untracked-files=all",
-            "--branch",
-            "--porcelain=2",
-            "-z",
-        ])
+        .args(["status", untracked, "--branch", "--porcelain=2", "-z"])
         .current_dir(workdir)
         .run()?;
     let mut status = parse_porcelain_v2(&out.stdout);
@@ -437,6 +467,20 @@ mod tests {
                 ("b.txt", FileStatusKind::Untracked)
             ]
         );
+        run(&["config", "status.showUntrackedFiles", "no"]);
+        let hidden = get_status_with(
+            git.clone(),
+            path,
+            None,
+            StatusOptions {
+                respect_show_untracked_files: true,
+            },
+        )
+        .unwrap();
+        assert_eq!(hidden.files.len(), 1);
+        assert_eq!(hidden.files[0].path, "a.txt");
+        // GHD ignores the setting
+        assert_eq!(get_status(git.clone(), path, None).unwrap().files.len(), 2);
         let stats = working_directory_line_stats(git, path, &s).unwrap();
         assert_eq!(
             stats.get("a.txt"),

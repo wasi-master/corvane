@@ -538,7 +538,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status, line_counts) = {
+        let (path, git, previous_status, line_counts, status_options) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -548,6 +548,11 @@ impl Dispatcher {
                 s.git.clone(),
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
                 s.flags.bool(crate::flags::ids::CHANGES_LINE_COUNTS),
+                corvane_git::StatusOptions {
+                    respect_show_untracked_files: s
+                        .flags
+                        .bool(crate::flags::ids::RESPECT_SHOW_UNTRACKED_FILES),
+                },
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -579,10 +584,11 @@ impl Dispatcher {
                                 .ok()
                                 .flatten()
                         });
-                        let status = corvane_git::get_status(
+                        let status = corvane_git::get_status_with(
                             git.clone(),
                             &info.workdir,
                             previous_status.as_ref(),
+                            status_options,
                         )?;
                         (ab, Some(status))
                     }

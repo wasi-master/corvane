@@ -332,6 +332,21 @@ registry! {
         upstream: &[Upstream::issue(22863)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/process.rs"],
     },
+    /// `status.showUntrackedFiles=no` hides untracked files.
+    RESPECT_SHOW_UNTRACKED_FILES = 211 "respect-show-untracked-files" {
+        title: "Respect status.showUntrackedFiles",
+        summary: "When the repository's git config sets status.showUntrackedFiles to no, the \
+                  Changes list leaves untracked files out, as git status does (useful for a home \
+                  directory or dotfiles repository). Untracked files then cannot be committed \
+                  from Corvane until they are added with git.",
+        ghd_behaviour: "Always lists every untracked file (--untracked-files=all).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(3734)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
+    },
 
     // ---- 300 GitHub ----
 
