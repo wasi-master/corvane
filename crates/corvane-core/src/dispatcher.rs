@@ -1457,6 +1457,55 @@ impl Dispatcher {
         );
     }
 
+    /// The push/pull foldout's "Reset to <upstream>" (`229-reset-to-remote`;
+    /// GHD has no such command): confirm, then [`Self::reset_to_remote`].
+    pub fn request_reset_to_remote(id: u64, cx: &mut App) {
+        let popup = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::RESET_TO_REMOTE) {
+                return;
+            }
+            let rs = s.repo_states.get(&id);
+            let branch = rs
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.current_branch());
+            let Some((branch, upstream)) =
+                branch.and_then(|b| Some((b.name.clone(), b.upstream_short()?.to_string())))
+            else {
+                return;
+            };
+            Popup::ResetToRemote {
+                repo: id,
+                branch,
+                upstream,
+                ahead: rs
+                    .and_then(|r| r.ahead_behind)
+                    .map_or(0, |ab| ab.ahead as usize),
+                dirty: Self::working_directory_dirty(id, cx),
+            }
+        };
+        Self::show_popup(popup, cx);
+    }
+
+    /// `reset --hard <upstream>`: the branch matches its upstream; local
+    /// commits stay reachable through the reflog.
+    pub fn reset_to_remote(id: u64, upstream: String, cx: &mut App) {
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            "Could not reset to the remote",
+            move |git, workdir| {
+                corvane_git::reset_to(
+                    git,
+                    &workdir,
+                    corvane_git::ResetMode::Hard,
+                    &format!("refs/remotes/{upstream}"),
+                )
+            },
+            cx,
+        );
+    }
+
     /// `Checkout Commit`: confirm unless the user opted out.
     pub fn request_checkout_commit(id: u64, sha: String, cx: &mut App) {
         if Self::state(cx).read(cx).settings.confirm_checkout_commit {

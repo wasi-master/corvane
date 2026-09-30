@@ -365,6 +365,20 @@ registry! {
         upstream: &[Upstream::issue(1011)],
         code: &["crates/corvane-core/src/remote.rs"],
     },
+    /// The push/pull foldout's "Reset to <upstream>".
+    RESET_TO_REMOTE = 229 "reset-to-remote" {
+        title: "Reset to remote",
+        summary: "While the current branch has commits its upstream lacks, the push/pull dropdown \
+                  offers \"Reset to origin/…\": after a confirmation that names what is discarded, \
+                  the branch and working directory are reset hard to the upstream.",
+        ghd_behaviour: "No such command; resetting to the remote needs a terminal.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16673)],
+        code: &["crates/corvane-ui/src/foldout.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs"],
+    },
 
     // ---- 300 GitHub ----
 

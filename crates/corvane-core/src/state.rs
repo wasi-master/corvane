@@ -190,6 +190,18 @@ pub enum Popup {
         repo: u64,
         sha: String,
     },
+    /// Corvane addition (`229-reset-to-remote`): confirm resetting the
+    /// current branch to its upstream (`reset --hard`).
+    ResetToRemote {
+        repo: u64,
+        branch: String,
+        /// Short name (`origin/main`).
+        upstream: String,
+        /// Commits on the branch but not on the upstream.
+        ahead: usize,
+        /// Uncommitted changes will be discarded too.
+        dirty: bool,
+    },
     /// `ConfirmCheckoutCommit`: detached HEAD warning.
     CheckoutCommit {
         repo: u64,
