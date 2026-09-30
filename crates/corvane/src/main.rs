@@ -476,6 +476,7 @@ fn main() {
             cx.hide();
         });
         cx.on_action(|_: &BringAllToFront, cx| cx.activate(true));
+        cx.on_action(|_: &ShowMainWindow, cx| focus_main_window(cx));
 
         // Same size as the GitHub Desktop reference captures in docs/reference.
         let window_size = size(px(1367.), px(814.));

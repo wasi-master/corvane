@@ -651,6 +651,20 @@ registry! {
         code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-platform/src/editors.rs", "crates/corvane-core/src/integrations.rs"],
     },
 
+    /// Window › Corvane shows the hidden main window.
+    WINDOW_MENU_MAIN_WINDOW = 486 "window-menu-main-window" {
+        title: "Window menu lists the main window",
+        summary: "The Window menu ends with \"Corvane\", which shows the main window again after \
+                  ⌘W or the close button hid it.",
+        ghd_behaviour: "The closed window is not listed; only the Dock icon brings it back.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17647)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane/src/main.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

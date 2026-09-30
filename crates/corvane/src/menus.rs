@@ -19,6 +19,8 @@ pub struct MenuOptions {
     pub show_import: bool,
     /// Flag `396-view-upstream-on-github`.
     pub show_view_upstream: bool,
+    /// Flag `486-window-menu-main-window`.
+    pub show_main_window: bool,
 }
 
 impl MenuOptions {
@@ -30,14 +32,16 @@ impl MenuOptions {
             show_release_notes: s.flags.bool(ids::RELEASE_NOTES_MENU_ITEM),
             show_import: s.flags.bool(ids::IMPORT_FROM_GITHUB_DESKTOP),
             show_view_upstream: s.flags.bool(ids::VIEW_UPSTREAM_ON_GITHUB),
+            show_main_window: s.flags.bool(ids::WINDOW_MENU_MAIN_WINDOW),
         }
     }
 }
 
 /// Build (or rebuild) the menu bar.
 /// Corvane additions: "Flags…" (no GHD equivalent), File › Import
-/// Repositories from GitHub Desktop…, Repository › View Upstream on GitHub
-/// and Help › Show Release Notes.
+/// Repositories from GitHub Desktop…, Repository › View Upstream on GitHub,
+/// Window › Corvane (shows the window hidden with ⌘W) and Help › Show
+/// Release Notes.
 pub fn install(cx: &mut App, options: &MenuOptions) {
     let (editor, shell) = (&options.editor, &options.shell);
     let (show_release_notes, show_import) = (options.show_release_notes, options.show_import);
@@ -152,15 +156,28 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
             MenuItem::action("Preview Pull Request", PreviewPullRequest),
             MenuItem::action("Create Pull Request", CreatePullRequest),
         ]),
-        Menu::new("Window").items([
-            MenuItem::action("Minimize", Minimize),
-            MenuItem::action("Zoom", Zoom),
-            MenuItem::action("Close Window", CloseWindow),
-            MenuItem::separator(),
-            MenuItem::action("Bring All to Front", BringAllToFront),
-        ]),
+        Menu::new("Window").items(window_items(options.show_main_window)),
         Menu::new("Help").items(help_items(show_release_notes)),
     ]);
+}
+
+/// Window menu; flag `486-window-menu-main-window` appends "Corvane", which
+/// shows the main window again after ⌘W or the red close button.
+fn window_items(show_main_window: bool) -> Vec<MenuItem> {
+    let mut items = vec![
+        MenuItem::action("Minimize", Minimize),
+        MenuItem::action("Zoom", Zoom),
+        MenuItem::action("Close Window", CloseWindow),
+        MenuItem::separator(),
+        MenuItem::action("Bring All to Front", BringAllToFront),
+    ];
+    if show_main_window {
+        items.extend([
+            MenuItem::separator(),
+            MenuItem::action("Corvane", ShowMainWindow),
+        ]);
+    }
+    items
 }
 
 /// Help menu; debug builds append GHD's test items (`buildTestMenu`, only
