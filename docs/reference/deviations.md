@@ -47,6 +47,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - While a merge runs (Merge into…, Update from Default Branch) the toolbar's branch button spins and reads "Merging <branch>" (tooltip "Merging <branch> into <current>"), like its "Switching to Branch" state; GHD shows nothing until the merge ends. Flag: `265-merge-progress-in-branch-button`.
 - Clicking a branch in the branch list can ask "Switch to <branch>?" first (Corvane addition, off in the Corvane preset; `ConfirmSwitchBranchDialog`, `Popup::ConfirmSwitchBranch`); GHD checks out at once. Flag: `266-confirm-branch-switch`.
 - A branch's context menu in the branch list offers "Rebase Current Branch onto <branch>…" (disabled for the current branch, an invalid HEAD or a running operation), which opens the rebase choose-branch step with that branch selected and previewed; GHD's branch menu (`generateBranchContextMenuItems`) has no rebase entry. Flag: `267-branch-menu-rebase-onto`.
+- The Switch Branch dialog (`stash-and-switch-branch-dialog.tsx`) can offer "Discard my changes" beside leaving or bringing them (Corvane addition, off in the Corvane preset): the button becomes "Discard Changes and Switch" with a warning that tracked-file changes can't be recovered; every change is discarded as Discard All does (new files to the Trash), then the branch is checked out without touching the existing stash. Flag: `268-switch-branch-discard`.
 
 ## Tutorial
 

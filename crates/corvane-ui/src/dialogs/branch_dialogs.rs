@@ -12,6 +12,7 @@
 //! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
 //! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
 //! `ConfirmSwitchBranchDialog` is a Corvane addition (`266-confirm-branch-switch`).
+//! Switch Branch can discard the changes instead (`268-switch-branch-discard`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -812,6 +813,9 @@ pub struct StashAndSwitchBranchDialog {
     repo: u64,
     branch: String,
     action: UncommittedChangesStrategy,
+    /// `268-switch-branch-discard`: "Discard my changes" is chosen
+    /// (overrides `action`).
+    discard: bool,
 }
 
 impl StashAndSwitchBranchDialog {
@@ -821,6 +825,7 @@ impl StashAndSwitchBranchDialog {
             repo,
             branch,
             action: UncommittedChangesStrategy::StashOnCurrentBranch,
+            discard: false,
         }
     }
 }
@@ -841,13 +846,19 @@ impl Render for StashAndSwitchBranchDialog {
             )
         };
         let (repo, branch, action) = (self.repo, self.branch.clone(), self.action);
+        let offer_discard = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SWITCH_BRANCH_DISCARD);
+        let discard = offer_discard && self.discard;
         // `dialog#stash-changes` is 450 px wide
         let content = div()
             .w(zpx(408.))
             .flex()
             .flex_col()
             .gap(SPACING())
-            .when(has_stash && action == UncommittedChangesStrategy::StashOnCurrentBranch, |d| {
+            .when(has_stash && !discard && action == UncommittedChangesStrategy::StashOnCurrentBranch, |d| {
                 d.child(
                     div()
                         .flex()
@@ -856,6 +867,17 @@ impl Render for StashAndSwitchBranchDialog {
                         .gap(SPACING_HALF())
                         .child(octicon(Octicon::Alert, t.dialog_warning))
                         .child("Your current stash will be overwritten by creating a new stash"),
+                )
+            })
+            .when(discard, |d| {
+                d.child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(SPACING_HALF())
+                        .child(octicon(Octicon::Alert, t.dialog_warning))
+                        .child("Changes to tracked files can't be recovered once discarded"),
                 )
             })
             .child(
@@ -877,13 +899,14 @@ impl Render for StashAndSwitchBranchDialog {
                                     "stash-leave",
                                     format!("Leave my changes on {current}"),
                                     "Your in-progress work will be stashed on this branch for you to return to later",
-                                    action == UncommittedChangesStrategy::StashOnCurrentBranch,
+                                    !discard && action == UncommittedChangesStrategy::StashOnCurrentBranch,
                                     true,
                                     false,
                                     cx,
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.action = UncommittedChangesStrategy::StashOnCurrentBranch;
+                                    this.discard = false;
                                     cx.notify();
                                 })),
                             )
@@ -892,16 +915,34 @@ impl Render for StashAndSwitchBranchDialog {
                                     "stash-bring",
                                     format!("Bring my changes to {}", self.branch),
                                     "Your in-progress work will follow you to the new branch",
-                                    action == UncommittedChangesStrategy::MoveToNewBranch,
+                                    !discard && action == UncommittedChangesStrategy::MoveToNewBranch,
                                     false,
-                                    true,
+                                    !offer_discard,
                                     cx,
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.action = UncommittedChangesStrategy::MoveToNewBranch;
+                                    this.discard = false;
                                     cx.notify();
                                 })),
-                            ),
+                            )
+                            .when(offer_discard, |d| {
+                                d.child(
+                                    segmented_option(
+                                        "stash-discard",
+                                        "Discard my changes",
+                                        "Your in-progress work will be thrown away (new files go to the Trash)",
+                                        discard,
+                                        false,
+                                        true,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.discard = true;
+                                        cx.notify();
+                                    })),
+                                )
+                            }),
                     ),
             );
         dialog(
@@ -918,12 +959,20 @@ impl Render for StashAndSwitchBranchDialog {
                 },
                 DialogButton {
                     id: "switch-ok",
-                    label: "Switch Branch".into(),
+                    label: if discard {
+                        "Discard Changes and Switch".into()
+                    } else {
+                        "Switch Branch".into()
+                    },
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
-                        Dispatcher::checkout_branch(repo, branch.clone(), Some(action), cx);
+                        if discard {
+                            Dispatcher::discard_all_and_checkout(repo, branch.clone(), cx);
+                        } else {
+                            Dispatcher::checkout_branch(repo, branch.clone(), Some(action), cx);
+                        }
                     }),
                 },
             ],

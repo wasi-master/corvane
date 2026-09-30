@@ -2681,6 +2681,47 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Switch Branch › "Discard my changes" (`268-switch-branch-discard`):
+    /// discard every change (new files to the Trash), then check `branch`
+    /// out. A failed discard stops before the checkout.
+    pub fn discard_all_and_checkout(id: u64, branch: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let files: Vec<_> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .map(|st| st.files.clone())
+            .unwrap_or_default();
+        let task = cx.background_executor().spawn(async move {
+            if files.is_empty() {
+                Ok(())
+            } else {
+                corvane_git::discard_changes(git, &workdir, &files, true)
+            }
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Err(err) => {
+                    Self::show_error("Could not discard changes", err.to_string(), cx);
+                    Self::refresh_repository(id, cx);
+                }
+                // nothing is left to stash, and `MoveToNewBranch` never
+                // touches the existing stash
+                Ok(()) => Self::checkout_branch(
+                    id,
+                    branch,
+                    Some(UncommittedChangesStrategy::MoveToNewBranch),
+                    cx,
+                ),
+            });
+        })
+        .detach();
+    }
+
     /// GHD `onDiscardChangesFromFiles`: confirm first unless the user opted out.
     pub fn request_discard_changes(id: u64, paths: Vec<String>, cx: &mut App) {
         if paths.is_empty() {

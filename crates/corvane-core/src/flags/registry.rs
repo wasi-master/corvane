@@ -470,6 +470,21 @@ registry! {
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
     },
 
+    /// Switch Branch › Discard my changes.
+    SWITCH_BRANCH_DISCARD = 268 "switch-branch-discard" {
+        title: "Switch Branch can discard changes",
+        summary: "The Switch Branch dialog (shown for uncommitted changes) offers a third choice, \
+                  \"Discard my changes\": its \"Discard Changes and Switch\" button discards \
+                  every change (new files go to the Trash) and then switches.",
+        ghd_behaviour: "Leave the changes in a stash or bring them along only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11491)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
