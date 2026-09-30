@@ -142,6 +142,8 @@ pub struct RowContext {
     pub view: WeakEntity<DiffView>,
     /// Syntax spans per row (same indexing as the rows), once highlighted.
     pub tokens: Option<Rc<Vec<Vec<Span>>>>,
+    /// Intra-line change range per unified row (`unified_inner`).
+    pub inner: Rc<Vec<Option<Range<usize>>>>,
     pub search: Option<Rc<SearchIndex>>,
     /// Settings › Accessibility › Show check marks in the diff.
     pub show_check_marks: bool,
@@ -175,22 +177,29 @@ impl RowContext {
 
 /// The selectable text of a row: records its bounds for hit-testing, starts
 /// a text selection on mouse down (shift extends) and paints the selection.
+/// `inner` is the intra-line change background, drawn behind the text over
+/// the font's content area like the inline `.cm-diff-add-inner` span in GHD
+/// (a `HighlightStyle` background would fill the whole 20 px line).
 fn selectable_text(
     ctx: &RowContext,
     list_ix: usize,
     column: Column,
     text: &str,
     highlights: Vec<(Range<usize>, HighlightStyle)>,
+    inner: Option<(Range<usize>, Hsla)>,
 ) -> Div {
     let bounds = ctx.text_bounds.clone();
     let view = ctx.view.clone();
-    let body: AnyElement = if highlights.is_empty() {
+    let mut layout = None;
+    let body: AnyElement = if highlights.is_empty() && inner.is_none() {
         SharedString::from(text.to_string()).into_any_element()
     } else {
-        StyledText::new(SharedString::from(text.to_string()))
-            .with_highlights(highlights)
-            .into_any_element()
+        let styled =
+            StyledText::new(SharedString::from(text.to_string())).with_highlights(highlights);
+        layout = Some(styled.layout().clone());
+        styled.into_any_element()
     };
+    let inner = inner.zip(layout);
     div()
         .flex_1()
         .min_w_0()
@@ -201,7 +210,11 @@ fn selectable_text(
                 move |b, _, _| {
                     bounds.borrow_mut().insert((list_ix, column), b);
                 },
-                |_, _, _, _| {},
+                move |_, _, window, _| {
+                    if let Some(((range, color), layout)) = &inner {
+                        paint_inline_background(layout, range.clone(), *color, window);
+                    }
+                },
             )
             .absolute()
             .inset_0(),
@@ -386,9 +399,10 @@ pub fn is_selected(sel: &DiffSelection, temp: Option<TempSelection>, line: u32) 
     }
 }
 
-/// Syntax colours, search backgrounds and the intra-line change range
-/// (`diff-add-inner` / `diff-delete-inner`) as one sorted, non-overlapping
-/// highlight list for `StyledText`.
+/// Syntax colours, search backgrounds and the text colour of the intra-line
+/// change range (`diff-add-inner` / `diff-delete-inner`; its background is
+/// painted by [`selectable_text`]) as one sorted, non-overlapping highlight
+/// list for `StyledText`.
 fn merge_highlights(
     spans: &[Span],
     hits: &[(Range<usize>, bool)],
@@ -422,19 +436,23 @@ fn merge_highlights(
         if a >= b {
             continue;
         }
-        let color = spans
-            .iter()
-            .find(|s| s.range.start <= a && s.range.end >= b)
-            .map(|s| token_color(s.class, t));
-        let hit = hits.iter().find(|(r, _)| r.start <= a && r.end >= b);
-        let inner_bg = inner
+        // `_diff.scss`: "Intra line markings takes precedence over syntax
+        // highlighting" (`color: var(--diff-add-text-color) !important`)
+        let color = inner
             .as_ref()
             .filter(|(r, _)| r.start <= a && r.end >= b)
-            .map(|(_, c)| *c);
+            .map(|(_, fg)| *fg)
+            .or_else(|| {
+                spans
+                    .iter()
+                    .find(|s| s.range.start <= a && s.range.end >= b)
+                    .map(|s| token_color(s.class, t))
+            });
+        let hit = hits.iter().find(|(r, _)| r.start <= a && r.end >= b);
         let selected = selection
             .as_ref()
             .is_some_and(|r| r.start <= a && r.end >= b);
-        if color.is_none() && hit.is_none() && inner_bg.is_none() && !selected {
+        if color.is_none() && hit.is_none() && !selected {
             continue;
         }
         let (background, fg) = match hit {
@@ -445,7 +463,7 @@ fn merge_highlights(
             ),
             // `.cm-search-result`: rgba(255, 255, 0, 0.4)
             Some((_, false)) => (Some(hsla(1. / 6., 1., 0.5, 0.4)), None),
-            None => (inner_bg, None),
+            None => (None, None),
         };
         // the text selection paints over everything else
         let background = if selected {
@@ -463,6 +481,43 @@ fn merge_highlights(
         ));
     }
     out
+}
+
+/// Paints `range` of a laid-out text like a CSS inline background: one quad
+/// per visual line, as tall as the font's ascent + descent and centred in
+/// the line box.
+fn paint_inline_background(
+    layout: &TextLayout,
+    range: Range<usize>,
+    color: Hsla,
+    window: &mut Window,
+) {
+    let Some(line) = layout.line_layout_for_index(range.start) else {
+        return;
+    };
+    let unwrapped = &line.unwrapped_layout;
+    let content = unwrapped.ascent + unwrapped.descent;
+    let inset = (layout.line_height() - content) / 2.;
+    let text = layout.text();
+    // (y, x start, x end) of each visual line the range covers
+    let mut segments: Vec<(Pixels, Pixels, Pixels)> = Vec::new();
+    for (offset, ch) in text.get(range.clone()).unwrap_or("").char_indices() {
+        let ix = range.start + offset;
+        let Some(origin) = layout.position_for_index(ix) else {
+            continue;
+        };
+        let width = unwrapped.x_for_index(ix + ch.len_utf8()) - unwrapped.x_for_index(ix);
+        match segments.last_mut() {
+            Some((y, _, end)) if *y == origin.y => *end = origin.x + width,
+            _ => segments.push((origin.y, origin.x, origin.x + width)),
+        }
+    }
+    for (y, start, end) in segments {
+        window.paint_quad(fill(
+            Bounds::new(point(start, y + inset), size(end - start, content)),
+            color,
+        ));
+    }
 }
 
 /// GHD `getHunkExpansionElementInfo`: icon, tooltip and target per handle.
@@ -596,13 +651,24 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                 .and_then(|s| s.by_row.get(&ix))
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
+            let inner = ctx.inner.get(ix).cloned().flatten().map(|r| {
+                if row.kind == DiffLineKind::Delete {
+                    (r, t.diff_delete_inner_background, t.diff_delete_text)
+                } else {
+                    (r, t.diff_add_inner_background, t.diff_add_text)
+                }
+            });
+            let inner_fg = inner.as_ref().map(|(r, _, fg)| (r.clone(), *fg));
+            let inner_bg = inner.map(|(r, bg, _)| (r, bg));
             let selection = ctx.selection_range(ix, Column::Before, row.text.len());
-            let highlights = if spans.is_empty() && hits.is_empty() && selection.is_none() {
-                Vec::new()
-            } else {
-                merge_highlights(spans, hits, None, selection, row.text.len(), t)
-            };
-            selectable_text(ctx, ix, Column::Before, &row.text, highlights)
+            let highlights =
+                if spans.is_empty() && hits.is_empty() && inner_fg.is_none() && selection.is_none()
+                {
+                    Vec::new()
+                } else {
+                    merge_highlights(spans, hits, inner_fg, selection, row.text.len(), t)
+                };
+            selectable_text(ctx, ix, Column::Before, &row.text, highlights, inner_bg)
         })
         .when(row.no_newline, |d| {
             d.child(
@@ -806,7 +872,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
             .flex_1()
             .flex()
             .justify_end()
-            .items_center()
+            .items_start()
             .px(SPACING_HALF())
             .child(n.map(|n| n.to_string()).unwrap_or_default())
     };
@@ -866,7 +932,9 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                     .flex_none()
                     .flex()
                     .justify_center()
-                    .items_center()
+                    .items_start()
+                    // `.line-number-check { padding-top: 3.5px }`
+                    .pt(zpx(3.5))
                     .when(selected, |d| {
                         d.child(octicon(Octicon::DiffCheck, num_text).size(zpx(12.)))
                     }),
@@ -1040,6 +1108,23 @@ pub fn unified_to_split(split: &[SplitRow], unified_len: usize) -> Vec<usize> {
     map
 }
 
+/// GHD `getModifiedRows` without `showSideBySideDiff`: the unified view
+/// highlights the same intra-line ranges, the n-th deleted line of a block
+/// against its n-th added line.
+pub fn unified_inner(split: &[SplitRow], unified_len: usize) -> Vec<Option<Range<usize>>> {
+    let mut map = vec![None; unified_len];
+    for row in split {
+        if let SplitRow::Modified { before, after } = row {
+            for side in [before, after] {
+                if let Some(slot) = map.get_mut(side.unified) {
+                    *slot = side.inner.clone();
+                }
+            }
+        }
+    }
+    map
+}
+
 /// Which column of a split row a side belongs to (`DiffColumn`); unified
 /// rows count as `Before`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1191,7 +1276,9 @@ fn split_line_number(
                     .flex_none()
                     .flex()
                     .justify_center()
-                    .items_center()
+                    .items_start()
+                    // `.line-number-check { padding-top: 3.5px }`
+                    .pt(zpx(3.5))
                     .when(selected, |d| {
                         d.child(octicon(Octicon::DiffCheck, fg).size(zpx(12.)))
                     }),
@@ -1202,7 +1289,7 @@ fn split_line_number(
                 .flex_1()
                 .flex()
                 .justify_end()
-                .items_center()
+                .items_start()
                 .px(SPACING_HALF())
                 .child(number.map(|n| n.to_string()).unwrap_or_default()),
         )
@@ -1217,7 +1304,7 @@ fn split_content(
     column: Column,
     row: &Row,
     prefix: &'static str,
-    inner: Option<(Range<usize>, Hsla)>,
+    inner: Option<(Range<usize>, Hsla, Hsla)>,
     cx: &App,
 ) -> AnyElement {
     let t = cx.ghd();
@@ -1235,13 +1322,15 @@ fn split_content(
         .map(|v| v.as_slice())
         .unwrap_or(&[]);
     let selection = ctx.selection_range(list_ix, column, row.text.len());
+    let inner_fg = inner.as_ref().map(|(r, _, fg)| (r.clone(), *fg));
+    let inner_bg = inner.map(|(r, bg, _)| (r, bg));
     let highlights =
-        if spans.is_empty() && hits.is_empty() && inner.is_none() && selection.is_none() {
+        if spans.is_empty() && hits.is_empty() && inner_fg.is_none() && selection.is_none() {
             Vec::new()
         } else {
-            merge_highlights(spans, hits, inner, selection, row.text.len(), t)
+            merge_highlights(spans, hits, inner_fg, selection, row.text.len(), t)
         };
-    let body = selectable_text(ctx, list_ix, column, &row.text, highlights);
+    let body = selectable_text(ctx, list_ix, column, &row.text, highlights, inner_bg);
     let view_for_menu = ctx.view.clone();
     div()
         .id(("split-text", unified))
@@ -1501,12 +1590,12 @@ pub fn render_split_row(
                         } else {
                             r.new
                         };
-                        let inner_color = if column == Column::Before {
-                            t.diff_delete_inner_background
+                        let (inner_bg, inner_fg) = if column == Column::Before {
+                            (t.diff_delete_inner_background, t.diff_delete_text)
                         } else {
-                            t.diff_add_inner_background
+                            (t.diff_add_inner_background, t.diff_add_text)
                         };
-                        let inner = s.inner.clone().map(|r| (r, inner_color));
+                        let inner = s.inner.clone().map(|r| (r, inner_bg, inner_fg));
                         let prefix = if column == Column::Before {
                             "  -  "
                         } else {
@@ -1566,7 +1655,7 @@ mod tests {
     // explicit imports: `gpui_kit::*` would shadow `#[test]` with GPUI's macro
     use super::{
         RangeType, SearchHit, SplitRow, build_rows, build_split_rows, expand_tabs,
-        relative_changes, search_rows, spans_for_row, unified_to_split,
+        relative_changes, search_rows, spans_for_row, unified_inner, unified_to_split,
     };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
@@ -1674,6 +1763,22 @@ mod tests {
         let map = unified_to_split(&split, rows.len());
         assert_eq!(map[3], 2);
         assert_eq!(map[4], 3);
+    }
+
+    #[test]
+    fn unified_rows_get_intra_line_ranges() {
+        let mut h = hunk();
+        // drop "gamma": one deleted, one added → the pair is diffed
+        h.lines.remove(4);
+        let x = crate::diff_expansion::from_hunks(&[h], None);
+        let rows = build_rows(&x);
+        let inner = unified_inner(&build_split_rows(&rows), rows.len());
+        assert_eq!(inner, vec![None, None, Some(0..1), Some(0..1), None]);
+        // counts differ → nothing highlighted
+        let x = crate::diff_expansion::from_hunks(&[hunk()], None);
+        let rows = build_rows(&x);
+        let inner = unified_inner(&build_split_rows(&rows), rows.len());
+        assert!(inner.iter().all(Option::is_none));
     }
 
     #[test]
