@@ -187,6 +187,19 @@ registry! {
             "crates/corvane-core/src/packs.rs",
         ],
     },
+    /// File names without their directory in the changes list.
+    CHANGES_FILE_NAMES_ONLY = 170 "changes-file-names-only" {
+        title: "File names only in the changes list",
+        summary: "Rows of the changes list show the file name alone, without its directory \
+                  (the filter still matches the whole path).",
+        ghd_behaviour: "Directory (dimmed) followed by the file name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14268), Upstream::issue(19016)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 200 Repository ----
 

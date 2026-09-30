@@ -17,6 +17,8 @@
 //! - "Copy Diff" puts the selected files' changes on the clipboard as a patch
 //!   (`279-copy-diff`).
 //! - the Filter Options popover has "Renamed files" (`280-renamed-files-filter`).
+//! - rows can show the file name without its directory
+//!   (`170-changes-file-names-only`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -3560,6 +3562,11 @@ fn file_row(
     let checkbox_focus = list_focus.clone();
     // `HighlightText`: the filter's fuzzy hits in bold (`<mark>`), split
     // between the directory and the file name like `PathText`
+    let names_only = corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CHANGES_FILE_NAMES_ONLY)
+    });
     let directory = file.directory().to_string();
     let file_name = file.file_name().to_string();
     let hits = corvane_core::filter::fuzzy_match(query, &file.path)
@@ -3694,18 +3701,20 @@ fn file_row(
                 .flex()
                 .flex_row()
                 .text_size(FONT_SIZE())
-                .child(
-                    div()
-                        .min_w_0()
-                        .truncate()
-                        // `.list-item.selected .dirname` inherits the row colour
-                        .text_color(match (is_selected, list_focused) {
-                            (true, true) => t.box_selected_active_text,
-                            (true, false) => t.box_selected_text,
-                            _ => t.text_secondary,
-                        })
-                        .child(crate::autocompletion::highlighted(&directory, &dir_hits)),
-                )
+                .when(!names_only, |d| {
+                    d.child(
+                        div()
+                            .min_w_0()
+                            .truncate()
+                            // `.list-item.selected .dirname` inherits the row colour
+                            .text_color(match (is_selected, list_focused) {
+                                (true, true) => t.box_selected_active_text,
+                                (true, false) => t.box_selected_text,
+                                _ => t.text_secondary,
+                            })
+                            .child(crate::autocompletion::highlighted(&directory, &dir_hits)),
+                    )
+                })
                 .child(
                     div()
                         .flex_none()
