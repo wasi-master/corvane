@@ -346,6 +346,16 @@ impl Dispatcher {
         }
     }
 
+    /// Repository › View Upstream on GitHub (Corvane addition, flag
+    /// `396-view-upstream-on-github`): the parent of a fork. Nothing happens
+    /// for a repository that is not a fork.
+    pub fn view_upstream_on_github(id: u64, cx: &mut App) {
+        let url = Self::github_and_branch(id, cx).and_then(|(gh, _)| gh.parent.map(|p| p.html_url));
+        if let Some(url) = url {
+            Self::open_url(&url, cx);
+        }
+    }
+
     /// Repository › Create Issue on GitHub (`openIssueCreationPage`): the
     /// template chooser of the repository contributions go to (the parent of
     /// a fork unless the fork is set up for its own work,

@@ -109,6 +109,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Unsafe repositories ("detected dubious ownership", `crates/corvane-ui/src/missing_repository.rs`, GHD `MissingRepository` + `getRepositoryType`): detected from the failing git call itself (every refresh, and any action error that reaches `Dispatcher::show_error`) rather than a `rev-parse` probe when adding or switching; the repository is flagged missing as in GHD and shows "<name> is potentially unsafe" with the directory git named, Trust Repository (`git config --global --add safe.directory`) and Remove (no confirmation, as GHD). Its main worktree is still recorded, read by gitoxide (which opens such repositories with reduced trust), where GHD skips it because git will not run.
 - Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD.
 - Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move (Flag: `404-toolbar-width-save`).
+- Repository › View Upstream on GitHub (Corvane addition, `app/src/main-process/menu/build-default-menu.ts` has only View on GitHub): opens a fork's parent repository; does nothing for a repository that is not a fork. Flag: `396-view-upstream-on-github`.
 
 ## Keyboard
 

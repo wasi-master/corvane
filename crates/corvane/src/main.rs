@@ -125,16 +125,8 @@ fn main() {
         });
         Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
         {
-            let s = state.read(cx);
-            menus::install(
-                cx,
-                &s.editor_label(),
-                &s.shell_label(),
-                s.flags
-                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                s.flags
-                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-            );
+            let options = menus::MenuOptions::of(state.read(cx));
+            menus::install(cx, &options);
         }
         phase(started, "theme, keymap, menus and state installed");
 
@@ -146,17 +138,7 @@ fn main() {
         let mut chosen_theme = theme_setting;
         let mut last_welcome_done = welcome_done;
         // the menu bar and the theme also depend on flags (401, 101)
-        let mut last_menu_key = {
-            let s = state.read(cx);
-            (
-                s.editor_label(),
-                s.shell_label(),
-                s.flags
-                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                s.flags
-                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-            )
-        };
+        let mut last_menu_key = menus::MenuOptions::of(state.read(cx));
         let mut last_high_contrast = high_contrast;
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
@@ -169,26 +151,13 @@ fn main() {
                 (
                     s.settings.theme,
                     s.settings.welcome_completed,
-                    (
-                        s.editor_label(),
-                        s.shell_label(),
-                        s.flags
-                            .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                        s.flags
-                            .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-                    ),
+                    menus::MenuOptions::of(s),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                 )
             };
             if menu_key != last_menu_key {
                 last_menu_key = menu_key;
-                menus::install(
-                    cx,
-                    &last_menu_key.0,
-                    &last_menu_key.1,
-                    last_menu_key.2,
-                    last_menu_key.3,
-                );
+                menus::install(cx, &last_menu_key);
             }
             let theme_changed = theme != last_theme;
             if theme_changed {
@@ -431,6 +400,11 @@ fn main() {
         cx.on_action(move |_: &ViewOnGitHub, cx| {
             if let Some((id, _)) = selected_path(cx) {
                 Dispatcher::view_on_github(id, cx);
+            }
+        });
+        cx.on_action(move |_: &ViewUpstreamOnGitHub, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::view_upstream_on_github(id, cx);
             }
         });
         cx.on_action(move |_: &CreateIssue, cx| {

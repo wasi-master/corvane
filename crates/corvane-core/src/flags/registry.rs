@@ -570,6 +570,20 @@ registry! {
         code: &["crates/corvane-ui/src/ci_check_popover.rs"],
     },
 
+    /// Repository › View Upstream on GitHub.
+    VIEW_UPSTREAM_ON_GITHUB = 396 "view-upstream-on-github" {
+        title: "Repository › View Upstream on GitHub",
+        summary: "The Repository menu adds \"View Upstream on GitHub\", which opens a fork's \
+                  parent repository.",
+        ghd_behaviour: "Only View on GitHub (the fork itself).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13533)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-core/src/integrations.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
