@@ -50,6 +50,8 @@ gpui_kit::actions!(
         // Compare-to-branch filter box
         CompareSelect,
         CompareClear,
+        // Enter in a foldout's filter box: pick the highlighted (or first) row
+        FilterListPick,
         // History keyboard reorder mode
         ReorderMoveUp,
         ReorderMoveDown,

@@ -113,6 +113,10 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("down", SelectNextFile, Some("CompareFilter")),
         KeyBinding::new("up", SelectPreviousFile, Some("CompareFilter")),
         KeyBinding::new("escape", ReorderCancel, Some("HistoryList")),
+        // GHD `FilterList.onFilterKeyDown`: ↓ / ↑ / Enter from the filter box
+        KeyBinding::new("down", SelectNextFile, Some("RepositoryFilter")),
+        KeyBinding::new("up", SelectPreviousFile, Some("RepositoryFilter")),
+        KeyBinding::new("enter", FilterListPick, Some("RepositoryFilter")),
         KeyBinding::new("cmd-,", OpenSettings, None),
         // ⌘⇧, - macOS delivers the shifted character, so the chord is `cmd-<`
         KeyBinding::new("cmd-<", OpenFlags, None),
