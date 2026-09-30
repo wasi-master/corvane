@@ -421,6 +421,21 @@ registry! {
         upstream: &[Upstream::issue(1325), Upstream::issue(13187)],
         code: &["crates/corvane-core/src/push_errors.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Repository list indicators refresh promptly.
+    PROMPT_INDICATOR_REFRESH = 233 "prompt-indicator-refresh" {
+        title: "Prompt repository indicator refresh",
+        summary: "The repository list's changes and ahead/behind indicators are refreshed right \
+                  after launch and whenever the repository list opens (at most once a minute), \
+                  not only every 15 minutes.",
+        ghd_behaviour: "The indicator updater starts on its delayed 15-minute cadence, so the list \
+                        can show stale indicators after launch.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22154)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 

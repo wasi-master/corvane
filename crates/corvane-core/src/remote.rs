@@ -18,10 +18,12 @@
 //! upstream (`230-update-branch-from-upstream`).
 //! Repository › Fetch All Repositories fetches every listed repository
 //! (`423-fetch-all-repositories`).
+//! Indicators refresh right after launch and on opening the repository list
+//! (`233-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime};
+use std::time::{Duration, Instant, SystemTime};
 
 use corvane_git::{AskpassEnv, RemoteFailure};
 use corvane_models::{Account, AheadBehind, Remote, Tip};
@@ -79,6 +81,13 @@ pub enum ForcePushState {
 const BACKGROUND_FETCH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const BACKGROUND_FETCH_MINIMUM: Duration = Duration::from_secs(5 * 60);
 const INDICATOR_REFRESH_INTERVAL: Duration = Duration::from_secs(15 * 60);
+const INDICATOR_REFRESH_MINIMUM: Duration = Duration::from_secs(60);
+
+thread_local! {
+    /// When [`Dispatcher::refresh_indicators`] last started (main thread).
+    static LAST_INDICATOR_REFRESH: std::cell::Cell<Option<Instant>> =
+        const { std::cell::Cell::new(None) };
+}
 
 pub(crate) fn spawn_bg<T: Send + 'static>(
     cx: &mut App,
@@ -1278,10 +1287,19 @@ impl Dispatcher {
             }
         })
         .detach();
+        // `233-prompt-indicator-refresh`: the first indicator refresh runs
+        // right after launch (GHD's updater starts on its delayed cadence)
+        let first_indicators = if Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PROMPT_INDICATOR_REFRESH)
+        {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(45)
+        };
         cx.spawn(async move |cx: &mut AsyncApp| {
-            cx.background_executor()
-                .timer(Duration::from_secs(45))
-                .await;
+            cx.background_executor().timer(first_indicators).await;
             loop {
                 cx.update(Self::refresh_indicators);
                 cx.background_executor()
@@ -1332,9 +1350,22 @@ impl Dispatcher {
         }
     }
 
+    /// [`Self::refresh_indicators`] unless indicators were refreshed less
+    /// than a minute ago (`233-prompt-indicator-refresh`, on opening the
+    /// repository list).
+    pub fn refresh_indicators_if_stale(cx: &mut App) {
+        let fresh = LAST_INDICATOR_REFRESH
+            .with(|last| last.get())
+            .is_some_and(|at| at.elapsed() < INDICATOR_REFRESH_MINIMUM);
+        if !fresh {
+            Self::refresh_indicators(cx);
+        }
+    }
+
     /// `refreshIndicatorForRepository` for every repository: changed files
     /// and ahead/behind, shown in the repository list.
     pub fn refresh_indicators(cx: &mut App) {
+        LAST_INDICATOR_REFRESH.with(|last| last.set(Some(Instant::now())));
         let enabled = Self::state(cx)
             .read(cx)
             .settings

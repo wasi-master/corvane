@@ -228,6 +228,17 @@ impl Dispatcher {
         {
             Self::refresh_pull_requests(id, false, cx);
         }
+        // `233-prompt-indicator-refresh`: the repository list shows fresh
+        // indicators (GHD waits for the 15-minute updater)
+        if opened
+            && foldout == Foldout::Repository
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::PROMPT_INDICATOR_REFRESH)
+        {
+            Self::refresh_indicators_if_stale(cx);
+        }
     }
 
     pub fn close_foldout(cx: &mut App) {
