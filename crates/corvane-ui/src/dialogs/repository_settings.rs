@@ -1,6 +1,9 @@
 //! Repository Settings dialog (`ui/repository-settings/repository-settings.tsx`):
 //! 600 px wide, vertical tabs Remote · Ignored Files · Git Config; Cancel / Save.
 //! Fork Behavior is omitted (no fork workflow yet).
+//!
+//! Deviation (flag `edit-global-ignore-file`): Ignored Files links to the
+//! global excludes file, opened in the external editor.
 
 use std::rc::Rc;
 
@@ -318,6 +321,27 @@ impl RepositorySettingsDialog {
                     .text_size(FONT_SIZE())
                     .line_height(zpx(14.))
                     .child(Textarea::new(&self.gitignore).appearance(false).h(zpx(124.))),
+            )
+            .when(
+                self.state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::EDIT_GLOBAL_IGNORE_FILE),
+                |d| {
+                    let repo = self.repo;
+                    d.child(paragraph(vec![
+                        "Patterns for every repository on this computer go in the global ignore file. "
+                            .into(),
+                        link_button(
+                            "repo-settings-global-ignore",
+                            "Edit global ignore file",
+                            cx,
+                        )
+                        .on_click(move |_, _, cx| Dispatcher::edit_global_ignore_file(repo, cx))
+                        .into_any_element()
+                        .into(),
+                    ]))
+                },
             )
             .into_any_element()
     }
