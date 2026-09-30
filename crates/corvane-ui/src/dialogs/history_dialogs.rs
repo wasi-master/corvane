@@ -445,11 +445,13 @@ impl Render for UnreachableCommitsDialog {
         let tabs = crate::tab_bar::tab_bar(
             vec![
                 crate::tab_bar::TabModel {
+                    dot: false,
                     id: "unreachable-tab-unreachable",
                     label: "Unreachable".into(),
                     count: None,
                 },
                 crate::tab_bar::TabModel {
+                    dot: false,
                     id: "unreachable-tab-reachable",
                     label: "Reachable".into(),
                     count: None,

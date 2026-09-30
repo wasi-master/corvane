@@ -207,6 +207,19 @@ registry! {
         upstream: &[Upstream::issue(1913)],
         code: &["crates/corvane-ui/src/diff_view.rs"],
     },
+    /// A dot on the Changes tab while History shows and the branch has a stash.
+    STASH_DOT_ON_CHANGES_TAB = 108 "stash-dot-on-changes-tab" {
+        title: "Stash dot on the Changes tab",
+        summary: "While the History tab is showing, the Changes tab has a blue dot when the \
+                  current branch has stashed changes.",
+        ghd_behaviour: "The stash is only visible at the bottom of the Changes tab.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8589)],
+        code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/tab_bar.rs"],
+    },
 
     // ---- 200 Repository ----
 

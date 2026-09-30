@@ -994,11 +994,13 @@ impl BranchFoldout {
             .child(tab_bar(
                 vec![
                     TabModel {
+                        dot: false,
                         id: "branches-tab",
                         label: "Branches".into(),
                         count: None,
                     },
                     TabModel {
+                        dot: false,
                         id: "pull-requests-tab",
                         label: "Pull Requests".into(),
                         count: (open_prs > 0).then_some(open_prs),

@@ -352,6 +352,19 @@ impl Workspace {
             .child(tab_bar(
                 vec![
                     TabModel {
+                        // Corvane (`108-stash-dot-on-changes-tab`): the
+                        // branch has a stash, seen from History
+                        dot: self.section == Section::History
+                            && self
+                                .state
+                                .read(cx)
+                                .flags
+                                .bool(corvane_core::flags::ids::STASH_DOT_ON_CHANGES_TAB)
+                            && self
+                                .state
+                                .read(cx)
+                                .selected_state()
+                                .is_some_and(|rs| rs.stash.is_some()),
                         id: "tab-changes",
                         label: "Changes".into(),
                         count: self
@@ -362,6 +375,7 @@ impl Workspace {
                             .filter(|n| *n > 0),
                     },
                     TabModel {
+                        dot: false,
                         id: "tab-history",
                         label: "History".into(),
                         count: None,

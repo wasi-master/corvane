@@ -637,16 +637,19 @@ impl Render for CloneRepositoryDialog {
                 .child(div().child(tab_bar(
                     vec![
                         TabModel {
+                            dot: false,
                             id: "clone-tab-dotcom",
                             label: "GitHub.com".into(),
                             count: None,
                         },
                         TabModel {
+                            dot: false,
                             id: "clone-tab-enterprise",
                             label: "GitHub Enterprise".into(),
                             count: None,
                         },
                         TabModel {
+                            dot: false,
                             id: "clone-tab-url",
                             label: "URL".into(),
                             count: None,
