@@ -28,6 +28,8 @@
 //!   (`284-windows-invalid-names-warning`).
 //! - the file menu can mark files assume-unchanged, the list menu clears the
 //!   marks (`470-assume-unchanged`).
+//! - a commit made outside Corvane with the drafted summary clears the draft
+//!   (`471-clear-message-after-outside-commit`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -109,6 +111,9 @@ pub struct ChangesSidebar {
     co_authors: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
+    /// Repository and newest commit last seen
+    /// (`471-clear-message-after-outside-commit`).
+    seen_head: (Option<u64>, Option<String>),
     seen_amend_nonce: u64,
     /// Repository and `commit.template` text the form was last prefilled for.
     seen_template: (Option<u64>, Option<String>),
@@ -176,19 +181,34 @@ impl ChangesSidebar {
                 .unwrap_or(0);
             if nonce != this.seen_commit_nonce {
                 this.seen_commit_nonce = nonce;
-                this.summary.update(cx, |s, cx| s.set_value("", window, cx));
-                this.description
-                    .update(cx, |s, cx| s.set_value("", window, cx));
-                this.co_authors
-                    .update(cx, |s, cx| s.set_value("", window, cx));
-                this.summary_misspelled.clear();
-                this.description_misspelled.clear();
-                this.autocomplete = None;
-                this.recalled = None;
-                // the next commit starts from the template again
-                let template = this.seen_template.1.clone();
-                this.apply_commit_template(None, template, window, cx);
-                cx.notify();
+                this.clear_form(window, cx);
+            }
+            // `471-clear-message-after-outside-commit`: a new HEAD commit made
+            // elsewhere with the drafted summary clears the draft
+            let head = {
+                let s = state.read(cx);
+                let rs = s.selected_state();
+                let head = rs.and_then(|rs| rs.commits.first());
+                (
+                    s.selected,
+                    head.map(|c| c.sha.clone()),
+                    head.map(|c| c.summary.clone()),
+                    s.flags
+                        .bool(corvane_core::flags::ids::CLEAR_MESSAGE_AFTER_OUTSIDE_COMMIT),
+                )
+            };
+            let (repo, sha, summary, clear_outside) = head;
+            let previous = std::mem::replace(&mut this.seen_head, (repo, sha.clone()));
+            if clear_outside
+                && previous.0 == repo
+                && previous.1.is_some()
+                && previous.1 != sha
+                && let Some(summary) = summary
+            {
+                let draft = this.summary.read(cx).value().trim().to_string();
+                if !draft.is_empty() && draft == summary.trim() {
+                    this.clear_form(window, cx);
+                }
             }
             let template = {
                 let s = state.read(cx);
@@ -293,6 +313,7 @@ impl ChangesSidebar {
             co_authors,
             state,
             seen_commit_nonce: 0,
+            seen_head: (None, None),
             seen_amend_nonce: 0,
             seen_template: (None, None),
             context_menu: None,
@@ -1115,6 +1136,23 @@ impl ChangesSidebar {
     /// (`corvane_git::commit_template`) while the form is untouched: summary
     /// empty and the description empty or still holding the `previous`
     /// template text.
+    /// Empty the commit form (GHD resets `commitMessage` after a commit); the
+    /// next commit starts from the template again.
+    fn clear_form(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.summary.update(cx, |s, cx| s.set_value("", window, cx));
+        self.description
+            .update(cx, |s, cx| s.set_value("", window, cx));
+        self.co_authors
+            .update(cx, |s, cx| s.set_value("", window, cx));
+        self.summary_misspelled.clear();
+        self.description_misspelled.clear();
+        self.autocomplete = None;
+        self.recalled = None;
+        let template = self.seen_template.1.clone();
+        self.apply_commit_template(None, template, window, cx);
+        cx.notify();
+    }
+
     fn apply_commit_template(
         &mut self,
         previous: Option<String>,

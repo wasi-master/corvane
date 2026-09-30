@@ -738,6 +738,21 @@ registry! {
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
     },
 
+    /// Clear the drafted message after a matching outside commit.
+    CLEAR_MESSAGE_AFTER_OUTSIDE_COMMIT = 471 "clear-message-after-outside-commit" {
+        title: "Clear the draft after an outside commit",
+        summary: "When a new commit appears on the branch (made on the command line or in another \
+                  app) whose summary is the one drafted in the commit form, the form is cleared \
+                  as after committing in Corvane.",
+        ghd_behaviour: "The drafted message stays.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5233)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
