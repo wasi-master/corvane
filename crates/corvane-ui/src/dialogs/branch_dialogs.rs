@@ -119,7 +119,6 @@ impl Render for CreateBranchDialog {
                 Dispatcher::close_popup(cx);
             }
         };
-        let t = cx.ghd();
         let raw = self.name.read(cx).value().to_string();
         let name = sanitize_ref_name(&raw);
         let (tip, default_branch, existing, target_commit) = {
@@ -272,27 +271,21 @@ impl Render for CreateBranchDialog {
             .flex()
             .flex_col()
             .gap(SPACING())
-            .when(exists, |d| {
-                d.child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .gap(zpx(4.))
-                        .text_color(t.form_error_text)
-                        .child("A branch named")
-                        .child(ref_chip(name.clone(), cx))
-                        .child("already exists"),
-                )
-            })
             .child(
+                // `RefNameTextBox`: label, 3.33 px, the box
                 div()
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF())
+                    .gap(SPACING_THIRD())
                     .child("Name")
                     .child(text_box("branch-name", &self.name, None, window, cx)),
             )
+            .when(exists, |d| {
+                d.child(crate::widgets::input_error(
+                    format!("A branch named {name} already exists."),
+                    cx,
+                ))
+            })
             .children(description);
         let name_for_ok = name.clone();
         dialog(
@@ -431,10 +424,13 @@ impl Render for RenameBranchDialog {
                 )
             })
             .child(
+                // `.ref-name-text-box`: label, 3.33 px, the box; 10 px below
+                // (kept inside the content's padding, as in GHD)
                 div()
+                    .mb(SPACING())
                     .flex()
                     .flex_col()
-                    .gap(SPACING_HALF())
+                    .gap(SPACING_THIRD())
                     .child("Name")
                     .child(text_box("rename-branch-name", &self.name, None, window, cx)),
             )
@@ -537,7 +533,12 @@ impl Render for DeleteBranchDialog {
                     .child(ref_chip(self.branch.clone(), cx))
                     .child("?"),
             )
-            .child(div().mb(SPACING()).child("This action cannot be undone."))
+            // the last paragraph has no bottom margin
+            .child(
+                div()
+                    .when(exists_on_remote, |d| d.mb(SPACING()))
+                    .child("This action cannot be undone."),
+            )
             .when(exists_on_remote, |d| {
                 d.child(div().mb(SPACING()).font_weight(FontWeight::SEMIBOLD).child(
                     "The branch also exists on the remote, do you wish to delete it there as well?",

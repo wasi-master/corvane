@@ -1273,3 +1273,22 @@ pub fn blankslate_image(name: &str, cx: &App) -> Img {
         img(format!("illustrations/{name}"))
     }
 }
+
+/// GHD `InputError` (`.input-description.input-description-error`): a 16 px
+/// stop icon, 5 px, the message in 11 px `--input-error-text-color`.
+pub fn input_error(message: impl Into<SharedString>, cx: &App) -> Div {
+    let t = cx.ghd();
+    div()
+        .flex()
+        .flex_row()
+        .items_start()
+        .text_size(FONT_SIZE_SM())
+        .line_height(zpx(16.5))
+        .text_color(t.input_error_text)
+        .child(
+            crate::icons::octicon(crate::icons::Octicon::Stop, t.input_error_text)
+                .flex_none()
+                .mr(SPACING_HALF()),
+        )
+        .child(div().flex_1().min_w_0().child(message.into()))
+}

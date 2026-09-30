@@ -103,6 +103,7 @@ pub fn theme() -> GhdTheme {
         form_error_background: c(RED_100),
         form_error_border: c(RED_200),
         form_error_text: c(RED_800),
+        input_error_text: c(0x9e1c23),
         dialog_warning: c(YELLOW_800),
         dialog_information: c(BLUE_400),
         dialog_error: c(RED),
