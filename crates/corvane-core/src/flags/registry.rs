@@ -322,6 +322,20 @@ registry! {
         upstream: &[Upstream::issue(15937)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
+    /// `/pattern/` in the repository filter is a regular expression.
+    REGEX_REPOSITORY_FILTER = 116 "regex-repository-filter" {
+        title: "Regular expressions in the repository filter",
+        summary: "Typing /pattern/ in the repository list's filter matches names against a \
+                  case-insensitive regular expression; any other text (or an invalid pattern) \
+                  filters as before.",
+        ghd_behaviour: "Plain text matching only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(20745)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/filter.rs"],
+    },
 
     // ---- 200 Repository ----
 

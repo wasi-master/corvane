@@ -132,7 +132,14 @@ impl RepositoryFoldout {
     /// GHD `groupRepositories`: Recent, then one group per GitHub owner, then Other.
     fn groups(&self, cx: &App) -> Vec<Group> {
         let state = self.state.read(cx);
-        let query = self.filter.read(cx).value().trim().to_lowercase();
+        let raw_query = self.filter.read(cx).value().trim().to_string();
+        let query = raw_query.to_lowercase();
+        // Corvane (`116-regex-repository-filter`): `/pattern/`
+        let regex = state
+            .flags
+            .bool(corvane_core::flags::ids::REGEX_REPOSITORY_FILTER)
+            .then(|| corvane_core::filter::regex_query(&raw_query))
+            .flatten();
         // Corvane (`110-repository-status-filter`)
         let status_filter = state
             .flags
@@ -144,7 +151,11 @@ impl RepositoryFoldout {
             .bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER)
             && (self.only_forks || self.only_sources);
         let matches = |r: &Repository| {
-            (query.is_empty() || r.name().to_lowercase().contains(&query))
+            (query.is_empty()
+                || match &regex {
+                    Some(re) => re.is_match(&r.name()),
+                    None => r.name().to_lowercase().contains(&query),
+                })
                 && (!status_filter || {
                     let (ahead_behind, has_changes) = indicators(state, r.id);
                     (self.only_changed && has_changes)
