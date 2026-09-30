@@ -517,7 +517,7 @@ fn no_repositories(
     cx: &Context<NoRepositoriesView>,
 ) -> impl IntoElement + use<> {
     let t = cx.ghd();
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let z = zoom(viewport.width);
     let s = |v: f32| zpx(v * z);
     let signed_in =

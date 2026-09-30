@@ -91,7 +91,7 @@ impl Render for ReleaseNotesDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let r = &self.summary;
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let date = r
             .date_published
             .map(|d| crate::format::format_pattern("MMMM d, yyyy", &crate::format::local_time(d)));

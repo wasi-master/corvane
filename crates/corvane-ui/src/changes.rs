@@ -3195,7 +3195,7 @@ impl ChangesSidebar {
             return None;
         }
         let anchor = self.rule_hint_bounds.get();
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let width = zpx(360.);
         let x =
             (anchor.origin.x + anchor.size.width + zpx(8.)).min(viewport.width - width - zpx(8.));

@@ -1246,7 +1246,7 @@ impl Render for TextTooltip {
                 None,
             ),
         };
-        let viewport = Bounds::new(Point::default(), window.viewport_size());
+        let viewport = crate::theme::page_bounds(window);
         let font_size = FONT_SIZE_SM();
         let line_height = font_size * 1.5;
         let (pad_x, pad_y) = (SPACING(), SPACING_HALF());

@@ -2388,7 +2388,7 @@ impl DiffView {
                 .bg(t.file_warning_background)
                 .border_b_1()
                 .border_color(t.file_warning_border)
-                .font_family(crate::theme::UI_FONT)
+                .font_family(crate::theme::ui_font())
                 .text_size(FONT_SIZE())
                 .text_color(t.text)
                 .children(items.into_iter().enumerate().map(|(ix, body)| {

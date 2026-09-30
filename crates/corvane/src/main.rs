@@ -105,6 +105,8 @@ fn main() {
 
     app.run(move |cx| {
         phase(started, "platform ready");
+        // the kit theme below takes the monospace family off macOS
+        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family().leak());
         corvane_ui::theme::preseed_kit_theme(cx);
         gpui_kit::init(cx);
         phase(started, "gpui-kit initialised");
@@ -134,7 +136,6 @@ fn main() {
             .and_then(|z| z.parse::<f32>().ok())
             .unwrap_or(settings.window_zoom_factor);
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
-        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family().leak());
         info!(zoom, "window zoom factor");
         let theme_variants = corvane_ui::theme::ThemeVariants::of(&launch_flags);
         corvane_ui::init(

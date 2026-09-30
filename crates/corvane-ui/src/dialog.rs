@@ -471,7 +471,7 @@ fn dialog_impl(
         focus_primary,
         focus_close,
     } = frame;
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     deferred(
         anchored().position(point(zpx(0.), zpx(0.))).child(
             div()

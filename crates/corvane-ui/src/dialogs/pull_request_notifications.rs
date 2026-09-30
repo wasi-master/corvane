@@ -120,7 +120,7 @@ fn frame(
     cx: &App,
 ) -> impl IntoElement + use<> {
     let t = cx.ghd();
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
     deferred(
         anchored().position(point(zpx(0.), zpx(0.))).child(

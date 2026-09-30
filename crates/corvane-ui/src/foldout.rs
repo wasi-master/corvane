@@ -33,7 +33,7 @@ pub fn foldout_layer(
     // `#foldout-container` starts over the toolbar's 1 px bottom border: the
     // overlay dims it and the panel covers it
     let top = TITLE_BAR_HEIGHT() + TOOLBAR_HEIGHT() - zpx(1.);
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let panel: AnyElement = match foldout {
         Foldout::Repository => panels.repository.clone().into_any_element(),
         Foldout::Branch => panels.branch.clone().into_any_element(),

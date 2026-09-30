@@ -931,7 +931,7 @@ impl Render for Workspace {
             let state = self.state.read(cx);
             let widths = toolbar_widths(
                 state,
-                window.viewport_size().width,
+                crate::theme::page_size(window).width,
                 self.sidebar_width,
                 &self.toolbar_resize,
             );
@@ -979,7 +979,7 @@ impl Render for Workspace {
             .bg(t.background)
             .text_color(t.text)
             .text_size(FONT_SIZE())
-            .font_family(crate::theme::UI_FONT)
+            .font_family(crate::theme::ui_font())
             .when(!bare && cfg!(target_os = "macos"), |d| {
                 d.child(title_bar(cx))
             })

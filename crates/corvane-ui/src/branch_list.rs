@@ -543,7 +543,7 @@ impl BranchFoldout {
         let top = quick_view_top(
             view.row_top,
             container.origin.y,
-            window.viewport_size().height,
+            crate::theme::page_size(window).height,
             height,
         );
         let pointer_top = view.row_top - container.origin.y - top

@@ -1463,7 +1463,7 @@ impl Render for FlagsDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // a copy: the nav rows below need `cx` mutably for their listeners
         let t = cx.ghd().clone();
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let width = (viewport.width - zpx(80.)).max(zpx(720.)).min(zpx(1000.));
         let height = (viewport.height - zpx(80.)).max(zpx(480.)).min(zpx(760.));
 

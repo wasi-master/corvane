@@ -227,7 +227,54 @@ pub mod sizes {
     }
 }
 
+/// Where GHD's page starts in the window: below Electron's menu bar on
+/// Linux (`crate::menu_bar`), at the top on macOS.
+pub fn page_top() -> gpui_kit::Pixels {
+    #[cfg(target_os = "macos")]
+    {
+        gpui_kit::px(0.)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        gpui_kit::px(crate::menu_bar::HEIGHT)
+    }
+}
+
+/// GHD's viewport (`100vh`, `innerHeight`): the window's content minus
+/// the menu bar on Linux.
+pub fn page_size(window: &gpui_kit::Window) -> gpui_kit::Size<gpui_kit::Pixels> {
+    let viewport = window.viewport_size();
+    gpui_kit::size(viewport.width, viewport.height - page_top())
+}
+
+/// [`page_size`] where it sits in window coordinates.
+pub fn page_bounds(window: &gpui_kit::Window) -> gpui_kit::Bounds<gpui_kit::Pixels> {
+    gpui_kit::Bounds::new(
+        gpui_kit::point(gpui_kit::px(0.), page_top()),
+        page_size(window),
+    )
+}
+
 pub const UI_FONT: &str = ".SystemUIFont";
+
+/// The UI font as GPUI should be asked for it: the `.SystemUIFont` sentinel
+/// on macOS (the SF system font); elsewhere the family GHD's `system-ui`
+/// resolves to in Chromium (`corvane_platform::fonts::ghd_ui_family`, Noto
+/// Sans on Ubuntu). GPUI's Linux sentinel is "IBM Plex Sans", rarely
+/// installed, and its fallback loses the bold and semibold faces.
+pub fn ui_font() -> gpui_kit::SharedString {
+    #[cfg(target_os = "macos")]
+    {
+        UI_FONT.into()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        static FAMILY: std::sync::OnceLock<gpui_kit::SharedString> = std::sync::OnceLock::new();
+        FAMILY
+            .get_or_init(|| corvane_platform::fonts::ghd_ui_family().into())
+            .clone()
+    }
+}
 /// The macOS system font by its real family name. gpui-kit only enumerates
 /// every installed font (≈1.5 s) when its theme font is left at the
 /// `.SystemUIFont` sentinel, so the kit theme is seeded with this instead.
@@ -235,6 +282,26 @@ pub const KIT_UI_FONT: &str = ".AppleSystemUIFont";
 /// The kit's monospace family. Anything but gpui-base's default ("Menlo")
 /// keeps the kit from enumerating installed fonts at startup.
 pub const KIT_MONO_FONT: &str = ".AppleSystemUIFontMonospaced";
+
+/// gpui-kit's UI font: the real macOS system family name (see
+/// [`KIT_UI_FONT`]), or [`ui_font`] elsewhere.
+fn kit_ui_font() -> gpui_kit::SharedString {
+    if cfg!(target_os = "macos") {
+        KIT_UI_FONT.into()
+    } else {
+        ui_font()
+    }
+}
+
+/// gpui-kit's monospace font: the macOS sentinel, or [`mono_font`]
+/// elsewhere (the sentinel is unknown off macOS).
+fn kit_mono_font() -> gpui_kit::SharedString {
+    if cfg!(target_os = "macos") {
+        KIT_MONO_FONT.into()
+    } else {
+        mono_font().into()
+    }
+}
 
 static MONO_FAMILY: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
 
@@ -660,8 +727,8 @@ pub fn preseed_kit_theme(cx: &mut App) {
         return;
     }
     let mut theme = KitTheme::default();
-    theme.font_family = KIT_UI_FONT.into();
-    theme.mono_font_family = KIT_MONO_FONT.into();
+    theme.font_family = kit_ui_font();
+    theme.mono_font_family = kit_mono_font();
     cx.set_global(theme);
 }
 
@@ -680,9 +747,9 @@ pub fn apply(theme: GhdTheme, cx: &mut App) {
     KitTheme::change(mode, None, cx);
     {
         let kit = KitTheme::global_mut(cx);
-        kit.font_family = KIT_UI_FONT.into();
+        kit.font_family = kit_ui_font();
         kit.font_size = sizes::FONT_SIZE();
-        kit.mono_font_family = KIT_MONO_FONT.into();
+        kit.mono_font_family = kit_mono_font();
         kit.mono_font_size = sizes::FONT_SIZE();
         kit.radius = sizes::BORDER_RADIUS();
         kit.radius_lg = sizes::BORDER_RADIUS();
