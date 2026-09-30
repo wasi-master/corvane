@@ -4,9 +4,131 @@
 //! Deviation (flag `ignore-skips-existing-rules`): patterns already in the
 //! file are not appended again.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+use crate::detect::GitBinary;
 use crate::error::Result;
+use crate::process::GitCommand;
+
+/// Where an "Ignore File" menu item writes (Corvane, flag
+/// `ignore-file-targets`; GHD always uses the root `.gitignore`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IgnoreTarget {
+    /// `<workdir>/.gitignore` (GHD).
+    Root,
+    /// The `.gitignore` of a repository-relative directory (no trailing `/`).
+    Directory(String),
+    /// `$GIT_DIR/info/exclude`: this clone only, never committed.
+    InfoExclude,
+    /// `core.excludesFile` (default `$XDG_CONFIG_HOME/git/ignore`): every
+    /// repository on this computer.
+    ExcludesFile,
+}
+
+impl IgnoreTarget {
+    /// The pattern that ignores the repository-relative `path` from this
+    /// target: the root and `info/exclude` take the path, a directory's
+    /// `.gitignore` the anchored rest below it, the global file the file name.
+    pub fn pattern_for(&self, path: &str) -> String {
+        match self {
+            Self::Root | Self::InfoExclude => escape_gitignore_pattern(path),
+            Self::Directory(dir) => {
+                let rest = path
+                    .strip_prefix(dir.as_str())
+                    .and_then(|r| r.strip_prefix('/'))
+                    .unwrap_or(path);
+                format!("/{}", escape_gitignore_pattern(rest))
+            }
+            Self::ExcludesFile => escape_gitignore_pattern(path.rsplit('/').next().unwrap_or(path)),
+        }
+    }
+}
+
+/// Directories above `path` (repository-relative) that have a `.gitignore`,
+/// nearest first; the root is left out.
+pub fn gitignore_dirs_above(workdir: &Path, path: &str) -> Vec<String> {
+    let mut dirs = Vec::new();
+    let mut dir = path;
+    while let Some((parent, _)) = dir.rsplit_once('/') {
+        if workdir.join(parent).join(".gitignore").is_file() {
+            dirs.push(parent.to_string());
+        }
+        dir = parent;
+    }
+    dirs
+}
+
+/// The global excludes file: `core.excludesFile` as git sees it from
+/// `workdir` (so a repository's own setting wins), else
+/// `$XDG_CONFIG_HOME/git/ignore` / `~/.config/git/ignore`.
+pub fn excludes_file(git: Arc<GitBinary>, workdir: &Path) -> Option<PathBuf> {
+    let configured = GitCommand::new(git)
+        .args(["config", "--type=path", "--get", "core.excludesFile"])
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .run()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| o.stdout_string().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+    if let Some(path) = configured {
+        let path = PathBuf::from(path);
+        return Some(if path.is_absolute() {
+            path
+        } else {
+            workdir.join(path)
+        });
+    }
+    let config_home = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
+    Some(config_home.join("git").join("ignore"))
+}
+
+/// The file behind an [`IgnoreTarget`].
+pub fn ignore_target_path(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    target: &IgnoreTarget,
+) -> Result<PathBuf> {
+    Ok(match target {
+        IgnoreTarget::Root => workdir.join(".gitignore"),
+        IgnoreTarget::Directory(dir) => workdir.join(dir).join(".gitignore"),
+        IgnoreTarget::InfoExclude => {
+            let out = GitCommand::new(git)
+                .args(["rev-parse", "--git-path", "info/exclude"])
+                .current_dir(workdir)
+                .run()?;
+            let path = PathBuf::from(out.stdout_string()?.trim());
+            if path.is_absolute() {
+                path
+            } else {
+                workdir.join(path)
+            }
+        }
+        IgnoreTarget::ExcludesFile => excludes_file(git, workdir).ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "No global ignore file: core.excludesFile is unset and HOME is unknown",
+            )
+        })?,
+    })
+}
+
+/// Append patterns to the file behind `target`.
+pub fn append_ignore_rules_to(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    target: &IgnoreTarget,
+    patterns: &[String],
+    skip_existing: bool,
+) -> Result<()> {
+    let path = ignore_target_path(git, workdir, target)?;
+    append_to_ignore_file(&path, patterns, skip_existing)
+}
 
 /// Escape the characters git treats specially in a pattern: `[ ] ! * # ?`.
 pub fn escape_gitignore_pattern(path: &str) -> String {
@@ -25,8 +147,16 @@ pub fn escape_gitignore_pattern(path: &str) -> String {
 /// `skip_existing`, patterns already in the file as a line (or earlier in
 /// `patterns`) are not added again; GHD appends them blindly.
 pub fn append_ignore_rules(workdir: &Path, patterns: &[String], skip_existing: bool) -> Result<()> {
-    let path = workdir.join(".gitignore");
-    let mut text = match std::fs::read_to_string(&path) {
+    append_to_ignore_file(&workdir.join(".gitignore"), patterns, skip_existing)
+}
+
+/// [`append_ignore_rules`] for any ignore file; missing parent directories
+/// are created.
+fn append_to_ignore_file(path: &Path, patterns: &[String], skip_existing: bool) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    let mut text = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(err) => return Err(err.into()),
@@ -51,7 +181,7 @@ pub fn append_ignore_rules(workdir: &Path, patterns: &[String], skip_existing: b
     if skip_existing && text.len() == before {
         return Ok(());
     }
-    std::fs::write(&path, text)?;
+    std::fs::write(path, text)?;
     Ok(())
 }
 
@@ -153,6 +283,52 @@ mod tests {
         append_ignore_rules(dir.path(), &["build".into()], false).unwrap();
         let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
         assert_eq!(text, "*.log\r\nbuild\r\ndist\r\nbuild\r\n");
+    }
+
+    #[test]
+    fn targets_and_their_patterns() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("sub/deep")).unwrap();
+        std::fs::write(dir.path().join("sub/.gitignore"), "").unwrap();
+        assert_eq!(
+            gitignore_dirs_above(dir.path(), "sub/deep/a[1].txt"),
+            vec!["sub"]
+        );
+        assert!(gitignore_dirs_above(dir.path(), "top.txt").is_empty());
+        let path = "sub/deep/a[1].txt";
+        assert_eq!(
+            IgnoreTarget::Root.pattern_for(path),
+            "sub/deep/a\\[1\\].txt"
+        );
+        assert_eq!(
+            IgnoreTarget::Directory("sub".into()).pattern_for(path),
+            "/deep/a\\[1\\].txt"
+        );
+        assert_eq!(IgnoreTarget::ExcludesFile.pattern_for(path), "a\\[1\\].txt");
+    }
+
+    #[test]
+    fn writes_info_exclude() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(
+            std::process::Command::new("git")
+                .args(["init", "-q"])
+                .current_dir(dir.path())
+                .status()
+                .unwrap()
+                .success()
+        );
+        let git = Arc::new(crate::find_git().unwrap());
+        append_ignore_rules_to(
+            git,
+            dir.path(),
+            &IgnoreTarget::InfoExclude,
+            &["local.txt".into()],
+            true,
+        )
+        .unwrap();
+        let text = std::fs::read_to_string(dir.path().join(".git/info/exclude")).unwrap();
+        assert!(text.ends_with("local.txt\n"));
     }
 
     #[test]
