@@ -1432,6 +1432,22 @@ impl Dispatcher {
         + 'static,
         cx: &mut App,
     ) {
+        Self::run_history_op_then(id, error_title, op, |_| {}, cx);
+    }
+
+    /// [`Self::run_history_op`], then `then` when `op` succeeded.
+    pub(crate) fn run_history_op_then(
+        id: u64,
+        error_title: &'static str,
+        op: impl FnOnce(
+            std::sync::Arc<corvane_git::GitBinary>,
+            PathBuf,
+        ) -> corvane_git::error::Result<()>
+        + Send
+        + 'static,
+        then: impl FnOnce(&mut App) + 'static,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -1441,10 +1457,14 @@ impl Dispatcher {
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
+                let ok = result.is_ok();
                 if let Err(err) = result {
                     Self::show_error(error_title, err.to_string(), cx);
                 }
                 Self::refresh_repository(id, cx);
+                if ok {
+                    then(cx);
+                }
             });
         })
         .detach();
@@ -1882,7 +1902,21 @@ impl Dispatcher {
         } else {
             None
         };
-        Self::run_history_op(
+        // Corvane (`311-undo-delete-branch`): a deleted local branch can be
+        // recreated from the banner (GHD has no undo)
+        let undo = (branch.kind == corvane_models::BranchKind::Local
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::UNDO_DELETE_BRANCH))
+        .then(|| branch.tip.clone())
+        .flatten()
+        .map(|sha| crate::mco::Banner::BranchDeleted {
+            repo: id,
+            branch: branch.name.clone(),
+            sha,
+        });
+        Self::run_history_op_then(
             id,
             "Could not delete branch",
             move |git, workdir| {
@@ -1915,6 +1949,26 @@ impl Dispatcher {
                     }
                 }
             },
+            move |cx| {
+                if let Some(banner) = undo {
+                    Self::set_banner(banner, cx);
+                }
+            },
+            cx,
+        );
+    }
+
+    /// The "Deleted branch" banner's Undo (`311-undo-delete-branch`):
+    /// recreate `branch` at the commit it pointed at.
+    pub fn restore_deleted_branch(id: u64, branch: String, sha: String, cx: &mut App) {
+        let restored = branch.clone();
+        Self::run_history_op_then(
+            id,
+            "Could not restore branch",
+            move |git, workdir| {
+                corvane_git::create_branch(git, &workdir, &branch, Some(&sha), true)
+            },
+            move |cx| Self::set_banner(crate::mco::Banner::BranchRestored { branch: restored }, cx),
             cx,
         );
     }

@@ -676,6 +676,20 @@ registry! {
         upstream: &[Upstream::issue(18302), Upstream::issue(18673), Upstream::issue(9547)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Undo banner after deleting a local branch.
+    UNDO_DELETE_BRANCH = 311 "undo-delete-branch" {
+        title: "Undo deleting a branch",
+        summary: "Deleting a local branch shows a \"Deleted branch\" banner for 15 seconds whose \
+                  Undo recreates the branch at the commit it pointed at (without its upstream; a \
+                  branch deleted on the remote too stays deleted there).",
+        ghd_behaviour: "Deleted branches can only be recovered from the reflog on the command line.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20750)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/banner.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
