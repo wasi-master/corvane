@@ -49,6 +49,7 @@ gpui_kit::actions!(
         NewRepository,
         AddLocalRepository,
         CloneRepository,
+        ImportFromGitHubDesktop,
         // Edit
         Undo,
         Redo,

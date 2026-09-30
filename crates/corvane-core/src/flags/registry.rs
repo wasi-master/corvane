@@ -208,6 +208,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/dialogs/add_existing.rs"],
     },
+    /// File › Import Repositories from GitHub Desktop….
+    IMPORT_FROM_GITHUB_DESKTOP = 206 "import-from-github-desktop" {
+        title: "Import repositories from GitHub Desktop",
+        summary: "File › Import Repositories from GitHub Desktop… (and a button on the \
+                  \"Let's get started!\" page when GitHub Desktop's data is on this Mac) reads \
+                  GitHub Desktop's repository list and adds the repositories you pick, aliases \
+                  included.",
+        ghd_behaviour: "Not applicable: GitHub Desktop has nothing to import from.",
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
+    },
 
     // ---- 300 GitHub ----
 

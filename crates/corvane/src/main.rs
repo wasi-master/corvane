@@ -132,6 +132,8 @@ fn main() {
                 &s.shell_label(),
                 s.flags
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+                s.flags
+                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
             );
         }
         phase(started, "theme, keymap, menus and state installed");
@@ -151,6 +153,8 @@ fn main() {
                 s.shell_label(),
                 s.flags
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+                s.flags
+                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
             )
         };
         let mut last_high_contrast = high_contrast;
@@ -170,13 +174,21 @@ fn main() {
                         s.shell_label(),
                         s.flags
                             .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
+                        s.flags
+                            .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
                     ),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                 )
             };
             if menu_key != last_menu_key {
                 last_menu_key = menu_key;
-                menus::install(cx, &last_menu_key.0, &last_menu_key.1, last_menu_key.2);
+                menus::install(
+                    cx,
+                    &last_menu_key.0,
+                    &last_menu_key.1,
+                    last_menu_key.2,
+                    last_menu_key.3,
+                );
             }
             let theme_changed = theme != last_theme;
             if theme_changed {
@@ -204,6 +216,15 @@ fn main() {
         cx.on_action(|_: &HideOthers, cx| cx.hide_other_apps());
         cx.on_action(|_: &ShowAll, cx| cx.unhide_other_apps());
         cx.on_action(|_: &InstallCli, cx| Dispatcher::install_cli(cx));
+        cx.on_action(|_: &ImportFromGitHubDesktop, cx| {
+            let enabled = corvane_core::AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP);
+            if enabled {
+                Dispatcher::show_popup(Popup::ImportFromGitHubDesktop, cx)
+            }
+        });
         cx.on_action(|_: &AddLocalRepository, cx| {
             Dispatcher::show_popup(Popup::AddExistingRepository { path: None }, cx)
         });
@@ -846,6 +867,7 @@ fn focus_main_window(cx: &mut App) {
 fn open_dev_popup(popup: &str, cx: &mut App) {
     let selected = corvane_core::AppState::global(cx).read(cx).selected;
     match (popup, selected) {
+        ("import-ghd", _) => Dispatcher::show_popup(Popup::ImportFromGitHubDesktop, cx),
         (other, _) if other == "flags" || other.starts_with("flags:") => {
             Dispatcher::open_flags(other.strip_prefix("flags:").map(str::to_string), cx)
         }

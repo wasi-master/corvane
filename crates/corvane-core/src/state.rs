@@ -77,6 +77,9 @@ pub enum Popup {
     MoveToApplicationsFolder,
     /// `Acknowledgements`: License and Open Source Notices.
     Acknowledgements,
+    /// Corvane addition (flag 206): pick repositories from GitHub Desktop's
+    /// list to add.
+    ImportFromGitHubDesktop,
     /// Corvane addition: crash reports left by the previous session (newest
     /// first), with "Save crash reports locally" on.
     CrashReportFound {

@@ -203,6 +203,8 @@ pub struct NoRepositoriesView {
     list_focus: FocusHandle,
     /// The filter's `autoFocus` is due: the list pane has just appeared.
     autofocus: bool,
+    /// GitHub Desktop's data directory exists (the import button, flag 206).
+    ghd_installed: bool,
     /// Endpoints whose list this view asked for (GHD asks while the
     /// account's state is undefined; after a failed load it has one).
     requested: std::collections::HashSet<String>,
@@ -228,6 +230,7 @@ impl NoRepositoriesView {
             picker,
             list_focus: cx.focus_handle(),
             autofocus: true,
+            ghd_installed: corvane_core::ghd_import::github_desktop_installed(),
             requested: Default::default(),
         }
     }
@@ -521,6 +524,13 @@ fn no_repositories(
         .as_ref()
         .map(|account| with_zoom(z, || view.repository_pane(account, list_h, z, window, cx)));
     let with_list = repository_pane.is_some();
+    // Corvane extra (flag 206): GitHub Desktop's data is on this machine
+    let show_import = view.ghd_installed
+        && view
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP);
     div()
         .id("no-repositories")
         .relative()
@@ -658,7 +668,28 @@ fn no_repositories(
                                     false,
                                     z,
                                     cx,
-                                )),
+                                ))
+                                // Corvane extra (flag 206)
+                                .when(show_import, |d| {
+                                    d.child(slot(
+                                        big_button(
+                                            "nr-import-ghd",
+                                            Octicon::DesktopDownload,
+                                            "Import Repositories from GitHub Desktop…",
+                                            |_, cx| {
+                                                Dispatcher::show_popup(
+                                                    Popup::ImportFromGitHubDesktop,
+                                                    cx,
+                                                )
+                                            },
+                                            z,
+                                            cx,
+                                        ),
+                                        false,
+                                        z,
+                                        cx,
+                                    ))
+                                }),
                         )
                         .child(
                             // `.drag-drop-info`

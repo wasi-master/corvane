@@ -16,6 +16,7 @@ pub mod emoji;
 pub mod filter;
 pub mod flags;
 pub mod forks;
+pub mod ghd_import;
 pub mod integrations;
 pub mod list_selection;
 pub mod markdown;
