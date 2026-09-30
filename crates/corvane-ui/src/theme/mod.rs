@@ -242,6 +242,9 @@ pub fn set_mono_font(family: &'static str) {
 pub struct GhdTheme {
     pub name: &'static str,
     pub appearance: Appearance,
+    /// The title bar is drawn light (flag `189-light-toolbar`); GHD's is
+    /// always the dark gradient.
+    pub light_title_bar: bool,
 
     // Text + surfaces
     pub text: Hsla,
@@ -479,12 +482,16 @@ impl Global for GhdTheme {}
 pub struct ThemeVariants {
     /// Flag `188-colour-blind-diff`: blue additions, orange deletions.
     pub colour_blind_diff: bool,
+    /// Flag `189-light-toolbar`: the Light theme's title bar and toolbar
+    /// are light too.
+    pub light_toolbar: bool,
 }
 
 impl ThemeVariants {
     pub fn of(flags: &corvane_core::Flags) -> Self {
         Self {
             colour_blind_diff: flags.bool(corvane_core::flags::ids::COLOUR_BLIND_DIFF),
+            light_toolbar: flags.bool(corvane_core::flags::ids::LIGHT_TOOLBAR),
         }
     }
 }
@@ -496,7 +503,29 @@ impl GhdTheme {
         if variants.colour_blind_diff && self.name != "High Contrast" {
             self.colour_blind_diff();
         }
+        if variants.light_toolbar && !self.is_dark() {
+            self.light_toolbar();
+        }
         self
+    }
+
+    /// Corvane addition (desktop/desktop#22123, #22470): Primer light greys
+    /// for the title bar and toolbar instead of GHD's dark chrome
+    /// (`app/styles/themes/_light.scss` `--toolbar-*`).
+    fn light_toolbar(&mut self) {
+        self.light_title_bar = true;
+        self.toolbar_background = c(0xf6f8fa);
+        self.toolbar_border = c(0xd0d7de);
+        self.toolbar_text = c(0x24292e);
+        self.toolbar_text_secondary = c(0x586069);
+        self.toolbar_button_border = c(0xd0d7de);
+        self.toolbar_button_hover_background = c(0xeaeef2);
+        self.toolbar_button_hover_text = c(0x24292e);
+        self.toolbar_button_active_background = c(0xffffff);
+        self.toolbar_button_active_text = c(0x24292e);
+        self.toolbar_button_progress = c(0xdde3ea);
+        self.toolbar_badge_background = c(0xd1d5da);
+        self.toolbar_badge_active_background = c(0xe1e4e8);
     }
 
     /// Corvane addition (desktop/desktop#6795): additions in blue and

@@ -79,6 +79,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Extra editors**: editor detection also looks for editors missing from GHD 3.6.6's `lib/editors/darwin.ts` (`editors::EXTRA_EDITORS`: Antigravity, `com.google.antigravity`), listed after GHD's; toggling the flag re-runs detection. Flag: `585-extra-editors`.
 - **Custom editor name**: Settings › Integrations' custom editor form adds a Name box (stored as `CustomIntegration::name`); a non-empty name replaces "Custom Editor" in the "Open in …" menu items and buttons (`AppState::editor_label`; GHD `CustomIntegrationForm` has path and arguments only). Flag: `586-custom-editor-name`.
 - Colour-blind diff colours (Corvane addition; GHD `app/styles/_variables.scss` / `themes/_dark.scss` diff tokens are green and red): `GhdTheme::with_variants` swaps the Light and Dark themes' add / delete tokens for blue and orange after Primer's protanopia / deuteranopia palettes; High Contrast keeps its own. Flag: `188-colour-blind-diff`.
+- Light toolbar (Corvane addition; GHD `app/styles/ui/window/_title-bar.scss` and the light theme's `--toolbar-*` tokens keep the chrome dark): with the Light theme the title bar is a light gradient and the toolbar uses Primer light greys with dark text. Flag: `189-light-toolbar`.
 
 ## Blank slate
 

@@ -238,6 +238,20 @@ registry! {
         code: &["crates/corvane-ui/src/theme/mod.rs", "crates/corvane/src/main.rs"],
     },
 
+    /// A light title bar and toolbar in the Light theme.
+    LIGHT_TOOLBAR = 189 "light-toolbar" {
+        title: "Light title bar and toolbar in the Light theme",
+        summary: "With the Light theme the title bar and the toolbar (repository, branch and \
+                  push / pull buttons) use light greys and dark text.",
+        ghd_behaviour: "The title bar and toolbar stay dark in every theme.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22123), Upstream::issue(22470)],
+        code: &["crates/corvane-ui/src/theme/mod.rs", "crates/corvane-ui/src/title_bar.rs", "crates/corvane/src/main.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.

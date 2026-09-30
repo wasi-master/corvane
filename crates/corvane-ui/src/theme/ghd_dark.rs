@@ -7,6 +7,7 @@ pub fn theme() -> GhdTheme {
     GhdTheme {
         name: "GitHub Desktop Dark",
         appearance: Appearance::Dark,
+        light_title_bar: false,
 
         text: c(GRAY_100),
         text_secondary: c(GRAY_400),
