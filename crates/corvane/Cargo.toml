@@ -31,6 +31,7 @@ snapshots = [
 ]
 
 [dependencies]
+libc = "0.2"
 gpui-kit.workspace = true
 gpui-pre = { version = "=0.3.7", optional = true }
 serde_json = { workspace = true, optional = true }

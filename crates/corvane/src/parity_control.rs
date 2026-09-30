@@ -26,6 +26,17 @@
 //! - `menu` → the items of the last native menu (while the control socket is
 //!   on, menus still pop up but are recorded and close themselves after
 //!   `CORVANE_MENU_HOLD_MS`, default 1500); `menu-pick {label}` runs one
+//! - `bench {steps, until, timeout_ms}` → `{input_ms, settle_ms, draw_ms,
+//!   total_ms}`: runs `steps` (commands as above) back to back, waits until the
+//!   `until` predicate holds on the app state ([`predicate`]), then draws one
+//!   frame (only the views that were invalidated, as the display link would). `input_ms` is the synchronous handling of the steps, `settle_ms`
+//!   the time from the first step to the predicate, `draw_ms` the frame
+//!   (layout + paint on the main thread). Latency benchmarks (`tools/perf`).
+//! - `frames {n}` → `{avg_ms, max_ms, cpu_ms, minstr}`: draws `n` frames of the
+//!   current state, every view re-rendered; `scroll-frames {x, y, dy, n}`
+//!   scrolls by `dy` before each frame and draws what the scroll invalidated
+//! - `state` → the selected repository's selected file / commit, the first
+//!   200 history SHAs and the changed-file count
 //! - `quit`
 
 use std::io::{BufRead, BufReader, Write};
@@ -98,6 +109,10 @@ pub fn start(port: u16, popup: PopupHook, cx: &mut App) {
                 .timer(Duration::from_millis(4))
                 .await;
             while let Ok((request, reply)) = rx.try_recv() {
+                if request["cmd"] == "bench" {
+                    bench(request, reply, popup, cx);
+                    continue;
+                }
                 let quit = request["cmd"] == "quit";
                 let result = cx.update(|cx| handle(&request, popup, cx));
                 let _ = reply.send(match result {
@@ -122,6 +137,7 @@ fn handle(request: &Value, popup: PopupHook, cx: &mut App) -> Result<Value, Stri
     match cmd {
         "quit" => return Ok(json!({})),
         "hook" => return hook(request, popup, cx),
+        "state" => return Ok(state_summary(cx)),
         _ => {}
     }
     let handle = cx
@@ -273,6 +289,43 @@ fn window_command(
             image.save(path).map_err(|err| err.to_string())?;
             return Ok(json!({"w": image.width(), "h": image.height()}));
         }
+        "frames" | "scroll-frames" => {
+            let n = request["n"].as_u64().unwrap_or(20).max(1);
+            let dy = num(request, "dy");
+            let (mut total, mut max, mut cpu_total, mut instr_total) = (0.0f64, 0.0f64, 0.0, 0.0);
+            for _ in 0..n {
+                if cmd == "scroll-frames" {
+                    window.dispatch_event(
+                        PlatformInput::ScrollWheel(ScrollWheelEvent {
+                            position,
+                            delta: ScrollDelta::Pixels(point(px(0.), px(-dy))),
+                            modifiers,
+                            touch_phase: TouchPhase::Moved,
+                        }),
+                        cx,
+                    );
+                }
+                let (started, cpu, instr) =
+                    (std::time::Instant::now(), thread_cpu_ms(), thread_minstr());
+                // `frames`: everything re-rendered (the worst case, e.g. after
+                // a focus change); `scroll-frames`: what the scroll invalidated
+                if cmd == "frames" {
+                    window.refresh();
+                }
+                window.draw(cx).clear(cx);
+                let took = ms(started.elapsed());
+                cpu_total += thread_cpu_ms() - cpu;
+                instr_total += thread_minstr() - instr;
+                total += took;
+                max = max.max(took);
+            }
+            return Ok(json!({
+                "avg_ms": total / n as f64,
+                "max_ms": max,
+                "cpu_ms": cpu_total / n as f64,
+                "minstr": instr_total / n as f64,
+            }));
+        }
         // the last native menu the app tried to show (recorded headless)
         #[cfg(target_os = "macos")]
         "menu" => return Ok(json!({"items": corvane_ui::native_menu::recorded_menu()})),
@@ -291,6 +344,204 @@ fn window_command(
         "h": f32::from(viewport.height),
         "scale": window.scale_factor(),
     }))
+}
+
+/// `bench`: see the module docs. The predicate is polled every 250 µs on the
+/// foreground executor, so `settle_ms` is exact to about a quarter millisecond.
+fn bench(request: Value, reply: Reply, popup: PopupHook, cx: &mut AsyncApp) {
+    let until = request["until"].as_str().unwrap_or("idle").to_string();
+    let timeout = Duration::from_millis(request["timeout_ms"].as_u64().unwrap_or(20_000));
+    let (started, cpu, instr) = (std::time::Instant::now(), thread_cpu_ms(), thread_minstr());
+    let steps = request["steps"].as_array().cloned().unwrap_or_default();
+    for step in &steps {
+        if let Err(err) = cx.update(|cx| handle(step, popup, cx)) {
+            let _ = reply.send(json!({"ok": false, "error": err}));
+            return;
+        }
+    }
+    let input_ms = ms(started.elapsed());
+    let input_cpu_ms = thread_cpu_ms() - cpu;
+    let input_minstr = thread_minstr() - instr;
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        loop {
+            let done = cx.update(|cx| predicate(&until, cx));
+            match done {
+                Err(err) => {
+                    let _ = reply.send(json!({"ok": false, "error": err}));
+                    return;
+                }
+                Ok(true) => break,
+                Ok(false) if started.elapsed() > timeout => {
+                    let _ = reply.send(
+                        json!({"ok": false, "error": format!("timeout waiting for {until}")}),
+                    );
+                    return;
+                }
+                Ok(false) => {
+                    cx.background_executor()
+                        .timer(Duration::from_micros(250))
+                        .await
+                }
+            }
+        }
+        let settle_ms = ms(started.elapsed());
+        let (draw_ms, draw_cpu_ms, draw_minstr) =
+            cx.update(draw_frame).unwrap_or((-1.0, -1.0, f64::NAN));
+        let _ = reply.send(json!({
+            "ok": true,
+            "input_ms": input_ms,
+            "input_cpu_ms": input_cpu_ms,
+            "settle_ms": settle_ms,
+            "draw_ms": draw_ms,
+            "draw_cpu_ms": draw_cpu_ms,
+            "draw_minstr": draw_minstr,
+            "input_minstr": input_minstr,
+            "total_ms": ms(started.elapsed()),
+        }));
+    })
+    .detach();
+}
+
+fn ms(duration: Duration) -> f64 {
+    duration.as_secs_f64() * 1000.0
+}
+
+/// Instructions this thread has retired, in millions (Apple's
+/// `thread_selfcounts`, no privileges needed): the one frame cost that stays
+/// the same on a loaded machine, whichever core the thread runs on.
+#[cfg(target_os = "macos")]
+fn thread_minstr() -> f64 {
+    unsafe extern "C" {
+        fn thread_selfcounts(kind: libc::c_int, buf: *mut u64, nbytes: libc::size_t)
+        -> libc::c_int;
+    }
+    let mut counts = [0u64; 2];
+    // SAFETY: kind 1 (instructions, cycles) fills two u64s
+    let ok = unsafe { thread_selfcounts(1, counts.as_mut_ptr(), std::mem::size_of_val(&counts)) };
+    if ok == 0 {
+        counts[0] as f64 / 1e6
+    } else {
+        f64::NAN
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn thread_minstr() -> f64 {
+    f64::NAN
+}
+
+/// CPU time this thread has used, in ms: frame costs measured this way do
+/// not grow when other processes preempt the app (a loaded machine).
+fn thread_cpu_ms() -> f64 {
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: clock_gettime writes the timespec it is given
+    unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut ts) };
+    ts.tv_sec as f64 * 1000.0 + ts.tv_nsec as f64 / 1_000_000.0
+}
+
+/// Draw one fresh frame of the first window; its duration in ms (wall
+/// clock, main-thread CPU) and its main-thread instructions (millions).
+fn draw_frame(cx: &mut App) -> Result<(f64, f64, f64), String> {
+    let handle = cx.windows().first().copied().ok_or("no window")?;
+    handle
+        .update(cx, |_, window, cx| {
+            let (started, cpu, instr) =
+                (std::time::Instant::now(), thread_cpu_ms(), thread_minstr());
+            // what the next display-link frame would draw: views the input
+            // or the state change invalidated, cached views reused
+            window.draw(cx).clear(cx);
+            (
+                ms(started.elapsed()),
+                thread_cpu_ms() - cpu,
+                thread_minstr() - instr,
+            )
+        })
+        .map_err(|err| err.to_string())
+}
+
+/// `until` predicates on the selected repository's state:
+/// - `idle`: nothing of it is loading (status, diff, history, commit)
+/// - `repo:<path suffix>`: that repository is selected, its status loaded
+/// - `diff:<path>`: `path` is the selected changed file and its diff is loaded
+/// - `commits:<n>`: at least `n` history commits are loaded
+/// - `commit:<sha prefix>`: that commit is selected, its files and (when a
+///   file is selected) its diff loaded
+/// - `branch:<name>`: `name` is checked out and the refresh after it is done
+/// - `files:<n>`: the status lists `n` changed files
+/// - `frame`: true at once (the bench then only times the steps + a frame)
+fn predicate(until: &str, cx: &mut App) -> Result<bool, String> {
+    let (kind, arg) = until.split_once(':').unwrap_or((until, ""));
+    if kind == "frame" {
+        return Ok(true);
+    }
+    let state = corvane_core::AppState::global(cx).read(cx);
+    let Some(id) = state.selected else {
+        return Ok(false);
+    };
+    if kind == "repo" {
+        let Some(repo) = state.repository(id) else {
+            return Ok(false);
+        };
+        if !repo.path.to_string_lossy().ends_with(arg) {
+            return Ok(false);
+        }
+    }
+    let Some(rs) = state.repo_states.get(&id) else {
+        return Ok(false);
+    };
+    let settled = !rs.loading && rs.status.is_some() && rs.info.is_some();
+    Ok(match kind {
+        "idle" => {
+            settled
+                && !rs.diff_loading
+                && !rs.commits_loading
+                && !rs.committing
+                && (rs.selected_file.is_none() || rs.diff.is_some())
+        }
+        "repo" => settled,
+        "diff" => rs.selected_file.as_deref() == Some(arg) && !rs.diff_loading && rs.diff.is_some(),
+        "commits" => rs.commits.len() >= arg.parse().unwrap_or(1) && !rs.commits_loading,
+        "commit" => {
+            rs.selected_commit
+                .as_deref()
+                .is_some_and(|sha| sha.starts_with(arg))
+                && rs.changeset.is_some()
+                && (rs.commit_selected_file.is_none() || rs.commit_diff.is_some())
+        }
+        "branch" => {
+            settled
+                && rs
+                    .info
+                    .as_ref()
+                    .and_then(|info| info.current_branch())
+                    .is_some_and(|b| b.name == arg)
+        }
+        "files" => {
+            settled
+                && rs
+                    .status
+                    .as_ref()
+                    .is_some_and(|st| st.files.len() == arg.parse::<usize>().unwrap_or(0))
+        }
+        other => return Err(format!("unknown predicate {other:?}")),
+    })
+}
+
+/// `state`: the selected repository's selections (for benchmarks).
+fn state_summary(cx: &mut App) -> Value {
+    let state = corvane_core::AppState::global(cx).read(cx);
+    let Some(rs) = state.selected.and_then(|id| state.repo_states.get(&id)) else {
+        return json!({});
+    };
+    json!({
+        "selected_file": rs.selected_file,
+        "selected_commit": rs.selected_commit,
+        "commits": rs.commits.iter().take(200).map(|c| c.sha.clone()).collect::<Vec<_>>(),
+        "files": rs.status.as_ref().map(|s| s.files.len()),
+    })
 }
 
 fn hook(request: &Value, popup: PopupHook, cx: &mut App) -> Result<Value, String> {
