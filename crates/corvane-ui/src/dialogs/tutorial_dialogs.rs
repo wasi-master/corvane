@@ -6,6 +6,7 @@ use corvane_core::{Account, Dispatcher};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog, dialog_loading};
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, mono_font};
@@ -136,7 +137,7 @@ impl Render for ConfirmExitTutorialDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         dialog(
             "confirm-exit-tutorial",
-            "Exit Tutorial",
+            mac_or("Exit Tutorial", "Exit tutorial"),
             div().w(zpx(360.)).child(
                 "Are you sure you want to leave the tutorial? This will bring you back to the \
                  home screen.",
@@ -151,7 +152,7 @@ impl Render for ConfirmExitTutorialDialog {
                 },
                 DialogButton {
                     id: "exit-tutorial-ok",
-                    label: "Exit Tutorial".into(),
+                    label: mac_or("Exit Tutorial", "Exit tutorial").into(),
                     primary: true,
                     disabled: false,
                     // `onExitTutorialToHomeScreen` → `pauseTutorial`

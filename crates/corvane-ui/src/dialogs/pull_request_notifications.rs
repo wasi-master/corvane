@@ -38,6 +38,7 @@ use gpui_kit::*;
 use crate::ci_check_popover::{
     RerunChecks, RerunJob, check_run_group_header, check_run_row, check_run_steps, rerun_button,
 };
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
@@ -96,9 +97,12 @@ fn switch_title(
     should_checkout_branch: bool,
 ) -> Option<&'static str> {
     if should_change_repository {
-        Some("Switch to Repository and Pull Request")
+        Some(mac_or(
+            "Switch to Repository and Pull Request",
+            "Switch to repository and pull request",
+        ))
     } else if should_checkout_branch {
-        Some("Switch to Pull Request")
+        Some(mac_or("Switch to Pull Request", "Switch to pull request"))
     } else {
         None
     }
@@ -469,7 +473,7 @@ impl CommentLike {
                 div().flex_1().flex().items_center().child(
                     link_button(
                         SharedString::from(format!("{}-open-in-browser", self.id)),
-                        "Open in Browser",
+                        mac_or("Open in Browser", "Open in browser"),
                         cx,
                     )
                     .on_click(move |_, _, cx| Dispatcher::open_url(&external, cx)),
@@ -828,9 +832,12 @@ impl Render for PullRequestChecksFailedDialog {
             )))
             .child(ok_cancel(
                 if self.should_change_repository {
-                    "Switch to Repository and Pull Request"
+                    mac_or(
+                        "Switch to Repository and Pull Request",
+                        "Switch to repository and pull request",
+                    )
                 } else {
-                    "Switch to Pull Request"
+                    mac_or("Switch to Pull Request", "Switch to pull request")
                 }
                 .into(),
                 Some("Dismiss".into()),

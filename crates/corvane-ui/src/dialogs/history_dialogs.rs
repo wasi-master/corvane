@@ -13,6 +13,7 @@ use gpui_kit::component::input::{InputEvent, InputState, Textarea, TextareaState
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -38,7 +39,7 @@ impl Render for ResetToCommitDialog {
         dialog_with_kind(
             "dialog-reset-to-commit",
             DialogKind::Warning,
-            "Reset to Commit",
+            mac_or("Reset to Commit", "Reset to commit"),
             div().child(
                 "You have changes in progress. Resetting to a previous commit might result in \
                  some of these changes being lost. Do you want to continue anyway?",
@@ -195,7 +196,7 @@ impl Render for CheckoutCommitDialog {
         dialog_with_kind(
             "dialog-checkout-commit",
             DialogKind::Warning,
-            "Checkout Commit?",
+            mac_or("Checkout Commit?", "Checkout commit?"),
             content,
             vec![
                 DialogButton {
@@ -353,7 +354,7 @@ impl Render for CreateTagDialog {
             });
         dialog(
             "dialog-create-tag",
-            "Create a Tag",
+            mac_or("Create a Tag", "Create a tag"),
             content,
             vec![
                 DialogButton {
@@ -365,7 +366,7 @@ impl Render for CreateTagDialog {
                 },
                 DialogButton {
                     id: "tag-create",
-                    label: "Create Tag".into(),
+                    label: mac_or("Create Tag", "Create tag").into(),
                     primary: true,
                     disabled,
                     on_click: Box::new(move |_, cx| {
@@ -431,7 +432,7 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
         dialog_with_kind(
             "dialog-warn-undo",
             DialogKind::Warning,
-            "Undo Commit",
+            mac_or("Undo Commit", "Undo commit"),
             content,
             vec![
                 DialogButton {
@@ -501,7 +502,7 @@ impl Render for WarnTaggedCommitBeforeUndoDialog {
         dialog_with_kind(
             "dialog-warn-undo-tagged",
             DialogKind::Warning,
-            "Undo Commit",
+            mac_or("Undo Commit", "Undo commit"),
             div().child(text),
             vec![
                 DialogButton {
@@ -591,7 +592,7 @@ impl Render for ConfirmDeletePushedTagDialog {
         dialog_with_kind(
             "dialog-delete-pushed-tag",
             DialogKind::Warning,
-            "Delete Tag",
+            mac_or("Delete Tag", "Delete tag"),
             content,
             vec![
                 DialogButton {
@@ -669,7 +670,7 @@ impl Render for ConfirmDiscardStashDialog {
         dialog_with_kind(
             "dialog-discard-stash",
             DialogKind::Warning,
-            "Discard Stash?",
+            mac_or("Discard Stash?", "Discard stash?"),
             content,
             vec![
                 DialogButton {
@@ -825,7 +826,7 @@ impl Render for UnreachableCommitsDialog {
             );
         dialog(
             "dialog-unreachable-commits",
-            "Commit Reachability",
+            mac_or("Commit Reachability", "Commit reachability"),
             content,
             vec![DialogButton {
                 id: "unreachable-ok",

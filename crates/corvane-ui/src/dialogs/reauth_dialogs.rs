@@ -12,6 +12,7 @@ use corvane_core::{Account, Dispatcher, Popup, RetryAction};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::sizes::zpx;
 use crate::widgets::{Inline, code_ref, paragraph};
@@ -39,7 +40,7 @@ impl Render for InvalidatedTokenDialog {
         dialog_with_kind(
             "invalidated-token",
             DialogKind::Warning,
-            "Invalidated Account Token",
+            mac_or("Invalidated Account Token", "Invalidated account token"),
             content,
             vec![
                 DialogButton {
@@ -105,7 +106,7 @@ impl Render for WorkflowPushRejectedDialog {
         dialog_with_kind(
             "workflow-push-rejected",
             DialogKind::Error,
-            "Push Rejected",
+            mac_or("Push Rejected", "Push rejected"),
             content,
             vec![
                 DialogButton {
@@ -117,7 +118,7 @@ impl Render for WorkflowPushRejectedDialog {
                 },
                 DialogButton {
                     id: "workflow-push-rejected-ok",
-                    label: "Continue in Browser".into(),
+                    label: mac_or("Continue in Browser", "Continue in browser").into(),
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {
@@ -191,7 +192,7 @@ impl Render for SamlReauthRequiredDialog {
         dialog_with_kind(
             "saml-reauth-required",
             DialogKind::Error,
-            "Re-authorization Required",
+            mac_or("Re-authorization Required", "Re-authorization required"),
             content,
             vec![
                 DialogButton {
@@ -203,7 +204,7 @@ impl Render for SamlReauthRequiredDialog {
                 },
                 DialogButton {
                     id: "saml-reauth-ok",
-                    label: "Continue in Browser".into(),
+                    label: mac_or("Continue in Browser", "Continue in browser").into(),
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {

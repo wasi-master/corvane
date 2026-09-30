@@ -5,6 +5,7 @@ use corvane_core::{DiffSelection, Dispatcher};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::mono_font;
 use crate::theme::sizes::*;
@@ -72,7 +73,7 @@ impl Render for DiscardSelectionDialog {
         dialog_with_kind(
             "dialog-discard-selection",
             DialogKind::Warning,
-            "Confirm Discard Changes",
+            mac_or("Confirm Discard Changes", "Confirm discard changes"),
             content,
             vec![
                 DialogButton {
@@ -84,7 +85,7 @@ impl Render for DiscardSelectionDialog {
                 },
                 DialogButton {
                     id: "discard-selection-ok",
-                    label: "Discard Changes".into(),
+                    label: mac_or("Discard Changes", "Discard changes").into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {

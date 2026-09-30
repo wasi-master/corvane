@@ -8,6 +8,7 @@ use corvane_core::{AppState, Dispatcher, ForkContributionTarget, GitHubRepositor
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::dialogs::branch_dialogs::ref_chip;
 use crate::theme::ActiveGhdTheme;
@@ -194,7 +195,7 @@ impl Render for CreateForkDialog {
                 },
                 DialogButton {
                     id: "create-fork-ok",
-                    label: "Fork This Repository".into(),
+                    label: mac_or("Fork This Repository", "Fork this repository").into(),
                     primary: true,
                     disabled: self.loading,
                     on_click: Box::new(move |_, cx| {
@@ -426,7 +427,7 @@ impl Render for UpstreamAlreadyExistsDialog {
         dialog_with_kind(
             "upstream-already-exists",
             DialogKind::Warning,
-            "Upstream Already Exists",
+            mac_or("Upstream Already Exists", "Upstream already exists"),
             content,
             vec![
                 DialogButton {

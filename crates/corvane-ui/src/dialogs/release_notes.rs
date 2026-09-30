@@ -14,6 +14,7 @@ use corvane_core::{AppState, Dispatcher, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, octicon};
@@ -290,7 +291,10 @@ impl Render for ReleaseNotesDialog {
                                                 .chain(can_install.then(|| {
                                                     button(
                                                         "release-notes-install",
-                                                        "Install and Restart",
+                                                        mac_or(
+                                                            "Install and Restart",
+                                                            "Install and restart",
+                                                        ),
                                                         cx,
                                                     )
                                                     .on_click(|_, _, cx| {

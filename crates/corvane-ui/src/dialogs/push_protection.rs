@@ -8,6 +8,7 @@ use corvane_core::{BypassReason, Dispatcher, Popup, SecretLocation, SecretScanRe
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -270,7 +271,10 @@ impl Render for PushProtectionErrorDialog {
         dialog_with_kind(
             "push-protection-error",
             DialogKind::Error,
-            "Push Blocked: Secret Detected",
+            mac_or(
+                "Push Blocked: Secret Detected",
+                "Push blocked: secret detected",
+            ),
             content,
             vec![DialogButton {
                 id: "push-protection-ok",
@@ -370,7 +374,7 @@ impl Render for BypassPushProtectionDialog {
         );
         dialog(
             "bypass-push-protection",
-            "Bypass Push Detection",
+            mac_or("Bypass Push Detection", "Bypass push detection"),
             content,
             vec![
                 DialogButton {
