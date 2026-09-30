@@ -1,6 +1,11 @@
 //! `NoChanges` blankslate (`.changes-interstitial`): "No local changes" header
 //! with the paper-stack illustration, then suggested-action groups.
 //! `styles/ui/changes/_changes-interstitial.scss`, `ui/suggested-actions/*.scss`.
+//!
+//! Deviation (GHD `ui/changes/no-changes.tsx`): while the branch has an open
+//! pull request a primary "View Pull Request" card leads the list (built in
+//! `workspace.rs`, `274-no-changes-view-pull-request`); GHD shows no
+//! remote action then.
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;

@@ -333,6 +333,21 @@ registry! {
         upstream: &[Upstream::issue(12927), Upstream::issue(20559), Upstream::issue(17525)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-models/src/lib.rs"],
     },
+    /// "No local changes" links the branch's open pull request.
+    NO_CHANGES_VIEW_PULL_REQUEST = 274 "no-changes-view-pull-request" {
+        title: "\"View Pull Request\" when there are no local changes",
+        summary: "While the current branch has an open pull request, the \"No local changes\" view \
+                  leads with a \"View Pull Request\" card naming its number and title, opening it \
+                  on GitHub.",
+        ghd_behaviour: "Shows no pull request action while one is open (only Create / Preview \
+                        Pull Request for a branch without one).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19329)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
 
     // ---- 300 GitHub ----
 
