@@ -35,7 +35,7 @@ pub struct PullRequestPreview {
     pub changeset: Option<ChangesetData>,
     /// The selected file (`commitSelection.file`).
     pub file: Option<String>,
-    pub diff: Option<Diff>,
+    pub diff: Option<Arc<Diff>>,
     pub diff_generation: u64,
     pub diff_contents: Option<Arc<Vec<String>>>,
     pub merge_status: Option<MergeStatus>,
@@ -324,7 +324,7 @@ impl Dispatcher {
                     let mut no_old = None;
                     if crate::dispatcher::replace_diff(
                         (&mut preview.diff, &mut preview.diff_contents, &mut no_old),
-                        (diff, contents, None),
+                        (Arc::new(diff), contents.map(Arc::new), None),
                     ) {
                         preview.diff_generation += 1;
                     }
