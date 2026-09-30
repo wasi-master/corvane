@@ -157,18 +157,27 @@ pub fn highlight_lines_with<'a>(
     lines: impl IntoIterator<Item = &'a str>,
 ) -> Option<Vec<Vec<Span>>> {
     let lines: Vec<&str> = lines.into_iter().collect();
+    let all = lines.len();
     let ts = || treesitter::highlight(path, &lines, MAX_HIGHLIGHT_BYTES);
     match engine {
-        Engine::GitHubDesktop => {
-            cm_highlight(path, &lines).or_else(|| syntect_highlight(path, &lines))
-        }
-        Engine::TreeSitterFallback => cm_highlight(path, &lines)
+        Engine::GitHubDesktop => highlight_prefix(path, &lines, all),
+        Engine::TreeSitterFallback => cm_highlight(path, &lines, all)
             .or_else(ts)
-            .or_else(|| syntect_highlight(path, &lines)),
+            .or_else(|| syntect_highlight(path, &lines, all)),
         Engine::TreeSitter => ts()
-            .or_else(|| cm_highlight(path, &lines))
-            .or_else(|| syntect_highlight(path, &lines)),
+            .or_else(|| cm_highlight(path, &lines, all))
+            .or_else(|| syntect_highlight(path, &lines, all)),
     }
+}
+
+/// The first `stop` lines of [`highlight_lines`] (GitHub Desktop's
+/// tokenizers), tokenizing only those. Both tokenizers carry their state
+/// from the top and only read later lines to look ahead, so the result is
+/// exactly what the whole run gives for those lines: a diff shows the part
+/// on screen from this and fills in the rest later. Tree-sitter parses whole
+/// files and has no such prefix.
+pub fn highlight_prefix(path: &str, lines: &[&str], stop: usize) -> Option<Vec<Vec<Span>>> {
+    cm_highlight(path, lines, stop).or_else(|| syntect_highlight(path, lines, stop))
 }
 
 /// The ported CodeMirror mode GHD would pick for `path`: by extension or
@@ -190,12 +199,17 @@ pub fn cm_covers(path: &str, first_line: &str) -> bool {
     cm_mode(path, first_line).is_some()
 }
 
-fn cm_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
+fn cm_highlight(path: &str, lines: &[&str], stop: usize) -> Option<Vec<Vec<Span>>> {
     let mode = cm_mode(path, lines.first().copied().unwrap_or(""))?;
-    Some(cm::highlight(&*mode, lines, MAX_HIGHLIGHT_BYTES))
+    Some(cm::highlight_until(
+        &*mode,
+        lines,
+        MAX_HIGHLIGHT_BYTES,
+        stop,
+    ))
 }
 
-fn syntect_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
+fn syntect_highlight(path: &str, lines: &[&str], stop: usize) -> Option<Vec<Vec<Span>>> {
     let first = lines.first().copied().unwrap_or("");
     let sets = syntaxes::sets();
     let (ss, syntax) = sets
@@ -206,7 +220,7 @@ fn syntect_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
     let mut stack = ScopeStack::new();
     let mut budget = MAX_HIGHLIGHT_BYTES;
     let mut out = Vec::new();
-    for line in lines {
+    for line in lines.iter().take(stop) {
         if budget < line.len() {
             out.push(Vec::new());
             continue;
@@ -337,10 +351,10 @@ mod tests {
     }
 
     fn syntect_first(path: &str, line: &str) -> Option<TokenClass> {
-        syntect_highlight(path, &[line]).and_then(|s| s[0].first().map(|s| s.class))
+        syntect_highlight(path, &[line], 1).and_then(|s| s[0].first().map(|s| s.class))
     }
 
     fn cm_first(path: &str, line: &str) -> Option<TokenClass> {
-        cm_highlight(path, &[line]).and_then(|s| s[0].first().map(|s| s.class))
+        cm_highlight(path, &[line], 1).and_then(|s| s[0].first().map(|s| s.class))
     }
 }

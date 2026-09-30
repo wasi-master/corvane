@@ -75,3 +75,57 @@ fn ported_modes_match_github_desktop() {
     assert!(checked > 0, "no ported mode has a sample");
     assert!(failures.is_empty(), "\n{}", failures.join("\n\n"));
 }
+
+/// `highlight_prefix` is what a diff shows before the whole file is
+/// tokenized, so it must equal the whole run's first lines, wherever it
+/// stops (inside block comments, strings, markdown fences…).
+#[test]
+fn a_prefix_is_the_start_of_the_whole_run() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/cm/samples");
+    let mut samples: Vec<(String, String)> = fs::read_dir(&dir)
+        .unwrap()
+        .flatten()
+        .map(|e| {
+            let name = e.file_name().to_string_lossy().to_string();
+            let text = fs::read_to_string(e.path()).unwrap_or_default();
+            (name, text)
+        })
+        .collect();
+    // syntect grammars (no CodeMirror port) with state across lines
+    samples.push((
+        "Main.hs".into(),
+        "module Main where\n{- a block\n   comment -}\nmain = putStrLn \"hi\"\n".into(),
+    ));
+    samples.push((
+        "Makefile".into(),
+        "define BODY\n  echo $(X)\nendef\nall:\n\t@echo \"done\" # note\n".into(),
+    ));
+    samples.push((
+        "run.bat".into(),
+        "@echo off\nrem comment\nset X=\"a\"\n".into(),
+    ));
+    samples.sort();
+    let mut checked = 0;
+    for (name, text) in &samples {
+        let text = text.replace("\r\n", "\n").replace('\r', "\n");
+        let lines: Vec<&str> = text.split('\n').collect();
+        let Some(whole) = corvane_highlight::highlight_lines(name, lines.iter().copied()) else {
+            continue;
+        };
+        checked += 1;
+        for stop in [
+            0,
+            1,
+            2,
+            lines.len() / 3,
+            lines.len() / 2,
+            lines.len().saturating_sub(1),
+            lines.len(),
+        ] {
+            let prefix = corvane_highlight::highlight_prefix(name, &lines, stop).unwrap();
+            assert_eq!(prefix.len(), stop.min(lines.len()), "{name} @ {stop}");
+            assert_eq!(prefix[..], whole[..prefix.len()], "{name} @ {stop}");
+        }
+    }
+    assert!(checked > 100, "only {checked} samples highlighted");
+}

@@ -531,10 +531,12 @@ impl DiffView {
     /// Deviation (docs/reference/deviations.md): GHD always highlights in its
     /// worker, so a diff first shows uncoloured. Here a side already
     /// tokenized (`SIDE_CACHE`: revisiting a file, or a reload that changed
-    /// one side) is reused, and when what is left is small and needs no
-    /// tree-sitter grammar pack it is tokenized right here, so the first
-    /// frame is coloured. Otherwise a background task does it and, until it
-    /// is done, rows whose text did not change keep their previous colours.
+    /// one side) is reused, and with GHD's tokenizers the rows on screen are
+    /// coloured right here from each file's first lines (`preview`, exactly
+    /// the whole run's tokens for them), so the first frame is coloured; a
+    /// background task tokenizes the whole files for the rest. With
+    /// tree-sitter, or when the preview would be too big, rows whose text did
+    /// not change keep their previous colours until the background is done.
     fn highlight(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         let previous = self.tokens.take().zip(self.previous_rows.take());
         let with = highlight_engine(self.state.read(cx));
@@ -568,22 +570,43 @@ impl DiffView {
             .flatten()
             .find_map(|side| side.lines.first().map(String::as_str))
             .unwrap_or_default();
-        if pending_bytes == 0
-            || pending_bytes <= SYNC_HIGHLIGHT_BYTES
-                && tokenizes_in_process(with.0, &path, first_line)
-        {
+        if pending_bytes == 0 {
             let (tokens, sides) = assemble(with.0, &path, &rows, old, new);
             remember_sides(sides);
             self.tokens = tokens.map(Rc::new);
             return;
         }
-        self.tokens = previous.map(|(tokens, previous_rows)| {
-            Rc::new(carry_over(
-                &tokens,
-                previous_rows.iter().map(|r| (r.kind, r.text.as_str())),
-                self.rows.iter().map(|r| (r.kind, r.text.as_str())),
-            ))
-        });
+        let in_process = tokenizes_in_process(with.0, &path, first_line);
+        let (mut old, mut new) = (old, new);
+        let preview = in_process
+            .then(|| preview(with.0, &path, &rows, self.preview_window(), &old, &new))
+            .flatten();
+        match preview {
+            Some(preview) => {
+                // sides the preview tokenized whole are final
+                for (key, tokens) in &preview.whole {
+                    for side in [&mut old, &mut new].into_iter().flatten() {
+                        if side.key == *key {
+                            side.tokens = Some(tokens.clone());
+                        }
+                    }
+                }
+                remember_sides(preview.whole);
+                self.tokens = preview.tokens.map(Rc::new);
+                if preview.complete {
+                    return;
+                }
+            }
+            None => {
+                self.tokens = previous.map(|(tokens, previous_rows)| {
+                    Rc::new(carry_over(
+                        &tokens,
+                        previous_rows.iter().map(|r| (r.kind, r.text.as_str())),
+                        self.rows.iter().map(|r| (r.kind, r.text.as_str())),
+                    ))
+                });
+            }
+        }
         let generation = self.rows.len();
         let engine = with.0;
         // the two sides in parallel; the rows are cheap to assemble after
@@ -627,6 +650,24 @@ impl DiffView {
             .ok();
         })
         .detach();
+    }
+
+    /// The unified rows on screen first: `PREVIEW_ROWS` from the top one.
+    fn preview_window(&self) -> std::ops::Range<usize> {
+        let top = self.list_state.logical_scroll_top().item_ix;
+        let top = if self.split_mode {
+            self.split_rows
+                .get(top)
+                .and_then(|row| {
+                    let (before, after) = row.unified_rows();
+                    before.into_iter().chain(after).min()
+                })
+                .unwrap_or(0)
+        } else {
+            top
+        };
+        let top = top.min(self.rows.len());
+        top..(top + PREVIEW_ROWS).min(self.rows.len())
     }
 
     /// Rebuild rows after the hunks changed (new diff or expansion).
@@ -1847,10 +1888,13 @@ type Tokens = Vec<Vec<corvane_highlight::Span>>;
 /// the path (it picks the grammar) and the contents' hash and length.
 type SideKey = ((corvane_highlight::Engine, u64), String, u64, usize);
 
-/// Tokenize while building the rows, not in a background task, when the
-/// text left to tokenize is at most this big (a few ms with the CodeMirror
-/// ports or syntect).
+/// At most this much text is tokenized while building the rows (`preview`;
+/// a few ms with the CodeMirror ports or syntect); more waits for the
+/// background task.
 const SYNC_HIGHLIGHT_BYTES: usize = 192 * 1024;
+/// Rows `preview` colours from the top one on screen: a tall window's worth,
+/// with room for a first scroll.
+const PREVIEW_ROWS: usize = 200;
 /// Files whose tokens `SIDE_CACHE` keeps.
 const SIDE_CACHE_LEN: usize = 16;
 
@@ -1917,15 +1961,11 @@ fn tokenizes_in_process(engine: corvane_highlight::Engine, path: &str, first_lin
     }
 }
 
-/// A whole file's tokens, up to `getPartialBlobContents(…,
-/// MaxHighlightContentLength)`.
-fn tokenize_side(
-    engine: corvane_highlight::Engine,
-    path: &str,
-    lines: &[String],
-) -> Option<Tokens> {
+/// A file's lines up to `getPartialBlobContents(…,
+/// MaxHighlightContentLength)`: what gets tokenized.
+fn highlight_texts(lines: &[String]) -> Vec<&str> {
     let mut budget = corvane_highlight::MAX_HIGHLIGHT_BYTES;
-    let texts: Vec<&str> = lines
+    lines
         .iter()
         .take_while(|l| {
             let fits = l.len() < budget;
@@ -1933,8 +1973,108 @@ fn tokenize_side(
             fits
         })
         .map(String::as_str)
-        .collect();
-    corvane_highlight::highlight_lines_with(engine, path, texts)
+        .collect()
+}
+
+/// A whole file's tokens.
+fn tokenize_side(
+    engine: corvane_highlight::Engine,
+    path: &str,
+    lines: &[String],
+) -> Option<Tokens> {
+    corvane_highlight::highlight_lines_with(engine, path, highlight_texts(lines))
+}
+
+/// What `preview` coloured.
+struct Preview {
+    /// every row's tokens; rows past the window have none yet
+    tokens: Option<Tokens>,
+    /// sides it happened to tokenize whole, for `SIDE_CACHE`
+    whole: Vec<(SideKey, Arc<Option<Tokens>>)>,
+    /// every side (or the rows) was tokenized whole: nothing left to do
+    complete: bool,
+}
+
+/// Colour the rows in `window` from each side's first lines, up to the last
+/// line those rows show (`highlight_prefix`: GHD's tokenizers run top down,
+/// so these are the tokens the whole run gives). `None` when that is more
+/// than `SYNC_HIGHLIGHT_BYTES`. Only for engines `tokenizes_in_process`
+/// accepts, where the whole run is GHD's tokenizers.
+fn preview(
+    engine: corvane_highlight::Engine,
+    path: &str,
+    rows: &[RowSource],
+    window: std::ops::Range<usize>,
+    old: &Option<Side>,
+    new: &Option<Side>,
+) -> Option<Preview> {
+    use corvane_core::DiffLineKind as K;
+    let cost =
+        |texts: &[&str], stop: usize| -> usize { texts[..stop].iter().map(|t| t.len() + 1).sum() };
+    let in_window = &rows[window.clone()];
+    if old.is_none() && new.is_none() {
+        let texts: Vec<&str> = rows
+            .iter()
+            .map(|(kind, _, _, text)| if *kind == K::Hunk { "" } else { text.as_str() })
+            .collect();
+        let stop = window.end;
+        if cost(&texts, stop) > SYNC_HIGHLIGHT_BYTES {
+            return None;
+        }
+        let tokens = corvane_highlight::highlight_prefix(path, &texts, stop).map(|mut tokens| {
+            tokens.resize(rows.len(), Vec::new());
+            tokens
+        });
+        return Some(Preview {
+            tokens,
+            whole: Vec::new(),
+            complete: stop >= rows.len(),
+        });
+    }
+    let mut budget = SYNC_HIGHLIGHT_BYTES;
+    let mut whole = Vec::new();
+    let mut complete = true;
+    let mut prefix = |side: &Option<Side>, line: fn(&RowSource) -> Option<u32>| {
+        let side = side.as_ref()?;
+        let tokens = match &side.tokens {
+            Some(tokens) => tokens.clone(),
+            None => {
+                let texts = highlight_texts(&side.lines);
+                let last = in_window.iter().filter_map(line).max().unwrap_or(0) as usize;
+                let stop = last.min(texts.len());
+                let cost = cost(&texts, stop);
+                if cost > budget {
+                    budget = 0;
+                    return None;
+                }
+                budget -= cost;
+                let tokens = Arc::new(corvane_highlight::highlight_prefix(path, &texts, stop));
+                if stop == texts.len() {
+                    whole.push((side.key.clone(), tokens.clone()));
+                } else {
+                    complete = false;
+                }
+                tokens
+            }
+        };
+        Some(Side {
+            lines: side.lines.clone(),
+            key: side.key.clone(),
+            bytes: 0,
+            tokens: Some(tokens),
+        })
+    };
+    let preview_old = prefix(old, |r| r.1);
+    let preview_new = prefix(new, |r| r.2);
+    if budget == 0 {
+        return None;
+    }
+    let (tokens, _) = assemble(engine, path, rows, preview_old, preview_new);
+    Some(Preview {
+        tokens,
+        whole,
+        complete,
+    })
 }
 
 /// The rows' tokens (see `DiffView::highlight`), and the sides tokenized
@@ -2481,6 +2621,50 @@ mod tests {
                 vec![]
             ]
         );
+    }
+
+    #[::core::prelude::v1::test]
+    fn the_preview_colours_the_window_as_the_whole_run_does() {
+        use super::{Side, assemble, preview};
+        use corvane_core::DiffLineKind as K;
+        use corvane_highlight::Engine;
+        use std::sync::Arc;
+        let with = (Engine::GitHubDesktop, 0);
+        let mut text = vec!["/* a comment".to_string(), "still comment */".to_string()];
+        text.extend((0..50).map(|i| format!("let x{i} = \"s\"; // {i}")));
+        let lines = Arc::new(text);
+        let rows: Vec<_> = lines
+            .iter()
+            .enumerate()
+            .map(|(i, l)| {
+                (
+                    K::Context,
+                    Some(i as u32 + 1),
+                    Some(i as u32 + 1),
+                    l.clone(),
+                )
+            })
+            .collect();
+        let side = || Some(Side::new(with, "preview-test.js", lines.clone()));
+        let (whole, _) = assemble(with.0, "preview-test.js", &rows, side(), side());
+        let whole = whole.unwrap();
+        let part = preview(with.0, "preview-test.js", &rows, 0..3, &side(), &side()).unwrap();
+        let tokens = part.tokens.unwrap();
+        assert!(!part.complete && part.whole.is_empty());
+        assert_eq!(tokens.len(), rows.len());
+        assert_eq!(tokens[..3], whole[..3]);
+        assert!(!whole[10].is_empty() && tokens[10].is_empty());
+        let all = preview(
+            with.0,
+            "preview-test.js",
+            &rows,
+            0..rows.len(),
+            &side(),
+            &side(),
+        )
+        .unwrap();
+        assert!(all.complete && all.whole.len() == 2);
+        assert_eq!(all.tokens.unwrap(), whole);
     }
 
     #[::core::prelude::v1::test]
