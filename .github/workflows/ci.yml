@@ -57,3 +57,41 @@ jobs:
         with:
           name: Corvane.app
           path: target/bundle/Corvane.app.zip
+
+  linux:
+    name: fmt · clippy · test (Linux)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # GPUI's X11 / Wayland backends; mold is the linker .cargo/config.toml
+      # sets for x86_64 Linux
+      - name: system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang mold pkg-config \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libfontconfig-dev libfreetype-dev libvulkan-dev \
+            gnome-keyring dbus-x11 zip unzip
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: cache grammar sources
+        id: grammar-src
+        uses: actions/cache@v4
+        with:
+          path: target/grammar-src
+          key: grammar-src-${{ hashFiles('tools/ts-queries/languages.toml', 'tools/ts-queries/sources.lock.json') }}
+      - name: fetch grammar sources (tree-sitter CLI generates the ones without parser.c)
+        if: steps.grammar-src.outputs.cache-hit != 'true'
+        run: |
+          cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
+          CORVANE_TREE_SITTER="$RUNNER_TEMP/ts-cli/bin/tree-sitter" python3 tools/ts-queries/fetch.py
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      # the keyring and notification tests talk to a session bus
+      - name: test
+        run: dbus-run-session -- cargo test --workspace
