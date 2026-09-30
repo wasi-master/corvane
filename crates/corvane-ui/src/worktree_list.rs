@@ -4,7 +4,9 @@
 //! with the toolbar button (`ui/toolbar/worktree-dropdown.tsx`).
 //!
 //! Deviation: worktrees git reports `prunable` (directory deleted outside
-//! git) are not listed (`426-hide-prunable-worktrees`).
+//! git) are not listed (`426-hide-prunable-worktrees`); a new worktree's
+//! default folder is the one holding the main worktree, not the clone
+//! folder (`427-worktree-dir-beside-repository`).
 
 use std::path::PathBuf;
 
@@ -406,10 +408,24 @@ impl Render for WorktreeFoldout {
 }
 
 /// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir).
-pub fn default_worktree_dir(state: &AppState) -> PathBuf {
-    state
-        .settings
-        .clone_dir
-        .clone()
+/// With `427-worktree-dir-beside-repository`: the folder holding the
+/// repository's main worktree, so new worktrees become its siblings.
+pub fn default_worktree_dir(state: &AppState, repo: u64) -> PathBuf {
+    let beside = state
+        .flags
+        .bool(corvane_core::flags::ids::WORKTREE_DIR_BESIDE_REPOSITORY);
+    let main = || {
+        let main = state
+            .repo_states
+            .get(&repo)
+            .and_then(|rs| rs.worktrees.iter().find(|w| w.kind == WorktreeType::Main))
+            .map(|w| w.path.clone());
+        main.or_else(|| state.repository(repo).map(|r| r.path.clone()))
+    };
+    beside
+        .then(main)
+        .flatten()
+        .and_then(|p| p.parent().map(PathBuf::from))
+        .or_else(|| state.settings.clone_dir.clone())
         .unwrap_or_else(corvane_platform::paths::default_clone_dir)
 }

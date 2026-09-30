@@ -743,6 +743,20 @@ registry! {
         code: &["crates/corvane-ui/src/worktree_list.rs", "crates/corvane-ui/src/toolbar.rs"],
     },
 
+    /// New worktrees default to the repository's own folder.
+    WORKTREE_DIR_BESIDE_REPOSITORY = 427 "worktree-dir-beside-repository" {
+        title: "New worktrees beside the repository",
+        summary: "Add Worktree's path starts in the folder that holds the repository's main \
+                  worktree, so worktrees become its siblings.",
+        ghd_behaviour: "Starts in the last clone folder, whatever repository the dialog is for.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22565)],
+        code: &["crates/corvane-ui/src/worktree_list.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
