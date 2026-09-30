@@ -11,6 +11,8 @@
 //! is told to `brew upgrade corvane` instead of being swapped; checks run
 //! only in release builds unless `CORVANE_UPDATE_CHECK=1` (debug builds also
 //! honour `CORVANE_UPDATE_INSTALL=1`: install as soon as the update is ready).
+//! The launch and four-hourly checks can be switched off
+//! (`523-no-automatic-update-checks`; GHD always checks).
 
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -168,7 +170,17 @@ impl Dispatcher {
         cx.spawn(async move |cx: &mut AsyncApp| {
             cx.background_executor().timer(jitter).await;
             loop {
-                cx.update(|cx| Self::check_for_updates(false, cx));
+                cx.update(|cx| {
+                    // `523-no-automatic-update-checks`: About's Check for
+                    // Updates still works
+                    let off = Self::state(cx)
+                        .read(cx)
+                        .flags
+                        .bool(crate::flags::ids::NO_AUTOMATIC_UPDATE_CHECKS);
+                    if !off {
+                        Self::check_for_updates(false, cx);
+                    }
+                });
                 cx.background_executor().timer(CHECK_INTERVAL).await;
             }
         })
