@@ -347,6 +347,21 @@ registry! {
         upstream: &[Upstream::issue(3734)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
     },
+    /// Discarding a dirty submodule cleans inside it.
+    DISCARD_SUBMODULE_CHANGES = 212 "discard-submodule-changes" {
+        title: "Discard cleans changes inside submodules",
+        summary: "Discarding a submodule that has changes inside checks out its modified files \
+                  and moves its untracked files to the Trash, so the submodule is clean \
+                  afterwards.",
+        ghd_behaviour: "The submodule stays in the list: untracked files and edits inside it are \
+                        not discarded.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(10403)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 

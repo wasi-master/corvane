@@ -183,13 +183,31 @@ pub fn undo_last_commit(git: Arc<GitBinary>, workdir: &Path) -> Result<()> {
 /// Discard working-directory changes (GHD `discardChanges`): tracked files are
 /// reset and checked out from HEAD; new/untracked files go to the Trash
 /// (`moveToTrash`, so a discard is recoverable) or are deleted.
+///
+/// With `clean_submodules` (Corvane, flag `discard-submodule-changes`), a
+/// submodule entry with changes inside also has its modified files checked
+/// out and its untracked (not ignored) files moved to the Trash, so the entry
+/// goes away; GHD leaves such a submodule dirty.
 pub fn discard_changes(
     git: Arc<GitBinary>,
     workdir: &Path,
     files: &[WorkingDirectoryFileChange],
     move_to_trash: bool,
+    clean_submodules: bool,
 ) -> Result<()> {
     let mut tracked: Vec<&str> = Vec::new();
+    if clean_submodules {
+        for file in files {
+            if let Some(sub) = file.status.submodule_status {
+                discard_inside_submodule(
+                    git.clone(),
+                    &workdir.join(&file.path),
+                    sub,
+                    move_to_trash,
+                )?;
+            }
+        }
+    }
     for file in files {
         match file.status.kind {
             FileStatusKind::New | FileStatusKind::Untracked => {
@@ -222,6 +240,44 @@ pub fn discard_changes(
             .current_dir(workdir)
             .stdin(list)
             .run()?;
+    }
+    Ok(())
+}
+
+/// Check out a submodule's modified files and trash its untracked ones.
+fn discard_inside_submodule(
+    git: Arc<GitBinary>,
+    submodule: &Path,
+    status: corvane_models::SubmoduleStatus,
+    move_to_trash: bool,
+) -> Result<()> {
+    if !submodule.is_dir() {
+        return Ok(());
+    }
+    if status.modified_changes {
+        GitCommand::new(git.clone())
+            .args(["checkout", "-f", "-q", "--", "."])
+            .current_dir(submodule)
+            .run()?;
+    }
+    if status.untracked_changes {
+        let out = GitCommand::new(git)
+            .args([
+                "ls-files",
+                "--others",
+                "--exclude-standard",
+                "--directory",
+                "-z",
+            ])
+            .current_dir(submodule)
+            .run()?;
+        let text = String::from_utf8_lossy(&out.stdout);
+        for path in text.split('\0').filter(|p| !p.is_empty()) {
+            let full = submodule.join(path.trim_end_matches('/'));
+            if !move_to_trash || trash::delete(&full).is_err() {
+                let _ = std::fs::remove_file(&full).or_else(|_| std::fs::remove_dir_all(&full));
+            }
+        }
     }
     Ok(())
 }
@@ -316,12 +372,55 @@ mod tests {
         std::fs::write(path.join("a.txt"), "dirty\n").unwrap();
         std::fs::write(path.join("new.txt"), "x\n").unwrap();
         let status = crate::get_status(git.clone(), path, None).unwrap();
-        discard_changes(git.clone(), path, &status.files, false).unwrap();
+        discard_changes(git.clone(), path, &status.files, false, false).unwrap();
         assert_eq!(
             std::fs::read_to_string(path.join("a.txt")).unwrap(),
             "one\n"
         );
         assert!(!path.join("new.txt").exists());
+        let status = crate::get_status(git, path, None).unwrap();
+        assert!(status.files.is_empty());
+    }
+
+    #[test]
+    fn discard_cleans_inside_a_submodule() {
+        let (sub_dir, git) = repo();
+        let git_in = |dir: &Path, args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(["-c", "protocol.file.allow=always"])
+                    .args(args)
+                    .current_dir(dir)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        std::fs::write(sub_dir.path().join("lib.txt"), "lib\n").unwrap();
+        git_in(sub_dir.path(), &["add", "."]);
+        git_in(sub_dir.path(), &["commit", "-q", "-m", "lib"]);
+        let (dir, _) = repo();
+        let path = dir.path();
+        let url = sub_dir.path().to_string_lossy().into_owned();
+        git_in(path, &["submodule", "add", "-q", &url, "sub"]);
+        git_in(path, &["commit", "-q", "-m", "add sub"]);
+        let sub = path.join("sub");
+        std::fs::write(sub.join("lib.txt"), "dirty\n").unwrap();
+        std::fs::write(sub.join("junk.txt"), "x\n").unwrap();
+        std::fs::create_dir(sub.join("junkdir")).unwrap();
+        std::fs::write(sub.join("junkdir/more.txt"), "y\n").unwrap();
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        assert_eq!(status.files.len(), 1);
+        // GHD behaviour: the submodule stays dirty
+        discard_changes(git.clone(), path, &status.files, false, false).unwrap();
+        assert!(sub.join("junk.txt").exists());
+        discard_changes(git.clone(), path, &status.files, false, true).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(sub.join("lib.txt")).unwrap(),
+            "lib\n"
+        );
+        assert!(!sub.join("junk.txt").exists());
+        assert!(!sub.join("junkdir").exists());
         let status = crate::get_status(git, path, None).unwrap();
         assert!(status.files.is_empty());
     }

@@ -2620,9 +2620,13 @@ impl Dispatcher {
         if files.is_empty() {
             return;
         }
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::discard_changes(git, &workdir, &files, true) });
+        let clean_submodules = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::DISCARD_SUBMODULE_CHANGES);
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::discard_changes(git, &workdir, &files, true, clean_submodules)
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
