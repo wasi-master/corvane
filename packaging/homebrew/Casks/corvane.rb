@@ -1,10 +1,11 @@
 # Homebrew cask for Corvane — lives in the `wasi-master/homebrew-corvane` tap
 # as `Casks/corvane.rb`. `packaging/release.sh` rewrites `version` and `sha256`.
 #
-#   brew install --cask wasi-master/corvane/corvane --no-quarantine
+#   brew install --cask wasi-master/corvane/corvane
 #
-# `--no-quarantine` matters: the bundle is self-signed (no Apple Developer
-# ID), so a quarantined copy is blocked by Gatekeeper on first launch.
+# The bundle is self-signed (no Apple Developer ID), so Gatekeeper blocks a
+# quarantined copy on first launch. Homebrew 7 removed `--no-quarantine` and
+# always quarantines cask downloads, so `postflight_steps` clears the attribute.
 cask "corvane" do
   version "0.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
@@ -19,11 +20,18 @@ cask "corvane" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :sequoia"
+  depends_on macos: :sequoia
 
   app "Corvane.app"
   # `corvane [open] [path]` / `corvane clone <url>` (Install Command Line Tool… does the same by hand)
   binary "#{appdir}/Corvane.app/Contents/Resources/corvane"
+
+  postflight_steps do
+    run "/usr/bin/xattr",
+        args:           ["-dr", "com.apple.quarantine", "{{appdir}}/Corvane.app"],
+        writable_paths: ["Corvane.app"],
+        writable_base:  :appdir
+  end
 
   zap trash: [
     "~/Library/Application Support/Corvane",
@@ -34,9 +42,8 @@ cask "corvane" do
   ]
 
   caveats <<~EOS
-    Corvane is self-signed. Install with --no-quarantine, or after a plain
-    install allow it once under System Settings › Privacy & Security › Open Anyway.
-    Updates for this install come from `brew upgrade corvane`; the in-app
-    updater only points there.
+    Corvane is self-signed; this cask clears its quarantine attribute so
+    Gatekeeper lets it launch. Updates for this install come from
+    `brew upgrade corvane`; the in-app updater only points there.
   EOS
 end
