@@ -425,20 +425,35 @@ impl DialogHost {
                 summary,
                 description,
                 count,
-            } => cx
-                .new(|cx| {
+            } => {
+                // flag `144`: the target commit's own description, for "Keep
+                // Target's Message"
+                let target_body = {
+                    let s = state.read(cx);
+                    s.repo_states
+                        .get(repo)
+                        .and_then(|r| r.commits.iter().find(|c| c.sha == *onto))
+                        .map(|c| c.body.trim().to_string())
+                        .filter(|_| {
+                            s.flags
+                                .bool(corvane_core::flags::ids::SQUASH_KEEP_TARGET_MESSAGE)
+                        })
+                };
+                cx.new(|cx| {
                     SquashCommitMessageDialog::new(
                         *repo,
                         to_squash.clone(),
                         onto.clone(),
                         summary.clone(),
                         description.clone(),
+                        target_body,
                         *count,
                         window,
                         cx,
                     )
                 })
-                .into(),
+                .into()
+            }
             Popup::Preferences { tab } => cx
                 .new(|cx| PreferencesDialog::new(state, *tab, window, cx))
                 .into(),

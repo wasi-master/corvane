@@ -233,6 +233,21 @@ registry! {
         upstream: &[Upstream::issue(17731)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
     },
+    /// Squash message: keep only the target's.
+    SQUASH_KEEP_TARGET_MESSAGE = 144 "squash-keep-target-message" {
+        title: "Squash: use only the target commit's message",
+        summary: "The squash message dialog has a \"Use only the target commit's message\" link \
+                  that replaces the combined description with the summary and description of the \
+                  commit squashed onto.",
+        ghd_behaviour: "The combined message (target description plus every squashed commit's \
+                        message) has to be trimmed by hand.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20507)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-ui/src/dialogs/mod.rs"],
+    },
 
     // ---- 200 Repository ----
 

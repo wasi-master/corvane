@@ -11,7 +11,8 @@
 //! branches with a local branch in the rebase list (flag `451`); Copy File
 //! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
 //! the stopped commit above the conflicts list (flag `453`); the rebase list
-//! preselects the default branch (flag `143`).
+//! preselects the default branch (flag `143`); the squash message popup can
+//! go back to the target commit's message (flag `144`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -1300,6 +1301,8 @@ pub struct SquashCommitMessageDialog {
     count: usize,
     summary: Entity<InputState>,
     description: Entity<TextareaState>,
+    /// Flag `144`: the target commit's summary and description.
+    target_message: Option<(String, String)>,
 }
 
 impl SquashCommitMessageDialog {
@@ -1310,10 +1313,13 @@ impl SquashCommitMessageDialog {
         onto: String,
         summary: String,
         description: String,
+        target_body: Option<String>,
         count: usize,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
+        // the prefilled summary is the target's (`getSquashedCommitDescription`)
+        let target_message = target_body.map(|body| (summary.clone(), body));
         let summary_state =
             cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         summary_state.update(cx, |s, cx| s.set_value(summary, window, cx));
@@ -1331,6 +1337,7 @@ impl SquashCommitMessageDialog {
             count,
             summary: summary_state,
             description: description_state,
+            target_message,
         }
     }
 }
@@ -1362,7 +1369,27 @@ impl Render for SquashCommitMessageDialog {
                     .bg(t.box_background)
                     .overflow_hidden()
                     .child(Textarea::new(&self.description)),
-            );
+            )
+            .when_some(self.target_message.clone(), |d, (summary, body)| {
+                d.child(
+                    div().child(
+                        link_button(
+                            "squash-keep-target",
+                            "Use only the target commit's message",
+                            cx,
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
+                                this.summary
+                                    .update(cx, |s, cx| s.set_value(summary.clone(), window, cx));
+                                this.description
+                                    .update(cx, |s, cx| s.set_value(body.clone(), window, cx));
+                                cx.notify();
+                            },
+                        )),
+                    ),
+                )
+            });
         let title = format!("Squash {count} Commits");
         dialog(
             "dialog-squash-message",
