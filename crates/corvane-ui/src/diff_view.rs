@@ -11,6 +11,9 @@
 //!
 //! Deviation: "Split" (side-by-side) rendering is not implemented; the radio
 //! button is shown disabled (TODO.md).
+//!
+//! Deviation (`173-file-mode-change-message`): a mode-only change says "The
+//! file mode changed from … to …" instead of GHD's "No content changes found".
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -1380,6 +1383,16 @@ impl DiffView {
 
     /// GHD `renderText` with no hunks.
     fn empty_panel(&self, snap: &Snapshot, cx: &App) -> AnyElement {
+        // `173-file-mode-change-message`
+        if let Some((old, new)) = snap.diff.warnings().and_then(|w| w.mode_change.as_ref())
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::FILE_MODE_CHANGE_MESSAGE)
+        {
+            return self.panel(format!("The file mode changed from {old} to {new}"), cx);
+        }
         let message = match snap.kind {
             FileStatusKind::New | FileStatusKind::Untracked => "The file is empty",
             FileStatusKind::Renamed => "The file was renamed but not changed",

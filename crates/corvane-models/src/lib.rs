@@ -1290,6 +1290,11 @@ pub struct DiffWarnings {
     /// GHD `hasHiddenBidiChars`: U+202A–U+202E / U+2066–U+2069 in the text.
     pub hidden_bidi: bool,
     pub line_endings: Option<LineEndingsChange>,
+    /// The `old mode` / `new mode` of the patch header (e.g. `100644`,
+    /// `100755`) when the file's mode changed. A mode-only change is a
+    /// `Text` diff without hunks that carries this.
+    #[serde(default)]
+    pub mode_change: Option<(String, String)>,
 }
 
 /// GHD `IDiff` (`DiffType`).

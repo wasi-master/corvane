@@ -271,6 +271,20 @@ registry! {
         upstream: &[Upstream::issue(16355)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/list_selection.rs"],
     },
+    /// "The file mode changed" for a mode-only diff.
+    FILE_MODE_CHANGE_MESSAGE = 173 "file-mode-change-message" {
+        title: "Say when only the file mode changed",
+        summary: "A diff whose only change is the file mode (e.g. the executable bit) says \
+                  \"The file mode changed from 100644 to 100755\".",
+        ghd_behaviour: "\"No content changes found\", or \"Only whitespace changes found\" while \
+                        whitespace changes are hidden.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11685), Upstream::issue(557)],
+        code: &["crates/corvane-git/src/diff.rs", "crates/corvane-ui/src/diff_view.rs"],
+    },
 
     // ---- 200 Repository ----
 
