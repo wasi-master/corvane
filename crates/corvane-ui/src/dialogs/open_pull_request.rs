@@ -385,7 +385,7 @@ impl OpenPullRequestDialog {
 
     /// GHD `List.moveSelection` on `PullRequestFilesChanged`'s `FileList`
     /// (↑ / ↓; single selection, so ⇧↑ / ⇧↓ too): the file `delta` rows
-    /// away, clamped at the ends, scrolled into view.
+    /// away, wrapping around the ends (GHD `List.moveSelection`), scrolled into view.
     fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let Some((order, current)) = self.file_order(cx) else {
             return;
