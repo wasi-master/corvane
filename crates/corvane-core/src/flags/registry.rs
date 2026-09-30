@@ -294,6 +294,20 @@ registry! {
         code: &["crates/corvane-ui/src/workspace.rs"],
     },
 
+    /// Repository Settings › Remote shows the `upstream` remote.
+    UPSTREAM_REMOTE_IN_SETTINGS = 286 "upstream-remote-in-settings" {
+        title: "Repository Settings shows the upstream remote",
+        summary: "Repository Settings › Remote shows the `upstream` remote's URL (read-only) \
+                  under the primary remote's.",
+        ghd_behaviour: "Only the primary remote.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6877)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

@@ -246,18 +246,50 @@ impl RepositorySettingsDialog {
     fn remote_tab(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let data = self.data(cx);
         match data.and_then(|d| d.remote) {
-            Some(remote) => labeled(
-                format!("Primary Remote Repository ({}) URL", remote.name),
-                text_box(
-                    "repo-settings-remote-url",
-                    &self.remote_url,
-                    None,
-                    window,
-                    cx,
-                ),
-                cx,
-            )
-            .into_any_element(),
+            Some(remote) => {
+                // flag `286-upstream-remote-in-settings` (Corvane addition,
+                // desktop/desktop#6877): the `upstream` remote a fork
+                // workflow adds, read-only under the primary one
+                let s = self.state.read(cx);
+                let upstream = s
+                    .flags
+                    .bool(corvane_core::flags::ids::UPSTREAM_REMOTE_IN_SETTINGS)
+                    .then(|| {
+                        s.repo_states
+                            .get(&self.repo)
+                            .and_then(|rs| rs.info.as_ref())
+                            .and_then(|info| {
+                                info.remotes
+                                    .iter()
+                                    .find(|r| r.name == "upstream" && r.name != remote.name)
+                            })
+                            .map(|r| r.url.clone())
+                    })
+                    .flatten();
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(SPACING())
+                    .child(labeled(
+                        format!("Primary Remote Repository ({}) URL", remote.name),
+                        text_box(
+                            "repo-settings-remote-url",
+                            &self.remote_url,
+                            None,
+                            window,
+                            cx,
+                        ),
+                        cx,
+                    ))
+                    .when_some(upstream, |d, url| {
+                        d.child(labeled(
+                            "Upstream Remote Repository (upstream) URL",
+                            readonly_field(url, cx),
+                            cx,
+                        ))
+                    })
+                    .into_any_element()
+            }
             None => {
                 let repo = self.repo;
                 call_to_action(
