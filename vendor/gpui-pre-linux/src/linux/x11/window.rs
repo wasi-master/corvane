@@ -1790,6 +1790,12 @@ impl PlatformWindow for X11Window {
         self.0.state.borrow().background_appearance
     }
 
+    // Corvane patch: offscreen frames for the parity harness
+    #[cfg(feature = "test-support")]
+    fn render_to_image(&self, scene: &gpui::Scene) -> anyhow::Result<image::RgbaImage> {
+        self.0.state.borrow_mut().renderer.render_to_image(scene)
+    }
+
     fn is_subpixel_rendering_supported(&self) -> bool {
         self.0
             .state

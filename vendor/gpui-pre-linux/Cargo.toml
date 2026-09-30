@@ -47,7 +47,7 @@ screen-capture = [
     "gpui/screen-capture",
     "scap",
 ]
-test-support = ["gpui/test-support"]
+test-support = ["gpui/test-support", "gpui_wgpu?/test-support", "dep:image"]
 wayland = [
     "bitflags",
     "gpui_wgpu",
@@ -305,3 +305,9 @@ priority = -1
 [lints.rust.unexpected_cfgs]
 level = "allow"
 priority = 0
+
+# Corvane patch: `render_to_image` returns an image
+[dependencies.image]
+version = "0.25"
+default-features = false
+optional = true
