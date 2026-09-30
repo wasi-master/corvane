@@ -1060,6 +1060,7 @@ fn open_dev_popup(popup: &str, cx: &mut App) {
         }
         // the sign-in dialog (device flow by default, browser flow link)
         ("sign-in", _) => Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx),
+        ("sign-in-enterprise", _) => Dispatcher::show_popup(Popup::SignIn { enterprise: true }, cx),
         ("test-notifications", Some(id)) => {
             Dispatcher::show_popup(Popup::TestNotifications { repo: id }, cx)
         }

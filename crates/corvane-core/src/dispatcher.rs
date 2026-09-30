@@ -48,6 +48,7 @@ impl Dispatcher {
             .or_else(|| repositories.first().map(|r| r.id));
         let accounts = store.accounts().unwrap_or_default();
         let generic_logins = store.generic_logins().unwrap_or_default();
+        let enterprise_oauth_apps = store.enterprise_oauth_apps().unwrap_or_default();
 
         // Synchronous: a few `git --version` probes (~10 ms). Avoids racing
         // launch-time operations against an async detection.
@@ -89,6 +90,7 @@ impl Dispatcher {
             banner_nonce: 0,
             indicators: std::collections::HashMap::new(),
             generic_logins,
+            enterprise_oauth_apps,
             avatars: std::collections::HashMap::new(),
             drag_target: None,
             api_repositories: std::collections::HashMap::new(),
@@ -2770,10 +2772,11 @@ impl Dispatcher {
         });
     }
 
-    /// OAuth device flow against GitHub.com (or a GHES host with the same
-    /// OAuth App registered). Runs on its own thread; progress is pumped to
-    /// the foreground.
+    /// OAuth device flow against GitHub.com, or a GitHub Enterprise host
+    /// with an OAuth app (`oauth_client_id`). Runs on its own thread;
+    /// progress is pumped to the foreground.
     pub fn sign_in_device_flow(endpoint: corvane_github::Endpoint, cx: &mut App) {
+        let client_id = Self::oauth_client_id(&endpoint, cx);
         let cancel = Arc::new(AtomicBool::new(false));
         Self::state(cx).update(cx, |s, cx| {
             if let Some(existing) = s.sign_in.as_ref() {
@@ -2799,14 +2802,20 @@ impl Dispatcher {
         std::thread::Builder::new()
             .name("device-flow".into())
             .spawn(move || {
-                let code = match corvane_github::auth::request_device_code_default(&worker_endpoint)
-                {
-                    Ok(code) => code,
-                    Err(err) => {
-                        let _ = tx.send(Msg::Failed(err.to_string()));
-                        return;
-                    }
+                let Some(client_id) = client_id else {
+                    let _ = tx.send(Msg::Failed(crate::web_flow::no_oauth_app_message(
+                        &worker_endpoint,
+                    )));
+                    return;
                 };
+                let code =
+                    match corvane_github::auth::request_device_code(&worker_endpoint, &client_id) {
+                        Ok(code) => code,
+                        Err(err) => {
+                            let _ = tx.send(Msg::Failed(err.to_string()));
+                            return;
+                        }
+                    };
                 let mut interval = code.poll_interval();
                 let deadline = std::time::Instant::now()
                     + std::time::Duration::from_secs(code.expires_in.max(60));
@@ -2827,7 +2836,7 @@ impl Dispatcher {
                     }
                     match corvane_github::auth::poll_token(
                         &worker_endpoint,
-                        corvane_github::CLIENT_ID,
+                        &client_id,
                         &device_code,
                     ) {
                         Ok(corvane_github::auth::PollOutcome::Pending) => {}
@@ -2888,6 +2897,67 @@ impl Dispatcher {
             }
         })
         .detach();
+    }
+
+    /// The OAuth client ID a sign-in on `endpoint` uses: the one entered for
+    /// that GitHub Enterprise host, else the build's (`OAuthApp::built_in`).
+    /// `None`: a GHES host nobody registered an app for (PAT only).
+    pub fn oauth_client_id(endpoint: &corvane_github::Endpoint, cx: &App) -> Option<String> {
+        if !endpoint.is_dotcom()
+            && let Some(id) = Self::state(cx)
+                .read(cx)
+                .enterprise_oauth_apps
+                .get(&endpoint.host().to_ascii_lowercase())
+        {
+            return Some(id.clone());
+        }
+        corvane_github::OAuthApp::built_in(endpoint).map(|app| app.client_id)
+    }
+
+    /// Remember the OAuth app a GitHub Enterprise host signs in with. An
+    /// empty `client_id` forgets the host's entry (and its secret); a
+    /// non-empty `client_secret` replaces the keychain's, an empty one keeps
+    /// what is there.
+    pub fn set_enterprise_oauth_app(
+        endpoint: &corvane_github::Endpoint,
+        client_id: String,
+        client_secret: String,
+        cx: &mut App,
+    ) {
+        if endpoint.is_dotcom() {
+            return;
+        }
+        let host = endpoint.host().to_ascii_lowercase();
+        let client_id = client_id.trim().to_string();
+        let client_secret = client_secret.trim().to_string();
+        let previous = Self::state(cx).update(cx, |s, cx| {
+            let previous = if client_id.is_empty() {
+                s.enterprise_oauth_apps.remove(&host)
+            } else {
+                s.enterprise_oauth_apps
+                    .insert(host.clone(), client_id.clone())
+            };
+            if let Err(err) = s.store.save_enterprise_oauth_apps(&s.enterprise_oauth_apps) {
+                error!(?err, "could not save the Enterprise OAuth apps");
+            }
+            cx.notify();
+            previous
+        });
+        cx.background_executor()
+            .spawn(async move {
+                use corvane_platform::keychain;
+                if let Some(old) = previous.filter(|old| *old != client_id) {
+                    let _ = keychain::delete_oauth_client_secret(&host, &old);
+                }
+                if !client_id.is_empty()
+                    && !client_secret.is_empty()
+                    && let Err(err) =
+                        keychain::store_oauth_client_secret(&host, &client_id, &client_secret)
+                {
+                    error!(?err, "could not store the OAuth client secret");
+                }
+            })
+            .detach();
     }
 
     /// Personal access token (GHES, or the fallback link on GitHub.com).

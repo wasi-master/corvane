@@ -4,11 +4,6 @@ Everything GitHub Desktop 3.6.6 has that Corvane does not, with the GHD source l
 
 Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform work · **[INFRA]** build/release
 
-## GitHub layer
-
-- [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
-- [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
-
 ## Copilot (omitted by design)
 
 - [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab, Prompts › "Overriding commit message with generated message"). Not planned; keep menu/tab out of Corvane to avoid dead UI.
