@@ -20,6 +20,8 @@
 //! (`423-fetch-all-repositories`).
 //! Indicators refresh right after launch and on opening the repository list
 //! (`233-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
+//! A pull skips `remote set-head -a` while the remote's HEAD resolves
+//! (`234-remote-head-once`; GHD runs it after every pull).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -630,6 +632,10 @@ impl Dispatcher {
         Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Pulling {}", remote.name);
+        let keep_remote_head = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REMOTE_HEAD_ONCE);
         Self::set_progress(
             id,
             Some(PushPullProgress {
@@ -660,13 +666,21 @@ impl Dispatcher {
                         })
                     },
                 );
-                if result.is_ok() {
+                // `234-remote-head-once`: `set-head -a` asks the server for
+                // every ref, which takes minutes on huge repositories; skip
+                // it while the remote's HEAD already resolves
+                if result.is_ok()
+                    && !(keep_remote_head
+                        && corvane_git::remote_head_resolves(git.clone(), &workdir, &remote_name))
+                {
                     let _ = corvane_git::update_remote_head(
                         git.clone(),
                         &workdir,
                         &remote_name,
                         askpass.as_ref(),
                     );
+                }
+                if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
                         title: "Refreshing Repository".into(),

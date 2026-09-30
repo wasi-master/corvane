@@ -320,6 +320,20 @@ pub fn update_remote_head(
     Ok(())
 }
 
+/// `refs/remotes/<remote>/HEAD` exists and points at a branch that exists,
+/// so [`update_remote_head`] (which asks the server for every ref) can be
+/// skipped (desktop#22039).
+pub fn remote_head_resolves(git: Arc<GitBinary>, workdir: &Path, remote: &str) -> bool {
+    GitCommand::new(git)
+        .args(["rev-parse", "-q", "--verify"])
+        .arg(format!("refs/remotes/{remote}/HEAD"))
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .allow_exit_code(128)
+        .run()
+        .is_ok_and(|o| o.status.success())
+}
+
 // ---------------------------------------------------------------------------
 // fetch / pull / push
 // ---------------------------------------------------------------------------
@@ -844,6 +858,11 @@ mod tests {
             &["clone", "-q", src.to_str().unwrap(), copy.to_str().unwrap()],
         );
         assert!(last_fetched(&copy).is_none());
+        let git = Arc::new(crate::find_git().unwrap());
+        assert!(remote_head_resolves(git.clone(), &copy, "origin"));
+        assert!(!remote_head_resolves(git.clone(), &src, "origin"));
+        run(&copy, &["update-ref", "-d", "refs/remotes/origin/main"]);
+        assert!(!remote_head_resolves(git, &copy, "origin"));
         let at = cloned_at(&copy).unwrap();
         let age = SystemTime::now().duration_since(at).unwrap();
         assert!(age.as_secs() < 600, "{age:?}");

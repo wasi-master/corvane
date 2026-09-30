@@ -436,6 +436,21 @@ registry! {
         upstream: &[Upstream::issue(22154)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Pull skips `remote set-head -a` when the remote HEAD is known.
+    REMOTE_HEAD_ONCE = 234 "remote-head-once" {
+        title: "Skip updating the remote HEAD",
+        summary: "After a pull, `git remote set-head -a` (which lists every ref on the server) \
+                  only runs when refs/remotes/<remote>/HEAD is missing or points at a branch that \
+                  no longer exists.",
+        ghd_behaviour: "Runs it after every pull, which takes minutes on repositories with \
+                        hundreds of thousands of refs.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22039)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

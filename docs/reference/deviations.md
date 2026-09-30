@@ -43,6 +43,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - "Last fetched" after a clone: a repository not fetched since it was cloned takes the clone's time from `HEAD`'s first reflog entry ("clone: from …", `corvane_git::cloned_at`); GHD's `updateLastFetched` reads `FETCH_HEAD` only, which a clone does not write, so the push/pull button says "Never fetched". Flag: `231-clone-counts-as-fetch`.
 - Plain-language remote errors (`push_errors::plain_remote_error` / `plain_clone_error`): a pull or fetch whose upstream branch no longer exists on the remote ("Your configuration specifies to merge with the ref …", "couldn't find remote ref") and a clone into a folder without write permission get an explanatory sentence before git's message; GHD shows git's text only. Flag: `232-plain-language-remote-errors`.
 - Repository list indicators refresh one second after launch and when the repository list opens (at most once a minute, `Dispatcher::refresh_indicators_if_stale`), besides every 15 minutes; GHD's `RepositoryIndicatorUpdater` only runs on its delayed periodic cadence. Flag: `233-prompt-indicator-refresh`.
+- After a pull, `git remote set-head -a` (GHD `updateRemoteHEAD`, which lists every ref on the server) runs only when `refs/remotes/<remote>/HEAD` does not resolve (`corvane_git::remote_head_resolves`); a remote whose default branch changed is picked up once the old branch is pruned. Flag: `234-remote-head-once`.
 
 ## Tutorial
 
