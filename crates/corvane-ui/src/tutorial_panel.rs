@@ -461,7 +461,9 @@ impl Render for TutorialPanel {
                             .on_click(|_, _, cx| Dispatcher::exit_tutorial(cx)),
                     ),
             )
+            // `.tutorial-panel-component { overflow-y: scroll }`
             .with_scrollbar()
+            .overflow_scroll()
     }
 }
 

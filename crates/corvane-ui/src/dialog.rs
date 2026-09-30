@@ -98,6 +98,16 @@ impl Default for DialogFrame {
     }
 }
 
+/// GHD `OkCancelButtonGroup.renderButtons`: Cancel then OK on macOS, OK
+/// then Cancel elsewhere. Dialogs list their footer buttons in the macOS
+/// order; this puts them in the platform's.
+pub fn ok_cancel_order<T>(mut buttons: Vec<T>) -> Vec<T> {
+    if !cfg!(target_os = "macos") {
+        buttons.reverse();
+    }
+    buttons
+}
+
 pub struct DialogButton {
     pub id: &'static str,
     pub label: SharedString,
@@ -609,46 +619,53 @@ fn dialog_impl(
                                             .flex_row()
                                             .justify_end()
                                             .gap(SPACING_HALF())
-                                            .children(buttons.into_iter().map(|b| {
-                                                let on_click = b.on_click;
-                                                let disabled = b.disabled;
-                                                if b.primary {
-                                                    let button = crate::widgets::primary_button(
-                                                        b.id, b.label, disabled, cx,
-                                                    )
-                                                    .min_w(zpx(120.))
-                                                    .when(focus_primary, |d| {
-                                                        d.bg(t.button_hover_background)
-                                                    })
-                                                    .when(!disabled, |d| {
-                                                        d.on_click(move |_, window, cx| {
-                                                            on_click(window, cx)
-                                                        })
-                                                    });
-                                                    div()
-                                                        .relative()
-                                                        .when(focus_primary, |d| {
-                                                            d.child(crate::widgets::focus_ring(cx))
-                                                        })
-                                                        .child(button)
-                                                        .into_any_element()
-                                                } else {
-                                                    if disabled {
-                                                        crate::widgets::button_disabled(
-                                                            b.id, b.label, cx,
-                                                        )
+                                            .children(ok_cancel_order(buttons).into_iter().map(
+                                                |b| {
+                                                    let on_click = b.on_click;
+                                                    let disabled = b.disabled;
+                                                    if b.primary {
+                                                        let button =
+                                                            crate::widgets::primary_button(
+                                                                b.id, b.label, disabled, cx,
+                                                            )
+                                                            .min_w(zpx(120.))
+                                                            .when(focus_primary, |d| {
+                                                                d.bg(t.button_hover_background)
+                                                            })
+                                                            .when(!disabled, |d| {
+                                                                d.on_click(move |_, window, cx| {
+                                                                    on_click(window, cx)
+                                                                })
+                                                            });
+                                                        div()
+                                                            .relative()
+                                                            .when(focus_primary, |d| {
+                                                                d.child(crate::widgets::focus_ring(
+                                                                    cx,
+                                                                ))
+                                                            })
+                                                            .child(button)
+                                                            .into_any_element()
                                                     } else {
-                                                        crate::widgets::button(b.id, b.label, cx)
-                                                    }
-                                                    .min_w(zpx(120.))
-                                                    .when(!disabled, |d| {
-                                                        d.on_click(move |_, window, cx| {
-                                                            on_click(window, cx)
+                                                        if disabled {
+                                                            crate::widgets::button_disabled(
+                                                                b.id, b.label, cx,
+                                                            )
+                                                        } else {
+                                                            crate::widgets::button(
+                                                                b.id, b.label, cx,
+                                                            )
+                                                        }
+                                                        .min_w(zpx(120.))
+                                                        .when(!disabled, |d| {
+                                                            d.on_click(move |_, window, cx| {
+                                                                on_click(window, cx)
+                                                            })
                                                         })
-                                                    })
-                                                    .into_any_element()
-                                                }
-                                            })),
+                                                        .into_any_element()
+                                                    }
+                                                },
+                                            )),
                                     ),
                             )
                         }),

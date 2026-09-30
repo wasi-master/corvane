@@ -932,12 +932,11 @@ impl Render for OpenPullRequestDialog {
                                             .min_w_0()
                                             .child(self.merge_status(preview.merge_status, cx)),
                                     )
-                                    .child(
+                                    .children(crate::dialog::ok_cancel_order(vec![
                                         button("open-pull-request-cancel", "Cancel", cx)
                                             .min_w(zpx(120.))
-                                            .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
-                                    )
-                                    .child(
+                                            .on_click(cx.listener(|this, _, _, cx| this.close(cx)))
+                                            .into_any_element(),
                                         primary_button("open-pull-request-ok", "", ok_disabled, cx)
                                             .min_w(zpx(120.))
                                             .gap(SPACING_HALF())
@@ -953,8 +952,9 @@ impl Render for OpenPullRequestDialog {
                                                 d.on_click(cx.listener(move |this, _, _, cx| {
                                                     this.submit(&preview_for_submit, cx)
                                                 }))
-                                            }),
-                                    ),
+                                            })
+                                            .into_any_element(),
+                                    ])),
                             ),
                     ),
             ),

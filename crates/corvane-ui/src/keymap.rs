@@ -113,6 +113,19 @@ pub fn sync(flags: KeymapFlags, cx: &mut App) -> bool {
     true
 }
 
+/// GHD `List.onKeyDown` `isHomeKey` / `isEndKey`: ⌘↑ / ⌘↓ go to the first
+/// / last row on macOS; elsewhere only Home / End do, and Ctrl+↑ / Ctrl+↓
+/// are plain arrows (the `ArrowUp` / `ArrowDown` branch ignores Ctrl).
+fn list_end_binding(up: bool, context: &'static str) -> KeyBinding {
+    let key = if up { "secondary-up" } else { "secondary-down" };
+    match (cfg!(target_os = "macos"), up) {
+        (true, true) => KeyBinding::new(key, SelectFirstFile, Some(context)),
+        (true, false) => KeyBinding::new(key, SelectLastFile, Some(context)),
+        (false, true) => KeyBinding::new(key, SelectPreviousFile, Some(context)),
+        (false, false) => KeyBinding::new(key, SelectNextFile, Some(context)),
+    }
+}
+
 fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     let mut bindings = vec![
         KeyBinding::new("down", SelectNextFile, Some("ChangesList")),
@@ -123,8 +136,8 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("secondary-c", Copy, Some("Diff")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("ChangesList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("ChangesList")),
-        KeyBinding::new("secondary-up", SelectFirstFile, Some("ChangesList")),
-        KeyBinding::new("secondary-down", SelectLastFile, Some("ChangesList")),
+        list_end_binding(true, "ChangesList"),
+        list_end_binding(false, "ChangesList"),
         KeyBinding::new("home", SelectFirstFile, Some("ChangesList")),
         KeyBinding::new("end", SelectLastFile, Some("ChangesList")),
         KeyBinding::new("space", ToggleIncludeSelected, Some("ChangesList")),
@@ -132,8 +145,8 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("up", SelectPreviousFile, Some("HistoryList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("HistoryList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("HistoryList")),
-        KeyBinding::new("secondary-up", SelectFirstFile, Some("HistoryList")),
-        KeyBinding::new("secondary-down", SelectLastFile, Some("HistoryList")),
+        list_end_binding(true, "HistoryList"),
+        list_end_binding(false, "HistoryList"),
         KeyBinding::new("home", SelectFirstFile, Some("HistoryList")),
         KeyBinding::new("end", SelectLastFile, Some("HistoryList")),
         KeyBinding::new("enter", ReorderConfirm, Some("HistoryList")),
@@ -143,16 +156,16 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("up", SelectPreviousFile, Some("CommitFileList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("CommitFileList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("CommitFileList")),
-        KeyBinding::new("secondary-up", SelectFirstFile, Some("CommitFileList")),
-        KeyBinding::new("secondary-down", SelectLastFile, Some("CommitFileList")),
+        list_end_binding(true, "CommitFileList"),
+        list_end_binding(false, "CommitFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("CommitFileList")),
         KeyBinding::new("end", SelectLastFile, Some("CommitFileList")),
         KeyBinding::new("down", SelectNextFile, Some("StashFileList")),
         KeyBinding::new("up", SelectPreviousFile, Some("StashFileList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("StashFileList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("StashFileList")),
-        KeyBinding::new("secondary-up", SelectFirstFile, Some("StashFileList")),
-        KeyBinding::new("secondary-down", SelectLastFile, Some("StashFileList")),
+        list_end_binding(true, "StashFileList"),
+        list_end_binding(false, "StashFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("StashFileList")),
         KeyBinding::new("end", SelectLastFile, Some("StashFileList")),
         KeyBinding::new("down", SelectNextFile, Some("PullRequestFileList")),
@@ -163,12 +176,8 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             Some("PullRequestFileList"),
         ),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("PullRequestFileList")),
-        KeyBinding::new("secondary-up", SelectFirstFile, Some("PullRequestFileList")),
-        KeyBinding::new(
-            "secondary-down",
-            SelectLastFile,
-            Some("PullRequestFileList"),
-        ),
+        list_end_binding(true, "PullRequestFileList"),
+        list_end_binding(false, "PullRequestFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("PullRequestFileList")),
         KeyBinding::new("end", SelectLastFile, Some("PullRequestFileList")),
         KeyBinding::new("enter", CompareSelect, Some("CompareFilter")),
@@ -313,6 +322,10 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             ]);
         }
     }
+    // GHD `Dialog.onKeyDown`: CmdOrCtrl+W dismisses the dialog (on macOS
+    // ⌘W is the Window menu's Close Window below)
+    #[cfg(not(target_os = "macos"))]
+    bindings.push(KeyBinding::new("secondary-w", CloseFoldout, Some("Popup")));
     #[cfg(target_os = "macos")]
     bindings.extend([
         // the app menu and the Window menu (macOS only in GHD)

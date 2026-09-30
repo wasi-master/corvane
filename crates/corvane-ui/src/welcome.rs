@@ -29,6 +29,28 @@ use gpui_kit::component::input::Input;
 
 const SCALE: f32 = 1.2;
 
+/// `#welcome`'s `--text-field-height` / `--button-height`:
+/// `--welcome-item-height` (29 px on macOS) × scale. GHD defines
+/// `--welcome-item-height` for darwin and win32 only, so on Linux both
+/// variables are invalid at computed-value time, `height` falls back to
+/// `auto`, and inputs and buttons size to their content: Noto Sans's
+/// `line-height: normal` at 16.8 px (23 px) + 5 px padding + 1 px border
+/// each side = 35 px (measured in GHD's Electron).
+const ITEM_HEIGHT: f32 = if cfg!(target_os = "macos") {
+    29. * SCALE
+} else {
+    35.
+};
+
+/// `#welcome select` at `--text-field-height`; on Linux (see
+/// [`ITEM_HEIGHT`]) its auto height is 23 px of text + Chromium's 1 px
+/// menulist padding + 1 px border each side = 27 px.
+const SELECT_HEIGHT: f32 = if cfg!(target_os = "macos") {
+    29. * SCALE
+} else {
+    27.
+};
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Step {
     Start,
@@ -272,7 +294,7 @@ impl WelcomeView {
                 on_select,
                 cx,
             )
-            .h(px(29. * SCALE))
+            .h(px(SELECT_HEIGHT))
             .rounded(BORDER_RADIUS())
             .bg(t.box_background)
             .text_size(px(WELCOME_FONT_MD)),
@@ -697,7 +719,8 @@ fn welcome_field(label: &'static str, field: impl IntoElement, cx: &App) -> Div 
         .child(field)
 }
 
-/// `#welcome input`: `--text-field-height`, 5 px padding, 16.8 px text.
+/// `#welcome input`: `--text-field-height` ([`ITEM_HEIGHT`]), 5 px padding,
+/// 16.8 px text.
 fn welcome_text_box(
     id: &'static str,
     state: &Entity<InputState>,
@@ -708,7 +731,7 @@ fn welcome_text_box(
     let focused = state.read(cx).focus_handle(cx).is_focused(window);
     div()
         .id(id)
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .w_full()
         .flex()
         .items_center()
@@ -746,7 +769,7 @@ fn welcome_read_only_box(id: &'static str, state: &Entity<InputState>, cx: &App)
     let t = cx.ghd();
     div()
         .id(id)
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .w_full()
         .flex()
         .items_center()
@@ -889,7 +912,7 @@ fn welcome_button(id: &'static str, primary: bool, focused: bool, cx: &App) -> S
     div()
         .id(id)
         .flex_none()
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .flex()
         .flex_row()
         .items_center()

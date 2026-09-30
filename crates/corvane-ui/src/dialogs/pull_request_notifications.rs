@@ -204,28 +204,32 @@ fn frame(
     .with_priority(20)
 }
 
-/// `OkCancelButtonGroup` (macOS order: Cancel, then OK on the right).
+/// `OkCancelButtonGroup` (Cancel, then OK on the right on macOS; OK first
+/// elsewhere, `crate::dialog::ok_cancel_order`).
 fn ok_cancel(
     ok: SharedString,
     cancel: Option<SharedString>,
     on_ok: impl Fn(&mut Window, &mut App) + 'static,
     cx: &App,
 ) -> Div {
+    let cancel = cancel.map(|label| {
+        button("notification-cancel", label, cx)
+            .min_w(zpx(120.))
+            .on_click(|_, _, cx| Dispatcher::close_popup(cx))
+            .into_any_element()
+    });
+    let ok = primary_button("notification-ok", ok, false, cx)
+        .min_w(zpx(120.))
+        .on_click(move |_, window, cx| on_ok(window, cx))
+        .into_any_element();
     div()
         .flex_none()
         .flex()
         .flex_row()
         .gap(SPACING_HALF())
-        .children(cancel.map(|label| {
-            button("notification-cancel", label, cx)
-                .min_w(zpx(120.))
-                .on_click(|_, _, cx| Dispatcher::close_popup(cx))
-        }))
-        .child(
-            primary_button("notification-ok", ok, false, cx)
-                .min_w(zpx(120.))
-                .on_click(move |_, window, cx| on_ok(window, cx)),
-        )
+        .children(crate::dialog::ok_cancel_order(
+            cancel.into_iter().chain([ok]).collect(),
+        ))
 }
 
 /// A dashed `.timeline-line` (1 × 24 px): `top` fades in
