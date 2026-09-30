@@ -299,6 +299,20 @@ registry! {
         upstream: &[Upstream::issue(19142), Upstream::issue(5575)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
     },
+    /// Split mode shows added and deleted files unified.
+    UNIFIED_DIFF_FOR_ADDED_FILES = 175 "unified-diff-for-added-files" {
+        title: "Added and deleted files use the unified layout",
+        summary: "With Diff Settings › Split selected, a new or deleted file is still shown \
+                  unified, across the whole width, instead of beside an empty column.",
+        ghd_behaviour: "Split mode draws a new file in the right half next to an empty left \
+                        half (a deleted one the other way round).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13763), Upstream::issue(16610)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
 
     // ---- 200 Repository ----
 

@@ -14,6 +14,9 @@
 //!
 //! Deviation (`173-file-mode-change-message`): a mode-only change says "The
 //! file mode changed from … to …" instead of GHD's "No content changes found".
+//!
+//! Deviation (`175-unified-diff-for-added-files`): in Split mode a new or
+//! deleted file still shows the unified layout, full width.
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -1694,7 +1697,17 @@ impl Render for DiffView {
             // tree-sitter grammar pack was loaded or removed
             self.highlight(snap.key.clone(), cx);
         }
-        let split = self.state.read(cx).settings.show_side_by_side_diff;
+        let split = {
+            let s = self.state.read(cx);
+            // `175-unified-diff-for-added-files`: one side would be empty
+            let one_sided = matches!(
+                snap.kind,
+                FileStatusKind::New | FileStatusKind::Untracked | FileStatusKind::Deleted
+            ) && s
+                .flags
+                .bool(corvane_core::flags::ids::UNIFIED_DIFF_FOR_ADDED_FILES);
+            s.settings.show_side_by_side_diff && !one_sided
+        };
         self.set_split_mode(split);
         let background = cx.ghd().background;
         let options = self
