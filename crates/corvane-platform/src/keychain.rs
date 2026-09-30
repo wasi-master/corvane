@@ -61,3 +61,33 @@ pub fn delete_token(host: &str, login: &str) -> Result<()> {
         Err(err) => Err(err.into()),
     }
 }
+
+/// A GitHub Enterprise OAuth app's client secret (the browser flow's token
+/// exchange), one item per (host, client ID).
+fn oauth_secret_entry(host: &str, client_id: &str) -> Result<keyring::Entry> {
+    Ok(keyring::Entry::new(
+        SERVICE,
+        &format!("oauth:{client_id}@{host}"),
+    )?)
+}
+
+pub fn store_oauth_client_secret(host: &str, client_id: &str, secret: &str) -> Result<()> {
+    debug!(host, client_id, "storing OAuth client secret in keychain");
+    oauth_secret_entry(host, client_id)?.set_password(secret)?;
+    Ok(())
+}
+
+pub fn oauth_client_secret(host: &str, client_id: &str) -> Result<Option<String>> {
+    match oauth_secret_entry(host, client_id)?.get_password() {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
+pub fn delete_oauth_client_secret(host: &str, client_id: &str) -> Result<()> {
+    match oauth_secret_entry(host, client_id)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
+}

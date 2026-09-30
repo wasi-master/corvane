@@ -3,7 +3,9 @@
 //! `.docs/oauth.md`, on `corvane_github::auth::WebFlow`. The device
 //! flow stays the default (no client secret is bundled); this is the
 //! alternative behind "Sign in with your browser's session" for OAuth apps
-//! that allow PKCE (or builds with `CORVANE_GITHUB_CLIENT_SECRET`).
+//! that allow PKCE (or builds with `CORVANE_GITHUB_CLIENT_SECRET`). On GitHub
+//! Enterprise the app is the host's (`Dispatcher::oauth_client_id`), its
+//! secret from the keychain or `CORVANE_GHES_OAUTH`.
 //!
 //! The callback arrives as `x-corvane-auth://oauth?code=…&state=…` through
 //! `Dispatcher::handle_app_url`, or on the loopback listener
@@ -15,8 +17,8 @@
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
+use corvane_github::Endpoint;
 use corvane_github::auth::{LoopbackListener, SCHEME_REDIRECT_URI, WebFlow};
-use corvane_github::{CLIENT_ID, CLIENT_SECRET, Endpoint};
 use gpui_kit::App;
 use tracing::{info, warn};
 
@@ -30,10 +32,41 @@ fn use_loopback() -> bool {
         || corvane_platform::app_location::running_bundle().is_none()
 }
 
+/// Why an OAuth sign-in cannot start on `endpoint`.
+pub(crate) fn no_oauth_app_message(endpoint: &corvane_github::Endpoint) -> String {
+    format!(
+        "No OAuth app is set up for {}. Register one there, enter its client ID, or sign in with a personal access token.",
+        endpoint.host()
+    )
+}
+
+/// The client secret for the browser flow's token exchange on `endpoint`:
+/// the build's on GitHub.com; on GitHub Enterprise the keychain's for
+/// (host, client ID), else a `CORVANE_GHES_OAUTH` entry with that client ID.
+/// Touches the keychain: call off the foreground.
+pub(crate) fn oauth_client_secret(
+    endpoint: &corvane_github::Endpoint,
+    client_id: &str,
+) -> Option<String> {
+    if endpoint.is_dotcom() {
+        return corvane_github::CLIENT_SECRET.map(str::to_string);
+    }
+    let host = endpoint.host().to_ascii_lowercase();
+    corvane_platform::keychain::oauth_client_secret(&host, client_id)
+        .ok()
+        .flatten()
+        .or_else(|| {
+            corvane_github::OAuthApp::built_in(endpoint)
+                .filter(|app| app.client_id == client_id)
+                .and_then(|app| app.client_secret)
+        })
+}
+
 impl Dispatcher {
     /// `authenticateWithBrowser`: start the web flow for `endpoint` and open
     /// GitHub's authorize page.
     pub fn sign_in_web_flow(endpoint: Endpoint, cx: &mut App) {
+        let client_id = Self::oauth_client_id(&endpoint, cx);
         let state = Self::state(cx);
         state.update(cx, |s, cx| {
             if let Some(existing) = s.sign_in.as_ref() {
@@ -49,6 +82,10 @@ impl Dispatcher {
             });
             cx.notify();
         });
+        let Some(client_id) = client_id else {
+            Self::set_sign_in_step(SignInStep::Error(no_oauth_app_message(&endpoint)), cx);
+            return;
+        };
         let (flow, loopback) = if use_loopback() {
             let (tx, rx) = async_channel::unbounded::<Option<(String, String)>>();
             let listener = match LoopbackListener::start(move |result| {
@@ -82,7 +119,7 @@ impl Dispatcher {
                 }
             }
         };
-        let authorize_url = flow.authorize_url(&endpoint, CLIENT_ID);
+        let authorize_url = flow.authorize_url(&endpoint, &client_id);
         info!(redirect = %flow.redirect_uri, "starting the browser sign-in");
         state.update(cx, |s, cx| {
             if let Some(sign_in) = s.sign_in.as_mut() {
@@ -122,12 +159,21 @@ impl Dispatcher {
             );
             return;
         }
+        let Some(client_id) = Self::oauth_client_id(&endpoint, cx) else {
+            Self::set_sign_in_step(SignInStep::Error(no_oauth_app_message(&endpoint)), cx);
+            return;
+        };
         Self::set_sign_in_step(SignInStep::Verifying, cx);
         let exchange_endpoint = endpoint.clone();
         spawn_bg(
             cx,
-            move || flow.exchange_code(&exchange_endpoint, CLIENT_ID, CLIENT_SECRET, &code),
-            move |result, cx| match result {
+            move || {
+                let secret = oauth_client_secret(&exchange_endpoint, &client_id);
+                let result =
+                    flow.exchange_code(&exchange_endpoint, &client_id, secret.as_deref(), &code);
+                (result, secret.is_some())
+            },
+            move |(result, had_secret), cx| match result {
                 Ok((token, scopes)) => {
                     Self::state(cx).update(cx, |s, _| {
                         if let Some(sign_in) = s.sign_in.as_mut() {
@@ -137,10 +183,12 @@ impl Dispatcher {
                     Self::finish_sign_in_public(endpoint, token, scopes, cx);
                 }
                 Err(err) => {
-                    let hint = if CLIENT_SECRET.is_none() {
+                    let hint = if had_secret {
+                        ""
+                    } else if endpoint.is_dotcom() {
                         " (this build has no client secret; the OAuth app must allow PKCE, or use the device flow)"
                     } else {
-                        ""
+                        " (no client secret is set for this OAuth app; enter it, or use the device flow)"
                     };
                     Self::set_sign_in_step(SignInStep::Error(format!("{err}{hint}")), cx);
                 }

@@ -1,4 +1,6 @@
 //! OAuth device flow (RFC 8628) against GitHub. No client secret involved.
+//! The client ID is the endpoint's `OAuthApp` (Corvane's on GitHub.com, an
+//! administrator-registered one on GitHub Enterprise).
 //!
 //! 1. `request_device_code` → show `user_code`, open `verification_uri`.
 //! 2. Poll `poll_token` every `interval` seconds until `Token`/`Denied`/`Expired`.
@@ -11,7 +13,7 @@ use tracing::{debug, info};
 
 use crate::endpoint::Endpoint;
 use crate::error::{GitHubError, Result};
-use crate::{CLIENT_ID, SCOPES, USER_AGENT};
+use crate::{SCOPES, USER_AGENT};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct DeviceCode {
@@ -115,11 +117,6 @@ pub fn poll_token(endpoint: &Endpoint, client_id: &str, device_code: &str) -> Re
     }
 }
 
-/// Convenience: the default OAuth App.
-pub fn request_device_code_default(endpoint: &Endpoint) -> Result<DeviceCode> {
-    request_device_code(endpoint, CLIENT_ID)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +138,7 @@ mod tests {
 
     #[test]
     fn client_id_is_set() {
+        use crate::CLIENT_ID;
         assert_eq!(CLIENT_ID.len(), 20);
         assert!(CLIENT_ID.starts_with("Ov23li"));
     }
