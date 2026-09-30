@@ -50,6 +50,8 @@ pub enum PushPullKind {
 pub struct RepoIndicator {
     pub ahead_behind: Option<AheadBehind>,
     pub changed_files: usize,
+    /// The checked-out branch, for `119-repository-list-branch`.
+    pub branch: Option<String>,
 }
 
 /// GHD `ForcePushBranchState`
@@ -1080,11 +1082,13 @@ impl Dispatcher {
                             .ok()
                             .flatten()
                     });
+                    let branch = info.current_branch().map(|b| b.name.clone());
                     out.insert(
                         id,
                         RepoIndicator {
                             ahead_behind,
                             changed_files: changed,
+                            branch,
                         },
                     );
                 }

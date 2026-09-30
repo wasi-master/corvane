@@ -260,6 +260,27 @@ impl RepositoryFoldout {
         let id = repo.id;
         let hover_bg = t.list_item_hover_background;
         let (ahead_behind, has_changes) = indicators(self.state.read(cx), id);
+        // Corvane (`119-repository-list-branch`): the checked-out branch
+        // (the loaded state for an opened repository, else the background
+        // indicator refresh) joins the dimmed detail
+        let branch = {
+            let s = self.state.read(cx);
+            s.flags
+                .bool(corvane_core::flags::ids::REPOSITORY_LIST_BRANCH)
+                .then(|| {
+                    s.repo_states
+                        .get(&id)
+                        .and_then(|rs| rs.info.as_ref())
+                        .and_then(|i| i.current_branch())
+                        .map(|b| b.name.clone())
+                        .or_else(|| s.indicators.get(&id).and_then(|i| i.branch.clone()))
+                })
+                .flatten()
+        };
+        let detail = match (detail, branch) {
+            (Some(folder), Some(branch)) => Some(format!("{folder} · {branch}")),
+            (folder, branch) => folder.or(branch),
+        };
         // GHD `RepositoryListItem` aria label: name, changes, ahead/behind
         let mut label = repo.name();
         if has_changes {

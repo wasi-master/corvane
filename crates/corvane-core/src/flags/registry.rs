@@ -381,6 +381,19 @@ registry! {
         upstream: &[Upstream::issue(21151)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
+    /// Repository list rows name the checked-out branch.
+    REPOSITORY_LIST_BRANCH = 119 "repository-list-branch" {
+        title: "Branch names in the repository list",
+        summary: "Each repository list row shows, dimmed after the name, the branch checked out \
+                  in that repository (from the background indicator refresh).",
+        ghd_behaviour: "Only the name and the change / ahead-behind indicators.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8158)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 200 Repository ----
 
