@@ -89,6 +89,10 @@ pub struct InitOptions {
     pub license: Option<String>,
     /// `.gitattributes` contents; GHD always writes one when missing.
     pub git_attributes: Option<String>,
+    /// Leave an existing README.md / .gitignore / LICENSE alone instead of
+    /// replacing it (`456-create-repository-in-folder`, where the folder
+    /// usually has files already).
+    pub keep_existing: bool,
 }
 
 /// `git init` (+ README + initial commit when requested). Returns the workdir.
@@ -107,7 +111,8 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
         let _ = std::fs::write(opts.path.join(".git/description"), format!("{desc}\n"));
     }
     let mut wrote_files = false;
-    if opts.readme {
+    let writable = |name: &str| !(opts.keep_existing && opts.path.join(name).exists());
+    if opts.readme && writable("README.md") {
         let name = opts
             .path
             .file_name()
@@ -121,12 +126,12 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
             .map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
-    if let Some(text) = &opts.gitignore {
+    if let Some(text) = opts.gitignore.as_ref().filter(|_| writable(".gitignore")) {
         std::fs::write(opts.path.join(".gitignore"), text)
             .map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
-    if let Some(text) = &opts.license {
+    if let Some(text) = opts.license.as_ref().filter(|_| writable("LICENSE")) {
         std::fs::write(opts.path.join("LICENSE"), text).map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
@@ -383,11 +388,36 @@ mod tests {
                 gitignore: None,
                 license: None,
                 git_attributes: None,
+                keep_existing: false,
             },
         )
         .unwrap();
         let info = crate::open_repository(&path).unwrap();
         assert_eq!(info.current_branch().unwrap().name, "main");
         assert!(path.join("README.md").exists());
+
+        // an existing folder keeps its README
+        let existing = dir.path().join("existing");
+        std::fs::create_dir(&existing).unwrap();
+        std::fs::write(existing.join("README.md"), "mine\n").unwrap();
+        init_repository(
+            Arc::new(crate::find_git().unwrap()),
+            InitOptions {
+                path: existing.clone(),
+                default_branch: Some("main".into()),
+                description: None,
+                readme: true,
+                gitignore: Some("target\n".into()),
+                license: None,
+                git_attributes: None,
+                keep_existing: true,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(existing.join("README.md")).unwrap(),
+            "mine\n"
+        );
+        assert!(existing.join(".gitignore").exists());
     }
 }

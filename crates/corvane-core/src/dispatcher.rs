@@ -2355,6 +2355,9 @@ impl Dispatcher {
     }
 
     /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
+    /// `keep_existing` leaves files already in the folder alone
+    /// (`456-create-repository-in-folder`).
+    #[allow(clippy::too_many_arguments)]
     pub fn create_repository(
         path: PathBuf,
         name: String,
@@ -2362,6 +2365,7 @@ impl Dispatcher {
         readme: bool,
         gitignore: Option<String>,
         license: Option<String>,
+        keep_existing: bool,
         cx: &mut App,
     ) {
         let state = Self::state(cx);
@@ -2408,6 +2412,7 @@ impl Dispatcher {
                     gitignore: gitignore_text,
                     license: license_text,
                     git_attributes: Some(crate::templates::GIT_ATTRIBUTES.to_string()),
+                    keep_existing,
                 },
             )
         });

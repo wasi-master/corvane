@@ -470,6 +470,7 @@ fn create_tutorial_repository(
             gitignore: None,
             license: None,
             git_attributes: None,
+            keep_existing: false,
         },
     )
     .map_err(|e| e.to_string())?;

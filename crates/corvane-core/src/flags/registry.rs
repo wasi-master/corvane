@@ -753,6 +753,21 @@ registry! {
         code: &["crates/corvane/src/menus.rs", "crates/corvane-ui/src/dialogs/add_license.rs", "crates/corvane-core/src/templates.rs"],
     },
 
+    /// Create a New Repository in the chosen folder itself.
+    CREATE_REPOSITORY_IN_FOLDER = 456 "create-repository-in-folder" {
+        title: "Create a repository in an existing folder",
+        summary: "Create a New Repository shows \"Create the repository in this folder (no \
+                  subfolder)\" under the local path: ticked, the Local Path folder itself becomes \
+                  the repository, and a README.md, .gitignore or LICENSE already there is kept.",
+        ghd_behaviour: "Always creates a <name> subfolder of the local path.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11413)],
+        code: &["crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-git/src/ops.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
