@@ -3,6 +3,8 @@
 //!
 //! Deviations (GHD `app/src/ui/changes/commit-message.tsx`):
 //! - a detached HEAD gets a commit warning (`270-detached-head-commit-warning`).
+//! - Open in editor / default program act on every selected file, and the
+//!   list menu has "Open All in <editor>" (`271-open-multiple-files`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -45,6 +47,9 @@ use crate::widgets::{
     InputMenuBuilder, avatar_image, avatar_lookup, button, checkbox, checkbox_tristate,
     primary_button, text_box_with_menu,
 };
+
+/// `271-open-multiple-files`: the most files one "Open …" item launches.
+pub(crate) const MAX_BULK_OPEN: usize = 25;
 
 /// Which commit-form field an autocompletion / spellcheck result belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1477,7 +1482,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, repo_path, selected_files, rebase_conflict, status_files) = {
+        let (id, confirm, repo_path, selected_files, rebase_conflict, status_files, open_many) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1497,6 +1502,7 @@ impl ChangesSidebar {
                     .as_ref()
                     .map(|st| st.files.clone())
                     .unwrap_or_default(),
+                s.flags.bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES),
             )
         };
         let path = file.path.clone();
@@ -1662,9 +1668,26 @@ impl ChangesSidebar {
             }));
         }
         items.push(MenuItem::separator());
-        items.extend(copy_items(targets));
-        items.push(MenuItem::separator());
-        items.extend(open_items(full, deleted));
+        if open_many && targets.len() > 1 {
+            // `271-open-multiple-files`: the open items act on the selection
+            let existing: Vec<PathBuf> = targets
+                .iter()
+                .filter(|f| f.status.kind != FileStatusKind::Deleted)
+                .map(|f| repo_path.join(&f.path))
+                .collect();
+            items.extend(copy_items(targets));
+            items.push(MenuItem::separator());
+            let reveal = full.clone();
+            items.push(
+                MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
+                    .enabled(!deleted),
+            );
+            items.extend(open_many_items(&existing, &editor_label));
+        } else {
+            items.extend(copy_items(targets));
+            items.push(MenuItem::separator());
+            items.extend(open_items(full, deleted));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -1675,7 +1698,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, paths) = {
+        let (id, confirm, paths, openable) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1687,10 +1710,28 @@ impl ChangesSidebar {
                 .as_ref()
                 .map(|st| st.files.iter().map(|f| f.path.clone()).collect())
                 .unwrap_or_default();
-            (id, s.settings.confirm_discard_changes, paths)
+            // `271-open-multiple-files`: every changed file still on disk
+            let openable: Option<Vec<PathBuf>> = s
+                .flags
+                .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
+                .then(|| {
+                    let root = s.repository(id).map(|r| r.path.clone()).unwrap_or_default();
+                    rs.status
+                        .as_ref()
+                        .map(|st| {
+                            st.files
+                                .iter()
+                                .filter(|f| f.status.kind != FileStatusKind::Deleted)
+                                .map(|f| root.join(&f.path))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                });
+            (id, s.settings.confirm_discard_changes, paths, openable)
         };
         let has_changes = !paths.is_empty();
-        let items = vec![
+        let editor_label = self.state.read(cx).editor_label();
+        let mut items = vec![
             MenuItem::new(
                 if confirm {
                     "Discard All Changes…"
@@ -1703,6 +1744,13 @@ impl ChangesSidebar {
             // TODO(M4): stashes; disabled until then.
             MenuItem::new("Stash All Changes", |_, _| {}).enabled(false),
         ];
+        if let Some(files) = openable {
+            items.push(MenuItem::separator());
+            items.push(open_all_in_editor_item(
+                format!("Open All in {editor_label}"),
+                files,
+            ));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -3190,6 +3238,38 @@ impl Render for ChangesSidebar {
             .children(self.context_menu.clone())
             .children(self.filter_popover(cx))
     }
+}
+
+/// `271-open-multiple-files`: "Open N Files in <editor>" / "… with Default
+/// Program" for a multi-selection; disabled past [`MAX_BULK_OPEN`].
+fn open_many_items(files: &[PathBuf], editor_label: &str) -> Vec<MenuItem> {
+    let n = files.len();
+    let enabled = (1..=MAX_BULK_OPEN).contains(&n);
+    let default = files.to_vec();
+    vec![
+        open_all_in_editor_item(format!("Open {n} Files in {editor_label}"), files.to_vec()),
+        MenuItem::new(
+            format!("Open {n} Files with Default Program"),
+            move |_, cx| {
+                for f in &default {
+                    cx.open_with_system(f)
+                }
+            },
+        )
+        .enabled(enabled),
+    ]
+}
+
+/// An item opening every file in the editor, disabled when there are none or
+/// more than [`MAX_BULK_OPEN`].
+pub(crate) fn open_all_in_editor_item(label: String, files: Vec<PathBuf>) -> MenuItem {
+    let enabled = (1..=MAX_BULK_OPEN).contains(&files.len());
+    MenuItem::new(label, move |_, cx| {
+        for f in &files {
+            Dispatcher::open_in_editor(f.clone(), cx)
+        }
+    })
+    .enabled(enabled)
 }
 
 /// One changes-list row (`ChangedFile`).

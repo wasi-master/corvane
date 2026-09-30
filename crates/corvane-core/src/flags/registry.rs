@@ -279,6 +279,21 @@ registry! {
         upstream: &[Upstream::issue(788)],
         code: &["crates/corvane-ui/src/changes.rs"],
     },
+    /// Open in editor / default program acts on every selected file.
+    OPEN_MULTIPLE_FILES = 271 "open-multiple-files" {
+        title: "Open several files at once",
+        summary: "With several changed files selected, \"Open in <editor>\" and \"Open with Default \
+                  Program\" open all of them; the changes list's context menu gains \"Open All in \
+                  <editor>\" and a history file's menu \"Open All Files of Commit in <editor>\". \
+                  At most 25 files at a time.",
+        ghd_behaviour: "Opens only the right-clicked file.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16262), Upstream::issue(21374), Upstream::issue(15013)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 
