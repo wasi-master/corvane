@@ -792,6 +792,20 @@ registry! {
         upstream: &[Upstream::issue(20750)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/banner.rs"],
     },
+    /// The repository button names the GitHub owner.
+    OWNER_IN_REPOSITORY_BUTTON = 312 "owner-in-repository-button" {
+        title: "Owner in the repository button",
+        summary: "For a GitHub repository the Current Repository toolbar button's small line \
+                  shows the owner (user or organization) instead of \"Current Repository\", so \
+                  forks with the same name are told apart.",
+        ghd_behaviour: "Always \"Current Repository\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17252)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

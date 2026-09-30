@@ -190,7 +190,18 @@ pub fn toolbar_models(
             None if repo.is_some() => Octicon::DeviceDesktop,
             None => Octicon::Repo,
         },
-        description: "Current Repository".into(),
+        // Corvane (`312-owner-in-repository-button`): a GitHub repository's
+        // owner in place of "Current Repository"
+        description: match repo.and_then(|r| r.github.as_ref()) {
+            Some(gh)
+                if state
+                    .flags
+                    .bool(corvane_core::flags::ids::OWNER_IN_REPOSITORY_BUTTON) =>
+            {
+                gh.owner.clone().into()
+            }
+            _ => "Current Repository".into(),
+        },
         title: repo
             .map(|r| r.name().into())
             .unwrap_or_else(|| SharedString::from("Select a repository")),

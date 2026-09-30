@@ -25,6 +25,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Pull request quick view** (`crates/corvane-ui/src/pull_request_list.rs`): the card is a fixed 400 px wide (GHD's `min-width`), shows the list item's "opened … by author" line next to the `#N` badge (Corvane addition), and is positioned from the card height measured on the previous frame instead of staying hidden until the Markdown iframe has loaded. Flags: `301-pr-quick-view-opened-by`, `302-pr-quick-view-width`.
 - **Clone dialog** caches the repository list in redb per endpoint and filters it locally (as GHD does); there is no server-side search.
 - **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git` (Flag: `204-clone-shorthand-not-found`). The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
+- The Current Repository toolbar button can show a GitHub repository's owner in place of "Current Repository" (Corvane option), so same-named forks are told apart. Flag: `312-owner-in-repository-button`.
 
 ## Repository
 
