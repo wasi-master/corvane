@@ -224,7 +224,8 @@ impl Dispatcher {
                         Self::show_editor_error(
                             editors::EditorError {
                                 message: format!(
-                                    "{message} Please open Settings and check your custom editor."
+                                    "{message} Please open {} and check your custom editor.",
+                                    corvane_platform::editors::SETTINGS_LABEL
                                 ),
                                 suggest_default_editor: false,
                                 open_preferences: true,
@@ -311,7 +312,8 @@ impl Dispatcher {
                         Self::show_popup(
                             Popup::ShellError {
                                 message: format!(
-                                    "{message} Please open Settings and check your custom shell."
+                                    "{message} Please open {} and check your custom shell.",
+                                    corvane_platform::editors::SETTINGS_LABEL
                                 ),
                             },
                             cx,
@@ -331,7 +333,8 @@ impl Dispatcher {
             Self::show_popup(
                 Popup::ShellError {
                     message: format!(
-                        "Could not find shell '{selected}'. Please open Settings and choose an installed shell."
+                        "Could not find shell '{selected}'. Please open {} and choose an installed shell.",
+                        corvane_platform::editors::SETTINGS_LABEL
                     ),
                 },
                 cx,
