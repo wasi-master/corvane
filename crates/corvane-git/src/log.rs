@@ -32,7 +32,7 @@ fn identity(sig: gix::actor::SignatureRef<'_>) -> CommitIdentity {
 /// Every tag's short name (`refs/tags/` stripped), sorted
 /// case-insensitively. Feeds the compare list's Tags group (flag `825`).
 pub fn tag_names(workdir: &Path) -> Result<Vec<String>> {
-    let repo = gix::open(workdir)?;
+    let repo = crate::handle::open(workdir)?;
     let refs = repo
         .references()
         .map_err(|e| GitError::Gix(e.to_string()))?;
@@ -66,7 +66,7 @@ pub fn get_commits_with(
     limit: usize,
     first_parent: bool,
 ) -> Result<Vec<Commit>> {
-    let repo = gix::open(workdir)?;
+    let repo = crate::handle::open(workdir)?;
     let Some(tip) = repo.rev_parse_single(revision).ok() else {
         return Ok(Vec::new());
     };
@@ -133,7 +133,7 @@ pub fn most_recent_local_commit(
             .into_iter()
             .next());
     }
-    let repo = gix::open(workdir)?;
+    let repo = crate::handle::open(workdir)?;
     let Ok(head) = repo.rev_parse_single("HEAD") else {
         return Ok(None);
     };
@@ -188,7 +188,7 @@ pub fn get_commits_in_range(
     to: &str,
     limit: usize,
 ) -> Result<Vec<Commit>> {
-    let repo = gix::open(workdir)?;
+    let repo = crate::handle::open(workdir)?;
     let (Ok(from_id), Ok(to_id)) = (repo.rev_parse_single(from), repo.rev_parse_single(to)) else {
         return Ok(Vec::new());
     };

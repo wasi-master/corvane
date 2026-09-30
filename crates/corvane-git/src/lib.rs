@@ -8,6 +8,7 @@ pub mod config;
 pub mod detect;
 pub mod diff;
 pub mod error;
+pub mod handle;
 pub mod history_ops;
 pub mod hook_env;
 pub mod ignore;

@@ -11,8 +11,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use corvane_models::{
-    Diff, DiffHunk, DiffLine, DiffLineKind, DiffWarnings, FileStatusKind, ImageBlob,
-    LineEndingsChange, SubmoduleDiff, SubmoduleStatus, WorkingDirectoryFileChange,
+    Diff, DiffHunk, DiffLine, DiffLineKind, DiffWarnings, FileStatusKind, GitStatusEntry,
+    ImageBlob, LineEndingsChange, SubmoduleDiff, SubmoduleStatus, WorkingDirectoryFileChange,
     image_media_type,
 };
 
@@ -86,6 +86,12 @@ pub fn working_directory_diff(
                 rename_out = Some(out);
             }
         }
+        cmd = cmd.args(["--"]).arg(&file.path);
+    } else if file.status.index == GitStatusEntry::Unchanged && !is_submodule {
+        // nothing staged: the index holds HEAD's blob, so index → working
+        // tree prints what GHD's `HEAD -- path` prints, and git answers it
+        // without `diff-index` walking the whole index (that walk took 2.2 s
+        // on a 50,000-file index in git 2.54, `unpack_trees`)
         cmd = cmd.args(["--"]).arg(&file.path);
     } else {
         cmd = cmd.args(["HEAD", "--"]).arg(&file.path);
@@ -229,6 +235,10 @@ pub fn blob_bytes(
     commitish: &str,
     path: &str,
 ) -> Result<Vec<u8>> {
+    // in-process first: a `git show` spawn costs 5–10 ms, more under load
+    if let Some(bytes) = crate::handle::blob_bytes(workdir, commitish, path) {
+        return Ok(bytes);
+    }
     let out = GitCommand::new(git)
         .args(["show", &format!("{commitish}:{path}")])
         .current_dir(workdir)

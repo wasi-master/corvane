@@ -22,7 +22,7 @@ pub fn top_level_working_directory(path: &Path) -> Option<PathBuf> {
 /// linked worktree), read by gitoxide from the common git dir so it works
 /// where the git CLI refuses to run (unsafe repositories).
 pub fn main_worktree_path(path: &Path) -> Option<PathBuf> {
-    let repo = gix::open(path).ok()?;
+    let repo = crate::handle::open(path).ok()?;
     let common = repo.common_dir();
     let common = common
         .canonicalize()
@@ -37,7 +37,7 @@ pub fn main_worktree_path(path: &Path) -> Option<PathBuf> {
 /// Open `path` (a worktree or `.git` dir) and collect tip, branches, remotes
 /// and identity. Cheap enough to run on every refresh.
 pub fn open_repository(path: &Path) -> Result<RepositoryInfo> {
-    let repo = gix::open(path).map_err(|err| {
+    let repo = crate::handle::open(path).map_err(|err| {
         if err.is_not_found() {
             GitError::NotARepository(path.to_path_buf())
         } else {

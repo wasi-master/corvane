@@ -246,7 +246,7 @@ pub struct IgnoreMatcher {
 impl IgnoreMatcher {
     /// Build the matcher for the repository whose worktree is `workdir`.
     pub fn open(workdir: &Path) -> Result<Self> {
-        let repo = gix::open(workdir)?;
+        let repo = crate::handle::open(workdir)?;
         let workdir = repo
             .workdir()
             .map(Path::to_path_buf)
