@@ -1,11 +1,12 @@
 //! Settings dialog (`ui/preferences/preferences.tsx` + the per-tab
-//! components). Vertical tab bar on the left, ~560 px wide; Cancel / Save.
+//! components). 600 px wide, a 190 px vertical tab bar beside tab content at
+//! least 440 px tall; Cancel / Save.
 //!
-//! Deviations from GHD 3.6.6: no Copilot tab, no Hooks sub-tab under Git
-//! (hook environment loading is not implemented), no Usage section under
-//! Advanced (no telemetry; "Save crash reports locally" sits there instead),
-//! no Git Credential Manager toggle and no
-//! Formatting section (behind a feature flag in GHD).
+//! Deviations from GHD 3.6.6: no Copilot tab or Copilot prompt checkbox, no
+//! Hooks sub-tab under Git (hook environment loading is not implemented), no
+//! Usage section under Advanced (no telemetry; "Save crash reports locally"
+//! and Optional components sit there instead, scrolling within 440 px), and
+//! no Formatting section (behind a feature flag in GHD).
 
 use std::path::Path;
 use std::rc::Rc;
@@ -25,9 +26,8 @@ use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    Inline, ListRowA11y, SelectHandler, button, call_to_action, checkbox_row, code_ref, labeled,
-    link_button, paragraph, radio, radio_row, section_heading, select_button, settings_description,
-    text_box,
+    Inline, ListRowA11y, SelectHandler, button, checkbox_row, code_ref, labeled, link_button,
+    paragraph, radio, radio_row, section_heading, select_button, settings_description, text_box,
 };
 
 /// Error messages start lowercase (they follow "could not …"); a sentence
@@ -79,6 +79,9 @@ const OTHER_EMAIL: &str = "Other";
 pub struct PreferencesDialog {
     state: Entity<AppState>,
     tab: PreferencesTab,
+    /// The Accounts tab's `dialog-preferred-focus` button shows its focus
+    /// ring until a mouse press moves focus without `:focus-visible`.
+    preferred_focus_visible: bool,
     git_tab: GitTab,
     /// Working copy of the settings; written back on Save.
     draft: Settings,
@@ -160,6 +163,7 @@ impl PreferencesDialog {
         let mut this = Self {
             state: state.clone(),
             tab,
+            preferred_focus_visible: true,
             git_tab: GitTab::Author,
             draft,
             name,
@@ -371,10 +375,11 @@ impl PreferencesDialog {
             .child(section_heading("GitHub.com", cx))
             .child(match &dotcom {
                 Some(account) => account_row(account, "prefs-signout-dotcom").into_any_element(),
-                None => call_to_action(
+                None => accounts_call_to_action(
                     "prefs-signin-dotcom",
                     "Sign in to your GitHub.com account to access your repositories.",
                     "Sign Into GitHub.com",
+                    self.preferred_focus_visible,
                     |_, cx| Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx),
                     cx,
                 )
@@ -388,10 +393,11 @@ impl PreferencesDialog {
                     .map(|account| account_row(account, "prefs-signout-enterprise")),
             )
             .child(if enterprise.is_empty() {
-                call_to_action(
+                accounts_call_to_action(
                     "prefs-signin-enterprise",
                     "If you are using GitHub Enterprise at work, sign in to it to get access to your repositories.",
                     "Sign Into GitHub Enterprise",
+                    false,
                     |_, cx| Dispatcher::show_popup(Popup::SignIn { enterprise: true }, cx),
                     cx,
                 )
@@ -963,19 +969,25 @@ impl PreferencesDialog {
                     .flex_row()
                     .gap(SPACING())
                     .mb(SPACING())
-                    .child(labeled(
-                        "Date Format",
-                        select_button(
-                            "prefs-date-format",
-                            pick(&date_options, date_ix),
-                            date_options.clone(),
-                            date_ix,
-                            false,
-                            on_date,
+                    .child(
+                        labeled(
+                            "Date Format",
+                            select_button(
+                                "prefs-date-format",
+                                pick(&date_options, date_ix),
+                                date_options.clone(),
+                                date_ix,
+                                false,
+                                on_date,
+                                cx,
+                            ),
                             cx,
-                        ),
-                        cx,
-                    ))
+                        )
+                        // the selects size to their longest option: 207 px here,
+                        // the time format takes the rest
+                        .flex_none()
+                        .w(zpx(207.)),
+                    )
                     .child(labeled(
                         "Time Format",
                         select_button(
@@ -1175,7 +1187,8 @@ impl PreferencesDialog {
             .child(section_heading("Theme", cx))
             .child(swatches)
             .child(self.formatting_section(cx))
-            .child(div().mt(SPACING()).child(section_heading("Diff", cx)))
+            // the absolute-dates checkbox's 10 px margin spaces the section
+            .child(section_heading("Diff", cx))
             .child(labeled(
                 "Tab Size",
                 select_button(
@@ -1739,8 +1752,18 @@ impl Render for PreferencesDialog {
         // `renderErrors`: an invalid author name blocks saving (`gitAuthorNameIsValid`).
         let name_valid = corvane_core::git_author_name_is_valid(self.name.read(cx).value().trim());
         let error = (!name_valid).then_some(corvane_core::INVALID_GIT_AUTHOR_NAME_MESSAGE);
+        // the 600 px dialog less its border
         let content = div()
-            .w(zpx(560.))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    if this.preferred_focus_visible {
+                        this.preferred_focus_visible = false;
+                        cx.notify();
+                    }
+                }),
+            )
+            .w(zpx(598.))
             .mx(zpx(-20.))
             .my(zpx(-20.))
             .flex()
@@ -1755,18 +1778,26 @@ impl Render for PreferencesDialog {
             })
             .child(
                 div()
-                    .min_h(zpx(360.))
+                    // `dialog#preferences .dialog-content { min-height: 440px }`
+                    .min_h(zpx(440.))
                     .flex()
                     .flex_row()
                     .items_stretch()
                     .child(nav)
                     .child(
                         div()
+                            .id("prefs-tab-container")
                             .flex_1()
                             .min_w_0()
                             .border_l_1()
                             .border_color(t.box_border)
                             .p(SPACING_DOUBLE())
+                            // Advanced carries Corvane's extra sections (crash
+                            // reports, optional components): it scrolls inside
+                            // GHD's 440 px instead of growing the dialog
+                            .when(self.tab == PreferencesTab::Advanced, |d| {
+                                d.max_h(zpx(440.)).overflow_y_scroll()
+                            })
                             .child(body),
                     ),
             );
@@ -1798,4 +1829,34 @@ impl Render for PreferencesDialog {
             cx,
         )
     }
+}
+
+/// `#preferences .accounts-tab .call-to-action { display: block }`: the text
+/// (10 px right margin), then the button 10 px below at its own width.
+fn accounts_call_to_action(
+    id: &'static str,
+    body: &'static str,
+    action_title: &'static str,
+    focused: bool,
+    on_action: impl Fn(&mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Div {
+    let t = cx.ghd();
+    div()
+        .flex()
+        .flex_col()
+        .items_start()
+        .child(div().self_stretch().mr(SPACING()).child(body))
+        .child(
+            div()
+                .relative()
+                .mt(SPACING())
+                .when(focused, |d| d.child(crate::widgets::focus_ring(cx)))
+                .child(
+                    crate::widgets::primary_button(id, action_title, false, cx)
+                        // `:focus` takes the hover background
+                        .when(focused, |d| d.bg(t.button_hover_background))
+                        .on_click(move |_, window, cx| on_action(window, cx)),
+                ),
+        )
 }

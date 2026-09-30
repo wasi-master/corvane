@@ -131,7 +131,7 @@ fn frame(
                 .flex()
                 .items_center()
                 .justify_center()
-                .bg(t.overlay)
+                .bg(t.dialog_backdrop)
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(
                     div()

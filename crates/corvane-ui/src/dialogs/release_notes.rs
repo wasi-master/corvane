@@ -135,7 +135,7 @@ impl Render for ReleaseNotesDialog {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(t.overlay)
+                    .bg(t.dialog_backdrop)
                     .on_mouse_down(MouseButton::Left, move |_, window, cx| close(window, cx))
                     .child(
                         div()

@@ -182,10 +182,26 @@ pub fn section_heading(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .text_size(FONT_SIZE_MD())
+        .line_height(zpx(21.))
         .font_weight(FontWeight::SEMIBOLD)
         .text_color(t.text)
         .mb(SPACING())
         .child(text.into())
+}
+
+/// Chromium's `outline: auto` focus ring in `--focus-color` for a
+/// `.button-component` (`outline-offset` draws it 2 px outside the border):
+/// absolutely placed in a `relative()` wrapper around the button.
+pub fn focus_ring(cx: &App) -> Div {
+    div()
+        .absolute()
+        .top(zpx(-4.))
+        .left(zpx(-4.))
+        .right(zpx(-4.))
+        .bottom(zpx(-4.))
+        .border_2()
+        .border_color(cx.ghd().focus)
+        .rounded(BORDER_RADIUS() + zpx(4.))
 }
 
 /// `.settings-description`: 11 px secondary text, 10 px above.
@@ -313,7 +329,8 @@ pub fn select_button_items(
     cx: &App,
 ) -> Stateful<Div> {
     let t = cx.ghd();
-    let hover_bg = t.secondary_button_hover_background;
+    // `.select-component select`: contrast border, box background, no hover
+    // style; `:disabled` takes the alt background and secondary text
     div()
         .id(id)
         .h(TEXT_FIELD_HEIGHT())
@@ -325,17 +342,20 @@ pub fn select_button_items(
         .justify_between()
         .gap(SPACING_HALF())
         .pl(SPACING_HALF())
-        .pr(zpx(4.))
+        .pr(zpx(3.5))
         .border_1()
         .rounded(BORDER_RADIUS())
-        .bg(t.box_background)
+        .bg(if disabled {
+            t.box_alt_background
+        } else {
+            t.box_background
+        })
         .border_color(t.box_border_contrast)
         .text_size(FONT_SIZE())
-        .text_color(t.text)
-        .when(disabled, |d| d.opacity(0.6))
+        .text_color(if disabled { t.text_secondary } else { t.text })
         .when(!disabled, |d| {
-            d.cursor_pointer().hover(move |s| s.bg(hover_bg)).on_click(
-                move |ev: &ClickEvent, window, cx| {
+            d.cursor_pointer()
+                .on_click(move |ev: &ClickEvent, window, cx| {
                     let mut option_ix = 0;
                     let menu_items: Vec<crate::context_menu::MenuItem> = items
                         .iter()
@@ -358,13 +378,17 @@ pub fn select_button_items(
                     crate::native_menu::show_context_menu(menu_items, position, window, cx);
                     #[cfg(not(target_os = "macos"))]
                     let _ = (menu_items, position, window, cx);
-                },
-            )
+                })
         })
         .child(div().flex_1().min_w_0().truncate().child(value.into()))
+        // Chromium's menulist chevron in the text colour
         .child(
-            crate::icons::octicon(crate::icons::Octicon::TriangleDown, t.text_secondary)
-                .size(zpx(12.)),
+            svg()
+                .path("ui/select-chevron.svg")
+                .flex_none()
+                .w(zpx(9.))
+                .h(zpx(5.3))
+                .text_color(if disabled { t.text_secondary } else { t.text }),
         )
 }
 
@@ -708,9 +732,11 @@ pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
         .border_color(t.box_border)
 }
 
-/// One row of GHD's `VerticalSegmentedControl` (`_vertical-segmented-control.scss`):
-/// radio + bold title + secondary description, bordered, rounded at the ends.
-#[allow(clippy::too_many_arguments)]
+/// `VerticalSegmentedControl` option (`.radio-button-component`): 10 px
+/// padded label, a native radio (4 px down, 5 px either side), the bold title
+/// and secondary description 5 px after it. The selected option holds the
+/// radio's focus, so it takes `:has(input:focus)` - the hover colours, the
+/// description included.
 pub fn segmented_option(
     id: impl Into<ElementId>,
     title: impl Into<SharedString>,
@@ -723,6 +749,13 @@ pub fn segmented_option(
     let t = cx.ghd();
     let hover_bg = t.box_hover_background;
     let hover_text = t.box_hover_text;
+    let id: ElementId = id.into();
+    let radio_id = ElementId::from(SharedString::from(format!("{id}-radio")));
+    let description_color = if selected {
+        hover_text
+    } else {
+        t.text_secondary
+    };
     div()
         .id(id)
         .w_full()
@@ -736,46 +769,23 @@ pub fn segmented_option(
         .when(first, |d| d.rounded_t(BORDER_RADIUS()))
         .when(last, |d| d.rounded_b(BORDER_RADIUS()))
         .cursor_pointer()
+        .when(selected, |d| d.bg(hover_bg).text_color(hover_text))
         .hover(move |s| s.bg(hover_bg).text_color(hover_text))
-        .child(
-            // radio
-            div()
-                .mx(SPACING_HALF())
-                .mt(zpx(4.))
-                .size(zpx(13.))
-                .flex_none()
-                .rounded_full()
-                .border_1()
-                .border_color(if selected {
-                    t.button_background
-                } else {
-                    t.box_border_contrast
-                })
-                .bg(if selected {
-                    t.button_background
-                } else {
-                    t.background
-                })
-                .flex()
-                .items_center()
-                .justify_center()
-                .when(selected, |d| {
-                    d.child(div().size(zpx(5.)).rounded_full().bg(t.button_text))
-                }),
-        )
+        .child(radio(radio_id, selected, cx).mx(SPACING_HALF()).mt(zpx(4.)))
         .child(
             div()
+                .ml(SPACING_HALF())
                 .flex_1()
                 .min_w_0()
                 .flex()
                 .flex_col()
+                .line_height(zpx(18.))
+                .child(div().font_weight(FontWeight::SEMIBOLD).child(title.into()))
                 .child(
                     div()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .truncate()
-                        .child(title.into()),
-                )
-                .child(div().text_color(t.text_secondary).child(description.into())),
+                        .text_color(description_color)
+                        .child(description.into()),
+                ),
         )
 }
 

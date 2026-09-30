@@ -10,6 +10,7 @@ use rust_embed::RustEmbed;
 #[folder = "../../assets"]
 #[include = "octicons/*.svg"]
 #[include = "controls/*.svg"]
+#[include = "ui/*.svg"]
 #[include = "illustrations/*.svg"]
 #[include = "icon/Corvane-256.png"]
 #[include = "acknowledgements.json"]

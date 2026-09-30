@@ -236,6 +236,8 @@ pub struct GhdTheme {
     /// `--tip-box-background-color` / `--tip-box-border-color` (blank-slate ProTip).
     pub tip_box_background: Hsla,
     pub tip_box_border: Hsla,
+    /// `--path-segment-background` (`Ref` path chips).
+    pub path_segment_background: Hsla,
     pub box_border: Hsla,
     pub box_border_contrast: Hsla,
     pub box_border_accent: Hsla,
@@ -248,6 +250,9 @@ pub struct GhdTheme {
     pub box_placeholder: Hsla,
     pub shadow: Hsla,
     pub overlay: Hsla,
+    /// `::backdrop` of a modal `<dialog>`: rgba(0,0,0,.4) in every theme, since
+    /// the pseudo-element does not inherit `body.theme-dark`'s variables.
+    pub dialog_backdrop: Hsla,
 
     // Buttons + links
     pub button_background: Hsla,

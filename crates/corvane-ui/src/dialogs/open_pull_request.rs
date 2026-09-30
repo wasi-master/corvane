@@ -688,7 +688,7 @@ impl Render for OpenPullRequestDialog {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(t.overlay)
+                    .bg(t.dialog_backdrop)
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, _, _, cx| this.close(cx)),

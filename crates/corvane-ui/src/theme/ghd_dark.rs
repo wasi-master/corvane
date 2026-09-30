@@ -16,6 +16,7 @@ pub fn theme() -> GhdTheme {
         box_alt_background: c(GRAY_900_LIGHTEN_3),
         tip_box_background: c(0x0366d6).opacity(0.06),
         tip_box_border: c(0xc8e1ff),
+        path_segment_background: c(0x444d56),
         box_border: c(0x141414),
         box_border_contrast: c(GRAY_500_LIGHTEN_3),
         box_border_accent: c(BLUE),
@@ -28,6 +29,7 @@ pub fn theme() -> GhdTheme {
         box_placeholder: c(GRAY_400),
         shadow: ca(0x000000, 0.5),
         overlay: ca(0x000000, 0.5),
+        dialog_backdrop: ca(0x000000, 0.4),
 
         button_background: c(BLUE),
         button_hover_background: c(BLUE_LIGHTEN_5),

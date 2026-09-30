@@ -158,7 +158,7 @@ impl WelcomeView {
                                     .relative()
                                     .mr(px(20.))
                                     .mb(px(10.))
-                                    .when(ring, |d| d.child(focus_ring(cx)))
+                                    .when(ring, |d| d.child(crate::widgets::focus_ring(cx)))
                                     .child(
                                         welcome_button("welcome-sign-in", true, focused, cx)
                                             .track_focus(&focus)
@@ -453,19 +453,6 @@ fn footer_link(id: &'static str, label: &'static str, url: &'static str, cx: &Ap
         .on_click(move |_, _, cx| cx.open_url(url))
         .into_any_element()
         .into()
-}
-
-/// Chromium's `outline: auto` in `--focus-color`: 2 px, 2 px outside the border.
-fn focus_ring(cx: &App) -> Div {
-    div()
-        .absolute()
-        .top(px(-4.))
-        .left(px(-4.))
-        .right(px(-4.))
-        .bottom(px(-4.))
-        .border_2()
-        .border_color(cx.ghd().focus)
-        .rounded(BORDER_RADIUS() + px(4.))
 }
 
 /// `.text-box-component` in the welcome: label, 3.33 px gap, a 34.8 px input.
