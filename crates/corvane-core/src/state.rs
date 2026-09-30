@@ -359,6 +359,58 @@ pub enum Popup {
     },
 }
 
+impl Popup {
+    /// The repository a repository-bound dialog acts on.
+    pub fn repository(&self) -> Option<u64> {
+        match self {
+            Self::DiscardChanges { repo, .. }
+            | Self::StartPullRequest { repo, .. }
+            | Self::CreateFork { repo, .. }
+            | Self::UpstreamAlreadyExists { repo, .. }
+            | Self::ChooseForkSettings { repo, .. }
+            | Self::PushProtectionError { repo, .. }
+            | Self::BypassPushProtection { repo, .. }
+            | Self::PushRejectedDueToMissingWorkflowScope { repo, .. }
+            | Self::SAMLReauthRequired { repo, .. }
+            | Self::TestNotifications { repo, .. }
+            | Self::CICheckRunRerun { repo, .. }
+            | Self::PullRequestReview { repo, .. }
+            | Self::PullRequestComment { repo, .. }
+            | Self::PullRequestChecksFailed { repo, .. }
+            | Self::UnknownAuthors { repo, .. }
+            | Self::ConfirmDiscardSelection { repo, .. }
+            | Self::ResetToCommit { repo, .. }
+            | Self::CheckoutCommit { repo, .. }
+            | Self::CreateTag { repo, .. }
+            | Self::WarnLocalChangesBeforeUndo { repo, .. }
+            | Self::CreateBranch { repo, .. }
+            | Self::RenameBranch { repo, .. }
+            | Self::ChangeRepositoryAlias { repo, .. }
+            | Self::AddWorktree { repo, .. }
+            | Self::RenameWorktree { repo, .. }
+            | Self::DeleteWorktree { repo, .. }
+            | Self::DeleteWorktreeFailed { repo, .. }
+            | Self::DeleteBranch { repo, .. }
+            | Self::StashAndSwitchBranch { repo, .. }
+            | Self::ConfirmOverwriteStash { repo, .. }
+            | Self::MergeBranch { repo, .. }
+            | Self::ConfirmDiscardStash { repo, .. }
+            | Self::MultiCommitOperation { repo, .. }
+            | Self::LocalChangesOverwritten { repo, .. }
+            | Self::PushBranchCommits { repo, .. }
+            | Self::PublishRepository { repo, .. }
+            | Self::PushNeedsPull { repo, .. }
+            | Self::ConfirmForcePush { repo, .. }
+            | Self::GenericGitAuthentication { repo, .. }
+            | Self::SquashCommitMessage { repo, .. }
+            | Self::RepositorySettings { repo, .. }
+            | Self::ConfirmRemoveRepository { repo, .. }
+            | Self::UnreachableCommits { repo, .. } => Some(*repo),
+            _ => None,
+        }
+    }
+}
+
 /// GHD `UnreachableCommitsTab`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum UnreachableCommitsTab {
@@ -938,5 +990,20 @@ impl AppState {
         let mut v: Vec<&Repository> = self.repositories.iter().collect();
         v.sort_by_key(|r| r.name().to_lowercase());
         v
+    }
+}
+
+#[cfg(test)]
+mod popup_tests {
+    use super::Popup;
+
+    #[test]
+    fn repository_bound_popups_name_their_repository() {
+        let rename = Popup::RenameBranch {
+            repo: 7,
+            name: "main".into(),
+        };
+        assert_eq!(rename.repository(), Some(7));
+        assert_eq!(Popup::Acknowledgements.repository(), None);
     }
 }

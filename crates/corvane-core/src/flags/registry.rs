@@ -425,6 +425,21 @@ registry! {
         code: &["crates/corvane-ui/src/worktree_list.rs", "crates/corvane-core/src/worktrees.rs"],
     },
 
+    /// Switching repositories closes dialogs bound to the previous one.
+    CLOSE_DIALOGS_ON_REPOSITORY_SWITCH = 290 "close-dialogs-on-repository-switch" {
+        title: "Switching repositories closes the previous repository's dialog",
+        summary: "When another repository is selected (e.g. from a link or the command line \
+                  tool) a dialog for the previous repository closes, except conflict and \
+                  credential prompts of an operation in progress.",
+        ghd_behaviour: "The dialog stays open over the newly selected repository.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9847)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/state.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

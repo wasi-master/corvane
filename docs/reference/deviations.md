@@ -47,6 +47,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Repository Settings › Ignored Files (`app/src/ui/repository-settings/git-ignore.tsx`) adds an "Add a template" list of the bundled `.gitignore` templates: a pick fills an empty box, or is appended under a `# <Name>` line; nothing is written until Save. Flag: `287-gitignore-templates`.
 - Worktree list (`app/src/ui/worktrees/worktree-list-item.tsx`): rows have a tooltip with the name and full path, and the filter also matches the path, so worktrees with the same folder name can be told apart. Flag: `288-worktree-paths`.
 - New Worktree's default location (GHD's Add Worktree dialog uses the clone directory) is a template: `{clone-dir}` (the default, GHD's behaviour), `{repo}` and a leading `~` (e.g. `~/code/worktrees/{repo}`). Flag: `289-worktree-location`.
+- Selecting another repository while a dialog for the current one is open (from a link, the command line tool, a notification) closes that dialog (`Popup::repository`); conflict and credential prompts of an operation in progress stay. GHD keeps the dialog over the new repository (`app/src/lib/stores/app-store.ts` `_selectRepository`). Flag: `290-close-dialogs-on-repository-switch`.
 
 ## Tutorial
 
