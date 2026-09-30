@@ -4,16 +4,16 @@ Generated from `crates/corvane-core/src/flags/registry.rs` by `UPDATE_FLAGS_DOC=
 
 Every deviation from GitHub Desktop 3.6.6 that can be switched off, and every Corvane-only extra, is a flag: a numeric id in a category block plus a slug, shown as `201-commit-templates`. "on" always means Corvane's deviation is active. Open the dialog with **Corvane › Flags…** (⌘⇧,), `x-corvane://flags?q=<search>` or `CORVANE_POPUP=flags[:<search>]`.
 
-Flags tagged **Bug fix** fix behaviour GitHub Desktop plainly gets wrong; the dialog hides them unless **Show bug fixes** is ticked (display only: presets and `CORVANE_FLAGS` still apply). The rest are features: new capabilities, options or looks.
+Flags tagged **Bug fix** fix behaviour GitHub Desktop plainly gets wrong; the dialog hides them unless **Show bug fixes** is ticked (display only: presets and `CORVANE_FLAGS` still apply). The rest are features: new capabilities, options or looks. The dialog's All / On / Off switch likewise shows only the flags that deviate from GitHub Desktop, or only those that do not.
 
 ## Presets
 
-A preset is the base layer; per-flag overrides sit on top ("Custom"). Picking a preset clears the overrides.
+A preset is the base layer; per-flag overrides sit on top ("Custom"). Picking a preset clears the overrides (the dialog asks first when there are any); the dialog's Presets page shows each preset's details and how many flags it switches on.
 
-- **GitHub Desktop** (`github-desktop`): Behaves exactly like GitHub Desktop 3.6.6.
-- **Familiar** (`familiar`): Looks like GitHub Desktop, keeps the improvements you can't see.
-- **Corvane** (`corvane`): Corvane as shipped: every built deviation on.
-- **Everything** (`everything`): Every extra on, including the experimental ones.
+- **GitHub Desktop** (`github-desktop`): Behaves exactly like GitHub Desktop 3.6.6. Every flag at GitHub Desktop 3.6.6's behaviour, its bugs included. Pick it to compare the two apps side by side or to keep your habits exactly as they are; the parity harness runs Corvane with it.
+- **Familiar** (`familiar`): Looks like GitHub Desktop, keeps the improvements you can't see. Flags that change what you see stay at GitHub Desktop's behaviour; flags that only change how things work (most bug fixes, refreshes, smooth scrolling, commit templates and the like) are on. Nothing moves and nothing new appears.
+- **Corvane** (`corvane`): Corvane as shipped: every built deviation on. The default. Every deviation that is finished and broadly useful is on, bug fixes included. Extras that change GitHub Desktop's look or workflow more strongly, or that few people want, stay off until you switch them on.
+- **Everything** (`everything`): Every extra on, including the experimental ones. Every flag on, including the extras the Corvane preset leaves off and the experimental ones. Good for trying out everything Corvane can do; expect parts of it to feel unlike GitHub Desktop.
 
 ## `CORVANE_FLAGS`
 

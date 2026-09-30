@@ -795,9 +795,10 @@ pub fn kbd_group(keys: &[&'static str], cx: &App) -> Div {
         .children(keys.iter().map(|k| kbd(*k, cx)))
 }
 
-/// A 28 × 16 toggle switch on GHD tokens (no GHD equivalent; the Flags
-/// dialog): `accent` track when on, `control_border` track when off, a
-/// 12 px knob. Callers add `.aria_label(..)`.
+/// A 32 × 18 toggle switch on GHD tokens (no GHD equivalent; the Flags
+/// dialog): the primary button's blue track when on, the control border
+/// grey when off, a white 14 px knob either way (macOS switches), so both
+/// states read at a glance in every theme. Callers add `.aria_label(..)`.
 pub fn switch(
     id: impl Into<ElementId>,
     checked: bool,
@@ -806,10 +807,11 @@ pub fn switch(
     cx: &App,
 ) -> Stateful<Div> {
     let t = cx.ghd();
+    let white = gpui_kit::white();
     let (track, knob) = match (checked, disabled) {
-        (true, false) => (t.accent, t.background),
+        (true, false) => (t.button_background, white),
         (true, true) => (t.control_disabled_accent, t.control_disabled_glyph),
-        (false, false) => (t.control_border, t.background),
+        (false, false) => (t.control_border, white),
         (false, true) => (t.control_disabled_border, t.control_disabled_background),
     };
     div()
@@ -821,9 +823,9 @@ pub fn switch(
             Toggled::False
         })
         .flex_none()
-        .w(zpx(28.))
-        .h(zpx(16.))
-        .rounded(zpx(8.))
+        .w(zpx(32.))
+        .h(zpx(18.))
+        .rounded(zpx(9.))
         .bg(track)
         .p(zpx(2.))
         .flex()
@@ -835,7 +837,19 @@ pub fn switch(
             d.cursor_pointer()
                 .on_click(move |_, window, cx| on_toggle(!checked, window, cx))
         })
-        .child(div().size(zpx(12.)).rounded_full().bg(knob))
+        .child(
+            div()
+                .size(zpx(14.))
+                .rounded_full()
+                .bg(knob)
+                .shadow(vec![BoxShadow {
+                    color: gpui_kit::black().opacity(0.25),
+                    offset: point(zpx(0.), zpx(0.5)),
+                    blur_radius: zpx(1.),
+                    spread_radius: zpx(0.),
+                    inset: false,
+                }]),
+        )
 }
 
 /// An 18 px pill with an optional 12 px icon (the Flags dialog's id,
