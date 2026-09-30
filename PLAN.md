@@ -141,7 +141,7 @@ OAuth App registration is a manual step: create app at github.com/settings/devel
 
 ### 3.6 Storage (`corvane-store`, redb)
 
-Tables: `meta` (schema version), `settings` (key → JSON), `repositories` (id → JSON: path, alias, github_repo?, missing flag, last_stash_check), `repo_indicators` (id → ahead/behind/has_changes/last_fetch), `accounts` (host → login/avatar/scopes; token lives in Keychain), `ui_state` (window bounds, sidebar width, selected repo, last section), `recent_repositories`. Writes are batched through one `StoreActor` on a background thread; reads are snapshot into `AppState` at boot. Legacy import: read GHD's IndexedDB is out of scope; instead "Add Local Repository" bulk-import from GHD's `~/Library/Application Support/GitHub Desktop/` repository paths is a one-click helper (best-effort, tracked in `TODO.md`).
+Tables: `meta` (schema version), `settings` (key → JSON), `repositories` (id → JSON: path, alias, github_repo?, missing flag, last_stash_check), `repo_indicators` (id → ahead/behind/has_changes/last_fetch), `accounts` (host → login/avatar/scopes; token lives in Keychain), `ui_state` (window bounds, sidebar width, selected repo, last section), `recent_repositories`. Writes are batched through one `StoreActor` on a background thread; reads are snapshot into `AppState` at boot. Legacy import: File › Import Repositories from GitHub Desktop… (flag `206-import-from-github-desktop`) reads the repository paths and aliases out of GHD's IndexedDB LevelDB files under `~/Library/Application Support/GitHub Desktop/` (best effort, read-only; `corvane_platform::ghd_import`) and adds the ones picked; nothing else of GHD's state is imported.
 
 ### 3.7 On-demand packs (`corvane-packs`)
 
