@@ -15,6 +15,8 @@ gpui_kit::actions!(
         SelectLastFile,
         // Space in the changes list: include / exclude the highlighted files
         ToggleIncludeSelected,
+        // ⌘⌫ in the changes list (`607-cmd-backspace-discards-files`)
+        DiscardSelectedFiles,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
