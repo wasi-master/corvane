@@ -66,9 +66,10 @@ use crate::diff_expansion::{
     expand_whole, from_hunks,
 };
 use crate::diff_view_rows::{
-    Column, IntraLineOptions, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow,
-    TempSelection, TextBounds, build_rows, build_split_rows, line_number_width, max_line_number,
-    render_row, render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
+    Column, IntraLineOptions, RangeType, Row, RowContext, RowText, SearchHit, SearchIndex,
+    SplitRow, TempSelection, TextBounds, build_rows, build_split_rows, line_number_width,
+    max_line_number, render_row, render_split_row, search_rows, spans_for_row, unified_inner,
+    unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -843,41 +844,32 @@ impl DiffView {
         self.rows.get(unified).map(|r| r.text.as_str())
     }
 
-    /// The byte offset in the row's text under `x`, measured with the diff's
-    /// monospace font (the rows paint their text the same way).
-    fn column_at(&self, list_ix: usize, column: Column, x: Pixels, window: &Window) -> usize {
-        let Some(text) = self.row_text(list_ix, column) else {
+    /// The byte offset in the row's text under `position`, hit-tested on
+    /// the row's own (wrapped) layout: the visual line under the pointer,
+    /// clamped to the first and last, then the closest character boundary.
+    fn column_at(&self, list_ix: usize, column: Column, position: Point<Pixels>) -> usize {
+        let Some(len) = self.row_text(list_ix, column).map(str::len) else {
             return 0;
         };
-        let Some(bounds) = self.text_bounds.borrow().get(&(list_ix, column)).copied() else {
+        let Some(RowText { bounds, layout }) =
+            self.text_bounds.borrow().get(&(list_ix, column)).cloned()
+        else {
             return 0;
         };
-        if text.is_empty() || x <= bounds.origin.x {
+        if len == 0 {
             return 0;
         }
-        let font = Font {
-            family: mono_font().into(),
-            features: FontFeatures::default(),
-            fallbacks: None,
-            weight: FontWeight::NORMAL,
-            style: FontStyle::Normal,
+        let Some(line) = layout.line_layout_for_index(0) else {
+            return 0;
         };
-        let run = TextRun {
-            len: text.len(),
-            font,
-            color: black(),
-            background_color: None,
-            underline: None,
-            strikethrough: None,
-        };
-        let line = window.text_system().shape_line(
-            SharedString::from(text.to_string()),
-            self.text_size,
-            &[run],
-            None,
-        );
-        line.closest_index_for_x(x - bounds.origin.x)
-            .min(text.len())
+        let line_height = layout.line_height();
+        let local = position - bounds.origin;
+        let last = line.wrap_boundaries().len() as f32;
+        let visual_line = (local.y / line_height).floor().clamp(0., last);
+        let at = point(local.x.max(Pixels::ZERO), line_height * (visual_line + 0.5));
+        match line.closest_index_for_position(at, line_height) {
+            Ok(ix) | Err(ix) => ix.min(len),
+        }
     }
 
     /// Mouse down on a row's text: start a selection there, or extend the
@@ -888,12 +880,11 @@ impl DiffView {
         column: Column,
         position: Point<Pixels>,
         shift: bool,
-        window: &Window,
         cx: &mut Context<Self>,
     ) {
         let pos = TextPos {
             row: list_ix,
-            col: self.column_at(list_ix, column, position.x, window),
+            col: self.column_at(list_ix, column, position),
         };
         match self.text_selection.as_mut() {
             Some(sel) if shift && sel.column == column => {
@@ -915,12 +906,7 @@ impl DiffView {
     /// The pointer moved while a text selection is being dragged: the head
     /// follows the row under it; past the visible rows it clamps to the first
     /// or last one and scrolls the list a line (`list.scrollToRow`).
-    fn drag_text_selection(
-        &mut self,
-        position: Point<Pixels>,
-        window: &Window,
-        cx: &mut Context<Self>,
-    ) {
+    fn drag_text_selection(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
         let Some(sel) = self.text_selection else {
             return;
         };
@@ -934,7 +920,8 @@ impl DiffView {
             let mut above: Option<(usize, Bounds<Pixels>)> = None;
             let mut below: Option<(usize, Bounds<Pixels>)> = None;
             let mut hit = None;
-            for (&(ix, col), &b) in bounds.iter() {
+            for (&(ix, col), t) in bounds.iter() {
+                let b = t.bounds;
                 if col != column {
                     continue;
                 }
@@ -953,7 +940,7 @@ impl DiffView {
         let head = if let Some((ix, _)) = hit {
             TextPos {
                 row: ix,
-                col: self.column_at(ix, column, position.x, window),
+                col: self.column_at(ix, column, position),
             }
         } else if let Some((ix, b)) = rows_below.filter(|_| rows_above.is_none()) {
             // above every rendered row: select from the first visible one up
@@ -1006,7 +993,7 @@ impl DiffView {
             .text_bounds
             .borrow()
             .values()
-            .any(|b| b.contains(&position));
+            .any(|t| t.bounds.contains(&position));
         if !on_text {
             self.text_selection = None;
             cx.notify();
@@ -2311,9 +2298,9 @@ impl Render for DiffView {
                     this.clear_text_selection_unless_on_text(ev.position, cx);
                 }),
             )
-            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, window, cx| {
+            .on_mouse_move(cx.listener(|this, ev: &MouseMoveEvent, _, cx| {
                 if ev.pressed_button == Some(MouseButton::Left) {
-                    this.drag_text_selection(ev.position, window, cx);
+                    this.drag_text_selection(ev.position, cx);
                 }
             }))
             .child(body)
