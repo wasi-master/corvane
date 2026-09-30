@@ -632,7 +632,8 @@ impl Dispatcher {
                 usize::try_from(s.flags.number(crate::flags::ids::RECENT_BRANCHES_COUNT))
                     .unwrap_or(5),
                 s.flags.bool(crate::flags::ids::SHOW_LATEST_OTHER_STASH),
-                s.flags.bool(crate::flags::ids::BRANCH_UPSTREAM_GONE),
+                s.flags.bool(crate::flags::ids::BRANCH_UPSTREAM_GONE)
+                    || s.flags.bool(crate::flags::ids::BRANCH_LIST_AHEAD_BEHIND),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -736,7 +737,7 @@ impl Dispatcher {
                             .unwrap_or_default()
                         })
                         .unwrap_or_default();
-                    // `513-branch-upstream-gone`
+                    // `513-branch-upstream-gone`, `514-branch-list-ahead-behind`
                     let branch_tracking = if track_branches {
                         corvane_git::branch_tracking(git.clone(), &info.workdir).unwrap_or_default()
                     } else {

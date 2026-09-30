@@ -14,6 +14,8 @@
 //!
 //! Deviation (`513-branch-upstream-gone`): a local branch whose upstream was
 //! deleted on the remote shows a cloud-offline icon after its name.
+//! Deviation (`514-branch-list-ahead-behind`): local branch rows show their
+//! commits to push / pull ("2↑ 1↓") or an upload icon when unpublished.
 //! Deviation (`418-branch-list-stash-icon`): a local branch with a Desktop
 //! stash shows the stash icon after its name (GHD `branch-list-item.tsx` does
 //! not).
@@ -466,6 +468,22 @@ impl BranchFoldout {
         tracking: Option<corvane_git::BranchTracking>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
+        // `514-branch-list-ahead-behind`: unpublished, or commits to push / pull
+        let ahead_behind = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_AHEAD_BEHIND);
+        let sync_state = (ahead_behind && branch.kind == BranchKind::Local)
+            .then(|| match (&branch.upstream, tracking) {
+                (None, _) => Some(("Not published".to_string(), None)),
+                (Some(_), Some(t)) if !t.gone && (t.ahead > 0 || t.behind > 0) => Some((
+                    format!("{} to push, {} to pull", t.ahead, t.behind),
+                    Some((t.ahead, t.behind)),
+                )),
+                _ => None,
+            })
+            .flatten();
         let t = cx.ghd();
         let name = branch.name.clone();
         let selected = match &self.selected_row {
@@ -637,6 +655,35 @@ impl BranchFoldout {
                     .text_size(FONT_SIZE())
                     .child(branch.name.clone()),
             )
+            .when_some(sync_state, |d, (tooltip, counts)| {
+                let content = match counts {
+                    None => div()
+                        .flex()
+                        .child(octicon(Octicon::Upload, t.text_secondary))
+                        .into_any_element(),
+                    Some((ahead, behind)) => div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(zpx(2.))
+                        .text_size(FONT_SIZE_SM())
+                        .when(!selected, |d| d.text_color(t.text_secondary))
+                        .when(ahead > 0, |d| d.child(format!("{ahead}↑")))
+                        .when(behind > 0, |d| d.child(format!("{behind}↓")))
+                        .into_any_element(),
+                };
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-sync-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(content)
+                        .ghd_tooltip(tooltip),
+                )
+            })
             .when(tracking.is_some_and(|t| t.gone), |d| {
                 d.child(
                     div()

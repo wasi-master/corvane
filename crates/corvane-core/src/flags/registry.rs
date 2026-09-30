@@ -982,6 +982,19 @@ registry! {
         upstream: &[Upstream::issue(20897)],
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
     },
+    /// Ahead/behind counts and "not published" in branch list rows.
+    BRANCH_LIST_AHEAD_BEHIND = 514 "branch-list-ahead-behind" {
+        title: "Push / pull state in the branch list",
+        summary: "Local branch rows show how many commits they have to push and pull (\"2↑ 1↓\") \
+                  against their upstream, or an upload icon when the branch was never published.",
+        ghd_behaviour: "Only the current branch's state shows, on the toolbar's push / pull button.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5330)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 600 Accessibility ----
 
