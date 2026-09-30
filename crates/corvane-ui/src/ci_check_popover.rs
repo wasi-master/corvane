@@ -10,6 +10,9 @@
 //! pull request's base repository says the user can only read it, the Re-run
 //! button and the per-job re-run are hidden (GHD shows them and the re-run
 //! request fails).
+//!
+//! Corvane addition (flag `395-ci-popover-pull-request-link`): the header's
+//! summary line ends with an "Open #N on GitHub" link to the pull request.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -233,6 +236,11 @@ impl CiCheckPopover {
             read_only: snap.read_only,
         };
         let checks_for_menu = checks.to_vec();
+        let pr_link = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CI_POPOVER_PULL_REQUEST_LINK);
         div()
             .flex_none()
             .flex()
@@ -265,9 +273,26 @@ impl CiCheckPopover {
                     )
                     .child(
                         div()
+                            .flex()
+                            .flex_row()
+                            .flex_wrap()
+                            .gap(SPACING_HALF())
                             .text_size(FONT_SIZE_SM())
                             .text_color(t.text_secondary)
-                            .child(summary),
+                            .child(summary)
+                            .when(pr_link, |d| {
+                                let repo = snap.repo;
+                                d.child(
+                                    crate::widgets::link_button(
+                                        "ci-open-pull-request",
+                                        format!("Open #{} on GitHub", snap.pr_number),
+                                        cx,
+                                    )
+                                    .on_click(
+                                        move |_, _, cx| Dispatcher::show_pull_request(repo, cx),
+                                    ),
+                                )
+                            }),
                     ),
             )
             .when(!snap.read_only, |d| {
