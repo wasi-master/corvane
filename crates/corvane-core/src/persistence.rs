@@ -151,6 +151,10 @@ pub struct CustomIntegration {
     /// Set when `path` is a `.app` bundle (launched through `open -b`).
     #[serde(default)]
     pub bundle_id: Option<String>,
+    /// The custom editor's name in "Open in …" labels (flag
+    /// `custom-editor-name`; not in GHD). Empty: "Custom Editor".
+    #[serde(default)]
+    pub name: String,
 }
 
 fn default_date_format() -> String {

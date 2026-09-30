@@ -7,6 +7,8 @@
 //! Usage section under Advanced (no telemetry; "Save crash reports locally"
 //! and Optional components sit there instead, scrolling within 440 px), and
 //! no Formatting section (behind a feature flag in GHD).
+//! With flag `custom-editor-name` the custom editor form has a Name box used
+//! in "Open in …" labels (GHD `CustomIntegrationForm` has path and arguments).
 
 use std::path::Path;
 use std::rc::Rc;
@@ -97,6 +99,8 @@ pub struct PreferencesDialog {
     /// `CustomIntegrationForm` inputs (Integrations tab).
     custom_editor_path: Entity<InputState>,
     custom_editor_args: Entity<InputState>,
+    /// The custom editor's menu name (flag `custom-editor-name`).
+    custom_editor_name: Entity<InputState>,
     custom_shell_path: Entity<InputState>,
     custom_shell_args: Entity<InputState>,
 }
@@ -127,9 +131,14 @@ impl PreferencesDialog {
         let shell = draft.custom_shell.clone().unwrap_or_default();
         let custom_editor_path = custom_input("Path to executable", editor.path, cx);
         let custom_editor_args = custom_input("Command line arguments", editor.arguments, cx);
+        let custom_editor_name = custom_input("Custom Editor", editor.name, cx);
         let custom_shell_path = custom_input("Path to executable", shell.path, cx);
         let custom_shell_args = custom_input("Command line arguments", shell.arguments, cx);
-        for input in [&custom_editor_path, &custom_editor_args] {
+        for input in [
+            &custom_editor_path,
+            &custom_editor_args,
+            &custom_editor_name,
+        ] {
             cx.observe(input, |this, _, cx| {
                 let path = this.custom_editor_path.read(cx).value().trim().to_string();
                 let bundle_id = bundle_id_for(&path, this.draft.custom_editor.as_ref());
@@ -137,6 +146,7 @@ impl PreferencesDialog {
                     path,
                     arguments: this.custom_editor_args.read(cx).value().trim().to_string(),
                     bundle_id,
+                    name: this.custom_editor_name.read(cx).value().trim().to_string(),
                 });
                 cx.notify();
             })
@@ -150,6 +160,7 @@ impl PreferencesDialog {
                     path,
                     arguments: this.custom_shell_args.read(cx).value().trim().to_string(),
                     bundle_id,
+                    name: String::new(),
                 });
                 cx.notify();
             })
@@ -174,6 +185,7 @@ impl PreferencesDialog {
             notification_permission: None,
             custom_editor_path,
             custom_editor_args,
+            custom_editor_name,
             custom_shell_path,
             custom_shell_args,
         };
@@ -413,11 +425,13 @@ impl PreferencesDialog {
     }
 
     /// `CustomIntegrationForm`: Path + Choose…, Arguments, validation messages.
+    /// `name`: the custom editor's menu-name box (flag `custom-editor-name`).
     fn custom_form(
         &self,
         id: &'static str,
         path: &Entity<InputState>,
         args: &Entity<InputState>,
+        name: Option<&Entity<InputState>>,
         window: &Window,
         cx: &Context<Self>,
     ) -> Div {
@@ -517,6 +531,19 @@ impl PreferencesDialog {
                 cx,
             ))
             .when_some(args_error, |d, message| d.child(input_error(message)))
+            .when_some(name, |d, name| {
+                d.child(labeled(
+                    "Name",
+                    text_box(
+                        SharedString::from(format!("{id}-name")),
+                        name,
+                        None,
+                        window,
+                        cx,
+                    ),
+                    cx,
+                ))
+            })
     }
 
     fn integrations_tab(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
@@ -630,10 +657,15 @@ impl PreferencesDialog {
                 )
             })
             .when(use_custom_editor, |d| {
+                let name = s
+                    .flags
+                    .bool(corvane_core::flags::ids::CUSTOM_EDITOR_NAME)
+                    .then_some(&self.custom_editor_name);
                 d.child(self.custom_form(
                     "custom-editor",
                     &self.custom_editor_path,
                     &self.custom_editor_args,
+                    name,
                     window,
                     cx,
                 ))
@@ -656,6 +688,7 @@ impl PreferencesDialog {
                     "custom-shell",
                     &self.custom_shell_path,
                     &self.custom_shell_args,
+                    None,
                     window,
                     cx,
                 ))
