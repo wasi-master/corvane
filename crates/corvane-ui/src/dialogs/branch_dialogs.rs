@@ -281,6 +281,7 @@ impl Render for CreateBranchDialog {
                                                 rs.default_branch.as_deref(),
                                                 &rs.recent_branches,
                                                 &query,
+crate::branch_list::sort_by_date(cx),
                                             )
                                         })
                                         .unwrap_or_default(),
@@ -942,6 +943,7 @@ impl Render for MergeBranchDialog {
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             };

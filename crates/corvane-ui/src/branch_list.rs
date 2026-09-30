@@ -11,6 +11,9 @@
 //! (`onMouseEnterPullRequestListItem`); leaving the row hides it after 500 ms
 //! unless the pointer reaches the quick view, and leaving the quick view
 //! hides it at once (`onMouseLeavePullRequestQuickView`).
+//!
+//! Deviations: dates are the tip's committer date (GHD: author date); Other
+//! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -86,12 +89,24 @@ pub struct BranchGroup {
     pub branches: Vec<Branch>,
 }
 
+/// Flag `257-branch-list-sort-by-date`: Other Branches newest first.
+pub fn sort_by_date(cx: &App) -> bool {
+    AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_SORT_BY_DATE)
+    })
+}
+
 /// GHD `groupBranches` over the merged local + remote-only branch list.
+/// `newest_first` orders Other Branches by the tip's committer date (newest
+/// first, then by name) instead of by name alone.
 pub fn group_branches(
     branches: &[Branch],
     default_branch: Option<&str>,
     recent: &[String],
     query: &str,
+    newest_first: bool,
 ) -> Vec<BranchGroup> {
     let query = query.trim();
     let matches = |b: &Branch| query.is_empty() || fuzzy_score(query, &b.name).is_some();
@@ -133,13 +148,17 @@ pub fn group_branches(
             branches: recent_branches,
         });
     }
-    let other: Vec<Branch> = all
+    let mut other: Vec<Branch> = all
         .iter()
         .filter(|b| Some(b.name.as_str()) != default_branch)
         .filter(|b| !recent.contains(&b.name) || b.kind == BranchKind::Remote)
         .filter(|b| matches(b))
         .cloned()
         .collect();
+    if newest_first {
+        // stable: equal dates keep the name order
+        other.sort_by_key(|b| std::cmp::Reverse(b.tip_time.unwrap_or(0)));
+    }
     if !other.is_empty() {
         groups.push(BranchGroup {
             title: "Other Branches",
@@ -742,6 +761,7 @@ impl Render for BranchFoldout {
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             };

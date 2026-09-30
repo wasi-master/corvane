@@ -296,6 +296,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
 
+    /// Other Branches sorted by last update.
+    BRANCH_LIST_SORT_BY_DATE = 257 "branch-list-sort-by-date" {
+        title: "Branch lists sort other branches by date",
+        summary: "Other Branches in the branch list and the branch pickers (merge, rebase, \
+                  compare, pull request base, new branch) are ordered by the tip commit's date, \
+                  most recently updated first.",
+        ghd_behaviour: "Sorted by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19903), Upstream::issue(21358), Upstream::issue(5155)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

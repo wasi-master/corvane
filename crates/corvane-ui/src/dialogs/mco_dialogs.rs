@@ -94,6 +94,7 @@ impl McoDialog {
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             };
@@ -283,6 +284,7 @@ impl McoDialog {
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             }
