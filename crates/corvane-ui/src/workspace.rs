@@ -85,6 +85,8 @@ pub struct Workspace {
     /// A tab click or View › Show Changes / History asked for the section's
     /// list to take focus at the next render (`615-focus-list-on-section-switch`).
     focus_section_list: bool,
+    /// The launch has not placed focus yet (`616-launch-focuses-commit-summary`).
+    launch_focus_pending: bool,
 }
 
 impl Workspace {
@@ -188,6 +190,7 @@ impl Workspace {
             ci_popover,
             last_foldout: None,
             focus_section_list: false,
+            launch_focus_pending: true,
             dialogs,
             diff_view,
             welcome,
@@ -320,6 +323,38 @@ impl Workspace {
         {
             self.focus_section_list = true;
             cx.notify();
+        }
+    }
+
+    /// Corvane (`616-launch-focuses-commit-summary`): once the first
+    /// repository's status has loaded after launch, the commit summary takes
+    /// focus when there are changes to commit and nothing else is open.
+    fn place_launch_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.launch_focus_pending {
+            return;
+        }
+        let (loaded, has_changes, free) = {
+            let s = self.state.read(cx);
+            let rs = s.selected_state();
+            (
+                // no repository at launch: nothing to wait for
+                s.selected.is_none() || rs.is_some_and(|rs| rs.status.is_some()),
+                rs.is_some_and(|rs| rs.changed_files() > 0),
+                s.popup.is_none() && s.foldout.is_none() && s.settings.welcome_completed,
+            )
+        };
+        if !loaded {
+            return;
+        }
+        self.launch_focus_pending = false;
+        let enabled = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::LAUNCH_FOCUSES_COMMIT_SUMMARY);
+        if enabled && has_changes && free && self.section == Section::Changes {
+            self.changes
+                .update(cx, |changes, cx| changes.focus_summary(window, cx));
         }
     }
 
@@ -698,6 +733,7 @@ impl Render for Workspace {
         {
             self.section = section;
         }
+        self.place_launch_focus(window, cx);
         if std::mem::take(&mut self.focus_section_list) {
             let handle = match self.section {
                 Section::Changes => self.changes.read(cx).list_focus_handle(),

@@ -1178,6 +1178,20 @@ registry! {
         upstream: &[Upstream::issue(535)],
         code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane/src/main.rs"],
     },
+    /// At launch the commit summary takes focus when there are changes.
+    LAUNCH_FOCUSES_COMMIT_SUMMARY = 616 "launch-focuses-commit-summary" {
+        title: "Launch focuses the commit summary",
+        summary: "When Corvane opens on a repository with uncommitted changes, the caret starts \
+                  in the commit summary, ready to type.",
+        ghd_behaviour: "Nothing useful has focus at launch; the summary has to be clicked (or \
+                        reached with ⌘G).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20417)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

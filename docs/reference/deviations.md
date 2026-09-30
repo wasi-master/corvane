@@ -141,6 +141,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - With the changes list or a commit's file list focused, ⌥⌘C / ⇧⌥⌘C copy the selected files' full / relative paths (VS Code's keys; GHD: context menu only). Flag: `613-copy-path-shortcuts`.
 - Navigation shortcuts (Corvane additions): View › Show Pull Requests List ⌃⌘P opens the branch list on its Pull Requests tab, ⇧⌘] / ⇧⌘[ select the next / previous repository in the repository list's order (Recent left out, wrapping), ⌘3 focuses the diff, ⌥↓ / ⌥↑ with the diff focused select the next / previous file of the changes or commit file list. Flag: `614-navigation-shortcuts`.
 - Clicking the Changes / History tab, ⌘1 / ⌘2 and ⌃Tab focus the section's list (GHD leaves focus on the body). Flag: `615-focus-list-on-section-switch`.
+- When Corvane opens on a repository with uncommitted changes (and no dialog or foldout), the commit summary takes focus once the status has loaded (Corvane option; GHD leaves focus elsewhere). Flag: `616-launch-focuses-commit-summary`.
 
 ## Accessibility
 
