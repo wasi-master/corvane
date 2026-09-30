@@ -50,6 +50,46 @@ pub fn revert_commits_no_commit(
     Ok(())
 }
 
+/// Corvane addition (flag `443`): undo one file's changes from `sha` in the
+/// working tree - the file's diff against the first parent (the empty tree
+/// for a root commit), `-M` so a rename goes back to `old_path`, applied in
+/// reverse with `git apply -R`. git checks the whole patch before writing,
+/// so a working file whose lines no longer match is left untouched and the
+/// error says which hunk failed; local changes elsewhere in the file stay.
+/// Nothing is staged or committed.
+pub fn revert_file_in_commit(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    sha: &str,
+    path: &str,
+    old_path: Option<&str>,
+) -> Result<()> {
+    let diff = |base: &str| {
+        let mut cmd = GitCommand::new(git.clone())
+            .args(["diff", "--binary", "--no-color", "--no-ext-diff", "-M"])
+            .args([base, sha, "--", path])
+            .current_dir(workdir);
+        if let Some(old) = old_path {
+            cmd = cmd.arg(old);
+        }
+        cmd.run()
+    };
+    let patch = match diff(&format!("{sha}^")) {
+        Ok(out) => out.stdout,
+        Err(err) if crate::log::is_bad_revision(&err) => diff(crate::log::NULL_TREE_SHA)?.stdout,
+        Err(err) => return Err(err),
+    };
+    if patch.is_empty() {
+        return Ok(());
+    }
+    GitCommand::new(git)
+        .args(["apply", "-R", "--binary", "-"])
+        .stdin(patch)
+        .current_dir(workdir)
+        .run()?;
+    Ok(())
+}
+
 /// `GitResetMode`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResetMode {
@@ -175,6 +215,45 @@ mod tests {
         checkout_commit(git.clone(), path, &second.sha).unwrap();
         let info = crate::open_repository(path).unwrap();
         assert!(matches!(info.tip, corvane_models::Tip::Detached { .. }));
+    }
+
+    #[test]
+    fn revert_one_file_of_a_commit() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        std::fs::write(path.join("a.txt"), "three\n").unwrap();
+        std::fs::write(path.join("b.txt"), "b\n").unwrap();
+        let git_run = |args: &[&str]| {
+            GitCommand::new(git.clone())
+                .args(args)
+                .current_dir(path)
+                .env("GIT_AUTHOR_NAME", "T")
+                .env("GIT_AUTHOR_EMAIL", "t@example.com")
+                .env("GIT_COMMITTER_NAME", "T")
+                .env("GIT_COMMITTER_EMAIL", "t@example.com")
+                .run()
+                .unwrap();
+        };
+        git_run(&["add", "."]);
+        git_run(&["commit", "-q", "-m", "third"]);
+        let commits = crate::get_commits(path, "HEAD", 0, 10).unwrap();
+        // only a.txt goes back; b.txt (added by the same commit) stays
+        revert_file_in_commit(git.clone(), path, &commits[0].sha, "a.txt", None).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "two\n"
+        );
+        assert!(path.join("b.txt").exists());
+        // an older commit's change no longer matches the working file: refused, untouched
+        std::fs::write(path.join("a.txt"), "local\n").unwrap();
+        assert!(revert_file_in_commit(git.clone(), path, &commits[1].sha, "a.txt", None).is_err());
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "local\n"
+        );
+        // a file the commit added goes away
+        revert_file_in_commit(git.clone(), path, &commits[0].sha, "b.txt", None).unwrap();
+        assert!(!path.join("b.txt").exists());
     }
 
     #[test]
