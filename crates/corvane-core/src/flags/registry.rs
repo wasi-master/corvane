@@ -375,6 +375,20 @@ registry! {
         upstream: &[Upstream::issue(10402)],
         code: &["crates/corvane-ui/src/dialogs/discard_changes.rs"],
     },
+    /// Hard 72-character limit on the commit summary.
+    SUMMARY_MAX_LENGTH = 277 "summary-max-length" {
+        title: "Limit the commit summary to 72 characters",
+        summary: "The commit summary field takes at most 72 characters (GitHub truncates longer \
+                  summaries); typing or pasting past the limit drops the excess, like an HTML \
+                  maxlength.",
+        ghd_behaviour: "No limit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18290)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 300 GitHub ----
 

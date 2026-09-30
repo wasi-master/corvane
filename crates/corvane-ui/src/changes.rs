@@ -11,6 +11,7 @@
 //!   (`273-recall-commit-messages`).
 //! - committing on the default branch asks first
 //!   (`275-confirm-commit-to-default-branch`).
+//! - the summary can be capped at 72 characters (`277-summary-max-length`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -236,6 +237,34 @@ impl ChangesSidebar {
         cx.subscribe(&summary, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::Summary, ev, cx)
         })
+        .detach();
+        // `277-summary-max-length`: like `maxlength`, the part of an edit
+        // that goes past the limit is dropped
+        cx.subscribe_in(
+            &summary,
+            window,
+            |this, summary, ev: &InputEvent, window, cx| {
+                if !matches!(ev, InputEvent::Change)
+                    || !this
+                        .state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::SUMMARY_MAX_LENGTH)
+                {
+                    return;
+                }
+                let (text, caret) = {
+                    let s = summary.read(cx);
+                    (s.value().to_string(), s.cursor())
+                };
+                if let Some(excess) = summary_overflow(&text, caret, SUMMARY_MAX_CHARS) {
+                    summary.update(cx, |s, cx| {
+                        s.set_selected_range(excess, cx);
+                        s.replace("", window, cx);
+                    });
+                }
+            },
+        )
         .detach();
         cx.subscribe(&description, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::Description, ev, cx)
@@ -3418,6 +3447,28 @@ pub(crate) fn open_all_in_editor_item(label: String, files: Vec<PathBuf>) -> Men
     .enabled(enabled)
 }
 
+/// `277-summary-max-length`: GitHub truncates longer summaries.
+const SUMMARY_MAX_CHARS: usize = 72;
+
+/// The byte range to drop so `text` fits in `max` chars: the chars just
+/// before `caret` (the end of the edit that overflowed), or the tail when
+/// the caret is too close to the start.
+fn summary_overflow(text: &str, caret: usize, max: usize) -> Option<Range<usize>> {
+    let excess = text.chars().count().checked_sub(max).filter(|n| *n > 0)?;
+    let caret = caret.min(text.len());
+    let before = text[..caret].chars().count();
+    if before >= excess {
+        let start = text[..caret]
+            .char_indices()
+            .nth(before - excess)
+            .map_or(caret, |(i, _)| i);
+        Some(start..caret)
+    } else {
+        let start = text.char_indices().nth(max).map_or(text.len(), |(i, _)| i);
+        Some(start..text.len())
+    }
+}
+
 /// One changes-list row (`ChangedFile`).
 #[allow(clippy::too_many_arguments)]
 fn file_row(
@@ -3625,5 +3676,23 @@ fn changed_files_label(visible: usize, total: usize) -> String {
             "{prefix}{} changed files",
             crate::format::format_count(total as u64)
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::summary_overflow;
+
+    #[test]
+    fn summary_overflow_drops_the_end_of_the_edit() {
+        assert_eq!(summary_overflow("abc", 3, 3), None);
+        // typed "X" at byte 1 of "abc" with max 3
+        assert_eq!(summary_overflow("aXbc", 2, 3), Some(1..2));
+        // pasted "XYZ" at the end
+        assert_eq!(summary_overflow("abXYZ", 5, 3), Some(3..5));
+        // multi-byte chars
+        assert_eq!(summary_overflow("éé€", 7, 2), Some(4..7));
+        // caret at the start: cut the tail
+        assert_eq!(summary_overflow("abcd", 0, 3), Some(3..4));
     }
 }
