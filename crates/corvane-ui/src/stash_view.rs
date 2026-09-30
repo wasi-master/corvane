@@ -9,6 +9,10 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::actions::{
+    ExtendSelectionDown, ExtendSelectionUp, SelectFirstFile, SelectLastFile, SelectNextFile,
+    SelectPreviousFile,
+};
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::octicon;
 use crate::scrollbar::ScrollbarExt;
@@ -33,6 +37,9 @@ pub struct StashDiffViewer {
     file_list_width: Pixels,
     /// The file list takes focus on click so ⌘9 / ⌘8 resize it.
     file_list_focus: FocusHandle,
+    /// `file_list_focus` held focus at the last render (active selection colours).
+    file_list_focused: bool,
+    file_scroll: UniformListScrollHandle,
 }
 
 impl StashDiffViewer {
@@ -56,7 +63,55 @@ impl StashDiffViewer {
             resizable,
             file_list_width,
             file_list_focus: cx.focus_handle(),
+            file_list_focused: false,
+            file_scroll: UniformListScrollHandle::new(),
         }
+    }
+
+    /// The repository, the stash's files in list order and the selected
+    /// file's index.
+    fn file_order(&self, cx: &App) -> Option<(u64, Vec<String>, Option<usize>)> {
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let rs = s.repo_states.get(&id)?;
+        let order: Vec<String> = rs
+            .stash_files
+            .as_ref()
+            .map(|f| f.iter().map(|f| f.path.clone()).collect())
+            .unwrap_or_default();
+        let current = rs
+            .stash_selected_file
+            .as_ref()
+            .and_then(|p| order.iter().position(|o| o == p));
+        Some((id, order, current))
+    }
+
+    /// GHD `List.moveSelection` on the stash's `FileList` (↑ / ↓, and ⌥↓ /
+    /// ⌥↑ from the diff; single selection, so ⇧↑ / ⇧↓ too): the file
+    /// `delta` rows away, clamped at the ends, scrolled into view.
+    pub fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let Some((id, order, current)) = self.file_order(cx) else {
+            return;
+        };
+        if let Some(ix) = corvane_core::list_selection::step_index(order.len(), current, delta) {
+            self.select_index(id, &order, ix, cx);
+        }
+    }
+
+    /// Home / End, ⌘↑ / ⌘↓: the first or last file.
+    fn select_edge(&mut self, last: bool, cx: &mut Context<Self>) {
+        let Some((id, order, _)) = self.file_order(cx) else {
+            return;
+        };
+        if !order.is_empty() {
+            let ix = if last { order.len() - 1 } else { 0 };
+            self.select_index(id, &order, ix, cx);
+        }
+    }
+
+    fn select_index(&mut self, id: u64, order: &[String], ix: usize, cx: &mut Context<Self>) {
+        Dispatcher::select_stash_file(id, order[ix].clone(), cx);
+        self.file_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
     }
 
     fn file_list(&self, id: u64, cx: &Context<Self>) -> AnyElement {
@@ -68,6 +123,8 @@ impl StashDiffViewer {
         let selected = rs.and_then(|r| r.stash_selected_file.clone());
         let count = files.len();
         let files = std::rc::Rc::new(files);
+        let scroll = self.file_scroll.clone();
+        let focused = self.file_list_focused;
         div()
             .size_full()
             .flex()
@@ -91,23 +148,35 @@ impl StashDiffViewer {
                                     let file = &files[ix];
                                     let is_selected =
                                         selected.as_deref() == Some(file.path.as_str());
-                                    stash_file_row(id, file, is_selected, cx)
+                                    stash_file_row(id, file, is_selected, focused, cx)
                                 })
                                 .collect()
                         })
                         .flex_1()
                         .min_h_0()
-                        .with_scrollbar(),
+                        .with_scrollbar_handle(&scroll),
                     ),
             )
             .into_any_element()
     }
 }
 
-fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &App) -> AnyElement {
+fn stash_file_row(
+    id: u64,
+    file: &CommittedFileChange,
+    is_selected: bool,
+    list_focused: bool,
+    cx: &App,
+) -> AnyElement {
     let t = cx.ghd();
     let hover_bg = t.list_item_hover_background;
     let (icon, color) = status_icon(file.status.kind, t);
+    // `.focus-within .list-item.selected`: the icon takes the row's colour
+    let color = if is_selected && list_focused {
+        t.box_selected_active_text
+    } else {
+        color
+    };
     let path = file.path.clone();
     div()
         .id(SharedString::from(format!("stash-file-{}", file.path)))
@@ -129,12 +198,17 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
         .px(SPACING())
         .cursor_pointer()
         .when(is_selected, |d| {
-            d.bg(t.box_selected_background)
-                .text_color(t.box_selected_text)
+            if list_focused {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
+            } else {
+                d.bg(t.box_selected_background)
+                    .text_color(t.box_selected_text)
+            }
         })
         // `.list-item:hover` outranks `.list-item.selected` (flag 104 keeps it)
         .when(
-            !(is_selected && crate::widgets::selection_keeps_colour_on_hover(cx)),
+            !(is_selected && (list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
             move |d| d.hover(move |s| s.bg(hover_bg)),
         )
         .on_click(move |_, _, cx| Dispatcher::select_stash_file(id, path.clone(), cx))
@@ -150,7 +224,12 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
                         .flex_row()
                         .child(
                             div()
-                                .text_color(t.text_secondary)
+                                // `.list-item.selected .dirname` inherits the row colour
+                                .text_color(match (is_selected, list_focused) {
+                                    (true, true) => t.box_selected_active_text,
+                                    (true, false) => t.box_selected_text,
+                                    _ => t.text_secondary,
+                                })
                                 .child(file.directory().to_string()),
                         )
                         .child(div().child(file.file_name().to_string())),
@@ -161,7 +240,8 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
 }
 
 impl Render for StashDiffViewer {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.file_list_focused = self.file_list_focus.is_focused(window);
         let t = cx.ghd();
         let (id, selected_file) = {
             let s = self.state.read(cx);
@@ -250,16 +330,37 @@ impl Render for StashDiffViewer {
                         resizable_panel()
                             .size(self.file_list_width)
                             .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
-                            .child(crate::active_resizable::active_resizable(
-                                "stash-file-list-resizable",
-                                &self.resizable,
-                                Some(&self.file_list_focus),
-                                crate::active_resizable::ResizableDescription::new(
-                                    "Stash file list",
-                                    FILE_LIST_MIN()..FILE_LIST_MAX(),
-                                ),
-                                self.file_list(id, cx),
-                            )),
+                            .child(
+                                crate::active_resizable::active_resizable(
+                                    "stash-file-list-resizable",
+                                    &self.resizable,
+                                    Some(&self.file_list_focus),
+                                    crate::active_resizable::ResizableDescription::new(
+                                        "Stash file list",
+                                        FILE_LIST_MIN()..FILE_LIST_MAX(),
+                                    ),
+                                    self.file_list(id, cx),
+                                )
+                                .key_context("StashFileList")
+                                .on_action(cx.listener(|this, _: &SelectNextFile, _, cx| {
+                                    this.select_relative(1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                                    this.select_relative(-1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &ExtendSelectionDown, _, cx| {
+                                    this.select_relative(1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &ExtendSelectionUp, _, cx| {
+                                    this.select_relative(-1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &SelectFirstFile, _, cx| {
+                                    this.select_edge(false, cx)
+                                }))
+                                .on_action(cx.listener(
+                                    |this, _: &SelectLastFile, _, cx| this.select_edge(true, cx),
+                                )),
+                            ),
                     )
                     .child(
                         resizable_panel().child(

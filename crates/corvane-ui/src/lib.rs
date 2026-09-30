@@ -20,6 +20,7 @@ pub mod dialogs;
 pub mod diff_expansion;
 pub mod diff_view;
 pub mod diff_view_rows;
+pub mod filter_list;
 pub mod foldout;
 pub mod format;
 pub mod history;
