@@ -68,7 +68,9 @@ pub fn render_markdown() -> String {
         out,
         "Flags tagged **Bug fix** fix behaviour GitHub Desktop plainly gets wrong; the dialog hides \
          them unless **Show bug fixes** is ticked (display only: presets and `CORVANE_FLAGS` still \
-         apply). The rest are features: new capabilities, options or looks."
+         apply). The rest are features: new capabilities, options or looks. The dialog's All / On / \
+         Off switch likewise shows only the flags that deviate from GitHub Desktop, or only those \
+         that do not."
     );
     let _ = writeln!(out);
     let _ = writeln!(out, "## Presets");
@@ -76,16 +78,18 @@ pub fn render_markdown() -> String {
     let _ = writeln!(
         out,
         "A preset is the base layer; per-flag overrides sit on top (\"Custom\"). Picking a preset \
-         clears the overrides."
+         clears the overrides (the dialog asks first when there are any); the dialog's Presets \
+         page shows each preset's details and how many flags it switches on."
     );
     let _ = writeln!(out);
     for preset in Preset::ALL {
         let _ = writeln!(
             out,
-            "- **{}** (`{}`): {}",
+            "- **{}** (`{}`): {} {}",
             preset.title(),
             preset.slug(),
-            preset.description()
+            preset.description(),
+            preset.details()
         );
     }
     let _ = writeln!(out);

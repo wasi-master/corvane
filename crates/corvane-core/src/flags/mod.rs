@@ -438,6 +438,12 @@ impl FlagDef {
         show_bug_fixes || !self.is_bug_fix()
     }
 
+    /// Whether `value` is a deviation from GitHub Desktop ("on"): anything
+    /// but the GitHub Desktop preset's value.
+    pub fn is_on(&self, value: &Value) -> bool {
+        *value != self.ghd
+    }
+
     pub fn value_for(&self, preset: Preset) -> &Value {
         match preset {
             Preset::GitHubDesktop => &self.ghd,

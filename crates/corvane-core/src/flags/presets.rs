@@ -64,6 +64,33 @@ impl Preset {
         }
     }
 
+    /// A few sentences for the dialog's Presets page and the generated docs:
+    /// who the preset is for and what it switches on.
+    pub const fn details(self) -> &'static str {
+        match self {
+            Preset::GitHubDesktop => {
+                "Every flag at GitHub Desktop 3.6.6's behaviour, its bugs included. Pick it to \
+                 compare the two apps side by side or to keep your habits exactly as they are; \
+                 the parity harness runs Corvane with it."
+            }
+            Preset::Familiar => {
+                "Flags that change what you see stay at GitHub Desktop's behaviour; flags that \
+                 only change how things work (most bug fixes, refreshes, smooth scrolling, commit \
+                 templates and the like) are on. Nothing moves and nothing new appears."
+            }
+            Preset::Corvane => {
+                "The default. Every deviation that is finished and broadly useful is on, bug \
+                 fixes included. Extras that change GitHub Desktop's look or workflow more \
+                 strongly, or that few people want, stay off until you switch them on."
+            }
+            Preset::Everything => {
+                "Every flag on, including the extras the Corvane preset leaves off and the \
+                 experimental ones. Good for trying out everything Corvane can do; expect parts \
+                 of it to feel unlike GitHub Desktop."
+            }
+        }
+    }
+
     pub fn value_of(self, def: &FlagDef) -> &Value {
         def.value_for(self)
     }
