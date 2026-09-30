@@ -1416,6 +1416,31 @@ pub fn url_matches_remote(a: &str, b: &str) -> bool {
     }
 }
 
+/// `clone_url` (an API `clone_url`, HTTPS) over `like`'s protocol: when
+/// `like` is an SSH remote (`user@host:path` or `ssh://user@host/path`), the
+/// same `owner/name` path on `like`'s SSH user and host (an SSH host alias
+/// stays); otherwise `clone_url` unchanged. Not in GHD, which always adds
+/// HTTPS remotes (desktop/desktop#19074, #9490).
+pub fn clone_url_like_remote(clone_url: &str, like: &str) -> String {
+    let Some((_, path)) = split_remote(clone_url) else {
+        return clone_url.to_string();
+    };
+    let path = path.trim_start_matches('/');
+    let like = like.trim();
+    if let Some(rest) = like.strip_prefix("ssh://") {
+        if let Some((authority, _)) = rest.split_once('/') {
+            return format!("ssh://{authority}/{path}");
+        }
+    } else if !like.contains("://")
+        && let Some((prefix, _)) = like.split_once(':')
+        && prefix.contains('@')
+        && !prefix.contains('/')
+    {
+        return format!("{prefix}:{path}");
+    }
+    clone_url.to_string()
+}
+
 // ---------------------------------------------------------------------------
 // Forks (`models/workflow-preferences.ts`)
 // ---------------------------------------------------------------------------
@@ -1880,6 +1905,28 @@ mod github_layer_tests {
             "https://github.com/octocat/hello-world",
             "https://github.com/octocat/other"
         ));
+    }
+
+    #[test]
+    fn clone_url_follows_the_remote_protocol() {
+        let url = "https://ghe.corp/fork/app.git";
+        assert_eq!(
+            clone_url_like_remote(url, "git@ghe.corp:team/app.git"),
+            "git@ghe.corp:fork/app.git"
+        );
+        assert_eq!(
+            clone_url_like_remote(url, "work@gh-alias:team/app"),
+            "work@gh-alias:fork/app.git"
+        );
+        assert_eq!(
+            clone_url_like_remote(url, "ssh://git@ghe.corp:2222/team/app.git"),
+            "ssh://git@ghe.corp:2222/fork/app.git"
+        );
+        assert_eq!(
+            clone_url_like_remote(url, "https://ghe.corp/team/app.git"),
+            url
+        );
+        assert_eq!(clone_url_like_remote(url, "/local/path"), url);
     }
 
     #[test]

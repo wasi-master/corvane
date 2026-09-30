@@ -15,7 +15,8 @@ use std::time::{Duration, Instant};
 
 use corvane_github::{ApiPullRequest, Client, GitHubError};
 use corvane_models::{
-    Branch, BranchKind, GitHubRepository, PullRequest, PullRequestRef, Remote, url_matches_remote,
+    Branch, BranchKind, GitHubRepository, PullRequest, PullRequestRef, Remote,
+    clone_url_like_remote, url_matches_remote,
 };
 use gpui_kit::{App, AsyncApp};
 use serde::{Deserialize, Serialize};
@@ -517,22 +518,29 @@ impl Dispatcher {
             );
             return;
         };
-        let (remotes, branches, default_remote, has_parent) = {
+        let (remotes, branches, default_remote, has_parent, ssh_like) = {
             let s = Self::state(cx).read(cx);
             let info = s.repo_states.get(&id).and_then(|rs| rs.info.as_ref());
+            let current = Self::current_remote_in(s, id);
             (
                 info.map(|i| i.remotes.clone()).unwrap_or_default(),
                 info.map(|i| i.branches.clone()).unwrap_or_default(),
-                Self::current_remote_in(s, id).map(|r| r.name),
+                current.as_ref().map(|r| r.name.clone()),
                 s.repository(id)
                     .and_then(|r| r.github.as_ref())
                     .is_some_and(|gh| gh.parent.is_some()),
+                current
+                    .filter(|_| s.flags.bool(crate::flags::ids::FORK_REMOTES_KEEP_SSH))
+                    .map(|r| r.url),
             )
         };
         let askpass = Self::askpass_env(cx);
         let number = pr.number;
         let head_ref = pr.head.ref_name.clone();
-        let head_url = head_repo.clone_url.clone();
+        let head_url = match &ssh_like {
+            Some(like) => clone_url_like_remote(&head_repo.clone_url, like),
+            None => head_repo.clone_url.clone(),
+        };
         let head_owner = head_repo.owner.clone();
         spawn_bg(
             cx,

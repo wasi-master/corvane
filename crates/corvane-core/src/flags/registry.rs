@@ -375,6 +375,21 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/commit_status.rs"],
     },
+    /// Fork and pull-request remotes follow an SSH origin.
+    FORK_REMOTES_KEEP_SSH = 385 "fork-remotes-keep-ssh" {
+        title: "Fork remotes keep SSH",
+        summary: "When the repository's remote is SSH, Create Fork's new origin, the upstream \
+                  remote and the remote added to check out a pull request from a fork use SSH \
+                  on the same host too.",
+        ghd_behaviour: "Always uses the API's HTTPS clone URL, so SSH-only setups cannot fetch \
+                        or push through those remotes.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(19074), Upstream::issue(9490)],
+        code: &["crates/corvane-core/src/forks.rs", "crates/corvane-core/src/pull_requests.rs", "crates/corvane-ui/src/dialogs/fork_dialogs.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
