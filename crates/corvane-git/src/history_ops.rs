@@ -80,11 +80,21 @@ pub fn checkout_commit(git: Arc<GitBinary>, workdir: &Path, sha: &str) -> Result
 }
 
 /// `createTag`: annotated tag with an empty message, as GHD creates them.
-pub fn create_tag(git: Arc<GitBinary>, workdir: &Path, name: &str, sha: &str) -> Result<()> {
-    GitCommand::new(git)
-        .args(["tag", "-a", "-m", "", name, sha])
-        .current_dir(workdir)
-        .run()?;
+/// A non-empty `message` (flag `244`) is kept as typed, `#` lines included.
+pub fn create_tag(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    name: &str,
+    sha: &str,
+    message: &str,
+) -> Result<()> {
+    let mut cmd = GitCommand::new(git)
+        .args(["tag", "-a", "-m", message])
+        .current_dir(workdir);
+    if !message.is_empty() {
+        cmd = cmd.arg("--cleanup=whitespace");
+    }
+    cmd.args([name, sha]).run()?;
     Ok(())
 }
 
@@ -135,10 +145,22 @@ mod tests {
         let commits = crate::get_commits(path, "HEAD", 0, 10).unwrap();
         let (second, first) = (&commits[0], &commits[1]);
 
-        create_tag(git.clone(), path, "v1", &first.sha).unwrap();
+        create_tag(git.clone(), path, "v1", &first.sha, "").unwrap();
         let tagged = crate::get_commits(path, "HEAD", 0, 10).unwrap();
         assert_eq!(tagged[1].tags, vec!["v1".to_string()]);
         delete_tag(git.clone(), path, "v1").unwrap();
+
+        create_tag(git.clone(), path, "v2", &first.sha, "Release\n\n#12 fixed").unwrap();
+        let out = GitCommand::new(git.clone())
+            .args(["tag", "-l", "--format=%(contents)", "v2"])
+            .current_dir(path)
+            .run()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout).trim_end(),
+            "Release\n\n#12 fixed"
+        );
+        delete_tag(git.clone(), path, "v2").unwrap();
 
         revert_commit(git.clone(), path, &second.sha, false).unwrap();
         assert_eq!(

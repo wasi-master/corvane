@@ -1511,14 +1511,15 @@ impl Dispatcher {
     }
 
     /// GHD `_createTag`: the new tag joins `tagsToPush`.
-    pub fn create_tag(id: u64, name: String, sha: String, cx: &mut App) {
+    /// `message` is empty unless flag `244` shows the Message field.
+    pub fn create_tag(id: u64, name: String, sha: String, message: String, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
         let tag = name.clone();
         let task = cx
             .background_executor()
-            .spawn(async move { corvane_git::create_tag(git, &workdir, &name, &sha) });
+            .spawn(async move { corvane_git::create_tag(git, &workdir, &name, &sha, &message) });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {

@@ -38,6 +38,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The commit list scrolls back to the top when the checked-out branch (or the repository) changes; GHD keeps the list's scroll offset. Flag: `241-history-scrolls-to-top-on-branch-change`.
 - Revert without committing (Corvane addition; GHD `revertCommit` only commits one revert at a time): Revert Changes in Commit Without Committing and, for a multi-commit selection, Revert Changes in N Commits Without Committing run `git revert --no-commit` newest first and switch to Changes with the result staged. Refused while the working directory has changes; a conflict resets the index and working tree to `HEAD` and drops the sequencer state. Flag: `242-revert-without-committing`.
 - Push Up to This Commit (Corvane addition; GHD pushes whole branches only): on the current branch's unpushed commits (the first `ahead` rows) the commit menu runs `git push <remote> <sha>:refs/heads/<upstream branch>` through the normal push path (progress, fetch, auth retry). No force: git refuses anything that is not a fast-forward. Unpushed tags are not sent along, since they may point past the commit. Flag: `243-push-up-to-commit`.
+- Create a Tag has an optional Message field (Corvane addition; GHD `createTag` always passes `-m ""`): a non-empty message is trimmed and stored with `--cleanup=whitespace`, so `#` lines survive. Flag: `244-tag-message`.
 
 ## Tutorial
 

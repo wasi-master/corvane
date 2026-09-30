@@ -322,6 +322,19 @@ registry! {
         upstream: &[Upstream::issue(19238), Upstream::issue(20670)],
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/remote.rs"],
     },
+    /// Create a Tag's Message field.
+    TAG_MESSAGE = 244 "tag-message" {
+        title: "Tag message",
+        summary: "Create a Tag has an optional Message field; the annotated tag carries it as \
+                  typed.",
+        ghd_behaviour: "Annotated tags always get an empty message.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12995), Upstream::issue(22890)],
+        code: &["crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-git/src/history_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 
