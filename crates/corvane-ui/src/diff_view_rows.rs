@@ -254,7 +254,7 @@ pub fn build_rows(hunks: &[XHunk]) -> Vec<Row> {
                 kind: line.kind,
                 old: line.old_line,
                 new: line.new_line,
-                text: line.text.replace('\t', "    "),
+                text: expand_tabs(&line.text),
                 no_newline: line.no_trailing_newline,
                 group: None,
                 group_type: None,
@@ -303,6 +303,45 @@ fn close_block(rows: &mut [Row], start: usize, end: usize) {
         row.group = Some((first, len));
         row.group_type = Some(kind);
     }
+}
+
+/// What a tab becomes in a row's text. GHD keeps the tab and lets CSS
+/// `tab-size` (Settings › Appearance › Tab Size, applied on
+/// `#desktop-app-chrome` in `app/src/ui/app.tsx`) advance to the next tab
+/// stop; Corvane draws a fixed four spaces per tab, whatever the column or
+/// the setting (`.docs/deviations.md` › Diff viewer).
+const TAB_EXPANSION: &str = "    ";
+
+/// A diff line as a row shows it: tabs expanded to [`TAB_EXPANSION`].
+pub fn expand_tabs(line: &str) -> String {
+    line.replace('\t', TAB_EXPANSION)
+}
+
+/// Moves syntax spans computed on a raw file line (tabs intact) onto the
+/// row's [`expand_tabs`] text: every tab before an offset pushes it right
+/// by `TAB_EXPANSION.len() - 1` bytes. Spans that still do not fit the row
+/// (the file line and the diff line disagree) are dropped.
+pub fn spans_for_row(spans: Vec<Span>, raw: &str, text: &str) -> Vec<Span> {
+    let shift = TAB_EXPANSION.len() - 1;
+    let expand = |offset: usize| {
+        let tabs = raw
+            .as_bytes()
+            .get(..offset)
+            .map_or(0, |b| b.iter().filter(|c| **c == b'\t').count());
+        offset + tabs * shift
+    };
+    spans
+        .into_iter()
+        .map(|s| Span {
+            range: expand(s.range.start)..expand(s.range.end),
+            class: s.class,
+        })
+        .filter(|s| {
+            s.range.end <= text.len()
+                && text.is_char_boundary(s.range.start)
+                && text.is_char_boundary(s.range.end)
+        })
+        .collect()
 }
 
 /// GHD `calcSearchTokens`: case-insensitive substring hits, hunk rows skipped.
@@ -1526,8 +1565,8 @@ pub fn render_split_row(
 mod tests {
     // explicit imports: `gpui_kit::*` would shadow `#[test]` with GPUI's macro
     use super::{
-        RangeType, SearchHit, SplitRow, build_rows, build_split_rows, relative_changes,
-        search_rows, unified_to_split,
+        RangeType, SearchHit, SplitRow, build_rows, build_split_rows, expand_tabs,
+        relative_changes, search_rows, spans_for_row, unified_to_split,
     };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
@@ -1635,5 +1674,40 @@ mod tests {
         let map = unified_to_split(&split, rows.len());
         assert_eq!(map[3], 2);
         assert_eq!(map[4], 3);
+    }
+
+    #[test]
+    fn file_spans_follow_tab_expansion() {
+        use corvane_highlight::TokenClass;
+        let file = [
+            "package main",
+            "",
+            "func f(x bool) int {",
+            "\tif x {",
+            "\t\treturn 1 // one",
+            "\t}",
+            "\treturn 0",
+            "}",
+        ];
+        let tokens = corvane_highlight::highlight_lines("main.go", file).expect("go mode");
+        for (ix, keyword) in [(3, "if"), (4, "return"), (6, "return")] {
+            let raw = file[ix];
+            let text = expand_tabs(raw);
+            let spans = spans_for_row(tokens[ix].clone(), raw, &text);
+            let span = spans
+                .iter()
+                .find(|s| s.class == TokenClass::Keyword)
+                .expect("keyword span");
+            assert_eq!(&text[span.range.clone()], keyword, "line {ix}");
+        }
+        // the comment after two tabs lands on the comment, not 6 bytes early
+        let raw = file[4];
+        let text = expand_tabs(raw);
+        let spans = spans_for_row(tokens[4].clone(), raw, &text);
+        let comment = spans
+            .iter()
+            .find(|s| s.class == TokenClass::Comment)
+            .expect("comment span");
+        assert_eq!(&text[comment.range.clone()], "// one");
     }
 }

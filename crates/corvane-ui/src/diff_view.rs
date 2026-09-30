@@ -35,7 +35,7 @@ use crate::diff_expansion::{
 use crate::diff_view_rows::{
     Column, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection,
     TextBounds, build_rows, build_split_rows, line_number_width, max_line_number, render_row,
-    render_split_row, search_rows, unified_to_split,
+    render_split_row, search_rows, spans_for_row, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -468,32 +468,32 @@ impl DiffView {
             }
             let any_added = rows.iter().any(|r| r.0 == K::Add);
             let any_deleted = rows.iter().any(|r| r.0 == K::Delete);
-            let pick = |tokens: &Option<Vec<Vec<corvane_highlight::Span>>>, line: Option<u32>| {
+            // a file line's spans with the raw line they index (tabs intact)
+            let pick = |tokens: &Option<Vec<Vec<corvane_highlight::Span>>>,
+                        lines: &Option<Arc<Vec<String>>>,
+                        line: Option<u32>| {
                 let ix = line?.checked_sub(1)? as usize;
-                tokens.as_ref()?.get(ix).cloned()
+                let spans = tokens.as_ref()?.get(ix)?.clone();
+                let raw = lines.as_ref()?.get(ix)?.clone();
+                Some((spans, raw))
             };
             Some(
                 rows.iter()
                     .map(|(kind, old_line, new_line, text)| {
-                        let spans = match kind {
-                            K::Add => pick(&new_tokens, *new_line),
-                            K::Delete => pick(&old_tokens, *old_line),
-                            K::Context if any_added && !any_deleted => pick(&new_tokens, *new_line),
-                            K::Context => pick(&old_tokens, *old_line)
-                                .or_else(|| pick(&new_tokens, *new_line)),
+                        let picked = match kind {
+                            K::Add => pick(&new_tokens, &new, *new_line),
+                            K::Delete => pick(&old_tokens, &old, *old_line),
+                            K::Context if any_added && !any_deleted => {
+                                pick(&new_tokens, &new, *new_line)
+                            }
+                            K::Context => pick(&old_tokens, &old, *old_line)
+                                .or_else(|| pick(&new_tokens, &new, *new_line)),
                             _ => None,
                         };
-                        // tokens belong to the file line; keep only spans that
-                        // fit the row's text
-                        spans
-                            .unwrap_or_default()
-                            .into_iter()
-                            .filter(|s| {
-                                s.range.end <= text.len()
-                                    && text.is_char_boundary(s.range.start)
-                                    && text.is_char_boundary(s.range.end)
-                            })
-                            .collect()
+                        // tokens index the raw file line; move them through the
+                        // row's tab expansion
+                        picked
+                            .map_or_else(Vec::new, |(spans, raw)| spans_for_row(spans, &raw, text))
                     })
                     .collect(),
             )
