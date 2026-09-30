@@ -1108,6 +1108,24 @@ registry! {
         upstream: &[Upstream::issue(15284)],
         code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane/src/main.rs"],
     },
+    /// ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
+    COPY_PATH_SHORTCUTS = 613 "copy-path-shortcuts" {
+        title: "Shortcuts that copy file paths",
+        summary: "With the changes list or a commit's file list focused, ⌥⌘C copies the selected \
+                  files' full paths and ⇧⌥⌘C their paths relative to the repository (VS Code's \
+                  keys), one per line.",
+        ghd_behaviour: "Only the file context menu copies paths.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21810)],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/changes.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+        ],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

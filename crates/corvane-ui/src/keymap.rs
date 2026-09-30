@@ -26,6 +26,8 @@ pub struct KeymapFlags {
     pub emacs_list_keys: bool,
     /// `612-diff-mode-shortcut`: ⌥⌘S switches between unified and split diffs.
     pub diff_mode_shortcut: bool,
+    /// `613-copy-path-shortcuts`: ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
+    pub copy_path_shortcuts: bool,
 }
 
 impl KeymapFlags {
@@ -37,6 +39,7 @@ impl KeymapFlags {
             open_in_shell_alt_shortcut: flags.bool(ids::OPEN_IN_SHELL_ALT_SHORTCUT),
             emacs_list_keys: flags.bool(ids::EMACS_LIST_KEYS),
             diff_mode_shortcut: flags.bool(ids::DIFF_MODE_SHORTCUT),
+            copy_path_shortcuts: flags.bool(ids::COPY_PATH_SHORTCUTS),
         }
     }
 }
@@ -189,6 +192,18 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     }
     if flags.diff_mode_shortcut {
         bindings.push(KeyBinding::new("alt-cmd-s", ToggleDiffDisplayMode, None));
+    }
+    if flags.copy_path_shortcuts {
+        for context in ["ChangesList", "CommitFileList"] {
+            bindings.extend([
+                KeyBinding::new("alt-cmd-c", CopySelectedFilePaths, Some(context)),
+                KeyBinding::new(
+                    "shift-alt-cmd-c",
+                    CopySelectedRelativeFilePaths,
+                    Some(context),
+                ),
+            ]);
+        }
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

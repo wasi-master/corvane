@@ -1156,6 +1156,24 @@ impl ChangesSidebar {
             .flatten()
     }
 
+    /// Corvane (`613-copy-path-shortcuts`): the context menu's Copy Paths /
+    /// Copy Relative Paths for the highlighted files, one per line.
+    fn copy_highlighted_paths(&self, absolute: bool, cx: &mut Context<Self>) {
+        let Some((id, paths)) = self.highlighted_files(cx) else {
+            return;
+        };
+        let text = match self.state.read(cx).repository(id) {
+            Some(repo) if absolute => paths
+                .iter()
+                .map(|p| repo.path.join(p).to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Some(_) => paths.join("\n"),
+            None => return,
+        };
+        cx.write_to_clipboard(ClipboardItem::new_string(text));
+    }
+
     /// Space (GHD `onToggleInclude` for the row's `onKeyDown`): include the
     /// highlighted files, or exclude them when they are all included.
     fn toggle_include_selected(&mut self, cx: &mut Context<Self>) {
@@ -3321,6 +3339,16 @@ impl Render for ChangesSidebar {
                     .on_action(cx.listener(|this, _: &DiscardSelectedFiles, _, cx| {
                         this.discard_highlighted(cx)
                     }))
+                    .on_action(cx.listener(
+                        |this, _: &crate::actions::CopySelectedFilePaths, _, cx| {
+                            this.copy_highlighted_paths(true, cx)
+                        },
+                    ))
+                    .on_action(cx.listener(
+                        |this, _: &crate::actions::CopySelectedRelativeFilePaths, _, cx| {
+                            this.copy_highlighted_paths(false, cx)
+                        },
+                    ))
                     .on_action(cx.listener(|this, _: &OpenSelectedFileInEditor, _, cx| {
                         if let Some(path) = this.highlighted_file_on_disk(cx) {
                             Dispatcher::open_in_editor(path, cx)

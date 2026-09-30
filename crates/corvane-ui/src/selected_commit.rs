@@ -15,7 +15,10 @@ use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
-use crate::actions::{OpenSelectedFileInEditor, OpenSelectedFileWithDefaultProgram};
+use crate::actions::{
+    CopySelectedFilePaths, CopySelectedRelativeFilePaths, OpenSelectedFileInEditor,
+    OpenSelectedFileWithDefaultProgram,
+};
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -68,6 +71,26 @@ impl SelectedCommitView {
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
         }
+    }
+
+    /// Corvane (`613-copy-path-shortcuts`): Copy File Path / Copy Relative
+    /// File Path for the selected commit file.
+    fn copy_selected_path(&self, absolute: bool, cx: &mut Context<Self>) {
+        let text = {
+            let s = self.state.read(cx);
+            let (Some(rs), Some(repo)) = (s.selected_state(), s.selected_repository()) else {
+                return;
+            };
+            let Some(path) = rs.commit_selected_file.as_ref() else {
+                return;
+            };
+            if absolute {
+                repo.path.join(path).to_string_lossy().into_owned()
+            } else {
+                path.clone()
+            }
+        };
+        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 
     /// Corvane (`608-open-file-shortcuts`): the selected commit file, when
@@ -773,6 +796,14 @@ impl Render for SelectedCommitView {
                                     self.file_list(id, cx),
                                 )
                                 .key_context("CommitFileList")
+                                .on_action(cx.listener(|this, _: &CopySelectedFilePaths, _, cx| {
+                                    this.copy_selected_path(true, cx)
+                                }))
+                                .on_action(cx.listener(
+                                    |this, _: &CopySelectedRelativeFilePaths, _, cx| {
+                                        this.copy_selected_path(false, cx)
+                                    },
+                                ))
                                 .on_action(cx.listener(
                                     |this, _: &OpenSelectedFileInEditor, _, cx| {
                                         if let Some(path) = this.selected_file_on_disk(cx) {
