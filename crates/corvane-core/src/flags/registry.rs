@@ -381,6 +381,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
     },
 
+    /// Worktree rows show and match their path.
+    WORKTREE_PATHS = 288 "worktree-paths" {
+        title: "Worktree list shows and searches paths",
+        summary: "Rows in the worktree list have a tooltip with the worktree's name and full \
+                  path, and the filter also matches the path.",
+        ghd_behaviour: "Only the folder name, truncated, and the filter matches only the name, \
+                        so worktrees with the same folder name look alike.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22650), Upstream::issue(22946), Upstream::issue(22375)],
+        code: &["crates/corvane-ui/src/worktree_list.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
