@@ -4,7 +4,8 @@
 //!
 //! Deviations: a renamed file can diff against `HEAD:<old path>`
 //! (`174-renamed-diff-against-head`); a mode-only change carries the modes
-//! (`173-file-mode-change-message`).
+//! (`173-file-mode-change-message`); a symbolic link's working copy is its
+//! target path (`176-symlink-contents`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -243,10 +244,24 @@ pub fn file_lines(bytes: &[u8]) -> Vec<String> {
 }
 
 /// The working copy of `path` as lines (`None` when unreadable, e.g. deleted).
-pub fn working_file_lines(workdir: &Path, path: &str) -> Option<Vec<String>> {
-    std::fs::read(workdir.join(path))
-        .ok()
-        .map(|b| file_lines(&b))
+///
+/// GHD reads through a symbolic link, which hangs on a link to a FIFO or a
+/// device and loads a huge target whole; `symlinks_as_links` (Corvane
+/// `176-symlink-contents`) reads the link's target path instead, the one
+/// line git records and diffs for a link.
+pub fn working_file_lines(
+    workdir: &Path,
+    path: &str,
+    symlinks_as_links: bool,
+) -> Option<Vec<String>> {
+    let full = workdir.join(path);
+    if symlinks_as_links
+        && std::fs::symlink_metadata(&full).is_ok_and(|m| m.file_type().is_symlink())
+    {
+        let target = std::fs::read_link(&full).ok()?;
+        return Some(file_lines(target.to_string_lossy().as_bytes()));
+    }
+    std::fs::read(full).ok().map(|b| file_lines(&b))
 }
 
 /// A committed blob as lines (`None` when the path is not in that commit).
@@ -615,6 +630,28 @@ mod tests {
         };
         assert_eq!(hunks.len(), 1);
         assert!(warnings.mode_change.is_some());
+    }
+
+    #[test]
+    fn symlink_lines_are_the_target() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("real.txt"), "one\ntwo\n").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("real.txt", dir.path().join("link")).unwrap();
+        #[cfg(not(unix))]
+        return;
+        assert_eq!(
+            working_file_lines(dir.path(), "link", false),
+            Some(vec!["one".to_string(), "two".to_string()])
+        );
+        assert_eq!(
+            working_file_lines(dir.path(), "link", true),
+            Some(vec!["real.txt".to_string()])
+        );
+        assert_eq!(
+            working_file_lines(dir.path(), "real.txt", true).map(|l| l.len()),
+            Some(2)
+        );
     }
 
     #[test]
