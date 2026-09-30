@@ -565,6 +565,21 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// The diff's "Open in <Editor> at Line N".
+    DIFF_OPEN_IN_EDITOR_AT_LINE = 485 "diff-open-in-editor-at-line" {
+        title: "Diff: Open in editor at a line",
+        summary: "Right-clicking a line of a working-directory diff offers \"Open in <Editor> at \
+                  Line N\" when the editor can jump to a line (VS Code and its forks, Sublime \
+                  Text, Zed).",
+        ghd_behaviour: "The diff's context menu has no editor item; Open in <Editor> opens the \
+                        file at its top.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14476), Upstream::issue(20254)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-platform/src/editors.rs", "crates/corvane-core/src/integrations.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

@@ -120,6 +120,13 @@ impl Dispatcher {
 
     /// Repository › Open in <Editor> (`_openInExternalEditor`).
     pub fn open_in_editor(path: PathBuf, cx: &mut App) {
+        Self::open_in_editor_at(path, None, cx);
+    }
+
+    /// `open_in_editor` at a 1-based line where the editor supports it
+    /// (the diff's "Open in <Editor> at Line N", flag
+    /// `diff-open-in-editor-at-line`); a custom editor opens the file.
+    pub fn open_in_editor_at(path: PathBuf, line: Option<u32>, cx: &mut App) {
         let (editors, selected, custom) = {
             let s = Self::state(cx).read(cx);
             (
@@ -172,7 +179,10 @@ impl Dispatcher {
         };
         spawn_bg(
             cx,
-            move || editors::launch(&editor, &path),
+            move || match line {
+                Some(line) => editors::launch_at_line(&editor, &path, line),
+                None => editors::launch(&editor, &path),
+            },
             |result, cx| {
                 if let Err(err) = result {
                     Self::show_editor_error(err, cx);

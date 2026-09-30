@@ -877,6 +877,21 @@ impl AppState {
             .unwrap_or_else(|| "External Editor".to_string())
     }
 
+    /// The editor "Open in …" opens can jump to a line
+    /// (`corvane_platform::editors::launch_at_line`; never a custom editor).
+    pub fn editor_supports_line(&self) -> bool {
+        if self.settings.use_custom_editor && self.settings.custom_editor.is_some() {
+            return false;
+        }
+        corvane_platform::editors::find_editor_or_default(
+            &self.editors,
+            self.settings.external_editor.as_deref(),
+        )
+        .ok()
+        .flatten()
+        .is_some_and(corvane_platform::editors::supports_line)
+    }
+
     /// The shell "Open in …" menu items name (`Terminal` by default).
     pub fn shell_label(&self) -> String {
         if self.settings.use_custom_shell && self.settings.custom_shell.is_some() {
