@@ -125,6 +125,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Lists
 
 - A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
+- Repository list (`styles/ui/_repository-list.scss`): the behind arrow of `.repo-indicators` is drawn in `status_success` green on unselected rows so repositories with commits to pull stand out. Flag: `186-repository-list-behind-accent`.
 
 ## Scrolling
 

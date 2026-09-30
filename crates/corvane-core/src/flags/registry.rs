@@ -194,6 +194,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
     },
 
+    /// The repository list's behind arrow in the success colour.
+    REPOSITORY_LIST_BEHIND_ACCENT = 186 "repository-list-behind-accent" {
+        title: "Repository list: green arrow for commits to pull",
+        summary: "In the repository list, the down arrow (the branch is behind its upstream) is \
+                  drawn in the success green instead of the badge text colour, except on the \
+                  selected row.",
+        ghd_behaviour: "Up and down arrows share the badge text colour.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15005)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.
