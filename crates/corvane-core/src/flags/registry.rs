@@ -853,6 +853,20 @@ registry! {
         upstream: &[Upstream::issue(22399)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
     },
+    /// Conflicts dialog names the stopped commit.
+    CONFLICTS_SHOW_CURRENT_COMMIT = 453 "conflicts-show-current-commit" {
+        title: "Conflicts dialog shows the stopped commit",
+        summary: "While a rebase, squash or reorder waits on conflicts, the conflicts \
+                  dialog starts with \"Commit N of M:\" and that commit's summary, as the \
+                  progress dialog showed it.",
+        ghd_behaviour: "The conflicts dialog does not say which commit is being applied.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18796)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

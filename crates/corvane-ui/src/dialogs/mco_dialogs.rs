@@ -9,7 +9,8 @@
 //! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
 //! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
 //! branches with a local branch in the rebase list (flag `451`); Copy File
-//! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`).
+//! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
+//! the stopped commit above the conflicts list (flag `453`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -537,6 +538,38 @@ impl McoDialog {
         let close = move |_: &mut Window, cx: &mut App| Dispatcher::hide_conflicts(repo, cx);
 
         let mut content = div().w(zpx(460.)).flex().flex_col();
+        // flag `453`: which commit stopped (the progress step's details)
+        // (a cherry-pick's count only moves once a pick is done, so it is
+        // left out rather than naming the previous commit)
+        if matches!(
+            kind,
+            MultiCommitOperationKind::Rebase
+                | MultiCommitOperationKind::Squash
+                | MultiCommitOperationKind::Reorder
+        ) && mco.progress.total > 0
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CONFLICTS_SHOW_CURRENT_COMMIT)
+        {
+            let p = &mco.progress;
+            content = content.child(
+                div()
+                    .mb(SPACING())
+                    .flex()
+                    .flex_row()
+                    .min_w_0()
+                    .gap(SPACING_HALF())
+                    .child(
+                        div()
+                            .flex_none()
+                            .font_weight(FontWeight::BOLD)
+                            .child(format!("Commit {} of {}:", p.position, p.total)),
+                    )
+                    .child(div().truncate().child(p.current_summary.clone())),
+            );
+        }
         if resolved_count > 0 {
             // `DialogSuccess`
             content = content.child(

@@ -68,6 +68,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Squash and Merge (GHD `merge-choose-branch-dialog.tsx`, which commits with git's `SQUASH_MSG`) has a summary and a description field over the status line; with a summary the commit is made with `git commit -F -` (whitespace cleanup), and when the squash merge stops on conflicts the message replaces `SQUASH_MSG` (and `MERGE_MSG`'s conflict note is removed) so the commit after resolving uses it. An empty summary keeps git's message. Flag: `450-squash-merge-message`.
 - The Rebase dialog's branch list (GHD `rebase-choose-branch-dialog.tsx`, `mergeRemoteAndLocalBranches` hides a remote branch that has a local one) ends with a Remote Branches group of those remote-tracking branches (`origin/main` beside `main`, not `*/HEAD`), filtered like the rest; picking one previews and rebases onto it as a revision. Flag: `451-rebase-onto-remote-branch`.
 - A conflicted file's ▾ menu in the conflicts dialog (GHD `unmerged-file.tsx`) adds Copy File Path and Copy Relative File Path after Reveal in Finder. Flag: `452-conflict-menu-copy-paths`.
+- The conflicts dialog of a rebase, squash or reorder (GHD `conflicts-dialog.tsx`) starts with the progress dialog's "Commit N of M:" and the stopped commit's summary (truncated); merges and cherry-picks (whose count moves only after a pick) have no such line. Flag: `453-conflicts-show-current-commit`.
 
 ## Tutorial
 
