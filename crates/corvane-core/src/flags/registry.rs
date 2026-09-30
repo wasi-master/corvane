@@ -195,6 +195,21 @@ registry! {
         ],
     },
 
+    /// Relative dates in weeks and calendar months.
+    CALENDAR_RELATIVE_DATES = 123 "calendar-relative-dates" {
+        title: "Relative dates in weeks and calendar months",
+        summary: "Past a week, relative dates count weeks (\"4 weeks ago\") until two calendar \
+                  months have passed, then calendar months and years.",
+        ghd_behaviour: "Days until 30, then days ÷ 30 rounded as months: a commit on the 1st is \
+                        \"last month\" on the 31st.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20830), Upstream::issue(21903)],
+        code: &["crates/corvane-ui/src/relative_time.rs", "crates/corvane/src/main.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.

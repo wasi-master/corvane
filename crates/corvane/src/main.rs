@@ -163,6 +163,12 @@ fn main() {
         };
         let mut last_high_contrast = high_contrast;
         corvane_ui::format::sync(&state.read(cx).settings);
+        corvane_ui::relative_time::set_calendar_dates(
+            state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CALENDAR_RELATIVE_DATES),
+        );
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
@@ -170,6 +176,10 @@ fn main() {
             let (theme, welcome_done, menu_key, high_contrast) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
+                corvane_ui::relative_time::set_calendar_dates(
+                    s.flags
+                        .bool(corvane_core::flags::ids::CALENDAR_RELATIVE_DATES),
+                );
                 (
                     s.settings.theme,
                     s.settings.welcome_completed,

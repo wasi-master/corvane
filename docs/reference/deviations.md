@@ -128,6 +128,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Lists
 
 - A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
+- Relative dates (`crates/corvane-ui/src/relative_time.rs`): past a week they count weeks ("last week", "4 weeks ago") until two calendar months have passed, then calendar months and years; GHD's `formatRelative` rounds days ÷ 30 into months, so a commit on the 1st reads "last month" on the 31st. Flag: `123-calendar-relative-dates`.
 
 ## Scrolling
 
