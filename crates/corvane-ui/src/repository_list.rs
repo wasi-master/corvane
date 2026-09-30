@@ -6,6 +6,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -22,6 +23,10 @@ pub struct RepositoryFoldout {
     /// uncommitted changes / commits to push or pull.
     only_changed: bool,
     only_ahead_behind: bool,
+    /// GHD `FilterList` keyboard selection: the row ↓ / ↑ moved to from
+    /// the filter box (an index into the rows as shown, groups flattened).
+    highlighted: Option<usize>,
+    scroll: ScrollHandle,
 }
 
 struct Group {
@@ -33,19 +38,77 @@ impl RepositoryFoldout {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
+        cx.observe(&filter, |this: &mut Self, _, cx| {
+            this.highlighted = None;
+            cx.notify()
+        })
+        .detach();
         Self {
             state,
             filter,
             add_menu_open: false,
             only_changed: false,
             only_ahead_behind: false,
+            highlighted: None,
+            scroll: ScrollHandle::new(),
         }
     }
 
-    pub fn focus_filter(&self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.highlighted = None;
         let handle = self.filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+    }
+
+    /// GHD `FilterList`: ↓ / ↑ in the filter box move through the rows (↑
+    /// from the filter starts at the last), clamped at the ends.
+    fn move_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let groups = self.groups(cx);
+        let count: usize = groups.iter().map(|g| g.repos.len()).sum();
+        if count == 0 {
+            return;
+        }
+        let ix = match self.highlighted {
+            Some(ix) => (ix as isize + delta).clamp(0, count as isize - 1) as usize,
+            None if delta < 0 => count - 1,
+            None => 0,
+        };
+        self.highlighted = Some(ix);
+        // rows and group headers are all `ROW_HEIGHT`: scroll the row in
+        let mut headers = 0;
+        let mut before = 0;
+        for group in &groups {
+            headers += 1;
+            if ix < before + group.repos.len() {
+                break;
+            }
+            before += group.repos.len();
+        }
+        let top = ROW_HEIGHT() * (headers + ix) as f32;
+        let bottom = top + ROW_HEIGHT();
+        let height = self.scroll.bounds().size.height;
+        let mut offset = self.scroll.offset();
+        if top < -offset.y {
+            offset.y = -top;
+        } else if bottom > -offset.y + height {
+            offset.y = height - bottom;
+        }
+        self.scroll.set_offset(offset);
+        cx.notify();
+    }
+
+    /// Enter in the filter box: the highlighted row, else the first one.
+    fn pick_highlighted(&mut self, cx: &mut Context<Self>) {
+        let ix = self.highlighted.unwrap_or(0);
+        let id = self
+            .groups(cx)
+            .into_iter()
+            .flat_map(|g| g.repos)
+            .nth(ix)
+            .map(|r| r.id);
+        if let Some(id) = id {
+            Dispatcher::select_repository(id, cx);
+        }
     }
 
     /// GHD `groupRepositories`: Recent, then one group per GitHub owner, then Other.
@@ -111,7 +174,13 @@ impl RepositoryFoldout {
         groups
     }
 
-    fn row(&self, repo: &Repository, selected: bool, cx: &Context<Self>) -> impl IntoElement {
+    fn row(
+        &self,
+        repo: &Repository,
+        selected: bool,
+        highlighted: bool,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
         let t = cx.ghd();
         // GHD `iconForRepository`
         let icon = match &repo.github {
@@ -145,6 +214,11 @@ impl RepositoryFoldout {
             .when(selected, |d| {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
+            })
+            // the keyboard row (GHD's focused-list selection)
+            .when(highlighted, |d| {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
             })
             // `.list-item:hover` outranks `.list-item.selected` (flag 104 keeps it)
             .when(
@@ -470,6 +544,8 @@ impl Render for RepositoryFoldout {
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER);
         let filtering = self.only_changed || self.only_ahead_behind;
+        let highlighted = self.highlighted;
+        let mut row_ix = 0;
 
         div()
             .id("repository-list")
@@ -496,6 +572,16 @@ impl Render for RepositoryFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
+                    .key_context("RepositoryFilter")
+                    .on_action(
+                        cx.listener(|this, _: &SelectNextFile, _, cx| this.move_highlight(1, cx)),
+                    )
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.move_highlight(-1, cx)
+                    }))
+                    .on_action(
+                        cx.listener(|this, _: &FilterListPick, _, cx| this.pick_highlighted(cx)),
+                    )
                     .child(crate::widgets::filter_text_box(
                         "repo-filter",
                         &self.filter,
@@ -585,6 +671,8 @@ impl Render for RepositoryFoldout {
                         )
                     })
                     .children(groups.into_iter().enumerate().map(|(group_ix, group)| {
+                        let first = row_ix;
+                        row_ix += group.repos.len();
                         // a repository can be listed under Recent and its
                         // owner: the group id keeps the rows' ids (and a11y
                         // nodes) unique
@@ -605,14 +693,16 @@ impl Render for RepositoryFoldout {
                                     .truncate()
                                     .child(group.title),
                             )
-                            .children(
-                                group
-                                    .repos
-                                    .iter()
-                                    .map(|repo| self.row(repo, selected == Some(repo.id), cx)),
-                            )
+                            .children(group.repos.iter().enumerate().map(|(ix, repo)| {
+                                self.row(
+                                    repo,
+                                    selected == Some(repo.id),
+                                    highlighted == Some(first + ix),
+                                    cx,
+                                )
+                            }))
                     }))
-                    .with_scrollbar(),
+                    .with_scrollbar_handle(&self.scroll),
             )
             .when(add_open, |d| d.child(self.add_menu(cx)))
     }
