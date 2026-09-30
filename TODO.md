@@ -12,10 +12,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab, Prompts › "Overriding commit message with generated message"). Not planned; keep menu/tab out of Corvane to avoid dead UI.
 
-## Repository view
-
-- [ ] `MissingRepository` "Can't find" variant for a deleted directory (`ui/missing-repository.tsx`: "It was last seen at …", Check again, Locate…, Clone Again, Remove); only the unsafe-repository variant is built, a missing repository keeps the normal view
-
 ## Tutorial + onboarding extras
 
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
