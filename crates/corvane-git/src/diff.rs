@@ -76,6 +76,47 @@ pub fn working_directory_diff(
     })
 }
 
+/// Corvane `279-copy-diff`: the working-directory changes of `files` as one
+/// patch `git apply` takes (`--binary`), against `base` (`HEAD`, or
+/// [`crate::NULL_TREE_SHA`] on an unborn branch). Tracked files come first,
+/// in one `git diff`, then each new / untracked file against `/dev/null`.
+pub fn working_directory_patch(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    files: &[WorkingDirectoryFileChange],
+    base: &str,
+) -> Result<String> {
+    const ARGS: [&str; 4] = ["diff", "--no-ext-diff", "--no-color", "--binary"];
+    let (untracked, tracked): (Vec<_>, Vec<_>) = files
+        .iter()
+        .partition(|f| !f.status.submodule && f.status.kind.is_new_or_untracked());
+    let mut patch = Vec::new();
+    if !tracked.is_empty() {
+        let paths = tracked
+            .iter()
+            .flat_map(|f| std::iter::once(&f.path).chain(f.old_path.as_ref()));
+        let out = GitCommand::new(git.clone())
+            .args(ARGS)
+            .args([base, "--"])
+            .args(paths)
+            .current_dir(workdir)
+            .run()?;
+        patch.extend(out.stdout);
+    }
+    for f in untracked {
+        // `--no-index` exits 1 when the files differ
+        let out = GitCommand::new(git.clone())
+            .args(ARGS)
+            .args(["--no-index", "--", "/dev/null"])
+            .arg(&f.path)
+            .current_dir(workdir)
+            .allow_exit_code(1)
+            .run()?;
+        patch.extend(out.stdout);
+    }
+    Ok(String::from_utf8_lossy(&patch).into_owned())
+}
+
 /// GHD `getImageDiff`: a binary change of a known image type becomes an
 /// image diff; anything else stays `Binary`.
 pub fn image_diff(
@@ -382,6 +423,48 @@ pub fn parse_unified(patch: &str) -> Diff {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn working_directory_patch_applies() {
+        use std::process::Command;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
+        std::fs::write(path.join("a.txt"), "one\n").unwrap();
+        std::fs::write(path.join("skip.txt"), "same\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "init"]);
+        std::fs::write(path.join("a.txt"), "one\ntwo\n").unwrap();
+        std::fs::write(path.join("skip.txt"), "changed\n").unwrap();
+        std::fs::write(path.join("new.txt"), "fresh\n").unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        let files: Vec<_> = status
+            .files
+            .into_iter()
+            .filter(|f| f.path != "skip.txt")
+            .collect();
+        let patch = working_directory_patch(git, path, &files, "HEAD").unwrap();
+        assert!(patch.contains("+two"));
+        assert!(patch.contains("+fresh"));
+        assert!(!patch.contains("skip.txt"));
+        // the patch reverses cleanly onto the working tree
+        std::fs::write(path.join("p.diff"), &patch).unwrap();
+        run(&["apply", "--check", "-R", "p.diff"]);
+    }
 
     const SAMPLE: &str = "diff --git a/a.txt b/a.txt\nindex 1..2 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,4 @@\n one\n-two\n+TWO\n+three\n four\n\\ No newline at end of file\n";
 
