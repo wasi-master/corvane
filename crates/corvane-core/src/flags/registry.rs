@@ -842,6 +842,22 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/autocompletion.rs", "crates/corvane-core/src/autocomplete.rs"],
     },
 
+    /// An Alias field in New / Add / Clone.
+    ALIAS_WHEN_ADDING = 459 "alias-when-adding" {
+        title: "Alias field when adding a repository",
+        summary: "Create a New Repository, Add Local Repository and Clone a Repository have an \
+                  optional Alias field; the repository shows under that name in the list once \
+                  it is added.",
+        ghd_behaviour: "An alias can only be set afterwards (Create Alias in the repository \
+                        list).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22505)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

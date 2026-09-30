@@ -805,6 +805,9 @@ pub struct AppState {
     pub foldout: Option<Foldout>,
     pub popup: Option<Popup>,
     pub cloning: Option<CloneState>,
+    /// `459-alias-when-adding`: aliases typed in New / Add / Clone, applied
+    /// when the repository at that (resolved) path is added.
+    pub pending_aliases: Vec<(PathBuf, String)>,
     pub sign_in: Option<SignInState>,
     /// What to retry once the sign-in dialog opened by a re-authorization
     /// prompt succeeds (`beginBrowserBasedSignIn` → `performRetry`).

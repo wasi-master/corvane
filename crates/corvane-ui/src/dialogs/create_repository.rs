@@ -2,6 +2,9 @@
 //! name, description, path, README, and the bundled Git Ignore / License
 //! templates (`corvane_core::templates`).
 //!
+//! Deviation (`459-alias-when-adding`): an optional Alias field names the
+//! new repository in the list (GHD: Create Alias afterwards).
+//!
 //! Deviation (`456-create-repository-in-folder`): an "in this folder"
 //! checkbox creates the repository in the Local Path folder itself (GHD
 //! always adds a `<name>` subfolder); files already there (README.md,
@@ -35,6 +38,8 @@ pub struct CreateRepositoryDialog {
     licenses: Vec<corvane_core::templates::License>,
     /// `456-create-repository-in-folder`: create in Local Path itself.
     in_folder: bool,
+    /// `459-alias-when-adding`.
+    alias: Entity<InputState>,
 }
 
 impl CreateRepositoryDialog {
@@ -86,6 +91,7 @@ impl CreateRepositoryDialog {
             gitignore_names: corvane_core::templates::gitignore_names(),
             licenses: corvane_core::templates::licenses(),
             in_folder: false,
+            alias: cx.new(|cx| InputState::new(window, cx).placeholder("optional")),
         }
     }
 
@@ -150,6 +156,15 @@ impl CreateRepositoryDialog {
         };
         let description = self.description.read(cx).value().trim().to_string();
         let name = self.name.read(cx).value().trim().to_string();
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING)
+        {
+            let alias = self.alias.read(cx).value().to_string();
+            Dispatcher::alias_when_added(&path, alias, cx);
+        }
         Dispatcher::create_repository(
             path,
             name,
@@ -348,6 +363,19 @@ impl Render for CreateRepositoryDialog {
                             ),
                     )
                 })
+                .when(
+                    self.state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING),
+                    |d| {
+                        d.child(labeled(
+                            "Alias",
+                            text_box("create-alias", &self.alias, None, window, cx),
+                            cx,
+                        ))
+                    },
+                )
                 .child(labeled(
                     "Description",
                     text_box("create-description", &self.description, None, window, cx),

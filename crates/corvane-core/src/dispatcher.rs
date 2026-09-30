@@ -82,6 +82,7 @@ impl Dispatcher {
             foldout: None,
             popup,
             cloning: None,
+            pending_aliases: Vec::new(),
             sign_in: None,
             retry_after_sign_in: None,
             watcher: None,
@@ -427,6 +428,14 @@ impl Dispatcher {
         // GHD stores `Path.resolve(path)`: absolute, `.`/`..` folded lexically
         let path = resolve_path(&path);
         let state = Self::state(cx);
+        // `459-alias-when-adding`
+        let alias = Self::take_pending_alias(&path, cx);
+        let then = move |id: u64, cx: &mut App| {
+            if let Some(alias) = alias {
+                Self::change_repository_alias(id, Some(alias), cx);
+            }
+            then(id, cx);
+        };
         if let Some(existing) = state
             .read(cx)
             .repositories
@@ -1513,6 +1522,32 @@ impl Dispatcher {
         );
     }
 
+    /// `459-alias-when-adding`: give the repository at `path` this alias once
+    /// it is added (by New / Add / Clone); an empty alias does nothing.
+    pub fn alias_when_added(path: &Path, alias: String, cx: &mut App) {
+        let alias = alias.trim().to_string();
+        if alias.is_empty() {
+            return;
+        }
+        let path = resolve_path(path);
+        Self::state(cx).update(cx, |s, _| {
+            s.pending_aliases.retain(|(p, _)| !same_path(p, &path));
+            s.pending_aliases.push((path, alias));
+        });
+    }
+
+    /// Remove and return the alias waiting for `path` (see
+    /// [`Dispatcher::alias_when_added`]).
+    fn take_pending_alias(path: &Path, cx: &mut App) -> Option<String> {
+        Self::state(cx).update(cx, |s, _| {
+            let ix = s
+                .pending_aliases
+                .iter()
+                .position(|(p, _)| same_path(p, path))?;
+            Some(s.pending_aliases.remove(ix).1)
+        })
+    }
+
     /// GHD `changeRepositoryAlias` / `removeRepositoryAlias` (`None`).
     pub fn change_repository_alias(id: u64, alias: Option<String>, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
@@ -2383,6 +2418,7 @@ impl Dispatcher {
                 .find(|l| l.name == name)
                 .map(|l| l.body)
         });
+        let failed_path = path.clone();
         let task = cx.background_executor().spawn(async move {
             let default_branch = corvane_git::configured_default_branch(git.clone());
             let license_text = license_body.map(|body| {
@@ -2420,7 +2456,10 @@ impl Dispatcher {
             let result = task.await;
             cx.update(|cx| match result {
                 Ok(path) => Self::add_repository(path, cx),
-                Err(err) => Self::show_error("Could not create repository", err.to_string(), cx),
+                Err(err) => {
+                    Self::take_pending_alias(&failed_path, cx);
+                    Self::show_error("Could not create repository", err.to_string(), cx)
+                }
             });
         })
         .detach();
@@ -2517,6 +2556,9 @@ impl Dispatcher {
                     s.cloning = None;
                     cx.notify();
                 });
+                if result.is_err() {
+                    Self::take_pending_alias(&path, cx);
+                }
                 match result {
                     // an `openRepo` URL waiting for this clone continues
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
