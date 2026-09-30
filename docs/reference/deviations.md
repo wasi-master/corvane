@@ -82,6 +82,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A renamed file's working-directory diff compares `HEAD:<old path>` with the working copy (`git diff -M HEAD -- old new`, `corvane_git::working_directory_diff`), falling back to GHD's diff when git does not pair the paths as one rename. GHD 3.6.6 (`lib/git/diff.ts` `getWorkingDirectoryDiff`) runs `git diff -- <path>`, index to working tree, so edits staged outside the app vanish. Flag: `174-renamed-diff-against-head`.
 - With Diff Settings › Split selected, new, untracked and deleted files keep the unified layout at full width (`diff_view.rs` `render`), since one side of the split would be empty. GHD 3.6.6 (`ui/diff/side-by-side-diff.tsx`) splits them too. Flag: `175-unified-diff-for-added-files`.
 - A changed symbolic link's working copy (`fileContents.newContents`, used for hunk expansion) is read as the link's target path with `read_link` (`corvane_git::working_file_lines`), the one line git diffs for a link. GHD 3.6.6 (`fileContents`, `ui/diff/side-by-side-diff.tsx` callers) reads through the link, which never returns for a link to a pipe or device and reads a huge target whole. Flag: `176-symlink-contents`.
+- Diff font size (Corvane addition, off in every preset): the diff rows' monospace text can be set to 9–16 px (`diff_view.rs`, scaled by View › Zoom like everything else); rows stay 20 px tall. GHD 3.6.6 fixes it at 11 px (`styles/ui/_side-by-side-diff.scss`). Flag: `670-diff-font-size`.
 
 ## Settings
 

@@ -110,6 +110,7 @@ Flag values for one session, never persisted; the flags it names are locked in t
 |---|---|---|---|---|---|---|---|---|
 | **`601-resizable-announces-new-width`** · **Bug fix** Expand / Contract Active Resizable announces the new width<br>⌘9 / ⌘8 announce the percentage of the width after the step.<br>*GitHub Desktop: Reads the width before applying the step, so the announced number lags one step.* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/active_resizable.rs` |
 | **`602-git-config-email-label`** · **Bug fix** Git Config's email box keeps its label<br>Repository Settings › Git Config shows "Email" above the email text box whenever it stands alone.<br>*GitHub Desktop: The label disappears whenever the email isn't one of the signed-in accounts' addresses (always, when signed out), although the code means to hide it only under the account-email dropdown's "Other".* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/dialogs/repository_settings.rs` |
+| **`670-diff-font-size`** Diff font size<br>The size of the diff's monospace text, 9 to 16 pixels at 100 % zoom (0 keeps 11 px). Rows stay 20 px tall.<br>*GitHub Desktop: 11 px, changed only by zooming the whole window.* | number 0–16 px | 0 px | 0 px | 0 px | 0 px |  | [#22929](https://github.com/desktop/desktop/issues/22929) | `crates/corvane-ui/src/diff_view.rs` |
 
 ## Not toggleable
 

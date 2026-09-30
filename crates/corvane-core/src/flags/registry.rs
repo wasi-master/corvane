@@ -1011,6 +1011,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
     },
+    /// The diff's font size.
+    DIFF_FONT_SIZE = 670 "diff-font-size" {
+        title: "Diff font size",
+        summary: "The size of the diff's monospace text, 9 to 16 pixels at 100 % zoom (0 \
+                  keeps 11 px). Rows stay 20 px tall.",
+        ghd_behaviour: "11 px, changed only by zooming the whole window.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 16, unit: Some("px") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(0),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22929)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

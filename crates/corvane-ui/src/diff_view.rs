@@ -17,6 +17,9 @@
 //!
 //! Deviation (`175-unified-diff-for-added-files`): in Split mode a new or
 //! deleted file still shows the unified layout, full width.
+//!
+//! Deviation (`670-diff-font-size`): the rows' font size can be set (9–16 px
+//! in the 20 px rows); GHD's is fixed at 11 px.
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -254,6 +257,8 @@ pub struct DiffView {
     text_bounds: TextBounds,
     /// The zoom factor the list's row heights were measured at.
     zoom_seen: f32,
+    /// The rows' font size (`670-diff-font-size`; GHD's 11 px otherwise).
+    text_size: Pixels,
     list_state: ListState,
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
@@ -307,6 +312,7 @@ impl DiffView {
             text_selection: None,
             text_bounds: Rc::new(RefCell::new(HashMap::new())),
             zoom_seen: crate::theme::sizes::zoom_factor(),
+            text_size: FONT_SIZE_SM(),
             list_state: ListState::new(0, ListAlignment::Top, zpx(200.)),
             rows: Rc::new(Vec::new()),
             rows_key: None,
@@ -693,7 +699,7 @@ impl DiffView {
         };
         let line = window.text_system().shape_line(
             SharedString::from(text.to_string()),
-            FONT_SIZE_SM(),
+            self.text_size,
             &[run],
             None,
         );
@@ -1683,8 +1689,19 @@ impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // View › Zoom changed the row heights the list has cached
         let zoom = crate::theme::sizes::zoom_factor();
-        if self.zoom_seen != zoom {
+        // … and so does `670-diff-font-size`
+        let text_size = match self
+            .state
+            .read(cx)
+            .flags
+            .number(corvane_core::flags::ids::DIFF_FONT_SIZE)
+        {
+            0 => FONT_SIZE_SM(),
+            size => zpx(size.clamp(9, 16) as f32),
+        };
+        if self.zoom_seen != zoom || self.text_size != text_size {
             self.zoom_seen = zoom;
+            self.text_size = text_size;
             self.list_state.remeasure();
         }
         let Some(snap) = self.snapshot(cx) else {
@@ -1949,7 +1966,7 @@ impl DiffView {
             .min_h_0()
             .w_full()
             .font_family(mono_font())
-            .text_size(FONT_SIZE_SM())
+            .text_size(self.text_size)
             .line_height(DIFF_LINE_HEIGHT())
             .text_color(t.diff_text)
             .on_mouse_up(
