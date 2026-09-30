@@ -1591,12 +1591,57 @@ impl Dispatcher {
 
     /// `Undo Commit…` from history: warn about local changes first.
     pub fn request_undo_commit(id: u64, cx: &mut App) {
-        let confirm = Self::state(cx).read(cx).settings.confirm_undo_commit;
-        if confirm && Self::working_directory_dirty(id, cx) {
-            Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
-        } else {
-            Self::undo_commit(id, cx);
+        let (confirm, overlap_only) = {
+            let s = Self::state(cx).read(cx);
+            (
+                s.settings.confirm_undo_commit,
+                s.flags.bool(crate::flags::ids::UNDO_WARNS_ONLY_ON_OVERLAP),
+            )
+        };
+        if !(confirm && Self::working_directory_dirty(id, cx)) {
+            return Self::undo_commit(id, cx);
         }
+        // `247`: warn only when the commit touches a file with local changes
+        let context = Self::repo_context(id, cx).filter(|_| overlap_only);
+        let Some((git, workdir)) = context else {
+            return Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
+        };
+        let local: Vec<String> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| rs.status.as_ref())
+            .map(|st| {
+                st.files
+                    .iter()
+                    .flat_map(|f| std::iter::once(f.path.clone()).chain(f.old_path.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::get_changed_files(git, &workdir, "HEAD") });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let changed = task.await;
+            cx.update(|cx| {
+                let overlap = match changed {
+                    Ok(changeset) => paths_overlap(
+                        changeset
+                            .files
+                            .iter()
+                            .flat_map(|f| std::iter::once(&f.path).chain(f.old_path.as_ref())),
+                        &local,
+                    ),
+                    Err(_) => true,
+                };
+                if overlap {
+                    Self::show_popup(Popup::WarnLocalChangesBeforeUndo { repo: id }, cx);
+                } else {
+                    Self::undo_commit(id, cx);
+                }
+            });
+        })
+        .detach();
     }
 
     /// `_startAmendingRepository`: switch to Changes and load the message.
@@ -3256,6 +3301,26 @@ fn resolve_path(path: &std::path::Path) -> PathBuf {
         }
     }
     out
+}
+
+/// Whether any of `committed` is among `local` (flag `247`).
+fn paths_overlap<'a>(mut committed: impl Iterator<Item = &'a String>, local: &[String]) -> bool {
+    committed.any(|p| local.contains(p))
+}
+
+#[cfg(test)]
+mod paths_overlap_tests {
+    use super::paths_overlap;
+
+    #[test]
+    fn overlap_needs_a_shared_path() {
+        let local = vec!["a.txt".to_string(), "old.txt".to_string()];
+        let committed = ["b.txt".to_string(), "c.txt".to_string()];
+        assert!(!paths_overlap(committed.iter(), &local));
+        let committed = ["b.txt".to_string(), "old.txt".to_string()];
+        assert!(paths_overlap(committed.iter(), &local));
+        assert!(!paths_overlap([].iter(), &local));
+    }
 }
 
 #[cfg(test)]

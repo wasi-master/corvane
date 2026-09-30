@@ -362,6 +362,20 @@ registry! {
         upstream: &[Upstream::issue(6753)],
         code: &["crates/corvane-ui/src/toolbar.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Undo Commit warns only when local changes touch the commit's files.
+    UNDO_WARNS_ONLY_ON_OVERLAP = 247 "undo-warns-only-on-overlap" {
+        title: "Undo Commit warns only about overlapping changes",
+        summary: "The \"changes in progress\" warning before Undo Commit appears only when a file \
+                  with local changes is one the commit touched.",
+        ghd_behaviour: "Warns whenever there are any local changes, although undoing never loses \
+                        changes to files the commit did not touch.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18388)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 
