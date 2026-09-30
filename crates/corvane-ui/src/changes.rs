@@ -1122,7 +1122,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, options) = {
+        let (id, options, push_option) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             (
@@ -1130,9 +1130,10 @@ impl ChangesSidebar {
                 s.repository(id)
                     .map(|r| r.commit_options)
                     .unwrap_or_default(),
+                s.flags.bool(corvane_core::flags::ids::COMMIT_AND_PUSH),
             )
         };
-        let items = vec![
+        let mut items = vec![
             MenuItem::checkbox(
                 "Bypass Commit Hooks",
                 options.skip_commit_hooks,
@@ -1167,6 +1168,20 @@ impl ChangesSidebar {
                 },
             ),
         ];
+        // Corvane: `220-commit-and-push`
+        if push_option {
+            items.push(MenuItem::checkbox(
+                "Push After Committing",
+                options.push_after_commit,
+                move |_, cx| {
+                    Dispatcher::update_commit_options(
+                        id,
+                        |o| o.push_after_commit = !o.push_after_commit,
+                        cx,
+                    )
+                },
+            ));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -3060,6 +3075,13 @@ impl ChangesSidebar {
                     .flatten(),
             )
             .child({
+                let push_after = {
+                    let s = self.state.read(cx);
+                    s.flags.bool(corvane_core::flags::ids::COMMIT_AND_PUSH)
+                        && s.selected
+                            .and_then(|id| s.repository(id))
+                            .is_some_and(|r| r.commit_options.push_after_commit)
+                };
                 let (amending, committing, included) = self
                     .state
                     .read(cx)
@@ -3079,6 +3101,11 @@ impl ChangesSidebar {
                     0 => String::new(),
                     1 => "1 file ".to_string(),
                     n => format!("{n} files "),
+                };
+                let files = if push_after {
+                    format!("{files}and push ")
+                } else {
+                    files
                 };
                 let label = if amending {
                     div().flex().flex_row().child(if committing {

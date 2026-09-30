@@ -2566,6 +2566,14 @@ impl Dispatcher {
                     .collect()
             })
             .unwrap_or_default();
+        // Corvane (`220-commit-and-push`): push once the commit succeeded;
+        // not after an amend, whose rewritten tip may need a force push
+        let push_after = options.push_after_commit
+            && !amend
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::COMMIT_AND_PUSH);
         let summary_for_bar = summary.trim().to_string();
         let task = cx.background_executor().spawn(async move {
             corvane_git::hook_env::reload_if_uncached();
@@ -2616,10 +2624,14 @@ impl Dispatcher {
                     }
                     cx.notify();
                 });
+                let committed = result.is_ok();
                 if let Err(err) = result {
                     Self::show_error("Could not commit", err.to_string(), cx);
                 }
                 Self::refresh_repository(id, cx);
+                if committed && push_after {
+                    Self::push(id, false, None, cx);
+                }
             });
         })
         .detach();

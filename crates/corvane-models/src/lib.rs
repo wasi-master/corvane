@@ -47,6 +47,10 @@ pub struct RepoCommitOptions {
     pub skip_commit_hooks: bool,
     pub sign_off_commits: bool,
     pub allow_empty_commit: bool,
+    /// Corvane: push the branch once a commit succeeds (flag
+    /// `220-commit-and-push`).
+    #[serde(default)]
+    pub push_after_commit: bool,
 }
 
 impl Repository {

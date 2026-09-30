@@ -480,6 +480,21 @@ registry! {
         upstream: &[Upstream::issue(13709), Upstream::issue(19559), Upstream::issue(21545)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/remote.rs"],
     },
+    /// Commit form gear › Push After Committing.
+    COMMIT_AND_PUSH = 220 "commit-and-push" {
+        title: "Push after committing",
+        summary: "The commit form's gear menu adds Push After Committing (kept per repository); \
+                  while it is ticked the button reads \"Commit and push to main\" and the branch \
+                  is pushed (or published) once the commit, hooks included, succeeds. Push errors \
+                  show as for the toolbar button; amended commits are not pushed.",
+        ghd_behaviour: "Committing and pushing are separate steps.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21874), Upstream::issue(22742)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 
