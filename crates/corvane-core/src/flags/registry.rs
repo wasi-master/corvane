@@ -65,6 +65,16 @@ fn hide_globs(s: &str) -> Result<(), &'static str> {
     }
 }
 
+fn app_name(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 500 {
+        Err("At most 500 characters")
+    } else if s.contains(['\n', '\r']) {
+        Err("One line only")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -865,6 +875,22 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-core/src/release_notes.rs"],
+    },
+
+    /// Reveal in another file manager.
+    FILE_MANAGER = 570 "file-manager" {
+        title: "File manager",
+        summary: "Application that Show in Finder and the Reveal in Finder items open the folder \
+                  with (a file's parent folder), by name or path: `Path Finder`, \
+                  `/Applications/ForkLift.app`. Empty uses Finder.",
+        ghd_behaviour: "Always Finder.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "Path Finder", validate: app_name },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13812)],
+        code: &["crates/corvane-core/src/integrations.rs"],
     },
 
     // ---- 600 Accessibility ----

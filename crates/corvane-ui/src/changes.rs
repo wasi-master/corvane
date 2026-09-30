@@ -1785,8 +1785,10 @@ impl ChangesSidebar {
             let editor = full.clone();
             let default = full;
             let mut items = vec![
-                MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
-                    .enabled(!deleted),
+                MenuItem::new("Reveal in Finder", move |_, cx| {
+                    Dispatcher::show_in_finder(&reveal, cx)
+                })
+                .enabled(!deleted),
                 MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
                     Dispatcher::open_in_editor(editor.clone(), cx)
                 })
@@ -1971,8 +1973,10 @@ impl ChangesSidebar {
             items.push(MenuItem::separator());
             let reveal = full.clone();
             items.push(
-                MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
-                    .enabled(!deleted),
+                MenuItem::new("Reveal in Finder", move |_, cx| {
+                    Dispatcher::show_in_finder(&reveal, cx)
+                })
+                .enabled(!deleted),
             );
             items.extend(open_many_items(&existing, &editor_label));
         } else {

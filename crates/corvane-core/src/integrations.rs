@@ -278,9 +278,33 @@ impl Dispatcher {
         );
     }
 
-    /// Repository › Show in Finder (`revealInFileManager`).
+    /// Repository › Show in Finder (`revealInFileManager`), and every Reveal
+    /// in Finder item. With a `570-file-manager` application set, it opens
+    /// the folder (a file's parent folder) with `open -a <app>` instead.
     pub fn show_in_finder(path: &Path, cx: &mut App) {
-        cx.reveal_path(path);
+        let app = Self::state(cx)
+            .read(cx)
+            .flags
+            .text(crate::flags::ids::FILE_MANAGER)
+            .trim()
+            .to_string();
+        if app.is_empty() {
+            cx.reveal_path(path);
+            return;
+        }
+        let dir = if path.is_dir() {
+            path.to_path_buf()
+        } else {
+            path.parent()
+                .map_or_else(|| path.to_path_buf(), Path::to_path_buf)
+        };
+        if let Err(err) = corvane_platform::apps::open_with_app(Path::new(&app), &dir) {
+            Self::show_error(
+                "Unable to Open File Manager",
+                format!("Could not open {} with {app}: {err}", dir.display()),
+                cx,
+            );
+        }
     }
 
     /// Repository › Open With… (`_openWithSystemDialog`): pick an application,

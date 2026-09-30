@@ -528,7 +528,9 @@ fn open_commit_file_menu(
                 .map(|sha| format!("{}/blob/{sha}/{path}", gh.html_url))
         });
         vec![
-            MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal)),
+            MenuItem::new("Reveal in Finder", move |_, cx| {
+                Dispatcher::show_in_finder(&reveal, cx)
+            }),
             MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
                 Dispatcher::open_in_editor(editor.clone(), cx)
             }),

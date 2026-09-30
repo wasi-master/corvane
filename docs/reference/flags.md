@@ -96,6 +96,7 @@ Flag values for one session, never persisted; the flags it names are locked in t
 | **`502-optional-components`** Optional components<br>Settings › Advanced offers downloadable packs (the syntax-extended grammar collection), and installed packs load at launch.<br>*GitHub Desktop: Ships every grammar; no packs section.* | toggle | on | off | off | on | yes | — | `crates/corvane-ui/src/dialogs/preferences.rs`<br>`crates/corvane-core/src/packs.rs` |
 | **`503-quiet-background-update-errors`** Quiet background update checks<br>Errors from the automatic update checks are only logged; Check for Updates in About still shows them.<br>*GitHub Desktop: Posts every update error.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/updater.rs` |
 | **`504-release-notes-heading-kinds`** · **Bug fix** Release notes: untagged items keep their heading's kind<br>Release-note items without a [Kind] tag are classified by their ## heading, and the notes' leading paragraph is shown.<br>*GitHub Desktop: Drops untagged items and the leading paragraph.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/release_notes.rs` |
+| **`570-file-manager`** File manager<br>Application that Show in Finder and the Reveal in Finder items open the folder with (a file's parent folder), by name or path: `Path Finder`, `/Applications/ForkLift.app`. Empty uses Finder.<br>*GitHub Desktop: Always Finder.* | text | `` | `` | `` | `` |  | [#13812](https://github.com/desktop/desktop/issues/13812) | `crates/corvane-core/src/integrations.rs` |
 
 ### 600 · Accessibility
 
