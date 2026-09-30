@@ -22,6 +22,31 @@ use crate::persistence::StoreExt;
 use crate::remote::spawn_bg;
 use crate::state::Popup;
 
+/// Where new worktrees go by default under the `289-worktree-location`
+/// template: `{clone-dir}` is Settings' clone directory, `{repo}` the
+/// repository's name, and a leading `~` the home directory. The flag's
+/// default, `{clone-dir}`, is GHD's behaviour.
+pub fn worktree_location(
+    template: &str,
+    clone_dir: &Path,
+    repo: &str,
+    home: Option<&Path>,
+) -> PathBuf {
+    let template = template.trim();
+    if template.is_empty() {
+        return clone_dir.to_path_buf();
+    }
+    let expanded = template
+        .replace("{clone-dir}", &clone_dir.to_string_lossy())
+        .replace("{repo}", repo);
+    match (expanded.strip_prefix('~'), home) {
+        (Some(rest), Some(home)) if rest.is_empty() || rest.starts_with('/') => {
+            home.join(rest.trim_start_matches('/'))
+        }
+        _ => PathBuf::from(expanded),
+    }
+}
+
 impl Dispatcher {
     /// GHD `_switchWorktree`: point the repository at `path` and reload it.
     pub fn switch_worktree(id: u64, path: PathBuf, cx: &mut App) {
@@ -319,5 +344,35 @@ fn same_path(a: &Path, b: &Path) -> bool {
     match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,
+    }
+}
+
+#[cfg(test)]
+mod location_tests {
+    use super::worktree_location;
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn worktree_location_expands_the_template() {
+        let clone = Path::new("/Users/me/GitHub");
+        let home = Some(Path::new("/Users/me"));
+        assert_eq!(worktree_location("{clone-dir}", clone, "app", home), clone);
+        assert_eq!(worktree_location("", clone, "app", home), clone);
+        assert_eq!(
+            worktree_location("~/code/worktrees/{repo}", clone, "app", home),
+            PathBuf::from("/Users/me/code/worktrees/app")
+        );
+        assert_eq!(
+            worktree_location("{clone-dir}/{repo}-worktrees", clone, "app", home),
+            PathBuf::from("/Users/me/GitHub/app-worktrees")
+        );
+        assert_eq!(
+            worktree_location("~", clone, "app", home),
+            PathBuf::from("/Users/me")
+        );
+        assert_eq!(
+            worktree_location("~other/x", clone, "app", home),
+            PathBuf::from("~other/x")
+        );
     }
 }
