@@ -100,9 +100,18 @@ impl Dispatcher {
     /// Probe LaunchServices for every known editor and shell (background),
     /// then remember them for the menus and Settings › Integrations.
     pub fn detect_integrations(cx: &mut App) {
+        let extras = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::EXTRA_EDITORS);
         spawn_bg(
             cx,
-            || (editors::available_editors(), shells::available_shells()),
+            move || {
+                (
+                    editors::available_editors(extras),
+                    shells::available_shells(),
+                )
+            },
             |(editors, shells), cx| {
                 info!(
                     editors = editors.len(),

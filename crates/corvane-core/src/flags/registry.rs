@@ -636,6 +636,19 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/release_notes.rs"],
     },
+    /// Editors GitHub Desktop does not detect.
+    EXTRA_EDITORS = 585 "extra-editors" {
+        title: "Detect more external editors",
+        summary: "Settings › Integrations and Open in … also find editors GitHub Desktop 3.6.6 \
+                  does not know: Antigravity.",
+        ghd_behaviour: "Only its own editor table.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22922)],
+        code: &["crates/corvane-platform/src/editors.rs", "crates/corvane-core/src/integrations.rs", "crates/corvane-core/src/flags/dispatch.rs"],
+    },
 
     // ---- 600 Accessibility ----
 
