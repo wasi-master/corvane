@@ -88,6 +88,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The length cap for intra-line highlighting (GHD's `MaxIntraLineDiffStringLength`, 1024, `ui/diff/diff-helpers.tsx`) is a setting; 0 lifts it (the prefix / suffix scan is linear, so long prose lines stay cheap). Flag: `179-intra-line-max-length`.
 - Visible whitespace (Corvane addition, off in the Corvane preset): diff rows paint a faint dot on each space and a faint line across each tab (`diff_view_rows::paint_whitespace`; `Row::tabs` records where the expanded tabs start). Copying and searching still use the plain text. GHD 3.6.6 has no such option. Flag: `180-diff-show-whitespace`.
 - "Show the diff as text anyway." (Corvane addition) under a binary working-directory file's "This binary file has changed." reloads its diff with `git diff --text` (`Dispatcher::show_binary_diff_as_text`, remembered for that path until another file is asked for). The rows are read-only: a partial commit takes its patch without `--text`. GHD 3.6.6 (`ui/diff/binary-file.tsx`) offers only "Open file in external program.". Flag: `181-binary-diff-as-text`.
+- Expanded diffs (Corvane addition, off in the Corvane preset): every text diff opens as if "Expand Whole File" had been picked (`DiffView::load`; files over 20 000 lines and large diffs stay collapsed). GHD 3.6.6 opens diffs collapsed and forgets the expansion per file. Flag: `182-diff-expand-whole-file`.
 
 ## Settings
 

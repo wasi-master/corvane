@@ -400,6 +400,21 @@ registry! {
         upstream: &[Upstream::issue(16855)],
         code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
     },
+    /// Diffs open with the whole file expanded.
+    DIFF_EXPAND_WHOLE_FILE = 182 "diff-expand-whole-file" {
+        title: "Expand the whole file in diffs",
+        summary: "Every text diff opens as if \"Expand Whole File\" had been picked (files up \
+                  to 20 000 lines; large diffs stay collapsed). \"Collapse Expanded Lines\" \
+                  still collapses it.",
+        ghd_behaviour: "Diffs open collapsed to their hunks; the expansion is per file and \
+                        forgotten.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16140), Upstream::issue(20548)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
 
     // ---- 200 Repository ----
 

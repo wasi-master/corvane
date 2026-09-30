@@ -32,6 +32,9 @@
 //!
 //! Deviation (`181-binary-diff-as-text`): a binary working-directory file
 //! offers "Show the diff as text anyway." (`git diff --text`, read-only).
+//!
+//! Deviation (`182-diff-expand-whole-file`): diffs can open with the whole
+//! file expanded (files up to 20 000 lines).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -66,6 +69,9 @@ use crate::theme::{ActiveGhdTheme, GhdTheme, mono_font};
 use crate::widgets::{
     Inline, button, checkbox_row, code_ref, link_button, paragraph, primary_button, radio_row,
 };
+
+/// `182-diff-expand-whole-file` leaves longer files collapsed.
+const MAX_AUTO_EXPAND_LINES: usize = 20_000;
 
 #[allow(non_snake_case)]
 pub fn DIFF_LINE_HEIGHT() -> Pixels {
@@ -618,6 +624,23 @@ impl DiffView {
             Some(hunks) => from_hunks(hunks, self.contents.as_ref().map(|c| c.len())),
             None => Vec::new(),
         });
+        // `182-diff-expand-whole-file`: start expanded, like "Expand Whole
+        // File" (not for large diffs or files)
+        if matches!(snap.diff, Diff::Text { .. })
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::DIFF_EXPAND_WHOLE_FILE)
+            && let Some(contents) = self
+                .contents
+                .clone()
+                .filter(|c| !c.is_empty() && c.len() <= MAX_AUTO_EXPAND_LINES)
+            && let Some(hunks) = expand_whole(self.hunks.as_ref().clone(), &contents)
+        {
+            self.hunks = Rc::new(hunks);
+            self.expanded = true;
+        }
         self.image = match &snap.diff {
             Diff::Image { previous, current } => {
                 let (previous, current, kind) = (previous.clone(), current.clone(), snap.kind);
