@@ -35,6 +35,22 @@ use crate::welcome::WelcomeView;
 use crate::worktree_list::WorktreeFoldout;
 use corvane_core::tutorial::TutorialStep;
 
+/// Which `MissingRepository` variant replaces the repository view.
+enum MissingRepository {
+    Unsafe {
+        id: u64,
+        name: String,
+        path: std::path::PathBuf,
+        trusting: bool,
+    },
+    NotFound {
+        id: u64,
+        name: String,
+        path: std::path::PathBuf,
+        can_clone_again: bool,
+    },
+}
+
 pub struct Workspace {
     focus_handle: FocusHandle,
     state: Entity<AppState>,
@@ -567,16 +583,30 @@ impl Render for Workspace {
         if welcome_done {
             self.welcome = None;
         }
-        let unsafe_repository = {
+        // GHD `SelectionType.MissingRepository`: the unsafe variant when git
+        // named an unsafe directory, else "Can't find"
+        let missing_repository = {
             let state = self.state.read(cx);
             state.selected_repository().and_then(|repo| {
-                let rs = state.repo_states.get(&repo.id)?;
-                Some((
-                    repo.id,
-                    repo.name(),
-                    rs.unsafe_path.clone()?,
-                    rs.trusting_path,
-                ))
+                let rs = state.repo_states.get(&repo.id);
+                match rs.and_then(|rs| rs.unsafe_path.clone()) {
+                    Some(path) => Some(MissingRepository::Unsafe {
+                        id: repo.id,
+                        name: repo.name(),
+                        path,
+                        trusting: rs.is_some_and(|rs| rs.trusting_path),
+                    }),
+                    None if repo.missing => Some(MissingRepository::NotFound {
+                        id: repo.id,
+                        name: repo.name(),
+                        path: repo.path.clone(),
+                        can_clone_again: repo
+                            .github
+                            .as_ref()
+                            .is_some_and(|gh| !gh.clone_url.is_empty()),
+                    }),
+                    None => None,
+                }
             })
         };
         let update_available = {
@@ -672,7 +702,7 @@ impl Render for Workspace {
                         .border_color(t.box_border)
                         .child(cloning_view(clone, cx))
                         .into_any_element()
-                } else if let Some((id, name, path, trusting)) = unsafe_repository.as_ref() {
+                } else if let Some(missing) = missing_repository.as_ref() {
                     // GHD `SelectionType.MissingRepository` replaces the
                     // whole repository view
                     div()
@@ -681,9 +711,30 @@ impl Render for Workspace {
                         .w_full()
                         .border_t_1()
                         .border_color(t.box_border)
-                        .child(crate::missing_repository::unsafe_repository_view(
-                            *id, name, path, *trusting, cx,
-                        ))
+                        .child(match missing {
+                            MissingRepository::Unsafe {
+                                id,
+                                name,
+                                path,
+                                trusting,
+                            } => crate::missing_repository::unsafe_repository_view(
+                                *id, name, path, *trusting, cx,
+                            )
+                            .into_any_element(),
+                            MissingRepository::NotFound {
+                                id,
+                                name,
+                                path,
+                                can_clone_again,
+                            } => crate::missing_repository::missing_repository_view(
+                                *id,
+                                name,
+                                path,
+                                *can_clone_again,
+                                cx,
+                            )
+                            .into_any_element(),
+                        })
                         .into_any_element()
                 } else if has_repos && !tutorial_paused {
                     self.repository_view_with_tutorial(cx)

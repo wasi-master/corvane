@@ -730,9 +730,12 @@ impl Dispatcher {
 
     // ---- removal ----
 
-    /// Repository › Remove…: confirm first unless the prompt is turned off.
+    /// Repository › Remove…: confirm first unless the prompt is turned off
+    /// or the repository is missing (GHD `App.removeRepository`).
     pub fn request_remove_repository(id: u64, cx: &mut App) {
-        let confirm = Self::state(cx).read(cx).settings.confirm_repository_removal;
+        let s = Self::state(cx).read(cx);
+        let missing = s.repository(id).is_some_and(|r| r.missing);
+        let confirm = s.settings.confirm_repository_removal && !missing;
         if confirm {
             Self::close_foldout(cx);
             Self::show_popup(Popup::ConfirmRemoveRepository { repo: id }, cx);

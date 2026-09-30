@@ -173,7 +173,9 @@ pub fn toolbar_models(
 
     let repository = ToolbarButtonModel {
         id: "toolbar-repository",
+        // GHD `iconForRepository`
         icon: match repo.and_then(|r| r.github.as_ref()) {
+            _ if repo.is_some_and(|r| r.missing) => Octicon::Alert,
             Some(gh) if gh.fork => Octicon::RepoForked,
             Some(gh) if gh.private => Octicon::Lock,
             Some(_) => Octicon::Repo,
@@ -413,6 +415,11 @@ pub fn toolbar_models(
     };
 
     let mut buttons = vec![repository];
+    // the worktree, branch and push/pull buttons need a
+    // `SelectionType.Repository`: a missing repository has none of them
+    if repo.is_some_and(|r| r.missing) {
+        return buttons;
+    }
     buttons.extend(worktree);
     buttons.push(branch);
     buttons.push(push_pull);

@@ -95,7 +95,9 @@ impl RepositoryFoldout {
 
     fn row(&self, repo: &Repository, selected: bool, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        // GHD `iconForRepository`
         let icon = match &repo.github {
+            _ if repo.missing => Octicon::Alert,
             Some(gh) if gh.fork => Octicon::RepoForked,
             Some(gh) if gh.private => Octicon::Lock,
             Some(_) => Octicon::Repo,
