@@ -72,6 +72,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A rebase found stopped on conflicts (started outside Corvane or before a restart; GHD `getRebaseSnapshot` knows only the `onto` sha) gets its base branch from `for-each-ref --points-at <onto>` (a local branch first, then a remote one, never the rebased branch or `*/HEAD`), which names the base side in the conflicts dialog and the success banner. A base that has moved on since is not found. Flag: `454-rebase-base-name-resolved`.
 - The Rebase dialog (GHD `rebase-choose-branch-dialog.tsx`) opens with the repository's default branch selected and previewed, unless it is the current branch. Flag: `143-rebase-preselects-default-branch`.
 - The squash message dialog (GHD `CommitMessageDialog` for squash, prefilled by `getSquashedCommitDescription`) has a "Use only the target commit's message" link under the description that puts back the target commit's summary and sets the description to its own body. Flag: `144-squash-keep-target-message`.
+- A squash that fails with an error (GHD `squash` in `app-store.ts` drops the message) keeps its message per repository, keyed by the target and the squashed commits; squashing the same commits again prefills the dialog with it (summary and description), and a successful squash forgets it. In memory only. Flag: `145-squash-keeps-draft`.
 
 ## Tutorial
 

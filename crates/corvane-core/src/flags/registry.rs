@@ -248,6 +248,19 @@ registry! {
         upstream: &[Upstream::issue(20507)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-ui/src/dialogs/mod.rs"],
     },
+    /// A failed squash keeps its message.
+    SQUASH_KEEPS_DRAFT = 145 "squash-keeps-draft" {
+        title: "Squash remembers its message after an error",
+        summary: "When a squash fails, the message typed for it is kept: squashing the same \
+                  commits again opens the dialog with that message instead of the combined one.",
+        ghd_behaviour: "The message is lost; the next try starts from the combined messages again.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(20764)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/state.rs"],
+    },
 
     // ---- 200 Repository ----
 

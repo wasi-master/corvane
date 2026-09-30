@@ -686,6 +686,9 @@ impl Dispatcher {
             return;
         };
         let current = Self::current_branch_and_tip(id, cx);
+        if matches!(mco.detail, McoDetail::Squash { .. }) {
+            Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).squash_draft = None);
+        }
         let banner = match &mco.detail {
             McoDetail::Squash { .. } => Banner::SuccessfulSquash { repo: id, count },
             McoDetail::Reorder { .. } => Banner::SuccessfulReorder { repo: id, count },
@@ -789,6 +792,23 @@ impl Dispatcher {
             }
             RebaseResult::Error(message) => {
                 let kind = Self::mco(id, cx).map(|m| m.kind());
+                // flag `145`: keep the squash message for the next try
+                if let Some(McoDetail::Squash {
+                    commits,
+                    target_commit,
+                    message: draft,
+                    ..
+                }) = Self::mco(id, cx).map(|m| m.detail)
+                    && Self::state(cx)
+                        .read(cx)
+                        .flags
+                        .bool(crate::flags::ids::SQUASH_KEEPS_DRAFT)
+                {
+                    let key = squash_draft_key(&target_commit.sha, commits.iter().map(|c| &c.sha));
+                    Self::state(cx).update(cx, |s, _| {
+                        s.repo_state_mut(id).squash_draft = Some((key, draft));
+                    });
+                }
                 Self::end_mco(id, cx);
                 Self::show_error(
                     format!("{} failed", kind.map(|k| k.label()).unwrap_or("Operation")),
@@ -1752,6 +1772,13 @@ impl Dispatcher {
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
             };
+            // flag `145`: a failed squash of the same commits left its message
+            let draft = rs
+                .squash_draft
+                .as_ref()
+                .filter(|(key, _)| *key == squash_draft_key(&onto, to_squash.iter()))
+                .filter(|_| s.flags.bool(crate::flags::ids::SQUASH_KEEPS_DRAFT))
+                .map(|(_, message)| split_message(message));
             let mut involved = to_squash.clone();
             involved.push(onto.clone());
             let Some(last_retained) = Self::last_retained_ref(rs, &involved) else {
@@ -1776,12 +1803,9 @@ impl Dispatcher {
                     parts.push(text);
                 }
             }
-            (
-                last_retained,
-                onto_commit.summary.clone(),
-                parts.join("\n\n"),
-                to_squash.len() + 1,
-            )
+            let (summary, description) =
+                draft.unwrap_or_else(|| (onto_commit.summary.clone(), parts.join("\n\n")));
+            (last_retained, summary, description, to_squash.len() + 1)
         };
         spawn_bg(
             cx,
@@ -2311,6 +2335,20 @@ impl Dispatcher {
     }
 }
 
+/// Flag `145`: the commits of a squash, order-independent.
+fn squash_draft_key<'a>(onto: &str, squashed: impl Iterator<Item = &'a String>) -> Vec<String> {
+    let mut key: Vec<String> = squashed.cloned().collect();
+    key.sort();
+    key.insert(0, onto.to_string());
+    key
+}
+
+/// A message's summary line and description (after the blank line).
+fn split_message(message: &str) -> (String, String) {
+    let (summary, rest) = message.split_once('\n').unwrap_or((message, ""));
+    (summary.trim().to_string(), rest.trim().to_string())
+}
+
 fn last_retained_for_warn(mco: &Option<MultiCommitOperation>) -> Option<String> {
     match mco.as_ref().map(|m| &m.detail) {
         Some(McoDetail::Squash {
@@ -2326,6 +2364,24 @@ fn last_retained_for_warn(mco: &Option<MultiCommitOperation>) -> Option<String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn squash_drafts_match_the_same_commits() {
+        let (a, b) = ("a".to_string(), "b".to_string());
+        assert_eq!(
+            squash_draft_key("o", [&a, &b].into_iter()),
+            squash_draft_key("o", [&b, &a].into_iter())
+        );
+        assert_ne!(
+            squash_draft_key("o", [&a].into_iter()),
+            squash_draft_key("a", ["o".to_string()].iter())
+        );
+        assert_eq!(
+            split_message("Title\n\nbody\nmore"),
+            ("Title".to_string(), "body\nmore".to_string())
+        );
+        assert_eq!(split_message("Title"), ("Title".to_string(), String::new()));
+    }
 
     #[test]
     fn conflict_state_follows_repository_markers() {

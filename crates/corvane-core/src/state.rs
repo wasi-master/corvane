@@ -676,6 +676,9 @@ pub struct RepositoryState {
     /// summary's counts; everything else dims.
     pub highlighted_shas: Vec<String>,
     pub mco_undo: Option<crate::mco::McoUndo>,
+    /// Flag `145`: the message of a squash that failed, keyed by its commits
+    /// (onto, then the squashed ones), offered again by the next squash of them.
+    pub squash_draft: Option<(Vec<String>, String)>,
     /// `changesState.conflictState`
     pub conflict_state: Option<crate::mco::ConflictState>,
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.
