@@ -41,7 +41,7 @@ import accounts  # noqa: E402
 import fixture  # noqa: E402
 import imgdiff  # noqa: E402
 import report  # noqa: E402
-from drivers import Corvane, Ghd  # noqa: E402
+from drivers import Corvane, Ghd, page_rect  # noqa: E402
 
 
 class Absent:
@@ -339,8 +339,8 @@ class Run:
             tolerance=spec.get("tolerance", cfg["tolerance"]),
             edge_tolerance=spec.get("edge_tolerance", cfg["edge_tolerance"]),
             radius_pt=spec.get("radius", cfg["radius"]),
-            masks=spec.get("mask"),
-            region=spec.get("region"),
+            masks=[page_rect(m) for m in spec.get("mask") or []] or None,
+            region=page_rect(spec.get("region")),
         )
         for reg in res.regions:
             try:

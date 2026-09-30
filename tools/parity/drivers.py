@@ -42,6 +42,28 @@ GHD_APP = Path(
 DEFAULT_SCALE = 2.0 if IS_MAC else 1.0
 
 
+# Scenarios place fixed points and rectangles on GHD's macOS page, which
+# starts with its 32 pt title bar (#desktop-app-title-bar); off macOS the
+# page has none (Electron's menu bar sits outside it), so everything below
+# is that much higher.
+TITLE_BAR = 32.0 if not IS_MAC else 0.0
+
+
+def page_point(x: float, y: float) -> tuple[float, float]:
+    """A scenario's macOS page point on this platform's page."""
+    return float(x), max(0.0, float(y) - TITLE_BAR)
+
+
+def page_rect(rect):
+    """A scenario's macOS `[x, y, w, h]` on this platform's page (the part
+    over the title bar is dropped)."""
+    if not rect or not TITLE_BAR:
+        return rect
+    x, y, w, h = rect
+    top = y - TITLE_BAR
+    return [x, max(0.0, top), w, h + min(0.0, top)]
+
+
 def platform_keys(spec: str) -> str:
     """Scenario chords say `cmd` for GHD's CmdOrCtrl: Ctrl off macOS."""
     if IS_MAC or not spec:
@@ -349,7 +371,7 @@ class Ghd:
     def resolve(self, target) -> tuple[float, float]:
         """`[x, y]`, `{css: sel}` or `{text: label}` (+ `offset`) → window point."""
         if isinstance(target, (list, tuple)):
-            return float(target[0]), float(target[1])
+            return page_point(target[0], target[1])
         if "css" in target:
             js = f"document.querySelector({json.dumps(target['css'])})"
         elif "contains" in target:
