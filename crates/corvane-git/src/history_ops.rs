@@ -17,7 +17,7 @@ pub fn revert_commit(git: Arc<GitBinary>, workdir: &Path, sha: &str, is_merge: b
     Ok(())
 }
 
-/// Corvane addition (flag `242`): `git revert --no-commit` over `shas`, in
+/// Corvane addition (flag `815`): `git revert --no-commit` over `shas`, in
 /// the order given (newest first reverts cleanly), leaving the combined
 /// inverse staged for the user to commit. `-m 1` is passed when any of them
 /// is a merge (git accepts it for ordinary commits too). Meant for a clean
@@ -50,7 +50,7 @@ pub fn revert_commits_no_commit(
     Ok(())
 }
 
-/// Corvane addition (flag `147`): `git cherry-pick --no-commit` of `shas`
+/// Corvane addition (flag `820`): `git cherry-pick --no-commit` of `shas`
 /// (oldest first) onto the current branch, leaving their changes staged.
 /// Like [`revert_commits_no_commit`]: meant for a clean working tree, and a
 /// failed pick (a conflict) resets the index and working tree to `HEAD` and
@@ -81,7 +81,7 @@ pub fn cherry_pick_no_commit(
     Ok(())
 }
 
-/// Corvane addition (flag `148`): one patch per commit of `shas` (oldest
+/// Corvane addition (flag `821`): one patch per commit of `shas` (oldest
 /// first) in `dir`, `git format-patch -1 <sha> -o <dir>`, numbered in that
 /// order. Returns the files written.
 pub fn format_patches(
@@ -109,7 +109,7 @@ pub fn format_patches(
     Ok(written)
 }
 
-/// Corvane addition (flag `443`): undo one file's changes from `sha` in the
+/// Corvane addition (flag `814`): undo one file's changes from `sha` in the
 /// working tree - the file's diff against the first parent (the empty tree
 /// for a root commit), `-M` so a rename goes back to `old_path`, applied in
 /// reverse with `git apply -R`. git checks the whole patch before writing,
@@ -179,7 +179,7 @@ pub fn checkout_commit(git: Arc<GitBinary>, workdir: &Path, sha: &str) -> Result
 }
 
 /// `createTag`: annotated tag with an empty message, as GHD creates them.
-/// A non-empty `message` (flag `244`) is kept as typed, `#` lines included.
+/// A non-empty `message` (flag `823`) is kept as typed, `#` lines included.
 pub fn create_tag(
     git: Arc<GitBinary>,
     workdir: &Path,

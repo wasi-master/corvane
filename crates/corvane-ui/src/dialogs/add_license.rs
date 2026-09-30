@@ -1,5 +1,5 @@
 //! Repository › Add License… - a Corvane addition with no GHD counterpart
-//! (flag `455-add-license`, see `.docs/deviations.md`). Picks one
+//! (flag `221-add-license`, see `.docs/deviations.md`). Picks one
 //! of the license templates Create a New Repository offers
 //! (`ui/add-repository/create-repository.tsx` `renderLicenses`) and writes
 //! it to `LICENSE` in the repository (`Dispatcher::add_license`), which

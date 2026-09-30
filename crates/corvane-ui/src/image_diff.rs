@@ -5,17 +5,17 @@
 //! of the two images at their on-screen relative scale, recomputed when that
 //! scale changes.
 //!
-//! Deviation (`178-image-diff-border-outside`): the image's 1 px border sits
+//! Deviation (`752-image-diff-border-outside`): the image's 1 px border sits
 //! outside its fitted size (GHD's `border-box` shrinks the image by 2 px,
 //! which blurs small images).
 //!
-//! Deviation (`183-image-diff-background`): the checkerboard behind the
+//! Deviation (`753-image-diff-background`): the checkerboard behind the
 //! images can be dark, or follow the app theme.
 //!
-//! Deviation (`184-tga-image-diff`): `.tga` files are image diffs (decoded to
+//! Deviation (`755-tga-image-diff`): `.tga` files are image diffs (decoded to
 //! PNG); GHD shows them as binary.
 //!
-//! Deviation (`671-image-diff-alignment`): images of different sizes can
+//! Deviation (`754-image-diff-alignment`): images of different sizes can
 //! share the top left corner instead of the centre.
 
 use std::cell::Cell;
@@ -42,7 +42,7 @@ fn SLIDER_OVERFLOW() -> Pixels {
     zpx(14.)
 }
 
-/// `184-tga-image-diff`: GPUI cannot draw TGA, so it is decoded and shown
+/// `755-tga-image-diff`: GPUI cannot draw TGA, so it is decoded and shown
 /// as PNG.
 pub const TGA_MEDIA_TYPE: &str = "image/x-tga";
 
@@ -117,7 +117,7 @@ pub struct ImageDiff {
     /// Whether that blend aligned the images top-left.
     difference_top_left: bool,
     difference_pending: bool,
-    /// `178-image-diff-border-outside`: the 1 px border is drawn around the
+    /// `752-image-diff-border-outside`: the 1 px border is drawn around the
     /// fitted image instead of inside it (`box-sizing: content-box`).
     border_outside: bool,
 }
@@ -210,7 +210,7 @@ impl ImageDiff {
         .into_any_element()
     }
 
-    /// `183-image-diff-background`: whether the checkerboard is dark
+    /// `753-image-diff-background`: whether the checkerboard is dark
     /// (`dark`, or `theme` with a dark app theme).
     fn dark_checkerboard(cx: &App) -> bool {
         let choice = corvane_core::AppState::try_global(cx).map_or(String::new(), |s| {
@@ -226,7 +226,7 @@ impl ImageDiff {
         }
     }
 
-    /// `671-image-diff-alignment`: images of different sizes share the top
+    /// `754-image-diff-alignment`: images of different sizes share the top
     /// left corner in Swipe, Onion Skin and Difference instead of the centre.
     fn top_left(cx: &App) -> bool {
         corvane_core::AppState::try_global(cx).is_some_and(|s| {
@@ -239,7 +239,7 @@ impl ImageDiff {
 
     /// What a 1 px border adds around an image of the fitted size: nothing
     /// in GHD (`border-box`, the border eats into the image), 2 px with
-    /// `178-image-diff-border-outside`.
+    /// `752-image-diff-border-outside`.
     fn border_extra(&self) -> Pixels {
         if self.border_outside { px(2.) } else { px(0.) }
     }
@@ -766,7 +766,7 @@ impl Render for ImageDiff {
 }
 
 /// GHD `checkboard-background` mixin behind transparent images; `dark`
-/// (`183-image-diff-background`) swaps in a dark pair of greys.
+/// (`753-image-diff-background`) swaps in a dark pair of greys.
 fn checkerboard(dark: bool) -> AnyElement {
     canvas(
         |_, _, _| (),

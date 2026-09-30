@@ -3,9 +3,9 @@
 //! readers that back hunk expansion (`fileContents.newContents`).
 //!
 //! Deviations: a renamed file can diff against `HEAD:<old path>`
-//! (`174-renamed-diff-against-head`); a mode-only change carries the modes
-//! (`173-file-mode-change-message`); a symbolic link's working copy is its
-//! target path (`176-symlink-contents`).
+//! (`743-renamed-diff-against-head`); a mode-only change carries the modes
+//! (`742-file-mode-change-message`); a symbolic link's working copy is its
+//! target path (`745-symlink-contents`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -33,12 +33,12 @@ pub const MAX_DIFF_LINES: usize = 50_000;
 /// adds `-w` (Diff Settings › Hide Whitespace Changes).
 ///
 /// A renamed file is diffed index-to-working-tree like GHD, which hides
-/// staged edits; `renamed_against_head` (Corvane `174-renamed-diff-against-head`)
+/// staged edits; `renamed_against_head` (Corvane `743-renamed-diff-against-head`)
 /// diffs `HEAD:<old path>` to the working copy instead (`HEAD -M -- old new`),
 /// the change the commit will record, falling back to GHD's diff when git
 /// does not pair the two paths as one rename.
 ///
-/// `as_text` adds `--text` (Corvane `181-binary-diff-as-text`): a file git
+/// `as_text` adds `--text` (Corvane `749-binary-diff-as-text`): a file git
 /// takes for binary is diffed line by line anyway.
 pub fn working_directory_diff(
     git: Arc<GitBinary>,
@@ -119,7 +119,7 @@ pub fn working_directory_diff(
     })
 }
 
-/// Corvane `279-copy-diff`: the working-directory changes of `files` as one
+/// Corvane `714-copy-diff`: the working-directory changes of `files` as one
 /// patch `git apply` takes (`--binary`), against `base` (`HEAD`, or
 /// [`crate::NULL_TREE_SHA`] on an unborn branch). Tracked files come first,
 /// in one `git diff`, then each new / untracked file against `/dev/null`.
@@ -254,7 +254,7 @@ pub fn file_lines(bytes: &[u8]) -> Vec<String> {
 ///
 /// GHD reads through a symbolic link, which hangs on a link to a FIFO or a
 /// device and loads a huge target whole; `symlinks_as_links` (Corvane
-/// `176-symlink-contents`) reads the link's target path instead, the one
+/// `745-symlink-contents`) reads the link's target path instead, the one
 /// line git records and diffs for a link.
 pub fn working_file_lines(
     workdir: &Path,

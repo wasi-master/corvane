@@ -30,7 +30,7 @@ fn identity(sig: gix::actor::SignatureRef<'_>) -> CommitIdentity {
 }
 
 /// Every tag's short name (`refs/tags/` stripped), sorted
-/// case-insensitively. Feeds the compare list's Tags group (flag `444`).
+/// case-insensitively. Feeds the compare list's Tags group (flag `825`).
 pub fn tag_names(workdir: &Path) -> Result<Vec<String>> {
     let repo = gix::open(workdir)?;
     let refs = repo

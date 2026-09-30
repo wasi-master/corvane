@@ -38,7 +38,7 @@ pub enum TriggerKind {
     /// GHD `BranchAutocompletionProvider`: the whole input is the filter
     /// (`/^(.*)$/`), so there is no trigger character.
     Branch,
-    /// Corvane addition (`458-add-local-path-completion`): folders for a
+    /// Corvane addition (`223-add-local-path-completion`): folders for a
     /// typed path, see [`folder_completions`].
     Path,
 }
@@ -250,7 +250,7 @@ pub fn users_matching(
         .collect()
 }
 
-/// `422-free-form-co-authors`: `Name <email>` typed in the co-authors box,
+/// `735-free-form-co-authors`: `Name <email>` typed in the co-authors box,
 /// for a co-author without a GitHub account.
 pub fn parse_co_author_address(text: &str) -> Option<(String, String)> {
     let (name, email) = text.trim().strip_suffix('>')?.rsplit_once('<')?;
@@ -572,7 +572,7 @@ impl Dispatcher {
     }
 }
 
-/// `458-add-local-path-completion`: the folders completing a typed path,
+/// `223-add-local-path-completion`: the folders completing a typed path,
 /// as `(completion, folder name)`: the text up to the last `/` plus each
 /// sub-folder whose name starts with the rest (case-insensitive; hidden
 /// ones only when the rest starts with `.`), sorted, at most `max`. `~/`

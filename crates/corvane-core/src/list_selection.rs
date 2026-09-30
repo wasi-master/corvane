@@ -8,7 +8,7 @@
 //! `selected_file` (the ⇧-click anchor), the moving end is the last path.
 //!
 //! Deviation: [`extend_keeping`] keeps ⌘-clicked rows on ⇧-click
-//! (`172-shift-click-keeps-selection`).
+//! (`707-shift-click-keeps-selection`).
 
 /// `createSelectionBetween`: the rows from `from` to `to` inclusive, in the
 /// direction of travel (so `from` comes first).
@@ -48,7 +48,7 @@ pub fn extend_selection(
 }
 
 /// ⇧-click that keeps ⌘-clicked rows outside the range (Corvane
-/// `172-shift-click-keeps-selection`, like Finder): the previous range from
+/// `707-shift-click-keeps-selection`, like Finder): the previous range from
 /// `anchor` to the moving end (the last selected path) is replaced by the one
 /// from `anchor` to `to`; other selected rows stay, before the range so the
 /// moving end is still last. `None` when `anchor` or `to` is not visible.

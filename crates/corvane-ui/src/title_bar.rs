@@ -9,7 +9,7 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::TITLE_BAR_HEIGHT;
 
 pub fn title_bar(cx: &App) -> impl IntoElement {
-    // flag `189-light-toolbar`: a light gradient in the Light theme
+    // flag `109-light-toolbar`: a light gradient in the Light theme
     let (top, bottom, border) = if cx.ghd().light_title_bar {
         (0xf6f8fa, 0xeaeef2, 0xd0d7de)
     } else {

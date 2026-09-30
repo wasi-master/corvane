@@ -1,4 +1,4 @@
-//! A left-over `index.lock` (`512-remove-stale-index-lock`): git refuses to
+//! A left-over `index.lock` (`265-remove-stale-index-lock`): git refuses to
 //! touch the index while `<gitdir>/index.lock` exists, which a crashed or
 //! killed git leaves behind. GitHub Desktop shows git's error only.
 

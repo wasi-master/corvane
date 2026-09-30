@@ -12,7 +12,7 @@
 //! only in release builds unless `CORVANE_UPDATE_CHECK=1` (debug builds also
 //! honour `CORVANE_UPDATE_INSTALL=1`: install as soon as the update is ready).
 //! The launch and four-hourly checks can be switched off
-//! (`523-no-automatic-update-checks`; GHD always checks).
+//! (`506-no-automatic-update-checks`; GHD always checks).
 
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -171,7 +171,7 @@ impl Dispatcher {
             cx.background_executor().timer(jitter).await;
             loop {
                 cx.update(|cx| {
-                    // `523-no-automatic-update-checks`: About's Check for
+                    // `506-no-automatic-update-checks`: About's Check for
                     // Updates still works
                     let off = Self::state(cx)
                         .read(cx)

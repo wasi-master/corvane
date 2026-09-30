@@ -6,11 +6,11 @@
 //! (`REBASE_HEAD`, `CHERRY_PICK_HEAD`, `MERGE_HEAD`) rather than by matching
 //! dugite's stderr regexes, which is more robust across git versions.
 //!
-//! Deviation: with `keep_messages` (flag `448`) rebases use
+//! Deviation: with `keep_messages` (flag `834`) rebases use
 //! `commit.cleanup=scissors` so `#` message lines survive a conflict
 //! (GHD `lib/git/rebase.ts` keeps git's `strip`); cherry-picks likewise
-//! (flag `449`, GHD `lib/git/cherry-pick.ts`). Squash can `--autostash`
-//! (flag `149`; GHD refuses to start with local changes).
+//! (flag `836`, GHD `lib/git/cherry-pick.ts`). Squash can `--autostash`
+//! (flag `829`; GHD refuses to start with local changes).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -432,7 +432,7 @@ pub fn stage_manual_conflict_resolution(
     Ok(())
 }
 
-/// Corvane addition (flag `150`): `git mergetool --no-prompt -- <path>` with
+/// Corvane addition (flag `842`): `git mergetool --no-prompt -- <path>` with
 /// the user's `merge.tool`; blocks until the tool exits (git stages the file
 /// when the tool reports success). Refuses without a configured
 /// `merge.tool`, since git would otherwise fall back to terminal tools.
@@ -709,10 +709,10 @@ pub fn continue_rebase(
 /// Options for the interactive rebases behind squash and reorder.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct RebaseOptions {
-    /// See [`cleanup_config`] (flag `448`).
+    /// See [`cleanup_config`] (flag `834`).
     pub keep_messages: bool,
     /// `--autostash`: local changes are stashed first and reapplied after
-    /// (flag `149`).
+    /// (flag `829`).
     pub autostash: bool,
 }
 

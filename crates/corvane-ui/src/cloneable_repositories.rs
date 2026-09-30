@@ -3,12 +3,12 @@
 //! `styles/ui/_account-picker.scss`), shared by Clone a Repository's account
 //! tabs and the signed-in blank slate (`no-repositories-view.tsx`).
 //!
-//! Deviation (`356-clone-filter-accepts-urls`): a repository URL pasted
+//! Deviation (`227-clone-filter-accepts-urls`): a repository URL pasted
 //! into the filter (`https://github.com/owner/name`, `git@host:owner/name.git`,
 //! a browser URL deeper into the repository) filters as `owner/name`; GHD
 //! fuzzy-matches the whole URL and finds nothing.
 //!
-//! Deviation (`357-clone-default-account`): the account picker can start
+//! Deviation (`228-clone-default-account`): the account picker can start
 //! on a chosen account instead of the first one signed in.
 //!
 //! Callers own the state (filter text box, selected clone URL, picked
@@ -56,7 +56,7 @@ pub enum CloneRow {
     Item(GitHubRepository, Vec<usize>),
 }
 
-/// Corvane (`314-hidden-clone-owners`): the owners whose repositories the
+/// Corvane (`229-hidden-clone-owners`): the owners whose repositories the
 /// clone lists leave out (the flag's comma-separated logins, lower-cased).
 pub fn hidden_owners(cx: &App) -> Vec<String> {
     corvane_core::AppState::global(cx)
@@ -127,7 +127,7 @@ pub fn group_rows(repos: &[GitHubRepository], login: &str, query: &str) -> Vec<C
 }
 
 /// The query `group_rows` filters with: the typed filter, or with
-/// `356-clone-filter-accepts-urls` a pasted URL's `owner/name`.
+/// `227-clone-filter-accepts-urls` a pasted URL's `owner/name`.
 pub fn filter_query(query: &str, cx: &App) -> String {
     let on = corvane_core::AppState::global(cx)
         .read(cx)
@@ -151,7 +151,7 @@ pub fn url_as_full_name(query: &str) -> Option<String> {
     (!name.is_empty()).then(|| format!("{owner}/{name}"))
 }
 
-/// `357-clone-default-account`: the account the picker starts on before one
+/// `228-clone-default-account`: the account the picker starts on before one
 /// is picked, the first of `accounts` whose login is in the flag's list,
 /// else the first account (GHD).
 pub fn default_account<'a>(accounts: &'a [Account], cx: &App) -> Option<&'a Account> {

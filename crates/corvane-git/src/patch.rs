@@ -475,7 +475,7 @@ mod tests {
         let ghd =
             crate::working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
         assert_eq!(changed(&ghd), ["j", "J"]);
-        // `174-renamed-diff-against-head`: HEAD's old blob to the working copy
+        // `743-renamed-diff-against-head`: HEAD's old blob to the working copy
         let diff =
             crate::working_directory_diff(git.clone(), path, file, false, true, false).unwrap();
         assert_eq!(changed(&diff), ["a", "A", "j", "J"]);

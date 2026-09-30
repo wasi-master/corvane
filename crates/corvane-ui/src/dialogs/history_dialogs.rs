@@ -3,10 +3,10 @@
 //! `ui/undo/warn-local-changes-before-undo.tsx`.
 //!
 //! Deviation (`.docs/deviations.md` › History): Create a Tag has an
-//! optional Message field (flag `244`); GHD always tags with an empty message.
-//! Undoing a tagged commit warns first (flag `441`); ⌘⏎ submits Create a Tag
-//! from its Message field (flag `442`). A pushed tag can be deleted, from the
-//! remote too, after a confirmation (flag `445`).
+//! optional Message field (flag `823`); GHD always tags with an empty message.
+//! Undoing a tagged commit warns first (flag `819`); ⌘⏎ submits Create a Tag
+//! from its Message field (flag `824`). A pushed tag can be deleted, from the
+//! remote too, after a confirmation (flag `826`).
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
 use gpui_kit::component::input::{InputEvent, InputState, Textarea, TextareaState};
@@ -69,7 +69,7 @@ impl Render for ResetToCommitDialog {
     }
 }
 
-/// Corvane addition (`229-reset-to-remote`): confirm resetting the current
+/// Corvane addition (`261-reset-to-remote`): confirm resetting the current
 /// branch to its upstream.
 pub struct ResetToRemoteDialog {
     repo: u64,
@@ -231,7 +231,7 @@ pub struct CreateTagDialog {
     repo: u64,
     sha: String,
     name: Entity<InputState>,
-    /// Flag `244`: the annotated tag's message.
+    /// Flag `823`: the annotated tag's message.
     message: Entity<TextareaState>,
 }
 
@@ -246,7 +246,7 @@ impl CreateTagDialog {
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
         let message = cx.new(|cx| TextareaState::new(window, cx).rows(4));
-        // ⏎ in Name submits the form, as GHD's `<form onSubmit>`; `442`: ⌘⏎
+        // ⏎ in Name submits the form, as GHD's `<form onSubmit>`; `824`: ⌘⏎
         // submits from the Message field too
         let cmd_enter = |cx: &App| {
             AppState::global(cx)
@@ -289,7 +289,7 @@ impl CreateTagDialog {
         (name, error)
     }
 
-    /// The message, empty unless flag `244` shows the Message field.
+    /// The message, empty unless flag `823` shows the Message field.
     fn message_text(&self, cx: &App) -> String {
         if AppState::global(cx)
             .read(cx)
@@ -462,7 +462,7 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
     }
 }
 
-/// Flag `441`: the commit being undone carries tags, which would be left on
+/// Flag `819`: the commit being undone carries tags, which would be left on
 /// a commit no branch contains (Corvane addition; GHD undoes silently).
 pub struct WarnTaggedCommitBeforeUndoDialog {
     repo: u64,
@@ -533,7 +533,7 @@ impl Render for WarnTaggedCommitBeforeUndoDialog {
     }
 }
 
-/// Flag `445`: delete a tag Corvane did not create-and-hold (not in
+/// Flag `826`: delete a tag Corvane did not create-and-hold (not in
 /// `tagsToPush`), optionally from the remote too (Corvane addition; GHD only
 /// deletes unpushed tags). The remote box starts unticked.
 pub struct ConfirmDeletePushedTagDialog {

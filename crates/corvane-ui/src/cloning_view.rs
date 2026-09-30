@@ -1,7 +1,7 @@
 //! `#cloning-repository-view`: shown in the content area while `git clone` runs
 //! (GHD `app/src/ui/cloning-repository.tsx`).
 //!
-//! Deviation (flag `227-clone-cancel`): a Cancel button stops the clone; GHD
+//! Deviation (flag `234-clone-cancel`): a Cancel button stops the clone; GHD
 //! has none.
 
 use corvane_core::{CloneState, Dispatcher};

@@ -11,7 +11,7 @@
 //! button and the per-job re-run are hidden (GHD shows them and the re-run
 //! request fails).
 //!
-//! Corvane addition (flag `395-ci-popover-pull-request-link`): the header's
+//! Corvane addition (flag `319-ci-popover-pull-request-link`): the header's
 //! summary line ends with an "Open #N on GitHub" link to the pull request.
 
 use std::cell::Cell;

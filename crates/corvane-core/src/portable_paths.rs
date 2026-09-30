@@ -1,4 +1,4 @@
-//! Paths Windows cannot check out (`284-windows-invalid-names-warning`, a
+//! Paths Windows cannot check out (`716-windows-invalid-names-warning`, a
 //! Corvane addition; GHD 3.6.6 commits them silently): reserved device names,
 //! characters NTFS rejects, and names ending in a space or a dot.
 

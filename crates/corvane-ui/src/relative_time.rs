@@ -1,6 +1,6 @@
 //! GHD `RelativeTime`: "just now", "5 minutes ago", "2 hours ago", "3 days ago"…
 //!
-//! Deviation (`123-calendar-relative-dates`): past a week, ages are counted
+//! Deviation (`106-calendar-relative-dates`): past a week, ages are counted
 //! in weeks until two calendar months have passed, then in calendar months
 //! and years (GHD `formatRelative` divides days by 30, so a commit on the 1st
 //! is "last month" on the 31st).
@@ -12,7 +12,7 @@ use crate::format::LocalTime;
 
 static CALENDAR_DATES: AtomicBool = AtomicBool::new(false);
 
-/// Mirror `123-calendar-relative-dates` (called whenever the flags change).
+/// Mirror `106-calendar-relative-dates` (called whenever the flags change).
 pub fn set_calendar_dates(on: bool) {
     CALENDAR_DATES.store(on, Ordering::Relaxed);
 }

@@ -211,7 +211,7 @@ struct Walk {
     table_cells: Option<u32>,
 }
 
-/// Flag `141`: a commit message as GitHub.com shows it - `code` spans in
+/// Flag `804`: a commit message as GitHub.com shows it - `code` spans in
 /// backticks (on one line; the backticks are dropped), bare `http(s)` URLs
 /// linked, and with `commit_base` (the repository's `html_url`) 7–40
 /// character hex words that mix letters and digits linked to
