@@ -415,6 +415,19 @@ registry! {
         upstream: &[Upstream::issue(18715), Upstream::issue(20982)],
         code: &["crates/corvane-core/src/mco.rs"],
     },
+    /// Line totals for a multi-commit selection.
+    MULTI_COMMIT_LINE_TOTALS = 251 "multi-commit-line-totals" {
+        title: "Line totals for a multi-commit selection",
+        summary: "Selecting several commits shows the range's added and removed line totals next \
+                  to \"Showing changes from N commits\".",
+        ghd_behaviour: "Only the commit count.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17869)],
+        code: &["crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 

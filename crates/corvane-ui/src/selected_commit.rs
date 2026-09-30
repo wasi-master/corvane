@@ -9,7 +9,8 @@
 //! copies all the paths; GHD's history file list selects one file. Open with
 //! Default Program opens the file as of the commit (flag `248`), not the
 //! working copy. A file gone from disk keeps its Copy path items (flag
-//! `249`).
+//! `249`). A multi-commit selection's summary shows the range's +added
+//! -deleted line totals (flag `251`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -204,6 +205,17 @@ impl SelectedCommitView {
             .collect();
         let not_in_diff = shas_not_in_diff.len();
         let in_diff = selected - not_in_diff;
+        // `251`: the range's line totals follow the count
+        let totals = s
+            .flags
+            .bool(corvane_core::flags::ids::MULTI_COMMIT_LINE_TOTALS)
+            .then(|| {
+                rs.changeset
+                    .as_ref()
+                    .map(|c| (c.lines_added, c.lines_deleted))
+            })
+            .flatten()
+            .filter(|(a, d)| *a > 0 || *d > 0);
         // `onHighlightShas`: hovering either count dims the other rows.
         let highlight = |shas: Vec<String>| {
             move |hovered: &bool, _: &mut Window, cx: &mut App| {
@@ -231,11 +243,36 @@ impl SelectedCommitView {
                         .text_size(FONT_SIZE_MD())
                         .font_weight(FontWeight::SEMIBOLD)
                         .line_height(zpx(16.))
+                        .flex()
+                        .flex_row()
                         .on_hover(highlight(shas_in_diff))
                         .child(format!(
                             "Showing changes from {in_diff} {}",
                             if in_diff == 1 { "commit" } else { "commits" }
-                        )),
+                        ))
+                        .when_some(totals, |d, (added, deleted)| {
+                            d.child(
+                                div()
+                                    .ml_auto()
+                                    .pl(SPACING())
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .gap(SPACING_HALF())
+                                    .font_weight(FontWeight::NORMAL)
+                                    .text_size(FONT_SIZE_SM())
+                                    .child(
+                                        div().text_color(t.color_new).child(format!(
+                                            "+{}",
+                                            crate::format::format_count(added)
+                                        )),
+                                    )
+                                    .child(div().text_color(t.color_deleted).child(format!(
+                                        "-{}",
+                                        crate::format::format_count(deleted)
+                                    ))),
+                            )
+                        }),
                 )
                 .when(not_in_diff > 0, |d| {
                     // `renderCommitsNotReachable` (`.commit-unreachable-info`)
