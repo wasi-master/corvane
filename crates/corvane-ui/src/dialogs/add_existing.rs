@@ -7,6 +7,9 @@
 //! Deviation (`457-add-local-multiple`): Choose… can pick several folders;
 //! more than one adds every picked repository at once.
 //!
+//! Deviation (`459-alias-when-adding`): an optional Alias field names the
+//! repository as it is added (GHD: Create Alias afterwards).
+//!
 //! Deviation (`458-add-local-path-completion`): the Local Path box
 //! autocompletes folder names (↑/↓, Enter/Tab, Esc) like the Add Worktree
 //! branch box.
@@ -36,6 +39,8 @@ pub struct AddExistingRepositoryDialog {
     warning: Option<PathStatus>,
     /// `458-add-local-path-completion` popup.
     autocomplete: Option<Autocompletion>,
+    /// `459-alias-when-adding`.
+    alias: Entity<InputState>,
 }
 
 impl AddExistingRepositoryDialog {
@@ -69,6 +74,7 @@ impl AddExistingRepositoryDialog {
             path,
             warning: None,
             autocomplete: None,
+            alias: cx.new(|cx| InputState::new(window, cx).placeholder("optional")),
         }
     }
 
@@ -174,6 +180,15 @@ impl AddExistingRepositoryDialog {
         match (self.resolved_path(cx), status) {
             (Some(path), Some(PathStatus::Repository)) => {
                 Dispatcher::close_popup(cx);
+                if self
+                    .state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING)
+                {
+                    let alias = self.alias.read(cx).value().to_string();
+                    Dispatcher::alias_when_added(&path, alias, cx);
+                }
                 Dispatcher::add_repository(path, cx);
             }
             (_, status) => {
@@ -265,6 +280,11 @@ impl Render for AddExistingRepositoryDialog {
 
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
+        let alias_field = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING);
         let popup = self.autocomplete.as_ref().and_then(|ac| {
             let (bounds, line_height) = self.path.read(cx).cursor_layout()?;
             let anchor = point(bounds.origin.x, bounds.origin.y + line_height);
@@ -331,7 +351,14 @@ impl Render for AddExistingRepositoryDialog {
                                 ),
                         ),
                 )
-                .children(error),
+                .children(error)
+                .when(alias_field, |d| {
+                    d.child(labeled(
+                        "Alias",
+                        text_box("add-existing-alias", &self.alias, None, window, cx),
+                        cx,
+                    ))
+                }),
             vec![
                 DialogButton {
                     id: "add-existing-cancel",

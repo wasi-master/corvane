@@ -30,6 +30,9 @@
 //! the banner (GHD closes it and shows an error dialog, so both are typed
 //! again).
 //!
+//! Deviation (`459-alias-when-adding`): an optional Alias field under the
+//! local path names the clone in the repository list.
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -85,6 +88,8 @@ pub struct CloneRepositoryDialog {
     /// this dialog reopened after, with that clone's URL and path; shown
     /// until either field differs.
     clone_error: Option<(SharedString, String, String)>,
+    /// `459-alias-when-adding`.
+    alias: Entity<InputState>,
     /// `selectedAccount` per GitHub tab, as `(endpoint, login)`.
     dotcom_account: Option<(String, String)>,
     enterprise_account: Option<(String, String)>,
@@ -178,6 +183,7 @@ impl CloneRepositoryDialog {
             shallow: false,
             existing_repo: None,
             clone_error: None,
+            alias: cx.new(|cx| InputState::new(window, cx).placeholder("optional")),
         };
         this.ensure_loaded(cx);
         this
@@ -425,6 +431,15 @@ impl CloneRepositoryDialog {
                 .flags
                 .bool(corvane_core::flags::ids::SHALLOW_CLONE);
         let depth = shallow.then_some(1);
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING)
+        {
+            let alias = self.alias.read(cx).value().to_string();
+            Dispatcher::alias_when_added(&path, alias, cx);
+        }
         Dispatcher::resolve_clone_info(
             input,
             prefer_ssh,
@@ -567,6 +582,19 @@ impl CloneRepositoryDialog {
             .flex_col()
             .child(self.path_field(window, cx))
             .children(add_existing)
+            .when(
+                self.state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING),
+                |d| {
+                    d.child(div().mt(SPACING()).child(labeled(
+                        "Alias",
+                        text_box("clone-alias", &self.alias, None, window, cx),
+                        cx,
+                    )))
+                },
+            )
             .when(shallow_option, |d| {
                 d.child(div().mt(SPACING()).child(shallow))
             })
