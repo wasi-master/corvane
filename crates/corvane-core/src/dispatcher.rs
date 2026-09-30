@@ -1966,8 +1966,20 @@ impl Dispatcher {
     }
 
     /// Bring `branch` into the current branch for Update from Default Branch.
+    ///
+    /// Deviation (`222-update-from-default-rebases`): with `pull.rebase` set
+    /// the current branch is rebased onto it (GHD always merges).
     fn update_from_branch(id: u64, branch: String, cx: &mut App) {
-        Self::merge_branch(id, branch, false, cx);
+        let rebase = {
+            let s = Self::state(cx).read(cx);
+            s.flags.bool(crate::flags::ids::UPDATE_FROM_DEFAULT_REBASES)
+                && s.repo_states.get(&id).is_some_and(|r| r.pull_with_rebase)
+        };
+        if rebase {
+            Self::rebase_onto(id, branch, cx);
+        } else {
+            Self::merge_branch(id, branch, false, cx);
+        }
     }
 
     /// Branch › Stash All Changes (`createStashForCurrentBranch`).

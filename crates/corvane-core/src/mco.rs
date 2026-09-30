@@ -769,6 +769,49 @@ impl Dispatcher {
 
     /// `updateRebasePreview`
     pub fn preview_rebase(id: u64, base_branch: String, cx: &mut App) {
+        Self::preview_rebase_then(id, base_branch, |_, _| {}, cx);
+    }
+
+    /// Update from Default Branch with `pull.rebase` set
+    /// (`222-update-from-default-rebases`): rebase the current branch onto
+    /// `base_branch` without the choose-branch step.
+    pub(crate) fn rebase_onto(id: u64, base_branch: String, cx: &mut App) {
+        let Some((current, _)) = Self::current_branch_and_tip(id, cx) else {
+            return;
+        };
+        Self::preview_rebase_then(
+            id,
+            base_branch.clone(),
+            move |preview, cx| {
+                if !preview.valid {
+                    Self::show_error(
+                        "Could not rebase",
+                        format!("Unable to rebase {current} onto {base_branch}."),
+                        cx,
+                    );
+                } else if preview.behind == 0 {
+                    Self::set_banner(
+                        Banner::BranchAlreadyUpToDate {
+                            our_branch: current,
+                            their_branch: Some(base_branch),
+                        },
+                        cx,
+                    );
+                } else {
+                    Self::start_rebase(id, base_branch, false, cx);
+                }
+            },
+            cx,
+        );
+    }
+
+    /// [`Self::preview_rebase`], then `then(preview)` once it is stored.
+    fn preview_rebase_then(
+        id: u64,
+        base_branch: String,
+        then: impl FnOnce(RebasePreview, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -796,9 +839,10 @@ impl Dispatcher {
                     },
                 };
                 Self::state(cx).update(cx, |s, cx| {
-                    s.repo_state_mut(id).rebase_preview = Some(preview);
+                    s.repo_state_mut(id).rebase_preview = Some(preview.clone());
                     cx.notify();
                 });
+                then(preview, cx);
             },
         );
     }

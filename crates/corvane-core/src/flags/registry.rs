@@ -521,6 +521,20 @@ registry! {
         upstream: &[Upstream::issue(18774), Upstream::issue(21427)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Update from Default Branch rebases when pull.rebase is set.
+    UPDATE_FROM_DEFAULT_REBASES = 222 "update-from-default-rebases" {
+        title: "Update from Default Branch follows pull.rebase",
+        summary: "When git config sets pull.rebase, Branch › Update from Default Branch rebases \
+                  the current branch onto the default branch (with the usual force-push warning \
+                  and conflict flow) instead of merging it in.",
+        ghd_behaviour: "Always merges the default branch in.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(7956), Upstream::issue(16131)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs"],
+    },
 
     // ---- 300 GitHub ----
 
