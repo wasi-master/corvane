@@ -123,6 +123,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Lists
 
 - A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
+- ⇧-click in the changes list keeps rows ⌘-clicked outside the range: it replaces only the range from the anchor (the last clicked file) to the previous ⇧-click, as Finder does (`list_selection::extend_keeping`). GHD 3.6.6 selects the range alone. Flag: `172-shift-click-keeps-selection`.
 
 ## Scrolling
 

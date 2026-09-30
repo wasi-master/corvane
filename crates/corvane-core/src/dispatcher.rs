@@ -850,8 +850,25 @@ impl Dispatcher {
     /// ⇧-click: select the visible range between the anchor and `path`.
     pub fn extend_file_selection(id: u64, path: String, order: Vec<String>, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
+            // `172-shift-click-keeps-selection`
+            let keep = s.flags.bool(crate::flags::ids::SHIFT_CLICK_KEEPS_SELECTION);
             let rs = s.repo_state_mut(id);
             let anchor = rs.selected_file.clone().unwrap_or_else(|| path.clone());
+            if keep {
+                if let Some(selection) = crate::list_selection::extend_keeping(
+                    &order,
+                    &anchor,
+                    &rs.selected_files,
+                    &path,
+                ) {
+                    rs.selected_files = selection;
+                    if rs.selected_file.is_none() {
+                        rs.selected_file = Some(path);
+                    }
+                    cx.notify();
+                }
+                return;
+            }
             let (Some(a), Some(b)) = (
                 order.iter().position(|p| *p == anchor),
                 order.iter().position(|p| *p == path),

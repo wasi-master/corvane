@@ -248,6 +248,19 @@ registry! {
         upstream: &[Upstream::issue(21883)],
         code: &["crates/corvane-ui/src/changes.rs"],
     },
+    /// ⇧-click keeps ⌘-clicked rows.
+    SHIFT_CLICK_KEEPS_SELECTION = 172 "shift-click-keeps-selection" {
+        title: "⇧-click keeps ⌘-clicked files",
+        summary: "In the changes list, ⇧-click replaces only the range from the last clicked \
+                  file; files ⌘-clicked outside it stay selected, as in Finder.",
+        ghd_behaviour: "⇧-click selects the range alone and drops the other selected files.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16355)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/list_selection.rs"],
+    },
 
     // ---- 200 Repository ----
 
