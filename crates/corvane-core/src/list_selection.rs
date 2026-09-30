@@ -6,6 +6,9 @@
 //! (`selectedRows[0]`) to the row that moves (`selectedRows.at(-1)`). Corvane
 //! stores paths in the same order; the origin is the repository state's
 //! `selected_file` (the ⇧-click anchor), the moving end is the last path.
+//!
+//! Deviation: [`extend_keeping`] keeps ⌘-clicked rows on ⇧-click
+//! (`172-shift-click-keeps-selection`).
 
 /// `createSelectionBetween`: the rows from `from` to `to` inclusive, in the
 /// direction of travel (so `from` comes first).
@@ -42,6 +45,34 @@ pub fn extend_selection(
         return None;
     }
     Some(selection_between(order, origin, next))
+}
+
+/// ⇧-click that keeps ⌘-clicked rows outside the range (Corvane
+/// `172-shift-click-keeps-selection`, like Finder): the previous range from
+/// `anchor` to the moving end (the last selected path) is replaced by the one
+/// from `anchor` to `to`; other selected rows stay, before the range so the
+/// moving end is still last. `None` when `anchor` or `to` is not visible.
+pub fn extend_keeping(
+    order: &[String],
+    anchor: &str,
+    selected: &[String],
+    to: &str,
+) -> Option<Vec<String>> {
+    let origin = order.iter().position(|p| p == anchor)?;
+    let target = order.iter().position(|p| p == to)?;
+    let end = selected
+        .last()
+        .and_then(|last| order.iter().position(|p| p == last))
+        .unwrap_or(origin);
+    let previous = selection_between(order, origin, end);
+    let range = selection_between(order, origin, target);
+    let mut out: Vec<String> = selected
+        .iter()
+        .filter(|p| !previous.contains(p) && !range.contains(p))
+        .cloned()
+        .collect();
+    out.extend(range);
+    Some(out)
 }
 
 #[cfg(test)]
@@ -92,6 +123,21 @@ mod tests {
         let o = order();
         let s = extend_selection(&o, "d", &v(&["a", "d"]), 1).unwrap();
         assert_eq!(s, v(&["d", "e"]));
+    }
+
+    #[test]
+    fn shift_click_keeps_toggled_rows() {
+        let o = order();
+        // click a, ⌘-click c, ⇧-click e: a stays, c..e selected
+        let s = extend_keeping(&o, "c", &v(&["a", "c"]), "e").unwrap();
+        assert_eq!(s, v(&["a", "c", "d", "e"]));
+        // ⇧-click d instead: the previous range c..e shrinks to c..d
+        let s = extend_keeping(&o, "c", &s, "d").unwrap();
+        assert_eq!(s, v(&["a", "c", "d"]));
+        // ⇧-click above the anchor: the range flips, a is part of it
+        let s = extend_keeping(&o, "c", &s, "a").unwrap();
+        assert_eq!(s, v(&["c", "b", "a"]));
+        assert_eq!(extend_keeping(&o, "z", &s, "a"), None);
     }
 
     #[test]
