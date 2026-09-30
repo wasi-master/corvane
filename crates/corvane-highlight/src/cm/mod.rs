@@ -271,7 +271,12 @@ impl<'a> StringStream<'a> {
     pub fn eat_re(&mut self, re: &Regex) -> Option<char> {
         let c = self.chars[..self.end].get(self.pos).copied()?;
         let mut buf = [0u8; 4];
-        if re.is_match(c.encode_utf8(&mut buf)).unwrap_or(false) {
+        let c_str = c.encode_utf8(&mut buf);
+        let hit = match fast::regex(re) {
+            Some(fast) => fast.is_match(&*c_str),
+            None => re.is_match(c_str).unwrap_or(false),
+        };
+        if hit {
             self.pos += 1;
             Some(c)
         } else {
@@ -387,37 +392,47 @@ impl<'a> StringStream<'a> {
     /// `match(regex, consume)`: JS `slice(pos).match(re)`, null unless the
     /// match starts at `pos`.
     pub fn match_re(&mut self, re: &Regex, consume: bool) -> Option<Match> {
+        let rest = self.rest();
+        let rest = &*rest;
+        let m = match fast::regex(re) {
+            // a match at `pos` is the leftmost one, so an anchored search
+            // gives JS's answer without scanning the rest of the line
+            Some(fast) => fast::anchored_match(&fast, rest)?,
+            None => {
+                let caps = re.captures(rest).ok().flatten()?;
+                let whole = caps.get(0)?;
+                if whole.start() > 0 {
+                    return None;
+                }
+                Match {
+                    text: whole.as_str().to_string(),
+                    groups: (1..caps.len())
+                        .map(|i| caps.get(i).map(|g| g.as_str().to_string()))
+                        .collect(),
+                }
+            }
+        };
+        if consume {
+            self.pos += js_len(&m.text);
+        }
+        Some(m)
+    }
+    /// The text a regex `match` runs on: the line from `pos` to the end.
+    pub fn rest(&self) -> std::borrow::Cow<'a, str> {
         let pos = self.pos.min(self.end);
-        let rest = &self.string[self.bytes[pos]..self.bytes[self.end]];
         // `next()` over a char outside the BMP leaves `pos` between its
         // surrogates: JS then matches from the lone low surrogate. U+FFFD
         // stands in for it (one unit, no letter / digit / space, matched by
         // `.` and negated classes like the surrogate).
-        let spliced;
-        let rest = if pos > 0 && pos < self.end && self.bytes[pos] == self.bytes[pos - 1] {
-            spliced = format!(
+        if pos > 0 && pos < self.end && self.bytes[pos] == self.bytes[pos - 1] {
+            format!(
                 "\u{fffd}{}",
                 &self.string[self.bytes[pos + 1]..self.bytes[self.end]]
-            );
-            spliced.as_str()
+            )
+            .into()
         } else {
-            rest
-        };
-        let caps = re.captures(rest).ok().flatten()?;
-        let whole = caps.get(0)?;
-        if whole.start() > 0 {
-            return None;
+            self.string[self.bytes[pos]..self.bytes[self.end]].into()
         }
-        let m = Match {
-            text: whole.as_str().to_string(),
-            groups: (1..caps.len())
-                .map(|i| caps.get(i).map(|g| g.as_str().to_string()))
-                .collect(),
-        };
-        if consume {
-            self.pos += js_len(whole.as_str());
-        }
-        Some(m)
     }
     /// `match(re)` as a boolean, consuming.
     pub fn matches(&mut self, re: &Regex) -> bool {
@@ -510,6 +525,118 @@ pub fn js_pattern(pattern: &str) -> std::borrow::Cow<'_, str> {
         }
     }
     out.into()
+}
+
+/// The `regex` crate's automata for mode regexes it can run. fancy-regex
+/// runs any pattern with `\b` (most keyword rules) on its backtracking VM,
+/// which allocates on every attempt; a tokenizer tries each rule at each
+/// position, so that was most of the highlighting time. Patterns with
+/// lookaround or backreferences, which `regex` rejects, stay on fancy-regex.
+/// Both use leftmost-first semantics and Unicode `\b`, `\w`, `\d`, so the
+/// matches are the same.
+mod fast {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    use std::hash::{BuildHasherDefault, Hasher};
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    use regex_automata::meta::Regex as Meta;
+    use regex_automata::{Anchored, Input, PatternID};
+
+    use super::Match;
+
+    /// Per thread (the highlighter runs on background executor threads):
+    /// the pattern string's address and length → (pattern, compiled). The
+    /// stored pattern guards against a freed regex's address being reused.
+    type Cache =
+        HashMap<(usize, usize), (Box<str>, Option<Arc<Meta>>), BuildHasherDefault<AddrHasher>>;
+
+    /// The key is an address and a length: mixing them is hash enough
+    /// (SipHash was a quarter of the lookup cost, run per rule per position).
+    #[derive(Default)]
+    pub struct AddrHasher(u64);
+
+    impl Hasher for AddrHasher {
+        fn finish(&self) -> u64 {
+            self.0
+        }
+        fn write(&mut self, bytes: &[u8]) {
+            for b in bytes {
+                self.write_u64(u64::from(*b));
+            }
+        }
+        fn write_usize(&mut self, n: usize) {
+            self.write_u64(n as u64);
+        }
+        fn write_u64(&mut self, n: u64) {
+            self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+        }
+    }
+
+    thread_local! {
+        static CACHE: RefCell<Cache> = RefCell::new(Cache::default());
+    }
+
+    /// Modes build a few regexes per document at most (htmlmixed's end tags);
+    /// start over past this so dropped ones do not pile up.
+    const MAX_ENTRIES: usize = 4096;
+
+    pub fn regex(re: &fancy_regex::Regex) -> Option<Arc<Meta>> {
+        let pattern = re.as_str();
+        let key = (pattern.as_ptr() as usize, pattern.len());
+        CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some((stored, fast)) = cache.get(&key)
+                && &**stored == pattern
+            {
+                return fast.clone();
+            }
+            if cache.len() >= MAX_ENTRIES {
+                cache.clear();
+            }
+            let fast = compiled(pattern);
+            cache.insert(key, (pattern.into(), fast.clone()));
+            fast
+        })
+    }
+
+    /// Compiled once per process, whichever thread asks first.
+    fn compiled(pattern: &str) -> Option<Arc<Meta>> {
+        type Shared = Mutex<HashMap<Box<str>, Option<Arc<Meta>>>>;
+        static SHARED: OnceLock<Shared> = OnceLock::new();
+        let shared = SHARED.get_or_init(Default::default);
+        if let Some(fast) = shared.lock().ok()?.get(pattern) {
+            return fast.clone();
+        }
+        let fast = Meta::new(pattern).ok().map(Arc::new);
+        let mut shared = shared.lock().ok()?;
+        if shared.len() >= MAX_ENTRIES {
+            shared.clear();
+        }
+        shared.insert(pattern.into(), fast.clone());
+        fast
+    }
+
+    /// A match starting at the beginning of `text`.
+    pub fn anchored_match(re: &Meta, text: &str) -> Option<Match> {
+        let input = Input::new(text).anchored(Anchored::Yes);
+        if re.group_info().group_len(PatternID::ZERO) <= 1 {
+            let m = re.search(&input)?;
+            return Some(Match {
+                text: text[m.range()].to_string(),
+                groups: Vec::new(),
+            });
+        }
+        let mut caps = re.create_captures();
+        re.search_captures(&input, &mut caps);
+        let whole = caps.get_match()?;
+        Some(Match {
+            text: text[whole.range()].to_string(),
+            groups: (1..caps.group_len())
+                .map(|i| caps.get_group(i).map(|g| text[g.range()].to_string()))
+                .collect(),
+        })
+    }
 }
 
 /// Compile a JS regex source ([`js_pattern`]); constant patterns only.

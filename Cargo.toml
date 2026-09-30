@@ -21,7 +21,7 @@ corvane-git = { path = "crates/corvane-git" }
 corvane-github = { path = "crates/corvane-github" }
 corvane-grammars = { path = "crates/corvane-grammars" }
 corvane-highlight = { path = "crates/corvane-highlight" }
-syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy", "dump-load", "default-syntaxes"] }
+syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-onig", "dump-load", "default-syntaxes"] }
 two-face = { version = "0.4", default-features = false, features = ["syntect-fancy"] }
 # Opt-in tree-sitter highlighting (grammars live in corvane-grammars / the tree-sitter packs)
 tree-sitter = "0.27"
@@ -58,6 +58,21 @@ dirs = "6"
 # tree-sitter's query analysis and parser are C: unoptimised they take
 # seconds on large highlight queries even in development builds
 [profile.dev.package.tree-sitter]
+opt-level = 3
+
+# diffs up to 192 KB are highlighted on the main thread (diff_view.rs
+# `SYNC_HIGHLIGHT_BYTES`); unoptimised, that stalls dev builds for a second
+[profile.dev.package.corvane-highlight]
+opt-level = 3
+[profile.dev.package.regex-automata]
+opt-level = 3
+[profile.dev.package.fancy-regex]
+opt-level = 3
+[profile.dev.package.syntect]
+opt-level = 3
+[profile.dev.package.onig]
+opt-level = 3
+[profile.dev.package.onig_sys]
 opt-level = 3
 
 # reading back and PNG-encoding CORVANE_SNAPSHOT / parity harness frames:
