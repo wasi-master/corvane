@@ -14,7 +14,8 @@
 //! links the SHA to the commit on GitHub (flag `253`); the tags' tooltip
 //! lists every tag (flag `254`). The title and description show `code`
 //! spans and link URLs and SHAs (flag `141`), where GHD's `RichText` links
-//! only URLs, issues and mentions.
+//! only URLs, issues and mentions. A file's menu can revert that file's
+//! changes from the commit (flag `443`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -769,7 +770,32 @@ fn open_commit_file_menu(
             .or_else(|| selected.first().cloned())
         })
         .flatten();
-    let items = if !full.exists() {
+    // `443`: Revert Changes to This File, for a single selected commit
+    let revert_file = state
+        .flags
+        .bool(corvane_core::flags::ids::REVERT_FILE_IN_COMMIT)
+        .then(|| {
+            let sha = selected.first().filter(|_| selected.len() == 1)?.clone();
+            let old_path = rs
+                .and_then(|r| r.changeset.as_ref())
+                .and_then(|c| c.files.iter().find(|f| f.path == path))
+                .and_then(|f| f.old_path.clone());
+            let path = path.to_string();
+            Some(MenuItem::new(
+                "Revert Changes to This File",
+                move |_, cx| {
+                    Dispatcher::revert_file_in_commit(
+                        id,
+                        sha.clone(),
+                        path.clone(),
+                        old_path.clone(),
+                        cx,
+                    )
+                },
+            ))
+        })
+        .flatten();
+    let mut items = if !full.exists() {
         let mut items =
             vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
         // `249`: the paths can still be copied
@@ -838,6 +864,9 @@ fn open_commit_file_menu(
             .enabled(selected.len() == 1 && !local && github.is_some()),
         ]
     };
+    if let Some(item) = revert_file {
+        items.extend([MenuItem::separator(), item]);
+    }
     #[cfg(target_os = "macos")]
     crate::native_menu::show_context_menu(items, position, window, cx);
     #[cfg(not(target_os = "macos"))]

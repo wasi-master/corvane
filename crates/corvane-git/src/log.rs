@@ -328,7 +328,7 @@ pub fn parse_raw_log_with_numstat(stdout: &[u8], sha: &str) -> ChangesetData {
 /// The empty tree, used as the parent of a root commit (GHD `NullTreeSHA`).
 pub const NULL_TREE_SHA: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 
-fn is_bad_revision(err: &crate::error::GitError) -> bool {
+pub(crate) fn is_bad_revision(err: &crate::error::GitError) -> bool {
     matches!(err, crate::error::GitError::Failed { stderr, .. }
         if stderr.contains("bad revision") || stderr.contains("unknown revision"))
 }

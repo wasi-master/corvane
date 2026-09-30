@@ -709,6 +709,20 @@ registry! {
         upstream: &[Upstream::issue(22740)],
         code: &["crates/corvane-ui/src/dialogs/history_dialogs.rs"],
     },
+    /// Revert one file of a commit.
+    REVERT_FILE_IN_COMMIT = 443 "revert-file-in-commit" {
+        title: "Revert one file of a commit",
+        summary: "A commit's file menu adds Revert Changes to This File: that file's changes from the \
+                  commit are undone in the working directory (nothing is committed). A working file \
+                  that has changed since in the same places is left alone and the error says so.",
+        ghd_behaviour: "Only whole commits can be reverted.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19207)],
+        code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

@@ -1444,6 +1444,25 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Flag `443`: undo one file's changes from commit `sha` in the working
+    /// tree (`corvane_git::revert_file_in_commit`), then refresh.
+    pub fn revert_file_in_commit(
+        id: u64,
+        sha: String,
+        path: String,
+        old_path: Option<String>,
+        cx: &mut App,
+    ) {
+        Self::run_history_op(
+            id,
+            "Could not revert the file",
+            move |git, workdir| {
+                corvane_git::revert_file_in_commit(git, &workdir, &sha, &path, old_path.as_deref())
+            },
+            cx,
+        );
+    }
+
     pub(crate) fn working_directory_dirty(id: u64, cx: &App) -> bool {
         Self::state(cx)
             .read(cx)
