@@ -11,6 +11,7 @@
 //! (`258-delete-branch-warnings`).
 //! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
 //! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
+//! `ConfirmSwitchBranchDialog` is a Corvane addition (`266-confirm-branch-switch`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -978,6 +979,59 @@ impl Render for ConfirmOverwriteStashDialog {
                             Some(UncommittedChangesStrategy::StashOnCurrentBranch),
                             cx,
                         );
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+
+/// Corvane addition (`266-confirm-branch-switch`): "Switch to <branch>?"
+/// before a checkout started from the branch list.
+pub struct ConfirmSwitchBranchDialog {
+    repo: u64,
+    branch: String,
+}
+
+impl ConfirmSwitchBranchDialog {
+    pub fn new(repo: u64, branch: String) -> Self {
+        Self { repo, branch }
+    }
+}
+
+impl Render for ConfirmSwitchBranchDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, branch) = (self.repo, self.branch.clone());
+        dialog(
+            "dialog-confirm-switch-branch",
+            "Switch Branch?",
+            paragraph(vec![
+                "Switch to ".into(),
+                ref_chip(self.branch.clone(), cx).into_any_element().into(),
+                "?".into(),
+            ]),
+            vec![
+                DialogButton {
+                    id: "confirm-switch-cancel",
+                    label: "Cancel".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "confirm-switch-ok",
+                    label: "Switch Branch".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::checkout_branch(repo, branch.clone(), None, cx);
                     }),
                 },
             ],

@@ -257,6 +257,12 @@ pub enum Popup {
         repo: u64,
         branch: String,
     },
+    /// Corvane: confirm a checkout from the branch list
+    /// (`266-confirm-branch-switch`).
+    ConfirmSwitchBranch {
+        repo: u64,
+        branch: String,
+    },
     /// `MultiCommitOperation` ChooseBranch step for merge (`squash` = Squash and Merge).
     MergeBranch {
         repo: u64,

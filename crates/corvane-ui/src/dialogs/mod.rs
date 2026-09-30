@@ -41,8 +41,8 @@ use gpui_kit::*;
 pub use add_existing::AddExistingRepositoryDialog;
 pub use app_dialogs::{AboutDialog, ConfirmRemoveRepositoryDialog, IntegrationErrorDialog};
 pub use branch_dialogs::{
-    ConfirmOverwriteStashDialog, CreateBranchDialog, DeleteBranchDialog, MergeBranchDialog,
-    RenameBranchDialog, StashAndSwitchBranchDialog,
+    ConfirmOverwriteStashDialog, ConfirmSwitchBranchDialog, CreateBranchDialog, DeleteBranchDialog,
+    MergeBranchDialog, RenameBranchDialog, StashAndSwitchBranchDialog,
 };
 pub use ci_check_run_rerun::CiCheckRunRerunDialog;
 pub use clone_repository::CloneRepositoryDialog;
@@ -341,6 +341,9 @@ impl DialogHost {
                         original.clone(),
                     )
                 })
+                .into(),
+            Popup::ConfirmSwitchBranch { repo, branch } => cx
+                .new(|_| ConfirmSwitchBranchDialog::new(*repo, branch.clone()))
                 .into(),
             Popup::DeleteBranch { repo, name } => cx
                 .new(|cx| DeleteBranchDialog::new(state, *repo, name.clone(), cx))

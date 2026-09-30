@@ -599,6 +599,22 @@ impl BranchFoldout {
             })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
+                // `266-confirm-branch-switch`
+                if AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::CONFIRM_BRANCH_SWITCH)
+                    && !current
+                {
+                    Dispatcher::show_popup(
+                        Popup::ConfirmSwitchBranch {
+                            repo: id,
+                            branch: name.clone(),
+                        },
+                        cx,
+                    );
+                    return;
+                }
                 Dispatcher::checkout_branch(id, name.clone(), None, cx)
             })
             // GHD `generateBranchContextMenuItems`

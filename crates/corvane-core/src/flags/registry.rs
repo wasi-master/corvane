@@ -442,6 +442,20 @@ registry! {
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
 
+    /// Confirm before switching branch from the branch list.
+    CONFIRM_BRANCH_SWITCH = 266 "confirm-branch-switch" {
+        title: "Confirm before switching branches",
+        summary: "Clicking a branch in the branch list asks \"Switch to <branch>?\" before \
+                  checking it out.",
+        ghd_behaviour: "Checks the branch out at once.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20410)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
