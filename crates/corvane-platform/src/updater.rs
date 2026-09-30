@@ -1,19 +1,31 @@
 //! Self-updater - the place of Electron's `autoUpdater` + Squirrel in GHD
 //! (`main-process/main.ts` `autoUpdater.*`, `ui/lib/update-store.ts`),
 //! where the GitHub Releases API is the feed
-//! (`GET /repos/wasi-master/corvane/releases/latest`), the release's macOS
-//! `.zip` is downloaded to `~/Library/Caches/Corvane/updates/`, verified with
-//! its minisign signature against the public key compiled into this binary,
-//! unpacked with `ditto` (keeps the code signature intact), swapped in for
-//! the running bundle (`Corvane.app` → `Corvane.app.old`, new bundle moved
-//! in) and opened again once this process has exited. The `.old` bundle is
-//! removed at the next launch.
+//! (`GET /repos/wasi-master/corvane/releases/latest`).
 //!
-//! Files this app writes carry no quarantine attribute, so the self-signed
-//! update launches without a Gatekeeper prompt.
+//! macOS: the release's `.zip` is downloaded to
+//! `~/Library/Caches/Corvane/updates/`, verified with its minisign signature
+//! against the public key compiled into this binary, unpacked with `ditto`
+//! (keeps the code signature intact), swapped in for the running bundle
+//! (`Corvane.app` → `Corvane.app.old`, new bundle moved in) and opened again
+//! once this process has exited. The `.old` bundle is removed at the next
+//! launch. Files this app writes carry no quarantine attribute, so the
+//! self-signed update launches without a Gatekeeper prompt. A bundle
+//! installed by Homebrew is never swapped: `brew upgrade corvane` owns it
+//! (see [`is_homebrew_install`]).
 //!
-//! A bundle installed by Homebrew is never swapped: `brew upgrade corvane`
-//! owns it (see [`is_homebrew_install`]).
+//! Linux (GHD ships no Linux build; Squirrel has no Linux backend): only an
+//! AppImage updates itself. `$APPIMAGE` names the running image
+//! ([`running_appimage`]); the release's `Corvane-<v>-<arch>.AppImage` and
+//! its `.minisig` are downloaded to
+//! `$XDG_CACHE_HOME/corvane/updates/` and verified like the zip, then
+//! [`install`] copies the image next to `$APPIMAGE` under a temporary name,
+//! verifies that copy again, makes it executable, fsyncs it and renames it
+//! over `$APPIMAGE` (atomic: a crash leaves the old or the new image, never
+//! half of one). The relaunch runs the new image once this process has
+//! exited (`app_location::relaunch_after_exit`). Any other install (the
+//! `.deb` in `/usr/lib/corvane`, a bare binary) belongs to the package
+//! manager, like a Homebrew cask ([`is_package_managed`]).
 //!
 //! Testing hooks: `CORVANE_UPDATE_FEED=<url>` replaces the feed URL,
 //! `CORVANE_UPDATE_PUBLIC_KEY` (build time) replaces the public key.
@@ -50,6 +62,16 @@ pub fn public_key_is_placeholder() -> bool {
 
 const USER_AGENT: &str = concat!("Corvane/", env!("CARGO_PKG_VERSION"));
 
+/// What the updater installs on this OS, for error messages.
+#[cfg(target_os = "macos")]
+const ASSET_KIND: &str = "macOS .zip";
+#[cfg(not(target_os = "macos"))]
+const ASSET_KIND: &str = "AppImage";
+#[cfg(target_os = "macos")]
+const ASSET_EXTENSION: &str = ".zip";
+#[cfg(not(target_os = "macos"))]
+const ASSET_EXTENSION: &str = ".AppImage";
+
 #[derive(Debug, Error)]
 pub enum UpdateError {
     #[error("the release feed could not be reached: {0}")]
@@ -58,9 +80,9 @@ pub enum UpdateError {
     Status(u16),
     #[error("the release feed could not be read: {0}")]
     Feed(String),
-    #[error("release {0} has no macOS .zip asset")]
+    #[error("release {0} has no {ASSET_KIND} asset")]
     NoAsset(String),
-    #[error("release {0} has no minisign signature (.minisig) next to its .zip")]
+    #[error("release {0} has no minisign signature (.minisig) next to its {ASSET_EXTENSION}")]
     NoSignature(String),
     #[error("{0}")]
     Io(#[from] std::io::Error),
@@ -82,9 +104,12 @@ pub struct ReleaseInfo {
     /// ISO-8601.
     pub published_at: Option<String>,
     pub html_url: String,
+    /// The asset to install: the `.zip` on macOS, the AppImage on Linux
+    /// (the field names predate Linux).
     pub zip_name: String,
     pub zip_url: String,
     pub zip_size: u64,
+    /// `<zip_name>.minisig`
     pub signature_url: String,
 }
 
@@ -158,6 +183,21 @@ fn release_info(
     release: ApiRelease,
     current_version: &str,
 ) -> Result<Option<ReleaseInfo>, UpdateError> {
+    release_info_for(
+        release,
+        current_version,
+        std::env::consts::OS,
+        std::env::consts::ARCH,
+    )
+}
+
+/// [`release_info`] for an `os` / `arch` pair (`std::env::consts` values).
+fn release_info_for(
+    release: ApiRelease,
+    current_version: &str,
+    os: &str,
+    arch: &str,
+) -> Result<Option<ReleaseInfo>, UpdateError> {
     if release.draft {
         return Ok(None);
     }
@@ -166,7 +206,7 @@ fn release_info(
         debug!(latest = %version, running = %current_version, "no update available");
         return Ok(None);
     }
-    let Some(zip) = pick_zip_asset(&release.assets) else {
+    let Some(zip) = pick_asset(&release.assets, os, arch) else {
         return Err(UpdateError::NoAsset(release.tag_name));
     };
     let signature_name = format!("{}.minisig", zip.name);
@@ -187,15 +227,26 @@ fn release_info(
     }))
 }
 
+/// The asset an `os` / `arch` machine installs: the macOS `.zip`
+/// ([`pick_zip_asset`]) or, anywhere else, the AppImage
+/// ([`pick_appimage_asset`]; the `.deb` is never picked).
+fn pick_asset<'a>(assets: &'a [ApiAsset], os: &str, arch: &str) -> Option<&'a ApiAsset> {
+    if os == "macos" {
+        pick_zip_asset(assets, arch)
+    } else {
+        pick_appimage_asset(assets, arch)
+    }
+}
+
 /// The `.zip` for this machine: a universal / macOS zip, else one naming
 /// this architecture; the packs manifest and `.minisig` files are skipped.
-fn pick_zip_asset(assets: &[ApiAsset]) -> Option<&ApiAsset> {
+fn pick_zip_asset<'a>(assets: &'a [ApiAsset], arch: &str) -> Option<&'a ApiAsset> {
     let zips: Vec<&ApiAsset> = assets
         .iter()
         .filter(|a| a.name.ends_with(".zip"))
         .filter(|a| !a.name.contains("pack") && !a.name.contains("Full"))
         .collect();
-    let arch = match std::env::consts::ARCH {
+    let arch = match arch {
         "aarch64" => "arm64",
         other => other,
     };
@@ -206,6 +257,17 @@ fn pick_zip_asset(assets: &[ApiAsset]) -> Option<&ApiAsset> {
         .or_else(|| zips.iter().find(|a| lower(a).contains("macos")))
         .or_else(|| zips.first())
         .copied()
+}
+
+/// `Corvane-<version>-<arch>.AppImage` (`packaging/linux/package.sh`),
+/// `<arch>` being `x86_64` or `aarch64` as `std::env::consts::ARCH` spells
+/// them; a `Corvane-Full-…` image (should there ever be one) and `.minisig`
+/// files are skipped.
+fn pick_appimage_asset<'a>(assets: &'a [ApiAsset], arch: &str) -> Option<&'a ApiAsset> {
+    let suffix = format!("-{arch}.AppImage");
+    assets.iter().find(|a| {
+        a.name.starts_with("Corvane-") && !a.name.contains("Full") && a.name.ends_with(&suffix)
+    })
 }
 
 /// `MAJOR.MINOR.PATCH[-pre]`; a pre-release sorts before its release.
@@ -260,14 +322,87 @@ pub fn is_homebrew_install(bundle: &Path) -> bool {
             .any(|room| Path::new(room).join("corvane").is_dir())
 }
 
-/// `~/Library/Caches/Corvane/updates`
+/// The file or bundle an update replaces: the running `.app` on macOS
+/// (`None` for a bare binary), the AppImage on Linux (`None` for a `.deb` or
+/// a bare binary).
+pub fn install_target() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        crate::app_location::running_bundle()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        running_appimage()
+    }
+}
+
+/// A package manager owns this install, so the updater only announces a
+/// release: a Homebrew cask bundle on macOS ([`is_homebrew_install`]); on
+/// Linux anything that is not an AppImage (the `.deb` under
+/// `/usr/lib/corvane`, a binary built from source).
+pub fn is_package_managed() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        crate::app_location::running_bundle().is_some_and(|b| is_homebrew_install(&b))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        running_appimage().is_none()
+    }
+}
+
+/// The AppImage this process runs from: `$APPIMAGE` (set by the AppImage
+/// runtime) when it names a regular file this user may replace.
+#[cfg(not(target_os = "macos"))]
+pub fn running_appimage() -> Option<PathBuf> {
+    appimage_target(std::env::var_os("APPIMAGE"))
+}
+
+/// [`running_appimage`] for a given `$APPIMAGE` value, symlinks resolved so
+/// the rename replaces the image itself. "May replace" means the file is
+/// writable and so is its folder (the rename needs the latter); a running
+/// image can answer `ETXTBSY` for the former, which counts as writable
+/// since the image is replaced, never written to.
+#[cfg(not(target_os = "macos"))]
+fn appimage_target(value: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    let path = PathBuf::from(value.filter(|v| !v.is_empty())?);
+    if !path.is_absolute() {
+        return None;
+    }
+    let path = std::fs::canonicalize(path).ok()?;
+    if !std::fs::metadata(&path).ok()?.is_file() {
+        return None;
+    }
+    let dir = path.parent()?;
+    let file_ok = match writable(&path) {
+        Ok(()) => true,
+        Err(err) => err.raw_os_error() == Some(libc::ETXTBSY),
+    };
+    (file_ok && writable(dir).is_ok()).then_some(path)
+}
+
+/// `access(path, W_OK)`
+#[cfg(not(target_os = "macos"))]
+fn writable(path: &Path) -> std::io::Result<()> {
+    use std::os::unix::ffi::OsStrExt;
+    let c_path = std::ffi::CString::new(path.as_os_str().as_bytes())
+        .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidInput))?;
+    // SAFETY: `c_path` is a valid NUL-terminated string that outlives the call.
+    if unsafe { libc::access(c_path.as_ptr(), libc::W_OK) } == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+/// `~/Library/Caches/Corvane/updates` (Linux: `$XDG_CACHE_HOME/corvane/updates`)
 pub fn updates_dir() -> PathBuf {
     crate::paths::cache_dir().join("updates")
 }
 
-/// Download the release's `.zip` and `.minisig` into a fresh updates
-/// directory; `progress(received, total)` is called as bytes arrive. Returns
-/// the zip path.
+/// Download the release's asset (`.zip` / AppImage) and `.minisig` into a
+/// fresh updates directory; `progress(received, total)` is called as bytes
+/// arrive. Returns the asset's path.
 pub fn download(
     release: &ReleaseInfo,
     progress: &mut dyn FnMut(u64, Option<u64>),
@@ -387,10 +522,79 @@ pub fn old_bundle_path(bundle: &Path) -> PathBuf {
     bundle.with_file_name(name)
 }
 
+/// Install the verified download over [`install_target`]; the caller
+/// relaunches (`app_location::relaunch_after_exit`) and quits. macOS: unpack
+/// the zip and swap bundles ([`install_bundle`]). Linux: rename the AppImage
+/// over the running one ([`install_appimage`]).
+pub fn install(file: &Path, target: &Path) -> Result<(), UpdateError> {
+    #[cfg(target_os = "macos")]
+    {
+        install_bundle(file, target)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let signature = PathBuf::from(format!("{}.minisig", file.display()));
+        install_appimage(file, &signature, target, PUBLIC_KEY)
+    }
+}
+
+/// Copy `new_image` next to `running` under a temporary name, verify the
+/// copy against `signature` with `public_key` (what gets renamed is what
+/// was verified, whatever happened to the cache since the download), make it
+/// `0755`, fsync it and rename it over `running`, then fsync the folder. On
+/// any failure the temporary file is removed and `running` is untouched.
+#[cfg(not(target_os = "macos"))]
+fn install_appimage(
+    new_image: &Path,
+    signature: &Path,
+    running: &Path,
+    public_key: &str,
+) -> Result<(), UpdateError> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let dir = running
+        .parent()
+        .ok_or_else(|| UpdateError::Install(format!("{} has no folder", running.display())))?;
+    let name = running
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Corvane.AppImage".into());
+    let temp = dir.join(format!(".{name}.update-{}", std::process::id()));
+    let _ = std::fs::remove_file(&temp);
+    let result = (|| -> Result<(), UpdateError> {
+        let mut source = std::fs::File::open(new_image)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o755)
+            .open(&temp)?;
+        std::io::copy(&mut source, &mut file)?;
+        // `mode` above is subject to the umask
+        file.set_permissions(std::fs::Permissions::from_mode(0o755))?;
+        file.sync_all()?;
+        drop(file);
+        verify_with_key(&temp, signature, public_key)?;
+        std::fs::rename(&temp, running).map_err(|err| {
+            UpdateError::Install(format!("could not replace {}: {err}", running.display()))
+        })?;
+        Ok(())
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&temp);
+        return result;
+    }
+    // the rename is durable once the folder is
+    if let Ok(dir) = std::fs::File::open(dir) {
+        let _ = dir.sync_all();
+    }
+    info!(image = %running.display(), "update installed");
+    Ok(())
+}
+
 /// Unpack the verified `zip` and swap it in for `running_bundle`. The old
-/// bundle is left as `<bundle>.old` for [`remove_old_bundle`]; the caller
-/// relaunches (`app_location::relaunch_after_exit`) and quits.
-pub fn install(zip: &Path, running_bundle: &Path) -> Result<(), UpdateError> {
+/// bundle is left as `<bundle>.old` for [`remove_old_bundle`].
+#[cfg(target_os = "macos")]
+fn install_bundle(zip: &Path, running_bundle: &Path) -> Result<(), UpdateError> {
     let extracted = updates_dir().join("extracted");
     let _ = std::fs::remove_dir_all(&extracted);
     std::fs::create_dir_all(&extracted)?;
@@ -420,6 +624,7 @@ pub fn install(zip: &Path, running_bundle: &Path) -> Result<(), UpdateError> {
 
 /// The first `.app` at the top of `dir` or one level down (zips made with
 /// `ditto --keepParent` wrap the bundle in a folder).
+#[cfg(target_os = "macos")]
 fn find_app_bundle(dir: &Path) -> Option<PathBuf> {
     let is_app = |p: &Path| p.extension().is_some_and(|e| e == "app") && p.is_dir();
     let mut entries: Vec<PathBuf> = std::fs::read_dir(dir)
@@ -445,6 +650,7 @@ fn find_app_bundle(dir: &Path) -> Option<PathBuf> {
 
 /// `running` → `running.old`, `new_bundle` → `running`; the first move is
 /// undone when the second fails.
+#[cfg(target_os = "macos")]
 fn swap_bundles(new_bundle: &Path, running: &Path) -> Result<(), UpdateError> {
     let old = old_bundle_path(running);
     if old.exists() {
@@ -470,6 +676,7 @@ fn swap_bundles(new_bundle: &Path, running: &Path) -> Result<(), UpdateError> {
 }
 
 /// Rename, or `ditto` + remove when the source is on another volume.
+#[cfg(target_os = "macos")]
 fn move_dir(from: &Path, to: &Path) -> Result<(), String> {
     match std::fs::rename(from, to) {
         Ok(()) => Ok(()),
@@ -552,7 +759,9 @@ mod tests {
                 asset("Corvane-0.2.0-macos-universal.dmg"),
             ],
         };
-        let info = release_info(release, "0.1.0").unwrap().unwrap();
+        let info = release_info_for(release, "0.1.0", "macos", "aarch64")
+            .unwrap()
+            .unwrap();
         assert_eq!(info.version, "0.2.0");
         assert_eq!(info.zip_name, "Corvane-0.2.0-macos-universal.zip");
         assert!(info.signature_url.ends_with(".zip.minisig"));
@@ -569,7 +778,10 @@ mod tests {
             draft: false,
             assets: vec![asset("Corvane-0.0.1-macos-universal.zip")],
         };
-        assert_eq!(release_info(release, "0.1.0").unwrap(), None);
+        assert_eq!(
+            release_info_for(release, "0.1.0", "macos", "x86_64").unwrap(),
+            None
+        );
         release = ApiRelease {
             tag_name: "v9.0.0".into(),
             name: None,
@@ -579,7 +791,10 @@ mod tests {
             draft: true,
             assets: vec![],
         };
-        assert_eq!(release_info(release, "0.1.0").unwrap(), None);
+        assert_eq!(
+            release_info_for(release, "0.1.0", "macos", "x86_64").unwrap(),
+            None
+        );
         release = ApiRelease {
             tag_name: "v9.0.0".into(),
             name: None,
@@ -590,7 +805,7 @@ mod tests {
             assets: vec![asset("Corvane-9.0.0-macos-universal.zip")],
         };
         assert!(matches!(
-            release_info(release, "0.1.0"),
+            release_info_for(release, "0.1.0", "macos", "x86_64"),
             Err(UpdateError::NoSignature(_))
         ));
     }
@@ -644,5 +859,176 @@ dtHnoc7Q3DoWMwpvaTIB3VqmmNHAKafDMTDw/fUPRD2ShSxmbDbCFrnR+eJ/MTpKtzTl7yeie0bqlbc3
             Err(UpdateError::Signature(_))
         ));
         std::fs::remove_dir_all(&dir).ok();
+    }
+
+    fn release_with(assets: &[&str]) -> ApiRelease {
+        ApiRelease {
+            tag_name: "v0.2.0".into(),
+            name: None,
+            body: None,
+            published_at: None,
+            html_url: String::new(),
+            draft: false,
+            assets: assets.iter().map(|name| asset(name)).collect(),
+        }
+    }
+
+    const LINUX_ASSETS: [&str; 10] = [
+        "Corvane-0.2.0-macos-universal.zip",
+        "Corvane-0.2.0-macos-universal.zip.minisig",
+        "corvane_0.2.0_amd64.deb",
+        "corvane_0.2.0_amd64.deb.minisig",
+        "Corvane-0.2.0-x86_64.AppImage.minisig",
+        "Corvane-0.2.0-x86_64.AppImage",
+        "Corvane-0.2.0-aarch64.AppImage",
+        "Corvane-0.2.0-aarch64.AppImage.minisig",
+        "packs-manifest.json",
+        "packs-manifest.json.minisig",
+    ];
+
+    #[test]
+    fn linux_picks_the_appimage_for_its_architecture() {
+        let info = release_info_for(release_with(&LINUX_ASSETS), "0.1.0", "linux", "x86_64")
+            .unwrap()
+            .unwrap();
+        assert_eq!(info.zip_name, "Corvane-0.2.0-x86_64.AppImage");
+        assert!(
+            info.signature_url
+                .ends_with("/Corvane-0.2.0-x86_64.AppImage.minisig")
+        );
+        let info = release_info_for(release_with(&LINUX_ASSETS), "0.1.0", "linux", "aarch64")
+            .unwrap()
+            .unwrap();
+        assert_eq!(info.zip_name, "Corvane-0.2.0-aarch64.AppImage");
+        // macOS still takes the zip from the same release
+        let info = release_info_for(release_with(&LINUX_ASSETS), "0.1.0", "macos", "aarch64")
+            .unwrap()
+            .unwrap();
+        assert_eq!(info.zip_name, "Corvane-0.2.0-macos-universal.zip");
+    }
+
+    #[test]
+    fn linux_ignores_the_deb_and_other_architectures() {
+        let only_deb = release_with(&[
+            "corvane_0.2.0_amd64.deb",
+            "corvane_0.2.0_amd64.deb.minisig",
+            "Corvane-0.2.0-macos-universal.zip",
+        ]);
+        assert!(matches!(
+            release_info_for(only_deb, "0.1.0", "linux", "x86_64"),
+            Err(UpdateError::NoAsset(_))
+        ));
+        let other_arch = release_with(&[
+            "Corvane-0.2.0-aarch64.AppImage",
+            "Corvane-0.2.0-aarch64.AppImage.minisig",
+        ]);
+        assert!(matches!(
+            release_info_for(other_arch, "0.1.0", "linux", "x86_64"),
+            Err(UpdateError::NoAsset(_))
+        ));
+        let unsigned = release_with(&["Corvane-0.2.0-x86_64.AppImage"]);
+        assert!(matches!(
+            release_info_for(unsigned, "0.1.0", "linux", "x86_64"),
+            Err(UpdateError::NoSignature(_))
+        ));
+        let full = [asset("Corvane-Full-0.2.0-x86_64.AppImage")];
+        assert!(pick_appimage_asset(&full, "x86_64").is_none());
+    }
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod linux_tests {
+    use std::os::unix::fs::PermissionsExt;
+
+    use super::*;
+
+    /// The rsign key pair and signature of `verifies_a_signed_file_…`:
+    /// "corvane\n" signed.
+    const PK: &str = "RWQWQQA4BcbC0arsHabh/pvzTzJMt/cgR143jQlKG/hdxJRgz0QvST8y";
+    const SIG: &str = "untrusted comment: signature from rsign secret key\n\
+RUQWQQA4BcbC0ZcEEcxolelI9m4z1OEr3spEy1ILi+R6nNin5bF/cq/b/1vQDABxCC7S2nMoeR/MznbRnNOaHoj+08ODrWq5bwg=\n\
+trusted comment: file:corvane.txt hashed\n\
+dtHnoc7Q3DoWMwpvaTIB3VqmmNHAKafDMTDw/fUPRD2ShSxmbDbCFrnR+eJ/MTpKtzTl7yeie0bqlbc3RflvCQ==\n";
+
+    /// `<tmp>/apps/Corvane.AppImage` (old, `0644`) and a downloaded
+    /// `<tmp>/updates/Corvane-9.9.9-x86_64.AppImage` with its signature.
+    fn setup(new_contents: &[u8]) -> (tempfile::TempDir, PathBuf, PathBuf, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let apps = tmp.path().join("apps");
+        let updates = tmp.path().join("updates");
+        std::fs::create_dir_all(&apps).unwrap();
+        std::fs::create_dir_all(&updates).unwrap();
+        let running = apps.join("Corvane.AppImage");
+        std::fs::write(&running, b"old image").unwrap();
+        std::fs::set_permissions(&running, std::fs::Permissions::from_mode(0o644)).unwrap();
+        let new_image = updates.join("Corvane-9.9.9-x86_64.AppImage");
+        std::fs::write(&new_image, new_contents).unwrap();
+        let signature = updates.join("Corvane-9.9.9-x86_64.AppImage.minisig");
+        std::fs::write(&signature, SIG).unwrap();
+        (tmp, running, new_image, signature)
+    }
+
+    fn leftovers(dir: &Path) -> Vec<String> {
+        std::fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .filter(|n| n != "Corvane.AppImage")
+            .collect()
+    }
+
+    #[test]
+    fn installs_a_verified_appimage_by_rename() {
+        let (_tmp, running, new_image, signature) = setup(b"corvane\n");
+        install_appimage(&new_image, &signature, &running, PK).unwrap();
+        assert_eq!(std::fs::read(&running).unwrap(), b"corvane\n");
+        let mode = std::fs::metadata(&running).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o755);
+        assert!(leftovers(running.parent().unwrap()).is_empty());
+        // the download stays where it was (the cache is cleared next time)
+        assert!(new_image.exists());
+    }
+
+    #[test]
+    fn a_failed_verification_leaves_the_running_image_alone() {
+        let (_tmp, running, new_image, signature) = setup(b"corvane!\n");
+        assert!(matches!(
+            install_appimage(&new_image, &signature, &running, PK),
+            Err(UpdateError::Signature(_))
+        ));
+        assert_eq!(std::fs::read(&running).unwrap(), b"old image");
+        let mode = std::fs::metadata(&running).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o644);
+        assert!(leftovers(running.parent().unwrap()).is_empty());
+        // the right bytes under the wrong key fail the same way
+        std::fs::write(&new_image, b"corvane\n").unwrap();
+        assert!(matches!(
+            install_appimage(&new_image, &signature, &running, PLACEHOLDER_PUBLIC_KEY),
+            Err(UpdateError::Signature(_))
+        ));
+        assert_eq!(std::fs::read(&running).unwrap(), b"old image");
+    }
+
+    #[test]
+    fn appimage_target_needs_a_replaceable_regular_file() {
+        let (tmp, running, _, _) = setup(b"x");
+        assert_eq!(
+            appimage_target(Some(running.clone().into_os_string())),
+            Some(std::fs::canonicalize(&running).unwrap())
+        );
+        // a link to the image resolves to the image
+        let link = tmp.path().join("corvane");
+        std::os::unix::fs::symlink(&running, &link).unwrap();
+        assert_eq!(
+            appimage_target(Some(link.into_os_string())),
+            Some(std::fs::canonicalize(&running).unwrap())
+        );
+        assert_eq!(appimage_target(None), None);
+        assert_eq!(appimage_target(Some("".into())), None);
+        assert_eq!(appimage_target(Some("Corvane.AppImage".into())), None);
+        assert_eq!(appimage_target(Some(tmp.path().join("apps").into())), None);
+        assert_eq!(
+            appimage_target(Some(tmp.path().join("missing").into())),
+            None
+        );
     }
 }

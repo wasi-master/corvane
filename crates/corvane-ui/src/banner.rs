@@ -273,12 +273,17 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
 /// `banners/_update-available.scss`): a desktop-download icon in the warning
 /// icon colour, "Corvane N is available", "what's new" opens the release
 /// notes and "install and restart" installs (`updateNow`). A Homebrew
-/// install is told to `brew upgrade corvane` instead. Always dismissable
+/// install is told to `brew upgrade corvane` instead (Linux: a package
+/// manager install is told to update with it). Always dismissable
 /// (Corvane has no prioritised updates).
 pub fn update_banner(update: &AvailableUpdate, homebrew: bool, cx: &App) -> impl IntoElement {
     let t = cx.ghd();
     let version = update.version.clone();
-    let plain = if homebrew {
+    let plain = if homebrew && !cfg!(target_os = "macos") {
+        format!(
+            "Corvane {version} is available. Update it with your package manager, or see what's new."
+        )
+    } else if homebrew {
         format!(
             "Corvane {version} is available. Run brew upgrade corvane to install it, or see what's new."
         )
@@ -294,7 +299,11 @@ pub fn update_banner(update: &AvailableUpdate, homebrew: bool, cx: &App) -> impl
         .whitespace_nowrap()
         .child(format!("Corvane {version} is available.\u{a0}"))
         .map(|d| {
-            if homebrew {
+            if homebrew && !cfg!(target_os = "macos") {
+                d.child("Update it with your package manager, or see\u{a0}")
+                    .child(whats_new)
+                    .child(".")
+            } else if homebrew {
                 d.child("Run\u{a0}")
                     .child(
                         div()
