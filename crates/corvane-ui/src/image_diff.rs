@@ -14,6 +14,9 @@
 //!
 //! Deviation (`184-tga-image-diff`): `.tga` files are image diffs (decoded to
 //! PNG); GHD shows them as binary.
+//!
+//! Deviation (`671-image-diff-alignment`): images of different sizes can
+//! share the top left corner instead of the centre.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -111,6 +114,8 @@ pub struct ImageDiff {
     difference: Option<Arc<Image>>,
     /// Display scales of (previous, current) the blend was computed for.
     difference_scales: Option<(f32, f32)>,
+    /// Whether that blend aligned the images top-left.
+    difference_top_left: bool,
     difference_pending: bool,
     /// `178-image-diff-border-outside`: the 1 px border is drawn around the
     /// fitted image instead of inside it (`box-sizing: content-box`).
@@ -152,6 +157,7 @@ impl ImageDiff {
             container: Rc::new(Cell::new(Size::default())),
             difference: None,
             difference_scales: None,
+            difference_top_left: false,
             difference_pending: false,
             border_outside: corvane_core::AppState::try_global(cx).is_some_and(|s| {
                 s.read(cx)
@@ -220,6 +226,17 @@ impl ImageDiff {
         }
     }
 
+    /// `671-image-diff-alignment`: images of different sizes share the top
+    /// left corner in Swipe, Onion Skin and Difference instead of the centre.
+    fn top_left(cx: &App) -> bool {
+        corvane_core::AppState::try_global(cx).is_some_and(|s| {
+            s.read(cx)
+                .flags
+                .text(corvane_core::flags::ids::IMAGE_DIFF_ALIGNMENT)
+                == "top-left"
+        })
+    }
+
     /// What a 1 px border adds around an image of the fitted size: nothing
     /// in GHD (`border-box`, the border eats into the image), 2 px with
     /// `178-image-diff-border-outside`.
@@ -263,6 +280,7 @@ impl ImageDiff {
         box_size: Size<Pixels>,
         border: Option<Hsla>,
         extra: Pixels,
+        top_left: bool,
     ) -> AnyElement {
         let fit = side
             .size
@@ -275,8 +293,7 @@ impl ImageDiff {
             .w(box_size.width)
             .h(box_size.height)
             .flex()
-            .items_center()
-            .justify_center()
+            .when(!top_left, |d| d.items_center().justify_center())
             .child(
                 img(side.image.clone())
                     .flex_none()
@@ -417,6 +434,7 @@ impl ImageDiff {
     fn swipe(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let extra = self.border_extra();
+        let top_left = Self::top_left(cx);
         let box_size = self.overlay_box(cx);
         let percentage = self.swipe.read(cx).value().start();
         let swiper_width = (box_size.width * (1. - percentage / 100.)).floor();
@@ -466,6 +484,7 @@ impl ImageDiff {
                                         box_size,
                                         Some(t.color_deleted),
                                         extra,
+                                        top_left,
                                     )),
                             )
                             .child(
@@ -489,6 +508,7 @@ impl ImageDiff {
                                                 box_size,
                                                 Some(t.color_new),
                                                 extra,
+                                                top_left,
                                             )),
                                     ),
                             ),
@@ -501,6 +521,7 @@ impl ImageDiff {
     fn onion_skin(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let extra = self.border_extra();
+        let top_left = Self::top_left(cx);
         let box_size = self.overlay_box(cx);
         let crossfade = self.onion.read(cx).value().start() / 100.;
         div()
@@ -539,9 +560,16 @@ impl ImageDiff {
                                 box_size,
                                 Some(t.color_deleted),
                                 extra,
+                                top_left,
                             ))
                             .child(div().absolute().inset_0().opacity(crossfade).child(
-                                Self::overlay_image(current, box_size, Some(t.color_new), extra),
+                                Self::overlay_image(
+                                    current,
+                                    box_size,
+                                    Some(t.color_new),
+                                    extra,
+                                    top_left,
+                                ),
                             )),
                     ),
             )
@@ -560,22 +588,25 @@ impl ImageDiff {
             ),
             _ => (1., 1.),
         };
-        let stale = self.difference_scales.is_none_or(|(p, c)| {
-            (p / c - scales.0 / scales.1).abs() > 0.005 * (scales.0 / scales.1)
-        });
+        let top_left = Self::top_left(cx);
+        let stale = top_left != self.difference_top_left
+            || self.difference_scales.is_none_or(|(p, c)| {
+                (p / c - scales.0 / scales.1).abs() > 0.005 * (scales.0 / scales.1)
+            });
         if stale && !self.difference_pending && box_size.width > zpx(0.) {
             self.difference_pending = true;
             let a = self.previous.as_ref().map(|s| s.image.clone());
             let b = self.current.as_ref().map(|s| s.image.clone());
             let task = cx.background_executor().spawn(async move {
                 let (a, b) = (a?, b?);
-                difference_image(&a.bytes, &b.bytes, scales.0, scales.1)
+                difference_image(&a.bytes, &b.bytes, scales.0, scales.1, top_left)
             });
             cx.spawn(async move |this, cx| {
                 let result = task.await;
                 this.update(cx, |this, cx| {
                     this.difference_pending = false;
                     this.difference_scales = Some(scales);
+                    this.difference_top_left = top_left;
                     this.difference = result.map(Arc::new);
                     cx.notify();
                 })
@@ -768,9 +799,16 @@ fn checkerboard(dark: bool) -> AnyElement {
 }
 
 /// CSS `mix-blend-mode: difference` of `b` (current) over `a` (previous), each
-/// centered in the shared box at its display scale. Rendered at the larger of
+/// centered (or, `top_left`, in the top left corner) in the shared box at its
+/// display scale. Rendered at the larger of
 /// the two scales so that image keeps its natural resolution; encoded as PNG.
-fn difference_image(a: &[u8], b: &[u8], scale_a: f32, scale_b: f32) -> Option<Image> {
+fn difference_image(
+    a: &[u8],
+    b: &[u8],
+    scale_a: f32,
+    scale_b: f32,
+    top_left: bool,
+) -> Option<Image> {
     use image::imageops::FilterType;
     let a = image::load_from_memory(a).ok()?.to_rgba8();
     let b = image::load_from_memory(b).ok()?.to_rgba8();
@@ -788,8 +826,14 @@ fn difference_image(a: &[u8], b: &[u8], scale_a: f32, scale_b: f32) -> Option<Im
     let (a, b) = (resize(a, scale_a), resize(b, scale_b));
     let width = a.width().max(b.width());
     let height = a.height().max(b.height());
-    let (ax, ay) = ((width - a.width()) / 2, (height - a.height()) / 2);
-    let (bx, by) = ((width - b.width()) / 2, (height - b.height()) / 2);
+    let offset = |img: &image::RgbaImage| {
+        if top_left {
+            (0, 0)
+        } else {
+            ((width - img.width()) / 2, (height - img.height()) / 2)
+        }
+    };
+    let ((ax, ay), (bx, by)) = (offset(&a), offset(&b));
     let sample = |img: &image::RgbaImage, ox: u32, oy: u32, x: u32, y: u32| {
         if x >= ox && y >= oy && x - ox < img.width() && y - oy < img.height() {
             img.get_pixel(x - ox, y - oy).0
