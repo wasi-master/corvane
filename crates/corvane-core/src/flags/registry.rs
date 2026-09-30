@@ -238,6 +238,20 @@ registry! {
             "crates/corvane/src/menus.rs",
         ],
     },
+    /// The repository list filters to repositories with changes or commits to push / pull.
+    REPOSITORY_STATUS_FILTER = 110 "repository-status-filter" {
+        title: "Repository list status filters",
+        summary: "A filter button next to the repository list's filter box shows only \
+                  repositories with uncommitted changes and / or commits to push or pull (the \
+                  rows' indicators); the Recent group is left out while one is on.",
+        ghd_behaviour: "The list filters by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18322), Upstream::issue(22693)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 200 Repository ----
 

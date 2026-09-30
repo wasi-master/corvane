@@ -152,6 +152,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Lists
 
 - A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
+- The repository list can have a filter button next to its filter box (Corvane addition) whose menu shows only repositories with uncommitted changes and / or commits to push or pull, from the rows' indicators; the Recent group is left out while a status filter is on. Flag: `110-repository-status-filter`.
 
 ## Scrolling
 

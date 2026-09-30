@@ -18,6 +18,10 @@ pub struct RepositoryFoldout {
     state: Entity<AppState>,
     filter: Entity<InputState>,
     add_menu_open: bool,
+    /// Corvane (`110-repository-status-filter`): only repositories with
+    /// uncommitted changes / commits to push or pull.
+    only_changed: bool,
+    only_ahead_behind: bool,
 }
 
 struct Group {
@@ -34,6 +38,8 @@ impl RepositoryFoldout {
             state,
             filter,
             add_menu_open: false,
+            only_changed: false,
+            only_ahead_behind: false,
         }
     }
 
@@ -46,10 +52,22 @@ impl RepositoryFoldout {
     fn groups(&self, cx: &App) -> Vec<Group> {
         let state = self.state.read(cx);
         let query = self.filter.read(cx).value().trim().to_lowercase();
-        let matches = |r: &Repository| query.is_empty() || r.name().to_lowercase().contains(&query);
+        // Corvane (`110-repository-status-filter`)
+        let status_filter = state
+            .flags
+            .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER)
+            && (self.only_changed || self.only_ahead_behind);
+        let matches = |r: &Repository| {
+            (query.is_empty() || r.name().to_lowercase().contains(&query))
+                && (!status_filter || {
+                    let (ahead_behind, has_changes) = indicators(state, r.id);
+                    (self.only_changed && has_changes)
+                        || (self.only_ahead_behind && ahead_behind.is_some())
+                })
+        };
 
         let mut groups: Vec<Group> = Vec::new();
-        if query.is_empty() {
+        if query.is_empty() && !status_filter {
             let recent: Vec<Repository> = state
                 .recent
                 .iter()
@@ -105,21 +123,7 @@ impl RepositoryFoldout {
         };
         let id = repo.id;
         let hover_bg = t.list_item_hover_background;
-        let (ahead_behind, has_changes) = {
-            let s = self.state.read(cx);
-            let indicator = s.indicators.get(&id);
-            let rs = s.repo_states.get(&id);
-            let ab = rs
-                .and_then(|r| r.ahead_behind)
-                .or_else(|| indicator.and_then(|i| i.ahead_behind))
-                .filter(|ab| ab.ahead > 0 || ab.behind > 0);
-            let changes = rs
-                .and_then(|r| r.status.as_ref())
-                .map(|st| !st.files.is_empty())
-                .or_else(|| indicator.map(|i| i.changed_files > 0))
-                .unwrap_or(false);
-            (ab, changes)
-        };
+        let (ahead_behind, has_changes) = indicators(self.state.read(cx), id);
         // GHD `RepositoryListItem` aria label: name, changes, ahead/behind
         let mut label = repo.name();
         if has_changes {
@@ -268,6 +272,44 @@ impl RepositoryFoldout {
                         }),
                 )
             })
+    }
+
+    /// Corvane (`110-repository-status-filter`): the filter options menu.
+    fn open_filter_menu(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        use crate::context_menu::MenuItem;
+        let this = cx.entity().downgrade();
+        let toggle = move |pick: fn(&mut Self) -> &mut bool| {
+            let this = this.clone();
+            move |_: &mut Window, cx: &mut App| {
+                this.update(cx, |f, cx| {
+                    let flag = pick(f);
+                    *flag = !*flag;
+                    cx.notify();
+                })
+                .ok();
+            }
+        };
+        let items = vec![
+            MenuItem::checkbox(
+                "Uncommitted changes",
+                self.only_changed,
+                toggle(|f| &mut f.only_changed),
+            ),
+            MenuItem::checkbox(
+                "Commits to push or pull",
+                self.only_ahead_behind,
+                toggle(|f| &mut f.only_ahead_behind),
+            ),
+        ];
+        #[cfg(target_os = "macos")]
+        crate::native_menu::show_context_menu(items, position, window, cx);
+        #[cfg(not(target_os = "macos"))]
+        let _ = (items, position, window);
     }
 
     fn add_menu(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -422,6 +464,12 @@ impl Render for RepositoryFoldout {
         let groups = self.groups(cx);
         let has_repos = !self.state.read(cx).repositories.is_empty();
         let add_open = self.add_menu_open;
+        let status_filter = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER);
+        let filtering = self.only_changed || self.only_ahead_behind;
 
         div()
             .id("repository-list")
@@ -455,6 +503,27 @@ impl Render for RepositoryFoldout {
                         window,
                         cx,
                     ))
+                    // Corvane (`110-repository-status-filter`): a menu of
+                    // status filters, blue while one is on
+                    .when(status_filter, |d| {
+                        d.child(
+                            button("repository-filter-options", "", cx)
+                                .flex_none()
+                                .ghd_tooltip("Filter options")
+                                .child(octicon(
+                                    Octicon::Filter,
+                                    if filtering {
+                                        t.tab_bar_active
+                                    } else {
+                                        t.secondary_button_text
+                                    },
+                                ))
+                                .on_click(cx.listener(|this, ev: &ClickEvent, window, cx| {
+                                    cx.stop_propagation();
+                                    this.open_filter_menu(ev.position(), window, cx);
+                                })),
+                        )
+                    })
                     .child(
                         button("add-repository", "Add", cx)
                             .flex_none()
@@ -547,6 +616,24 @@ impl Render for RepositoryFoldout {
             )
             .when(add_open, |d| d.child(self.add_menu(cx)))
     }
+}
+
+/// The row's indicators: ahead / behind (when either is non-zero) and
+/// whether there are uncommitted changes, from the loaded state or the
+/// background indicator refresh.
+fn indicators(s: &AppState, id: u64) -> (Option<corvane_core::AheadBehind>, bool) {
+    let indicator = s.indicators.get(&id);
+    let rs = s.repo_states.get(&id);
+    let ab = rs
+        .and_then(|r| r.ahead_behind)
+        .or_else(|| indicator.and_then(|i| i.ahead_behind))
+        .filter(|ab| ab.ahead > 0 || ab.behind > 0);
+    let changes = rs
+        .and_then(|r| r.status.as_ref())
+        .map(|st| !st.files.is_empty())
+        .or_else(|| indicator.map(|i| i.changed_files > 0))
+        .unwrap_or(false);
+    (ab, changes)
 }
 
 /// Corvane (`614-navigation-shortcuts`): the repositories in the list's
