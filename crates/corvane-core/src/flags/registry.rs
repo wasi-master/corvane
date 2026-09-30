@@ -266,6 +266,21 @@ registry! {
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
 
+    /// Create a Branch can start from any branch.
+    CREATE_BRANCH_FROM_ANY_BRANCH = 255 "create-branch-from-any-branch" {
+        title: "Create a branch from any branch",
+        summary: "Create a Branch offers \"Other branch…\" next to the default and current \
+                  branches, with a filterable list of every local and remote branch to start from.",
+        ghd_behaviour: "Only the default branch or the current branch (and no choice at all while \
+                        the default branch is checked out).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12459), Upstream::issue(20083)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
