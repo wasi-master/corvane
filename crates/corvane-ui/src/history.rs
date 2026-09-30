@@ -12,7 +12,8 @@
 //! are not shown; the drop targets highlight instead.
 //!
 //! Deviations (`.docs/deviations.md` › History): the commit menus
-//! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`).
+//! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
+//! list scrolls back to the top when the branch changes (flag `241`).
 
 use std::rc::Rc;
 
@@ -202,6 +203,10 @@ pub struct HistorySidebar {
     focused_branch: Option<String>,
     /// Merge call to action dropdown choice (`selectedOperation`).
     merge_option: MultiCommitOperationKind,
+    list_scroll: UniformListScrollHandle,
+    /// Repository and tip (branch name or detached sha) the list last showed;
+    /// a change scrolls it back to the top (flag `241`).
+    shown_tip: Option<(u64, String)>,
 }
 
 impl HistorySidebar {
@@ -219,6 +224,8 @@ impl HistorySidebar {
             compare_was_focused: false,
             focused_branch: None,
             merge_option: MultiCommitOperationKind::Merge,
+            list_scroll: UniformListScrollHandle::new(),
+            shown_tip: None,
         }
     }
 
@@ -1249,6 +1256,25 @@ impl HistorySidebar {
                 .child(message)
                 .into_any_element();
         }
+        // `241`: another branch (or repository) starts at the newest commit
+        let tip = rs
+            .and_then(|r| r.info.as_ref())
+            .map(|info| match &info.tip {
+                corvane_core::Tip::Detached { sha } => sha.clone(),
+                tip => tip.branch_name().unwrap_or_default().to_string(),
+            });
+        let scroll_to_top = s
+            .flags
+            .bool(corvane_core::flags::ids::HISTORY_SCROLLS_TO_TOP_ON_BRANCH_CHANGE);
+        if let Some(tip) = tip {
+            let key = Some((id, tip));
+            if self.shown_tip != key {
+                if scroll_to_top && self.shown_tip.is_some() {
+                    self.list_scroll.scroll_to_item(0, ScrollStrategy::Top);
+                }
+                self.shown_tip = key;
+            }
+        }
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
         let count = commits.len();
@@ -1348,7 +1374,7 @@ impl HistorySidebar {
                 })
                 .flex_1()
                 .min_h_0()
-                .with_scrollbar(),
+                .with_scrollbar_handle(&self.list_scroll),
             )
             .when(in_reorder, |d| d.child(self.reorder_hint(cx)))
             .into_any_element()
