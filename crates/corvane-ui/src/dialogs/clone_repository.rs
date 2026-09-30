@@ -11,6 +11,9 @@
 //! `styles/ui/_account-picker.scss`, a `PopoverDropdown`) picks which one
 //! lists repositories. The list and the picker live in
 //! `crate::cloneable_repositories` (the blank slate shows them too).
+//!
+//! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
+//! and `owner/name` shorthands can clone over SSH.
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -318,12 +321,22 @@ impl CloneRepositoryDialog {
             return;
         };
         let input = self.url.read(cx).value().trim().to_string();
+        // `355-clone-prefers-ssh`: list picks and shorthands clone over SSH;
+        // an http(s) URL typed on the URL tab keeps its protocol
+        let prefer_ssh = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_PREFERS_SSH)
+            && (self.tab != Tab::Url
+                || !(input.starts_with("https://") || input.starts_with("http://")));
         self.resolving = true;
         self.resolve_error = None;
         cx.notify();
         let weak = cx.weak_entity();
         Dispatcher::resolve_clone_info(
             input,
+            prefer_ssh,
             move |result, cx| match result {
                 Ok(info) => Dispatcher::clone_repository(info.url, path, info.default_branch, cx),
                 Err(message) => {
