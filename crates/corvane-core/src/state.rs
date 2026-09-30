@@ -623,7 +623,8 @@ pub struct RepositoryState {
     pub default_branch: Option<String>,
     /// Branch a checkout is switching to (`checkoutProgress.target`).
     pub checkout_target: Option<String>,
-    /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`).
+    /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`);
+    /// with `417-show-latest-other-stash`, else the newest stash no Desktop made.
     pub stash: Option<corvane_models::StashEntry>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
@@ -754,6 +755,13 @@ impl RepositoryState {
 
     pub fn changed_files(&self) -> usize {
         self.status.as_ref().map(|s| s.files.len()).unwrap_or(0)
+    }
+
+    /// [`Self::stash`] when a Desktop made it for this branch: the entry a new
+    /// stash replaces (a `git stash` shown by `417-show-latest-other-stash`
+    /// is never dropped to make room).
+    pub fn desktop_stash(&self) -> Option<&corvane_models::StashEntry> {
+        self.stash.as_ref().filter(|s| s.branch.is_some())
     }
 }
 

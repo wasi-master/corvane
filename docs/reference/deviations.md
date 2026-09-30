@@ -53,6 +53,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Deleting a branch that another worktree has checked out, or deleting the current branch while the default branch is checked out in another worktree, fails with an error that names that worktree and says what to switch first; GHD shows git's "used by worktree at" messages. Flag: `415-explain-branch-in-other-worktree`.
 - Deleting the checked-out branch switches to the default branch and then fetches its upstream remote in the background, so the commits of a just-merged pull request show up; GHD switches without fetching. Flag: `414-fetch-after-deleting-current-branch`.
 - The Changes list's "N changed files" row ends in a spinner while Discard Changes runs, and while a status refresh has run for 300 ms (fast refreshes show nothing); GHD shows neither. Flag: `416-changes-busy-indicator`.
+- Show stashes made outside Corvane (Corvane addition, off in the Corvane preset): without a `!!GitHub_Desktop<branch>` stash for the current branch, the Stashed Changes row shows the newest stash whose message is not a Desktop one (a Desktop stash of another branch is never shown). Restore / Discard act on it; stashing from Corvane (switching branches, Stash All Changes) only replaces a Desktop stash, so a command-line stash is never dropped, and the overwrite warnings only count Desktop stashes. GHD shows Desktop stashes only. Flag: `417-show-latest-other-stash`.
 
 ## Tutorial
 

@@ -811,6 +811,21 @@ registry! {
         upstream: &[Upstream::issue(15297), Upstream::issue(1914)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Show the newest command-line stash when the branch has no Desktop stash.
+    SHOW_LATEST_OTHER_STASH = 417 "show-latest-other-stash" {
+        title: "Show stashes made outside Corvane",
+        summary: "When the current branch has no stash of its own, the Changes list's Stashed \
+                  Changes row shows the newest stash that GitHub Desktop or Corvane did not make \
+                  (git stash on the command line), so it can be viewed, restored or discarded. \
+                  Stashing from Corvane never replaces such a stash.",
+        ghd_behaviour: "Only stashes named !!GitHub_Desktop<branch> are shown; others are invisible.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17147)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/state.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

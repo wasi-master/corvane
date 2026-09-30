@@ -547,7 +547,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status, line_counts, status_options, recent_count) = {
+        let (path, git, previous_status, line_counts, status_options, recent_count, other_stash) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -570,6 +570,7 @@ impl Dispatcher {
                 // GHD `RecentBranchesLimit` is 5
                 usize::try_from(s.flags.number(crate::flags::ids::RECENT_BRANCHES_COUNT))
                     .unwrap_or(5),
+                s.flags.bool(crate::flags::ids::SHOW_LATEST_OTHER_STASH),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -633,12 +634,22 @@ impl Dispatcher {
                         &configured,
                     )
                     .map(|b| b.name.clone());
-                    let (stashes, stash_count) =
+                    let (mut stashes, stash_count) =
                         corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
                     let current = info.current_branch().map(|b| b.name.clone());
-                    let stash = stashes
-                        .into_iter()
-                        .find(|s| s.branch.is_some() && s.branch == current);
+                    let desktop_stash = stashes
+                        .iter()
+                        .position(|s| s.branch.is_some() && s.branch == current);
+                    // Corvane (`417-show-latest-other-stash`): without one of
+                    // its own, the branch shows the newest stash that no
+                    // Desktop made (`git stash` on the command line)
+                    let stash = desktop_stash
+                        .or_else(|| {
+                            other_stash
+                                .then(|| stashes.iter().position(|s| s.branch.is_none()))
+                                .flatten()
+                        })
+                        .map(|i| stashes.swap_remove(i));
                     let rebase_snapshot = status
                         .as_ref()
                         .filter(|st| st.rebase_internal_state.is_some())
@@ -1728,7 +1739,7 @@ impl Dispatcher {
             (
                 rs.and_then(|r| r.status.as_ref())
                     .is_some_and(|st| !st.files.is_empty()),
-                rs.is_some_and(|r| r.stash.is_some()),
+                rs.is_some_and(|r| r.desktop_stash().is_some()),
                 info.is_some_and(|i| matches!(i.tip, corvane_models::Tip::Valid { .. })),
                 info.and_then(|i| i.current_branch())
                     .map(|b| b.name.clone()),
@@ -1773,7 +1784,7 @@ impl Dispatcher {
             .read(cx)
             .repo_states
             .get(&id)
-            .and_then(|r| r.stash.as_ref())
+            .and_then(|r| r.desktop_stash())
             .map(|s| s.name.clone());
         let target = branch.name.clone();
         let submodules = Self::submodule_update_plan(id, cx);
@@ -2143,7 +2154,7 @@ impl Dispatcher {
             .read(cx)
             .repo_states
             .get(&id)
-            .and_then(|r| r.stash.as_ref())
+            .and_then(|r| r.desktop_stash())
             .map(|s| s.name.clone());
         Self::run_history_op(
             id,

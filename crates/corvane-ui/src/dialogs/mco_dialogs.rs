@@ -1077,7 +1077,7 @@ impl Render for LocalChangesOverwrittenDialog {
             .read(cx)
             .repo_states
             .get(&repo)
-            .is_some_and(|r| r.stash.is_some());
+            .is_some_and(|r| r.desktop_stash().is_some());
         let retry = self.retry.clone();
         let content = div()
             .flex()
