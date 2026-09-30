@@ -377,6 +377,29 @@ pub fn fetch_refspec(
     Ok(())
 }
 
+/// Fast-forward the local branch `local`, which must not be checked out, to
+/// `remote`'s `remote_branch` without switching to it:
+/// `fetch <remote> refs/heads/<remote_branch>:refs/heads/<local>` (git refuses
+/// a non-fast-forward and updates the remote-tracking branch too). Corvane
+/// addition (desktop#19837).
+pub fn fast_forward_branch_from_remote(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    remote_branch: &str,
+    local: &str,
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    remote_command(git, workdir, askpass)
+        .args([
+            "fetch".to_string(),
+            remote.to_string(),
+            format!("refs/heads/{remote_branch}:refs/heads/{local}"),
+        ])
+        .run()?;
+    Ok(())
+}
+
 /// `pull.rebase` is set to anything (GHD `pullWithRebase`).
 pub fn pull_with_rebase(git: Arc<GitBinary>, workdir: &Path) -> bool {
     config_value(git, workdir, "pull.rebase").is_some_and(|v| {
@@ -689,6 +712,60 @@ mod tests {
         assert!(!is_using_lfs_by_attributes(git.clone(), dir.path()));
         run(dir.path(), &["add", "art/.gitattributes"]);
         assert!(is_using_lfs_by_attributes(git, dir.path()));
+    }
+
+    #[test]
+    fn fast_forwards_a_branch_that_is_not_checked_out() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        let (work, other) = (dir.path().join("work"), dir.path().join("other"));
+        run(
+            dir.path(),
+            &["init", "-q", "--bare", "-b", "main", bare.to_str().unwrap()],
+        );
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", work.to_str().unwrap()],
+        );
+        run(&work, &["config", "commit.gpgsign", "false"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        run(&work, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        run(&work, &["push", "-q", "-u", "origin", "main"]);
+        run(&work, &["checkout", "-q", "-b", "topic"]);
+        run(
+            dir.path(),
+            &[
+                "clone",
+                "-q",
+                bare.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ],
+        );
+        run(&other, &["config", "commit.gpgsign", "false"]);
+        run(&other, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        run(&other, &["push", "-q", "origin", "main"]);
+        fast_forward_branch_from_remote(git.clone(), &work, "origin", "main", "main", None)
+            .unwrap();
+        let rev = |r: &str| {
+            let out = std::process::Command::new("git")
+                .args(["rev-parse", r])
+                .current_dir(&work)
+                .output()
+                .unwrap();
+            String::from_utf8(out.stdout).unwrap()
+        };
+        assert_eq!(rev("main"), rev("origin/main"));
+        assert_ne!(rev("main"), rev("topic"));
+        // a diverged branch is refused
+        run(&work, &["checkout", "-q", "main"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "local"]);
+        run(&work, &["checkout", "-q", "topic"]);
+        run(&other, &["commit", "-q", "--allow-empty", "-m", "third"]);
+        run(&other, &["push", "-q", "origin", "main"]);
+        assert!(
+            fast_forward_branch_from_remote(git, &work, "origin", "main", "main", None).is_err()
+        );
     }
 
     #[test]
