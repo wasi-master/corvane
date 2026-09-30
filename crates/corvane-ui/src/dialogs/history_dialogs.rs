@@ -5,7 +5,8 @@
 //! Deviation (`.docs/deviations.md` › History): Create a Tag has an
 //! optional Message field (flag `244`); GHD always tags with an empty message.
 //! Undoing a tagged commit warns first (flag `441`); ⌘⏎ submits Create a Tag
-//! from its Message field (flag `442`).
+//! from its Message field (flag `442`). A pushed tag can be deleted, from the
+//! remote too, after a confirmation (flag `445`).
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
 use gpui_kit::component::input::{InputEvent, InputState, Textarea, TextareaState};
@@ -522,6 +523,92 @@ impl Render for WarnTaggedCommitBeforeUndoDialog {
                         } else {
                             Dispatcher::undo_commit(repo, cx);
                         }
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+/// Flag `445`: delete a tag Corvane did not create-and-hold (not in
+/// `tagsToPush`), optionally from the remote too (Corvane addition; GHD only
+/// deletes unpushed tags). The remote box starts unticked.
+pub struct ConfirmDeletePushedTagDialog {
+    repo: u64,
+    tag: String,
+    remote: Option<corvane_core::Remote>,
+    from_remote: bool,
+}
+
+impl ConfirmDeletePushedTagDialog {
+    pub fn new(repo: u64, tag: String, cx: &App) -> Self {
+        Self {
+            repo,
+            tag,
+            remote: Dispatcher::current_remote(repo, cx),
+            from_remote: false,
+        }
+    }
+}
+
+impl Render for ConfirmDeletePushedTagDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, tag) = (self.repo, self.tag.clone());
+        let remote = self.remote.clone().filter(|_| self.from_remote);
+        let content = div()
+            .flex()
+            .flex_col()
+            .child(div().mb(SPACING()).child(format!(
+                "Are you sure you want to delete the tag {}?",
+                self.tag
+            )))
+            .when_some(self.remote.clone(), |d, r| {
+                d.child(
+                    div()
+                        .id("delete-tag-remote")
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(SPACING_HALF())
+                        .cursor_pointer()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.from_remote = !this.from_remote;
+                            cx.notify();
+                        }))
+                        .child(checkbox(
+                            "delete-tag-remote-box",
+                            self.from_remote,
+                            false,
+                            cx,
+                        ))
+                        .child(format!("Also delete it from {}", r.name)),
+                )
+            });
+        dialog_with_kind(
+            "dialog-delete-pushed-tag",
+            DialogKind::Warning,
+            "Delete Tag",
+            content,
+            vec![
+                DialogButton {
+                    id: "delete-tag-cancel",
+                    label: "Cancel".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "delete-tag-confirm",
+                    label: "Delete".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::delete_pushed_tag(repo, tag.clone(), remote.clone(), cx);
                     }),
                 },
             ],
