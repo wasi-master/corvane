@@ -1070,6 +1070,19 @@ registry! {
         upstream: &[Upstream::issue(14604)],
         code: &["crates/corvane-ui/src/keymap.rs"],
     },
+    /// ⌥⌘T opens the repository in the shell, next to ⌃`.
+    OPEN_IN_SHELL_ALT_SHORTCUT = 610 "open-in-shell-alt-shortcut" {
+        title: "⌥⌘T also opens the shell",
+        summary: "Repository › Open in <shell> also answers to ⌥⌘T, which every keyboard layout \
+                  can type (⌃` is a dead key on German and other layouts).",
+        ghd_behaviour: "Only ⌃`.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3240)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.
