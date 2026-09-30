@@ -343,7 +343,7 @@ impl DialogHost {
                 })
                 .into(),
             Popup::DeleteBranch { repo, name } => cx
-                .new(|_| DeleteBranchDialog::new(state, *repo, name.clone()))
+                .new(|cx| DeleteBranchDialog::new(state, *repo, name.clone(), cx))
                 .into(),
             Popup::StashAndSwitchBranch { repo, branch } => cx
                 .new(|_| StashAndSwitchBranchDialog::new(state, *repo, branch.clone()))

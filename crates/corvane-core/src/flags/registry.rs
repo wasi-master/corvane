@@ -311,6 +311,20 @@ registry! {
         code: &["crates/corvane-ui/src/branch_list.rs"],
     },
 
+    /// Delete Branch warns about unmerged commits and a stash.
+    DELETE_BRANCH_WARNINGS = 258 "delete-branch-warnings" {
+        title: "Delete Branch warns about unmerged commits and stashes",
+        summary: "Delete Branch warns when the branch has commits that neither the default branch \
+                  nor the branch's upstream contain, and when changes are stashed on it.",
+        ghd_behaviour: "Only \"This action cannot be undone.\"",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4214), Upstream::issue(13714)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

@@ -535,6 +535,19 @@ pub struct CloneState {
     pub value: Option<f32>,
 }
 
+/// What deleting a branch would lose (`258-delete-branch-warnings`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeleteBranchPreview {
+    pub branch: String,
+    /// Commits on the branch that neither the default branch (local or its
+    /// upstream) nor the branch's own upstream contain.
+    pub unmerged_commits: u32,
+    /// What those commits were compared against, for the message.
+    pub compared_to: Vec<String>,
+    /// A GitHub Desktop / Corvane stash entry is recorded for the branch.
+    pub has_stash: bool,
+}
+
 /// Per-repository cache (`IRepositoryState`, trimmed).
 #[derive(Clone, Debug, Default)]
 pub struct RepositoryState {
@@ -624,6 +637,8 @@ pub struct RepositoryState {
     pub stash_count: usize,
     /// Merge dialog preview.
     pub merge_preview: Option<crate::mco::MergePreview>,
+    /// Delete Branch dialog warnings (`258-delete-branch-warnings`).
+    pub delete_branch_preview: Option<DeleteBranchPreview>,
     /// `pullRequestState`: the Preview Pull Request dialog's data.
     pub pull_request_preview: Option<crate::pull_request_preview::PullRequestPreview>,
     /// `addUpstreamRemoteIfNeeded` ran for this repository this session.

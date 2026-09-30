@@ -295,6 +295,24 @@ pub fn commits_ahead(git: Arc<GitBinary>, workdir: &Path, base: &str, other: &st
     Ok(out.stdout_string()?.trim().parse().unwrap_or(0))
 }
 
+/// Commits reachable from `branch` but from none of `bases`
+/// (`rev-list --count <branch> --not <bases…>`); the delete-branch warning.
+/// With no bases every commit of the branch counts.
+pub fn commits_not_in(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    branch: &str,
+    bases: &[String],
+) -> Result<u32> {
+    let out = GitCommand::new(git)
+        .args(["rev-list", "--count", branch, "--not"])
+        .args(bases.iter().map(String::as_str))
+        .arg("--")
+        .current_dir(workdir)
+        .run()?;
+    Ok(out.stdout_string()?.trim().parse().unwrap_or(0))
+}
+
 /// GHD `DesktopStashEntryMarker`
 pub const DESKTOP_STASH_MARKER: &str = "!!GitHub_Desktop";
 
@@ -511,6 +529,20 @@ eeee commit: something\n";
         assert_eq!(
             commits_ahead(git.clone(), path, "main", "feature").unwrap(),
             1
+        );
+        assert_eq!(
+            commits_not_in(git.clone(), path, "feature", &["main".into()]).unwrap(),
+            1
+        );
+        assert_eq!(
+            commits_not_in(
+                git.clone(),
+                path,
+                "refs/heads/main",
+                &["refs/heads/feature".into()]
+            )
+            .unwrap(),
+            0
         );
         assert_eq!(
             merge_branch(git.clone(), path, "feature", false).unwrap(),

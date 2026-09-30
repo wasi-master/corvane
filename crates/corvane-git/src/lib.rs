@@ -24,7 +24,7 @@ pub mod worktree;
 
 pub use branch_ops::{
     DESKTOP_STASH_MARKER, MergeOutcome, abort_merge, checkout_branch, checkout_new_branch,
-    commits_ahead, configured_default_branch, create_branch, create_desktop_stash,
+    commits_ahead, commits_not_in, configured_default_branch, create_branch, create_desktop_stash,
     delete_local_branch, delete_remote_branch, desktop_stash_message, drop_stash,
     find_default_branch, get_stashes, is_local_changes_overwritten, merge_branch,
     parse_recent_branches, pop_stash, recent_branches, remote_head, rename_branch, stashed_files,

@@ -1830,6 +1830,82 @@ impl Dispatcher {
         );
     }
 
+    /// Delete Branch dialog warnings (`258-delete-branch-warnings`): commits
+    /// only this branch has, and a stash recorded for it.
+    pub fn preview_delete_branch(id: u64, name: String, cx: &mut App) {
+        let Some(branch) = Self::branch_by_name(id, &name, cx) else {
+            return;
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        // the default branch (local and upstream) and the branch's upstream,
+        // where those refs exist
+        let bases: Vec<(String, String)> = {
+            let s = Self::state(cx).read(cx);
+            let rs = s.repo_states.get(&id);
+            let branches = rs
+                .and_then(|r| r.info.as_ref())
+                .map(|i| i.branches.as_slice())
+                .unwrap_or_default();
+            let default = rs.and_then(|r| r.default_branch.as_deref()).and_then(|d| {
+                branches
+                    .iter()
+                    .find(|b| b.name == d && b.kind == corvane_models::BranchKind::Local)
+            });
+            let mut full_names: Vec<&str> = Vec::new();
+            if let Some(default) = default {
+                full_names.push(&default.full_name);
+                full_names.extend(default.upstream.as_deref());
+            }
+            full_names.extend(branch.upstream.as_deref());
+            full_names.dedup();
+            full_names
+                .into_iter()
+                .filter(|f| *f != branch.full_name)
+                .filter_map(|f| {
+                    branches
+                        .iter()
+                        .find(|b| b.full_name == f)
+                        .map(|b| (b.full_name.clone(), b.name.clone()))
+                })
+                .collect()
+        };
+        let local = branch.kind == corvane_models::BranchKind::Local;
+        let task = cx.background_executor().spawn(async move {
+            let unmerged = if bases.is_empty() {
+                0
+            } else {
+                let refs: Vec<String> = bases.iter().map(|(f, _)| f.clone()).collect();
+                corvane_git::commits_not_in(git.clone(), &workdir, &branch.full_name, &refs)
+                    .unwrap_or(0)
+            };
+            let has_stash = local
+                && corvane_git::get_stashes(git, &workdir).is_ok_and(|(stashes, _)| {
+                    stashes
+                        .iter()
+                        .any(|s| s.branch.as_deref() == Some(branch.name.as_str()))
+                });
+            crate::state::DeleteBranchPreview {
+                branch: branch.name,
+                unmerged_commits: unmerged,
+                compared_to: bases.into_iter().map(|(_, short)| short).collect(),
+                has_stash,
+            }
+        });
+        Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).delete_branch_preview = None);
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let preview = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).delete_branch_preview = Some(preview);
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
+    }
+
     /// Merge dialog preview: how many commits `branch` would bring in.
     pub fn preview_merge(id: u64, branch: String, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
