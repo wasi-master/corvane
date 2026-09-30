@@ -432,6 +432,25 @@ pub fn stage_manual_conflict_resolution(
     Ok(())
 }
 
+/// Corvane addition (flag `150`): `git mergetool --no-prompt -- <path>` with
+/// the user's `merge.tool`; blocks until the tool exits (git stages the file
+/// when the tool reports success). Refuses without a configured
+/// `merge.tool`, since git would otherwise fall back to terminal tools.
+pub fn open_merge_tool(git: Arc<GitBinary>, workdir: &Path, path: &str) -> Result<()> {
+    if crate::config_value(git.clone(), workdir, "merge.tool").is_none() {
+        return Err(GitError::Gix(
+            "No merge tool is configured. Set one with git config --global merge.tool <tool> \
+             (for example bc, kdiff3, opendiff or p4merge)."
+                .into(),
+        ));
+    }
+    GitCommand::new(git)
+        .args(["mergetool", "--no-prompt", "--", path])
+        .current_dir(workdir)
+        .run()?;
+    Ok(())
+}
+
 /// Stage tracked files before continuing an operation: manual resolutions
 /// first, then `add` for everything else (GHD `continueRebase` /
 /// `continueCherryPick` / `createMergeCommit` share this).

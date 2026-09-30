@@ -12,7 +12,8 @@
 //! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
 //! the stopped commit above the conflicts list (flag `453`); the rebase list
 //! preselects the default branch (flag `143`); the squash message popup can
-//! go back to the target commit's message (flag `144`).
+//! go back to the target commit's message (flag `144`); Open in Merge Tool in
+//! a conflicted file's menu (flag `150`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -1043,12 +1044,26 @@ fn unmerged_file_row(
                         .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                         .on_click(cx.listener(
                             move |this, ev: &ClickEvent, window, cx| {
-                                let copy_paths = this
-                                    .state
-                                    .read(cx)
-                                    .flags
-                                    .bool(corvane_core::flags::ids::CONFLICT_MENU_COPY_PATHS);
+                                let (copy_paths, merge_tool) = {
+                                    let flags = &this.state.read(cx).flags;
+                                    (
+                                        flags.bool(
+                                            corvane_core::flags::ids::CONFLICT_MENU_COPY_PATHS,
+                                        ),
+                                        flags.bool(corvane_core::flags::ids::OPEN_IN_MERGE_TOOL),
+                                    )
+                                };
                                 let mut menu_items = Vec::new();
+                                // flag `150`: `git mergetool` on this file
+                                if merge_tool {
+                                    let path = rel_path.clone();
+                                    menu_items.push(MenuItem::new(
+                                        "Open in Merge Tool",
+                                        move |_, cx| {
+                                            Dispatcher::open_in_merge_tool(repo, path.clone(), cx)
+                                        },
+                                    ));
+                                }
                                 if let Some(p) = menu_path.clone() {
                                     let p2 = p.clone();
                                     let absolute = p.to_string_lossy().into_owned();

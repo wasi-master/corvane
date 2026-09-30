@@ -1135,6 +1135,24 @@ impl Dispatcher {
         });
     }
 
+    /// Conflicts dialog › Open in Merge Tool (flag `150`): the user's
+    /// `merge.tool` on one file; refresh once it closes.
+    pub fn open_in_merge_tool(id: u64, path: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        spawn_bg(
+            cx,
+            move || corvane_git::open_merge_tool(git, &workdir, &path),
+            move |result, cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not open the merge tool", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
     fn note_resolved_conflicts(id: u64, cx: &mut App) {
         let any_resolved = {
             let s = Self::state(cx).read(cx);

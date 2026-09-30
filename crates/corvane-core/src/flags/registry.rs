@@ -317,6 +317,20 @@ registry! {
         upstream: &[Upstream::issue(12759)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
     },
+    /// Conflicted file › Open in Merge Tool.
+    OPEN_IN_MERGE_TOOL = 150 "open-in-merge-tool" {
+        title: "Open conflicts in your merge tool",
+        summary: "A conflicted file's ▾ menu in the conflicts dialog starts with Open in Merge \
+                  Tool: git mergetool runs the tool set in git's merge.tool (Beyond Compare, \
+                  kdiff3, …) on the file, and the list refreshes when it closes.",
+        ghd_behaviour: "Only the editor, the default program or Finder.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9609)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
 
     // ---- 200 Repository ----
 
