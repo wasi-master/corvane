@@ -914,7 +914,7 @@ impl Render for FlagsDialog {
         let mut nav = div()
             .id("flags-nav")
             .flex_none()
-            .w(zpx(180.))
+            .w(zpx(250.))
             .py(SPACING())
             .flex()
             .flex_col()
