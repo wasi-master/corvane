@@ -250,6 +250,59 @@ impl Workspace {
         self.history.update(cx, |h, cx| h.focus_compare(window, cx));
     }
 
+    /// Corvane (`614-navigation-shortcuts`, ⌃⌘P): the branch foldout on
+    /// its Pull Requests tab (the Branches list for a non-GitHub repository).
+    pub fn show_pull_requests_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        Dispatcher::change_branches_tab(corvane_core::BranchesTab::PullRequests, cx);
+        if self.state.read(cx).foldout != Some(corvane_core::Foldout::Branch) {
+            Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
+        }
+        self.branch_foldout
+            .update(cx, |f, cx| f.focus_filter(window, cx));
+    }
+
+    /// Corvane (`614-navigation-shortcuts`, ⌘3): focus the diff on the right.
+    pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match self.section {
+            Section::Changes => self.diff_view.update(cx, |d, cx| d.focus(window, cx)),
+            Section::History => self
+                .selected_commit
+                .update(cx, |v, cx| v.focus_diff(window, cx)),
+        }
+    }
+
+    /// Corvane (`614-navigation-shortcuts`, ⌥↓ / ⌥↑ in the diff): the
+    /// next / previous file of the section's file list, clamped at the ends.
+    pub fn step_file(&mut self, delta: isize, cx: &mut Context<Self>) {
+        match self.section {
+            Section::Changes => self
+                .changes
+                .update(cx, |changes, cx| changes.select_relative(delta, cx)),
+            Section::History => {
+                let next = {
+                    let s = self.state.read(cx);
+                    let Some(id) = s.selected else { return };
+                    let Some(rs) = s.selected_state() else { return };
+                    let Some(files) = rs.changeset.as_ref().map(|c| &c.files) else {
+                        return;
+                    };
+                    if files.is_empty() {
+                        return;
+                    }
+                    let ix = rs
+                        .commit_selected_file
+                        .as_ref()
+                        .and_then(|p| files.iter().position(|f| &f.path == p))
+                        .map(|i| i as isize + delta)
+                        .unwrap_or(0)
+                        .clamp(0, files.len() as isize - 1) as usize;
+                    (id, files[ix].path.clone())
+                };
+                Dispatcher::select_commit_file(next.0, next.1, cx);
+            }
+        }
+    }
+
     pub fn set_section(&mut self, section: Section, cx: &mut Context<Self>) {
         if self.section != section {
             self.section = section;

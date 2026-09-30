@@ -93,6 +93,11 @@ impl SelectedCommitView {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 
+    /// Corvane (`614-navigation-shortcuts`): focus the commit's diff.
+    pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.diff.update(cx, |diff, cx| diff.focus(window, cx));
+    }
+
     /// Corvane (`608-open-file-shortcuts`): the selected commit file, when
     /// it exists in the working directory (the context menu's condition).
     fn selected_file_on_disk(&self, cx: &App) -> Option<std::path::PathBuf> {

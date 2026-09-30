@@ -18,7 +18,36 @@ pub fn install(
     shell: &str,
     show_release_notes: bool,
     show_import: bool,
+    keymap: corvane_ui::keymap::KeymapFlags,
 ) {
+    let mut view = vec![
+        MenuItem::action("Show Changes", ShowChanges),
+        MenuItem::action("Show History", ShowHistory),
+        MenuItem::action("Show Repository List", ShowRepositoryList),
+        MenuItem::action("Show Branches List", ShowBranchesList),
+        MenuItem::action("Show Worktrees List", ShowWorktreesList),
+    ];
+    // Corvane (`614-navigation-shortcuts`)
+    if keymap.navigation_shortcuts {
+        view.push(MenuItem::action(
+            "Show Pull Requests List",
+            ShowPullRequestsList,
+        ));
+    }
+    view.extend([
+        MenuItem::separator(),
+        MenuItem::action("Go to Summary", GoToSummary),
+        MenuItem::action("Show Stashed Changes", ToggleStashedChanges),
+        MenuItem::action("Hide Changes Filter", ToggleChangesFilter),
+        MenuItem::separator(),
+        MenuItem::action("Toggle Full Screen", ToggleFullScreen),
+        MenuItem::separator(),
+        MenuItem::action("Reset Zoom", ResetZoom),
+        MenuItem::action("Zoom In", ZoomIn),
+        MenuItem::action("Zoom Out", ZoomOut),
+        MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
+        MenuItem::action("Contract Active Resizable", ContractActiveResizable),
+    ]);
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
@@ -61,25 +90,7 @@ pub fn install(
             MenuItem::separator(),
             MenuItem::action("Find", Find),
         ]),
-        Menu::new("View").items([
-            MenuItem::action("Show Changes", ShowChanges),
-            MenuItem::action("Show History", ShowHistory),
-            MenuItem::action("Show Repository List", ShowRepositoryList),
-            MenuItem::action("Show Branches List", ShowBranchesList),
-            MenuItem::action("Show Worktrees List", ShowWorktreesList),
-            MenuItem::separator(),
-            MenuItem::action("Go to Summary", GoToSummary),
-            MenuItem::action("Show Stashed Changes", ToggleStashedChanges),
-            MenuItem::action("Hide Changes Filter", ToggleChangesFilter),
-            MenuItem::separator(),
-            MenuItem::action("Toggle Full Screen", ToggleFullScreen),
-            MenuItem::separator(),
-            MenuItem::action("Reset Zoom", ResetZoom),
-            MenuItem::action("Zoom In", ZoomIn),
-            MenuItem::action("Zoom Out", ZoomOut),
-            MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
-            MenuItem::action("Contract Active Resizable", ContractActiveResizable),
-        ]),
+        Menu::new("View").items(view),
         Menu::new("Repository").items([
             MenuItem::action("Push", Push),
             MenuItem::action("Pull", Pull),

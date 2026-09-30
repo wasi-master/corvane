@@ -1126,6 +1126,31 @@ registry! {
             "crates/corvane-ui/src/selected_commit.rs",
         ],
     },
+    /// ⌃⌘P, ⇧⌘] / ⇧⌘[, ⌘3 and ⌥↓ / ⌥↑ in the diff.
+    NAVIGATION_SHORTCUTS = 614 "navigation-shortcuts" {
+        title: "More navigation shortcuts",
+        summary: "View › Show Pull Requests List (⌃⌘P) opens the branch list on its Pull Requests \
+                  tab; ⇧⌘] / ⇧⌘[ switch to the next / previous repository in the list's order; \
+                  ⌘3 focuses the diff; ⌥↓ / ⌥↑ in the diff select the next / previous file.",
+        ghd_behaviour: "None of these shortcuts; the pull request list, other repositories and the \
+                        diff are reached with the mouse or by tabbing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[
+            Upstream::issue(16854),
+            Upstream::issue(20115),
+            Upstream::issue(20677),
+            Upstream::issue(19935),
+        ],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/workspace.rs",
+            "crates/corvane/src/main.rs",
+            "crates/corvane/src/menus.rs",
+        ],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

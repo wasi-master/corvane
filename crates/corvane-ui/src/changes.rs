@@ -1081,7 +1081,7 @@ impl ChangesSidebar {
     }
 
     /// Arrow keys move the selection through the visible files.
-    fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+    pub(crate) fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let (files, _) = self.visible_files(cx);
         if files.is_empty() {
             return;

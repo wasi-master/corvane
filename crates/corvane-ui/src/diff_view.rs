@@ -609,6 +609,11 @@ impl DiffView {
         }
     }
 
+    /// Corvane (`614-navigation-shortcuts`): ⌘3 puts keyboard focus here.
+    pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus(&self.focus_handle, cx);
+    }
+
     /// Diff Settings › Diff display changed: swap the row set.
     fn set_split_mode(&mut self, split: bool) {
         if self.split_mode != split {

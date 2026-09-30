@@ -549,11 +549,53 @@ impl Render for RepositoryFoldout {
     }
 }
 
+/// Corvane (`614-navigation-shortcuts`): the repositories in the list's
+/// order without the Recent group (owner groups by owner, then Other; by
+/// name within a group), for ⇧⌘] / ⇧⌘[.
+pub fn list_order(state: &AppState) -> Vec<u64> {
+    let mut repos = state.sorted_repositories();
+    repos.sort_by_key(|r| match &r.github {
+        Some(gh) => (0, gh.owner.to_lowercase()),
+        None => (1, String::new()),
+    });
+    repos.iter().map(|r| r.id).collect()
+}
+
+/// The repository `step` places after `current` in `order`, wrapping.
+pub fn step_repository(order: &[u64], current: Option<u64>, step: isize) -> Option<u64> {
+    if order.is_empty() {
+        return None;
+    }
+    let n = order.len() as isize;
+    let next = match current.and_then(|id| order.iter().position(|r| *r == id)) {
+        Some(ix) => (ix as isize + step).rem_euclid(n),
+        None if step < 0 => n - 1,
+        None => 0,
+    };
+    order.get(next as usize).copied()
+}
+
 /// GHD `commitGrammar`: "1 commit" / "N commits".
 fn commit_grammar(n: u32) -> String {
     if n == 1 {
         "1 commit".to_string()
     } else {
         format!("{n} commits")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::step_repository;
+
+    #[test]
+    fn steps_wrap_around_the_list() {
+        let order = [3, 1, 2];
+        assert_eq!(step_repository(&order, Some(1), 1), Some(2));
+        assert_eq!(step_repository(&order, Some(2), 1), Some(3));
+        assert_eq!(step_repository(&order, Some(3), -1), Some(2));
+        assert_eq!(step_repository(&order, None, 1), Some(3));
+        assert_eq!(step_repository(&order, None, -1), Some(2));
+        assert_eq!(step_repository(&[], Some(1), 1), None);
     }
 }

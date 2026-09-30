@@ -138,6 +138,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - ⌃N / ⌃P select the next / previous row of the changes and history lists, like ↓ / ↑ (the macOS text-system bindings; GHD has only the arrows). Flag: `611-emacs-list-keys`.
 - ⌥⌘S switches the diff between Unified and Split (GHD: only the diff settings popover). Flag: `612-diff-mode-shortcut`.
 - With the changes list or a commit's file list focused, ⌥⌘C / ⇧⌥⌘C copy the selected files' full / relative paths (VS Code's keys; GHD: context menu only). Flag: `613-copy-path-shortcuts`.
+- Navigation shortcuts (Corvane additions): View › Show Pull Requests List ⌃⌘P opens the branch list on its Pull Requests tab, ⇧⌘] / ⇧⌘[ select the next / previous repository in the repository list's order (Recent left out, wrapping), ⌘3 focuses the diff, ⌥↓ / ⌥↑ with the diff focused select the next / previous file of the changes or commit file list. Flag: `614-navigation-shortcuts`.
 
 ## Accessibility
 

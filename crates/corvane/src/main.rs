@@ -137,6 +137,7 @@ fn main() {
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                 s.flags
                     .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                keymap_flags,
             );
         }
         phase(started, "theme, keymap, menus and state installed");
@@ -194,6 +195,7 @@ fn main() {
                     &last_menu_key.1,
                     last_menu_key.2,
                     last_menu_key.3,
+                    keymap_flags,
                 );
             }
             let theme_changed = theme != last_theme;
@@ -642,6 +644,52 @@ fn main() {
                     .ok();
             }
         });
+        // Corvane (`614-navigation-shortcuts`)
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ShowPullRequestsList, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.show_pull_requests_list(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &FocusDiff, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.focus_diff(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &SelectNextFileFromDiff, cx| {
+            ws.update(cx, |w, cx| w.step_file(1, cx))
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &SelectPreviousFileFromDiff, cx| {
+            ws.update(cx, |w, cx| w.step_file(-1, cx))
+        });
+        let step_repository = |step: isize, cx: &mut App| {
+            let next = {
+                let s = corvane_core::AppState::global(cx).read(cx);
+                corvane_ui::repository_list::step_repository(
+                    &corvane_ui::repository_list::list_order(s),
+                    s.selected,
+                    step,
+                )
+            };
+            if let Some(id) = next {
+                Dispatcher::select_repository(id, cx);
+            }
+        };
+        cx.on_action(move |_: &NextRepository, cx| step_repository(1, cx));
+        cx.on_action(move |_: &PreviousRepository, cx| step_repository(-1, cx));
         let ws = workspace.clone();
         cx.on_action(move |_: &GoToSummary, cx| {
             if let Some(window) = cx.active_window() {
