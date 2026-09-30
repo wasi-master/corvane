@@ -231,7 +231,10 @@ mod tests {
             let _ = tx.send(m);
         });
         let url = "x-corvane://openLocalRepo/tmp".to_string();
-        assert!(matches!(claim_at(&path, std::slice::from_ref(&url)), Claim::Forwarded));
+        assert!(matches!(
+            claim_at(&path, std::slice::from_ref(&url)),
+            Claim::Forwarded
+        ));
         assert_eq!(
             rx.recv_timeout(Duration::from_secs(5)).unwrap(),
             Message::Url(url)
