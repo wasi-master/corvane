@@ -20,6 +20,8 @@ pub struct KeymapFlags {
     pub open_file_shortcuts: bool,
     /// `609-no-push-shortcut`: ⌘P does not push.
     pub no_push_shortcut: bool,
+    /// `610-open-in-shell-alt-shortcut`: ⌥⌘T also opens the shell.
+    pub open_in_shell_alt_shortcut: bool,
 }
 
 impl KeymapFlags {
@@ -28,6 +30,7 @@ impl KeymapFlags {
             discard_selected_files: flags.bool(ids::CMD_BACKSPACE_DISCARDS_FILES),
             open_file_shortcuts: flags.bool(ids::OPEN_FILE_SHORTCUTS),
             no_push_shortcut: flags.bool(ids::NO_PUSH_SHORTCUT),
+            open_in_shell_alt_shortcut: flags.bool(ids::OPEN_IN_SHELL_ALT_SHORTCUT),
         }
     }
 }
@@ -166,6 +169,9 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     }
     if !flags.no_push_shortcut {
         bindings.push(KeyBinding::new("cmd-p", Push, None));
+    }
+    if flags.open_in_shell_alt_shortcut {
+        bindings.push(KeyBinding::new("alt-cmd-t", OpenInShell, None));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {
