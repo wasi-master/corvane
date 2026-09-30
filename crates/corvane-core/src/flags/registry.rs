@@ -220,6 +220,20 @@ registry! {
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/log.rs"],
     },
 
+    /// The Rebase dialog starts on the default branch.
+    REBASE_PRESELECTS_DEFAULT_BRANCH = 143 "rebase-preselects-default-branch" {
+        title: "Rebase dialog preselects the default branch",
+        summary: "Branch › Rebase Current Branch… opens with the default branch selected and its \
+                  preview shown, unless the default branch is the current one.",
+        ghd_behaviour: "The current branch shows as selected, and a branch has to be picked first.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17731)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.

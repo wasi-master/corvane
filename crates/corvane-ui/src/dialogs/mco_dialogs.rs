@@ -10,7 +10,8 @@
 //! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
 //! branches with a local branch in the rebase list (flag `451`); Copy File
 //! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`);
-//! the stopped commit above the conflicts list (flag `453`).
+//! the stopped commit above the conflicts list (flag `453`); the rebase list
+//! preselects the default branch (flag `143`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -60,12 +61,35 @@ impl McoDialog {
         // `FilterList` autofocuses its filter box
         let handle = filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        // flag `143`: the rebase list starts on the default branch (when that
+        // is not the current one) and previews it
+        let preselected = {
+            let s = state.read(cx);
+            let rs = s.repo_states.get(&repo);
+            let rebase_choosing = rs.and_then(|r| r.mco.as_ref()).is_some_and(|m| {
+                m.step == McoStep::ChooseBranch
+                    && matches!(m.detail, corvane_core::McoDetail::Rebase { .. })
+            });
+            let current = rs
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.current_branch())
+                .map(|b| b.name.clone());
+            rs.and_then(|r| r.default_branch.clone()).filter(|d| {
+                rebase_choosing
+                    && Some(d) != current.as_ref()
+                    && s.flags
+                        .bool(corvane_core::flags::ids::REBASE_PRESELECTS_DEFAULT_BRANCH)
+            })
+        };
+        if let Some(branch) = &preselected {
+            Dispatcher::preview_rebase(repo, branch.clone(), cx);
+        }
         Self {
             state,
             repo,
             filter,
             list_focus: cx.focus_handle(),
-            selected_branch: None,
+            selected_branch: preselected,
             dont_ask_force_push: false,
             create_branch: None,
         }
