@@ -19,9 +19,12 @@ pub mod locale;
 pub mod notifications;
 pub mod services;
 pub mod shells;
+#[cfg(not(target_os = "macos"))]
+pub mod single_instance;
 pub mod spell;
 pub mod trash;
 pub mod updater;
+pub mod url_schemes;
 
 pub mod paths {
     use std::path::PathBuf;

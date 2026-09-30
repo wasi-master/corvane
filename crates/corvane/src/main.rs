@@ -22,6 +22,16 @@ fn main() {
     if std::env::var_os("CORVANE_ASKPASS").is_some() {
         askpass::run();
     }
+    // GHD `requestSingleInstanceLock`: a second launch (the `.desktop` file's
+    // URL handler, the command line tool) hands its URLs to the running
+    // Corvane and exits before touching the store it holds
+    #[cfg(not(target_os = "macos"))]
+    let launch_urls = corvane_platform::single_instance::url_arguments(std::env::args().skip(1));
+    #[cfg(not(target_os = "macos"))]
+    let instance = match corvane_platform::single_instance::claim(&launch_urls) {
+        corvane_platform::single_instance::Claim::Forwarded => return,
+        corvane_platform::single_instance::Claim::First(listener) => listener,
+    };
     let started = Instant::now();
     // the `git --version` probes run while the store, GPUI and the window
     // come up (`Dispatcher::init` collects the result)
@@ -74,6 +84,19 @@ fn main() {
     // in Corvane", links) may arrive before launch has finished: queue them
     let url_inbox = corvane_core::app_url::AppUrlInbox::default();
     let url_sender = url_inbox.sender();
+    #[cfg(not(target_os = "macos"))]
+    {
+        for url in launch_urls {
+            url_sender.send(url);
+        }
+        let from_later_launches = url_sender.clone();
+        instance.serve(move |message| match message {
+            corvane_platform::single_instance::Message::Url(url) => from_later_launches.send(url),
+            corvane_platform::single_instance::Message::Focus => from_later_launches.focus(),
+        });
+        // GHD `setAsDefaultProtocolClient` on every launch
+        std::thread::spawn(corvane_platform::url_schemes::register);
+    }
     app.on_open_urls(move |urls| {
         for url in urls {
             url_sender.send(url);

@@ -238,6 +238,12 @@ impl AppUrlSender {
     pub fn send(&self, url: String) {
         let _ = self.0.try_send(url);
     }
+
+    /// Only bring the window forward (a second launch without URLs, GHD's
+    /// `second-instance` handler).
+    pub fn focus(&self) {
+        let _ = self.0.try_send(String::new());
+    }
 }
 
 impl Default for AppUrlInbox {
@@ -266,7 +272,9 @@ impl Dispatcher {
             while let Ok(url) = rx.recv().await {
                 cx.update(|cx| {
                     focus_window(cx);
-                    Self::handle_app_url(&url, cx);
+                    if !url.is_empty() {
+                        Self::handle_app_url(&url, cx);
+                    }
                 });
             }
         })
