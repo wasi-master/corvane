@@ -91,3 +91,28 @@ pub fn delete_oauth_client_secret(host: &str, client_id: &str) -> Result<()> {
         Err(err) => Err(err.into()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    /// A real round trip through the OS store. Needs an unlocked keyring:
+    /// on Linux, a secret-service daemon on the session bus
+    /// (`packaging/linux/keyring-test.sh` runs it under gnome-keyring), so
+    /// it only runs with `CORVANE_KEYRING_TEST=1`.
+    #[test]
+    fn tokens_round_trip_through_the_os_store() {
+        if std::env::var_os("CORVANE_KEYRING_TEST").is_none() {
+            return;
+        }
+        let host = format!("corvane-test-{}.invalid", std::process::id());
+        super::store_token(&host, "octocat", "gho_secret").unwrap();
+        assert_eq!(
+            super::token(&host, "octocat").unwrap().as_deref(),
+            Some("gho_secret")
+        );
+        // CORVANE_KEYRING_KEEP: leave it for a look at the keyring files
+        if std::env::var_os("CORVANE_KEYRING_KEEP").is_none() {
+            super::delete_token(&host, "octocat").unwrap();
+            assert_eq!(super::token(&host, "octocat").unwrap(), None);
+        }
+    }
+}

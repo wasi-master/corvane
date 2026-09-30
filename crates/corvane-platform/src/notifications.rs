@@ -16,6 +16,19 @@
 //! bundle (it raises an Objective-C exception otherwise), so every entry
 //! point checks for a bundle identifier first and reports
 //! [`NotificationPermission::Unsupported`] / does nothing without one.
+//!
+//! Linux: GHD has no `desktop-notifications` backend there
+//! (`main-process/notifications.ts`: "notifications not currently
+//! supported") and falls back to the HTML5 `Notification` API
+//! (`lib/notifications/show-notification.ts`), which Chromium posts to
+//! `org.freedesktop.Notifications` with a `default` action; a click focuses
+//! the window and runs the callback. Corvane posts the same way
+//! (`notify-rust`) and hands clicks on the `default` action to the click
+//! handler. There is no permission to ask for, so [`permission`] reports
+//! [`NotificationPermission::Unsupported`], which hides the permission hints
+//! as GHD's `supportsNotifications() === false` does; clicks on
+//! notifications of an earlier session are not delivered (the D-Bus
+//! connection that would receive them is gone).
 #![allow(unexpected_cfgs)] // `objc` macros probe a `cargo-clippy` feature
 
 /// GHD `NotificationPermission`.
@@ -409,6 +422,20 @@ pub fn install_click_handler(handler: impl Fn(NotificationClick) + Send + Sync +
 }
 
 #[cfg(not(target_os = "macos"))]
+mod linux {
+    use std::sync::OnceLock;
+
+    use super::NotificationClick;
+
+    pub type ClickHandler = Box<dyn Fn(NotificationClick) + Send + Sync>;
+    pub static CLICK_HANDLER: OnceLock<ClickHandler> = OnceLock::new();
+
+    /// The action key the server invokes for a click on the body.
+    pub const DEFAULT_ACTION: &str = "default";
+}
+
+/// No permission model on Linux (see the module docs).
+#[cfg(not(target_os = "macos"))]
 pub fn permission() -> NotificationPermission {
     NotificationPermission::Unsupported
 }
@@ -416,21 +443,173 @@ pub fn permission() -> NotificationPermission {
 #[cfg(not(target_os = "macos"))]
 pub fn request_permission() {}
 
+/// Post to `org.freedesktop.Notifications` like Chromium's HTML5
+/// notifications: app name, summary, body and a `default` action; the
+/// desktop entry hint lets the shell show Corvane's icon and name. A thread
+/// waits for the notification to be clicked or closed; a click goes to the
+/// installed click handler with `identifier` and `payload`.
 #[cfg(not(target_os = "macos"))]
 pub fn show(
-    _identifier: &str,
-    _title: &str,
-    _body: &str,
-    _payload: Option<&str>,
+    identifier: &str,
+    title: &str,
+    body: &str,
+    payload: Option<&str>,
     done: impl FnOnce(Result<(), NotificationError>) + Send + 'static,
 ) {
-    done(Err(NotificationError::Unsupported));
+    let mut notification = notify_rust::Notification::new();
+    notification
+        .appname(crate::paths::APP_NAME)
+        .summary(title)
+        .body(body)
+        .icon(crate::BUNDLE_ID)
+        .hint(notify_rust::Hint::DesktopEntry(crate::BUNDLE_ID.into()))
+        .action(linux::DEFAULT_ACTION, linux::DEFAULT_ACTION);
+    let click = NotificationClick {
+        identifier: identifier.to_string(),
+        payload: payload.map(str::to_string),
+    };
+    // connecting to the bus and waiting for the action both block
+    let spawned = std::thread::Builder::new()
+        .name("notification".into())
+        .spawn(move || match notification.show() {
+            Ok(handle) => {
+                done(Ok(()));
+                handle.wait_for_action(|action| {
+                    if action == linux::DEFAULT_ACTION
+                        && let Some(handler) = linux::CLICK_HANDLER.get()
+                    {
+                        handler(click);
+                    }
+                });
+            }
+            Err(err) => done(Err(NotificationError::Post(err.to_string()))),
+        });
+    if let Err(err) = spawned {
+        tracing::warn!(%err, "could not start the notification thread");
+    }
 }
 
+/// GHD `onNotificationEvent`: every click on a Corvane notification goes to
+/// `handler` (on the notification's waiting thread).
 #[cfg(not(target_os = "macos"))]
-pub fn install_click_handler(_handler: impl Fn(NotificationClick) + Send + Sync + 'static) {}
+pub fn install_click_handler(handler: impl Fn(NotificationClick) + Send + Sync + 'static) {
+    let _ = linux::CLICK_HANDLER.set(Box::new(handler));
+}
 
 /// GHD `getNotificationSettingsUrl`: System Settings › Notifications for this app.
 pub fn settings_url(bundle_id: &str) -> String {
     format!("x-apple.systempreferences:com.apple.preference.notifications?id={bundle_id}")
+}
+
+/// A stand-in `org.freedesktop.Notifications` server on the session bus
+/// (CI runs the tests under `dbus-run-session`): it records the posted
+/// notification and "clicks" it. Skipped without a session bus or when a
+/// real notification server owns the name.
+#[cfg(all(test, not(target_os = "macos")))]
+mod linux_tests {
+    use std::collections::HashMap;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    use zbus::zvariant::OwnedValue;
+
+    const PATH: &str = "/org/freedesktop/Notifications";
+    const INTERFACE: &str = "org.freedesktop.Notifications";
+
+    struct Server {
+        posted: mpsc::Sender<(String, String, String, Vec<String>, u32)>,
+    }
+
+    #[zbus::interface(name = "org.freedesktop.Notifications")]
+    impl Server {
+        #[allow(clippy::too_many_arguments)]
+        fn notify(
+            &self,
+            app_name: String,
+            _replaces_id: u32,
+            _app_icon: String,
+            summary: String,
+            body: String,
+            actions: Vec<String>,
+            _hints: HashMap<String, OwnedValue>,
+            _expire_timeout: i32,
+        ) -> u32 {
+            let _ = self.posted.send((app_name, summary, body, actions, 7));
+            7
+        }
+
+        fn get_capabilities(&self) -> Vec<String> {
+            vec!["actions".into(), "body".into()]
+        }
+
+        fn get_server_information(&self) -> (String, String, String, String) {
+            (
+                "stand-in".into(),
+                "corvane".into(),
+                "1".into(),
+                "1.2".into(),
+            )
+        }
+
+        fn close_notification(&self, _id: u32) {}
+    }
+
+    #[test]
+    fn posts_and_delivers_clicks() {
+        if std::env::var_os("DBUS_SESSION_BUS_ADDRESS").is_none() {
+            return;
+        }
+        let (posted_tx, posted_rx) = mpsc::channel();
+        let Ok(connection) = zbus::blocking::connection::Builder::session()
+            .and_then(|b| b.name(INTERFACE))
+            .and_then(|b| b.serve_at(PATH, Server { posted: posted_tx }))
+            .and_then(|b| b.build())
+        else {
+            return; // a real server has the name
+        };
+        let (click_tx, click_rx) = mpsc::channel();
+        super::install_click_handler(move |click| {
+            let _ = click_tx.send(click);
+        });
+        let (done_tx, done_rx) = mpsc::channel();
+        super::show(
+            "n-1",
+            "Checks failed",
+            "3 checks failed",
+            Some("{}"),
+            move |r| {
+                let _ = done_tx.send(r.is_ok());
+            },
+        );
+        let (app, summary, body, actions, id) =
+            posted_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(app, "Corvane");
+        assert_eq!(summary, "Checks failed");
+        assert_eq!(body, "3 checks failed");
+        assert_eq!(actions, ["default", "default"]);
+        assert!(done_rx.recv_timeout(Duration::from_secs(10)).unwrap());
+        // the waiting thread subscribes right after Notify returns
+        std::thread::sleep(Duration::from_millis(500));
+        connection
+            .emit_signal(
+                None::<()>,
+                PATH,
+                INTERFACE,
+                "ActionInvoked",
+                &(id, "default"),
+            )
+            .unwrap();
+        let click = click_rx.recv_timeout(Duration::from_secs(10)).unwrap();
+        assert_eq!(click.identifier, "n-1");
+        assert_eq!(click.payload.as_deref(), Some("{}"));
+        connection
+            .emit_signal(
+                None::<()>,
+                PATH,
+                INTERFACE,
+                "NotificationClosed",
+                &(id, 2u32),
+            )
+            .unwrap();
+    }
 }
