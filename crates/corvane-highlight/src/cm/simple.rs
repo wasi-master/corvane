@@ -9,6 +9,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use fancy_regex::Regex;
+use regex_automata::meta::Regex as Meta;
+use regex_automata::{Anchored, Input};
 
 use super::{Mode, ModeState, StringStream, state, state_ref};
 
@@ -96,9 +98,68 @@ struct Rule {
     end: Option<Regex>,
 }
 
+/// A run of rules to try in order (see [`SimpleMode::new`]).
+enum Segment {
+    /// Consecutive rules the `regex` crate runs, as one multi-pattern regex
+    /// per case: an anchored leftmost-first search returns the first rule
+    /// (lowest pattern id) that matches here, which is what trying them in
+    /// order does, in one pass instead of one search per rule.
+    Fast {
+        /// at the start of the line: every rule, with its index
+        at_sol: Option<(Meta, Vec<usize>)>,
+        /// elsewhere: the rules without `sol`
+        elsewhere: Option<(Meta, Vec<usize>)>,
+    },
+    /// a rule only fancy-regex runs (lookaround, backreferences)
+    Slow(usize),
+}
+
 pub struct SimpleMode {
     name: &'static str,
     states: HashMap<&'static str, Vec<Rule>>,
+    segments: HashMap<&'static str, Vec<Segment>>,
+}
+
+fn segments(rules: &[Rule]) -> Vec<Segment> {
+    let many = |ixs: Vec<usize>| {
+        if ixs.is_empty() {
+            return None;
+        }
+        let patterns: Vec<&str> = ixs.iter().map(|&i| rules[i].re.as_str()).collect();
+        Meta::new_many(&patterns).ok().map(|re| (re, ixs))
+    };
+    let mut out = Vec::new();
+    let mut run: Vec<usize> = Vec::new();
+    let flush = |run: &mut Vec<usize>, out: &mut Vec<Segment>| {
+        if run.is_empty() {
+            return;
+        }
+        let ixs = std::mem::take(run);
+        let elsewhere: Vec<usize> = ixs
+            .iter()
+            .copied()
+            .filter(|&i| !rules[i].spec.sol)
+            .collect();
+        match (many(ixs.clone()), many(elsewhere.clone())) {
+            (Some(at_sol), elsewhere_re) if elsewhere.is_empty() || elsewhere_re.is_some() => out
+                .push(Segment::Fast {
+                    at_sol: Some(at_sol),
+                    elsewhere: elsewhere_re,
+                }),
+            // too big for one regex: one rule at a time
+            _ => out.extend(ixs.into_iter().map(Segment::Slow)),
+        }
+    };
+    for (i, rule) in rules.iter().enumerate() {
+        if Meta::new(rule.re.as_str()).is_ok() {
+            run.push(i);
+        } else {
+            flush(&mut run, &mut out);
+            out.push(Segment::Slow(i));
+        }
+    }
+    flush(&mut run, &mut out);
+    out
 }
 
 #[derive(Clone)]
@@ -138,8 +199,16 @@ impl SimpleMode {
                     .collect();
                 (state, rules)
             })
+            .collect::<HashMap<_, Vec<Rule>>>();
+        let segments = states
+            .iter()
+            .map(|(state, rules)| (*state, segments(rules)))
             .collect();
-        Self { name, states }
+        Self {
+            name,
+            states,
+            segments,
+        }
     }
 }
 
@@ -183,13 +252,35 @@ impl Mode for SimpleMode {
             return local.mode.token(stream, &mut **inner);
         }
         let rules = self.states.get(s.state).map(Vec::as_slice).unwrap_or(&[]);
-        for rule in rules {
-            if rule.spec.sol && !stream.sol() {
-                continue;
-            }
-            let Some(m) = stream.match_re(&rule.re, true) else {
-                continue;
+        let segments = self.segments.get(s.state).map(Vec::as_slice).unwrap_or(&[]);
+        let sol = stream.sol();
+        let mut found = None;
+        for segment in segments {
+            let rule = match segment {
+                Segment::Fast { at_sol, elsewhere } => {
+                    let Some((re, ixs)) = (if sol { at_sol } else { elsewhere }) else {
+                        continue;
+                    };
+                    let rest = stream.rest();
+                    let Some(hit) = re.search(&Input::new(&*rest).anchored(Anchored::Yes)) else {
+                        continue;
+                    };
+                    &rules[ixs[hit.pattern().as_usize()]]
+                }
+                Segment::Slow(ix) => {
+                    let rule = &rules[*ix];
+                    if rule.spec.sol && !sol {
+                        continue;
+                    }
+                    rule
+                }
             };
+            if let Some(m) = stream.match_re(&rule.re, true) {
+                found = Some((rule, m));
+                break;
+            }
+        }
+        if let Some((rule, m)) = found {
             if let Some(next) = rule.spec.next {
                 s.state = next;
             } else if let Some(push) = rule.spec.push {

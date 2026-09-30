@@ -117,6 +117,14 @@ fn classifier() -> &'static Classifier {
     })
 }
 
+/// Load the compiled-in grammar set and the scope classifier (tens of ms)
+/// ahead of the first diff; the app calls this on a background thread at
+/// startup, since diffs may be highlighted on the main thread.
+pub fn prewarm() {
+    let _ = syntaxes::sets();
+    let _ = classifier();
+}
+
 /// Grammar for a path by extension, then by first line (shebang etc.).
 fn syntax_for<'a>(ss: &'a SyntaxSet, path: &str, first_line: &str) -> Option<&'a SyntaxReference> {
     let ext = std::path::Path::new(path)
