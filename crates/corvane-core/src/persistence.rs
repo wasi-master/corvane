@@ -327,6 +327,13 @@ pub trait StoreExt {
     fn generic_logins(&self) -> Result<std::collections::HashMap<String, String>>;
     fn save_generic_logins(&self, logins: &std::collections::HashMap<String, String>)
     -> Result<()>;
+    /// OAuth app client IDs entered per GitHub Enterprise host (host →
+    /// client ID); client secrets live in the keychain.
+    fn enterprise_oauth_apps(&self) -> Result<std::collections::HashMap<String, String>>;
+    fn save_enterprise_oauth_apps(
+        &self,
+        apps: &std::collections::HashMap<String, String>,
+    ) -> Result<()>;
 }
 
 impl StoreExt for Store {
@@ -387,6 +394,17 @@ impl StoreExt for Store {
 
     fn save_accounts(&self, accounts: &[Account]) -> Result<()> {
         self.set("accounts", accounts)
+    }
+
+    fn enterprise_oauth_apps(&self) -> Result<std::collections::HashMap<String, String>> {
+        Ok(self.get("enterprise_oauth_apps")?.unwrap_or_default())
+    }
+
+    fn save_enterprise_oauth_apps(
+        &self,
+        apps: &std::collections::HashMap<String, String>,
+    ) -> Result<()> {
+        self.set("enterprise_oauth_apps", apps)
     }
 }
 

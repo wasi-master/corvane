@@ -6,7 +6,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 ## GitHub layer
 
-- [ ] **[GH]** GitHub Enterprise OAuth (needs GHES-registered OAuth app); v1 = PAT only
 - [ ] **[GH]** Evaluate `octocrab` + `graphql_client` once GraphQL-heavy PR features land
 
 ## Copilot (omitted by design)

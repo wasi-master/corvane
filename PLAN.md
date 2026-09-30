@@ -22,7 +22,7 @@ Reference artefacts for the port live in `docs/reference/`:
 | Look | GHD geometry + Primer light/dark palettes as default themes. Zed-grade rendering polish. Themeable (JSON themes). |
 | UI stack | GPUI via `gpui-kit = "0.7.0"` (pins `gpui-pre = 0.3.7`). Own widgets for GHD-specific chrome; gpui-kit for Input/Textarea/VirtualList/Popover/Menu/Resizable/Dialog/Scrollbar. |
 | Git engine | Hybrid: `gix 0.88` for reads; system `git` CLI (≥2.40) for writes + network. Detect git at launch, `InstallGit` dialog if missing. |
-| GitHub auth | OAuth device flow (no client secret) with PAT paste fallback. Tokens in macOS Keychain via `keyring 4`. GHES: PAT. |
+| GitHub auth | OAuth device flow (no client secret) with PAT paste fallback. Tokens in macOS Keychain via `keyring 4`. GHES: the same flows with an administrator-registered OAuth app (client ID entered per host or `CORVANE_GHES_OAUTH` at build time), else PAT. |
 | HTTP | `ureq 3` (blocking, rustls) on background threads. No tokio in v1. Re-evaluate `octocrab` when PR layer lands. |
 | Highlighting | `syntect 5.3` + `two-face` grammars, line-stateful, diff-lines only, first 256 KB. Core grammar set bundled; extended set is an on-demand pack. |
 | Storage | `redb 4` single file `~/Library/Application Support/Corvane/corvane.redb`. |

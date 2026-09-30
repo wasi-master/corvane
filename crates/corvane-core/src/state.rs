@@ -773,6 +773,9 @@ pub struct AppState {
     pub indicators: HashMap<u64, crate::remote::RepoIndicator>,
     /// Generic git server logins (host → username) for the askpass helper.
     pub generic_logins: HashMap<String, String>,
+    /// OAuth app client IDs entered per GitHub Enterprise host (host →
+    /// client ID), `Dispatcher::set_enterprise_oauth_app`.
+    pub enterprise_oauth_apps: HashMap<String, String>,
     /// Avatar cache (`crate::avatars`).
     pub avatars: crate::avatars::Avatars,
     /// `dragAndDropManager` drop target during a commit drag.
