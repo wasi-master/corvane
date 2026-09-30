@@ -22,13 +22,34 @@ import os
 import signal
 import socket
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
 
 import websocket
 
-GHD_APP = Path("/Applications/GitHub Desktop.app/Contents/MacOS/GitHub Desktop")
+IS_MAC = sys.platform == "darwin"
+
+# PARITY_GHD_APP overrides; on Linux, a GitHub Desktop 3.6.6 build (`yarn
+# build:prod` → dist/desktop-linux-x64/desktop) or a packaged github-desktop
+GHD_APP = Path(
+    os.environ.get("PARITY_GHD_APP")
+    or ("/Applications/GitHub Desktop.app/Contents/MacOS/GitHub Desktop" if IS_MAC else "/usr/bin/github-desktop")
+)
+# Retina on the Macs the harness grew up on; X11 under Xvfb is 1x
+DEFAULT_SCALE = 2.0 if IS_MAC else 1.0
+
+
+def platform_keys(spec: str) -> str:
+    """Scenario chords say `cmd` for GHD's CmdOrCtrl: Ctrl off macOS."""
+    if IS_MAC or not spec:
+        return spec
+    return " ".join(
+        "-".join("ctrl" if part in ("cmd", "meta") else part for part in chord.split("-"))
+        if chord not in ("-",) else chord
+        for chord in spec.split(" ")
+    )
 
 # GHD menu-event names (app/src/main-process/menu/menu-event.ts) → Corvane
 # actions (crates/corvane-ui/src/actions.rs). GHD menu accelerators live in the
@@ -101,6 +122,7 @@ def free_port() -> int:
 
 
 def parse_mods(spec: str) -> dict:
+    spec = platform_keys(spec)
     parts = set(spec.replace("+", "-").split("-")) if spec else set()
     return {
         "cmd": bool(parts & {"cmd", "meta"}),
@@ -129,7 +151,7 @@ class Ghd:
         self.proc: subprocess.Popen | None = None
         self.ws = None
         self._id = 0
-        self.scale = 2.0
+        self.scale = DEFAULT_SCALE
 
     # -- process -----------------------------------------------------------
     def start(self, timeout: float = 30):
@@ -143,6 +165,8 @@ class Ghd:
                     # captures in sRGB, like Corvane's render_to_image; without it
                     # Chromium converts to the display profile (#1d2125 → #16191c)
                     "--force-color-profile=srgb",
+                    # Chromium refuses to run as root with its sandbox
+                    *(["--no-sandbox"] if not IS_MAC and os.geteuid() == 0 else []),
                 ],
                 stdout=log,
                 stderr=log,
@@ -240,7 +264,10 @@ class Ghd:
         Electron has no `Browser.setWindowBounds`, but `window.resizeTo` on the
         main frame resizes the BrowserWindow. When the screen is too small for
         it, the viewport is emulated at the requested size instead."""
-        self.eval(f"window.resizeTo({width}, {height})")
+        # the frame around the page (Electron's menu bar on Linux, nothing
+        # with macOS's hidden title bar)
+        chrome = self.eval("[outerWidth - innerWidth, outerHeight - innerHeight]") or [0, 0]
+        self.eval(f"window.resizeTo({width + chrome[0]}, {height + chrome[1]})")
         deadline = time.time() + 3
         while time.time() < deadline:
             if self.eval(f"innerWidth === {width} && innerHeight === {height}"):
@@ -291,7 +318,8 @@ class Ghd:
     def pick_menu(self, label: str):
         found = self.eval(
             "(()=>{const find=(items,path)=>{for(let i=0;i<items.length;i++){const it=items[i];"
-            "if(it.label===%s&&it.enabled!==false)return path.concat(i);"
+            # scenarios name macOS labels; GHD's Linux ones are sentence case
+            "const L=%s;if((it.label===L||(it.label||'').toLowerCase()===L.toLowerCase())&&it.enabled!==false)return path.concat(i);"
             "if(it.submenu){const r=find(it.submenu,path.concat(i));if(r)return r;}}return null;};"
             "const p=find(window.__parityMenu||[],[]);if(p&&window.__parityMenuResolve){window.__parityMenuResolve(p);"
             "window.__parityMenu=null;}return p;})()" % json.dumps(label)
@@ -425,7 +453,7 @@ class Ghd:
         self.call("Input.dispatchMouseEvent", type="mouseWheel", x=x, y=y, deltaX=dx, deltaY=dy)
 
     def key(self, keys: str):
-        for chord in keys.split():
+        for chord in platform_keys(keys).split():
             parts = chord.split("-")
             base = parts[-1] if parts[-1] != "" else "-"
             m = parse_mods("-".join(parts[:-1]))
@@ -433,7 +461,8 @@ class Ghd:
             if base in _KEYS:
                 k, code, vk, command = _KEYS[base]
                 params.update(key=k, code=code, windowsVirtualKeyCode=vk)
-                if command and not m["cmd"]:
+                # editing commands are AppKit's; Chromium elsewhere acts on the key
+                if command and not m["cmd"] and IS_MAC:
                     params["commands"] = [command]
                 if base == "enter":
                     params["text"] = "\r"
@@ -444,7 +473,7 @@ class Ghd:
                 vk = ord(base.upper()) if len(base) == 1 else 0
                 code = f"Key{base.upper()}" if base.isalpha() and len(base) == 1 else (f"Digit{base}" if base.isdigit() else "")
                 params.update(key=ch, code=code, windowsVirtualKeyCode=vk)
-                if m["cmd"] and base in _CMD_COMMANDS:
+                if m["cmd"] and base in _CMD_COMMANDS and IS_MAC:
                     params["commands"] = [_CMD_COMMANDS[base] if not (base == "z" and m["shift"]) else "redo"]
                 elif not (m["cmd"] or m["ctrl"]):
                     params["text"] = ch
@@ -481,7 +510,7 @@ class Corvane:
         self.proc: subprocess.Popen | None = None
         self.sock = None
         self.file = None
-        self.scale = 2.0
+        self.scale = DEFAULT_SCALE
 
     def start(self, timeout: float = 20, extra_env: dict | None = None):
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -504,7 +533,7 @@ class Corvane:
                 self.sock = socket.create_connection(("127.0.0.1", self.port), timeout=60)
                 self.file = self.sock.makefile("rw")
                 info = self.cmd("ping")
-                self.scale = info.get("scale", 2.0)
+                self.scale = info.get("scale", DEFAULT_SCALE)
                 # CORVANE_THEME only overrides the look; store the setting too,
                 # as GHD's fixture does (Settings › Appearance shows it)
                 self.hook("theme", self.theme)
@@ -556,17 +585,17 @@ class Corvane:
         return self.cmd("ping")
 
     def move(self, x, y, mods="", pressed=False):
-        self.cmd("move", x=x, y=y, mods=mods, pressed=pressed)
+        self.cmd("move", x=x, y=y, mods=platform_keys(mods), pressed=pressed)
 
     def down(self, x, y, button="left", clicks=1, mods=""):
-        self.cmd("down", x=x, y=y, button=button, clicks=clicks, mods=mods)
+        self.cmd("down", x=x, y=y, button=button, clicks=clicks, mods=platform_keys(mods))
 
     def up(self, x, y, button="left", clicks=1, mods=""):
-        self.cmd("up", x=x, y=y, button=button, clicks=clicks, mods=mods)
+        self.cmd("up", x=x, y=y, button=button, clicks=clicks, mods=platform_keys(mods))
 
     def click(self, x, y, button="left", clicks=1, mods=""):
         for n in range(1, clicks + 1):
-            self.cmd("click", x=x, y=y, button=button, clicks=n, mods=mods)
+            self.cmd("click", x=x, y=y, button=button, clicks=n, mods=platform_keys(mods))
 
     def drag(self, x, y, x2, y2, steps=10):
         self.cmd("drag", x=x, y=y, x2=x2, y2=y2, steps=steps)
@@ -575,7 +604,7 @@ class Corvane:
         self.cmd("scroll", x=x, y=y, dx=dx, dy=dy)
 
     def key(self, keys: str):
-        self.cmd("key", keys=keys)
+        self.cmd("key", keys=platform_keys(keys))
 
     def type(self, text: str):
         self.cmd("type", text=text)
