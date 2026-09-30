@@ -20,7 +20,8 @@
 //! - `action {name}` (a registered action, e.g. `corvane::OpenSettings`)
 //! - `hook {name, arg}`: `complete-welcome`, `add-repo <path>`,
 //!   `theme light|dark|high-contrast|system`, `popup <name>` (a
-//!   `CORVANE_POPUP` name, opened now)
+//!   `CORVANE_POPUP` name, opened now), `fake-accounts <json>` (signed-in
+//!   accounts + their repository lists, `tools/parity/accounts.py`)
 //! - `snap {path}` → draws a fresh frame and saves it as PNG
 //! - `menu` → the items of the last native menu (while the control socket is
 //!   on, menus still pop up but are recorded and close themselves after
@@ -313,9 +314,28 @@ fn hook(request: &Value, popup: PopupHook, cx: &mut App) -> Result<Value, String
                 Dispatcher::refresh_repository(id, cx);
             }
         }
+        "fake-accounts" => fake_accounts(arg, cx)?,
         other => return Err(format!("unknown hook {other:?}")),
     }
     Ok(json!({}))
+}
+
+/// `fake-accounts {accounts, repositories}` (`tools/parity/accounts.py`):
+/// signed-in accounts with their repository lists, without tokens or API
+/// calls (the lists are already there, so nothing is fetched).
+fn fake_accounts(arg: &str, cx: &mut App) -> Result<(), String> {
+    let fake: Value = serde_json::from_str(arg).map_err(|e| e.to_string())?;
+    let accounts: Vec<corvane_core::Account> =
+        serde_json::from_value(fake["accounts"].clone()).map_err(|e| e.to_string())?;
+    let repositories: std::collections::HashMap<String, Vec<corvane_core::GitHubRepository>> =
+        serde_json::from_value(fake["repositories"].clone()).map_err(|e| e.to_string())?;
+    corvane_core::AppState::global(cx).update(cx, |s, cx| {
+        s.accounts = accounts;
+        s.api_repositories = repositories;
+        s.api_repositories_loading.clear();
+        cx.notify();
+    });
+    Ok(())
 }
 
 fn num(request: &Value, key: &str) -> f32 {
