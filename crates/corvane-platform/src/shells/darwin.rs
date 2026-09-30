@@ -1,7 +1,8 @@
 //! Shell detection and launching - GHD `lib/shells/darwin.ts`.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
+use super::FoundShell;
 use crate::apps;
 
 /// GHD `Shell` (macOS), in the enum's order; `Terminal` is the default.
@@ -73,15 +74,6 @@ impl Shell {
             Shell::Ghostty => &["com.mitchellh.ghostty"],
         }
     }
-}
-
-/// GHD `FoundShell`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FoundShell {
-    pub shell: Shell,
-    pub bundle_id: String,
-    /// The `.app` bundle, or the inner executable for shells launched directly.
-    pub path: PathBuf,
 }
 
 /// Installed shells in GHD's display order (Terminal, Hyper, iTerm2,
