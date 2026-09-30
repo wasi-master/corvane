@@ -266,6 +266,20 @@ registry! {
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
 
+    /// Commit form warning while HEAD is detached.
+    DETACHED_HEAD_COMMIT_WARNING = 270 "detached-head-commit-warning" {
+        title: "Warn when committing on a detached HEAD",
+        summary: "While HEAD is detached the commit form shows a warning that the commit will not \
+                  be on any branch, with a link to create one.",
+        ghd_behaviour: "Commits on a detached HEAD without a word; the button reads \"Commit to\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(788)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

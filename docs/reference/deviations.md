@@ -44,6 +44,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 - Spellcheck language follows `NSSpellChecker`'s automatic identification; there is no per-language picker and no Chromium-style "Ignore" item.
 - Commit message templates (Corvane addition; GHD 3.6.6 ignores `commit.template`): the repository's resolved `commit.template` file, comment lines (`core.commentChar`) and outer blank lines stripped, prefills the description while the summary is empty and the description is empty or still the template; it comes back after every commit (`corvane_git::commit_template`). Flag: `201-commit-templates`.
+- Detached HEAD (Corvane addition): the commit form shows a warning that the commit will not be on any branch, with a "create a branch" link opening Create Branch at HEAD; GHD 3.6.6 commits silently. Flag: `270-detached-head-commit-warning`.
 
 ## Diff viewer
 

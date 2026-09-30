@@ -1,5 +1,8 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
+//!
+//! Deviations (GHD `app/src/ui/changes/commit-message.tsx`):
+//! - a detached HEAD gets a commit warning (`270-detached-head-commit-warning`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -2198,6 +2201,62 @@ impl ChangesSidebar {
         )
     }
 
+    /// Corvane addition (`270-detached-head-commit-warning`): a `CommitWarning`
+    /// while HEAD is detached, since the commit lands on no branch.
+    fn detached_head_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let (id, sha) = {
+            let s = self.state.read(cx);
+            if !s
+                .flags
+                .bool(corvane_core::flags::ids::DETACHED_HEAD_COMMIT_WARNING)
+            {
+                return None;
+            }
+            let id = s.selected?;
+            let rs = s.selected_state()?;
+            if rs.commit_to_amend.is_some() {
+                return None;
+            }
+            match &rs.info.as_ref()?.tip {
+                Tip::Detached { sha } => (id, sha.clone()),
+                _ => return None,
+            }
+        };
+        Some(
+            self.commit_warning(
+                Octicon::Alert,
+                t.dialog_warning,
+                crate::widgets::paragraph(vec![
+                    "You're not on a branch (detached HEAD). This commit won't belong to any \
+                     branch unless you "
+                        .into(),
+                    crate::widgets::link_button(
+                        "commit-warning-detached-create-branch",
+                        "create a branch",
+                        cx,
+                    )
+                    .on_click(move |_, _, cx| {
+                        Dispatcher::show_popup(
+                            Popup::CreateBranch {
+                                repo: id,
+                                target_sha: Some(sha.clone()),
+                                initial_name: String::new(),
+                            },
+                            cx,
+                        )
+                    })
+                    .into_any_element()
+                    .into(),
+                    ".".into(),
+                ])
+                .justify_center()
+                .into_any_element(),
+                cx,
+            ),
+        )
+    }
+
     /// `renderBranchProtectionsRepoRulesCommitWarning`
     fn branch_protection_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -2988,6 +3047,7 @@ impl ChangesSidebar {
             .children(self.amend_notice(cx))
             .children(
                 self.no_write_access_warning(cx)
+                    .or_else(|| self.detached_head_warning(cx))
                     .or_else(|| self.branch_protection_warning(cx)),
             )
             .children(
