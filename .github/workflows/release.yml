@@ -185,10 +185,18 @@ jobs:
             target/release-assets/*.minisig target/release-assets/packs-manifest.json
 
   linux:
-    name: build · sign · upload (Linux x86_64)
+    name: build · sign · upload (Linux ${{ matrix.arch }})
     # after the macOS job: it creates the draft release this job adds to
     needs: release
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -202,7 +210,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: release-linux
+          shared-key: release-linux-${{ matrix.arch }}
       - name: tree-sitter CLI
         run: |
           cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
@@ -219,7 +227,7 @@ jobs:
       - name: appimagetool
         run: |
           curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
-            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.arch }}.AppImage"
           chmod +x "$RUNNER_TEMP/appimagetool"
           echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
           # no FUSE on the runner
@@ -251,7 +259,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: github.ref_type != 'tag'
         with:
-          name: release-assets-linux
+          name: release-assets-linux-${{ matrix.arch }}
           path: target/linux/*
       - name: upload to the draft release
         if: github.ref_type == 'tag'

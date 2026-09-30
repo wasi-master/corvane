@@ -1,7 +1,8 @@
 #!/bin/bash
-# Build Corvane's Linux packages from a release build:
-#   target/linux/corvane_<version>_amd64.deb
-#   target/linux/Corvane-<version>-x86_64.AppImage   (when appimagetool is found)
+# Build Corvane's Linux packages from a release build, for this machine's
+# architecture (amd64 / x86_64 or arm64 / aarch64):
+#   target/linux/corvane_<version>_<amd64|arm64>.deb
+#   target/linux/Corvane-<version>-<x86_64|aarch64>.AppImage   (when appimagetool is found)
 #
 # Layout (both):
 #   usr/lib/corvane/corvane          the app
@@ -19,8 +20,12 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 VERSION="$(cargo metadata --no-deps --format-version 1 |
   python3 -c 'import json,sys; print(next(p["version"] for p in json.load(sys.stdin)["packages"] if p["name"] == "corvane"))')"
-ARCH_DEB=amd64
-ARCH_APPIMAGE=x86_64
+# the build machine's architecture (release.yml builds each natively)
+case "$(uname -m)" in
+  x86_64) ARCH_DEB=amd64 ARCH_APPIMAGE=x86_64 ;;
+  aarch64 | arm64) ARCH_DEB=arm64 ARCH_APPIMAGE=aarch64 ;;
+  *) echo "unsupported architecture $(uname -m)" >&2; exit 1 ;;
+esac
 OUT="$ROOT/target/linux"
 ID=com.wasimaster.corvane
 

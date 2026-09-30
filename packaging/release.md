@@ -144,9 +144,11 @@ update launches without Gatekeeper's "Open Anyway" dance.
 `CORVANE_UPDATE_PUBLIC_KEY`, taken from `packaging/corvane-release.pub` like
 `release.sh` does) into `target/linux/`:
 
-- `corvane_<version>_amd64.deb`
-- `Corvane-<version>-x86_64.AppImage` (an arm64 build is named
-  `…-aarch64.AppImage`)
+- `corvane_<version>_amd64.deb` / `corvane_<version>_arm64.deb`
+- `Corvane-<version>-x86_64.AppImage` / `Corvane-<version>-aarch64.AppImage`
+
+for the architecture of the machine it runs on (release.yml builds both,
+the arm64 ones on an `ubuntu-24.04-arm` runner).
 
 A `v<version>` tag does this in release.yml's `linux` job (after the macOS
 job creates the draft release): it builds, signs both with the
