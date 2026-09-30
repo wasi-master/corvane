@@ -369,12 +369,24 @@ class Ghd:
             ) % (json.dumps(target["text"]), json.dumps(target.get("within", "body")))
         else:
             raise ValueError(f"bad target {target}")
-        rect = self.eval(f"(()=>{{const e={js};if(!e)return null;const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}})()")
+        rect = self._rect(js)
+        if not rect and ("text" in target or "contains" in target):
+            # scenarios name macOS labels; GHD's Linux ones are sentence case
+            key = "text" if "text" in target else "contains"
+            lowered = js.replace(json.dumps(target[key]), json.dumps(target[key].lower()), 1)
+            lowered = lowered.replace("e.textContent.trim()===t", "e.textContent.trim().toLowerCase()===t")
+            lowered = lowered.replace("c.textContent.trim()===t", "c.textContent.trim().toLowerCase()===t")
+            lowered = lowered.replace("e.textContent.includes(t)", "e.textContent.toLowerCase().includes(t)")
+            lowered = lowered.replace("c.textContent.includes(t)", "c.textContent.toLowerCase().includes(t)")
+            rect = self._rect(lowered)
         if not rect:
             raise LookupError(f"GHD element not found: {target}")
         ox, oy = target.get("offset", [0, 0])
         ax, ay = target.get("anchor", [0.5, 0.5])
         return rect[0] + rect[2] * ax + ox, rect[1] + rect[3] * ay + oy
+
+    def _rect(self, js: str):
+        return self.eval(f"(()=>{{const e={js};if(!e)return null;const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}})()")
 
     def describe(self, x: float, y: float) -> str:
         """CSS path of the element at a point (for diff regions)."""
