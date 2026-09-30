@@ -172,7 +172,8 @@ impl CloneRepositoryDialog {
     }
 
     /// GHD `getAccountForTab`: the picked account while it is still signed
-    /// in, else the tab's first account.
+    /// in, else the tab's first account (`357-clone-default-account`: the
+    /// default account).
     fn account(&self, cx: &App) -> Option<Account> {
         let accounts = self.accounts_for_tab(cx);
         let picked = match self.tab {
@@ -186,7 +187,7 @@ impl CloneRepositoryDialog {
                     .iter()
                     .find(|a| a.endpoint == *endpoint && a.login == *login)
             })
-            .or_else(|| accounts.first())
+            .or_else(|| crate::cloneable_repositories::default_account(&accounts, cx))
             .cloned()
     }
 

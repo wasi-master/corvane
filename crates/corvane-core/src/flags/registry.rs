@@ -73,6 +73,20 @@ fn branch_name_prefix(s: &str) -> Result<(), &'static str> {
     }
 }
 
+/// `357-clone-default-account`: logins separated by commas or spaces.
+fn account_logins(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 200 {
+        Err("At most 200 characters")
+    } else if s
+        .chars()
+        .any(|c| !(c.is_ascii_alphanumeric() || "-_, ".contains(c)))
+    {
+        Err("Logins separated by commas or spaces")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -623,6 +637,23 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(20942)],
         code: &["crates/corvane-ui/src/cloneable_repositories.rs"],
+    },
+
+    /// The clone account picker's default account.
+    CLONE_DEFAULT_ACCOUNT = 357 "clone-default-account" {
+        title: "Default account for cloning",
+        summary: "With several accounts signed in, Clone a Repository (and the \"Let's get \
+                  started!\" page) start on the first account whose login is in this list \
+                  (comma-separated) instead of the first account signed in; empty for GitHub \
+                  Desktop's order.",
+        ghd_behaviour: "The account signed in first, every time the dialog opens.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "your-login", validate: account_logins },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21743)],
+        code: &["crates/corvane-ui/src/cloneable_repositories.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-ui/src/no_repositories.rs"],
     },
 
     // ---- 400 Window & menus ----

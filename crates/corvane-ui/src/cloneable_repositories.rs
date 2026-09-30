@@ -8,6 +8,9 @@
 //! a browser URL deeper into the repository) filters as `owner/name`; GHD
 //! fuzzy-matches the whole URL and finds nothing.
 //!
+//! Deviation (`357-clone-default-account`): the account picker can start
+//! on a chosen account instead of the first one signed in.
+//!
 //! Callers own the state (filter text box, selected clone URL, picked
 //! account, popover open) and wrap the pieces in their own layout; the two
 //! places differ only in insets and the list's frame.
@@ -121,6 +124,31 @@ pub fn url_as_full_name(query: &str) -> Option<String> {
     let name = parts.next()?;
     let name = name.strip_suffix(".git").unwrap_or(name);
     (!name.is_empty()).then(|| format!("{owner}/{name}"))
+}
+
+/// `357-clone-default-account`: the account the picker starts on before one
+/// is picked, the first of `accounts` whose login is in the flag's list,
+/// else the first account (GHD).
+pub fn default_account<'a>(accounts: &'a [Account], cx: &App) -> Option<&'a Account> {
+    let logins = corvane_core::AppState::global(cx)
+        .read(cx)
+        .flags
+        .text(corvane_core::flags::ids::CLONE_DEFAULT_ACCOUNT)
+        .to_string();
+    preferred_account(accounts, &logins).or_else(|| accounts.first())
+}
+
+/// The first of `accounts` whose login is one of the comma- or
+/// space-separated `logins` (in `logins` order, case-insensitive).
+pub fn preferred_account<'a>(accounts: &'a [Account], logins: &str) -> Option<&'a Account> {
+    logins
+        .split([',', ' '])
+        .filter(|l| !l.is_empty())
+        .find_map(|login| {
+            accounts
+                .iter()
+                .find(|a| a.login.eq_ignore_ascii_case(login))
+        })
 }
 
 /// `createStateUpdate` + `onSelectionChanged { kind: 'filter' }`: with a
@@ -742,6 +770,27 @@ mod tests {
                 "desktop/desktop"
             ]
         );
+    }
+
+    #[::core::prelude::v1::test]
+    fn preferred_account_follows_the_login_list() {
+        let account = |login: &str| Account {
+            endpoint: "https://api.github.com".into(),
+            id: 1,
+            login: login.into(),
+            name: None,
+            avatar_url: None,
+            emails: Vec::new(),
+            scopes: Vec::new(),
+            plan: None,
+            private_primary_email: false,
+        };
+        let accounts = vec![account("first"), account("work"), account("other")];
+        let login = |logins: &str| preferred_account(&accounts, logins).map(|a| a.login.as_str());
+        assert_eq!(login(""), None);
+        assert_eq!(login("Work"), Some("work"));
+        assert_eq!(login("missing, other work"), Some("other"));
+        assert_eq!(login("missing"), None);
     }
 
     #[::core::prelude::v1::test]

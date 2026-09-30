@@ -245,7 +245,7 @@ impl NoRepositoriesView {
                     .iter()
                     .find(|a| a.endpoint == *endpoint && a.login == *login)
             })
-            .or_else(|| accounts.first())
+            .or_else(|| crate::cloneable_repositories::default_account(accounts, cx))
             .cloned()
     }
 
