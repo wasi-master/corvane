@@ -377,6 +377,20 @@ registry! {
         upstream: &[Upstream::issue(2061)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-models/src/lib.rs"],
     },
+    /// Discard deletes files instead of moving them to the Trash.
+    DISCARD_SKIPS_TRASH = 214 "discard-skips-trash" {
+        title: "Discard deletes instead of using the Trash",
+        summary: "Discarding changes deletes new and untracked files (and untracked files inside \
+                  a discarded submodule) permanently instead of moving them to the Trash; the \
+                  confirmation says they cannot be restored.",
+        ghd_behaviour: "Always moves discarded files to the Trash.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10445)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/discard_changes.rs"],
+    },
 
     // ---- 300 GitHub ----
 
