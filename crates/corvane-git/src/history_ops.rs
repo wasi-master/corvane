@@ -17,6 +17,39 @@ pub fn revert_commit(git: Arc<GitBinary>, workdir: &Path, sha: &str, is_merge: b
     Ok(())
 }
 
+/// Corvane addition (flag `242`): `git revert --no-commit` over `shas`, in
+/// the order given (newest first reverts cleanly), leaving the combined
+/// inverse staged for the user to commit. `-m 1` is passed when any of them
+/// is a merge (git accepts it for ordinary commits too). Meant for a clean
+/// working tree: when a revert fails (a conflict), the index and working
+/// tree are reset to `HEAD` (never moved by `--no-commit`) and the sequencer
+/// state is dropped, so nothing is left half-reverted.
+pub fn revert_commits_no_commit(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    shas: &[String],
+    any_merge: bool,
+) -> Result<()> {
+    let mut cmd = GitCommand::new(git.clone())
+        .args(["revert", "--no-commit"])
+        .current_dir(workdir);
+    if any_merge {
+        cmd = cmd.args(["-m", "1"]);
+    }
+    if let Err(err) = cmd.args(shas).run() {
+        let _ = GitCommand::new(git.clone())
+            .args(["reset", "--merge", "HEAD"])
+            .current_dir(workdir)
+            .run();
+        let _ = GitCommand::new(git)
+            .args(["revert", "--quit"])
+            .current_dir(workdir)
+            .run();
+        return Err(err);
+    }
+    Ok(())
+}
+
 /// `GitResetMode`
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ResetMode {
@@ -120,5 +153,47 @@ mod tests {
         checkout_commit(git.clone(), path, &second.sha).unwrap();
         let info = crate::open_repository(path).unwrap();
         assert!(matches!(info.tip, corvane_models::Tip::Detached { .. }));
+    }
+
+    #[test]
+    fn revert_several_without_committing() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        std::fs::write(path.join("a.txt"), "three\n").unwrap();
+        std::fs::write(path.join("b.txt"), "b\n").unwrap();
+        let git_run = |args: &[&str]| {
+            GitCommand::new(git.clone())
+                .args(args)
+                .current_dir(path)
+                .env("GIT_AUTHOR_NAME", "T")
+                .env("GIT_AUTHOR_EMAIL", "t@example.com")
+                .env("GIT_COMMITTER_NAME", "T")
+                .env("GIT_COMMITTER_EMAIL", "t@example.com")
+                .run()
+                .unwrap();
+        };
+        git_run(&["add", "."]);
+        git_run(&["commit", "-q", "-m", "third"]);
+        let commits = crate::get_commits(path, "HEAD", 0, 10).unwrap();
+        let head = commits[0].sha.clone();
+        let newest_first = vec![commits[0].sha.clone(), commits[1].sha.clone()];
+
+        // oldest first conflicts on a.txt: everything is rolled back
+        let oldest_first: Vec<String> = newest_first.iter().rev().cloned().collect();
+        assert!(revert_commits_no_commit(git.clone(), path, &oldest_first, false).is_err());
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "three\n"
+        );
+        assert!(path.join("b.txt").exists());
+        assert!(!path.join(".git/sequencer").exists());
+
+        revert_commits_no_commit(git.clone(), path, &newest_first, false).unwrap();
+        assert_eq!(crate::head_sha(git.clone(), path).unwrap(), head);
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "one\n"
+        );
+        assert!(!path.join("b.txt").exists());
     }
 }

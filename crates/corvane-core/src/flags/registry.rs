@@ -293,6 +293,21 @@ registry! {
         upstream: &[Upstream::issue(20849), Upstream::issue(6706)],
         code: &["crates/corvane-ui/src/history.rs"],
     },
+    /// Revert without committing, for one commit or a multi-selection.
+    REVERT_WITHOUT_COMMITTING = 242 "revert-without-committing" {
+        title: "Revert without committing",
+        summary: "A commit's context menu adds Revert Changes in Commit Without Committing, and a \
+                  multi-commit selection's menu Revert Changes in N Commits Without Committing: \
+                  git revert --no-commit, newest first, leaves the combined inverse staged in \
+                  Changes. Needs a clean working directory; a conflict rolls everything back.",
+        ghd_behaviour: "Reverts one commit at a time, each as its own commit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17278), Upstream::issue(9967)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

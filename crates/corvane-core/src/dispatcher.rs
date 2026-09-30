@@ -1436,6 +1436,41 @@ impl Dispatcher {
         );
     }
 
+    /// Corvane addition (flag `242`): revert `shas` without committing, the
+    /// newest first, and show Changes with the result staged. Needs a clean
+    /// working directory, so a conflict can roll everything back.
+    pub fn revert_commits_without_committing(id: u64, mut shas: Vec<String>, cx: &mut App) {
+        const TITLE: &str = "Could not revert changes";
+        if Self::working_directory_dirty(id, cx) {
+            Self::show_error(
+                TITLE,
+                "Commit or stash your changes before reverting without committing.",
+                cx,
+            );
+            return;
+        }
+        let any_merge = shas
+            .iter()
+            .any(|sha| Self::commit_by_sha(id, sha, cx).is_some_and(|c| c.is_merge()));
+        if let Some(rs) = Self::state(cx).read(cx).repo_states.get(&id) {
+            shas.sort_by_key(|sha| {
+                rs.commits
+                    .iter()
+                    .position(|c| &c.sha == sha)
+                    .unwrap_or(usize::MAX)
+            });
+        }
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            TITLE,
+            move |git, workdir| {
+                corvane_git::revert_commits_no_commit(git, &workdir, &shas, any_merge)
+            },
+            cx,
+        );
+    }
+
     /// `Reset to Commit…`: warn first when the working directory is dirty.
     pub fn request_reset_to_commit(id: u64, sha: String, cx: &mut App) {
         if Self::working_directory_dirty(id, cx) {
