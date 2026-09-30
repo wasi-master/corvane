@@ -853,6 +853,21 @@ registry! {
         upstream: &[Upstream::issue(12864)],
         code: &["crates/corvane-ui/src/workspace.rs"],
     },
+    /// Restore a branch's stash when switching back to it with no changes.
+    POP_STASH_ON_RETURN = 420 "pop-stash-on-return" {
+        title: "Restore a branch's stash when returning to it",
+        summary: "Switching to a branch that has stashed changes restores them (git stash pop) \
+                  when the working directory is clean after the switch, e.g. when the changes on \
+                  the branch being left were stashed there. A pop that conflicts keeps the stash \
+                  and shows the conflicts.",
+        ghd_behaviour: "The stash stays until Stashed Changes › Restore is clicked.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17682)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

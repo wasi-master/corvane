@@ -1794,6 +1794,17 @@ impl Dispatcher {
         let submodules = Self::submodule_update_plan(id, cx);
         let git_for_submodules = git.clone();
         let workdir_for_submodules = workdir.clone();
+        // Corvane (`420-pop-stash-on-return`): coming back to a branch with
+        // a clean working directory restores the stash left on it (GHD keeps
+        // it until Restore is clicked)
+        let pop_stash_for = (Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::POP_STASH_ON_RETURN)
+            && (!has_changes
+                || (strategy == UncommittedChangesStrategy::StashOnCurrentBranch
+                    && current.is_some())))
+        .then(|| (git.clone(), branch.name_without_remote().to_string()));
         let task = cx.background_executor().spawn(async move {
             let result = (move || match strategy {
                 UncommittedChangesStrategy::StashOnCurrentBranch => {
@@ -1841,7 +1852,27 @@ impl Dispatcher {
                 .err(),
                 _ => None,
             };
-            (result, submodule_error)
+            let pop_error = match (&result, pop_stash_for) {
+                (Ok(()), Some((git, target))) => {
+                    corvane_git::get_stashes(git.clone(), &workdir_for_submodules)
+                        .and_then(|(stashes, _)| {
+                            match stashes
+                                .iter()
+                                .find(|s| s.branch.as_deref() == Some(target.as_str()))
+                            {
+                                Some(entry) => corvane_git::pop_stash(
+                                    git,
+                                    &workdir_for_submodules,
+                                    &entry.name,
+                                ),
+                                None => Ok(()),
+                            }
+                        })
+                        .err()
+                }
+                _ => None,
+            };
+            (result, submodule_error, pop_error)
         });
         Self::state(cx).update(cx, |s, cx| {
             s.repo_state_mut(id).checkout_target = Some(target);
@@ -1849,7 +1880,7 @@ impl Dispatcher {
             cx.notify();
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, submodule_error) = task.await;
+            let (result, submodule_error, pop_error) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).checkout_target = None);
                 if let Err(err) = result {
@@ -1857,6 +1888,9 @@ impl Dispatcher {
                 }
                 if let Some(err) = submodule_error {
                     Self::show_error("Could not update submodules", err.to_string(), cx);
+                }
+                if let Some(err) = pop_error {
+                    Self::show_error("Could not restore stash", err.to_string(), cx);
                 }
                 Self::show_section(id, Section::Changes, cx);
                 Self::refresh_repository(id, cx);
