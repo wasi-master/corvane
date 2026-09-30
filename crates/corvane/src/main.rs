@@ -389,6 +389,14 @@ fn main() {
             }
         });
         cx.on_action(|_: &OpenFlags, cx| Dispatcher::open_flags(None, cx));
+        // Corvane (`612-diff-mode-shortcut`): Diff Settings › Unified / Split
+        cx.on_action(|_: &ToggleDiffDisplayMode, cx| {
+            let split = corvane_core::AppState::global(cx)
+                .read(cx)
+                .settings
+                .show_side_by_side_diff;
+            Dispatcher::set_show_side_by_side_diff(!split, cx);
+        });
         cx.on_action(|_: &OpenSettings, cx| {
             Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
         });

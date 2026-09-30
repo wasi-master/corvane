@@ -1096,6 +1096,18 @@ registry! {
         upstream: &[Upstream::issue(7266)],
         code: &["crates/corvane-ui/src/keymap.rs"],
     },
+    /// ⌥⌘S switches the diff between unified and split.
+    DIFF_MODE_SHORTCUT = 612 "diff-mode-shortcut" {
+        title: "⌥⌘S switches the diff display",
+        summary: "⌥⌘S toggles Diff Settings between Unified and Split.",
+        ghd_behaviour: "Only the diff settings popover changes it (three clicks).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(15284)],
+        code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane/src/main.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.
