@@ -40,6 +40,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Push Up to This Commit (Corvane addition; GHD pushes whole branches only): on the current branch's unpushed commits (the first `ahead` rows) the commit menu runs `git push <remote> <sha>:refs/heads/<upstream branch>` through the normal push path (progress, fetch, auth retry). No force: git refuses anything that is not a fast-forward. Unpushed tags are not sent along, since they may point past the commit. Flag: `243-push-up-to-commit`.
 - Create a Tag has an optional Message field (Corvane addition; GHD `createTag` always passes `-m ""`): a non-empty message is trimmed and stored with `--cleanup=whitespace`, so `#` lines survive. Flag: `244-tag-message`.
 - A commit's file list multi-selects (Corvane addition; GHD `selected-commits.tsx` selects one file): ⌘-click toggles a file, ⇧-click selects from the diffed file to the clicked one, and the context menu of a multi-selection has Copy File Paths / Copy Relative File Paths (file-list order, one per line). The diff shows the last clicked file; the selection resets with the commit selection. Flag: `245-commit-files-multi-select`.
+- The Pull button's tooltip lists the incoming commits (Corvane addition; GHD `push-pull-button.tsx` shows only the count): each refresh with the branch behind reads `HEAD..upstream` (gitoxide, newest first, at most ten summaries), and the tooltip says how many commits there are, one bullet per summary, then "…and N more". Flag: `246-pull-tooltip-lists-commits`.
 
 ## Tutorial
 

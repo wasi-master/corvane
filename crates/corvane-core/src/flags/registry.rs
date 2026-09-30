@@ -349,6 +349,19 @@ registry! {
         upstream: &[Upstream::issue(15525), Upstream::issue(20467)],
         code: &["crates/corvane-ui/src/selected_commit.rs"],
     },
+    /// The Pull button's tooltip lists the incoming commits.
+    PULL_TOOLTIP_LISTS_COMMITS = 246 "pull-tooltip-lists-commits" {
+        title: "Pull button lists incoming commits",
+        summary: "Hovering Pull shows the summaries of the commits it would bring in (up to ten, \
+                  newest first, then how many more).",
+        ghd_behaviour: "No tooltip; only the behind count.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6753)],
+        code: &["crates/corvane-ui/src/toolbar.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 

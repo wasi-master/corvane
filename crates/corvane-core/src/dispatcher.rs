@@ -624,7 +624,24 @@ impl Dispatcher {
                         .and_then(|_| {
                             corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
                         });
+                    // `246`: what a pull would bring in
+                    let incoming_commits = info
+                        .current_branch()
+                        .and_then(|b| b.upstream.as_deref())
+                        .filter(|_| ahead_behind.is_some_and(|ab| ab.behind > 0))
+                        .and_then(|upstream| {
+                            corvane_git::get_commits_in_range(
+                                &info.workdir,
+                                "HEAD",
+                                upstream,
+                                crate::state::INCOMING_COMMITS_LIMIT,
+                            )
+                            .ok()
+                        })
+                        .map(|commits| commits.into_iter().map(|c| c.summary).collect())
+                        .unwrap_or_default();
                     RefreshExtras {
+                        incoming_commits,
                         recent_branches: recent,
                         default_branch,
                         stash,
@@ -697,6 +714,7 @@ impl Dispatcher {
                                 // GHD `mostRecentLocalCommit`: the undo bar
                                 // follows the branch's unpushed commits
                                 repo_state.last_commit = extras.last_local_commit;
+                                repo_state.incoming_commits = extras.incoming_commits;
                                 // `mainWorktreePath` bookkeeping for the
                                 // missing-worktree fallback (applied below)
                                 main_worktree = repo_state
@@ -3219,6 +3237,7 @@ struct RefreshExtras {
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
     last_local_commit: Option<crate::state::LastCommit>,
+    incoming_commits: Vec<String>,
 }
 
 /// Node's `path.resolve(path)`: made absolute against the current directory,
