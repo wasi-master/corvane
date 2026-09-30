@@ -214,9 +214,9 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
     row
 }
 
-/// The layout engine rounds every measured leaf up to a whole device pixel
-/// (and text up to a whole point), so a row of word boxes drifts right by up
-/// to a pixel per word. The flow carries that drift along a line: each
+/// The layout engine snaps every measured leaf to a whole device pixel
+/// (words: to the nearest one), so a row of word boxes drifts by up to half
+/// a pixel per word. The flow carries that drift along a line: each
 /// element is moved left by the drift of the words before it on its line.
 #[derive(Clone, Copy, Default)]
 struct InlineFlow {
@@ -292,7 +292,20 @@ impl Element for InlineShift {
                 let line = window
                     .text_system()
                     .shape_line(text.clone(), font_size, &[run], None);
-                let box_size = size(line.width, line_height);
+                // Chromium breaks lines on exact widths; layout rounds every
+                // measured leaf up to a device pixel, which over a line of
+                // words wraps early (at scale 1 up to a pixel a word). The
+                // box is the width rounded to the nearest device pixel
+                // instead, so the rounding evens out; paint corrects the
+                // drift either way.
+                // (macOS keeps the round-up its parity runs were tuned with)
+                let scale = window.scale_factor();
+                let box_width = if cfg!(target_os = "macos") {
+                    line.width
+                } else {
+                    px((f32::from(line.width) * scale).round() / scale)
+                };
+                let box_size = size(box_width, line_height);
                 let layout_id =
                     window.request_measured_layout(Style::default(), move |_, _, _, _| box_size);
                 (layout_id, Some((line, line_height, layout_id)))
