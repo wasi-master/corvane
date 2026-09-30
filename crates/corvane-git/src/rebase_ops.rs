@@ -1554,6 +1554,56 @@ mod tests {
     }
 
     #[test]
+    fn squash_merge_uses_the_given_message() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        commit_file(path, "f.txt", "f\n", "feature one");
+        commit_file(path, "a.txt", "feature\n", "feature two");
+        run(path, &["checkout", "-q", "main"]);
+        let log = || {
+            GitCommand::new(git.clone())
+                .args(["log", "-1", "--format=%B"])
+                .current_dir(path)
+                .run()
+                .unwrap()
+                .stdout_string()
+                .unwrap()
+        };
+        assert_eq!(
+            crate::merge_branch_with_message(
+                git.clone(),
+                path,
+                "feature",
+                true,
+                Some("Feature\n\nall of it")
+            )
+            .unwrap(),
+            crate::MergeOutcome::Success
+        );
+        assert_eq!(log().trim_end(), "Feature\n\nall of it");
+        // conflicting: the message waits in SQUASH_MSG for the commit
+        run(path, &["reset", "-q", "--hard", "HEAD~1"]);
+        commit_file(path, "a.txt", "main\n", "main edits a");
+        assert_eq!(
+            crate::merge_branch_with_message(git.clone(), path, "feature", true, Some("Squashed"))
+                .unwrap(),
+            crate::MergeOutcome::Conflicts
+        );
+        let status = crate::status::get_status(git.clone(), path, None).unwrap();
+        let conflicted: Vec<_> = status
+            .files
+            .iter()
+            .filter(|f| f.status.kind == FileStatusKind::Conflicted)
+            .cloned()
+            .collect();
+        let mut resolutions = BTreeMap::new();
+        resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
+        create_merge_commit(git.clone(), path, &conflicted, &resolutions).unwrap();
+        assert_eq!(log().trim_end(), "Squashed");
+    }
+
+    #[test]
     fn merge_conflict_commit_and_squash_abort() {
         let (dir, git) = repo();
         let path = dir.path();
