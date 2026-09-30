@@ -280,6 +280,20 @@ registry! {
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
 
+    /// "No local changes" offers Open in <Shell>.
+    NO_CHANGES_OPEN_IN_SHELL = 285 "no-changes-open-in-shell" {
+        title: "No local changes: Open in shell",
+        summary: "The \"No local changes\" view adds an \"Open the repository in <Shell>\" \
+                  suggestion after Show in Finder.",
+        ghd_behaviour: "Editor, Finder and GitHub suggestions only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12453)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

@@ -80,6 +80,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Blank slate
 
 - Signed in, "Let's get started!" shows the account's repositories beside the actions as GHD does (`crates/corvane-ui/src/no_repositories.rs`, list and `AccountPicker` shared with Clone a Repository in `cloneable_repositories.rs`). Differences: while the list shows a message (loading, no match, no repositories) GHD's section shrinks to the message's intrinsic width and re-centres, Corvane keeps the two half-width panes; the filter's fuzzy match highlights approximately the characters fuzzaldrin-plus picks (it sometimes marks a second run); the list has no keyboard navigation from the filter and Enter does not clone (see `TODO.md` › Accessibility); GHD's list goes blank behind the account popover, Corvane's stays drawn.
+- "No local changes" (`NoChanges`, `app/src/ui/changes/no-changes.tsx`) adds an "Open the repository in <Shell>" suggestion (⌃`) after Show in Finder. Flag: `285-no-changes-open-in-shell`.
 
 ## Welcome
 
