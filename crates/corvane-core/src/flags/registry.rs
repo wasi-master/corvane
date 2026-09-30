@@ -660,6 +660,22 @@ registry! {
         upstream: &[Upstream::issue(20526)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Submodules are updated (and new ones initialised) after a checkout or merge.
+    SUBMODULES_FOLLOW_CHECKOUT = 310 "submodules-follow-checkout" {
+        title: "Update submodules after checkout and merge",
+        summary: "After switching branches or a merge (including Update from Default Branch), \
+                  submodules are checked out at the commits the branch records and new ones are \
+                  cloned (git submodule update --init --recursive). Submodules that showed \
+                  changes beforehand are left alone.",
+        ghd_behaviour: "Submodules stay at their old commits (and new ones uninitialised), so \
+                        they show as changed and are easily committed back.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18302), Upstream::issue(18673), Upstream::issue(9547)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

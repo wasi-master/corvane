@@ -245,6 +245,41 @@ fn remote_command(git: Arc<GitBinary>, workdir: &Path, askpass: Option<&AskpassE
     }
 }
 
+/// Corvane (`submodules-follow-checkout` flag): `git submodule update
+/// --init --recursive` for every submodule recorded in the index except
+/// `skip` (those the caller saw changed before, whose work must not be moved
+/// away). New submodules are cloned, hence `askpass`. GHD leaves submodules
+/// at their old commits after a checkout or merge.
+pub fn update_submodules(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    skip: &[String],
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    let out = GitCommand::new(git.clone())
+        .args(["ls-files", "--stage", "-z"])
+        .current_dir(workdir)
+        .run()?;
+    let paths: Vec<String> = out
+        .stdout
+        .split(|b| *b == 0)
+        .filter_map(|entry| {
+            let entry = std::str::from_utf8(entry).ok()?;
+            let (meta, path) = entry.split_once('\t')?;
+            meta.starts_with("160000 ").then(|| path.to_string())
+        })
+        .filter(|path| !skip.contains(path))
+        .collect();
+    if paths.is_empty() {
+        return Ok(());
+    }
+    remote_command(git, workdir, askpass)
+        .args(["submodule", "update", "--init", "--recursive", "--"])
+        .args(&paths)
+        .run()?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // remotes
 // ---------------------------------------------------------------------------
@@ -550,6 +585,57 @@ pub fn install_lfs_hooks(git: Arc<GitBinary>, workdir: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn update_submodules_initialises_all_but_skipped() {
+        use std::process::Command;
+        let dir = tempfile::tempdir().unwrap();
+        let run = |cwd: &Path, args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(cwd)
+                    .env("GIT_AUTHOR_NAME", "T")
+                    .env("GIT_AUTHOR_EMAIL", "t@example.com")
+                    .env("GIT_COMMITTER_NAME", "T")
+                    .env("GIT_COMMITTER_EMAIL", "t@example.com")
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        let sub = dir.path().join("sub-origin");
+        let main = dir.path().join("main");
+        for repo in [&sub, &main] {
+            std::fs::create_dir(repo).unwrap();
+            run(repo, &["init", "-q", "-b", "main"]);
+            run(repo, &["config", "commit.gpgsign", "false"]);
+        }
+        std::fs::write(sub.join("file.txt"), "x\n").unwrap();
+        run(&sub, &["add", "."]);
+        run(&sub, &["commit", "-q", "-m", "sub"]);
+        run(
+            &main,
+            &[
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "-q",
+                sub.to_str().unwrap(),
+                "sub",
+            ],
+        );
+        run(&main, &["commit", "-q", "-m", "add sub"]);
+        run(&main, &["submodule", "deinit", "-q", "-f", "sub"]);
+        assert!(!main.join("sub/file.txt").exists());
+
+        let git = Arc::new(crate::find_git().unwrap());
+        update_submodules(git.clone(), &main, &["sub".to_string()], None).unwrap();
+        assert!(!main.join("sub/file.txt").exists());
+        update_submodules(git, &main, &[], None).unwrap();
+        assert!(main.join("sub/file.txt").exists());
+    }
 
     #[test]
     fn parses_progress_lines() {

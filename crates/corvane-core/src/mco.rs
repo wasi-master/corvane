@@ -1338,14 +1338,31 @@ impl Dispatcher {
             cx,
         );
         let name = branch.clone();
+        let submodules = Self::submodule_update_plan(id, cx);
         spawn_bg(
             cx,
             move || {
                 let result = corvane_git::merge_branch(git.clone(), &workdir, &branch, squash);
+                // `310-submodules-follow-checkout`
+                let submodule_error = match (&result, submodules) {
+                    (Ok(corvane_git::MergeOutcome::Success), Some((skip, askpass))) => {
+                        corvane_git::update_submodules(
+                            git.clone(),
+                            &workdir,
+                            &skip,
+                            askpass.as_ref(),
+                        )
+                        .err()
+                    }
+                    _ => None,
+                };
                 let status = corvane_git::get_status(git, &workdir, None).ok();
-                (result, status)
+                (result, status, submodule_error)
             },
-            move |(result, status), cx| {
+            move |(result, status, submodule_error), cx| {
+                if let Some(err) = submodule_error {
+                    Self::show_error("Could not update submodules", err.to_string(), cx);
+                }
                 if let Some(status) = status {
                     Self::state(cx).update(cx, |s, cx| {
                         Self::apply_status(s.repo_state_mut(id), status);

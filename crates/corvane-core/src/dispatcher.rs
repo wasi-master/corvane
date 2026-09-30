@@ -1752,8 +1752,11 @@ impl Dispatcher {
             .and_then(|r| r.stash.as_ref())
             .map(|s| s.name.clone());
         let target = branch.name.clone();
+        let submodules = Self::submodule_update_plan(id, cx);
+        let git_for_submodules = git.clone();
+        let workdir_for_submodules = workdir.clone();
         let task = cx.background_executor().spawn(async move {
-            match strategy {
+            let result = (move || match strategy {
                 UncommittedChangesStrategy::StashOnCurrentBranch => {
                     if let Some(current) = current.as_deref()
                         && has_changes
@@ -1788,7 +1791,18 @@ impl Dispatcher {
                         Err(err) => Err(err),
                     }
                 }
-            }
+            })();
+            let submodule_error = match (&result, submodules) {
+                (Ok(()), Some((skip, askpass))) => corvane_git::update_submodules(
+                    git_for_submodules,
+                    &workdir_for_submodules,
+                    &skip,
+                    askpass.as_ref(),
+                )
+                .err(),
+                _ => None,
+            };
+            (result, submodule_error)
         });
         Self::state(cx).update(cx, |s, cx| {
             s.repo_state_mut(id).checkout_target = Some(target);
@@ -1796,17 +1810,46 @@ impl Dispatcher {
             cx.notify();
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let result = task.await;
+            let (result, submodule_error) = task.await;
             cx.update(|cx| {
                 Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).checkout_target = None);
                 if let Err(err) = result {
                     Self::show_error("Could not switch branch", err.to_string(), cx);
+                }
+                if let Some(err) = submodule_error {
+                    Self::show_error("Could not update submodules", err.to_string(), cx);
                 }
                 Self::show_section(id, Section::Changes, cx);
                 Self::refresh_repository(id, cx);
             });
         })
         .detach();
+    }
+
+    /// `310-submodules-follow-checkout`: when the flag is on, the submodules
+    /// to leave alone after a checkout or merge (those the Changes list shows
+    /// changed now) and the askpass environment for cloning new ones.
+    pub(crate) fn submodule_update_plan(
+        id: u64,
+        cx: &App,
+    ) -> Option<(Vec<String>, Option<corvane_git::AskpassEnv>)> {
+        let s = Self::state(cx).read(cx);
+        if !s.flags.bool(crate::flags::ids::SUBMODULES_FOLLOW_CHECKOUT) {
+            return None;
+        }
+        let skip = s
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .map(|st| {
+                st.files
+                    .iter()
+                    .filter(|f| f.status.submodule)
+                    .map(|f| f.path.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        Some((skip, Self::askpass_env(cx)))
     }
 
     pub fn rename_branch(id: u64, old: String, new: String, cx: &mut App) {
