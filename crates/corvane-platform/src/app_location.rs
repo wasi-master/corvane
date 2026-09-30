@@ -94,6 +94,24 @@ pub fn move_to_applications_folder(bundle: &Path) -> Result<PathBuf, String> {
     move_bundle(bundle, &dest)
 }
 
+/// What [`relaunch_after_exit`] starts to relaunch this Corvane: the
+/// running bundle on macOS; on Linux the AppImage it runs from (its runtime
+/// sets `$APPIMAGE`; the mounted binary disappears with this process), else
+/// this executable (a .deb install, a source build).
+pub fn relaunch_target() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        running_bundle()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        std::env::var_os("APPIMAGE")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute() && path.is_file())
+            .or_else(|| std::env::current_exe().ok())
+    }
+}
+
 /// Open `bundle` once process `pid` has exited (the store lock is released
 /// by then), from a detached shell so it outlives this process. `open`
 /// hands its environment to the new app, so Corvane's own `CORVANE_*`
