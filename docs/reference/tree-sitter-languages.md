@@ -9,7 +9,7 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | ada | `.ads` `.adb` `.ada` |  | yes | nvim-treesitter@728e031f6b11 queries/ada (Apache-2.0) |
 | agda | `.agda` `.lagda` |  | yes | nvim-treesitter@728e031f6b11 queries/agda (Apache-2.0) |
 | angular | `.component.html` | yes |  | nvim-treesitter@728e031f6b11 queries/angular (Apache-2.0) |
-| apex | `.cls` `.trigger` `.apex` |  | yes | nvim-treesitter@728e031f6b11 queries/apex (Apache-2.0) |
+| apex | `.trigger` `.apex` |  | yes | nvim-treesitter@728e031f6b11 queries/apex (Apache-2.0) |
 | arduino | `.ino` | yes |  | nvim-treesitter@728e031f6b11 queries/arduino (Apache-2.0) |
 | asciidoc | `.adoc` `.asciidoc` `.asc` |  | yes | tree-sitter-asciidoc 0.9.0 (Apache-2.0): queries/highlights.scm |
 | asm | `.asm` `.s` |  | yes | nvim-treesitter@728e031f6b11 queries/asm (Apache-2.0) |
@@ -155,6 +155,7 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | koto | `.koto` |  | yes | nvim-treesitter@728e031f6b11 queries/koto (Apache-2.0) |
 | kusto | `.csl` `.kql` |  | yes | nvim-treesitter@728e031f6b11 queries/kusto (Apache-2.0) |
 | lalrpop | `.lalrpop` |  | yes | nvim-treesitter@728e031f6b11 queries/lalrpop (Apache-2.0) |
+| latex | `.tex` `.aux` `.sty` `.cls` `.bbx` `.cbx` `.dtx` `.ins` `.lbx` `.ltx` `.mkii` `.mkiv` `.mkvi` `.toc` | yes |  | nvim-treesitter@728e031f6b11 queries/latex (Apache-2.0) |
 | ledger | `.ledger` `.journal` |  | yes | nvim-treesitter@728e031f6b11 queries/ledger (Apache-2.0) |
 | leo | `.leo` |  | yes | nvim-treesitter@728e031f6b11 queries/leo (Apache-2.0) |
 | less | `.less` | yes |  | tree-sitter-less 1.0.0 (MIT): queries/highlights.scm |
@@ -174,6 +175,7 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | menhir | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/menhir (Apache-2.0) |
 | mermaid | `.mmd` `.mermaid` |  | yes | nvim-treesitter@728e031f6b11 queries/mermaid (Apache-2.0) |
 | meson | `.meson` `meson.build` `meson_options.txt` |  | yes | nvim-treesitter@728e031f6b11 queries/meson (Apache-2.0) |
+| mlir | `.mlir` |  | yes | nvim-treesitter@728e031f6b11 queries/mlir (Apache-2.0) |
 | nasm | `.a51` `.nas` `.nasm` |  | yes | nvim-treesitter@728e031f6b11 queries/nasm (Apache-2.0) |
 | nginx | `.nginx` `nginx.conf` |  | yes | nvim-treesitter@728e031f6b11 queries/nginx (Apache-2.0) |
 | nickel | `.ncl` |  | yes | nvim-treesitter@728e031f6b11 queries/nickel (Apache-2.0) |
@@ -187,16 +189,19 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | ocaml | `.ml` | yes |  | nvim-treesitter@728e031f6b11 queries/ocaml (Apache-2.0) |
 | ocaml_interface | `.mli` |  | yes | nvim-treesitter@728e031f6b11 queries/ocaml_interface (Apache-2.0) |
 | ocaml_type | (injected only) |  |  | tree-sitter-ocaml 0.26.0 (MIT): queries/highlights.scm |
+| ocamllex | `.mll` |  | yes | nvim-treesitter@728e031f6b11 queries/ocamllex (Apache-2.0) |
 | odin | `.odin` |  | yes | nvim-treesitter@728e031f6b11 queries/odin (Apache-2.0) |
 | pascal | `.pas` `.dpr` `.lpr` `.dpk` | yes |  | nvim-treesitter@728e031f6b11 queries/pascal (Apache-2.0) |
 | passwd | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/passwd (Apache-2.0) |
 | pem | `.pem` `.key` `.crt` `.cer` `.csr` |  | yes | nvim-treesitter@728e031f6b11 queries/pem (Apache-2.0) |
+| perl | `.pm` `.pl` `.t` `.al` `.cgi` `.fcgi` `.perl` `.ph` `.plx` `.psgi` `.latexmkrc` `makefile.pl` `rexfile` `ack` `cpanfile` `latexmkrc` | yes |  | nvim-treesitter@728e031f6b11 queries/perl (Apache-2.0) |
 | php | `.php` `.phtml` `.php3` `.php4` `.php5` `.php7` `.phps` | yes |  | nvim-treesitter@728e031f6b11 queries/php (Apache-2.0) |
 | php_only | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/php_only (Apache-2.0) |
 | phpdoc | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/phpdoc (Apache-2.0) |
 | pioasm | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/pioasm (Apache-2.0) |
 | pkl | `.pcf` `.pkl` |  | yes | nvim-treesitter@728e031f6b11 queries/pkl (Apache-2.0) |
 | po | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/po (Apache-2.0) |
+| pod | `.pod` |  | yes | nvim-treesitter@728e031f6b11 queries/pod (Apache-2.0) |
 | poe_filter | `.filter` |  | yes | nvim-treesitter@728e031f6b11 queries/poe_filter (Apache-2.0) |
 | pony | `.pony` |  | yes | nvim-treesitter@728e031f6b11 queries/pony (Apache-2.0) |
 | powershell | `.ps1` `.psm1` `.psd1` | yes |  | nvim-treesitter@728e031f6b11 queries/powershell (Apache-2.0) |
@@ -272,6 +277,7 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | tablegen | `.td` |  | yes | nvim-treesitter@728e031f6b11 queries/tablegen (Apache-2.0) |
 | tact | `.tact` |  | yes | nvim-treesitter@728e031f6b11 queries/tact (Apache-2.0) |
 | tcl | `.tk` `.tcl` `.tm` `.adp` `.sdc` `.tcl.in` `.xdc` `owh` `starfield` |  | yes | nvim-treesitter@728e031f6b11 queries/tcl (Apache-2.0) |
+| teal | `.tl` |  | yes | nvim-treesitter@728e031f6b11 queries/teal (Apache-2.0) |
 | templ | `.templ` |  | yes | nvim-treesitter@728e031f6b11 queries/templ (Apache-2.0) |
 | tera | `.tera` |  | yes | nvim-treesitter@728e031f6b11 queries/tera (Apache-2.0) |
 | terraform | `.tf` `.tfvars` `.tofu` `.workflow` |  | yes | nvim-treesitter@728e031f6b11 queries/terraform (Apache-2.0) |
@@ -291,6 +297,7 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 | typst | `.typ` |  | yes | nvim-treesitter@728e031f6b11 queries/typst (Apache-2.0) |
 | udev | `.rules` |  | yes | nvim-treesitter@728e031f6b11 queries/udev (Apache-2.0) |
 | ungrammar | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/ungrammar (Apache-2.0) |
+| unison | `.u` |  | yes | nvim-treesitter@728e031f6b11 queries/unison (Apache-2.0) |
 | uxntal | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/uxntal (Apache-2.0) |
 | v | `.vsh` `.v.mod` |  | yes | nvim-treesitter@728e031f6b11 queries/v (Apache-2.0) |
 | vento | `.vto` |  | yes | nvim-treesitter@728e031f6b11 queries/vento (Apache-2.0) |

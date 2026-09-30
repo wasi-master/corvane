@@ -30,7 +30,7 @@ Opt-in engine (flag `105-tree-sitter-highlighting`, `crates/corvane-highlight/sr
 | Metric | Measured | Notes |
 |---|---|---|
 | Default build size | +~0.2 MB | the tree-sitter C runtime (`libtree-sitter.a`: 169 KB `__text`) plus the loader and painter; the grammars are not linked. The M7 release was 22.7 MB against the 25 MB budget; not re-measured with a full release build (disk) |
-| `tree-sitter-all` pack (310 grammars) | 25 MB zipped and installed | one gzipped library per grammar package (built with clang, no Rust std: html 50 KB, typescript 2.9 MB unpacked); a unit is unpacked into `~/Library/Caches/Corvane/grammars/` the first time a diff needs it, so disk holds only the languages in use (a Rust cdylib per unit carried ~300 KB of std each) |
+| `tree-sitter-all` pack (317 grammars) | 25 MB zipped and installed | one gzipped library per grammar package (built with clang, no Rust std: html 50 KB, typescript 2.9 MB unpacked); a unit is unpacked into `~/Library/Caches/Corvane/grammars/` the first time a diff needs it, so disk holds only the languages in use (a Rust cdylib per unit carried ~300 KB of std each) |
 | `tree-sitter-rest` pack (201 grammars) | 15.7 MB | |
 | `full` build | +~170 MB per architecture (102 crates.io grammars) | the source-built grammars are linked in too when their sources are fetched |
 | Core syntect set | 1.4 MB dump (syntect defaults + 330 TextMate grammars) | replaces syntect's built-in set in the default build |
