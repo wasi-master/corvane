@@ -796,6 +796,21 @@ registry! {
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/integrations.rs"],
     },
 
+    /// VS Code opens the repository's workspace file.
+    VSCODE_WORKSPACE_FILE = 475 "vscode-workspace-file" {
+        title: "Open the VS Code workspace file",
+        summary: "Opening the repository in Visual Studio Code (or VSCodium, Cursor, Windsurf) \
+                  opens its `*.code-workspace` file when the repository's top folder has exactly \
+                  one.",
+        ghd_behaviour: "Always opens the folder.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(7007)],
+        code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-platform/src/editors.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

@@ -120,7 +120,7 @@ impl Dispatcher {
 
     /// Repository › Open in <Editor> (`_openInExternalEditor`).
     pub fn open_in_editor(path: PathBuf, cx: &mut App) {
-        let (editors, selected, custom) = {
+        let (editors, selected, custom, workspace_file) = {
             let s = Self::state(cx).read(cx);
             (
                 s.editors.clone(),
@@ -129,6 +129,7 @@ impl Dispatcher {
                     .use_custom_editor
                     .then(|| s.settings.custom_editor.clone())
                     .flatten(),
+                s.flags.bool(crate::flags::ids::VSCODE_WORKSPACE_FILE),
             )
         };
         if let Some(custom) = custom {
@@ -172,7 +173,15 @@ impl Dispatcher {
         };
         spawn_bg(
             cx,
-            move || editors::launch(&editor, &path),
+            move || {
+                // `475-vscode-workspace-file`: a repository opens its only
+                // workspace file instead of the folder
+                let target = workspace_file
+                    .then(|| editors::code_workspace_file(&editor, &path))
+                    .flatten()
+                    .unwrap_or(path);
+                editors::launch(&editor, &target)
+            },
             |result, cx| {
                 if let Err(err) = result {
                     Self::show_editor_error(err, cx);

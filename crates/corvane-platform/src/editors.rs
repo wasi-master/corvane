@@ -1,5 +1,8 @@
 //! External editor detection — GHD `lib/editors/darwin.ts` (the bundle
 //! identifier table is copied verbatim) and `lib/editors/launch.ts`.
+//!
+//! Deviation: [`code_workspace_file`] lets VS Code and its forks open a
+//! repository's only `*.code-workspace` file (`475-vscode-workspace-file`).
 
 use std::path::{Path, PathBuf};
 
@@ -95,6 +98,30 @@ const EDITORS: &[(&str, &[&str])] = &[
     ("Cursor", &["com.todesktop.230313mzl4w4u92"]),
     ("Windsurf", &["com.exafunction.windsurf"]),
 ];
+
+/// Editors that open VS Code `.code-workspace` files (`475-vscode-workspace-file`).
+const CODE_WORKSPACE_EDITORS: &[&str] = &[
+    "Visual Studio Code",
+    "Visual Studio Code (Insiders)",
+    "VSCodium",
+    "Cursor",
+    "Windsurf",
+];
+
+/// Corvane `475-vscode-workspace-file`: the one `*.code-workspace` file at
+/// the top of `dir` when `editor` is VS Code or a fork of it; `None` when
+/// there is none or several.
+pub fn code_workspace_file(editor: &FoundEditor, dir: &Path) -> Option<PathBuf> {
+    if !CODE_WORKSPACE_EDITORS.contains(&editor.name.as_str()) {
+        return None;
+    }
+    let mut found = std::fs::read_dir(dir)
+        .ok()?
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|p| p.is_file() && p.extension().is_some_and(|e| e == "code-workspace"));
+    let first = found.next()?;
+    found.next().is_none().then_some(first)
+}
 
 /// GHD `suggestedExternalEditor`.
 pub const SUGGESTED_EDITOR_NAME: &str = "Visual Studio Code";
@@ -215,6 +242,25 @@ mod tests {
                 path: "/Applications/Cursor.app".into(),
             },
         ]
+    }
+
+    #[test]
+    fn code_workspace_only_when_single() {
+        let dir = tempfile::tempdir().unwrap();
+        let code = FoundEditor {
+            name: "Visual Studio Code".into(),
+            bundle_id: "com.microsoft.VSCode".into(),
+            path: "/Applications/Visual Studio Code.app".into(),
+        };
+        assert_eq!(code_workspace_file(&code, dir.path()), None);
+        std::fs::write(dir.path().join("app.code-workspace"), "{}").unwrap();
+        assert_eq!(
+            code_workspace_file(&code, dir.path()),
+            Some(dir.path().join("app.code-workspace"))
+        );
+        assert_eq!(code_workspace_file(&editors()[0], dir.path()), None);
+        std::fs::write(dir.path().join("other.code-workspace"), "{}").unwrap();
+        assert_eq!(code_workspace_file(&code, dir.path()), None);
     }
 
     #[test]
