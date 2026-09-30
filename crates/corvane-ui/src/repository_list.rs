@@ -58,6 +58,17 @@ impl RepositoryFoldout {
         self.highlighted = None;
         let handle = self.filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        // Corvane (`112-repository-filter-selects-text`): the remembered
+        // filter text is selected, so typing replaces it
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::REPOSITORY_FILTER_SELECTS_TEXT)
+        {
+            self.filter
+                .update(cx, |input, cx| input.select_all(window, cx));
+        }
     }
 
     /// GHD `FilterList`: ↓ / ↑ in the filter box move through the rows (↑

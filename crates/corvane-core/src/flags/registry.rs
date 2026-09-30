@@ -266,6 +266,19 @@ registry! {
         upstream: &[Upstream::issue(15244), Upstream::issue(19828)],
         code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Opening the repository list selects its remembered filter text.
+    REPOSITORY_FILTER_SELECTS_TEXT = 112 "repository-filter-selects-text" {
+        title: "Repository filter text is selected on open",
+        summary: "Opening the repository list (⌘T or the toolbar button) selects the filter text \
+                  it remembers, so typing replaces it.",
+        ghd_behaviour: "The caret lands after the old text, which has to be deleted first.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(2652)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 200 Repository ----
 
