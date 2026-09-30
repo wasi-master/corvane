@@ -84,6 +84,8 @@ pub struct Row {
     pub old: Option<u32>,
     pub new: Option<u32>,
     pub text: String,
+    /// Byte offsets in `text` where an expanded tab starts.
+    pub tabs: Vec<u32>,
     pub no_newline: bool,
     pub group: Option<(u32, u32)>,
     pub group_type: Option<RangeType>,
@@ -152,6 +154,8 @@ pub struct RowContext {
     /// The text selection (ordered), if any.
     pub text_selection: Option<TextSelectionSnapshot>,
     pub text_bounds: TextBounds,
+    /// `180-diff-show-whitespace`: marks spaces and tabs in the text.
+    pub show_whitespace: bool,
 }
 
 impl RowContext {
@@ -184,14 +188,16 @@ fn selectable_text(
     ctx: &RowContext,
     list_ix: usize,
     column: Column,
-    text: &str,
+    row: &Row,
     highlights: Vec<(Range<usize>, HighlightStyle)>,
     inner: Option<(Range<usize>, Hsla)>,
 ) -> Div {
+    let text = &row.text;
     let bounds = ctx.text_bounds.clone();
     let view = ctx.view.clone();
     let mut layout = None;
-    let body: AnyElement = if highlights.is_empty() && inner.is_none() {
+    let whitespace = (ctx.show_whitespace && text.contains(' ')).then(|| row.tabs.clone());
+    let body: AnyElement = if highlights.is_empty() && inner.is_none() && whitespace.is_none() {
         SharedString::from(text.to_string()).into_any_element()
     } else {
         let styled =
@@ -199,6 +205,7 @@ fn selectable_text(
         layout = Some(styled.layout().clone());
         styled.into_any_element()
     };
+    let whitespace = whitespace.zip(layout.clone());
     let inner = inner.zip(layout);
     div()
         .flex_1()
@@ -210,9 +217,13 @@ fn selectable_text(
                 move |b, _, _| {
                     bounds.borrow_mut().insert((list_ix, column), b);
                 },
-                move |_, _, window, _| {
+                move |_, _, window, cx| {
                     if let Some(((range, color), layout)) = &inner {
                         paint_inline_background(layout, range.clone(), *color, window);
+                    }
+                    if let Some((tabs, layout)) = &whitespace {
+                        let color = cx.ghd().text_secondary.opacity(0.6);
+                        paint_whitespace(layout, tabs, color, window);
                     }
                 },
             )
@@ -268,6 +279,7 @@ pub fn build_rows(hunks: &[XHunk]) -> Vec<Row> {
                 old: line.old_line,
                 new: line.new_line,
                 text: expand_tabs(&line.text),
+                tabs: tab_offsets(&line.text),
                 no_newline: line.no_trailing_newline,
                 group: None,
                 group_type: None,
@@ -328,6 +340,15 @@ const TAB_EXPANSION: &str = "    ";
 /// A diff line as a row shows it: tabs expanded to [`TAB_EXPANSION`].
 pub fn expand_tabs(line: &str) -> String {
     line.replace('\t', TAB_EXPANSION)
+}
+
+/// Where each tab of `line` starts in its [`expand_tabs`] text.
+pub fn tab_offsets(line: &str) -> Vec<u32> {
+    let shift = TAB_EXPANSION.len() - 1;
+    line.match_indices('\t')
+        .enumerate()
+        .map(|(n, (ix, _))| (ix + n * shift) as u32)
+        .collect()
 }
 
 /// Moves syntax spans computed on a raw file line (tabs intact) onto the
@@ -481,6 +502,43 @@ fn merge_highlights(
         ));
     }
     out
+}
+
+/// `180-diff-show-whitespace`: a centred dot on every space and a line
+/// across every expanded tab (`tabs`: where they start).
+fn paint_whitespace(layout: &TextLayout, tabs: &[u32], color: Hsla, window: &mut Window) {
+    let Some(line) = layout.line_layout_for_index(0) else {
+        return;
+    };
+    let unwrapped = &line.unwrapped_layout;
+    let middle = layout.line_height() / 2.;
+    let dot = zpx(2.);
+    let text = layout.text();
+    let mut tab_end = 0;
+    for (ix, ch) in text.char_indices() {
+        if ch != ' ' || ix < tab_end {
+            continue;
+        }
+        let Some(origin) = layout.position_for_index(ix) else {
+            continue;
+        };
+        let is_tab = tabs.binary_search(&(ix as u32)).is_ok();
+        let len = if is_tab { TAB_EXPANSION.len() } else { 1 };
+        let width = unwrapped.x_for_index(ix + len) - unwrapped.x_for_index(ix);
+        let bounds = if is_tab {
+            tab_end = ix + len;
+            Bounds::new(
+                point(origin.x + zpx(2.), origin.y + middle - px(0.5)),
+                size((width - zpx(4.)).max(px(1.)), px(1.)),
+            )
+        } else {
+            Bounds::new(
+                point(origin.x + (width - dot) / 2., origin.y + middle - dot / 2.),
+                size(dot, dot),
+            )
+        };
+        window.paint_quad(fill(bounds, color));
+    }
 }
 
 /// Paints `range` of a laid-out text like a CSS inline background: one quad
@@ -668,7 +726,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
                 } else {
                     merge_highlights(spans, hits, inner_fg, selection, row.text.len(), t)
                 };
-            selectable_text(ctx, ix, Column::Before, &row.text, highlights, inner_bg)
+            selectable_text(ctx, ix, Column::Before, row, highlights, inner_bg)
         })
         .when(row.no_newline, |d| {
             d.child(
@@ -1382,7 +1440,7 @@ fn split_content(
         } else {
             merge_highlights(spans, hits, inner_fg, selection, row.text.len(), t)
         };
-    let body = selectable_text(ctx, list_ix, column, &row.text, highlights, inner_bg);
+    let body = selectable_text(ctx, list_ix, column, row, highlights, inner_bg);
     let view_for_menu = ctx.view.clone();
     div()
         .id(("split-text", unified))
@@ -1708,7 +1766,7 @@ mod tests {
     use super::{
         IntraLineOptions, MAX_INTRA_LINE_DIFF_LEN, RangeType, SearchHit, SplitRow, build_rows,
         build_split_rows, expand_tabs, relative_changes, search_rows, snap_to_graphemes,
-        spans_for_row, unified_inner, unified_to_split,
+        spans_for_row, tab_offsets, unified_inner, unified_to_split,
     };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
@@ -1848,6 +1906,13 @@ mod tests {
             rows.len(),
         );
         assert!(inner.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn tab_offsets_follow_expansion() {
+        assert_eq!(tab_offsets("\ta\tb"), vec![0, 5]);
+        assert_eq!(expand_tabs("\ta\tb").get(5..9), Some("    "));
+        assert!(tab_offsets("no tabs").is_empty());
     }
 
     #[test]

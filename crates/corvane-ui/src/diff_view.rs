@@ -26,6 +26,9 @@
 //!
 //! Deviation (`179-intra-line-max-length`): the line length beyond which no
 //! intra-line range is computed can be changed (GHD: 1024, fixed).
+//!
+//! Deviation (`180-diff-show-whitespace`): spaces can be marked with dots
+//! and tabs with a line.
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -1943,6 +1946,11 @@ impl DiffView {
                 self.text_bounds.borrow_mut().clear();
                 self.text_bounds.clone()
             },
+            show_whitespace: AppState::try_global(cx).is_some_and(|s| {
+                s.read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::DIFF_SHOW_WHITESPACE)
+            }),
         });
         let rows = self.rows.clone();
         let split_rows = self.split_rows.clone();

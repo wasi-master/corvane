@@ -373,6 +373,19 @@ registry! {
         upstream: &[Upstream::issue(22556)],
         code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
     },
+    /// Visible whitespace in diffs.
+    DIFF_SHOW_WHITESPACE = 180 "diff-show-whitespace" {
+        title: "Show whitespace in diffs",
+        summary: "Diff lines mark every space with a faint dot and every tab with a faint line, \
+                  so indentation and trailing whitespace changes can be told apart.",
+        ghd_behaviour: "Whitespace is invisible.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12974)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
 
     // ---- 200 Repository ----
 
