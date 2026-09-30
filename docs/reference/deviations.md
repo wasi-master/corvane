@@ -47,6 +47,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Fetch can pass `--write-commit-graph` (`corvane_git::FetchOptions`), extending the commit-graph file that speeds up history walks and ahead/behind counts; GHD's `fetch` never does. `--no-write-fetch-head`, also proposed upstream, is not used because "Last fetched" reads `FETCH_HEAD`. Flag: `235-fetch-writes-commit-graph`.
 - Fetch and pull can leave submodules alone (`--no-recurse-submodules`; GHD's `fetch` passes `--recurse-submodules=on-demand` and `pull` `--recurse-submodules`), off by default. Flag: `236-sync-skips-submodules`.
 - The background fetch can fast-forward the checked-out branch (`corvane_git::fast_forward_if_only_behind`, `merge --ff-only @{upstream}`) when it is behind but not ahead, the working directory is clean and no merge, rebase or cherry-pick is in progress; off by default. GHD's background fetch never touches the checked-out branch. Flag: `237-background-fetch-fast-forwards`.
+- Force push is recommended after a rewrite outside Corvane: when the current branch is ahead of and behind its upstream and the upstream's tip is in the branch's reflog (`corvane_git::upstream_tip_in_reflog`: the pushed commits were amended, rebased or reset away, not replaced by someone else's push), `getCurrentBranchForcePushState` answers Recommended, so the button offers Force push (with its confirmation) instead of Pull. GHD recommends it only after its own amend or rebase (`forcePushBranches`). Flag: `238-force-push-after-outside-rewrite`.
 
 ## Tutorial
 

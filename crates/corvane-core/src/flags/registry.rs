@@ -492,6 +492,21 @@ registry! {
         upstream: &[Upstream::issue(16586)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Force push is recommended after a rewrite outside Corvane.
+    FORCE_PUSH_AFTER_OUTSIDE_REWRITE = 238 "force-push-after-outside-rewrite" {
+        title: "Suggest force push after an outside rewrite",
+        summary: "When the branch is ahead of and behind its upstream and the upstream's tip is in \
+                  the branch's reflog (pushed commits were amended, rebased or reset in another \
+                  tool), the push/pull button recommends Force push instead of Pull.",
+        ghd_behaviour: "Recommends a force push only after its own amend or rebase; otherwise it \
+                        offers Pull, which merges the old commits back in or conflicts.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9739)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

@@ -26,6 +26,8 @@
 //! Fetch and pull can leave submodules alone (`236-sync-skips-submodules`).
 //! The background fetch can fast-forward a clean branch that is only behind
 //! (`237-background-fetch-fast-forwards`).
+//! Force push is also recommended after a rewrite outside Corvane
+//! (`238-force-push-after-outside-rewrite`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -174,7 +176,12 @@ impl Dispatcher {
             .as_ref()
             .and_then(|i| i.current_branch())
             .is_some_and(|b| rs.force_push_branches.get(b.name_without_remote()) == b.tip.as_ref());
-        if recommended {
+        // `238-force-push-after-outside-rewrite`: GHD recommends a force
+        // push only after its own amend or rebase
+        let rewritten_outside = rs.upstream_rewritten
+            && s.flags
+                .bool(crate::flags::ids::FORCE_PUSH_AFTER_OUTSIDE_REWRITE);
+        if recommended || rewritten_outside {
             ForcePushState::Recommended
         } else {
             ForcePushState::Available

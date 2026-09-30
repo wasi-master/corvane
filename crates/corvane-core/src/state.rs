@@ -667,6 +667,10 @@ pub struct RepositoryState {
     pub conflict_state: Option<crate::mco::ConflictState>,
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.
     pub force_push_branches: HashMap<String, String>,
+    /// The current branch is ahead of and behind its upstream, and its
+    /// reflog holds the upstream's tip: commits pushed from here were
+    /// rewritten outside Corvane (`238-force-push-after-outside-rewrite`).
+    pub upstream_rewritten: bool,
 
     // ---- remote (`isPushPullFetchInProgress`, `pushPullFetchProgress`, `lastFetched`) ----
     pub push_pull_in_progress: bool,

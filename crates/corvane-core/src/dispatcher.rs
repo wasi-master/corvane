@@ -549,7 +549,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status, clone_counts_as_fetch) = {
+        let (path, git, previous_status, clone_counts_as_fetch, detect_rewrite) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -559,6 +559,8 @@ impl Dispatcher {
                 s.git.clone(),
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
                 s.flags.bool(crate::flags::ids::CLONE_COUNTS_AS_FETCH),
+                s.flags
+                    .bool(crate::flags::ids::FORCE_PUSH_AFTER_OUTSIDE_REWRITE),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -654,6 +656,19 @@ impl Dispatcher {
                         pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                         worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
                             .unwrap_or_default(),
+                        // `238-force-push-after-outside-rewrite`
+                        upstream_rewritten: detect_rewrite
+                            && ahead_behind.is_some_and(|ab| ab.ahead > 0 && ab.behind > 0)
+                            && info.current_branch().is_some_and(|b| {
+                                b.upstream.as_deref().is_some_and(|upstream| {
+                                    corvane_git::upstream_tip_in_reflog(
+                                        git.clone(),
+                                        &info.workdir,
+                                        &b.name,
+                                        upstream,
+                                    )
+                                })
+                            }),
                         last_local_commit:
                             info.current_branch()
                                 .and_then(|b| {
@@ -713,6 +728,7 @@ impl Dispatcher {
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 repo_state.worktrees = extras.worktrees;
+                                repo_state.upstream_rewritten = extras.upstream_rewritten;
                                 // GHD `mostRecentLocalCommit`: the undo bar
                                 // follows the branch's unpushed commits
                                 repo_state.last_commit = extras.last_local_commit;
@@ -3289,6 +3305,7 @@ struct RefreshExtras {
     last_fetched: Option<std::time::SystemTime>,
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
+    upstream_rewritten: bool,
     last_local_commit: Option<crate::state::LastCommit>,
 }
 

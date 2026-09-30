@@ -83,6 +83,7 @@ pub use remote_ops::{
     find_default_remote, get_remotes, install_lfs_hooks, is_using_lfs, is_using_lfs_by_attributes,
     last_fetched, lfs_available, lfs_hooks_installed, parse_progress_line, pull, pull_with_rebase,
     push, remote_failure, remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
+    upstream_tip_in_reflog,
 };
 pub use repo::{
     ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,

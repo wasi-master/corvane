@@ -626,6 +626,41 @@ pub fn fast_forward_if_only_behind(git: Arc<GitBinary>, workdir: &Path) -> Resul
     Ok(true)
 }
 
+/// The local branch `name` once pointed at `upstream`'s current tip (it is
+/// in the branch's reflog): a branch that is ahead of and behind its
+/// upstream then had the pushed commits rewritten away (amend, rebase or
+/// reset outside Corvane) rather than someone else pushing new work.
+/// Corvane addition (desktop#9739).
+pub fn upstream_tip_in_reflog(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    name: &str,
+    upstream: &str,
+) -> bool {
+    let Ok(out) = GitCommand::new(git.clone())
+        .args(["rev-parse", "-q", "--verify"])
+        .arg(format!("{upstream}^{{commit}}"))
+        .current_dir(workdir)
+        .run()
+    else {
+        return false;
+    };
+    let Ok(tip) = out.stdout_string() else {
+        return false;
+    };
+    let tip = tip.trim();
+    GitCommand::new(git)
+        .args(["reflog", "show", "--format=%H"])
+        .arg(format!("refs/heads/{name}"))
+        .arg("--")
+        .current_dir(workdir)
+        .allow_exit_code(128)
+        .run()
+        .ok()
+        .and_then(|o| o.stdout_string().ok())
+        .is_some_and(|log| !tip.is_empty() && log.lines().any(|l| l.trim() == tip))
+}
+
 /// GHD `updateLastFetched`: mtime of a non-empty `FETCH_HEAD`.
 pub fn last_fetched(workdir: &Path) -> Option<SystemTime> {
     let meta = std::fs::metadata(git_dir(workdir).join("FETCH_HEAD")).ok()?;
@@ -1073,11 +1108,20 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(remote_failure(&err), RemoteFailure::PushNotFastForward);
+        // someone else's push is not a rewrite of ours
+        fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        let upstream = "refs/remotes/origin/main";
+        assert!(!upstream_tip_in_reflog(
+            git.clone(),
+            &work,
+            "main",
+            upstream
+        ));
         // pull merges the remote work in
         pull(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
         assert!(work.join("c.txt").exists());
         push(
-            git,
+            git.clone(),
             &work,
             "origin",
             "main",
@@ -1088,5 +1132,8 @@ mod tests {
             &mut |_, _| {},
         )
         .unwrap();
+        // amending the pushed commit rewrites it away
+        run(&work, &["commit", "-q", "--amend", "-m", "merge, amended"]);
+        assert!(upstream_tip_in_reflog(git, &work, "main", upstream));
     }
 }
