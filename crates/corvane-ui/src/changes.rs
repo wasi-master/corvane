@@ -1,5 +1,8 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
+//!
+//! Deviation (flag `changes-line-counts`): rows show "+N -M" before the
+//! status icon and the header the totals (GHD `changes-list.tsx` has none).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1856,8 +1859,32 @@ impl ChangesSidebar {
                             .text_size(FONT_SIZE())
                             .truncate()
                             .child(changed_files_label(visible.len(), total))
+                    })
+                    .when_some(self.line_stats(cx), |d, stats| {
+                        let (visible, _, _, _) = self.header_state(cx);
+                        let totals = visible.iter().filter_map(|f| stats.get(&f.path)).fold(
+                            corvane_git::LineStats::default(),
+                            |acc, s| corvane_git::LineStats {
+                                added: acc.added + s.added,
+                                deleted: acc.deleted + s.deleted,
+                            },
+                        );
+                        d.child(div().flex_1())
+                            .child(line_stats_label(totals, None, t))
                     }),
             )
+    }
+
+    /// Per-file line counts while flag `changes-line-counts` is on.
+    fn line_stats(
+        &self,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::collections::HashMap<String, corvane_git::LineStats>>> {
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::CHANGES_LINE_COUNTS) {
+            return None;
+        }
+        s.selected_state().map(|rs| rs.line_stats.clone())
     }
 
     fn branch_name(&self, cx: &App) -> SharedString {
@@ -1930,6 +1957,7 @@ impl ChangesSidebar {
         let query: SharedString = self.filter.read(cx).value().trim().to_string().into();
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
+        let line_stats = self.line_stats(cx);
         // `ariaLabelledBy="changes-list-check-all-label"`: the header's text
         let label = {
             let (visible, total, _, _) = self.header_state(cx);
@@ -1962,6 +1990,7 @@ impl ChangesSidebar {
                             let is_selected = selected.contains(&file.path);
                             file_row(
                                 file,
+                                line_stats.as_ref().and_then(|m| m.get(&file.path)).copied(),
                                 is_selected,
                                 list_focused,
                                 &query,
@@ -3136,6 +3165,7 @@ impl Render for ChangesSidebar {
 #[allow(clippy::too_many_arguments)]
 fn file_row(
     file: &WorkingDirectoryFileChange,
+    line_stats: Option<corvane_git::LineStats>,
     is_selected: bool,
     list_focused: bool,
     query: &str,
@@ -3320,8 +3350,42 @@ fn file_row(
                         .child(crate::autocompletion::highlighted(&file_name, &name_hits)),
                 ),
         )
+        .when_some(line_stats, |d, stats| {
+            let colours = (is_selected && list_focused).then_some(t.box_selected_active_text);
+            d.child(line_stats_label(stats, colours, t))
+        })
         .child(octicon(icon, color))
         .into_any_element()
+}
+
+/// "+N -M" in the added / deleted colours (Corvane addition, flag
+/// `changes-line-counts`); `colour` overrides both, for a focused selected
+/// row. Zero parts are left out.
+fn line_stats_label(
+    stats: corvane_git::LineStats,
+    colour: Option<Hsla>,
+    t: &crate::theme::GhdTheme,
+) -> Div {
+    div()
+        .flex_none()
+        .flex()
+        .flex_row()
+        .gap(SPACING_HALF())
+        .text_size(FONT_SIZE_SM())
+        .when(stats.added > 0, |d| {
+            d.child(
+                div()
+                    .text_color(colour.unwrap_or(t.color_new))
+                    .child(format!("+{}", crate::format::format_count(stats.added))),
+            )
+        })
+        .when(stats.deleted > 0, |d| {
+            d.child(
+                div()
+                    .text_color(colour.unwrap_or(t.color_deleted))
+                    .child(format!("-{}", crate::format::format_count(stats.deleted))),
+            )
+        })
 }
 
 /// "N changed files", or GHD's "3 of 10 changed files" while a filter hides

@@ -280,6 +280,28 @@ registry! {
         upstream: &[Upstream::issue(22471)],
         code: &["crates/corvane-ui/src/dialogs/create_repository.rs"],
     },
+    /// Changes list: lines added / deleted per file and in total.
+    CHANGES_LINE_COUNTS = 208 "changes-line-counts" {
+        title: "Line counts in the Changes list",
+        summary: "Each changed file shows the lines it adds and removes against the last commit \
+                  (+N -M), and the \"N changed files\" header shows the totals of the listed \
+                  files. Runs git diff --numstat on every refresh; untracked files over 1 MiB and \
+                  binary files get no count.",
+        ghd_behaviour: "No line counts for uncommitted changes (only the commit summary in History \
+                        has them).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[
+            Upstream::issue(12914),
+            Upstream::issue(14916),
+            Upstream::issue(16024),
+            Upstream::issue(16930),
+            Upstream::issue(22403),
+        ],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/changes.rs", "crates/corvane-git/src/status.rs"],
+    },
 
     // ---- 300 GitHub ----
 
