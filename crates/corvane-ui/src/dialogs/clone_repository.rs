@@ -22,6 +22,9 @@
 //! already a Git repository, "Add this repository instead?" adds it (GHD
 //! only says the folder contains files).
 //!
+//! Deviation (`360-clone-local-sources`): the URL tab takes a local
+//! folder (`/path`, `~/path`) or `file://` URL, see `corvane_core::clone_info`.
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -273,7 +276,14 @@ impl CloneRepositoryDialog {
             .read(cx)
             .flags
             .bool(corvane_core::flags::ids::CLONE_PATH_INCLUDES_OWNER);
-        let derived = derived_path(&base, &url, with_owner).display().to_string();
+        let local_ok = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_LOCAL_SOURCES);
+        let derived = derived_path(&base, &url, with_owner, local_ok)
+            .display()
+            .to_string();
         if derived != current {
             self.last_derived = derived.clone();
             self.path
@@ -329,7 +339,12 @@ impl CloneRepositoryDialog {
         if self.tab != Tab::Url && self.selected_repo.is_none() {
             return None;
         }
-        let url = corvane_git::normalize_clone_url(&self.url.read(cx).value())?;
+        let local_ok = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_LOCAL_SOURCES);
+        let url = clone_source(&self.url.read(cx).value(), local_ok)?;
         let path = self.path.read(cx).value().trim().to_string();
         if path.is_empty() {
             return None;
@@ -693,11 +708,20 @@ impl CloneRepositoryDialog {
     }
 }
 
+/// What the URL field clones: `normalizeCloneUrl`'s URL, or with
+/// `360-clone-local-sources` a local folder / `file://` URL as typed.
+fn clone_source(input: &str, local_ok: bool) -> Option<String> {
+    if local_ok && corvane_core::clone_info::local_source(input).is_some() {
+        return Some(input.trim().to_string());
+    }
+    corvane_git::normalize_clone_url(input)
+}
+
 /// `<clone dir>/<name>` for a clone URL (`<clone dir>/<owner>/<name>` with
 /// `358-clone-path-includes-owner` when the URL has an owner), the clone
 /// dir itself when the input is not a URL yet.
-fn derived_path(base: &Path, url: &str, with_owner: bool) -> PathBuf {
-    let Some(url) = corvane_git::normalize_clone_url(url) else {
+fn derived_path(base: &Path, url: &str, with_owner: bool, local_ok: bool) -> PathBuf {
+    let Some(url) = clone_source(url, local_ok) else {
         return base.to_path_buf();
     };
     let Some(name) = corvane_git::repository_name_from_url(&url) else {
@@ -847,16 +871,28 @@ mod tests {
     fn derived_path_can_include_the_owner() {
         let base = Path::new("/c");
         let url = "https://github.com/octocat/Hello.git";
-        assert_eq!(derived_path(base, url, false), Path::new("/c/Hello"));
-        assert_eq!(derived_path(base, url, true), Path::new("/c/octocat/Hello"));
+        assert_eq!(derived_path(base, url, false, false), Path::new("/c/Hello"));
         assert_eq!(
-            derived_path(base, "octocat/Hello", true),
+            derived_path(base, url, true, false),
             Path::new("/c/octocat/Hello")
         );
         assert_eq!(
-            derived_path(base, "git@ghe.corp:team/app.git", true),
+            derived_path(base, "octocat/Hello", true, false),
+            Path::new("/c/octocat/Hello")
+        );
+        assert_eq!(
+            derived_path(base, "git@ghe.corp:team/app.git", true, false),
             Path::new("/c/team/app")
         );
-        assert_eq!(derived_path(base, "nope", true), Path::new("/c"));
+        assert_eq!(derived_path(base, "nope", true, false), Path::new("/c"));
+        // `360-clone-local-sources`: a local folder names the clone after itself
+        assert_eq!(
+            derived_path(base, "/src/a/tool.git", true, true),
+            Path::new("/c/tool")
+        );
+        assert_eq!(
+            derived_path(base, "file:///src/my-app", true, true),
+            Path::new("/c/my-app")
+        );
     }
 }

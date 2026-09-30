@@ -701,6 +701,22 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
     },
 
+    /// Clone from a local folder.
+    CLONE_LOCAL_SOURCES = 360 "clone-local-sources" {
+        title: "Clone from a local folder",
+        summary: "Clone a Repository's URL tab takes a local repository (/path, ~/path or a \
+                  file:// URL): the local path is named after the folder, and a path without a \
+                  Git repository is reported before cloning.",
+        ghd_behaviour: "A path like /a/b is taken for the GitHub repository a/b; longer paths \
+                        can't be cloned.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2995)],
+        code: &["crates/corvane-core/src/clone_info.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
