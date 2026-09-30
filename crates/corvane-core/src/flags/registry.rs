@@ -454,6 +454,19 @@ registry! {
         upstream: &[Upstream::issue(20401)],
         code: &["crates/corvane-ui/src/history.rs"],
     },
+    /// The commit details show the date and link the SHA.
+    COMMIT_DETAILS_EXTRAS = 253 "commit-details-extras" {
+        title: "Commit date and SHA link in the commit details",
+        summary: "The selected commit's details show the author date and time (the relative time on \
+                  hover), and in a GitHub repository the SHA opens the commit on GitHub.",
+        ghd_behaviour: "Author, SHA and line counts only; the SHA is plain text.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20715), Upstream::issue(3785)],
+        code: &["crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 

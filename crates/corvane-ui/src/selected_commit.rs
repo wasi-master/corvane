@@ -10,7 +10,8 @@
 //! Default Program opens the file as of the commit (flag `248`), not the
 //! working copy. A file gone from disk keeps its Copy path items (flag
 //! `249`). A multi-commit selection's summary shows the range's +added
-//! -deleted line totals (flag `251`).
+//! -deleted line totals (flag `251`). The meta row adds the author date and
+//! links the SHA to the commit on GitHub (flag `253`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -336,6 +337,14 @@ impl SelectedCommitView {
             .as_ref()
             .map(|c| (c.lines_added, c.lines_deleted))
             .unwrap_or((0, 0));
+        // `253`: the author date, and the SHA links to the commit on GitHub
+        let extras = s
+            .flags
+            .bool(corvane_core::flags::ids::COMMIT_DETAILS_EXTRAS);
+        let commit_url = extras
+            .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
+            .flatten()
+            .map(|g| format!("{}/commit/{}", g.html_url, commit.sha));
         let empty = commit.summary.is_empty();
         let title = if empty {
             "Empty commit message".to_string()
@@ -455,14 +464,41 @@ impl SelectedCommitView {
                                         ))
                                         .child(commit.author.name.clone()),
                                 )
+                                .when(extras, |d| {
+                                    let date = commit.author.date();
+                                    d.child(
+                                        meta_item(div())
+                                            .id("commit-date")
+                                            .ghd_tooltip(crate::relative_time::relative(date))
+                                            .child(octicon(Octicon::History, t.text))
+                                            .child(
+                                                div()
+                                                    .pl(SPACING_HALF())
+                                                    .child(crate::format::format_date_time(date)),
+                                            ),
+                                    )
+                                })
                                 .child(
                                     meta_item(div())
                                         .child(octicon(Octicon::GitCommit, t.text))
-                                        .child(div().pl(SPACING_HALF()).child(if expanded {
-                                            commit.sha.clone()
-                                        } else {
-                                            commit.short_sha().to_string()
-                                        }))
+                                        .child({
+                                            let label = if expanded {
+                                                commit.sha.clone()
+                                            } else {
+                                                commit.short_sha().to_string()
+                                            };
+                                            match commit_url {
+                                                Some(url) => div().pl(SPACING_HALF()).child(
+                                                    link_button("commit-sha-link", label, cx)
+                                                        .text_size(FONT_SIZE_SM())
+                                                        .ghd_tooltip("View on GitHub")
+                                                        .on_click(move |_, _, cx| {
+                                                            cx.open_url(&url)
+                                                        }),
+                                                ),
+                                                None => div().pl(SPACING_HALF()).child(label),
+                                            }
+                                        })
                                         .child({
                                             let sha = commit.sha.clone();
                                             // `.copy-button`: 16 × 14 with a 12 px icon

@@ -48,6 +48,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A multi-commit selection's summary (GHD `expandable-commit-summary.tsx` `renderCommitsInDiff`, the count only) also shows the range's `+added -deleted` line totals from the range numstat. Flag: `251-multi-commit-line-totals`.
 - A commit row whose message has a description shows a secondary-coloured `kebab-horizontal` mark after the summary (Corvane addition; GHD `commit-list-item.tsx` shows the summary only). Flag: `252-commit-body-indicator`.
 - Compact History rows (Corvane addition; GHD `commit-list.tsx` `RowHeight = 50`): 30 px rows with the summary only, no avatar / "author • time" line; the drag element follows. Flag: `140-compact-commit-rows`.
+- The selected commit's meta row (GHD `expandable-commit-summary.tsx`: author, SHA, line counts, tags) adds the author date and time in the user's formats (relative time as tooltip), and in a GitHub repository the SHA is a link to `<html_url>/commit/<sha>`. The author is not linked (Corvane has no login for a commit's author). Flag: `253-commit-details-extras`.
 
 ## Tutorial
 
