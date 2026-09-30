@@ -30,6 +30,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** and the signed-in blank slate: the account picker can start on a chosen account (a list of logins; the first one signed in for the tab wins) instead of the first account signed in. Flag: `357-clone-default-account`.
 - **Clone dialog** can show a "Shallow clone (only the latest commit)" checkbox under the local path that clones with `git clone --depth 1` (GHD always clones the full history). Flag: `269-shallow-clone`.
 - **Clone dialog** can suggest `<clone folder>/<owner>/<name>` as the local path (GHD: `<clone folder>/<name>`); git creates the owner folder. Flag: `358-clone-path-includes-owner`.
+- **Clone dialog**: when the local path is already a Git repository, a line under the path offers "Add this repository instead?" (as Create a New Repository does); GHD only says the folder contains files. Flag: `359-clone-offer-add-existing`.
 
 ## Repository
 

@@ -686,6 +686,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
     },
 
+    /// Clone offers to add a repository already at the local path.
+    CLONE_OFFER_ADD_EXISTING = 359 "clone-offer-add-existing" {
+        title: "Clone: add a repository already at the destination",
+        summary: "When Clone a Repository's local path is already a Git repository (usually an \
+                  earlier clone), \"Add this repository instead?\" under the path adds it.",
+        ghd_behaviour: "Only says the folder contains files; the repository has to be added \
+                        through Add Local Repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(2956), Upstream::issue(3540)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.

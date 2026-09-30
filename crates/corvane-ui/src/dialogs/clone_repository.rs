@@ -18,6 +18,10 @@
 //! Deviation (`358-clone-path-includes-owner`): the path derived from the
 //! URL can be `<clone dir>/<owner>/<name>` rather than `<clone dir>/<name>`.
 //!
+//! Deviation (`359-clone-offer-add-existing`): when the local path is
+//! already a Git repository, "Add this repository instead?" adds it (GHD
+//! only says the folder contains files).
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -76,6 +80,9 @@ pub struct CloneRepositoryDialog {
     picker: AccountPickerState,
     /// `269-shallow-clone`: "Shallow clone" is ticked.
     shallow: bool,
+    /// `359-clone-offer-add-existing`: the local path is already a
+    /// repository, offered to be added instead.
+    existing_repo: Option<PathBuf>,
 }
 
 impl CloneRepositoryDialog {
@@ -155,6 +162,7 @@ impl CloneRepositoryDialog {
             enterprise_account: None,
             picker,
             shallow: false,
+            existing_repo: None,
         };
         this.ensure_loaded(cx);
         this
@@ -283,6 +291,15 @@ impl CloneRepositoryDialog {
         } else {
             validate_empty_folder(Path::new(&path))
         };
+        let offer_add = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_OFFER_ADD_EXISTING);
+        self.existing_repo = (offer_add
+            && self.path_error.is_some()
+            && corvane_git::path_status(Path::new(&path)) == corvane_git::PathStatus::Repository)
+            .then(|| PathBuf::from(&path));
     }
 
     fn choose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -464,10 +481,33 @@ impl CloneRepositoryDialog {
             },
             cx,
         );
+        let add_existing = self.existing_repo.clone().map(|path| {
+            let t = cx.ghd();
+            div()
+                .mt(SPACING())
+                .flex()
+                .flex_row()
+                .flex_wrap()
+                .gap(zpx(4.))
+                .text_color(t.text_secondary)
+                .child("This folder is already a Git repository.")
+                .child(
+                    div()
+                        .id("clone-add-existing")
+                        .text_color(t.link)
+                        .cursor_pointer()
+                        .child("Add this repository instead?")
+                        .on_click(move |_, _, cx| {
+                            Dispatcher::close_popup(cx);
+                            Dispatcher::add_repository(path.clone(), cx);
+                        }),
+                )
+        });
         div()
             .flex()
             .flex_col()
             .child(self.path_field(window, cx))
+            .children(add_existing)
             .when(shallow_option, |d| {
                 d.child(div().mt(SPACING()).child(shallow))
             })
