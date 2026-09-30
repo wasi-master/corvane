@@ -1,0 +1,157 @@
+%YAML 1.2
+---
+# Genero per (source.genero-per): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/FourjsGenero/GeneroFgl.tmbundle.git via GitHub Linguist v9.7.0 (license: unlicense).
+name: Genero per
+scope: source.genero-per
+file_extensions:
+- per
+contexts:
+  main:
+  - include: repo_screen
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_numerics
+  - match: ^\s*&\s*(elif|else|endif|ifdef|ifndef|include|undef)\b
+    scope: meta.preprocessor
+  - match: ^\s*&\s*define\b
+    captures:
+      0: meta.preprocessor
+    push:
+    - match: '[^\\\{]$'
+      pop: true
+    - include: repo_keywords
+    - include: repo_strings
+    - include: repo_numerics
+    - match: '#'
+      scope: meta.preprocessor
+    - include: repo_comments
+    - match: (\\)[ \t]*\n
+      captures:
+        1: meta.preprocessor
+  repo_comments:
+  - match: '#.*$'
+    scope: comment.line.number-sign.per
+  - match: --.*$
+    scope: comment.line.double-dash.per
+  - match: '{'
+    push:
+    - meta_scope: comment.block.per
+    - match: '}'
+      pop: true
+  repo_keywords:
+  - match: \b(?i)(ACCELERATOR|ACCELERATOR2|ACCELERATOR3|ACCELERATOR4|ACTION|ACTIONIMAGE|ACTIONS|ACTIONTEXT|AGGREGATE|AGGREGATETEXT|AGGREGATETYPE|ALT|AND|ATTRIBUTES|AUTO|AUTOCOMMANDS |AUTOHIDE|AUTOITEMS |AUTONEXT|AUTOSCALE|AVG)\b
+    scope: keyword.control.per
+  - match: \b(?i)(BETWEEN|BIGINT|BLACK|BLINK|BLUE|BOOLEAN|BOTH|BUTTON|BUTTONEDIT|BUTTONTEXTHIDDEN|BY|BYTE)\b
+    scope: keyword.control.per
+  - match: \b(?i)(CANVAS|CENTER|CENTURY|CHAR|CHARACTER|CHARACTERS|CHECKBOX|CLASS|COLOR|COLUMNS|COMBOBOX|COMMAND|COMMENT|COMMENTS|COMPACT|COMPLETER|COMPONENTTYPE|COMPRESS|CONFIG|CONTENT|CONTEXTMENU|CONTROL|COUNT|CURRENT|CYAN)\b
+    scope: keyword.control.per
+  - match: \b(?i)(DATABASE|DATE|DATEEDIT|DATETIME|DATETIMEEDIT|DAY|DEC|DECIMAL|DEFAULT|DEFAULTS|DEFAULTVIEW|DELIMITERS|DISCLOSUREINDICATOR|DISPLAY|DISPLAYONLY|DOUBLE|DOUBLECLICK|DOWNSHIFT|DYNAMIC)\b
+    scope: keyword.control.per
+  - match: \b(?i)(EDIT|EMAIL|END|EXPANDEDCOLUMN)\b
+    scope: keyword.control.per
+  - match: \b(?i)(FALSE|FIELD|FIXED|FLIPPED|FLOAT|FOLDER|FONTPITCH|FORM|FORMAT|FORMONLY|FRACTION)\b
+    scope: keyword.control.per
+  - match: \b(?i)(GREEN|GRID|GRIDCHILDRENINPARENT|GROUP)\b
+    scope: keyword.control.per
+  - match: \b(?i)(HBOX|HEIGHT|HIDDEN|HORIZONTAL|HOUR)\b
+    scope: keyword.control.per
+  - match: \b(?i)(IDCOLUMN|IMAGE|IMAGECOLLAPSED|IMAGECOLUMN|IMAGEEXPANDED|IMAGELEAF|INCLUDE|INITIAL|INITIALIZER|INITIALPAGESIZE|INPUT|INSTRUCTIONS|INT|INTEGER|INTERVAL|INVISIBLE|IS|ISNODECOLUMN|ITEM|ITEMS)\b
+    scope: keyword.control.per
+  - match: \b(?i)(JUSTIFY)\b
+    scope: keyword.control.per
+  - match: \b(?i)(KEY|KEYBOARDHINT|KEYS)\b
+    scope: keyword.control.per
+  - match: \b(?i)(LABEL|LARGE|LAYOUT|LEFT|LIKE|LINES)\b
+    scope: keyword.control.per
+  - match: \b(?i)(MAGENTA|MATCHES|MAX|MEDIUM|MIN|MINHEIGHT|MINUTE|MINWIDTH|MONEY|MONTH)\b
+    scope: keyword.control.per
+  - match: \b(?i)(NO|NOENTRY|NONCOMPRESS|NONE|NORMAL|NOSWIPE|NOT|NOTEDITABLE|NOUPDATE|NULL|NUMBER|NUMERIC)\b
+    scope: keyword.control.per
+  - match: \b(?i)(OPTIONS|OR|ORIENTATION)\b
+    scope: keyword.control.per
+  - match: \b(?i)(PACKED|PAGE|PARENTIDCOLUMN|PHANTOM|PHONE|PICTURE|PIXELHEIGHT|PIXELS|PIXELWIDTH|PLACEHOLDER|POINTS|PRECISION|PROGRAM|PROGRAMS|PROGRESSBAR|PROPERTIES)\b
+    scope: keyword.control.per
+  - match: \b(?i)(QUERYCLEAR|QUERYEDITABLE)\b
+    scope: keyword.control.per
+  - match: \b(?i)(RADIOGROUP|REAL|RECORD|RED|REQUIRED|REVERSE|RIGHT)\b
+    scope: keyword.control.per
+  - match: \b(?i)(SAMPLE|SCHEMA|SCREEN|SCROLL|SCROLLBARS|SCROLLGRID|SEARCH|SECOND|SEPARATOR|SHIFT|SIZE|SIZEPOLICY|SLIDER|SMALL|SMALLFLOAT|SMALLINT|SPACING|SPINEDIT|SPLIT|SPLITTER|STEP|STRETCH|STRETCHCOLUMNS|STRETCHMAX|STRETCHMIN|STYLE|SUM)\b
+    scope: keyword.control.per
+  - match: \b(?i)(TABINDEX|TABLE|TABLES|TAG|TEXT|TEXTEDIT|THROUGH|THRU|TIMEEDIT|TIMESTAMP|TITLE|TO|TODAY|TOOLBAR|TOPMENU|TREE|TRUE|TYPE)\b
+    scope: keyword.control.per
+  - match: \b(?i)(UNDERLINE|UNHIDABLE|UNHIDABLECOLUMNS|UNMOVABLE|UNMOVABLECOLUMNS|UNSIZABLE|UNSIZABLECOLUMNS|UNSORTABLE|UNSORTABLECOLUMNS|UPSHIFT|URL|USER)\b
+    scope: keyword.control.per
+  - match: \b(?i)(VALIDATE|VALUECHECKED|VALUEMAX|VALUEMIN|VALUEUNCHECKED|VARCHAR|VARIABLE|VBOX|VERIFY|VERSION|VERTICAL)\b
+    scope: keyword.control.per
+  - match: \b(?i)(WANTFIXEDPAGESIZE|WANTNORETURNS|WANTTABS|WEBCOMPONENT|WHERE|WHITE|WIDGET|WIDTH|WINDOWS|WINDOWSTYLE|WIP|WITHOUT|WORDWRAP)\b
+    scope: keyword.control.per
+  - match: \b(?i)(X)\b
+    scope: keyword.control.per
+  - match: \b(?i)(Y|YEAR|YELLOW|YES)\b
+    scope: keyword.control.per
+  - match: \b(?i)(ZEROFILL)\b
+    scope: keyword.control.per
+  repo_numerics:
+  - match: (\+|\-)?((\b\d+(\.\d+)?)|(\.\d+))([e|E](\+|\-)?\d+)?
+    scope: constant.numeric.per
+  repo_screen:
+  - match: (^[ \t]*\{$)
+    captures:
+      1: punctuation.definition.tag
+    push:
+    - match: (})
+      pop: true
+      captures:
+        1: punctuation.definition.tag
+    - match: (\[)
+      captures:
+        1: punctuation.definition.tag
+      push:
+      - meta_scope: meta.tag
+      - match: (\])
+        pop: true
+        captures:
+          1: punctuation.definition.tag
+      - match: '[|:-]'
+        scope: punctuation.definition.tag
+      - match: .
+        scope: entity.other.attribute-name
+    - match: (\<)([a-zA-Z]*)
+      captures:
+        1: punctuation.definition.tag
+        2: entity.name.tag
+      push:
+      - meta_scope: meta.tag
+      - match: (>)
+        pop: true
+        captures:
+          1: punctuation.definition.tag
+          2: entity.name.tag
+      - match: .
+        scope: entity.other.attribute-name
+    - match: .
+  repo_strings:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.per
+    - match: '''(?!'')'
+      pop: true
+    - match: \\[\\btnfr'"]|\\$|''
+      scope: constant.character.escape.untitled
+    - match: \\x[0-9a-fA-F]{1,2}
+      scope: constant.character.escape.untitled
+    - match: \\.
+      scope: invalid.illegal
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.per
+    - match: '"(?!")'
+      pop: true
+    - match: \\[\\btnfr'"]|\\$|""
+      scope: constant.character.escape.untitled
+    - match: \\x[0-9a-fA-F]{1,2}
+      scope: constant.character.escape.untitled
+    - match: \\.
+      scope: invalid.illegal

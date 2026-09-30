@@ -1,0 +1,114 @@
+%YAML 1.2
+---
+# JSON with Comments (source.json.comments): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/DecimalTurn/vscode-jsonc-syntax-highlighting.git via GitHub Linguist v9.7.0 (license: mit).
+name: JSON with Comments
+scope: source.json.comments
+hidden: true
+contexts:
+  main:
+  - include: repo_value
+  repo_array:
+  - match: \[
+    captures:
+      0: punctuation.definition.array.begin.json.comments
+    push:
+    - meta_scope: meta.structure.array.json.comments
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.json.comments
+    - include: repo_value
+    - match: ','
+      scope: punctuation.separator.array.json.comments
+    - match: '[^\s\]]'
+      scope: invalid.illegal.expected-array-separator.json.comments
+  repo_comments:
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.json.comments
+    push:
+    - meta_scope: comment.block.documentation.json.comments
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.json.comments
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.json.comments
+    push:
+    - meta_scope: comment.block.json.comments
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.json.comments
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.js
+    captures:
+      1: punctuation.definition.comment.json.comments
+  repo_constant:
+  - match: \b(?:true|false|null)\b
+    scope: constant.language.json.comments
+  repo_number:
+  - match: "(?x)        # turn on extended mode\n  -?        # an optional minus\n  (?:\n    0       # a zero\n    |       # ...or...\n    [1-9]   # a 1-9 character\n    \\d*     # followed by zero or more digits\n  )\n  (?:\n    (?:\n      \\.    # a period\n      \\d+   # followed by one or more digits\n    )?\n    (?:\n      [eE]  # an e character\n      [+-]? # followed by an option +/-\n      \\d+   # followed by one or more digits\n    )?      # make exponent optional\n  )?        # make decimal portion optional"
+    scope: constant.numeric.json.comments
+  repo_object:
+  - match: \{
+    captures:
+      0: punctuation.definition.dictionary.begin.json.comments
+    push:
+    - meta_scope: meta.structure.dictionary.json.comments
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.dictionary.end.json.comments
+    - include: repo_objectkey
+    - include: repo_comments
+    - match: ':'
+      captures:
+        0: punctuation.separator.dictionary.key-value.json.comments
+      push:
+      - meta_scope: meta.structure.dictionary.value.json.comments
+      - match: (,)|(?=\})
+        pop: true
+        captures:
+          1: punctuation.separator.dictionary.pair.json.comments
+      - include: repo_value
+      - match: '[^\s,]'
+        scope: invalid.illegal.expected-dictionary-separator.json.comments
+    - match: '[^\s\}]'
+      scope: invalid.illegal.expected-dictionary-separator.json.comments
+  repo_objectkey:
+  - match: '"'
+    captures:
+      0: punctuation.entity.name.tag.property-name.begin.json.comments
+    push:
+    - meta_scope: entity.name.tag.property-name.json.comments string.json.comments
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.entity.name.tag.property-name.end.json.comments
+    - include: repo_stringcontent
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.json.comments
+    push:
+    - meta_scope: string.quoted.double.json.comments
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.json.comments
+    - include: repo_stringcontent
+  repo_stringcontent:
+  - match: "(?x)                # turn on extended mode\n  \\\\                # a literal backslash\n  (?:               # ...followed by...\n    [\"\\\\/bfnrt]     # one of these characters\n    |               # ...or...\n    u               # a u\n    [0-9a-fA-F]{4}) # and four hex digits"
+    scope: constant.character.escape.json.comments
+  - match: \\.
+    scope: invalid.illegal.unrecognized-string-escape.json.comments
+  repo_value:
+  - include: repo_constant
+  - include: repo_number
+  - include: repo_string
+  - include: repo_array
+  - include: repo_object
+  - include: repo_comments

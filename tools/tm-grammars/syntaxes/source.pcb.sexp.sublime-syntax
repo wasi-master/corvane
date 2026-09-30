@@ -1,0 +1,113 @@
+%YAML 1.2
+---
+# KiCad Layout (source.pcb.sexp): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-pcb via GitHub Linguist v9.7.0 (license: isc).
+name: KiCad Layout
+scope: source.pcb.sexp
+file_extensions:
+- kicad_pcb
+- kicad_mod
+- kicad_wks
+- fp-lib-table
+contexts:
+  main:
+  - match: (\()\s*(layers)(?=\s|$|\()
+    captures:
+      1: punctuation.section.expression.begin.pcb.sexp
+      2: storage.type.class.layers.pcb.sexp
+    push:
+    - meta_scope: meta.expression.layers.pcb.sexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.expression.end.pcb.sexp
+    - match: (\()\s*(\d+)(?:\s+|(?=$|\())
+      captures:
+        1: punctuation.section.expression.begin.pcb.sexp
+        2: constant.numeric.integer.decimal.pcb.sexp
+      push:
+      - meta_scope: meta.expression.layer.pcb.sexp
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.section.expression.end.pcb.sexp
+      - match: \s*(-?(?:(?![\s\(\)])[\0-\x7F])+)
+        captures:
+          1: entity.name.function.pcb.sexp
+      - include: repo_shared
+    - include: repo_shared
+  - match: (\()\s*(comment)(?=\s|$|\()
+    captures:
+      1: punctuation.section.expression.begin.pcb.sexp
+      2: entity.name.function.comment.pcb.sexp
+    push:
+    - meta_scope: meta.expression.comment.pcb.sexp
+    - meta_content_scope: comment.block.expression.pcb.sexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.expression.end.pcb.sexp
+    - match: '"'
+      push:
+      - match: '"|^|$'
+        pop: true
+      - include: repo_stringInnards
+  - match: \(
+    captures:
+      0: punctuation.section.expression.begin.pcb.sexp
+    push:
+    - meta_scope: meta.expression.pcb.sexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.expression.end.pcb.sexp
+    - match: \s*(kicad_pcb|kicad_sch|module|page_layout|fp_lib_table|sym_lib_table)(?=\s|$|\()
+      captures:
+        1: storage.type.class.pcb.sexp
+    - match: \s*(string_quote)\s+(")(?=\))
+      captures:
+        1: entity.name.function.pcb.sexp
+        2: constant.character.quote.pcb.sexp
+    - match: \s*(-?(?:(?![\s\(\)])[\0-\x7F])+)
+      captures:
+        1: entity.name.function.pcb.sexp
+    - include: repo_shared
+  repo_shared:
+  - include: repo_values
+  - include: main
+  repo_stringInnards:
+  - match: \\\S
+    scope: constant.character.escape.pcb.sexp
+  - match: (?:[^"\\]|\\.)+(?=$)
+    scope: invalid.illegal.unclosed.string.pcb.sexp
+  repo_values:
+  - match: '[-+]?\d*\.\d+'
+    scope: constant.numeric.float.decimal.pcb.sexp
+  - match: '[-+]?\d+(?=\s|\))'
+    scope: constant.numeric.integer.decimal.pcb.sexp
+  - match: 0x[A-Fa-f0-9]+(?:_[A-Fa-f0-9]+)*
+    scope: constant.numeric.integer.hex.pcb.sexp
+  - match: (?<=\s|\(|\))(true|false|yes|no)(?=\s|\(|\))
+  - match: (")(")
+    scope: string.quoted.double.empty.pcb.sexp
+    captures:
+      1: punctuation.definition.string.begin.pcb.sexp
+      2: punctuation.definition.string.end.pcb.sexp
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.pcb.sexp
+    push:
+    - meta_scope: string.quoted.double.pcb.sexp
+    - match: '"|^|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.pcb.sexp
+    - include: repo_stringInnards
+  - match: (\${)([^\s}\(\)]+)(})
+    scope: meta.embedded.source.pcb.sexp
+    captures:
+      1: punctuation.section.embedded.bracket.curly.begin.pcb.sexp
+      2: string.interpolated.embedded.pcb.sexp
+      3: punctuation.section.embedded.bracket.curly.end.pcb.sexp
+  - match: '[^\s\(\)]+'
+    scope: variable.parameter.identifier.pcb.sexp

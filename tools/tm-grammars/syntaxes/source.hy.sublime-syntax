@@ -1,0 +1,225 @@
+%YAML 1.2
+---
+# Hy (source.hy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/tshakalekholoane/vscode-hy via GitHub Linguist v9.7.0 (license: mit).
+name: Hy
+scope: source.hy
+file_extensions:
+- hy
+first_line_match: ^#!.*\b(hy)\b
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_shebang
+  - include: repo_quoted-sexp
+  - include: repo_sexp
+  - include: repo_keyfn
+  - include: repo_string
+  - include: repo_vector
+  - include: repo_set
+  - include: repo_map
+  - include: repo_regexp
+  - include: repo_var
+  - include: repo_constants
+  - include: repo_dynamic-variables
+  - include: repo_metadata
+  - include: repo_namespace-symbol
+  - include: repo_symbol
+  repo_comment:
+  - match: (?<!\\);(;{1,3})?
+    captures:
+      0: punctuation.definition.comment.hy
+    push:
+    - meta_scope: comment.line.semicolon.hy
+    - match: $
+      pop: true
+    - match: '(?<=;)\s+\K(TODO|FIXME|XXX|BUG|HACK|NOTE):'
+      scope: keyword.codetag.hy
+  repo_constants:
+  - match: (None)(?=(\s|\)|\]|\}))
+    scope: constant.language.null.hy
+  - match: (True|False)
+    scope: constant.language.boolean.hy
+  - match: (-?\d+/\d+)
+    scope: constant.numeric.fraction.hy
+  - match: (-?0[xX][0-9a-fA-F]+)
+    scope: constant.numeric.hexadecimal.hy
+  - match: (-?0[oO][0-7]+)
+    scope: constant.numeric.octal.hy
+  - match: (-?\d+\.\d+([eE][+-]?\d+)?)
+    scope: constant.numeric.float.hy
+  - match: ((-?\d+(\.(\d+([eE][+-]?\d+)?)?)?)[+-](\d+(\.(\d+([eE][+-]?\d+)?)?)?)?[jJ])
+    scope: constant.numeric.complex.hy
+  - match: (-?\d+)
+    scope: constant.numeric.int.hy
+  - include: repo_keyword
+  repo_dynamic-variables:
+  - match: \*[\w\.\-\_\:\+\=\>\<\!\?\d]+\*
+    scope: meta.symbol.dynamic.hy
+  repo_keyfn:
+  - match: (?<=(\s|\(|\[|\{))(break|continue)|((if|set[vx])(-[-\p{Ll}\?]*)?|(unless|when|while|[dgls]?for)(-[-\p{Ll}]*)?|cond|do|fn(/a)?|raise[\p{Ll}\-]*|try|except|finally|return|yield)(?=(\s|\)|\]|\}))
+    scope: keyword.control.hy
+  - match: (?<=(\s|\(|\[|\{))(and|cmp|not|or|xor)(?=(\s|\)|\]|\}))
+    scope: keyword.operator.hy
+  - match: ^#@(?=\()|(?<=(\s|\(|\[|\{))(\.\s|__\p{Ll}+__|(as)?->>?|as(sert)?|async|await|def(class|n(/a)?|main|macro(/g\!|\!)?|tag)|del|doto|eval-(and|when)-compile|gensym|in|import|pys?|quasiquote|quote|require|unquote(-splice)?|with(-decorator|-gensyms|/a)?|yield-from)(?=(\s|\)|\]|\}))
+    scope: keyword.other.hy
+  - match: (?<=(\s|\(|\[|\{))(global|nonlocal)(?=(\s|\)|\]|\}))
+    scope: storage.modifier.hy
+  repo_keyword:
+  - match: (?<=(\s|\(|\[|\{)):[\w\#\.\-\_\:\+\=\>\<\/\!\?\*]+(?=(\s|\)|\]|\}|\,))
+    scope: constant.keyword.hy
+  repo_map:
+  - match: (\{)
+    captures:
+      1: punctuation.section.map.begin.hy
+    push:
+    - meta_scope: meta.map.hy
+    - match: (\}(?=[\}\]\)\s]*(?:;|$)))|(\})
+      pop: true
+      captures:
+        1: punctuation.section.map.end.trailing.hy
+        2: punctuation.section.map.end.hy
+    - include: main
+  repo_metadata:
+  - match: (\^\{)
+    captures:
+      1: punctuation.section.metadata.map.begin.hy
+    push:
+    - meta_scope: meta.metadata.map.hy
+    - match: (\}(?=[\}\]\)\s]*(?:;|$)))|(\})
+      pop: true
+      captures:
+        1: punctuation.section.metadata.map.end.trailing.hy
+        2: punctuation.section.metadata.map.end.hy
+    - include: main
+  - match: (\^)
+    push:
+    - meta_scope: meta.metadata.simple.hy
+    - match: (\s)
+      pop: true
+    - include: repo_keyword
+    - include: main
+  repo_namespace-symbol:
+  - match: ([\p{L}\.\-\_\+\=\>\<\!\?\*][\w\.\-\_\:\+\=\>\<\!\?\*\d]*)/
+    captures:
+      1: meta.symbol.namespace.hy
+  repo_quoted-sexp:
+  - match: (['`]\()
+    captures:
+      1: punctuation.section.expression.begin.hy
+    push:
+    - meta_scope: meta.quoted-expression.hy
+    - match: (\))$|(\)(?=[\}\]\)\s]*(?:;|$)))|(\))
+      pop: true
+      captures:
+        1: punctuation.section.expression.end.trailing.hy
+        2: punctuation.section.expression.end.trailing.hy
+        3: punctuation.section.expression.end.hy
+    - include: main
+  repo_regexp:
+  - match: '#"'
+    captures:
+      0: punctuation.definition.regexp.begin.hy
+    push:
+    - meta_scope: string.regexp.hy
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.regexp.end.hy
+    - include: repo_regexp_escaped_char
+  repo_regexp_escaped_char:
+  - match: \\.
+    scope: constant.character.escape.hy
+  repo_set:
+  - match: (\#\{)
+    captures:
+      1: punctuation.section.set.begin.hy
+    push:
+    - meta_scope: meta.set.hy
+    - match: (\}(?=[\}\]\)\s]*(?:;|$)))|(\})
+      pop: true
+      captures:
+        1: punctuation.section.set.end.trailing.hy
+        2: punctuation.section.set.end.hy
+    - include: main
+  repo_sexp:
+  - match: (\()
+    captures:
+      1: punctuation.section.expression.begin.hy
+    push:
+    - meta_scope: meta.expression.hy
+    - match: (\))$|(\)(?=[\}\]\)\s]*(?:;|$)))|(\))
+      pop: true
+      captures:
+        1: punctuation.section.expression.end.trailing.hy
+        2: punctuation.section.expression.end.trailing.hy
+        3: punctuation.section.expression.end.hy
+    - match: (?<=\()(set[vx]|def[\w\d._:+=><!?*-]*|[\w._:+=><!?*-][\w\d._:+=><!?*-]*/def[\w\d._:+=><!?*-]*)\s+
+      captures:
+        1: keyword.control.hy
+      push:
+      - meta_scope: meta.definition.global.hy
+      - match: (?=\))
+        pop: true
+      - include: repo_metadata
+      - include: repo_dynamic-variables
+      - match: ([\p{L}\.\-\_\+\=\>\<\!\?\*][\w\.\-\_\:\+\=\>\<\!\?\*\d]*)
+        scope: entity.global.hy
+      - include: main
+    - include: repo_keyfn
+    - include: repo_constants
+    - include: repo_vector
+    - include: repo_map
+    - include: repo_set
+    - include: repo_sexp
+    - match: (?<=\()(.+?)(?=\s|\))
+      captures:
+        1: entity.name.function.hy
+    - include: main
+  repo_shebang:
+  - match: ^(#!)
+    captures:
+      1: punctuation.definition.comment.shebang.hy
+    push:
+    - meta_scope: comment.line.shebang.hy
+    - match: $
+      pop: true
+  repo_string:
+  - match: (?<!\\)(")
+    captures:
+      1: punctuation.definition.string.begin.hy
+    push:
+    - meta_scope: string.quoted.double.hy
+    - match: (")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.hy
+    - match: \\.
+      scope: constant.character.escape.hy
+  - match: (?<!\\)(\#\[\[)
+    captures:
+      1: punctuation.definition.string.begin.hy
+    push:
+    - meta_scope: string.quoted.bracket-string.hy
+    - match: (\]\])
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.hy
+  repo_symbol:
+  - match: ([\p{L}\.\-\_\+\=\>\<\!\?\*][\w\.\-\_\:\+\=\>\<\!\?\*\d]*)
+    scope: meta.symbol.hy
+  repo_var:
+  - match: (?<=(\s|\(|\[|\{)\#)'[\w\.\-\_\:\+\=\>\<\/\!\?\*]+(?=(\s|\)|\]|\}))
+    scope: meta.var.hy
+  repo_vector:
+  - match: (\[)
+    captures:
+      1: punctuation.section.vector.begin.hy
+    push:
+    - meta_scope: meta.vector.hy
+    - match: (\](?=[\}\]\)\s]*(?:;|$)))|(\])
+      pop: true
+      captures:
+        1: punctuation.section.vector.end.trailing.hy
+        2: punctuation.section.vector.end.hy
+    - include: main

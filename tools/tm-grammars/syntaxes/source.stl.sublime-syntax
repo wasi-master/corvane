@@ -1,0 +1,75 @@
+%YAML 1.2
+---
+# STL (source.stl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: STL
+scope: source.stl
+file_extensions:
+- stl
+contexts:
+  main:
+  - include: repo_main
+  repo_facet:
+  - match: (?:^||(?<=\s))[ \t]*(facet)(?:$|[ \t]+)
+    captures:
+      1: keyword.control.begin.facet.stl
+    push:
+    - meta_scope: meta.facet.stl
+    - match: (?:^||(?<=\s))[ \t]*(endfacet)(?=$|\s)
+      pop: true
+      captures:
+        1: keyword.control.end.facet.stl
+    - include: repo_normal
+    - include: repo_loop
+    - include: repo_vertex
+  repo_loop:
+  - match: (?:^||(?<=\s))[ \t]*(outer[ \t]+loop)(?=$|\s)
+    captures:
+      1: keyword.control.begin.loop.stl
+    push:
+    - meta_scope: meta.loop.stl
+    - match: (?:^||(?<=\s))[ \t]*(endloop)(?=$|\s)
+      pop: true
+      captures:
+        1: keyword.control.end.loop.stl
+    - include: repo_vertex
+  repo_main:
+  - include: repo_solid
+  - include: repo_facet
+  - include: repo_loop
+  - include: repo_vertex
+  repo_normal:
+  - match: (?:^||(?<=\s))normal(?=$|\s)
+    captures:
+      0: storage.type.normal.stl
+    push:
+    - meta_scope: meta.normal.stl
+    - match: (?=[ \t]*$)
+      pop: true
+    - include: scope:etc
+  repo_solid:
+  - match: "(?:^\uFEFF?||(?<=\\s))[ \\t]*(solid)(?:[ \\t]+(\\S+)(?:[ \\t]+(\\S.*))?)?[ \\t]*$"
+    captures:
+      0: meta.definition.header.stl
+      1: keyword.control.start.solid.stl
+      2: entity.name.solid.stl
+      3: comment.line.ignored.stl
+    push:
+    - meta_scope: meta.solid.stl
+    - match: "(?:^\uFEFF?||(?<=\\s))[ \\t]*(endsolid)(?:[ \\t]+(\\2)(?=$|\\s))?(?:[ \\t]+(\\S.*))?[ \\t]*$"
+      pop: true
+      captures:
+        0: meta.definition.footer.stl
+        1: keyword.control.end.solid.stl
+        2: entity.name.solid.stl
+        3: comment.line.ignored.stl
+    - include: repo_facet
+  repo_vertex:
+  - match: (?:^||(?<=\s))[ \t]*(vertex)(?=$|\s)
+    captures:
+      1: storage.type.vertex.stl
+    push:
+    - meta_scope: meta.vertex.stl
+    - match: $
+      pop: true
+    - include: scope:etc

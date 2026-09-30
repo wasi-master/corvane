@@ -1,0 +1,194 @@
+%YAML 1.2
+---
+# Blueprint (source.blueprint): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/kaypes/blueprint-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Blueprint
+scope: source.blueprint
+file_extensions:
+- blp
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_using-statement
+  - include: repo_translation-function
+  - include: repo_function
+  - include: repo_property-declaration
+  - include: repo_property-block
+  - include: repo_binding
+  - include: repo_signal
+  - include: repo_class-with-id
+  - include: repo_menu-with-id
+  - include: repo_superclass-name
+  - include: repo_qualifier
+  - include: repo_string
+  - include: repo_numeric-value
+  - include: repo_class-name
+  - include: repo_keyword
+  - include: repo_property-value
+  - include: repo_blocks
+  - include: repo_terminator
+  repo_binding:
+  - match: \b(bind)\s+([-\w]+)\s*(\.)\s*([-\w]+)
+    scope: meta.binding.blueprint
+    captures:
+      1: keyword.control.bind.blueprint
+      2: entity.other.attribute-name.id.blueprint
+      3: punctuation.accessor.blueprint
+      4: variable.other.property.blueprint
+  repo_block-comment:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.blueprint
+    push:
+    - meta_scope: comment.block.blueprint
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.blueprint
+  repo_blocks:
+  - include: repo_property-block-begin
+  - include: repo_property-block-end
+  repo_class-name:
+  - match: \b\.?[A-Z][\w\.]*
+    scope: entity.name.class.blueprint
+  repo_class-with-id:
+  - match: \b(\.?[A-Z][\w\.]*)\s+([-\da-z][-\w]*)
+    scope: meta.class.identified.blueprint
+    captures:
+      1: entity.name.class.blueprint
+      2: entity.other.attribute-name.id.blueprint
+  repo_comment:
+  - include: repo_line-comment
+  - include: repo_block-comment
+  repo_function:
+  - match: \b([a-zA-Z_]\w*)\s*(\()
+    captures:
+      1: entity.name.function.blueprint
+      2: punctuation.section.function.begin.blueprint
+    push:
+    - meta_scope: meta.function.blueprint
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.blueprint
+    - include: repo_function
+    - include: repo_string
+    - include: repo_numeric-value
+    - match: \b[-\d_a-z][-\w]*\b
+      scope: entity.other.attribute-name.id.blueprint
+    - match: ','
+      scope: punctuation.separator.comma.blueprint
+  repo_keyword:
+  - include: repo_keyword-control
+  - include: repo_keyword-operator
+  repo_keyword-control:
+  - match: \b(using|template|menu|submenu|section|item|bind|bind-property|typeof|as|accessibility)\b
+    scope: keyword.control.blueprint
+  repo_keyword-operator:
+  - match: (=>)
+    scope: keyword.operator.blueprint
+  repo_line-comment:
+  - match: //.*$
+    scope: comment.line.double-slash.blueprint
+  repo_literals:
+  - include: repo_numeric-value
+  - include: repo_string
+  - include: repo_property-value
+  repo_menu-with-id:
+  - match: \b(menu|submenu|section|item)\s+([-\da-z][-\w]*)\s*(?=\{)
+    scope: meta.menu.identified.blueprint
+    captures:
+      1: keyword.control.menu.blueprint
+      2: entity.other.attribute-name.id.blueprint
+  repo_numeric-value:
+  - match: -?\d+(\.\d+)?
+    scope: constant.numeric.blueprint
+  repo_property-block:
+  - match: \b([-\da-z]+)\s*(?=\[|\{)
+    scope: meta.property-block.blueprint
+    captures:
+      1: support.type.property-name.blueprint
+  repo_property-block-begin:
+  - match: \[|\{
+    scope: punctuation.section.property-list.begin.blueprint
+  repo_property-block-end:
+  - match: \]|\}
+    scope: punctuation.section.property-list.end.blueprint
+  repo_property-declaration:
+  - match: \b([-\da-z]+)\s*(:|=)
+    scope: meta.property-declaration.blueprint
+    captures:
+      1: support.type.property-name.blueprint
+      2: punctuation.separator.key-value.blueprint
+  repo_property-value:
+  - match: \b[-\d_a-z][-\w]*\b
+    scope: constant.language.blueprint
+  repo_qualifier:
+  - match: (\[)\s*([-\w]+)\b
+    captures:
+      1: punctuation.section.qualifier.begin.blueprint
+      2: support.type.property-name.blueprint
+    push:
+    - meta_scope: meta.qualifier.blueprint
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.qualifier.end.blueprint
+    - include: repo_comment
+    - include: repo_property-declaration
+    - include: repo_literals
+  repo_signal:
+  - match: \b([-\da-z]+)\s*(=>)
+    scope: meta.signal.blueprint
+    captures:
+      1: support.type.property-name.blueprint
+      2: keyword.operator.assignment.signal.blueprint
+  repo_string:
+  - include: repo_string-single
+  - include: repo_string-double
+  repo_string-double:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.blueprint
+    push:
+    - meta_scope: string.quoted.double.blueprint
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.blueprint
+    - match: \\.
+      scope: constant.character.escape.blueprint
+  repo_string-single:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.blueprint
+    push:
+    - meta_scope: string.quoted.single.blueprint
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.blueprint
+    - match: \\.
+      scope: constant.character.escape.blueprint
+  repo_superclass-name:
+  - match: (:)\s*(\.?[A-Z][\w\.]*)
+    scope: meta.inherited-class.blueprint
+    captures:
+      1: keyword.control.operator.inherited-class.blueprint
+      2: entity.other.inherited-class.blueprint
+  repo_terminator:
+  - match: ;
+    scope: punctuation.terminator.expression.blueprint
+  repo_translation-function:
+  - match: \b(_)\s*(?=\()
+    scope: meta.function.translation.blueprint
+    captures:
+      1: entity.name.function.translation.blueprint
+  repo_using-statement:
+  - match: \b(using)\s+([\w\.]+)\s+([\d\.]+)(;|$)
+    scope: meta.import.blueprint
+    captures:
+      1: keyword.control.import.blueprint
+      2: entity.name.class.blueprint
+      3: constant.numeric.blueprint
+      4: punctuation.terminator.expression.blueprint

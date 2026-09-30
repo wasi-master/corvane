@@ -1,0 +1,149 @@
+%YAML 1.2
+---
+# RUNOFF (text.runoff): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-roff via GitHub Linguist v9.7.0 (license: isc).
+name: RUNOFF
+scope: text.runoff
+file_extensions:
+- rnh
+- rno
+contexts:
+  main:
+  - include: repo_main
+  repo_arguments:
+  - match: '[-+]?\d+(?:\.\d+)?'
+    scope: constant.numeric.runoff
+  - match: ','
+    scope: punctuation.separator.comma.runoff
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.runoff
+    push:
+    - meta_scope: string.quoted.runoff
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.runoff
+  - match: (?!\.)([^\s;,]+)
+    scope: variable.parameter.runoff
+    captures:
+      0: string.unquoted.runoff
+  repo_commands:
+  - match: "^\f*(?=\\.)"
+    push:
+    - meta_scope: meta.control-line.runoff
+    - match: $|;(?!\.)
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.runoff
+    - match: '!'
+      captures:
+        0: punctuation.definition.comment.runoff
+      push:
+      - meta_scope: comment.line.runoff
+      - match: $
+        pop: true
+    - match: (?i)(?:^|(?<=;))((\.)(?:IF|ELSE|ENDIF))(?=$|\s|;)
+      captures:
+        1: keyword.control.runoff
+        2: punctuation.definition.function.runoff
+      push:
+      - meta_scope: meta.condition.runoff
+      - match: $|(;)|(?=!)
+        pop: true
+        captures:
+          1: punctuation.terminator.statement.runoff
+      - include: repo_arguments
+    - match: (?i)((\.)LITERAL\s*)(?:$|\R)
+      captures:
+        0: keyword.function.name.runoff
+        1: entity.name.function.runoff
+        2: punctuation.definition.function.runoff
+      push:
+      - meta_content_scope: markup.raw.runoff
+      - match: (?i)((\.)END\s+LITERAL)\b
+        pop: true
+        captures:
+          0: keyword.function.name.runoff
+          1: entity.name.function.runoff
+          2: punctuation.definition.function.runoff
+    - match: (?i)((\.)LIT)\s*(?:$|\R)
+      captures:
+        0: keyword.function.name.runoff
+        1: entity.name.function.runoff
+        2: punctuation.definition.function.runoff
+      push:
+      - meta_content_scope: markup.raw.runoff
+      - match: (?i)^(?=\.(?:EL|END\s+LIT)(?:$|[\s;!]))
+        pop: true
+    - match: (?i)((\.)COMMENT)\b
+      captures:
+        0: keyword.function.name.runoff
+        1: entity.name.function.runoff
+        2: punctuation.definition.function.runoff
+      push:
+      - meta_scope: meta.function.debugging-comment.runoff
+      - meta_content_scope: string.unquoted.runoff
+      - match: $|(;)|(?=!)
+        pop: true
+        captures:
+          1: punctuation.terminator.statement.runoff
+    - match: (?i)((\.)(?:END\s+)?([^;\s\-+]+))
+      captures:
+        0: keyword.function.name.runoff
+        1: entity.name.function.runoff
+        2: punctuation.definition.function.runoff
+      push:
+      - meta_scope: meta.function.runoff
+      - match: "(?x)\n$               | # EOL\n(;)?\\s*(?=\\.) | # Followed by another command\n(?=;\\s*[^.])     # No more commands, don\u2019t highlight trailing text as arguments"
+        pop: true
+        captures:
+          1: punctuation.terminator.statement.runoff
+      - include: repo_arguments
+  repo_comment:
+  - match: ^\.[!*~]
+    captures:
+      0: punctuation.definition.comment.runoff
+    push:
+    - meta_scope: comment.line.runoff
+    - match: $
+      pop: true
+  repo_main:
+  - include: repo_comment
+  - include: repo_underline
+  - include: repo_commands
+  - include: repo_special-characters
+  repo_name-innards:
+  - include: repo_special-characters
+  - match: \.
+    scope: punctuation.delimiter.period.full-stop.runoff
+  - match: \,
+    scope: punctuation.separator.comma.runoff
+  - match: \d+(?=$|\R|,|\.(?!\d))
+    scope: constant.numeric.runoff
+  repo_special-characters:
+  - match: (_)[!^\\#&_.]
+    scope: constant.character.escape.special-character.runoff
+    captures:
+      1: punctuation.definition.escape.runoff
+  - match: ^!
+    scope: keyword.operator.end-footnote.runoff
+  - match: \^{1,2}
+    scope: constant.character.escape.uppercase.runoff
+    captures:
+      0: punctuation.definition.escape.runoff
+  - match: \\{1,2}
+    scope: constant.character.escape.lowercase.runoff
+    captures:
+      0: punctuation.definition.escape.runoff
+  - match: (&)([!^\\#&_.]*)(\S+)
+    captures:
+      1: punctuation.definition.entity.runoff
+      3: markup.underline.link.runoff
+  - match: '#'
+    scope: constant.character.escape.space.runoff
+    captures:
+      0: punctuation.definition.escape.runoff
+  repo_underline:
+  - match: "[^_]\b(?=_)|(?<=_)\b[^_]"
+    scope: markup.underline.link.runoff

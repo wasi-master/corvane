@@ -1,0 +1,201 @@
+%YAML 1.2
+---
+# Caddyfile (source.Caddyfile): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/caddyserver/vscode-caddyfile.git via GitHub Linguist v9.7.0 (license: mit).
+name: Caddyfile
+scope: source.Caddyfile
+file_extensions:
+- caddyfile
+- Caddyfile
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_domains
+  - include: repo_status_codes
+  - include: repo_path
+  - include: repo_global_options
+  - include: repo_matchers
+  - include: repo_directive
+  - include: repo_site_block_common
+  repo_block:
+  - match: \{
+    push:
+    - match: \}
+      pop: true
+    - include: repo_block_content
+  repo_block_content:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_domains
+  - include: repo_status_codes
+  - include: repo_path
+  - include: repo_matchers
+  - include: repo_placeholders
+  - include: repo_directive
+  - include: repo_block
+  repo_comments:
+  - match: \s#.*
+    scope: comment.line.Caddyfile
+  - match: ^#.*
+    scope: comment.line.Caddyfile
+  repo_content_types:
+  - match: (application|audio|example|font|image|message|model|multipart|text|video)/[a-zA-Z0-9*+\-.]+;* *[a-zA-Z0-9=\-]*
+    scope: variable.other.property.caddyfile
+  repo_directive:
+  - match: ^\s*[a-zA-Z_\-+]+
+    scope: entity.name.function.Caddyfile
+  - include: repo_content_types
+  - include: repo_heredoc
+  repo_domains:
+  - match: (https?://)*[a-z0-9-\*]*(?:\.[a-zA-Z]{2,})+(:[0-9]+)*\S*
+    scope: keyword.control.caddyfile
+  - match: localhost(:[0-9]+)*
+    scope: keyword.control.caddyfile
+  - match: ((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)
+    scope: keyword.control.caddyfile
+  - match: (([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))
+    scope: keyword.control.caddyfile
+  - match: :[0-9]+
+    scope: keyword.control.caddyfile
+  repo_global_options:
+  - match: ^(\{)$
+    captures:
+      0: punctuation.definition.dictionary.begin
+    push:
+    - match: ^(\})$
+      pop: true
+      captures:
+        0: punctuation.definition.dictionary.end
+    - include: repo_comments
+    - match: ^\s*(debug|https?_port|default_bind|order|storage|storage_clean_interval|renew_interval|ocsp_interval|admin|log|grace_period|shutdown_delay|auto_https|email|default_sni|local_certs|skip_install_trust|acme_ca|acme_ca_root|acme_eab|acme_dns|on_demand_tls|key_type|cert_issuer|ocsp_stapling|preferred_chains|servers|pki|events)
+      scope: support.constant.Caddyfile
+  repo_heredoc:
+  - match: (?i)(?=<<\s*([a-z_\x{7f}-\x{10ffff}][a-z0-9_\x{7f}-\x{10ffff}]*)\s*$)
+    push:
+    - meta_scope: string.unquoted.heredoc.caddyfile
+    - match: (?!)
+      pop: true
+    - include: repo_heredoc_interior
+  repo_heredoc_interior:
+  - match: (<<)\s*(CSS)(\s*)$
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.begin
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - meta_scope: meta.embedded.css
+    - meta_content_scope: source.css
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+    - include: scope:source.css
+  - match: (<<)\s*(HTML)(\s*)$
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.begin
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - meta_scope: meta.embedded.html
+    - meta_content_scope: text.html
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+    - include: scope:text.html.basic
+  - match: (<<)\s*(JAVASCRIPT|JS)(\s*)$
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.begin
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - meta_scope: meta.embedded.js
+    - meta_content_scope: source.js
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+    - include: scope:source.js
+  - match: (<<)\s*(JSON)(\s*)$
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.begin
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - meta_scope: meta.embedded.json
+    - meta_content_scope: source.json
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+    - include: scope:source.json
+  - match: (<<)\s*(XML)(\s*)$
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.begin
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - meta_scope: meta.embedded.xml
+    - meta_content_scope: text.xml
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+    - include: scope:text.xml
+  - match: (?i)(<<)\s*([a-z_\x{7f}-\x{10ffff}]+[a-z0-9_\x{7f}-\x{10ffff}]*)(\s*)
+    captures:
+      0: punctuation.section.embedded.begin.caddyfile
+      1: punctuation.definition.string.caddyfile
+      2: keyword.operator.heredoc.caddyfile
+      4: invalid.illegal.trailing-whitespace.caddyfile
+    push:
+    - match: ^\s*(\2)(?![A-Za-z0-9_\x{7f}-\x{10ffff}])
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.caddyfile
+        1: keyword.operator.heredoc.caddyfile
+  repo_matchers:
+  - match: '@[^\s]+(?=\s)'
+    scope: support.function.Caddyfile
+  repo_path:
+  - match: (unix/)*/[a-zA-Z0-9_\-./*]+
+    scope: keyword.control.caddyfile
+  - match: \*.[a-z]{1,5}
+    scope: variable.other.property.caddyfile
+  - match: \*/?
+    scope: variable.other.property.caddyfile
+  - match: \?/
+    scope: variable.other.property.caddyfile
+  repo_placeholders:
+  - match: \{[\[\]\w.\$+-]+\}
+    scope: keyword.control.Caddyfile
+  repo_site_block_common:
+  - include: repo_placeholders
+  - include: repo_block
+  repo_status_codes:
+  - match: \s[0-9]{3}(?!\.)
+    scope: constant.numeric.decimal
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.Caddyfile
+    - match: '"'
+      pop: true
+    - match: \\"
+      scope: constant.character.escape.Caddyfile
+  - match: '`'
+    push:
+    - meta_scope: string.quoted.single.Caddyfile
+    - match: '`'
+      pop: true

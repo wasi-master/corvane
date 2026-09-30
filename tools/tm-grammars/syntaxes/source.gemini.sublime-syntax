@@ -1,0 +1,59 @@
+%YAML 1.2
+---
+# Gemini (source.gemini): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/printfn/gemini-vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: Gemini
+scope: source.gemini
+file_extensions:
+- gmi
+contexts:
+  main:
+  - include: repo_headings
+  - include: repo_links
+  - include: repo_quote
+  - include: repo_raw
+  - include: repo_unorderedLists
+  repo_headings:
+  - match: '^(#)(?:[^#].*)?
+
+      '
+    scope: markup.heading.1.gemini
+    captures:
+      1: punctuation.definition.heading.1.gemini
+  - match: '^(##)(?:[^#].*)?
+
+      '
+    scope: markup.heading.2.gemini
+    captures:
+      1: punctuation.definition.heading.2.gemini
+  - match: '^(###)(?:[^#].*)?
+
+      '
+    scope: markup.heading.3.gemini
+    captures:
+      1: punctuation.definition.heading.3.gemini
+  repo_links:
+  - match: "^=>[ \t]+([^ \t]+)(?:[ \t]+(.*))?"
+    captures:
+      1: markup.underline.link.markdown.gemini
+      2: string.other.link.title.markdown.gemini
+  repo_quote:
+  - match: ^(>).*$
+    scope: markup.quote.markdown.gemini
+    captures:
+      1: punctuation.definition.quote.begin.markdown.gemini
+  repo_raw:
+  - match: '^```.*
+
+      '
+    push:
+    - meta_scope: markup.raw.gemini
+    - match: '^```.*
+
+        '
+      pop: true
+  repo_unorderedLists:
+  - match: "^(\\*)[ \t]+.+\n"
+    scope: markup.list.unnumbered.gemini
+    captures:
+      1: punctuation.definition.list.begin.markdown.gemini

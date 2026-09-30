@@ -1,0 +1,95 @@
+%YAML 1.2
+---
+# Inform 7 (source.inform7): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/erkyrath/language-inform7 via GitHub Linguist v9.7.0 (license: mit).
+name: Inform 7
+scope: source.inform7
+file_extensions:
+- ni
+- i7x
+contexts:
+  main:
+  - include: repo_string
+  - match: \[
+    captures:
+      0: punctuation.definition.comment.begin.inform7
+    push:
+    - meta_scope: comment.block.inform7
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.inform7
+    - include: repo_nestedcomment
+  - match: "(?i)^\\s*(volume|book|part|chapter|section)[ \t]+(.*)$"
+    scope: entity.name.inform7
+    captures:
+      1: entity.type.section.inform7
+      2: entity.name.section.inform7
+  - match: \(-
+    captures:
+      0: punctuation.definition.inform6.begin.inform7
+    push:
+    - meta_content_scope: support.other.inform6.inform7
+    - match: -\)
+      pop: true
+      captures:
+        0: punctuation.definition.inform6.end.inform7
+    - include: repo_i6comment
+    - include: repo_i6string
+    - include: repo_i6dictword
+  - match: "(?i)^\\s*(----[ \t]+(documentation)[ \t]+----)(.*)$"
+    captures:
+      1: entity.name.inform7
+      2: entity.type.section.inform7
+      3: comment.block.documentation.inform7
+    push:
+    - meta_content_scope: meta.documentation.inform7
+    - match: $ENDOFDOC
+      pop: true
+    - include: repo_doccomment
+    - include: repo_string
+  repo_doccomment:
+  - match: "^[^\t].*$"
+    scope: comment.block.documentation.inform7
+  repo_i6comment:
+  - match: '!.*$'
+    scope: comment.line.bang.inform6.inform7
+  repo_i6dictword:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.inform6.inform7
+    - match: ''''
+      pop: true
+  repo_i6string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.inform6.inform7
+    - match: '"'
+      pop: true
+  repo_nestedcomment:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_nestedcomment
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.inform7
+    push:
+    - meta_scope: string.quoted.double.inform7
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.inform7
+    - include: repo_substitution
+  repo_substitution:
+  - match: \[
+    captures:
+      0: keyword.control.begin.inform7
+    push:
+    - meta_scope: keyword.control
+    - match: \]
+      pop: true
+      captures:
+        0: keyword.control.end.inform7

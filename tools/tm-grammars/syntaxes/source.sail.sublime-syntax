@@ -1,0 +1,155 @@
+%YAML 1.2
+---
+# Sail (source.sail): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Timmmm/sail_vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: Sail
+scope: source.sail
+file_extensions:
+- sail
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_numbers
+  - include: repo_typevariables
+  - include: repo_variables
+  repo_comments:
+  - match: (?:^)(?>\s*)(\/\/[!\/]+)
+    captures:
+      1: punctuation.definition.comment.documentation.sail
+    push:
+    - meta_scope: comment.line.double-slash.documentation.sail
+    - match: (?<=\n)(?<!\\\n)
+      pop: true
+    - include: repo_line_continuation_character
+  - match: (\/\*[!*]+(?=\s))(.+)([!*]*\*\/)
+    scope: comment.block.documentation.sail
+    captures:
+      1: punctuation.definition.comment.begin.documentation.sail
+      3: punctuation.definition.comment.end.documentation.sail
+  - match: ((?>\s*)\/\*[!*]+(?:(?:\n|$)|(?=\s)))
+    captures:
+      1: punctuation.definition.comment.begin.documentation.sail
+    push:
+    - meta_scope: comment.block.documentation.sail
+    - match: ([!*]*\*\/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.end.documentation.sail
+  - match: ^\/\* =(\s*.*?)\s*= \*\/$\n?
+    scope: comment.block.banner.sail
+    captures:
+      1: meta.toc-list.banner.block.sail
+  - match: (\/\*)
+    captures:
+      1: punctuation.definition.comment.begin.sail
+    push:
+    - meta_scope: comment.block.sail
+    - match: (\*\/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.end.sail
+  - match: ^\/\/ =(\s*.*?)\s*=$\n?
+    scope: comment.line.banner.sail
+    captures:
+      1: meta.toc-list.banner.line.sail
+  - match: ((?:^[ \t]+)?)(?=\/\/)
+    captures:
+      1: punctuation.whitespace.comment.leading.sail
+    push:
+    - match: (?!)
+      pop: true
+    - match: (\/\/)
+      captures:
+        1: punctuation.definition.comment.sail
+      push:
+      - meta_scope: comment.line.double-slash.sail
+      - match: (?=\n)
+        pop: true
+      - include: repo_line_continuation_character
+  repo_keywords:
+  - match: \b(if|then|while|for|foreach|return|match|else)\b
+    scope: keyword.control.sail
+  - match: \b(atom|int)\b
+    scope: keyword.type.sail
+  - match: \b(type|val|var|let|in|function|scattered|enum|union|clause|default|order|dec|register|vector|bitfield)\b
+    scope: keyword.other.sail
+  - match: \b(forall)\b
+    scope: keyword.other.sail
+  - match: \b(effect)\b
+    scope: keyword.other.sail
+  - match: \b(infix|overload|operator)\b
+    scope: keyword.other.sail
+  - match: \b(\$include)\b
+    scope: keyword.other.sail
+  - match: (=>|>=|<=|=|->|-|:|,|\+|\*|\.|@)
+    scope: keyword.other.sail
+  - match: \b_\b
+    scope: keyword.other.sail
+  - match: \(
+    captures:
+      0: punctuation.paren.open
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.paren.close
+    - include: main
+  - match: '{'
+    captures:
+      0: punctuation.curly.open
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.curly.close
+    - include: main
+  - match: ^\s*((\$)\s*(include|import))\b\s*
+    captures:
+      2: punctuation.definition.directive.sail
+    push:
+    - meta_scope: meta.preprocessor.include.sail
+    - match: (?=(?://|/\*))|(?<!\\)(?=\n)
+      pop: true
+    - include: repo_line_continuation_character
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.sail
+      push:
+      - meta_scope: string.quoted.double.include.sail
+      - match: '"'
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.sail
+    - match: <
+      captures:
+        0: punctuation.definition.string.begin.sail
+      push:
+      - meta_scope: string.quoted.other.lt-gt.include.sail
+      - match: '>'
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.sail
+  - include: repo_comments
+  repo_line_continuation_character:
+  - match: (\\)\n
+    captures:
+      1: constant.character.escape.line-continuation.c
+  repo_numbers:
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(0(b|B)[01]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\b
+    scope: constant.numeric.sail
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.sail
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.sail
+  repo_typevariables:
+  - match: '''([A-Za-z][A-Za-z_0-9]*)\b'
+    scope: variable.parameter
+  repo_variables:
+  - match: \b([A-Za-z][A-Za-z_0-9]*)\b
+    scope: variable.other

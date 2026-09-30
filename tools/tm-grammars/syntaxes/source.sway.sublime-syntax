@@ -1,0 +1,477 @@
+%YAML 1.2
+---
+# Sway (source.sway): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/FuelLabs/sway-vscode-plugin.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Sway
+scope: source.sway
+file_extensions:
+- sw
+contexts:
+  main:
+  - match: (<)(\[)
+    captures:
+      1: punctuation.brackets.angle.sway
+      2: punctuation.brackets.square.sway
+    push:
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.brackets.angle.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_gtypes
+    - include: repo_lvariables
+    - include: repo_lifetimes
+    - include: repo_punctuation
+    - include: repo_types
+  - match: (#)(\!?)(\[)
+    captures:
+      1: punctuation.definition.attribute.sway
+      2: keyword.operator.attribute.inner.sway
+      3: punctuation.brackets.attribute.sway
+    push:
+    - meta_scope: meta.attribute.sway
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.brackets.attribute.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lifetimes
+    - include: repo_punctuation
+    - include: repo_strings
+    - include: repo_gtypes
+    - include: repo_types
+  - match: (dep)\s+((?:r#(?!crate|[Ss]elf|super))?[a-z][A-Za-z0-9_]*)
+    captures:
+      1: storage.type.sway
+      2: entity.name.dependency.sway
+  - match: \b(extern)\s+(crate)
+    captures:
+      1: storage.type.sway
+      2: keyword.other.crate.sway
+    push:
+    - meta_scope: meta.import.sway
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.semi.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_punctuation
+  - match: \b(use)\s
+    captures:
+      1: keyword.other.sway
+    push:
+    - meta_scope: meta.use.sway
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.semi.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_types
+    - include: repo_lvariables
+  - include: repo_block-comments
+  - include: repo_comments
+  - include: repo_lvariables
+  - include: repo_constants
+  - include: repo_gtypes
+  - include: repo_functions
+  - include: repo_types
+  - include: repo_keywords
+  - include: repo_lifetimes
+  - include: repo_macros
+  - include: repo_namespaces
+  - include: repo_punctuation
+  - include: repo_strings
+  - include: repo_variables
+  repo_block-comments:
+  - match: /\*\*/
+    scope: comment.block.sway
+  - match: /\*\*
+    push:
+    - meta_scope: comment.block.documentation.sway
+    - match: \*/
+      pop: true
+    - include: repo_block-comments
+  - match: /\*(?!\*)
+    push:
+    - meta_scope: comment.block.sway
+    - match: \*/
+      pop: true
+    - include: repo_block-comments
+  repo_comments:
+  - match: ^\s*///.*
+    scope: comment.line.documentation.sway
+  - match: \s*//.*
+    scope: comment.line.double-slash.sway
+  repo_constants:
+  - match: \b[A-Z]{2}[A-Z0-9_]*\b
+    scope: constant.other.caps.sway
+  - match: \b(const)\s+([A-Z][A-Za-z0-9_]*)\b
+    captures:
+      1: storage.type.sway
+      2: constant.other.caps.sway
+  - match: \b\d[\d_]*(\.?)[\d_]*(?:(E)([+-])([\d_]+))?(f32|f64|i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\b
+    scope: constant.numeric.decimal.sway
+    captures:
+      1: punctuation.separator.dot.decimal.sway
+      2: keyword.operator.exponent.sway
+      3: keyword.operator.exponent.sign.sway
+      4: constant.numeric.decimal.exponent.mantissa.sway
+      5: entity.name.type.numeric.sway
+  - match: \b0x[\da-fA-F_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\b
+    scope: constant.numeric.hex.sway
+    captures:
+      1: entity.name.type.numeric.sway
+  - match: \b0o[0-7_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\b
+    scope: constant.numeric.oct.sway
+    captures:
+      1: entity.name.type.numeric.sway
+  - match: \b0b[01_]+(i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)?\b
+    scope: constant.numeric.bin.sway
+    captures:
+      1: entity.name.type.numeric.sway
+  - match: \b(true|false)\b
+    scope: constant.language.bool.sway
+  repo_escapes:
+  - match: (\\)(?:(?:(x[0-7][0-7a-fA-F])|(u(\{)[\da-fA-F]{4,6}(\}))|.))
+    scope: constant.character.escape.sway
+    captures:
+      1: constant.character.escape.backslash.sway
+      2: constant.character.escape.bit.sway
+      3: constant.character.escape.unicode.sway
+      4: constant.character.escape.unicode.punctuation.sway
+      5: constant.character.escape.unicode.punctuation.sway
+  repo_functions:
+  - match: \b(pub)(\()
+    captures:
+      1: keyword.other.sway
+      2: punctuation.brackets.round.sway
+  - match: \b(asm)((\())
+    captures:
+      1: meta.attribute.asm.sway
+      2: punctuation.brackets.round.sway
+    push:
+    - meta_scope: meta.asm.definition.sway
+    - match: \{|;
+      pop: true
+      captures:
+        0: punctuation.brackets.curly.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lvariables
+    - include: repo_constants
+    - include: repo_gtypes
+    - include: repo_functions
+    - include: repo_lifetimes
+    - include: repo_macros
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_strings
+    - include: repo_types
+    - include: repo_variables
+  - match: \b(fn)\s+((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)((\()|(<))
+    captures:
+      1: keyword.other.fn.sway
+      2: entity.name.function.sway
+      4: punctuation.brackets.round.sway
+      5: punctuation.brackets.angle.sway
+    push:
+    - meta_scope: meta.function.definition.sway
+    - match: \{|;
+      pop: true
+      captures:
+        0: punctuation.brackets.curly.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lvariables
+    - include: repo_constants
+    - include: repo_gtypes
+    - include: repo_functions
+    - include: repo_lifetimes
+    - include: repo_macros
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_strings
+    - include: repo_types
+    - include: repo_variables
+  - match: ((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(\()
+    captures:
+      1: entity.name.function.sway
+      2: punctuation.brackets.round.sway
+    push:
+    - meta_scope: meta.function.call.sway
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.brackets.round.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lvariables
+    - include: repo_constants
+    - include: repo_gtypes
+    - include: repo_functions
+    - include: repo_lifetimes
+    - include: repo_macros
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_strings
+    - include: repo_types
+    - include: repo_variables
+  - match: ((?:r#(?!crate|[Ss]elf|super))?[A-Za-z0-9_]+)(?=::<.*>\()
+    captures:
+      1: entity.name.function.sway
+    push:
+    - meta_scope: meta.function.call.sway
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.brackets.round.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lvariables
+    - include: repo_constants
+    - include: repo_gtypes
+    - include: repo_functions
+    - include: repo_lifetimes
+    - include: repo_macros
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_strings
+    - include: repo_types
+    - include: repo_variables
+  repo_gtypes:
+  - match: \b(Some|None)\b
+    scope: entity.name.type.option.sway
+  - match: \b(Ok|Err)\b
+    scope: entity.name.type.result.sway
+  repo_interpolations:
+  - match: ({)[^"{}]*(})
+    scope: meta.interpolation.sway
+    captures:
+      1: punctuation.definition.interpolation.sway
+      2: punctuation.definition.interpolation.sway
+  repo_keywords:
+  - match: \b(await|break|continue|do|else|for|if|loop|match|return|try|while|yield)\b
+    scope: keyword.control.sway
+  - match: \b(extern|macro|dep)\b
+    scope: keyword.other.sway storage.type.sway
+  - match: \b(const)\b
+    scope: storage.modifier.sway
+  - match: \b(let)\b
+    scope: storage.modifier.sway
+  - match: \b(type)\b
+    scope: keyword.declaration.type.sway
+  - match: \b(enum)\b
+    scope: keyword.declaration.enum.sway
+  - match: \b(trait)\b
+    scope: keyword.declaration.trait.sway
+  - match: \b(abi)\b
+    scope: keyword.declaration.abi.sway
+  - match: \b(struct)\b
+    scope: keyword.declaration.struct.sway
+  - match: \b(abstract|static)\b
+    scope: storage.modifier.sway
+  - match: \b(as|async|become|box|dyn|move|final|impl|in|override|priv|pub|ref|typeof|union|unsafe|unsized|use|virtual|where)\b
+    scope: keyword.other.sway
+  - match: \bfn\b
+    scope: keyword.other.fn.sway
+  - match: \basm\b
+    scope: keyword.other.asm.sway
+  - match: \bcrate\b
+    scope: keyword.other.crate.sway
+  - match: \bmut\b
+    scope: storage.modifier.mut.sway
+  - match: (\^|\||\|\||&&|<<|>>|!)(?!=)
+    scope: keyword.operator.logical.sway
+  - match: '&(?![&=])'
+    scope: keyword.operator.borrow.and.sway
+  - match: (\+=|-=|\*=|/=|%=|\^=|&=|\|=|<<=|>>=)
+    scope: keyword.operator.assignment.sway
+  - match: (?<![<>])=(?!=|>)
+    scope: keyword.operator.assignment.equal.sway
+  - match: (=(=)?(?!>)|!=|<=|(?<!=)>=)
+    scope: keyword.operator.comparison.sway
+  - match: (([+%]|(\*(?!\w)))(?!=))|(-(?!>))|(/(?!/))
+    scope: keyword.operator.math.sway
+  - match: (?:\b|(?:(\))|(\])|(\})))[ \t]+([<>])[ \t]+(?:\b|(?:(\()|(\[)|(\{)))
+    captures:
+      1: punctuation.brackets.round.sway
+      2: punctuation.brackets.square.sway
+      3: punctuation.brackets.curly.sway
+      4: keyword.operator.comparison.sway
+      5: punctuation.brackets.round.sway
+      6: punctuation.brackets.square.sway
+      7: punctuation.brackets.curly.sway
+  - match: '::'
+    scope: keyword.operator.namespace.sway
+  - match: (\*)(?=\w+)
+    captures:
+      1: keyword.operator.dereference.sway
+  - match: '@'
+    scope: keyword.operator.subpattern.sway
+  - match: \.(?!\.)
+    scope: keyword.operator.access.dot.sway
+  - match: \.{2}(=|\.)?
+    scope: keyword.operator.range.sway
+  - match: :(?!:)
+    scope: keyword.operator.key-value.sway
+  - match: ->
+    scope: keyword.operator.arrow.skinny.sway
+  - match: =>
+    scope: keyword.operator.arrow.fat.sway
+  - match: \$
+    scope: keyword.operator.macro.dollar.sway
+  - match: \?
+    scope: keyword.operator.question.sway
+  repo_lifetimes:
+  - match: (['])([a-zA-Z_][0-9a-zA-Z_]*)(?!['])\b
+    captures:
+      1: punctuation.definition.lifetime.sway
+      2: entity.name.type.lifetime.sway
+  - match: (\&)(['])([a-zA-Z_][0-9a-zA-Z_]*)(?!['])\b
+    captures:
+      1: keyword.operator.borrow.sway
+      2: punctuation.definition.lifetime.sway
+      3: entity.name.type.lifetime.sway
+  repo_lvariables:
+  - match: \b[Ss]elf\b
+    scope: variable.language.self.sway
+  - match: \bsuper\b
+    scope: variable.language.super.sway
+  repo_macros:
+  - match: (([a-z_][A-Za-z0-9_]*!)|([A-Z_][A-Za-z0-9_]*!))
+    scope: meta.macro.sway
+    captures:
+      2: entity.name.function.macro.sway
+      3: entity.name.type.macro.sway
+  repo_namespaces:
+  - match: (?<![A-Za-z0-9_])([a-z0-9_]+)((?<!super|self)::)
+    captures:
+      1: entity.name.namespace.sway
+      2: keyword.operator.namespace.sway
+  repo_punctuation:
+  - match: ','
+    scope: punctuation.comma.sway
+  - match: '[{}]'
+    scope: punctuation.brackets.curly.sway
+  - match: '[()]'
+    scope: punctuation.brackets.round.sway
+  - match: ;
+    scope: punctuation.semi.sway
+  - match: '[\[\]]'
+    scope: punctuation.brackets.square.sway
+  - match: (?<!=)[<>]
+    scope: punctuation.brackets.angle.sway
+  repo_strings:
+  - match: (b?)(")
+    captures:
+      1: string.quoted.byte.raw.sway
+      2: punctuation.definition.string.sway
+    push:
+    - meta_scope: string.quoted.double.sway
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.sway
+    - include: repo_escapes
+    - include: repo_interpolations
+  - match: (b?r)(#*)(")
+    captures:
+      1: string.quoted.byte.raw.sway
+      2: punctuation.definition.string.raw.sway
+      3: punctuation.definition.string.sway
+    push:
+    - meta_scope: string.quoted.double.sway
+    - match: (")(\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.sway
+        2: punctuation.definition.string.raw.sway
+  - match: (b)?(')
+    captures:
+      1: string.quoted.byte.raw.sway
+      2: punctuation.definition.char.sway
+    push:
+    - meta_scope: string.quoted.single.char.sway
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.char.sway
+    - include: repo_escapes
+  repo_types:
+  - match: (?<![A-Za-z])(f32|f64|i128|i16|i32|i64|i8|isize|u128|u16|u32|u64|u8|usize)\b
+    captures:
+      1: entity.name.type.numeric.sway
+  - match: \b([A-Z][A-Za-z0-9]*)(<)
+    captures:
+      1: entity.name.type.sway
+      2: punctuation.brackets.angle.sway
+    push:
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.brackets.angle.sway
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_lvariables
+    - include: repo_lifetimes
+    - include: repo_punctuation
+    - include: repo_types
+    - include: repo_variables
+  - match: \b(bool|char|str)\b
+    scope: entity.name.type.primitive.sway
+  - match: \b(trait)\s+([A-Z][A-Za-z0-9]*)\b
+    captures:
+      1: keyword.declaration.trait.sway
+      2: entity.name.type.trait.sway
+  - match: \b(abi)\s+([A-Z][A-Za-z0-9]*)\b
+    captures:
+      1: keyword.declaration.abi.sway
+      2: entity.name.type.abi.sway
+  - match: \b(struct)\s+([A-Z][A-Za-z0-9]*)\b
+    captures:
+      1: keyword.declaration.struct.sway
+      2: entity.name.type.struct.sway
+  - match: \b(enum)\s+([A-Z][A-Za-z0-9_]*)\b
+    captures:
+      1: keyword.declaration.enum.sway
+      2: entity.name.type.enum.sway
+  - match: \b(type)\s+([A-Z][A-Za-z0-9_]*)\b
+    captures:
+      1: keyword.declaration.type.sway
+      2: entity.name.type.declaration.sway
+  - match: \b[A-Z][A-Za-z0-9]*\b(?!!)
+    scope: entity.name.type.sway
+  - match: \b(library)\s+([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: source.sway meta.attribute.sway
+      2: entity.name.type.sway
+    push:
+    - match: '[\{\(;]'
+      pop: true
+    - include: repo_block-comments
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_namespaces
+    - include: repo_punctuation
+    - include: repo_types
+    - include: repo_lvariables
+  - match: (contract|script|predicate);
+    captures:
+      1: source.sway meta.attribute.sway
+  repo_variables:
+  - match: \b(?<!(?<!\.)\.)(?:r#(?!(crate|[Ss]elf|super)))?[a-z0-9_]+\b
+    scope: variable.other.sway

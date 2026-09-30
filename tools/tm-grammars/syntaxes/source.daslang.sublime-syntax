@@ -1,0 +1,510 @@
+%YAML 1.2
+---
+# Daslang (source.daslang): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/moleium/daslang-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Daslang
+scope: source.daslang
+file_extensions:
+- das
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_annotations
+  - include: repo_struct_declaration
+  - include: repo_function
+  - include: repo_variable_declaration
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_literals
+  - include: repo_reader_macro
+  - include: repo_builtin_types
+  - include: repo_builtin_functions_call
+  - include: repo_function_call
+  - include: repo_member_access
+  - include: repo_operators
+  - include: repo_identifiers
+  repo_annotations:
+  - match: (?<!\[)\[(?!\[)
+    captures:
+      0: punctuation.definition.annotation.begin.bracket.square.daslang
+    push:
+    - meta_scope: meta.declaration.annotation.daslang
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.annotation.end.bracket.square.daslang
+    - match: \b([[:alpha:]_][[:alnum:]_]*)\s*(\()
+      captures:
+        1: storage.type.annotation.daslang
+        2: punctuation.definition.annotation-arguments.begin.bracket.round.daslang
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.definition.annotation-arguments.end.bracket.round.daslang
+      - match: \b([[:alpha:]_][[:alnum:]_]*)\b\s*(=)
+        captures:
+          1: constant.other.annotation-key.daslang
+          2: keyword.operator.assignment.daslang
+      - include: repo_strings
+      - include: repo_literals
+      - match: ','
+        scope: punctuation.separator.arguments.daslang
+    - match: \b([[:alpha:]_][[:alnum:]_]*)\b
+      scope: storage.type.annotation.daslang
+    - match: ','
+      scope: punctuation.separator.arguments.daslang
+  repo_blocks:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.begin.daslang
+    push:
+    - meta_scope: meta.block.curly.daslang
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.end.daslang
+    - include: main
+    - match: ;
+      scope: punctuation.terminator.statement.daslang
+  repo_builtin_functions_call:
+  - match: \b(panic|print|terminate|stackwalk|breakpoint|assert|verify|static_assert|concept_assert|debug|memzero|invoke|push|push_clone|emplace|reserve|resize|erase|length|clear|capacity|key_exists|get|find|find_index|find_index_if|empty|keys|values|to_table_move|to_array_move|subarray)\b\s*(?=\()
+    captures:
+      1: support.function.builtin.daslang
+    push:
+    - meta_scope: meta.function-call.builtin.daslang
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.daslang
+    - match: \(
+      captures:
+        0: punctuation.definition.arguments.begin.daslang
+      push:
+      - meta_content_scope: meta.function.arguments.daslang
+      - match: (?=\))
+        pop: true
+      - include: repo_function_arguments
+  repo_builtin_types:
+  - match: \b(bool|void|string|auto|int|int2|int3|int4|uint|bitfield|uint2|uint3|uint4|float|float2|float3|float4|range|urange|range64|urange64|block|int64|uint64|double|function|lambda|int8|uint8|int16|uint16|tuple|variant|iterator|generator|yield|fixed_array|table|array|smart_ptr)\b
+    scope: support.type.builtin.daslang
+  repo_comments:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.daslang
+    - match: (?=\n)
+      pop: true
+    - match: \\(?=\n)
+      scope: constant.character.escape.line-continuation.daslang
+  - match: /\*
+    push:
+    - meta_scope: comment.block.daslang
+    - match: \*/
+      pop: true
+  repo_expression:
+  - include: repo_strings
+  - include: repo_literals
+  - include: repo_reader_macro
+  - include: repo_builtin_functions_call
+  - include: repo_function_call
+  - include: repo_member_access
+  - include: repo_operators
+  - include: repo_variable_access
+  - include: repo_initializers
+  - include: repo_blocks
+  - match: \b([[:alpha:]_][[:alnum:]_:]*)\b
+    scope: variable.other.daslang
+  repo_function:
+  - match: \b(def)\b\s*((?:private|public|abstract|override|static)\s+)?([[:alpha:]_][[:alnum:]_:]*)
+    captures:
+      1: storage.type.function.daslang
+      2: storage.modifier.daslang
+      3: entity.name.function.daslang
+    push:
+    - meta_scope: meta.function.declaration.daslang
+    - match: (?=\{|\n(?![[:space:]]))
+      pop: true
+    - match: \(
+      captures:
+        0: punctuation.definition.parameters.begin.daslang
+      push:
+      - meta_scope: meta.function.parameters.daslang
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.definition.parameters.end.daslang
+      - match: \b(var|let)\b
+        captures:
+          0: storage.modifier.daslang
+        push:
+        - match: (?=,|;|\))
+          pop: true
+        - match: \b([[:alpha:]_][[:alnum:]_]*)\b
+          scope: variable.parameter.function.daslang
+        - match: ':'
+          scope: punctuation.separator.annotation.daslang
+        - include: repo_builtin_types
+        - include: repo_user_defined_types
+        - include: repo_expression
+      - match: \b([[:alpha:]_][[:alnum:]_]*)\b
+        scope: variable.parameter.function.daslang
+      - match: ':'
+        scope: punctuation.separator.annotation.daslang
+      - include: repo_builtin_types
+      - include: repo_user_defined_types
+      - include: repo_expression
+      - match: ',|;'
+        scope: punctuation.separator.parameters.daslang
+    - match: ':'
+      scope: punctuation.separator.return-type.daslang
+    - include: repo_builtin_types
+    - include: repo_user_defined_types
+    - include: repo_annotations
+  - match: \{
+    captures:
+      0: punctuation.definition.block.begin.daslang
+    push:
+    - meta_scope: meta.block.curly.daslang
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.end.daslang
+    - include: main
+    - match: ;
+      scope: punctuation.terminator.statement.daslang
+  - match: \n(?=\s)
+    push:
+    - meta_scope: meta.block.pythonic.daslang
+    - match: (?=\n[^\s])|\s*$
+      pop: true
+    - include: main
+  - match: '@'
+    captures:
+      0: keyword.operator.lambda-decl.daslang
+    push:
+    - meta_scope: meta.lambda-expression.daslang
+    - match: (?=;|$)
+      pop: true
+    - match: <\|
+      captures:
+        0: keyword.operator.pipe.daslang
+      push:
+      - match: (?=\n|\s*$)
+        pop: true
+      - match: \(
+        captures:
+          0: punctuation.definition.parameters.begin.daslang
+        push:
+        - match: \)
+          pop: true
+          captures:
+            0: punctuation.definition.parameters.end.daslang
+        - include: repo_function_arguments
+      - match: (?=\{|=>|\n)
+        push:
+        - match: (?=\n[^\s])|\s*$
+          pop: true
+        - include: repo_expression
+        - include: repo_blocks
+  - include: repo_reader_macro
+  - match: \$
+    captures:
+      0: keyword.operator.block-decl.daslang
+    push:
+    - meta_scope: meta.block-expression.daslang
+    - match: (?=;|$)
+      pop: true
+    - match: <\|
+      captures:
+        0: keyword.operator.pipe.daslang
+      push:
+      - match: (?=\n|\s*$)
+        pop: true
+      - match: \(
+        captures:
+          0: punctuation.definition.parameters.begin.daslang
+        push:
+        - match: \)
+          pop: true
+          captures:
+            0: punctuation.definition.parameters.end.daslang
+        - include: repo_function_arguments
+      - match: (?=\{|=>|\n)
+        push:
+        - match: (?=\n[^\s])|\s*$
+          pop: true
+        - include: repo_expression
+        - include: repo_blocks
+  repo_function_arguments:
+  - match: \b([[:alpha:]_][[:alnum:]_]*)\b(?=\s*=)
+    scope: variable.parameter.function.daslang
+  - include: repo_expression
+  - match: ',|;'
+    scope: punctuation.separator.arguments.daslang
+  repo_function_call:
+  - match: \b([[:alpha:]_][[:alnum:]_\:]*)\b\s*(?=\()|(?<=\)|\])\s*(\()
+    captures:
+      1: entity.name.function.daslang
+      2: punctuation.definition.arguments.begin.daslang
+    push:
+    - meta_scope: meta.function-call.daslang
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.daslang
+    - match: \(
+      captures:
+        0: punctuation.definition.arguments.begin.daslang
+      push:
+      - meta_content_scope: meta.function.arguments.daslang
+      - match: (?=\))
+        pop: true
+      - include: repo_function_arguments
+  repo_identifiers:
+  - match: \b([_A-Za-z][A-Za-z0-9_`]*)\b
+    scope: variable.other.daslang
+  repo_initializers:
+  - match: \[\[
+    captures:
+      0: punctuation.definition.array.begin.double-bracket.daslang
+    push:
+    - meta_scope: meta.initializer.array.fixed.daslang
+    - match: \]\]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.double-bracket.daslang
+    - include: repo_initializers_content
+  - match: \[\{
+    captures:
+      0: punctuation.definition.array.begin.bracket-curly.daslang
+    push:
+    - meta_scope: meta.initializer.array.dynamic.daslang
+    - match: \}\]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.bracket-curly.daslang
+    - include: repo_initializers_content
+  - match: \{\{
+    captures:
+      0: punctuation.definition.table.begin.double-curly.daslang
+    push:
+    - meta_scope: meta.initializer.table.daslang
+    - match: \}\}
+      pop: true
+      captures:
+        0: punctuation.definition.table.end.double-curly.daslang
+    - include: repo_initializers_content
+  repo_initializers_content:
+  - include: repo_builtin_types
+  - include: repo_user_defined_types
+  - include: repo_operators
+  - include: repo_strings
+  - include: repo_literals
+  - include: repo_expression
+  - match: \b([[:alpha:]_][[:alnum:]_]*)\b\s*=
+    captures:
+      0: keyword.operator.assignment.daslang
+      1: variable.other.field.daslang
+  - match: ;
+    scope: punctuation.separator.statement.daslang
+  - match: ','
+    scope: punctuation.separator.element.daslang
+  - match: \.\.\.
+    scope: keyword.operator.ellipsis.daslang
+  - match: \s*=>\s*
+    scope: keyword.operator.map.daslang
+  - match: \b(where|for|in)\b
+    scope: keyword.control.comprehension.daslang
+  - match: \|\|
+    scope: keyword.operator.or.daslang
+  - match: \b(struct|class|tuple|variant|enum|bitfield)\b
+    scope: storage.type.declaration.daslang
+  - include: repo_variable_declaration
+  - match: \b(typeinfo|type|auto)\b
+    scope: keyword.other.type-query.daslang
+  repo_keywords:
+  - match: \b(if|else|elif|static_if|static_elif|while|for|break|continue|return|yield|try|recover|panic|finally|in|is|as|defer|defer_delete)\b
+    scope: keyword.control.daslang
+  - match: \b(operator)\b
+    scope: keyword.control.operator-overload.daslang
+  - match: \b(struct|class|enum|variant|tuple|bitfield|typedef|typedecl|def)\b
+    scope: storage.type.declaration.daslang
+  - match: \b(let|var|static|public|private|shared|inscope|explicit|implicit|abstract|override|sealed|const|template)\b
+    scope: storage.modifier.daslang
+  - match: \b(new|delete|typeinfo|type|addr|deref|reinterpret|assume|with|cast|upcast|pass|goto|label|aka|uninitialized|capture|default|expect|include|unsafe)\b
+    scope: keyword.other.daslang
+  - match: \b(options)\b
+    scope: keyword.control.options.daslang
+  - match: \b(require)\b
+    scope: keyword.control.module.daslang
+  - match: \b(module)\b
+    scope: keyword.declaration.module.daslang
+  - match: \b(match|match_expr|static_match|multi_match|match_type)\b
+    scope: keyword.control.pattern-matching.daslang
+  repo_literals:
+  - match: \b(true|false|null)\b
+    scope: constant.language.daslang
+  - match: '''(\\.|[^\\''])''(u8|U8|u|U)?'
+    scope: constant.character.daslang
+  - match: \b0[xX][\dA-Fa-f_]+[uU]\b
+    scope: constant.numeric.integer.hexadecimal.unsigned.daslang
+  - match: \b0[xX][\dA-Fa-f_]+[lL]\b
+    scope: constant.numeric.integer.hexadecimal.long.daslang
+  - match: \b0[xX][\dA-Fa-f_]+\b
+    scope: constant.numeric.integer.hexadecimal.daslang
+  - match: \b0[0-7_]+[uU]\b
+    scope: constant.numeric.integer.octal.unsigned.daslang
+  - match: \b0[0-7_]+[lL]\b
+    scope: constant.numeric.integer.octal.long.daslang
+  - match: \b0[0-7_]+\b
+    scope: constant.numeric.integer.octal.daslang
+  - match: \b\d[\d_]*[uU]\b
+    scope: constant.numeric.integer.decimal.unsigned.daslang
+  - match: \b\d[\d_]*[lL]\b
+    scope: constant.numeric.integer.decimal.long.daslang
+  - match: \b\d[\d_]*\.[\d_]*([eE][\+\-]?\d[\d_]*)?[dD]\b
+    scope: constant.numeric.float.double.daslang
+  - match: \b\d[\d_]*([eE][\+\-]?\d[\d_]*)?[dD]\b
+    scope: constant.numeric.float.double.daslang
+  - match: \b\.[\d_]+([eE][\+\-]?\d[\d_]*)?[dD]\b
+    scope: constant.numeric.float.double.daslang
+  - match: \b\d[\d_]*\.[\d_]*([eE][\+\-]?\d[\d_]*)?[fF]\b
+    scope: constant.numeric.float.daslang
+  - match: \b\d[\d_]*([eE][\+\-]?\d[\d_]*)?[fF]\b
+    scope: constant.numeric.float.daslang
+  - match: \b\.[\d_]+([eE][\+\-]?\d[\d_]*)?[fF]\b
+    scope: constant.numeric.float.daslang
+  - match: \b\d[\d_]*\.[\d_]*([eE][\+\-]?\d[\d_]*)?\b
+    scope: constant.numeric.float.daslang
+  - match: \b\d[\d_]*\b
+    scope: constant.numeric.integer.decimal.daslang
+  repo_member_access:
+  - match: \.(?=[[:alpha:]_])
+    scope: punctuation.separator.member.daslang
+  - match: \?\.(?=[[:alpha:]_])
+    scope: punctuation.separator.safe-member.daslang
+  - match: \.\.(?=[[:alpha:]_])
+    scope: punctuation.separator.direct-member.daslang
+  - match: ->
+    scope: punctuation.separator.pointer-member.daslang
+  - match: '::'
+    scope: punctuation.separator.scope.daslang
+  repo_operators:
+  - match: (\+\+|\-\-)
+    scope: keyword.operator.arithmetic.increment-decrement.daslang
+  - match: (\+|-|\*|/|%)
+    scope: keyword.operator.arithmetic.daslang
+  - match: (&&|\|\||\^\^|!)
+    scope: keyword.operator.logical.daslang
+  - match: (&|\||\^|~|<<|>>|<<<|>>>)
+    scope: keyword.operator.bitwise.daslang
+  - match: (==|!=|<|<=|>|>=)
+    scope: keyword.operator.comparison.daslang
+  - match: (=|:=|<-|\+=|\-=|\*=|/=|%=|&=|\|=|^=|<<=|>>=|<<<=|>>>=|&&=|\|\|=|\^\^=)
+    scope: keyword.operator.assignment.daslang
+  - match: (\.\.)
+    scope: keyword.operator.range.daslang
+  - match: (\?\?)
+    scope: keyword.operator.null-coalescing.daslang
+  - match: (\?:)
+    scope: keyword.operator.conditional.daslang
+  - match: (<\||\|>)
+    scope: keyword.operator.pipe.daslang
+  - match: '@\s*<\|'
+    scope: keyword.operator.lambda-decl.daslang
+  - match: \$
+    scope: keyword.operator.block-decl.daslang
+  - match: '%'
+    scope: keyword.operator.reader-macro.daslang
+  - match: '='
+    scope: keyword.operator.assignment.daslang
+  - match: \s*=>\s*
+    scope: keyword.operator.lambda-expression.daslang
+  repo_reader_macro:
+  - match: '%([[:alpha:]_][[:alnum:]_]*)[~!]'
+    captures:
+      0: keyword.operator.reader-macro.daslang
+      1: entity.name.function.reader-macro.daslang
+    push:
+    - meta_scope: meta.reader-macro.daslang
+    - match: '%%'
+      pop: true
+      captures:
+        0: keyword.operator.reader-macro-terminator.daslang
+    - include: main
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.daslang
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.daslang
+    - match: \{
+      captures:
+        0: punctuation.definition.string.interpolation.begin.daslang
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.string.interpolation.end.daslang
+      - include: main
+  - match: '@"'
+    push:
+    - meta_scope: string.quoted.verbatim.daslang
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.daslang
+  repo_struct_declaration:
+  - match: \b(struct|class)\b\s*((?:private|public|sealed)\s+)?([[:alpha:]_][[:alnum:]_]*)(?:\s*:\s*([[:alpha:]_][[:alnum:]_:]*))?\s*(\{)?
+    captures:
+      1: storage.type.class.daslang
+      2: storage.modifier.daslang
+      3: entity.name.type.class.daslang
+      4: entity.other.inherited-class.daslang
+      5: punctuation.definition.block.begin.daslang
+    push:
+    - meta_scope: meta.struct.declaration.daslang
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.end.daslang
+    - include: repo_variable_declaration
+    - include: repo_function
+    - include: repo_comments
+    - include: repo_annotations
+    - match: ;
+      scope: punctuation.terminator.statement.daslang
+  repo_user_defined_types:
+  - match: \b([[:alpha:]_][[:alnum:]_:`]*)\b
+    scope: entity.name.type.daslang
+  repo_variable_access:
+  - match: \b([[:alpha:]_][[:alnum:]_:]*)\b
+    scope: variable.other.daslang
+  - match: \[
+    captures:
+      0: punctuation.definition.array.begin.daslang
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.daslang
+    - include: repo_expression
+  repo_variable_declaration:
+  - match: \b(let|var)\b\s*((?:private|public|shared|inscope)\s+)?([[:alpha:]_][[:alnum:]_]*)(?=\s*[:=<-]|\s*\[\[|\s*\[\{|\s*\{\{|\s*\n(?![[:space:]]))
+    captures:
+      1: storage.type.daslang
+      2: storage.modifier.daslang
+      3: entity.name.variable.daslang
+    push:
+    - meta_scope: meta.variable.declaration.daslang
+    - match: (?=;|$)
+      pop: true
+    - match: ':'
+      scope: punctuation.separator.type-annotation.daslang
+    - include: repo_builtin_types
+    - include: repo_user_defined_types
+    - include: repo_initializers
+    - include: repo_expression
+    - include: repo_blocks

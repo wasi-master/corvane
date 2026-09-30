@@ -1,0 +1,70 @@
+%YAML 1.2
+---
+# Edge (text.html.edge): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/edge-js/edge-vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: Edge
+scope: text.html.edge
+file_extensions:
+- edge
+contexts:
+  main:
+  - include: scope:text.html.basic
+  repo_comment:
+  - match: \{{--
+    captures:
+      0: punctuation.definition.comment.begin.edge
+    push:
+    - meta_scope: comment.block
+    - match: \--}}
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.edge
+  repo_escapedMustache:
+  - match: \@{{
+    captures:
+      0: punctuation.definition.comment.begin.edge
+    push:
+    - meta_scope: comment.block
+    - match: \}}
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.edge
+  repo_mustache:
+  - match: \{{
+    captures:
+      0: punctuation.mustache.begin
+    push:
+    - meta_scope: meta.embedded.block.javascript
+    - match: \}}
+      pop: true
+      captures:
+        0: punctuation.mustache.end
+    - include: scope:source.ts
+  repo_nonSeekableTag:
+  - match: ^(\s*)((@{1,2})(!)?([a-zA-Z._]+))(~)?$
+    scope: meta.embedded.block.javascript
+    captures:
+      2: support.function.edge
+  repo_safeMustache:
+  - match: \{{{
+    captures:
+      0: punctuation.mustache.begin
+    push:
+    - meta_scope: meta.embedded.block.javascript
+    - match: \}}}
+      pop: true
+      captures:
+        0: punctuation.mustache.end
+    - include: scope:source.ts
+  repo_tag:
+  - match: ^(\s*)((@{1,2})(!)?([a-zA-Z._]+)(\s{0,2}))(\()
+    captures:
+      2: support.function.edge
+      7: punctuation.paren.open
+    push:
+    - meta_scope: meta.embedded.block.javascript
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.paren.close
+    - include: scope:source.ts

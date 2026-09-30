@@ -1,0 +1,28 @@
+%YAML 1.2
+---
+# Alloy (source.alloy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/macekond/Alloy.tmbundle via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Alloy
+scope: source.alloy
+file_extensions:
+- als
+contexts:
+  main:
+  - match: \b(run|check)\b
+    scope: keyword.control.alloy
+  - match: \b(implies|or|and|not|'|;)\b
+    scope: keyword.operator.alloy
+  - match: \b(abstract|after|all|always|and|as|assert|before|but|check|disj|else|eventually|exactly|extends|fact|for|fun|historically|iden|iff|implies|in|Int|let|lone|module|no|none|once|one|open|or|pred|releases|run|set|sig|since|some|steps|sum|triggered|univ|until|var)\b
+    scope: keyword.other.alloy
+  - match: \/\/.*
+    scope: comment.line.double-slash.alloy
+  - match: \/\*(.)*\*\/|\s\*\s(.)*\n|\*/|\/\*(.)*
+    scope: comment.block.empty.alloy
+  - match: \b(fact|sig|module|pred|fun|enum)\b
+    scope: storage.type.alloy
+  - match: pred \w*\[(.)*]{
+    push:
+    - meta_scope: entity.name.function.predicate.alloy
+    - match: '}'
+      pop: true
+    - include: main

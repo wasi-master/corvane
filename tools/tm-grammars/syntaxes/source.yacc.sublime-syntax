@@ -1,0 +1,307 @@
+%YAML 1.2
+---
+# Bison (source.yacc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-grammars via GitHub Linguist v9.7.0 (license: isc).
+name: Bison
+scope: source.yacc
+file_extensions:
+- bison
+- y
+- yacc
+- yy
+contexts:
+  main:
+  - include: repo_main
+  repo_action:
+  - match: (%\?)({)
+    captures:
+      1: keyword.operator.predicate.action.yacc
+      2: punctuation.section.block.begin.bracket.curly.c
+    push:
+    - meta_scope: meta.predicate.yacc
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.bracket.curly.c
+    - include: repo_action-innards
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.bracket.curly.c
+    push:
+    - meta_scope: meta.action.yacc
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.bracket.curly.c
+    - include: repo_action-innards
+  repo_action-innards:
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.bracket.curly.c
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.bracket.curly.c
+    - include: repo_action-innards
+  - include: repo_action-vars
+  - include: repo_bison-defs
+  - include: scope:source.c++
+  repo_action-vars:
+  - match: (\$)(undefined|accept|end)(?![-.])\b
+    captures:
+      1: punctuation.definition.symbol.yacc
+  - match: (?<![-.$])\b(error)(?![-.])\b
+    scope: constant.language.predefined-symbol.error.yacc
+  - match: (\$@)([0-9]+)
+    captures:
+      1: punctuation.definition.variable.yacc
+  - match: (@)\$
+    scope: variable.language.rule-location.lhs.yacc
+    captures:
+      1: punctuation.definition.variable.yacc
+  - match: (@)([0-9]+)
+    captures:
+      1: punctuation.definition.variable.yacc
+  - match: (\$)\$
+    scope: variable.language.rule-value.lhs.yacc
+    captures:
+      1: punctuation.definition.variable.yacc
+  - match: (\$)([0-9]+)
+    captures:
+      1: punctuation.definition.variable.yacc
+  - match: (@)[A-Za-z_.][-.\w]*|(@)(\[)\s*[A-Za-z_.][-.\w]*\s*(\])
+    scope: variable.language.symbol-location.yacc
+    captures:
+      1: punctuation.definition.variable.yacc
+      2: punctuation.definition.variable.yacc
+      3: punctuation.section.begin.brace.bracket.square.yacc
+      4: punctuation.section.end.bbrace.racket.square.yacc
+  - match: (\$)[A-Za-z_.][-.\w]*|(\$\[)\s*[A-Za-z_.][-.\w]*\s*(\])
+    scope: variable.language.symbol-value.yacc
+    captures:
+      1: punctuation.definition.variable.yacc
+      2: punctuation.definition.variable.begin.yacc
+      3: punctuation.definition.variable.end.yacc
+  repo_bison-defs:
+  - match: '(?x) (?<![.-]) \b
+
+      (YYABORT|YYACCEPT|YYBACKUP|YYDEBUG|YYERROR_VERBOSE|YYERROR|YYFPRINTF|YYINITDEPTH
+
+      |YYMAXDEPTH|YYPRINT|YYRECOVERING|YYSTACK_USE_ALLOCA|yyerrok|yyerror|yylex|yyparse
+
+      |yypstate_delete|yypstate_new|yypull_parse|yypush_parse)
+
+      \b (?![.-])'
+  - match: (?<![.-])\b(yychar|yyclearin|yydebug|yylloc|yylval|yynerrs)\b(?![.-])
+  - match: (?<![.-])\b(YYSTYPE|YYLTYPE)\b(?![.-])
+  repo_comment:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.yacc
+    push:
+    - meta_scope: comment.block.yacc
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.yacc
+  repo_constant:
+  - match: \w+
+    scope: constant.language.other.token.yacc
+  repo_data-type:
+  - match: (<)(\*)(>)
+    scope: storage.modifier.type.yacc
+    captures:
+      1: punctuation.definition.angle.bracket.begin.yacc
+      2: constant.language.default.yacc
+      3: punctuation.definition.angle.bracket.end.yacc
+  - match: <
+    captures:
+      0: punctuation.definition.angle.bracket.begin.yacc
+    push:
+    - meta_scope: storage.modifier.type.yacc
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.angle.bracket.end.yacc
+  repo_declaration-innards:
+  - include: repo_constant
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_data-type
+  repo_declaration-section:
+  - match: (?<=%})
+    push:
+    - meta_scope: meta.declarations.yacc
+    - match: ^(?=\s*%%)
+      pop: true
+    - include: repo_declarations
+    - include: repo_comment
+    - include: repo_data-type
+  repo_declarations:
+  - match: ^\s*((%)union)\b
+    captures:
+      1: keyword.control.directive.union.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+    push:
+    - match: ^(?=\s*%)|(?<=})
+      pop: true
+    - include: scope:source.c++
+  - match: ^\s*((%)code)\s+(imports)\s*({)
+    captures:
+      1: keyword.control.directive.code.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+      3: constant.language.other.qualifier.yacc
+      4: punctuation.definition.curly.bracket.begin.yacc
+    push:
+    - meta_scope: meta.code-block.yacc
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.curly.bracket.end.yacc
+    - include: scope:source.java
+  - match: ^\s*((%)(code|lex-param|parse-param|param|printer))(?:\s+(\w+))?\s*({)
+    captures:
+      2: punctuation.definition.token.percentage-sign.yacc
+      4: constant.language.other.qualifier.yacc
+      5: punctuation.definition.curly.bracket.begin.yacc
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.curly.bracket.end.yacc
+    - include: scope:source.c++
+  - match: ^\s*((%)defines)(?=\s|$|/\*|//)(?:\s+(?!//|/\*)(\S+))?
+    scope: meta.defines.yacc
+    captures:
+      1: keyword.control.directive.defines.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+      3: string.unquoted.filename.yacc
+  - match: ^\s*((%)define)(?:\s+([A-Za-z_.][-.\w]*))?\s*({)
+    captures:
+      1: keyword.control.directive.define.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+      3: entity.name.var.yacc
+      4: punctuation.definition.curly.bracket.begin.yacc
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.curly.bracket.end.yacc
+    - include: scope:source.c++
+  - match: ^\s*((%)define)(?:\s+([A-Za-z_.][-.\w]*))?
+    captures:
+      1: keyword.control.directive.define.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+      3: entity.name.var.yacc
+    push:
+    - match: (?=\s*$)|^(?!\s{2,}(?=\w))|^(?=\s*%%)
+      pop: true
+    - include: repo_declaration-innards
+  - match: ^\s*((%)option)(?=\s|$)
+    captures:
+      1: keyword.control.directive.option.yacc
+      2: punctuation.definition.token.percentage-sign.yacc
+    push:
+    - match: $|(?=\s*(?://|/\*))|^(?=\s*%%)
+      pop: true
+    - match: '[A-Za-z_.][-.\w]*'
+      scope: constant.language.option-name.yacc
+    - include: repo_declaration-innards
+  - match: '(?x)
+
+      ^\s* ((%)
+
+      (code|debug|destructor|dprec|empty|error-verbose|expect-rr|expect
+
+      |file-prefix|glr-parser|initial-action|language|left|lex-param
+
+      |locations|merge|name-prefix|no-lines|nonassoc|nterm|output|param
+
+      |parse-param|precedence|prec|printer|pure-parser|required?|right|skeleton
+
+      |start|token-table|token|type|verbose|yacc))\b'
+    captures:
+      2: punctuation.definition.token.percentage-sign.yacc
+    push:
+    - match: ^(?!\s{2,}(?=\w))|^(?=\s*%%)
+      pop: true
+    - include: repo_declaration-innards
+  - match: ^\s*(%{)
+    captures:
+      1: punctuation.section.embedded.begin.yacc
+    push:
+    - match: ^\s*(%})
+      pop: true
+      captures:
+        1: punctuation.section.embedded.end.yacc
+    - include: scope:source.c++
+  repo_epilogue:
+  - match: (?<=%%)
+    push:
+    - meta_scope: meta.epilogue.yacc
+    - match: (?=A)B
+      pop: true
+    - include: scope:source.c++
+  repo_main:
+  - include: repo_comment
+  - include: repo_prologue
+  - include: repo_declaration-section
+  - include: repo_rules
+  - include: repo_epilogue
+  - include: scope:source.c++
+  repo_prologue:
+  - match: ^\s*(%{)
+    scope: punctuation.section.embedded.begin.yacc
+  - match: ^\s*(%})
+    scope: punctuation.section.embedded.end.yacc
+  - include: repo_declarations
+  repo_rule:
+  - match: ^\s*([A-Za-z_.][-.\w]*)\s*(:)
+    captures:
+      1: entity.name.rule.yacc
+      2: punctuation.separator.key-value.colon.yacc
+    push:
+    - meta_scope: meta.rule.yacc
+    - match: \s*(;)\s*
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.semicolon.yacc
+    - match: ([A-Za-z_.][-.\w]*)
+      scope: entity.name.rule.yacc
+    - match: \|
+      scope: keyword.operator.logical.or.yacc
+    - include: repo_comment
+    - include: repo_string
+    - include: repo_action
+  repo_rules:
+  - match: ^\s*(%%)
+    captures:
+      1: keyword.control.section.begin.yacc
+    push:
+    - meta_scope: meta.rules.yacc
+    - match: ^\s*(%%)
+      pop: true
+      captures:
+        1: keyword.control.section.end.yacc
+    - include: repo_comment
+    - include: repo_rule
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.yacc
+    push:
+    - meta_scope: string.quoted.double.yacc
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.yacc
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.yacc
+    push:
+    - meta_scope: string.quoted.single.yacc
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.yacc

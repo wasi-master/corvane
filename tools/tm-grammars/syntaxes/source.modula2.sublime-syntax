@@ -1,0 +1,53 @@
+%YAML 1.2
+---
+# Modula-2 (source.modula2): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/harogaston/Sublime-Modula-2 via GitHub Linguist v9.7.0 (license: mit).
+name: Modula-2
+scope: source.modula2
+file_extensions:
+- mod
+- ob2
+contexts:
+  main:
+  - match: \b(PROCEDURE|DEFINITION MODULE|IMPLEMENTATION MODULE|MODULE)\b\s+(\w+(\.\w+)?)
+    captures:
+      1: storage.type.function.modula2
+      2: entity.name.function.modula2
+  - match: \b(END)\b\s+(\w+(\.\w+)?)
+    captures:
+      1: keyword.control.modula2
+      2: entity.name.function.end.modula2
+  - match: \b(ABS|ADDRES|ADR|BITSET|BOOLEAN|BYTE|CAP|CARDINAL|CHAR|CHR|DEC|DISPOSE|EXCL|FALSE|FLOAT|HALT|HIGH|INC|INCL|INTEGER|LONGCARD|LONGINT|LONGREAL|LONGWORD|NEW|NULLPROC|ODD|ORD|PROC|REAL|SHORTADDR|SHORTCARD|SHORTINT|SIZE|TRUE|TRUNC|VAL|VSIZE|WORD)\b
+    scope: meta.function.modula2
+    captures:
+      1: storage.type.function.modula2
+      2: entity.name.function.modula2
+  - match: \b(AND|ARRAY|BEGIN|BY|CASE|CONST|DIV|DO|ELSE|ELSIF|END|EXIT|EXPORT|FOR|FORWARD|FROM|GOTO|IF|IMPORT|IN|LABEL|LOOP|MOD|NOT|OF|OR|POINTER|QUALIFIED|RECORD|REPEAT|RETURN|SET|THEN|TO|DOWNTO|TYPE|UNTIL|VAR|WHILE|WITH|NIL)\b
+    scope: keyword.control.modula2
+  - include: repo_block_comment
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.modula2
+    push:
+    - meta_scope: string.quoted.double.modula2
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.modula2
+    - match: \.
+      scope: constant.character.escape.modula2
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\b
+    scope: constant.numeric.modula2
+  - match: (\(|\)|\+|-|\*|/|:|;|\.|\^|=|:=|<|>|#)
+    scope: variable.parameter.function.modula2
+  repo_block_comment:
+  - match: \(\*
+    captures:
+      0: punctuation.definition.comment.modula2
+    push:
+    - meta_scope: comment.block.modula2.one
+    - include: repo_block_comment
+    - match: \*\)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.modula2

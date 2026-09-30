@@ -1,0 +1,79 @@
+%YAML 1.2
+---
+# MeTTa (source.metta): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/metta-textmate-linguist via GitHub Linguist v9.7.0 (license: mit).
+name: MeTTa
+scope: source.metta
+file_extensions:
+- metta
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_number
+  - include: repo_variable
+  - include: repo_space-atom
+  - include: repo_operator
+  - include: repo_keyword
+  - include: repo_builtin-function
+  - include: repo_arithmetic
+  - include: repo_builtin-type
+  - include: repo_boolean
+  - include: repo_punctuation
+  - include: repo_function-call
+  repo_arithmetic:
+  - match: (?<=[()\s])(\+|-|\*|/|%|<|>|<=|>=|==)(?=[()\s])
+    scope: support.function.arithmetic.metta
+  repo_boolean:
+  - match: (?<=[()\s])(True|False)(?=[()\s])
+    scope: constant.language.boolean.metta
+  repo_builtin-function:
+  - match: (?<=[()\s])(get-type|get-metatype|collapse|superpose|assertEqual|assertEqualToResult|add-atom|remove-atom|get-atoms|new-space|car-atom|cdr-atom|cons-atom|nop|empty|Error|trace!|println!|sealed|apply|chain|unify)(?=[()\s])
+    scope: support.function.builtin.metta
+  repo_builtin-type:
+  - match: (?<=[()\s])(Type|Atom|Symbol|Expression|Variable|Grounded|Number|Bool|String|%Undefined%)(?=[()\s])
+    scope: support.type.builtin.metta
+  repo_comment:
+  - match: ";[^\n\r]*"
+    scope: comment.line.semicolon.metta
+  repo_function-call:
+  - match: (?<=\()[a-zA-Z_][a-zA-Z0-9_!?-]*
+    scope: entity.name.function.metta
+  repo_keyword:
+  - match: (?<=[()\s])(match|let\*?|if|case|import!|include|bind!|pragma!|function|return)(?=[()\s])
+    scope: keyword.control.metta
+  repo_number:
+  - match: (?<=[()\s]|^)-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?(?=[()\s]|$)
+    scope: constant.numeric.metta
+  repo_operator:
+  - match: (?<=[\s(]|^)!(?=[\s(])
+    scope: keyword.operator.evaluation.metta
+  - match: (?<=[\s(])=(?=[\s()])
+    scope: keyword.operator.definition.metta
+  - match: (?<=[\s(]):(?=[\s()])
+    scope: keyword.operator.type-annotation.metta
+  - match: ->
+    scope: keyword.operator.arrow.metta
+  repo_punctuation:
+  - match: \(
+    scope: punctuation.definition.list.begin.metta
+  - match: \)
+    scope: punctuation.definition.list.end.metta
+  repo_space-atom:
+  - match: '&[a-zA-Z_][a-zA-Z0-9_-]*'
+    scope: variable.language.self.metta
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.metta
+    push:
+    - meta_scope: string.quoted.double.metta
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.metta
+    - match: \\.
+      scope: constant.character.escape.metta
+  repo_variable:
+  - match: \$[^()\s";]+
+    scope: variable.other.metta

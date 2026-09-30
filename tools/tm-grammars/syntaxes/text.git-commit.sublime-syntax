@@ -1,0 +1,42 @@
+%YAML 1.2
+---
+# Git Commit (text.git-commit): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Git Commit
+scope: text.git-commit
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: ^#
+    captures:
+      0: punctuation.definition.comment.git-commit
+    push:
+    - meta_scope: comment.line.git-commit
+    - match: $
+      pop: true
+    - match: (modified)(:) +(.+)
+      scope: meta.generic.variable.other.modified.git-commit
+      captures:
+        1: markup.changed.git-commit
+        3: markup.bold.filename.git-commit
+    - match: (renamed)(:) +(.+)(->)(.+)
+      scope: meta.generic.variable.other.renamed.git-commit
+      captures:
+        1: markup.changed.git-commit
+        3: markup.bold.filename.git-commit
+        4: markup.raw.token.git-commit
+        5: markup.bold.filename.git-commit
+    - match: (deleted)(:) +(.+)
+      scope: meta.generic.variable.other.deleted.git-commit
+      captures:
+        1: markup.deleted.git-commit
+        3: markup.bold.filename.git-commit
+    - match: (new file)(:) +(.+)
+      scope: meta.generic.variable.other.new-file.git-commit
+      captures:
+        1: markup.inserted.git-commit
+        3: markup.bold.filename.git-commit
+  repo_main:
+  - include: repo_comment

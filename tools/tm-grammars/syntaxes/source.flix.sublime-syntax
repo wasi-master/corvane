@@ -1,0 +1,191 @@
+%YAML 1.2
+---
+# Flix (source.flix): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/flix/textmate.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Flix
+scope: source.flix
+file_extensions:
+- flix
+contexts:
+  main:
+  - include: repo_all_patterns
+  repo_all_patterns:
+  - include: repo_constants
+  - include: repo_declarations
+  - include: repo_keywords
+  - include: repo_literal_char
+  - include: repo_literal_string
+  - include: repo_literal_dec
+  - include: repo_literal_hex
+  - include: repo_annotations
+  - include: repo_functions
+  - include: repo_types
+  - include: repo_comments
+  repo_annotations:
+  - match: '@Deprecated'
+    scope: storage.type.annotation.flix
+  - match: '@Experimental'
+    scope: storage.type.annotation.flix
+  - match: '@Internal'
+    scope: storage.type.annotation.flix
+  - match: '@ParallelWhenPure'
+    scope: storage.type.annotation.flix
+  - match: '@Parallel'
+    scope: storage.type.annotation.flix
+  - match: '@LazyWhenPure'
+    scope: storage.type.annotation.flix
+  - match: '@Lazy'
+    scope: storage.type.annotation.flix
+  - match: '@Skip'
+    scope: storage.type.annotation.flix
+  - match: '@Test'
+    scope: storage.type.annotation.flix
+  repo_comments:
+  - match: //.*$
+    scope: comment.line.double-slash.flix
+  - match: /\*
+    push:
+    - meta_scope: comment.block.flix
+    - match: \*/
+      pop: true
+  repo_constants:
+  - match: (?<![a-zA-Z0-9_!])\(\)
+    scope: constant.language.unit.flix
+  - match: \b(true|false)\b
+    scope: constant.language.bool.flix
+  - match: \b(LessThan|EqualTo|GreaterThan)\b
+    scope: constant.language.comparison.flix
+  - match: \b(Nil)\b
+    scope: constant.language.nil.flix
+  - match: \b(null)\b
+    scope: constant.language.null.flix
+  - match: \b(Some|None)\b
+    scope: constant.language.option.flix
+  - match: \b(Ok|Err)\b
+    scope: constant.language.result.flix
+  repo_declarations:
+  - match: \b(def|redef)\s+([a-z][a-zA-Z0-9_]*!?)
+    captures:
+      1: keyword.declaration.flix
+      2: entity.name.function.flix
+  repo_functions:
+  - match: \b([A-Z][a-zA-Z0-9_]*)\.([a-z][a-zA-Z0-9_]*!?)
+    captures:
+      1: entity.name.type.flix
+      2: support.function.flix
+  - match: \b[a-z][a-zA-Z0-9_]*!?(?=\s*\()
+    scope: entity.name.function.flix
+  repo_keywords:
+  - match: \b(choose\*|choose)\b
+    scope: keyword.control.choose.flix
+  - match: \b(forA)\b
+    scope: keyword.control.applicativefor.flix
+  - match: \b(forM)\b
+    scope: keyword.control.monadicfor.flix
+  - match: \b(foreach)\b
+    scope: keyword.control.foreach.flix
+  - match: \b(handler)\b
+    scope: keyword.control.handler.flix
+  - match: \b(yield)\b
+    scope: keyword.control.yield.flix
+  - match: \b(if|else)\b
+    scope: keyword.control.if.flix
+  - match: \b(case|match|ematch)\b
+    scope: keyword.control.match.flix
+  - match: \b(run)\b
+    scope: keyword.control.run.flix
+  - match: \b(throw)\b
+    scope: keyword.control.throw.flix
+  - match: \b(try|catch)\b
+    scope: keyword.control.try.flix
+  - match: \b(spawn)\b
+    scope: keyword.control.spawn.flix
+  - match: \b(par)\b
+    scope: keyword.control.par.flix
+  - match: \b(unsafe)\b
+    scope: keyword.control.unsafe.flix
+  - match: \b(forall)\b
+    scope: keyword.forall.flix
+  - match: \b(not|and|or)\b
+    scope: keyword.operator.bool.flix
+  - match: \bfix\b
+    scope: keyword.operator.fix.flix
+  - match: \b(new)\b
+    scope: keyword.operator.new.flix
+  - match: \b(eff|def|redef|enum|type|alias|trait|instance|with|mod|struct)\b
+    scope: keyword.declaration.flix
+  - match: \b(checked_cast|checked_ecast|unchecked_cast|as)\b
+    scope: keyword.expression.cast.flix
+  - match: \b(discard)\b
+    scope: keyword.expression.discard.flix
+  - match: \b(from|into|inject|project|psolve|solve|query|pquery|where|select)\b
+    scope: keyword.expression.fixpoint.flix
+  - match: \b(force)\b
+    scope: keyword.expression.force.flix
+  - match: (\?\?\?|\?[a-zA-Z0-9]+)
+    scope: keyword.expression.hole.flix
+  - match: \b(import)\b
+    scope: keyword.expression.import.flix
+  - match: \b(instanceof)\b
+    scope: keyword.expression.instanceof.flix
+  - match: \b(let)\b
+    scope: keyword.expression.let.flix
+  - match: \b(lazy)\b
+    scope: keyword.expression.lazy.flix
+  - match: \b(region)\b
+    scope: keyword.expression.region.flix
+  - match: \b(use)\b
+    scope: keyword.use.flix
+  - match: \b(mut)\b
+    scope: keyword.mut.flix
+  - match: (~>|<\-|=>)
+    scope: keyword.symbols.flix
+  - match: (\s\->\s|\s\->|\->\s)
+    scope: keyword.arrow.function.flix
+  - match: \->
+    scope: keyword.operator.arrow.struct.flix
+  - match: ;
+    scope: keyword.control.semicolon.flix
+  - match: \b(super)\b
+    scope: variable.language.super.flix
+  - match: \b(pub|sealed|static)\b
+    scope: storage.modifier.flix
+  repo_literal_char:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.flix
+    - match: ''''
+      pop: true
+    - match: \\((u[0-9a-fA-F]{4})|.)
+      scope: constant.character.escape
+  repo_literal_dec:
+  - match: \b[0-9](_*[0-9])*\.[0-9](_*[0-9])*(f32|f64)?\b
+    scope: constant.numeric.decimal.flix
+  - match: \b[0-9](_*[0-9])*\.[0-9](_*[0-9])*(ff)?\b
+    scope: constant.numeric.decimal.bigdecimal.flix
+  - match: (?<!\$)\b[0-9](_*[0-9])*(i8|i16|i32|i64|ii)?\b
+    scope: constant.numeric.decimal.flix
+  repo_literal_hex:
+  - match: \b0x[a-fA-F0-9](_*[a-fA-F0-9])*(i8|i16|i32|i64|ii)?\b
+    scope: constant.numeric.hex.flix
+  repo_literal_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.flix
+    - match: '"'
+      pop: true
+    - match: \\((u[0-9a-fA-F]{4})|.)
+      scope: constant.character.escape.flix
+    - match: \$\{
+      captures:
+        0: punctuation.definition.template-expression.begin.flix
+      push:
+      - meta_content_scope: meta.embedded.line.flix
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.template-expression.end.flix
+      - include: repo_all_patterns
+  repo_types:
+  - match: \b[A-Z][a-zA-Z0-9_]*\b
+    scope: entity.name.type.flix

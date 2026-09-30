@@ -1,0 +1,103 @@
+%YAML 1.2
+---
+# 2-Dimensional Array (source.2da): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: 2-Dimensional Array
+scope: source.2da
+file_extensions:
+- 2da
+contexts:
+  main:
+  - match: '(?x) \A
+
+      [ \t]* (2DA\s+V(?:\d+\.\d+)) # Format signature
+
+      [ \t]* (?:(\S.*?) [ \t]*)?     # Unexpected junk
+
+      $ \s*'
+    captures:
+      0: meta.file-signature.2da
+      1: keyword.control.format-version.2da
+      2: invalid.illegal.unexpected-characters.2da
+    push:
+    - meta_scope: meta.header.2da
+    - match: (?!)$
+      pop: true
+    - include: repo_default
+  - match: \A[ \t]*(\S+)[ \t]*$
+    push:
+    - meta_scope: meta.header.2da
+    - match: (?!)
+      pop: true
+  - match: ^
+    push:
+    - meta_scope: meta.body.2da
+    - match: (?=A)B
+      pop: true
+    - match: ''
+      push:
+      - meta_scope: meta.column-headers.2da
+      - meta_content_scope: constant.other.reference.link
+      - match: $
+        pop: true
+      - include: repo_headers
+    - match: (?!)^
+      push:
+      - meta_scope: meta.records.2da
+      - match: (?=A)B
+        pop: true
+      - include: repo_row
+  repo_blankEntry:
+  - match: (?:|^|(?<=\s))\*{4}(?=\s|$)
+    scope: keyword.operator.null-value.2da
+  repo_default:
+  - match: (?:|^)[ \t]*(?:(DEFAULT(:))[ \t]*)?
+    captures:
+      1: variable.assignment.default-value.2da
+      2: keyword.operator.assignment.colon.2da
+    push:
+    - meta_scope: meta.default-value.2da
+    - match: (?=[ \t]*$)
+      pop: true
+    - include: repo_value
+  repo_float:
+  - match: '[-+]?(?:[0-9]+\.[0-9]+|\.[0-9]+)(?=\s|$)'
+    scope: constant.numeric.float.decimal.2da
+  repo_headers:
+  - match: '[^"\s]+'
+    scope: entity.name.column.header.unquoted.2da
+  - match: (")(?=\w)[^"]+(")
+    scope: entity.name.column.header.quoted.2da
+    captures:
+      1: punctuation.definition.header.begin.2da
+      2: punctuation.definition.header.end.2da
+  repo_integer:
+  - match: '[-+]?[0-9]+(?=\s|$)'
+    scope: constant.numeric.integer.dec.decimal.2da
+  - match: '[-+]?0[Xx][A-Fa-f0-9]+(?=\s|$)'
+    scope: constant.numeric.integer.hex.hexadecimal.2da
+  repo_row:
+  - match: (?:|^)[ \t]*(\d+)(?=\s|$)
+    captures:
+      1: constant.numeric.integer.row-index.2da
+  - match: '[ \t]+'
+    scope: punctuation.whitespace.column-separator.2da
+  - include: repo_value
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.2da
+    push:
+    - meta_scope: string.quoted.double.2da
+    - match: (")|([^"]*?)(?=[ \t]*$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.2da
+        2: invalid.illegal.unclosed-string.2da
+  - match: (?![-+]?\d)[^\s"]+
+    scope: string.unquoted.2da
+  repo_value:
+  - include: repo_blankEntry
+  - include: repo_float
+  - include: repo_integer
+  - include: repo_string

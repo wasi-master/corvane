@@ -1,0 +1,510 @@
+%YAML 1.2
+---
+# GtkRC (source.gtkrc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: GtkRC
+scope: source.gtkrc
+file_extensions:
+- gtkrc
+- gtkrc-2.0
+contexts:
+  main:
+  - include: repo_main
+  repo_attachment:
+  - match: ^\s*(class|widget_class|widget)(?=$|\s)
+    captures:
+      1: storage.type.subject.gtkrc
+    push:
+    - meta_scope: meta.attachment.gtkrc
+    - match: $
+      pop: true
+    - match: \s+(?="|')
+      push:
+      - match: (?!)
+        pop: true
+      - include: repo_widgetPath
+    - match: (?<=\s|^)(style|binding)(?=$|\s)
+      push:
+      - match: ("[^"]*"|'[^']*')|(?=\s*(?:$|#))
+        pop: true
+      - match: \s*(:)\s*(application|gtk|highest|lowest|rc|theme)(?=$|\s)
+        scope: meta.priority.gtkrc
+        captures:
+          2: storage.modifier.priority.gtkrc
+    - include: scope:etc
+  repo_binding:
+  - match: (?<=\s|^|)(bind)(?=$|\s)
+    captures:
+      1: storage.type.bind.gtkrc
+    push:
+    - meta_scope: meta.binding.gtkrc
+    - match: (?<=})
+      pop: true
+    - match: \s*(?="|')
+      push:
+      - match: (?!)
+        pop: true
+      - include: repo_bindingKey
+    - match: '{'
+      push:
+      - meta_scope: meta.block.gtkrc
+      - match: '}'
+        pop: true
+      - include: repo_bindingAction
+      - include: scope:etc
+    - include: scope:etc
+  - match: (?<=\s|^|)(unbind)(?=$|\s)
+    captures:
+      1: storage.type.unbind.gtkrc
+    push:
+    - meta_scope: meta.unbinding.gtkrc
+    - match: \s*("[^"]*"|'[^']*')|(?=\s*(?:$|#))
+      pop: true
+  repo_bindingAction:
+  - match: ("|')(?!\d)\w+(?:[-_]\w+)*(\1)(?=$|\s)
+    captures:
+      0: entity.name.signal.gtkrc
+      1: punctuation.definition.signal.begin.gtkrc
+      2: punctuation.definition.signal.end.gtkrc
+    push:
+    - meta_scope: meta.action.signal.gtkrc
+    - match: (?<=\))|(?=\s*})
+      pop: true
+    - match: (\()
+      captures:
+        0: punctuation.definition.list.begin.bracket.round.gtkrc
+        1: brackethighlighter.round
+      push:
+      - meta_scope: meta.parameters.gtkrc
+      - match: (\))
+        pop: true
+        captures:
+          0: punctuation.definition.list.end.bracket.round.gtkrc
+          1: brackethighlighter.round
+      - include: repo_miscValues
+  repo_bindingBlock:
+  - match: ^\s*(binding)(?=$|\s)
+    captures:
+      1: storage.type.subject.gtkrc
+    push:
+    - meta_scope: meta.binding-set.gtkrc
+    - match: (?<=})
+      pop: true
+    - match: \s*(?="|')
+      push:
+      - match: (?!)
+        pop: true
+      - include: repo_styleName
+    - match: '{'
+      push:
+      - meta_scope: meta.block.gtkrc
+      - match: '}'
+        pop: true
+      - include: repo_binding
+      - include: scope:etc
+  repo_bindingKey:
+  - match: ("|')
+    captures:
+      0: punctuation.definition.keybinding.begin.gtkrc
+    push:
+    - meta_scope: constant.other.keybinding.gtkrc
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.definition.keybinding.end.gtkrc
+    - match: (?i)(<)(alt|control|ctl|hyper|meta|mod[1-5]|release|shi?ft|super)(>)
+      captures:
+        1: punctuation.definition.begin.modifier.gtkrc
+        3: punctuation.definition.end.modifier.gtkrc
+  repo_brackets:
+  - match: '{'
+    scope: punctuation.section.block.begin.bracket.curly.gtkrc
+    captures:
+      0: brackethighlighter.curly
+  - match: '}'
+    scope: punctuation.section.block.end.bracket.curly.gtkrc
+    captures:
+      0: brackethighlighter.curly
+  repo_classProperty:
+  - match: (?<=\s|^|)\s*((?!\d)[-\w]+)\s*((::))\s*((?!\d)[-\w]+)\s*(=)[ \t]*
+    captures:
+      1: entity.name.tag.class.gtkrc
+      2: punctuation.separator.double-colon.gtkrc
+      3: meta.separator.gtkrc
+      4: support.variable.property.gtkrc
+    push:
+    - meta_scope: meta.property.gtkrc
+    - match: $|(?=\s*#)
+      pop: true
+    - include: repo_miscValues
+  repo_colourDef:
+  - match: (?<=\s|^|)(color)((\[))\s*("[^"]*"|'[^']*')\s*((\]))\s*(=)[ \t]*
+    captures:
+      1: storage.type.colour.gtkrc
+      2: punctuation.definition.colour.begin.gtkrc
+      3: brackethighlighter.square
+      5: punctuation.definition.colour.end.gtkrc
+      6: brackethighlighter.square
+    push:
+    - meta_scope: meta.definition.colour.gtkrc
+    - match: (?=\s*(?:$|#))
+      pop: true
+    - include: repo_colourValue
+  repo_colourRef:
+  - match: (?:|(?<=,)\s*)(@)\w+
+    scope: variable.colour-name.gtkrc
+    captures:
+      1: punctuation.definition.colour-name.gtkrc
+  repo_colourValue:
+  - include: repo_colourRef
+  - match: (?i)(?:|(?<=,)\s*)(("|')(#)([0-9A-F]{12}|[0-9A-F]{9}|[0-9A-F]{6}|[0-9A-F]{3})(\2))
+    captures:
+      1: string.quoted.colour-value.gtkrc
+      2: punctuation.definition.colour-value.begin.gtkrc
+      3: punctuation.definition.constant.gtkrc
+      4: constant.other.colour.rgb-value.hex.gtkrc
+      5: punctuation.definition.colour-value.end.gtkrc
+  - match: (?:|(?<=,)\s*)({)
+    push:
+    - meta_scope: meta.triplet.colour-value.gtkrc
+    - match: (})
+      pop: true
+    - include: scope:etc
+    - include: scope:etc
+  - match: (?:|(?<=,)\s*)(mix|shade|lighter|darker)\s*(?=\()
+    captures:
+      1: keyword.other.function.expression.gtkrc
+    push:
+    - match: (?!)
+      pop: true
+    - match: (\()
+      captures:
+        0: punctuation.definition.list.begin.bracket.round.gtkrc
+        1: brackethighlighter.round
+      push:
+      - meta_scope: meta.parameters.gtkrc
+      - match: (\))
+        pop: true
+        captures:
+          0: punctuation.definition.list.end.bracket.round.gtkrc
+          1: brackethighlighter.round
+      - include: scope:etc
+      - include: scope:etc
+      - include: repo_colourValue
+  repo_engine:
+  - match: (?<=\s|^|)(engine)\s*(("|')((?:(?!\3).)++)(\3))
+    captures:
+      1: storage.type.colour.gtkrc
+      2: entity.name.engine.gtkrc
+      3: punctuation.definition.engine.begin.gtkrc
+      5: punctuation.definition.engine.end.gtkrc
+    push:
+    - match: (?<=})
+      pop: true
+    - match: '{'
+      push:
+      - meta_scope: meta.block.engine-config.gtkrc
+      - match: '}'
+        pop: true
+      - include: repo_engineInnards
+    - include: scope:etc
+  repo_engineInnards:
+  - include: repo_engineNestedBlock
+  - include: repo_style
+  - include: repo_styleCustom
+  - include: repo_setting
+  - include: scope:etc
+  - match: ^\s*(image|boxfill)(?=\s*(?:$|#))
+    captures:
+      1: storage.type.block.label.gtkrc
+  repo_engineKnown:
+  - match: (?xi)(?<!-)\b (adwaita|anachron|aurora|bluecurve|blueprint|candido|carbon-gtk|cleanice |clean|clearlooks|crux-engine|crux|default-theme|dwerg|dyndyn|engradient |equinox|excelsior|experience|galaxy|gflat|glide|hcengine|hc|ia_ora|industrial |lighthouseblue|lua|macstyle|maigre|metal|mgicchikn|mist|moblin-netbook-engine |moblin|moko-engine|murrine|nimbus|nodoka|notif|oxygen-gtk|pixbuf|pixmap |qt4engine|qtcurve|quartz|raleigh|redmond95|redmond|rezlooks|sapwood|smooth |step|sugar|svg|thinice|ubuntulooks|uebergau|vyatta|whistler|wimp|wonderland |xamarin|xeno|xfce)\b(?!-)
+    scope: entity.name.engine.known.gtkrc
+  repo_engineNestedBlock:
+  - match: (?<=\s|^|)(?:((?!\d)\w+(?:[-_]\w+)*+))?\s*({)
+    captures:
+      1: storage.type.block.label.gtkrc
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_engineInnards
+  repo_include:
+  - match: (?<=\s|^|)(include)(?=$|\s|"|')
+    captures:
+      1: keyword.control.directive.include.gtkrc
+    push:
+    - match: \s*(?:("[^"]*")|('[^']*'))|(?=\s*#)
+      pop: true
+  repo_main:
+  - include: scope:etc
+  - include: repo_attachment
+  - include: repo_include
+  - include: repo_paths
+  - include: repo_bindingBlock
+  - include: repo_styleBlock
+  - include: repo_setting
+  - include: repo_colourDef
+  - include: repo_stock
+  - include: repo_engine
+  repo_miscValues:
+  - include: repo_colourValue
+  - include: repo_stateDefinedOnly
+  - include: scope:etc
+  - include: scope:etc
+  - include: scope:etc
+  - include: scope:etc
+  - match: (?:(?<==||^|,)\s*)(true|false|TRUE|FALSE)(?=\s*(?:$|#))
+  - match: (?!\d)[^"'\s\(\),]
+    scope: string.unquoted.bareword.gtkrc
+  repo_paths:
+  - match: (?<=\s|^|)((module|pixmap)_path)(?=$|\s)
+    push:
+    - match: \s+("[^"]*"|'[^']*')|(?=\s*#)
+      pop: true
+  - match: (?<=\s|^|)(im_module_path)(?=$|\s)
+    captures:
+      1: keyword.operator.set-path.im-module.gtkrc
+    push:
+    - match: \s+(?:("[^"]*")|('[^']*'))|(?=\s*#)
+      pop: true
+  repo_setting:
+  - match: ^\s*(?!\d)([-\w]+)\s*(=)[ \t]*
+    captures:
+      1: variable.assignment.setting.gtkrc
+    push:
+    - meta_scope: meta.setting.gtkrc
+    - match: (?=\s*(?:$|#))
+      pop: true
+    - include: repo_miscValues
+  repo_state:
+  - include: repo_stateDefinedOnly
+  - match: \w+
+    scope: invalid.unimplemented.state.gtkrc
+  repo_stateDefinedOnly:
+  - match: \b(NORMAL|ACTIVE|PRELIGHT|SELECTED|INSENSITIVE)\b
+    scope: constant.language.state.gtkrc
+  repo_stock:
+  - match: (?<=\s|^|)(stock)((\[))\s*("[^"]*"|'[^']*')\s*((\]))\s*(=)[ \t]*
+    captures:
+      1: storage.type.icon.gtkrc
+      2: punctuation.definition.icon.begin.gtkrc
+      3: brackethighlighter.square
+      5: punctuation.definition.icon.end.gtkrc
+      6: brackethighlighter.square
+    push:
+    - meta_scope: meta.definition.stock-icon.gtkrc
+    - match: (?<=})
+      pop: true
+    - match: (?=\s*$)
+      push:
+      - match: \s*(?=\S)
+        pop: true
+    - match: '{'
+      push:
+      - meta_scope: meta.block.icon-sources.gtkrc
+      - match: '}'
+        pop: true
+      - match: '{'
+        push:
+        - meta_scope: meta.block.icon-source.gtkrc
+        - match: '}'
+          pop: true
+        - include: scope:etc
+        - match: \s*(?=@?["'])
+          push:
+          - match: (?!)
+            pop: true
+          - match: ("|')
+            captures:
+              0: punctuation.definition.string.begin.gtkrc
+            push:
+            - meta_scope: string.quoted.filename.gtkrc
+            - match: \1
+              pop: true
+              captures:
+                0: punctuation.definition.string.end.gtkrc
+          - match: (@("|'))
+            captures:
+              1: punctuation.definition.icon-name.begin.gtkrc
+            push:
+            - meta_scope: variable.icon-name.gtkrc
+            - match: \2
+              pop: true
+              captures:
+                0: punctuation.definition.icon-name.end.gtkrc
+        - match: (?:(?:^|(?<=,))\s*)(LTR|RTL)(?=\s*(?:$|[,}#]))
+        - match: (?:(?:^|(?<=,))\s*)(\*)(?=\s*(?:$|[,}#]))
+        - match: (?:(?:^|(?<=,))\s*)(("|')(?:(?!\2).)*+(\2))
+          captures:
+            1: constant.language.icon-size.gtkrc
+            2: punctuation.definition.icon-size.begin.gtkrc
+            3: punctuation.definition.icon-size.end.gtkrc
+        - include: scope:etc
+      - include: scope:etc
+      - include: scope:etc
+  repo_style:
+  - include: repo_colourDef
+  - include: repo_stock
+  - match: (?<=\s|^|)\s*([fb]g|(?:fore|back)ground|base|text)(((\[))\s*(\w+)\s*((\])))\s*(=)[ \t]*
+    captures:
+      1: support.type.property-name.gtkrc
+      2: meta.state.gtkrc
+      3: punctuation.definition.state.begin.gtkrc
+      4: brackethighlighter.square
+      6: punctuation.definition.state.end.gtkrc
+      7: brackethighlighter.square
+    push:
+    - match: $|(?=\s*#)
+      pop: true
+    - include: repo_colourValue
+  - match: (?<=\s|^|)\s*([xy]thickness)\s*(=)[ \t]*
+    captures:
+      1: support.type.property-name.gtkrc
+    push:
+    - match: $|(?=\s*#)
+      pop: true
+    - include: scope:etc
+  - match: (?<=\s|^|)\s*(font(?:set|_name)?)\s*(=)[ \t]*
+    captures:
+      1: support.type.property-name.gtkrc
+    push:
+    - match: $|(?=\s*#)
+      pop: true
+    - match: ("|')
+      captures:
+        0: punctuation.definition.font.begin.gtkrc
+      push:
+      - meta_scope: meta.pango-font.gtkrc
+      - match: \1|(?=\s*$)
+        pop: true
+        captures:
+          0: punctuation.definition.font.end.gtkrc
+      - include: scope:source.xlfd
+      - match: (?:(?<=("|'))((?!\1)\S(?:(?!\1).)*))\s+(\d+(?:\.\d+)?)(?=\1)
+        captures:
+          2: constant.other.font-family.gtkrc
+          3: constant.numeric.font-size.gtkrc
+      - match: (?<=("|'))(?:(?=(?:\d+(?:\.\d+)?|\.\d+)\1)([.\d+]{1,27})|((?:(?!\1)\S){1,27}))(?=\1)
+        captures:
+          2: constant.numeric.font-size.gtkrc
+          3: constant.other.font-name.gtkrc
+      - include: scope:etc
+  - match: (?<=\s|^|)\s*(bg_pixmap)(((\[))\s*(\w+)\s*((\])))\s*(=)[ \t]*
+    captures:
+      1: support.type.property-name.gtkrc
+      2: meta.state.gtkrc
+      3: punctuation.definition.state.begin.gtkrc
+      4: brackethighlighter.square
+      6: punctuation.definition.state.end.gtkrc
+      7: brackethighlighter.square
+    push:
+    - match: $|(?=\s*#)
+      pop: true
+    - match: \s*(?="|')
+      push:
+      - match: (?!)
+        pop: true
+      - match: ("|')((<)(parent|none)(>))(\1)
+        scope: string.quoted.pixmap.gtkrc
+        captures:
+          1: punctuation.definition.string.begin.gtkrc
+          3: punctuation.definition.keyword.begin.gtkrc
+          5: punctuation.definition.keyword.end.gtkrc
+          6: punctuation.definition.string.end.gtkrc
+      - match: ("|')
+        captures:
+          0: punctuation.definition.string.begin.gtkrc
+        push:
+        - meta_scope: string.quoted.pixmap.gtkrc
+        - match: \1
+          pop: true
+          captures:
+            0: punctuation.definition.string.end.gtkrc
+  - include: repo_classProperty
+  repo_styleBlock:
+  - match: (?<=\s|^|)style(?=$|\s)
+    captures:
+      0: storage.type.style.gtkrc
+    push:
+    - meta_scope: meta.style.gtkrc
+    - match: (?<=})
+      pop: true
+    - match: \s*(?=["'])
+      push:
+      - match: (?!)
+        pop: true
+      - include: repo_styleName
+    - match: '='
+      captures:
+        0: keyword.operator.assignment.parent.gtkrc
+      push:
+      - meta_scope: meta.parent-style.gtkrc
+      - match: \s*("[^"]*"|'[^']*')|(?=\s*{)
+        pop: true
+    - match: '{'
+      push:
+      - meta_scope: meta.block.gtkrc
+      - match: '}'
+        pop: true
+      - include: repo_style
+      - include: repo_engine
+      - include: scope:etc
+  repo_styleCustom:
+  - match: (?<=\s|^|)\s*((?!\d)[-\w]+)(?=\[\s*[^\s\[\]]+\s*\])
+    captures:
+      1: support.type.property-name.gtkrc
+    push:
+    - meta_scope: meta.property.custom.gtkrc
+    - match: $|(?=\s*#)
+      pop: true
+    - match: (?:|(?<=\]))((\[))\s*
+      captures:
+        1: punctuation.definition.accessor.begin.bracket.square.gtkrc
+        2: brackethighlighter.square
+      push:
+      - meta_scope: meta.item-access.gtkrc
+      - match: \s*((\]))
+        pop: true
+        captures:
+          1: punctuation.definition.accessor.begin.bracket.square.gtkrc
+          2: brackethighlighter.square
+      - include: repo_stateDefinedOnly
+      - include: scope:etc
+      - include: scope:etc
+      - match: \w+
+        scope: constant.other.qualifier.gtkrc
+    - match: (?<=\])\s*(=)[ \t]*
+      push:
+      - match: $|(?=\s*#)
+        pop: true
+      - include: repo_miscValues
+  repo_styleName:
+  - match: ("|')
+    captures:
+      0: punctuation.definition.style.begin.gtkrc
+    push:
+    - meta_scope: entity.name.style.gtkrc
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.definition.style.end.gtkrc
+  repo_widgetPath:
+  - match: ("|')
+    captures:
+      0: punctuation.definition.selector.begin.gtkrc
+    push:
+    - meta_scope: constant.other.selector.widget.gtkrc
+    - match: \1
+      pop: true
+      captures:
+        0: punctuation.definition.selector.end.gtkrc
+    - match: \.
+      scope: meta.separator.gtkrc
+      captures:
+        0: punctuation.separator.parent.selector.gtkrc
+    - match: (<)\w+(>)
+      scope: entity.name.class.gtkrc
+      captures:
+        1: punctuation.definition.class.begin.gtkrc
+        2: punctuation.definition.class.end.gtkrc
+    - include: scope:etc

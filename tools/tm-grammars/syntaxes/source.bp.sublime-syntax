@@ -1,0 +1,96 @@
+%YAML 1.2
+---
+# Soong (source.bp): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/flimberger/android-system-tools via GitHub Linguist v9.7.0 (license: mit).
+name: Soong
+scope: source.bp
+file_extensions:
+- Android.bp
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_variables
+  - include: repo_module
+  repo_bool:
+  - match: \b(true|false)\b
+    scope: constant.language.bp
+  repo_comments:
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.bp
+  - match: /\*
+    push:
+    - meta_scope: comment.block.bp
+    - match: \*/
+      pop: true
+  repo_lists:
+  - match: \[
+    captures:
+      0: punctuation.definition.array.begin.bp
+    push:
+    - meta_scope: meta.structure.array.bp
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.bp
+    - match: ','
+      scope: punctuation.separator.array.json
+    - include: repo_strings
+    - include: repo_comments
+  repo_map:
+  - match: \{
+    captures:
+      0: punctuation.definition.dictionary.begin.bp
+    push:
+    - meta_scope: meta.structure.dictionary.bp
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.dictionary.end.bp
+    - include: repo_comments
+    - match: \w+
+      scope: support.variable
+    - match: ':'
+      captures:
+        0: punctuation.separator.dictionary.key-value.bp
+      push:
+      - meta_scope: meta.structure.dictionary.value.bp
+      - match: (,)|(?=\})
+        pop: true
+        captures:
+          1: punctuation.separator.dictionary.pair.bp
+      - include: repo_values
+  repo_module:
+  - match: \b(\w+)\b
+    captures:
+      1: support.variable.bp
+    push:
+    - meta_scope: meta.structure.module.bp
+    - match: \n
+      pop: true
+    - include: repo_map
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.bp
+    push:
+    - meta_scope: string.quoted.double.bp
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.bp
+  repo_values:
+  - include: repo_bool
+  - include: repo_lists
+  - include: repo_map
+  - include: repo_strings
+  - include: repo_comments
+  repo_variables:
+  - match: (\w+)\s*(=)
+    captures:
+      1: variable.other.bp
+      2: punctuation.definition.assignment.bp
+    push:
+    - meta_scope: meta.assignment
+    - match: \n
+      pop: true
+    - include: repo_values

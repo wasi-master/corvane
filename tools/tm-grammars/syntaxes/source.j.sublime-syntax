@@ -1,0 +1,190 @@
+%YAML 1.2
+---
+# J (source.j): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/tikkanz/JSyntax via GitHub Linguist v9.7.0 (license: mit).
+name: J
+scope: source.j
+file_extensions:
+- ijs
+first_line_match: ^#!.*\b(jconsole)\b
+contexts:
+  main:
+  - include: repo_direct_noun_defn
+  - include: repo_direct_defn
+  - include: repo_explicit_defn
+  - include: repo_modifier_explicit_defn
+  - include: repo_explicit_string_defn
+  - include: repo_noun_defn
+  - include: repo_bracket
+  - include: repo_number
+  - include: repo_operator
+  - include: repo_copula
+  - include: repo_string
+  - include: repo_note
+  - include: repo_comment
+  repo_bracket:
+  - match: (\(|\))
+    scope: meta.bracket.j
+  repo_comment:
+  - match: \b(NB\.).*$
+    scope: comment.line.j
+    captures:
+      1: punctuation.definition.comment.begin.j
+  repo_copula:
+  - match: '=:'
+    scope: copula.global.j
+  - match: =\.
+    scope: copula.local.j
+  repo_direct_defn:
+  - match: ((\{\{)(\)[mdvac])(.*$)|(\{\{)(?![.:\)]))
+    captures:
+      0: punctuation.definition.explicit.begin.j
+    push:
+    - meta_scope: definition.explicit.block.j
+    - match: (\}\})(?![.:])
+      pop: true
+      captures:
+        0: punctuation.definition.explicit.end.j
+    - include: repo_direct_noun_defn
+    - include: repo_direct_defn
+    - include: repo_explicit_arg
+    - include: repo_explicit_operand
+    - include: repo_bracket
+    - include: repo_number
+    - include: repo_operator
+    - include: repo_copula
+    - include: repo_string
+    - include: repo_keyword
+    - include: repo_comment
+  repo_direct_noun_defn:
+  - match: (\{\{)(\)n)
+    captures:
+      0: punctuation.definition.string.block.begin.j
+    push:
+    - meta_scope: string.noun.j
+    - match: (^\}\})(?![.:])
+      pop: true
+      captures:
+        0: punctuation.definition.explicit.end.j
+  repo_explicit_arg:
+  - match: \b[xy](?![\w.:])
+    scope: variable.parameter.j
+  repo_explicit_defn:
+  - match: \b([34]|13|verb|monad|dyad)\s+(:\s*0|define)\b
+    captures:
+      0: punctuation.definition.explicit.begin.j
+    push:
+    - meta_scope: definition.explicit.block.j
+    - match: ^\s*\)\s*\n
+      pop: true
+      captures:
+        0: punctuation.definition.explicit.end.j
+    - include: repo_direct_noun_defn
+    - include: repo_direct_defn
+    - include: repo_explicit_arg
+    - include: repo_bracket
+    - include: repo_number
+    - include: repo_operator
+    - include: repo_copula
+    - include: repo_string
+    - include: repo_keyword
+    - include: repo_comment
+  repo_explicit_operand:
+  - match: \b[nmuv](?![\w.:])
+    scope: variable.parameter.j
+  repo_explicit_string_defn:
+  - match: \b(([1-4]|adverb|conjunction|verb|monad|dyad)\s+(:|def))\s*((')[^']*(?:''[^']*)*('))
+    scope: definition.explicit.string.j
+    captures:
+      1: punctuation.definition.explicit.begin.j
+      4: string.quoted.single.j
+  repo_keyword:
+  - match: \b(if|do|else|elseif|for|select|case|fcase)\.(?![.:])
+    scope: keyword.control.j
+  - match: \b(assert|break|continue|return|while|whilst)\.(?![.:])
+    scope: keyword.control.j
+  - match: \b(throw|try|catch|catchd|catcht)\.(?![.:])
+    scope: keyword.control.j
+  - match: \b(for_[A-Za-z][A-Za-z_0-9]*|goto_[A-Za-z][A-Za-z_0-9]*|label_[A-Za-z][A-Za-z_0-9]*)\.(?![.:])
+    scope: keyword.control.j
+  - match: \bend\.(?![.:])
+    scope: keyword.control.end.j
+  repo_modifier_explicit_defn:
+  - match: \b([12]|adverb|conjunction)\s+(:\s*0|define)\b
+    captures:
+      0: punctuation.definition.explicit.begin.j
+    push:
+    - meta_scope: definition.explicit.block.j
+    - match: ^\s*\)\s*\n
+      pop: true
+      captures:
+        0: punctuation.definition.explicit.end.j
+    - include: repo_direct_noun_defn
+    - include: repo_direct_defn
+    - include: repo_explicit_arg
+    - include: repo_explicit_operand
+    - include: repo_bracket
+    - include: repo_number
+    - include: repo_operator
+    - include: repo_copula
+    - include: repo_string
+    - include: repo_keyword
+    - include: repo_comment
+  repo_note:
+  - match: ^\s*\bNote\b
+    captures:
+      0: punctuation.definition.comment.begin.j
+    push:
+    - meta_scope: comment.block.note.j
+    - match: ^\s*\)\s*\n
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.j
+  - match: \bNote\b(?!\s*\=[:.])\s*[\'\d].*$
+    scope: comment.line.note.j
+  repo_noun_defn:
+  - match: \b(0|noun)\s+(:\s*0|define)\b
+    captures:
+      0: punctuation.definition.string.block.begin.j
+    push:
+    - meta_scope: string.noun.j
+    - match: ^\s*\)\s*\n
+      pop: true
+      captures:
+        0: punctuation.definition.explicit.end.j
+  repo_number:
+  - match: \b(?<! \.)(_\.\d+|_?\d+\.?\d*)(?![.:\w])
+    scope: constant.numeric.j
+  - match: \b(_?\d+\.?\d*)(ar|ad|[ejprx])(_?\d*\.?\w*)(?![.:\w])
+    scope: constant.numeric.j
+  - match: \b(_?\d+\.?\d*)(b)(_?\w*\.?\w*)(?![.:\w])
+    scope: constant.numeric.j
+  repo_operator:
+  - match: \b(_\.|a\.|a:)(?![.:])
+    scope: keyword.other.noun.j
+  - match: ((\b_?[1-9]:)|(\b0:)|({::))(?![.:])
+    scope: keyword.operator.verb.j
+  - match: \b((p\.\.)|([AcCeEiIjLoprTuv]\.)|([ipqsux]:))(?![.:])
+    scope: keyword.operator.verb.j
+  - match: ([<>\+\*\-%$|,#{}^~"?]\.)(?![.:])
+    scope: keyword.operator.verb.j
+  - match: ([<>\+\*\-%$|,#{};~"_\/\\\[]:)(?![.:])
+    scope: keyword.operator.verb.j
+  - match: ([<>\+\*\-%$|,#{!;^=?\[\]])(?![.:])
+    scope: keyword.operator.verb.j
+  - match: \b(([bfM]\.))(?![.:])
+    scope: keyword.operator.adverb.j
+  - match: (([\/\\]\.)|(\/\.\.)|([~\/\\}]))(?![.:])
+    scope: keyword.operator.adverb.j
+  - match: \b(([Ht]\.)|([LS]:))(?![.:])
+    scope: keyword.operator.conjunction.j
+  - match: ((&\.:)|([&@!;]\.)|([&@!`^]:)|([&@`"]))(?![.:])
+    scope: keyword.operator.conjunction.j
+  - match: (?<=\s)([:][.:]|[.:])(?![.:])
+    scope: keyword.operator.conjunction.j
+  repo_string:
+  - match: (')[^']*(?:''[^']*)*(')
+    scope: string.quoted.single.j
+    captures:
+      1: punctuation.definition.string.begin.j
+      2: punctuation.definition.string.end.j

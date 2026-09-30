@@ -1,0 +1,332 @@
+%YAML 1.2
+---
+# Gradle Kotlin DSL (source.kotlin): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nishtahir/language-kotlin via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Gradle Kotlin DSL
+scope: source.kotlin
+file_extensions:
+- gradle.kts
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_package
+  - include: repo_imports
+  - include: repo_code
+  repo_annotations:
+  - match: '@(?:file|property|field|get|set|receiver|param|setparam|delegate)\s*:\s*?[a-zA-Z_]\w*'
+    scope: meta.annotation.kotlin
+  - match: '@[a-zA-Z_]\w*\s*(\()'
+    captures:
+      1: punctuation.definition.arguments.begin.kotlin
+    push:
+    - meta_scope: meta.annotation.kotlin
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.kotlin
+    - include: repo_code
+    - match: ','
+      scope: punctuation.seperator.property.kotlin
+  - match: '@[a-zA-Z_]\w*'
+    scope: meta.annotation.kotlin
+  repo_braces:
+  - match: \{
+    captures:
+      0: punctuation.section.group.begin.kotlin
+    push:
+    - meta_scope: meta.block.kotlin
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.group.end.kotlin
+    - include: repo_code
+  repo_brackets:
+  - match: \[
+    captures:
+      0: punctuation.section.brackets.begin.kotlin
+    push:
+    - meta_scope: meta.brackets.kotlin
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.brackets.end.kotlin
+    - include: repo_code
+  repo_builtin-functions:
+  - match: \b(apply|also|let|run|takeIf|takeWhile|takeUnless|with|print|println)\b\s*(?={|\()
+    captures:
+      1: support.function.kotlin
+  - match: \b(arrayListOf|mutableListOf|listOf|mutableMapOf|mapOf|mutableSetOf|setOf)\b\s*(?={|\()
+    captures:
+      1: support.function.kotlin
+  repo_class-ident:
+  - match: \b[A-Z_]\w*\b
+    scope: entity.name.type.class.kotlin
+  repo_class-literal:
+  - match: (?=\b(?:(?:(?:data|value)\s+)?class|(?:data\s+)?object|(?:(?:fun|value)\s+)?interface)\s+\w+)\b
+    push:
+    - meta_scope: meta.class.kotlin
+    - match: (?=\}|$)
+      pop: true
+    - include: repo_keywords
+    - match: \b((?:(?:data|value)\s+)?class|(?:data\s+)?object|(?:(?:fun|value)\s+)?interface)\b\s+(\w+)
+      captures:
+        1: storage.modifier.kotlin
+        2: entity.name.class.kotlin
+      push:
+      - match: (?=\(|\{|$)
+        pop: true
+      - include: repo_comments
+      - include: repo_annotations
+      - include: repo_types
+    - match: (\()
+      captures:
+        0: punctuation.section.group.begin.kotlin
+        1: punctuation.definition.parameters.begin.kotlin
+      push:
+      - meta_scope: meta.parameters.kotlin
+      - match: (\))
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+          1: punctuation.definition.parameters.end.kotlin
+      - include: repo_comments
+    - match: \{
+      captures:
+        0: punctuation.section.group.begin.kotlin
+      push:
+      - meta_scope: meta.block.kotlin
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+      - include: repo_code
+  repo_code:
+  - include: repo_comments
+  - include: repo_annotations
+  - include: repo_parens
+  - include: repo_braces
+  - include: repo_brackets
+  - include: repo_class-literal
+  - include: repo_literal-functions
+  - include: repo_literals
+  - include: repo_keywords
+  - include: repo_types
+  - include: repo_operators
+  - include: repo_constants
+  - include: repo_punctuations
+  - include: repo_builtin-functions
+  repo_comments:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.kotlin
+    push:
+    - meta_scope: comment.block.kotlin
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.kotlin
+  repo_constants:
+  - match: \b(class)\b
+    scope: constant.language.kotlin
+  - match: \b(this|super)\b
+    scope: variable.language.kotlin
+  repo_generic:
+  - match: (?=\<(?:[A-Z_]|\*|in|out))
+    push:
+    - match: (?<=\>)(?!\>)
+      pop: true
+    - match: <
+      scope: punctuation.bracket.angle.begin.kotlin
+    - match: '>'
+      scope: punctuation.bracket.angle.end.kotlin
+    - match: \*
+      scope: entity.name.type.generic.wildcard.kotlin
+    - match: ','
+      scope: punctuation.seperator.kotlin
+  repo_imports:
+  - match: ^\s*(import)\s+((?:[`][^$`]+[`]|[^` $.]+)(?:\.(?:[`][^$`]+[`]|[^` $.]+))*)(?:\s+(as)\s+([`][^$`]+[`]|[^` $.]+))?
+    scope: meta.import.kotlin
+    captures:
+      1: keyword.other.import.kotlin
+      2: storage.modifier.import.kotlin
+      3: keyword.other.kotlin
+      4: entity.name.type
+  repo_keywords:
+  - match: (\!in|\!is|as\?)\b
+    scope: keyword.operator.kotlin
+  - match: \b(in|is|as|assert)\b
+    scope: keyword.operator.kotlin
+  - match: \b(val|var)\b
+    scope: storage.type.kotlin
+  - match: \b(\_)\b
+    scope: punctuation.definition.variable.kotlin
+  - match: \b(tailrec|operator|infix|typealias|reified|copy(?=\s+fun|\s+var))\b
+    scope: storage.type.kotlin
+  - match: \b(out|in|yield|typealias|override)\b
+    scope: storage.modifier.kotlin
+  - match: \b(?<![+-/%*=(,]\s)(inline|inner|external|public|private|protected|internal|abstract|final|sealed|enum|open|annotation|expect|actual|const|lateinit)(?=\s(?!(?:\s*)(?:[+-/%*=:).,]|$)))\b
+    scope: storage.modifier.kotlin
+  - match: \b(vararg(?=\s+\w+:))\b
+    scope: storage.modifier.kotlin
+  - match: \b(suspend(?!\s*[\(]?\s*\{))\b
+    scope: storage.modifier.kotlin
+  - match: \b(try|catch|finally|throw)\b
+    scope: keyword.control.catch-exception.kotlin
+  - match: \b(if|else|when)\b
+    scope: keyword.control.conditional.kotlin
+  - match: \b(while|for|do|return|break|continue)\b
+    scope: keyword.control.kotlin
+  - match: \b(constructor|init)\b
+    scope: entity.name.function.constructor
+  - match: \b(companion|object)\b
+    scope: storage.type.kotlin
+  repo_literal-functions:
+  - match: (?=\b(?:fun)\b)
+    push:
+    - meta_scope: meta.function.kotlin
+    - match: (?<=$|=|\})
+      pop: true
+    - include: repo_keywords
+    - match: \bfun\b
+      captures:
+        0: keyword.other.kotlin
+      push:
+      - match: (?=\()
+        pop: true
+      - include: repo_generic
+      - match: (`[^`]*`)
+        captures:
+          0: entity.name.function.kotlin
+          1: string.quoted.backtick.kotlin
+      - match: ([\.<\?>\w]+\.)?(\w+)
+        captures:
+          2: entity.name.function.kotlin
+      - include: repo_types
+    - match: (\()
+      captures:
+        0: punctuation.section.group.begin.kotlin
+        1: punctuation.definition.parameters.begin.kotlin
+      push:
+      - meta_scope: meta.parameters.kotlin
+      - match: (\))
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+          1: punctuation.definition.parameters.end.kotlin
+    - match: '='
+      scope: keyword.operator.single-expression.kotlin
+    - match: \{
+      captures:
+        0: punctuation.section.group.begin.kotlin
+      push:
+      - meta_scope: meta.block.kotlin
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+      - include: repo_code
+  repo_literals: []
+  repo_object-literal:
+  - match: (?=\b(?:object)\b((\s*:\s*)|\s+)\w+)
+    push:
+    - meta_scope: meta.class.kotlin
+    - match: (?=\}|$)
+      pop: true
+    - match: \b(object)\b\s*(:)\s*(\w+)
+      captures:
+        1: storage.modifier.kotlin
+        2: keyword.operator.declaration.kotlin
+        3: entity.name.class.kotlin
+      push:
+      - match: (?=\(|\{|$)
+        pop: true
+      - include: repo_comments
+      - include: repo_annotations
+      - include: repo_types
+    - match: (\()
+      captures:
+        0: punctuation.section.group.begin.kotlin
+        1: punctuation.definition.parameters.begin.kotlin
+      push:
+      - meta_scope: meta.parameters.kotlin
+      - match: (\))
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+          1: punctuation.definition.parameters.end.kotlin
+      - include: repo_comments
+    - match: \{
+      captures:
+        0: punctuation.section.group.begin.kotlin
+      push:
+      - meta_scope: meta.block.kotlin
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.group.end.kotlin
+      - include: repo_code
+  repo_operators:
+  - match: \b(and|or|not|inv)\b
+    scope: keyword.operator.bitwise.kotlin
+  - match: (==|!=|===|!==|<=|>=|<|>)
+    scope: keyword.operator.comparison.kotlin
+  - match: (=)
+    scope: keyword.operator.assignment.kotlin
+  - match: (:(?!:))
+    scope: keyword.operator.declaration.kotlin
+  - match: (\?:)
+    scope: keyword.operator.elvis.kotlin
+  - match: (\-\-|\+\+)
+    scope: keyword.operator.increment-decrement.kotlin
+  - match: (\-|\+|\*|\/|%)
+    scope: keyword.operator.arithmetic.kotlin
+  - match: (\+\=|\-\=|\*\=|\/\=)
+    scope: keyword.operator.arithmetic.assign.kotlin
+  - match: (\!|\&\&|\|\|)
+    scope: keyword.operator.logical.kotlin
+  - match: (\.\.)
+    scope: keyword.operator.range.kotlin
+  repo_package:
+  - match: ^\s*(package)\b(?:\s*([^ ;$]+)\s*)?
+    captures:
+      1: keyword.other.kotlin
+      2: entity.name.package.kotlin
+  repo_parens:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.kotlin
+    push:
+    - meta_scope: meta.group.kotlin
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.kotlin
+    - include: repo_code
+  repo_punctuations:
+  - match: '::'
+    scope: punctuation.accessor.reference.kotlin
+  - match: \?\.
+    scope: punctuation.accessor.dot.safe.kotlin
+  - match: (?<!\?)\.
+    scope: punctuation.accessor.dot.kotlin
+  - match: \,
+    scope: punctuation.seperator.kotlin
+  - match: \;
+    scope: punctuation.terminator.kotlin
+  repo_types:
+  - include: repo_class-ident
+  - include: repo_generic
+  - match: (?<![/=\-+!*%<>&|\^~.])(->)(?![/=\-+!*%<>&|\^~.])
+    captures:
+      1: keyword.operator.type.function.kotlin
+  - match: \?(?!\.)
+    scope: keyword.operator.type.nullable.kotlin
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.kotlin
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.kotlin
+    - include: repo_types

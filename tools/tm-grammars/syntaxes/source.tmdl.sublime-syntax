@@ -1,0 +1,214 @@
+%YAML 1.2
+---
+# TMDL (source.tmdl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/microsoft/vscode-tmdl.git via GitHub Linguist v9.7.0 (license: mit).
+name: TMDL
+scope: source.tmdl
+file_extensions:
+- tmdl
+contexts:
+  main:
+  - include: repo_top-level-expressions
+  - include: repo_any-level-expressions
+  - include: repo_child-level-expressions
+  - include: repo_expression-properties
+  - include: repo_formatstring-expression
+  - include: repo_descriptions
+  - include: repo_boolean-properties
+  - include: repo_all-properties
+  - include: repo_metadata-objects
+  repo_all-properties:
+  - match: ^(\s*)(\w+)(:)([\s\S]*)$
+    captures:
+      1: whitespace.leading.tmdl
+      2: variable.property.tmdl
+      3: keyword.operator.colon.tmdl
+  repo_any-level-expressions:
+  - match: ^(?i:(\s*)(Annotation|ExtendedProperty)\s*)
+    captures:
+      1: whitespace.leading.tmdl
+      2: entity.name.tag.any-level-type.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_expression-object
+  repo_base-expression:
+  - match: '[\s\S]+'
+    scope: entity.name.function.expression.tmdl
+  repo_blank-line:
+  - match: ^\s*$
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_blank-line
+    - include: repo_indented-expression
+  repo_boolean-literal:
+  - match: \b[tT]rue\b
+    scope: constant.language.boolean.true.tmdl
+  - match: \b[fF]alse\b
+    scope: constant.language.boolean.false.tmdl
+  repo_boolean-properties:
+  - match: ^(\s*)(?i:(ForceUniqueNames|DiscourageImplicitMeasures|DiscourageReportMeasures|DiscourageCompositeModels|DisableSystemDefaultExpression|IsHidden|ShowAsVariationsOnly|IsPrivate|ExcludeFromModelRefresh|SystemManaged|ExcludeFromAutomaticAggregations|IsDataTypeInferred|IsHidden|IsUnique|IsKey|IsNullable|IsDefaultLabel|IsDefaultImage|IsAvailableInMDX|KeepUniqueRows|IsNameInferred|IsDefault|RetainDataTillForceCalculate|IsHidden|IsSimpleMeasure|IsHidden|IsActive|RelyOnReferentialIntegrity|IncludeAll|LegacyRedirects|ReturnErrorValuesAsNull))(?!\s*:)\s*$
+    captures:
+      1: whitespace.leading.tmdl
+      2: variable.property.tmdl
+  repo_char-character-escape:
+  - match: \\(['"\\0abfnrtv]|x[0-9a-fA-F]{1,4}|u[0-9a-fA-F]{4})
+    scope: constant.character.escape.tmdl
+  repo_char-literal:
+  - match: ''''
+    captures:
+      0: punctuation.definition.char.begin.tmdl
+    push:
+    - meta_scope: string.quoted.single.tmdl
+    - match: (\')|((?:[^\\\n])$)
+      pop: true
+      captures:
+        1: punctuation.definition.char.end.tmdl
+        2: invalid.illegal.newline.tmdl
+    - include: repo_char-character-escape
+  repo_child-level-expressions:
+  - match: ^(?i:(\s+)(Measure|CalculationItem|TablePermission|Partition)\s*)
+    captures:
+      1: whitespace.leading.tmdl
+      2: entity.name.tag.child-level-type.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_expression-object
+  repo_delimited-expression:
+  - match: \s*`{3}\s*$
+    captures:
+      0: punctuation.definition.expression.begin.tmdl
+    push:
+    - match: \s*`{3}
+      pop: true
+      captures:
+        0: punctuation.definition.expression.end.tmdl
+    - include: repo_base-expression
+  repo_descriptions:
+  - match: ^(\s*)(/{3})(.*)$
+    captures:
+      1: whitespace.comment.leading.tmdl
+      2: comment.leading.tripple-slash.tmdl
+      3: comment.line.tmdl
+  repo_expression-object:
+  - match: (?:\b(\S+)\b\s*(=))?(?:(')([\s\S]+)(')\s*(=))?
+    captures:
+      1: keyword.control.unquoted.tmdl
+      2: keyword.operator.assignment.tmdl
+      3: punctuation.definition.char.begin.tmdl
+      4: keyword.control.quoted.single.tmdl
+      5: punctuation.definition.char.end.tmdl
+      6: keyword.operator.assignment.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_delimited-expression
+    - include: repo_non-delimited-expression
+    - include: repo_base-expression
+  repo_expression-properties:
+  - match: ^(?i:(\s+)(Expression|Content|Source\b|LinguisticMetadata|ChangedProperty)\s*(=))
+    captures:
+      1: whitespace.leading.tmdl
+      2: variable.property.expression.tmdl
+      3: keyword.operator.assignment.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_delimited-expression
+    - include: repo_non-delimited-expression
+    - include: repo_base-expression
+  repo_formatstring-expression:
+  - match: ^(?i:(\s+)(FormatString)\s*(:))
+    captures:
+      1: whitespace.leading.tmdl
+      2: variable.property.expression.tmdl
+      3: keyword.operator.colon.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_delimited-expression
+    - include: repo_non-delimited-expression
+    - include: repo_base-expression
+  repo_guid-literal:
+  - match: '[{]?[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?'
+    scope: entity.name.type.guid.tmdl
+  repo_indented-expression:
+  - match: ^(\s*)(?!\s)
+    push:
+    - match: ^(?!\1|\s*$)
+      pop: true
+    - include: repo_base-expression
+  repo_literals:
+  - include: repo_boolean-literal
+  - include: repo_guid-literal
+  - include: repo_null-literal
+  - include: repo_numeric-literal
+  - include: repo_string-literal
+  - include: repo_char-literal
+  - include: repo_type-builtin
+  - include: repo_type-name
+  repo_metadata-objects:
+  - match: ^(\s*)\b(\w+)\b\s+(?:(')(.+)('))?(?:\b\s*(\S+)\b)?
+    captures:
+      1: whitespace.leading.tmdl
+      2: entity.name.tag.object-type.tmdl
+      3: punctuation.definition.char.begin.tmdl
+      4: keyword.control.quoted.single.tmdl
+      5: punctuation.definition.char.end.tmdl
+      6: keyword.control.unquoted.tmdl
+  repo_non-delimited-expression:
+  - match: \s*$
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_blank-line
+    - include: repo_indented-expression
+  repo_null-literal:
+  - match: (?<!\.)\b[nN]ull\b
+    scope: constant.language.null.tmdl
+  repo_numeric-literal:
+  - match: (?<!\w)\.?\d(?:(?:[0-9a-zA-Z_\.]|_)|(?<=[eE])[+-])*
+  repo_string-character-escape:
+  - match: \\(['"\\0abfnrtv]|x[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{8}|u[0-9a-fA-F]{4})
+    scope: constant.character.escape.tmdl
+  repo_string-literal:
+  - match: (?<!@)"
+    captures:
+      0: punctuation.definition.string.begin.tmdl
+    push:
+    - meta_scope: string.quoted.double.tmdl
+    - match: (")|((?:[^\\\n])$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.tmdl
+        2: invalid.illegal.newline.tmdl
+    - include: repo_string-character-escape
+  repo_top-level-expressions:
+  - match: ^(?i:(Expression|DataSource)\s*)
+    captures:
+      1: storage.type.tmdl
+    push:
+    - match: ^(?=\S)|(?!)
+      pop: true
+    - include: repo_expression-object
+  repo_type-builtin:
+  - match: \b(?i:(bool|byte|char|decimal|double|float|int|long|object|sbyte|short|string|uint|ulong|ushort|void|dynamic))\b
+    captures:
+      1: keyword.type.tmdl
+  repo_type-name:
+  - match: (@?[_[:alpha:]][_[:alnum:]]*)\s*(\:\:)
+    captures:
+      1: entity.name.type.alias.tmdl
+      2: punctuation.separator.coloncolon.tmdl
+  - match: (@?[_[:alpha:]][_[:alnum:]]*)\s*(\.)
+    captures:
+      1: entity.name.type.tmdl
+      2: punctuation.accessor.tmdl
+  - match: (\.)\s*(@?[_[:alpha:]][_[:alnum:]]*)
+    captures:
+      1: punctuation.accessor.tmdl
+      2: entity.name.type.tmdl
+  - match: '@?[_[:alpha:]][_[:alnum:]]*'
+    scope: entity.name.type.tmdl

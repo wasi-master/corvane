@@ -1,0 +1,507 @@
+%YAML 1.2
+---
+# Jade (text.jade): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/jade-tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: Jade
+scope: text.jade
+hidden: true
+contexts:
+  main:
+  - match: ^(!!!|doctype)(\s*[a-zA-Z0-9-_]+)?
+    scope: meta.tag.sgml.doctype.html
+  - match: ^(\s*)//-
+    push:
+    - meta_scope: comment.unbuffered.block.jade
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+  - match: ^(\s*)//
+    push:
+    - meta_scope: string.comment.buffered.block.jade
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - match: ^\s*(//)(?!-)
+      scope: string.comment.buffered.block.jade
+      captures:
+        1: invalid.illegal.comment.comment.block.jade
+  - match: <!--
+    push:
+    - meta_scope: comment.unbuffered.block.jade
+    - match: --\s*>
+      pop: true
+    - match: --
+      scope: invalid.illegal.comment.comment.block.jade
+  - match: ^(\s*)-$
+    push:
+    - meta_scope: source.js
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: scope:source.js
+  - match: ^(\s*)(script)((\.$)|(?=[^\n]*(text|application)/javascript.*\.$))
+    captures:
+      2: entity.name.tag.jade
+    push:
+    - meta_scope: meta.tag.other
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - match: (?=\()
+      push:
+      - match: $
+        pop: true
+      - include: repo_tag_attributes
+    - match: (?=[.#])
+      push:
+      - match: $
+        pop: true
+      - include: repo_complete_tag
+    - include: scope:source.js
+  - match: ^(\s*)(style)((\.$)|(?=[.#(].*\.$))
+    captures:
+      2: entity.name.tag.jade
+    push:
+    - meta_scope: meta.tag.other
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - match: (?=\()
+      push:
+      - match: $
+        pop: true
+      - include: repo_tag_attributes
+    - match: (?=[.#])
+      push:
+      - match: $
+        pop: true
+      - include: repo_complete_tag
+    - include: scope:source.css
+  - match: ^(\s*):(sass)(?=\(|$)
+    captures:
+      2: constant.language.name.sass.filter.jade
+    push:
+    - meta_scope: source.sass.filter.jade
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: repo_tag_attributes
+    - include: scope:source.sass
+  - match: ^(\s*):(less)(?=\(|$)
+    captures:
+      2: constant.language.name.less.filter.jade
+    push:
+    - meta_scope: source.less.filter.jade
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: repo_tag_attributes
+    - include: scope:source.css.less
+  - match: ^(\s*):(stylus)(?=\(|$)
+    captures:
+      2: constant.language.name.stylus.filter.jade
+    push:
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: repo_tag_attributes
+    - include: scope:source.stylus
+  - match: ^(\s*):(coffee(-?script)?)(?=\(|$)
+    captures:
+      2: constant.language.name.coffeescript.filter.jade
+    push:
+    - meta_scope: source.coffeescript.filter.jade
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: repo_tag_attributes
+    - include: scope:source.coffee
+  - match: ^(\s*)((:(?=.))|(:$))
+    captures:
+      4: invalid.illegal.empty.generic.filter.jade
+    push:
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - match: (?<=:)(?=.)
+      push:
+      - meta_scope: name.generic.filter.jade
+      - match: $
+        pop: true
+      - match: \(
+        scope: invalid.illegal.name.generic.filter.jade
+      - match: '[\w-]'
+        scope: constant.language.name.generic.filter.jade
+      - include: repo_tag_attributes
+      - match: \W
+        scope: invalid.illegal.name.generic.filter.jade
+  - match: ^(\s*)(?=[\w.#].*?\.$)(?=(?:(?:(?:(?:(?:#[\w-]+)|(?:\.[\w-]+))|(?:(?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))(?:(?:#[\w-]+)|(?:\.[\w-]+)|(?:\((?:[^()\'\"]*(?:(?:\'(?:[^\']|(?:(?<!\\)\\\'))*\')|(?:\"(?:[^\"]|(?:(?<!\\)\\\"))*\")))*[^()]*\))*)*)(?:(?:(?::\s+)|(?<=\)))(?:(?:(?:(?:#[\w-]+)|(?:\.[\w-]+))|(?:(?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))(?:(?:#[\w-]+)|(?:\.[\w-]+)|(?:\((?:[^()\'\"]*(?:(?:\'(?:[^\']|(?:(?<!\\)\\\'))*\')|(?:\"(?:[^\"]|(?:(?<!\\)\\\"))*\")))*[^()]*\))*)*))*)\.$)(?:(?:(#[\w-]+)|(\.[\w-]+))|((?:[#!]\{[^}]*\})|(?:\w(?:(?:[\w:-]+[\w-])|(?:[\w-]*)))))
+    captures:
+      2: entity.other.attribute-name.id.jade
+      3: entity.other.attribute-name.class.jade
+      4: meta.tag.other entity.name.tag.jade
+    push:
+    - match: ^(?!(\1\s)|\s*$)
+      pop: true
+    - include: repo_tag_attributes
+    - include: repo_complete_tag
+    - match: ^(?=.)
+      push:
+      - meta_scope: text.block.jade
+      - match: $
+        pop: true
+      - include: repo_inline_jade
+      - include: repo_embedded_html
+      - include: repo_html_entity
+      - include: repo_interpolated_value
+      - include: repo_interpolated_error
+  - match: ^\s*
+    push:
+    - match: $
+      pop: true
+    - include: repo_inline_jade
+    - include: repo_blocks_and_includes
+    - include: repo_unbuffered_code
+    - include: repo_mixin_definition
+    - include: repo_mixin_call
+    - include: repo_flow_control
+    - include: repo_case_conds
+    - match: \|
+      push:
+      - meta_scope: text.block.pipe.jade
+      - match: $
+        pop: true
+      - include: repo_inline_jade
+      - include: repo_embedded_html
+      - include: repo_html_entity
+      - include: repo_interpolated_value
+      - include: repo_interpolated_error
+    - include: repo_printed_expression
+    - match: (?=(#[^\{\w-])|[^\w.#])
+      push:
+      - match: $
+        pop: true
+      - match: </?(?=[!#])
+        push:
+        - match: '>|$'
+          pop: true
+        - include: repo_inline_jade
+        - include: repo_interpolated_value
+        - include: repo_interpolated_error
+      - include: repo_inline_jade
+      - include: repo_embedded_html
+      - include: repo_html_entity
+      - include: repo_interpolated_value
+      - include: repo_interpolated_error
+    - include: repo_complete_tag
+  repo_babel_parens:
+  - match: \(
+    push:
+    - match: \)|(({\s*)?$)
+      pop: true
+    - include: repo_babel_parens
+    - include: scope:source.js
+  repo_blocks_and_includes:
+  - match: (extends|include|yield|append|prepend|block( (append|prepend))?)\s+(.*)$
+    scope: meta.first-class.jade
+    captures:
+      1: storage.type.import.include.jade
+      4: variable.control.import.include.jade
+  repo_case_conds:
+  - match: (default|when)((\s+|(?=:))|$)
+    captures:
+      1: storage.type.function.jade
+    push:
+    - meta_scope: meta.control.flow.jade
+    - match: $
+      pop: true
+      captures:
+        1: storage.type.function.jade
+    - match: (?!:)
+      push:
+      - meta_scope: js.embedded.control.flow.jade
+      - match: (?=:\s+)|$
+        pop: true
+      - include: repo_case_when_paren
+      - include: scope:source.js
+    - match: :\s+
+      push:
+      - meta_scope: tag.case.control.flow.jade
+      - match: $
+        pop: true
+      - include: repo_complete_tag
+  repo_case_when_paren:
+  - match: \(
+    push:
+    - meta_scope: js.when.control.flow.jade
+    - match: \)
+      pop: true
+    - include: repo_case_when_paren
+    - match: ':'
+      scope: invalid.illegal.name.tag.jade
+    - include: scope:source.js
+  repo_complete_tag:
+  - match: (?=[\w.#])|(:\s*)
+    push:
+    - match: (\.?$)|(?=:.)
+      pop: true
+    - include: repo_blocks_and_includes
+    - include: repo_unbuffered_code
+    - include: repo_mixin_call
+    - include: repo_flow_control
+    - match: (?<=:)\w.*$
+      scope: invalid.illegal.name.tag.jade
+    - include: repo_tag_name
+    - include: repo_tag_id
+    - include: repo_tag_classes
+    - include: repo_tag_attributes
+    - include: repo_tag_mixin_attributes
+    - match: ((\.)\s+$)|((:)\s*$)
+      captures:
+        2: invalid.illegal.end.tag.jade
+        4: invalid.illegal.end.tag.jade
+    - include: repo_printed_expression
+    - include: repo_tag_text
+  repo_embedded_html:
+  - match: (?=<[^>]*>)
+    push:
+    - meta_scope: html
+    - match: $|(?=>)
+      pop: true
+    - include: scope:text.html.basic
+    - include: repo_interpolated_value
+    - include: repo_interpolated_error
+  repo_flow_control:
+  - match: (for|if|else if|else|each|until|while|unless|case)(\s+|$)
+    captures:
+      1: storage.type.function.jade
+    push:
+    - meta_scope: meta.control.flow.jade
+    - match: $
+      pop: true
+      captures:
+        1: storage.type.function.jade
+    - include: scope:source.js
+  repo_html_entity:
+  - match: (&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)
+    scope: constant.character.entity.html.text.jade
+  - match: '[<>&]'
+    scope: invalid.illegal.html_entity.text.jade
+  repo_inline_jade:
+  - match: (?<!\\)(#\[)
+    captures:
+      1: entity.name.function.jade
+      2: entity.name.function.jade
+    push:
+    - meta_scope: inline.jade
+    - match: (\])
+      pop: true
+      captures:
+        1: entity.name.function.jade
+        2: entity.name.function.jade
+    - include: repo_inline_jade
+    - include: repo_mixin_call
+    - match: (?<!\])(?=[\w.#])|(:\s*)
+      push:
+      - meta_scope: tag.inline.jade
+      - match: (?=\]|(:.)|=|\s)
+        pop: true
+      - include: repo_tag_name
+      - include: repo_tag_id
+      - include: repo_tag_classes
+      - include: repo_tag_attributes
+      - include: repo_tag_mixin_attributes
+      - include: repo_inline_jade
+      - match: \[
+        scope: invalid.illegal.tag.jade
+    - include: repo_unbuffered_code
+    - include: repo_printed_expression
+    - match: \[
+      scope: invalid.illegal.tag.jade
+    - include: repo_inline_jade_text
+  repo_inline_jade_text:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_inline_jade_text
+  - include: repo_inline_jade
+  - include: repo_embedded_html
+  - include: repo_html_entity
+  - include: repo_interpolated_value
+  - include: repo_interpolated_error
+  repo_interpolated_error:
+  - match: (?<!\\)[#!]\{(?=[^}]*$)
+    scope: invalid.illegal.tag.jade
+  repo_interpolated_value:
+  - match: (?<!\\)[#!]\{(?=.*?\})
+    push:
+    - meta_scope: string.interpolated.jade
+    - match: \}
+      pop: true
+    - match: '{'
+      scope: invalid.illegal.tag.jade
+    - include: scope:source.js
+  repo_js_braces:
+  - match: \{
+    push:
+    - match: \}
+      pop: true
+    - include: repo_js_braces
+    - include: scope:source.js
+  repo_js_brackets:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_js_brackets
+    - include: scope:source.js
+  repo_js_parens:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_js_parens
+    - include: scope:source.js
+  repo_mixin_call:
+  - match: ((?:mixin\s+)|\+)([\w-]+)
+    captures:
+      1: storage.type.function.jade
+      2: meta.tag.other entity.name.function.jade
+    push:
+    - match: (?!\()|$
+      pop: true
+    - match: (?<!\))\(
+      push:
+      - meta_scope: args.mixin.jade
+      - match: \)
+        pop: true
+      - include: repo_js_parens
+      - include: repo_string
+      - match: ([^\s(),=/]+)\s*=\s*
+        captures:
+          1: meta.tag.other entity.other.attribute-name.tag.jade
+      - include: scope:source.js
+    - include: repo_tag_attributes
+  repo_mixin_definition:
+  - match: (mixin\s+)([\w-]+)(?:(\()\s*((?:[a-zA-Z_]\w*\s*)(?:,\s*[a-zA-Z_]\w*\s*)*)(\)))?$
+    captures:
+      1: storage.type.function.jade
+      2: meta.tag.other entity.name.function.jade
+      3: punctuation.definition.parameters.begin.js
+      4: variable.parameter.function.js
+      5: punctuation.definition.parameters.begin.js
+  repo_printed_expression:
+  - match: (!?\=)\s*
+    captures:
+      1: constant
+    push:
+    - meta_scope: source.js
+    - match: (?=\])|$
+      pop: true
+      captures:
+        1: constant
+    - include: repo_js_brackets
+    - include: scope:source.js
+  repo_string:
+  - match: (['"])
+    push:
+    - meta_scope: string.quoted.jade
+    - match: (?<!\\)\1
+      pop: true
+    - match: \\((x[0-9a-fA-F]{2})|(u[0-9]{4})|.)
+      scope: constant.character.quoted.jade
+    - include: repo_interpolated_value
+    - include: repo_interpolated_error
+  repo_tag_attribute_name:
+  - match: ([^\s(),=/!]+)\s*
+    captures:
+      1: entity.other.attribute-name.tag.jade
+  repo_tag_attribute_name_paren:
+  - match: \(\s*
+    push:
+    - meta_scope: entity.other.attribute-name.tag.jade
+    - match: \)
+      pop: true
+    - include: repo_tag_attribute_name_paren
+    - include: repo_tag_attribute_name
+  repo_tag_attributes:
+  - match: (\(\s*)
+    captures:
+      1: constant.name.attribute.tag.jade
+    push:
+    - meta_scope: meta.tag.other
+    - match: (\))
+      pop: true
+      captures:
+        1: constant.name.attribute.tag.jade
+    - include: repo_tag_attribute_name_paren
+    - include: repo_tag_attribute_name
+    - match: '!(?!=)'
+      scope: invalid.illegal.tag.jade
+    - match: =\s*
+      push:
+      - meta_scope: attribute_value
+      - match: $|(?=,|(?:\s+[^!%&*-+~|<>:?/])|\))
+        pop: true
+      - include: repo_string
+      - include: repo_js_parens
+      - include: repo_js_brackets
+      - include: repo_js_braces
+      - include: scope:source.js
+    - match: (?<=[%&*-+~|<>:?/])\s+
+      push:
+      - meta_scope: attribute_value2
+      - match: $|(?=,|(?:\s+[^!%&*-+~|<>:?/])|\))
+        pop: true
+      - include: repo_string
+      - include: repo_js_parens
+      - include: repo_js_brackets
+      - include: repo_js_braces
+      - include: scope:source.js
+  repo_tag_classes:
+  - match: \.([^\w-])?[\w-]*
+    scope: entity.other.attribute-name.class.jade
+    captures:
+      1: invalid.illegal.tag.jade
+  repo_tag_id:
+  - match: '#[\w-]+'
+    scope: entity.other.attribute-name.id.jade
+  repo_tag_mixin_attributes:
+  - match: (&attributes\()
+    captures:
+      1: entity.name.function.jade
+    push:
+    - meta_scope: meta.tag.other
+    - match: (\))
+      pop: true
+      captures:
+        1: entity.name.function.jade
+    - match: attributes(?=\))
+      scope: storage.type.keyword.jade
+    - include: scope:source.js
+  repo_tag_name:
+  - match: ([#!]\{(?=.*?\}))|(\w(([\w:-]+[\w-])|([\w-]*)))
+    push:
+    - meta_scope: meta.tag.other entity.name.tag.jade
+    - match: ((?<!\5[^\w-]))|\}|$
+      pop: true
+    - match: (?<=\{)
+      push:
+      - meta_scope: meta.tag.other entity.name.tag.jade
+      - match: (?=\})
+        pop: true
+      - match: '{'
+        scope: invalid.illegal.tag.jade
+      - include: scope:source.js
+  repo_tag_text:
+  - match: (?=.)
+    push:
+    - match: $
+      pop: true
+    - include: repo_inline_jade
+    - include: repo_embedded_html
+    - include: repo_html_entity
+    - include: repo_interpolated_value
+    - include: repo_interpolated_error
+  repo_unbuffered_code:
+  - match: (-|(([a-zA-Z0-9_]+)\s+=))
+    captures:
+      3: variable.parameter.javascript.embedded.jade
+    push:
+    - meta_scope: source.js
+    - match: (?=\])|(({\s*)?$)
+      pop: true
+    - include: repo_js_brackets
+    - include: repo_babel_parens
+    - include: scope:source.js

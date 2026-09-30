@@ -1,0 +1,98 @@
+%YAML 1.2
+---
+# Csound Score (source.csound-score): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nwhetsell/language-csound via GitHub Linguist v9.7.0 (license: mit).
+name: Csound Score
+scope: source.csound-score
+file_extensions:
+- sco
+contexts:
+  main:
+  - include: scope:source.csound
+  - include: scope:source.csound
+  - match: '[aBbCdefiqstvxy]'
+    scope: keyword.control.csound-score
+  - match: w
+    scope: invalid.illegal.csound-score
+  - match: z
+    scope: constant.numeric.language.csound-score
+  - match: ([nNpP][pP])(\d+)
+    scope: meta.p-symbol.csound-score
+    captures:
+      1: keyword.control.csound-score
+      2: constant.numeric.integer.decimal.csound-score
+  - match: (m)|(n)
+    captures:
+      1: keyword.mark.preprocessor.csound-score
+      2: keyword.repeat-mark.preprocessor.csound-score
+    push:
+    - match: $
+      pop: true
+    - include: scope:source.csound
+    - match: '[A-Z_a-z]\w*'
+      scope: entity.name.label.csound-score
+  - match: r\b
+    captures:
+      0: keyword.repeat-section.preprocessor.csound-score
+    push:
+    - match: $
+      pop: true
+    - include: scope:source.csound
+    - match: \d+
+      captures:
+        0: constant.numeric.integer.decimal.csound-score
+      push:
+      - match: $
+        pop: true
+      - include: scope:source.csound
+      - include: scope:source.csound
+  - include: scope:source.csound
+  - match: '[!+\-*/^%&|<>#~.]'
+    scope: keyword.operator.csound-score
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.csound-score
+    push:
+    - meta_scope: string.quoted.csound-score
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.csound-score
+    - include: scope:source.csound
+  - match: \{
+    captures:
+      0: punctuation.braced-loop.begin.csound-score
+    push:
+    - meta_scope: meta.braced-loop.csound-score
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.braced-loop.end.csound-score
+    - match: ''
+      push:
+      - meta_scope: meta.braced-loop-details.csound-score
+      - match: $
+        pop: true
+      - match: \d+
+        captures:
+          0: constant.numeric.integer.decimal.csound-score
+        push:
+        - match: $
+          pop: true
+        - match: '[A-Z_a-z]\w*\b'
+          captures:
+            0: entity.name.function.preprocessor.csound-score
+          push:
+          - match: $
+            pop: true
+          - match: \S+
+            scope: invalid.illegal.csound-score
+        - match: \S+
+          scope: invalid.illegal.csound-score
+      - match: \S+
+        scope: invalid.illegal.csound-score
+    - match: ^
+      push:
+      - match: (?=\})
+        pop: true
+      - include: main

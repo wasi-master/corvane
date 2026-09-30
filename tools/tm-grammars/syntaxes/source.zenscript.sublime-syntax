@@ -1,0 +1,113 @@
+%YAML 1.2
+---
+# ZenScript (source.zenscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/CraftTweaker/ZenScript-tmLanguage via GitHub Linguist v9.7.0 (license: mit).
+name: ZenScript
+scope: source.zenscript
+file_extensions:
+- zs
+contexts:
+  main:
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)([LlFfUuDd]|UL|ul)?\b
+    scope: constant.numeric.zenscript
+  - match: \b\-?(0b|0x|0o|0B|0X|0O)(0|[1-9a-fA-F][0-9a-fA-F_]*)[a-zA-Z_]*\b
+    scope: constant.numeric.zenscript
+  - include: repo_code
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)(?=\[)
+    scope: storage.type.object.array.zenscript
+  repo_brackets:
+  - match: (<)\b(.*?)(:(.*?(:(\*|\d+)?)?)?)(>)
+    scope: keyword.other.zenscript
+    captures:
+      1: keyword.control.zenscript
+      2: keyword.other.zenscript
+      3: keyword.control.zenscript
+      4: variable.other.zenscript
+      5: keyword.control.zenscript
+      6: constant.numeric.zenscript
+      7: keyword.control.zenscript
+  repo_class:
+  - match: (zenClass)\s+(\w+)
+    scope: meta.class.zenscript
+    captures:
+      1: storage.type.zenscript
+      2: entity.name.type.class.zenscript
+  repo_code:
+  - include: repo_class
+  - include: repo_functions
+  - include: repo_dots
+  - include: repo_quotes
+  - include: repo_brackets
+  - include: repo_comments
+  - include: repo_var
+  - include: repo_keywords
+  - include: repo_operators
+  repo_comments:
+  - match: '//[^
+
+      ]*'
+    scope: comment.line.double=slash
+  - match: \/\*
+    captures:
+      0: comment.block
+    push:
+    - meta_scope: comment.block
+    - match: \*\/
+      pop: true
+      captures:
+        0: comment.block
+  repo_dots:
+  - match: \b(\w+)(\.)(\w+)((\.)(\w+))*
+    scope: plain.text.zenscript
+    captures:
+      1: storage.type.zenscript
+      2: keyword.control.zenscript
+      5: keyword.control.zenscript
+  repo_functions:
+  - match: function\s+([A-Za-z_$][\w$]*)\s*(?=\()
+    scope: meta.function.zenscript
+    captures:
+      0: storage.type.function.zenscript
+      1: entity.name.function.zenscript
+  repo_keywords:
+  - match: \b(instanceof|get|implements|set|import|function|override|const|if|else|do|while|for|throw|panic|lock|try|catch|finally|return|break|continue|switch|case|default|in|is|as|match|throws|super|new)\b
+    scope: keyword.control.zenscript
+  - match: \b(zenClass|zenConstructor|alias|class|interface|enum|struct|expand|variant|set|void|bool|byte|sbyte|short|ushort|int|uint|long|ulong|usize|float|double|char|string)\b
+    scope: storage.type.zenscript
+  - match: \b(variant|abstract|final|private|public|export|internal|static|protected|implicit|virtual|extern|immutable)\b
+    scope: storage.modifier.zenscript
+  - match: \b(Native|Precondition)\b
+    scope: entity.other.attribute-name
+  - match: \b(null|true|false)\b
+    scope: constant.language
+  repo_operators:
+  - match: \b(\.|\.\.|\.\.\.|,|\+|\+=|\+\+|-|-=|--|~|~=|\*|\*=|/|/=|%|%=|\||\|=|\|\||&|&=|&&|\^|\^=|\?|\?\.|\?\?|<|<=|<<|<<=|>|>=|>>|>>=|>>>|>>>=|=>|=|==|===|!|!=|!==|\$|`)\b
+    scope: keyword.control
+  - match: \b(;|:)\b
+    scope: keyword.control
+  repo_quotes:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.zenscript
+    push:
+    - meta_scope: string.quoted.double.zenscript
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.zenscript
+    - match: \\.
+      scope: constant.character.escape.zenscript
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.zenscript
+    push:
+    - meta_scope: string.quoted.single.zenscript
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.zenscript
+    - match: \\.
+      scope: constant.character.escape.zenscript
+  repo_var:
+  - match: \b(val|var)\b
+    scope: storage.type

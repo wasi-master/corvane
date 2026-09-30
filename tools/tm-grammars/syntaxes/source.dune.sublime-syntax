@@ -1,0 +1,183 @@
+%YAML 1.2
+---
+# Dune (source.dune): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/maelvls/vscode-dune.git via GitHub Linguist v9.7.0 (license: mit).
+name: Dune
+scope: source.dune
+file_extensions:
+- dune-project
+contexts:
+  main:
+  - include: repo_comments
+  - match: \(\s*(lang|using|library|rule|executable|executables|rule|ocamllex|ocamlyacc|menhir|install|alias|copy_files|copy_files#|jbuild_version|include)\s
+    captures:
+      1: meta.class.stanza.dune
+    push:
+    - meta_scope: meta.stanza.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(name|public_name|synopsis|install_c_headers|ppx_runtime_libraries|c_flags|cxx_flags|c_names|cxx_names|library_flags|c_library_flags|virtual_deps|modes|kind|wrapped|optional|self_build_stubs_archive|no_dynlink|ppx\.driver)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.library.field.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(targets|deps|locks|loc|mode|action)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.rule.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(fallback|optional)\s*\)
+    scope: meta.mono-sexp.dune
+    captures:
+      1: keyword.other.dune
+  - match: \(\s*(run|chdir|setenv|with-stdout-to|with-stderr-to|with-outputs-to|ignore-stdout|ignore-stderr|ignore-outputs|progn|echo|cat|copy|copy#|system|bash|write-file|diff|diff\?)\s
+    captures:
+      1: entity.name.function.action.dune
+    push:
+    - meta_scope: meta.stanza.rule.action.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(section)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.install.dune
+    - match: \)
+      pop: true
+    - match: \b(lib|libexec|bin|sbin|toplevel|share|share_root|etc|doc|stublibs|man|misc)\b
+      scope: constant.language.rule.mode.dune
+  - match: \(\s*(files)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.install.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(normal|ppx_deriver|ppx_rewriter)\s
+    captures:
+      1: constant.language.rule.mode.dune
+    push:
+    - meta_scope: meta.library.kind.dune
+    - match: \)
+      pop: true
+  - match: \(\s*(name|link_executables|link_flags|modes)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.executables.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(preprocess|preprocessor_deps|lint|modules|modules_without_implementation|libraries|flags|ocamlc_flags|ocamlopt_flags|js_of_ocaml|allow_overlapping_dependencies|per_module)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.lib-or-exec.buildable.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(no_preprocessing|action|pps)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.lib-or-exec.buildable.preprocess.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(file|alias|alias_rec|glob_files|files_recursively_in)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.lib-or-exec.buildable.preprocess_deps.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \(\s*(select)\s
+    captures:
+      1: keyword.other.dune
+    push:
+    - meta_scope: meta.stanza.lib-or-exec.buildable.libraries.dune
+    - match: \)
+      pop: true
+    - include: main
+  - match: \b\d+\b
+    scope: constant.numeric.dune
+  - match: (true|false)
+    scope: constant.language.dune
+  - match: \s(as|from|->)\s
+    scope: keyword.other.dune
+  - match: (\!)
+    scope: keyword.other.dune
+  - match: (:\w+)\b
+    scope: constant.language.flag.dune
+  - match: \b(standard|fallback|promote|promote-until-then)\b
+    scope: constant.language.rule.mode.dune
+  - include: repo_string
+  - include: repo_variable
+  - include: repo_list
+  - include: repo_atom
+  repo_atom:
+  - match: \b[^\s]+\b
+    scope: meta.atom.dune
+  repo_comment-inner:
+  - match: \(
+    push:
+    - meta_scope: comment.sexp.inner.dune
+    - match: \)
+      pop: true
+    - include: repo_comment-inner
+  repo_comments:
+  - match: '#\|'
+    captures:
+      0: punctuation.definition.comment.begin.dune
+    push:
+    - meta_scope: comment.block.dune
+    - match: \|#
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.dune
+    - include: repo_comments
+  - match: '#;\s*\('
+    push:
+    - meta_scope: comment.sexp.dune
+    - match: \)
+      pop: true
+    - include: repo_comment-inner
+  - match: ;.*$
+    scope: comment.line.dune
+  repo_list:
+  - match: (\()
+    captures:
+      1: entity.tag.list.parenthesis.dune
+    push:
+    - meta_scope: meta.list.dune
+    - match: (\))
+      pop: true
+      captures:
+        1: entity.tag.list.parenthesis.dune
+    - include: main
+  repo_string:
+  - match: (?=[^\\])(")
+    captures:
+      1: punctuation.definition.string.begin.dune
+    push:
+    - meta_scope: string.quoted.double.dune
+    - match: (")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.dune
+    - match: \\"
+      scope: constant.character.string.escape.dune
+    - include: repo_variable
+  repo_variable:
+  - match: \${[^}]*}
+    scope: variable.other.dune

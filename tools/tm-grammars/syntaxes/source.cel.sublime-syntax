@@ -1,0 +1,158 @@
+%YAML 1.2
+---
+# cel (source.cel): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/authzed/spicedb-vscode.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: cel
+scope: source.cel
+hidden: true
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_expressions
+  repo_comments:
+  - match: (\/\/)
+    captures:
+      1: punctuation.definition.comment.cel
+    push:
+    - meta_scope: comment.line.double-slash.cel
+    - match: (?:\n|$)
+      pop: true
+  repo_expressions:
+  - include: repo_reserved-identifiers
+  - include: repo_function-calls
+  - include: repo_object-constructions
+  - include: repo_parens
+  - include: repo_lists
+  - include: repo_maps
+  - include: repo_numbers
+  - include: repo_strings
+  - include: repo_langauge-constants
+  - include: repo_operators
+  repo_function-calls:
+  - match: ([_a-zA-Z][_a-zA-Z0-9]+)(?=\()
+    captures:
+      1: variable.function.cel
+  repo_langauge-constants:
+  - match: \b(true|false|null)\b
+    scope: constant.language.cel
+  repo_lists:
+  - match: \[
+    captures:
+      0: punctuation.definition.list.begin.cel
+    push:
+    - meta_scope: meta.structure.list.cel
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.list.end.cel
+    - include: repo_expressions
+    - match: ','
+      scope: punctuation.separator.list.cel
+  repo_maps:
+  - match: \{
+    captures:
+      0: punctuation.definition.map.begin.cel
+    push:
+    - meta_scope: meta.structure.map.cel
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.map.end.cel
+    - include: repo_expressions
+    - match: ',|:'
+      scope: punctuation.separator.map.cel
+  repo_numbers:
+  - match: ([0-9]*\.[0-9]+([eE][+-]?[0-9]+)?)
+    scope: constant.numeric.floating-point.cel
+  - match: ([0-9]+[eE][+-]?[0-9]+)
+    scope: constant.numeric.floating-point.cel
+  - match: ([0-9]+|0x[0-9a-fA-F]+)[uU]?
+    scope: constant.numeric.integer.cel
+  repo_object-constructions:
+  - match: ([_a-zA-Z][_a-zA-Z0-9]+)(\{)
+    captures:
+      1: variable.object.cel
+      2: punctuation.definition.object.begin.cel
+    push:
+    - meta_scope: meta.structure.object.cel
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.object.end.cel
+    - include: repo_object-kv
+  repo_object-kv:
+  - match: ([_a-zA-Z][_a-zA-Z0-9]*:)
+    captures:
+      1: entity.name.type.attribute-name.cel
+    push:
+    - match: (,)|(?=\})
+      pop: true
+      captures:
+        1: punctuation.separator.object.cel
+    - include: repo_expressions
+  repo_operators:
+  - match: (&&|\|\|)
+    scope: keyword.operator.logical.cel
+  - match: (<=|<|>=|>|==|!=|(?<=[^A-Za-z_])in\b)
+    scope: keyword.operator.comparison.cel
+  - match: (\+|-|\*|\/|%|!)
+    scope: keyword.operator.arithmetic.cel
+  repo_parens:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.begin.cel
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.end.cel
+    - include: repo_expressions
+  repo_reserved-identifiers:
+  - match: \b(as|break|const|continue|else|for|function|if|import|let|loop|package|namespace|return|var|void|while)\b
+    scope: invalid.illegal.cel
+  repo_string-escape-sequence:
+  - match: \\[bfnrt"'\\]
+    scope: constant.character.escape.cel
+  - match: \\u[0-9a-fA-F]{4}
+    scope: constant.character.escape.cel
+  - match: \\U[0-9a-fA-F]{8}
+    scope: constant.character.escape.cel
+  - match: \\[xX][0-9a-fA-F]{2}
+    scope: constant.character.escape.cel
+  - match: \\0[0-8]{3}
+    scope: constant.character.escape.cel
+  repo_string-multi-line:
+  - match: (['"]{3})
+    push:
+    - meta_scope: string.quoted.triple.cel
+    - match: (\1)
+      pop: true
+    - include: repo_string-escape-sequence
+  repo_string-raw-multi-line:
+  - match: ([rR])(['"]{3})
+    captures:
+      1: storage.type.raw-string.cel
+    push:
+    - meta_scope: string.quoted.triple.cel
+    - match: (\2)
+      pop: true
+  repo_string-raw-single-line:
+  - match: ([rR])(['"])
+    captures:
+      1: storage.type.raw-string.cel
+    push:
+    - meta_scope: string.quoted.single.cel
+    - match: (\2|$)
+      pop: true
+  repo_string-single-line:
+  - match: (['"])
+    push:
+    - meta_scope: string.quoted.single.cel
+    - match: (\1|$)
+      pop: true
+    - include: repo_string-escape-sequence
+  repo_strings:
+  - include: repo_string-multi-line
+  - include: repo_string-raw-multi-line
+  - include: repo_string-single-line
+  - include: repo_string-raw-single-line

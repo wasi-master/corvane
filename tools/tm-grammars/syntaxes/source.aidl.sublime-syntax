@@ -1,0 +1,277 @@
+%YAML 1.2
+---
+# AIDL (source.aidl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/google/aidl-language via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: AIDL
+scope: source.aidl
+file_extensions:
+- aidl
+first_line_match: ^#!.*\b(aidl)\b
+contexts:
+  main:
+  - include: repo_main
+  repo_annotation:
+  - match: (@)([_a-zA-Z][_a-zA-Z0-9]*)\s*(\()
+    captures:
+      1: punctuation.definition.annotation.aidl
+      2: meta.annotation.identifier.aidl
+      3: punctuation.definition.parameters.begin.aidl
+    push:
+    - meta_scope: storage.type.annotation.aidl
+    - meta_content_scope: meta.annotation.parameters.aidl
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.aidl
+    - include: repo_comments
+    - match: ','
+      scope: punctuation.separator.parameter.method.aidl
+    - match: '='
+      scope: keyword.operator.assignment.aidl
+    - include: repo_const_expr
+    - match: '[_a-zA-Z][_a-zA-Z0-9]*'
+      scope: variable.parameter.aidl
+  - match: (@)([_a-zA-Z][_a-zA-Z0-9]*)
+    scope: storage.type.annotation.aidl
+    captures:
+      1: punctuation.definition.annotation.aidl
+      2: meta.annotation.identifier.aidl
+  repo_comments:
+  - include: repo_multi_line_comment
+  - match: (//).*
+    scope: comment.line.double-slash.aidl
+    captures:
+      1: punctuation.definition.comment.aidl
+  repo_const_expr:
+  - include: repo_numeric
+  - match: ('.')
+    scope: constant.character.aidl
+  - match: (")([^\"]*)(")
+    scope: meta.string.aidl
+    captures:
+      1: punctuation.definition.string.begin.aidl
+      2: string.quoted.double.aidl
+      3: punctuation.definition.string.end.aidl
+  - match: (true|false)
+    scope: constant.language.aidl
+  - match: ([!<>]|&&|\|\||<=|>=|==|!=)
+    scope: keyword.operator.logical.aidl
+  - match: ([&|~\^]|<<|>>)
+    scope: keyword.operator.bitwise.aidl
+  - match: ([+*/%\-])
+    scope: keyword.operator.arithmetic.aidl
+  - match: (\{})
+    captures:
+      1: punctuation.section.braces.begin.aidl
+    push:
+    - meta_scope: meta.braces.aidl
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.section.braces.end.aidl
+    - match: ','
+      scope: punctuation.separator.aidl
+    - include: repo_const_expr
+  repo_constant_decl:
+  - match: (const)
+    captures:
+      1: storage.type.constant.aidl
+    push:
+    - meta_scope: meta.constant.aidl
+    - match: (;)
+      pop: true
+      captures:
+        1: punctuation.terminator.aidl
+    - match: '='
+      scope: keyword.operator.assignment.aidl
+    - include: repo_comments
+    - include: repo_type
+    - include: repo_const_expr
+    - match: '[_a-zA-Z][_a-zA-Z0-9]*'
+      scope: entity.name.constant.aidl
+  repo_decls:
+  - include: repo_annotation
+  - match: (\})
+    scope: punctuation.section.braces.end.aidl
+  - match: (?:(oneway)\s+)?(interface)\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*(\{)
+    scope: meta.interface.aidl
+    captures:
+      1: storage.modifier.aidl
+      2: storage.type.interface.aidl
+      3: entity.name.type.interface.aidl
+      4: punctuation.section.braces.begin.aidl
+  - match: (parcelable)\s+((?:[_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))*)\s*(?:(<)((:?[_a-zA-Z][_a-zA-Z0-9]*)(:?,\s+[_a-zA-Z][_a-zA-Z0-9]*)*)(>)\s*)?(\{)
+    scope: meta.parcelable.aidl
+    captures:
+      1: storage.type.parcelable.aidl
+      2: entity.name.type.parcelable.aidl
+      3: punctuation.definition.generic.begin.aidl
+      4: entity.name.other.aidl
+      5: punctuation.definition.generic.end.aidl
+      6: punctuation.section.braces.begin.aidl
+  - match: (parcelable)\s+((?:[_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))*)\s*(?:(<)((:?[_a-zA-Z][_a-zA-Z0-9]*)(:?,\s+[_a-zA-Z][_a-zA-Z0-9]*)*)(>)\s*)?(;)
+    scope: meta.parcelable.aidl
+    captures:
+      1: storage.type.parcelable.aidl
+      2: entity.name.type.parcelable.aidl
+      3: punctuation.definition.generic.begin.aidl
+      4: entity.name.other.aidl
+      5: punctuation.definition.generic.end.aidl
+      6: punctuation.terminator.aidl
+  - match: (parcelable)\s+((?:[_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))*)\s*(;)?
+    scope: meta.parcelable.aidl
+    captures:
+      1: storage.type.parcelable.aidl
+      2: entity.name.type.parcelable.aidl
+      3: punctuation.terminator.aidl
+  - match: (cpp_header|ndk_header|rust_type)\s*(")([^\"]*)(")
+    scope: meta.parcelable.aidl
+    captures:
+      1: keyword.aidl
+      2: punctuation.definition.string.begin.aidl
+      3: string.quoted.double.aidl
+      4: punctuation.definition.string.end.aidl
+  - match: ;
+    scope: punctuation.terminator.aidl
+  - match: (enum)\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*(\{)
+    captures:
+      1: storage.type.enum.aidl
+      2: entity.name.type.enum.aidl
+      3: punctuation.section.braces.begin.aidl
+    push:
+    - meta_scope: meta.enum.aidl
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.section.braces.end.aidl
+    - include: repo_enum_decl_body
+  - match: (union)\s+((?:[_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))*)\s*(?:(<)((:?[_a-zA-Z][_a-zA-Z0-9]*)(:?,\s+[_a-zA-Z][_a-zA-Z0-9]*)*)(>)\s*)?(\{)
+    scope: meta.union.aidl
+    captures:
+      1: storage.type.union.aidl
+      2: entity.name.type.union.aidl
+      3: punctuation.definition.generic.begin.aidl
+      4: entity.name.other.aidl
+      5: punctuation.definition.generic.end.aidl
+      6: punctuation.section.braces.begin.aidl
+  - include: repo_comments
+  - include: repo_constant_decl
+  - include: repo_method_decl
+  - include: repo_variable_decl
+  repo_enum_decl_body:
+  - include: repo_comments
+  - match: '='
+    scope: keyword.operator.assignment.aidl
+  - include: repo_const_expr
+  - match: '[_a-zA-Z][_a-zA-Z0-9]*'
+    scope: variable.other.aidl
+  repo_import:
+  - match: (import)
+    captures:
+      1: keyword.aidl
+    push:
+    - match: (;)
+      pop: true
+      captures:
+        1: punctuation.terminator.aidl
+    - match: (([_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))*)
+      scope: entity.name.type.aidl
+  repo_main:
+  - include: repo_comments
+  - include: repo_package
+  - include: repo_import
+  - include: repo_decls
+  - match: ([^\s])
+    scope: invalid.illegal.aidl
+  repo_method_decl:
+  - include: repo_annotation
+  - include: repo_type
+  - match: oneway
+    scope: storage.modifier.aidl
+  - match: '='
+    scope: keyword.operator.assignment.aidl
+  - match: ;
+    scope: punctuation.terminator.aidl
+  - match: ([_a-zA-Z][_a-zA-Z0-9]*)\s*(\()
+    captures:
+      1: entity.name.function.aidl
+      2: punctuation.definition.parameters.begin.aidl
+    push:
+    - meta_content_scope: meta.function.parameters.aidl
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.aidl
+    - match: ','
+      scope: punctuation.separator.parameter.method.aidl
+    - match: \b(in|out|inout)\b
+      scope: storage.modifier.aidl
+    - include: repo_type
+    - match: '[_a-zA-Z][_a-zA-Z0-9]*'
+      scope: variable.parameter.aidl
+  repo_multi_line_comment:
+  - match: (/\*\*)
+    captures:
+      1: punctuation.definition.comment.aidl
+    push:
+    - meta_scope: comment.block.documentation.aidl
+    - match: (\*/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.aidl
+  - match: (/\*)
+    captures:
+      1: punctuation.definition.comment.aidl
+    push:
+    - meta_scope: comment.block.aidl
+    - match: (\*/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.aidl
+  repo_multi_line_comment__1: []
+  repo_multi_line_comment__2: []
+  repo_numeric:
+  - match: (0[x\x{007c}X][0-9a-fA-F]+[lL]?)
+    scope: constant.numeric.hex.aidl
+  - match: ([0-9]*\.[0-9]+([eE][-\x{002b}]?[0-9]+)?f?|[0-9]*\.?[0-9]+([eE][-\x{002b}]?[0-9]+)?f)
+    scope: constant.numeric.float.aidl
+  - match: ([0-9]+[lL]?)
+    scope: constant.numeric.decimal.aidl
+  repo_package:
+  - match: (package)
+    captures:
+      1: keyword.aidl
+    push:
+    - match: (;)
+      pop: true
+      captures:
+        1: punctuation.terminator.aidl
+    - match: (([_a-zA-Z][_a-zA-Z0-9]*)(?:\.([_a-zA-Z][_a-zA-Z0-9]*))+)
+      scope: entity.name.namespace.aidl
+  repo_type:
+  - include: repo_annotation
+  - match: \b(void|boolean|byte|char|int|long|float|double)\b
+    scope: storage.type.aidl
+  - match: \b(CharSequence|FileDescriptor|IBinder|List|Map|ParcelableHolder|ParcelFileDescriptor|String)\b
+    scope: support.class.aidl
+  - match: \[\]
+    scope: punctuation.aidl
+  - match: (\<)
+    captures:
+      1: punctuation.definition.generic.begin.aidl
+    push:
+    - meta_scope: meta.generic.aidl
+    - match: (\>)
+      pop: true
+      captures:
+        1: punctuation.definition.generic.end.aidl
+    - include: repo_type
+  repo_variable_decl:
+  - match: '='
+    scope: keyword.operator.assignment.aidl
+  - include: repo_type
+  - include: repo_const_expr
+  - match: '[_a-zA-Z][_a-zA-Z0-9]*'
+    scope: variable.other.aidl
+  - match: ;
+    scope: punctuation.terminator.aidl

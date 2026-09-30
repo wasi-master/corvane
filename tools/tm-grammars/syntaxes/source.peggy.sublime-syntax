@@ -1,0 +1,75 @@
+%YAML 1.2
+---
+# PEG.js (source.peggy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/peggyjs/code-peggy-language.git via GitHub Linguist v9.7.0 (license: mit).
+name: PEG.js
+scope: source.peggy
+file_extensions:
+- pegjs
+- peggy
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_label
+  - include: repo_defRule
+  - include: repo_rule
+  - include: repo_literal
+  - include: repo_charclass
+  - include: repo_operators
+  - include: repo_inlinejs
+  repo_charclass:
+  - match: \[
+    push:
+    - meta_scope: declaration.keyword.peggy
+    - match: \]
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.peggy
+  repo_comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.peggy
+    - match: \*/
+      pop: true
+  - match: //.*$\n?
+    scope: comment.line.double-slash.peggy
+  repo_defRule:
+  - match: (\w+)\s*(?=\=)
+    captures:
+      1: entity.name.function.peggy
+  repo_inlinejs:
+  - match: '{'
+    push:
+    - meta_scope: meta.embedded.block.javascript
+    - match: '}'
+      pop: true
+    - include: scope:source.js
+  repo_label:
+  - match: (\w+)\s*(?=:)
+    captures:
+      1: entity.other.attribute-name.attribute.peggy
+  repo_literal:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.peggy
+    - match: '"'
+      pop: true
+    - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]|37[0-7]?|[4-7][0-7]?|.)
+      scope: constant.character.escape.peggy
+    - match: '[^"]*[^\n\r"\\]$'
+      scope: invalid.illegal.string.peggy
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.peggy
+    - match: ''''
+      pop: true
+    - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)
+      scope: constant.character.escape.peggy
+    - match: '[^'']*[^\n\r''\\]$'
+      scope: invalid.illegal.string.peggy
+  repo_operators:
+  - match: '[*?/.!=+&@]'
+    scope: keyword.operator.peggy
+  repo_rule:
+  - match: '[a-zA-Z_][a-zA-Z_0-9$]*'
+    scope: entity.name.function.peggy

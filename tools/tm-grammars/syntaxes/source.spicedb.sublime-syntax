@@ -1,0 +1,164 @@
+%YAML 1.2
+---
+# SpiceDB Schema (source.spicedb): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/authzed/spicedb-vscode.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: SpiceDB Schema
+scope: source.spicedb
+file_extensions:
+- zed
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_use
+  - include: repo_import
+  - include: repo_partial
+  - include: repo_definition
+  - include: repo_caveat
+  - include: repo_relation
+  - include: repo_permission
+  repo_arrow:
+  - match: \s*([a-zA-Z_]\w*)(->)([a-zA-Z_]\w*)\s*
+    captures:
+      1: variable.other.member.spicedb
+      2: keyword.operator.arrow.spicedb
+      3: variable.other.member.spicedb
+  repo_arrow_alternative:
+  - match: \s*([a-zA-Z_]\w*)(\.any)\(([a-zA-Z_]\w*)\)\s*
+    captures:
+      1: variable.other.member.spicedb
+      2: keyword.operator.arrow.spicedb
+      3: variable.other.member.spicedb
+  repo_arrow_intersection:
+  - match: \s*([a-zA-Z_]\w*)(\.all)\(([a-zA-Z_]\w*)\)\s*
+    captures:
+      1: variable.other.member.spicedb
+      2: keyword.operator.arrow.spicedb
+      3: variable.other.member.spicedb
+  repo_caveat:
+  - match: (\bcaveat\b)\s+(([a-z][\w]{1,62}[a-z0-9]\/)*[a-z][\w]{1,62}[a-z0-9])\s*\(([^\)]*)\)\s*(\{)
+    captures:
+      1: keyword.function.definition
+      2: entity.name.function
+      5: punctuation.definition.brace
+    push:
+    - meta_scope: meta.embedded.block.cel
+    - match: (?<=\})$
+      pop: true
+      captures:
+        0: punctuation.end.brace
+    - include: scope:source.cel
+  repo_caveatParameter:
+  - match: ([a-zA-Z_]\w*)\s+([a-zA-Z_]\w*)
+    captures:
+      1: entity.name.variable
+      2: entity.name.class
+  repo_caveatTypeName:
+  - match: \s*([a-zA-Z_]\w*)\s*
+    captures:
+      1: entity.name.class
+  repo_comma:
+  - match: \s*,\s*
+    scope: punctuation.definition.comma
+  repo_comment: []
+  repo_definition:
+  - match: (\bdefinition\b)\s+(([a-z][\w]{1,62}[a-z0-9]\/)*[a-z][\w]{1,62}[a-z0-9])\s*(\{)
+    captures:
+      1: keyword.class.definition
+      2: entity.name.class
+      4: punctuation.definition.brace
+    push:
+    - match: (?<=\})
+      pop: true
+      captures:
+        0: punctuation.end.brace
+    - include: repo_relation
+    - include: repo_permission
+    - include: repo_comment
+  repo_directRelationType:
+  - match: ([a-zA-Z_]\w*)
+    captures:
+      1: entity.name.class
+  repo_import:
+  - match: \s*(import)\s*(["a-zA-Z_]\w*)\s*
+    captures:
+      1: keyword.class.definition
+      2: entity.name.function
+  repo_indirectRelationType:
+  - match: ([a-zA-Z_]\w*)(#)([a-zA-Z_]\w*)
+    captures:
+      1: entity.name.class
+      2: punctuation.definition.hash
+      3: variable.other.member.spicedb
+  repo_nil:
+  - match: \b(nil)\b
+    captures:
+      1: constant.language.nil.spicedb
+  repo_partial:
+  - match: \s*(partial)\s*(["a-zA-Z_]\w*)\s*
+    captures:
+      1: keyword.class.definition
+      2: entity.name.function
+  repo_permission:
+  - match: (\bpermission\b)\s+([a-zA-Z_]\w*)\s*(=)\s*
+    captures:
+      1: keyword.function.relation
+      2: entity.name.function
+      3: punctuation.definition.equal
+    push:
+    - match: (?<=;|\n)
+      pop: true
+    - include: repo_comment
+    - include: repo_arrow_alternative
+    - include: repo_arrow_intersection
+    - include: repo_arrow
+    - include: repo_nil
+    - include: repo_relationRef
+    - include: repo_permissionOperator
+  repo_permissionOperator:
+  - match: \s*(\+|-|&)\s*
+    captures:
+      1: keyword.operator.logical
+  repo_pipe:
+  - match: \|
+    scope: punctuation.definition.pipe
+  repo_relation:
+  - match: (\brelation\b)\s+([a-zA-Z_]\w*)\s*(:)
+    captures:
+      1: keyword.variable.relation
+      2: entity.name.variable
+      3: punctuation.definition.colon
+    push:
+    - match: (?<=;|\n)
+      pop: true
+    - include: repo_wildcardRelationType
+    - include: repo_indirectRelationType
+    - include: repo_directRelationType
+    - include: repo_pipe
+    - include: repo_with_expiration
+    - include: repo_with_caveat
+    - include: repo_comment
+  repo_relationRef:
+  - match: ([a-zA-Z_]\w*)\b(?!->|\.(?:any|all)\()
+    captures:
+      1: variable.other.member.spicedb
+  repo_use:
+  - match: \s*(use)\s*([a-zA-Z_]\w*)\s*
+    captures:
+      1: keyword.class.definition
+      2: keyword.class.definition
+  repo_wildcardRelationType:
+  - match: ([a-zA-Z_]\w*)(:)(\*)
+    captures:
+      1: entity.name.class
+      2: punctuation.definition.colon
+      3: constant.language.wildcard.spicedb
+  repo_with_caveat:
+  - match: \s*(with)\s*(([a-z][\w]{1,62}[a-z0-9]\/)*[a-z][\w]{1,62}[a-z0-9])\s*
+    captures:
+      1: keyword.class.definition
+      2: entity.name.function
+  repo_with_expiration:
+  - match: \s*(with)\s*(expiration)\s*
+    captures:
+      1: keyword.class.definition
+      2: support.type.expiration.spicedb

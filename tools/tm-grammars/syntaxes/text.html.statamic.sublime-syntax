@@ -1,0 +1,212 @@
+%YAML 1.2
+---
+# Antlers (text.html.statamic): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Stillat/vscode-antlers-language-server.git via GitHub Linguist v9.7.0 (license: mit).
+name: Antlers
+scope: text.html.statamic
+file_extensions:
+- antlers.html
+- antlers.php
+- antlers.xml
+contexts:
+  main:
+  - include: repo_php-tag
+  - include: repo_statamic-comments
+  - include: repo_frontMatter
+  - include: repo_antlers-tags
+  repo_antlers-conditionals:
+  - match: (?<!:)(/?else|/?elseif|/?if|/?unless|endif|endunless|unlesselse|stop)
+    scope: keyword.control.statamic
+  repo_antlers-constants:
+  - match: (|\s|\b)(true|TRUE|false|FALSE|yes|YES|no|NO|null|as)\s
+    captures:
+      2: constant.language.statamic
+  repo_antlers-expression:
+  - match: ;
+    scope: punctuation.terminator.expression.statamic
+  - include: repo_antlers-strings
+  - include: repo_antlers-numbers
+  - match: =>
+    scope: keyword.operator.key.statamic
+  - match: ->
+    scope: keyword.operator.class.statamic
+  - include: repo_statamic-explicit-tags
+  - include: repo_statamic-core-tags
+  - match: ===|==|!==|!=|<>
+    scope: keyword.operator.comparison.statamic
+  - match: \&=?
+    scope: keyword.operator.string.statamic
+  - match: =|\+=|\-=|\*\*?=|/=|%=|\|=|\^=|<<=|>>=
+    scope: keyword.operator.assignment.statamic
+  - match: (?<!-)\b(?i)(!|\?\?|\?=|\?|&&|&|\|\|)|\b(and|or|xor)\b
+    scope: keyword.operator.logical.statamic
+  - match: (?i)\b(bwa|bwo|bxor|bnot|bsl|bsr)\b
+    scope: keyword.operator.bitwise.statamic
+  - match: <=>|<=|>=|<|>
+    scope: keyword.operator.comparison.statamic
+  - match: \-|\+|\*\*?|/|%
+    scope: keyword.operator.arithmetic.statamic
+  - match: (arr|list|switch)\s*(\()
+    captures:
+      1: support.function.construct.statamic
+      2: punctuation.definition.array.begin.bracket.round.statamic
+    push:
+    - meta_scope: meta.array.statamic
+    - match: \)|(?=\?>)
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.bracket.round.statamic
+    - include: repo_antlers-expression
+  - match: (?<!@){(\s?)
+    push:
+    - match: (\s?)}
+      pop: true
+    - include: repo_antlers-expression
+  - include: repo_antlers-tag-parameter-variable
+  - include: repo_antlers-language-operators
+  - include: repo_antlers-variable
+  - include: repo_antlers-modifier-pipe
+  - include: repo_antlers-variable-modifier-name
+  - include: repo_antlers-variable-modifiers
+  - include: repo_antlers-constants
+  repo_antlers-language-operators:
+  - match: (\w+)[\s]
+    captures:
+      1: variable.statamic
+  repo_antlers-modifier-pipe:
+  - match: (\|)
+    scope: keyword.operator.other.statamic
+  repo_antlers-numbers:
+  - match: 0|[1-9](?:_?[0-9]+)*
+    scope: constant.numeric.statamic
+  repo_antlers-strings:
+  - include: repo_string-double-quoted
+  - include: repo_string-single-quoted
+  repo_antlers-tag-parameter-variable:
+  - match: (:?([\S:]+?)(=)('|")([^\4]*?)(\4))
+  repo_antlers-tags:
+  - match: (?<!@){{(?!\$)(\s?)
+    push:
+    - meta_scope: meta.embedded.block.statamic
+    - match: (\s?)}}
+      pop: true
+    - include: repo_statamic-comments
+    - include: repo_php-tag
+    - include: repo_antlers-conditionals
+    - include: repo_antlers-expression
+  repo_antlers-variable:
+  - match: (/?\w+)(:)?(\w+)?
+    captures:
+      1: variable.statamic
+      2: keyword.operator.statamic
+      3: variable.statamic
+  repo_antlers-variable-modifier-name:
+  - match: (\s)?(\|)(\s)?(\w+((^:([a-zA-Z0-9-_/-@]+)){1,2})?|((-|\+|\*|/|\^|\%):(\d*)?\.?(\d+)))+
+    captures:
+      2: keyword.operator.statamic
+      4: support.function.statamic
+  repo_antlers-variable-modifiers:
+  - match: (\s)?(\|)(\s)?(\w+((:([a-zA-Z0-9-_/-@]+)){1,2})?|((-|\+|\*|/|\^|\%):(\d*)?\.?(\d+)))+
+    captures:
+      2: keyword.operator.statamic
+      4: support.function.statamic
+  repo_core-tag-names:
+  - match: (?i)\b(taxonomy|cookie|user_groups|user_roles|get_site|collection|asset|nocache|vite|mount_url|form|assets|cache|can|dd|ddd|dump|get_content|get_error|get_errors|get_files|glide|in|increment|installed|is|iterate|foreach|link|locales|markdown|member|mix|nav|not_found|404|obfuscate|parent|partial|path|query|range|loop|redirect|relate|rotate|route|scope|section|session|set|structure|svg|theme|trans|trans_choice|user|users|widont|yields|yield|slot|once|noparse|view|stack|push)\b
+    scope: entity.name.tag.statamic
+  repo_frontMatter:
+  - match: \A-{3}\s*$
+    push:
+    - meta_content_scope: meta.embedded.block.frontmatter
+    - match: (^|)-{3}|\.{3}\s*$
+      pop: true
+    - include: scope:source.yaml
+  repo_language-operators:
+  - match: (?i)\b(pluck|take|skip|arr|orderby|groupby|merge|where|switch|bwa|bwo|bxor|bnot|bsl|bsr|if|elseif|else|void)(\b)
+    scope: support.function.array.statamic
+  repo_php-tag:
+  - match: <\?(?i:php|=)?(?![^?]*\?>)
+    captures:
+      0: punctuation.section.embedded.begin.statamic
+    push:
+    - meta_scope: meta.embedded.block.statamic
+    - meta_content_scope: source.php
+    - match: (\?)>
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.statamic
+        1: source.php
+    - include: scope:text.html.php
+  - match: (?<!@){{([\$\?]\s?)
+    captures:
+      0: punctuation.section.embedded.begin.statamic
+    push:
+    - meta_scope: meta.embedded.line.statamic
+    - meta_content_scope: source.php
+    - match: (\s?)[\$\?]}}
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.statamic
+        1: source.php
+    - include: scope:text.html.php
+  - match: <\?(?i:php|=)?
+    captures:
+      0: punctuation.section.embedded.begin.statamic
+    push:
+    - meta_scope: meta.embedded.line.statamic
+    - meta_content_scope: source.php
+    - match: (\?)>
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.statamic
+        1: source.php
+    - include: scope:text.html.php
+  repo_statamic-comments:
+  - match: '{{#'
+    push:
+    - meta_scope: comment.block.statamic
+    - match: '#}}'
+      pop: true
+  repo_statamic-core-closing-tags:
+  - match: \/(\w+)+
+    captures:
+      1: variable.statamic
+  repo_statamic-core-tags:
+  - match: (/?\w+)+
+    captures:
+      1: variable.statamic
+  repo_statamic-explicit-tags:
+  - match: (/?%\w+)+
+    captures:
+      1: entity.name.tag.statamic
+  repo_string-double-quoted:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.statamic
+    push:
+    - meta_scope: string.quoted.double.statamic
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.statamic
+    - match: (?<!@){(\s?)
+      push:
+      - match: (\s?)}
+        pop: true
+      - include: repo_antlers-expression
+  repo_string-single-quoted:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.statamic
+    push:
+    - meta_scope: string.quoted.single.statamic
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.statamic
+    - match: \\[\\']
+      scope: constant.character.escape.statamic
+    - match: (?<!@){(\s?)
+      push:
+      - match: (\s?)}
+        pop: true
+      - include: repo_antlers-expression

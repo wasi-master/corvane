@@ -1,0 +1,342 @@
+%YAML 1.2
+---
+# Praat (source.praat): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/orhunulusahin/praatvscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: Praat
+scope: source.praat
+file_extensions:
+- praat
+contexts:
+  main:
+  - include: repo_language
+  - include: repo_paren-expression
+  repo_assignment:
+  - match: '='
+    scope: keyword.operator.key.praat
+  repo_class-builtin:
+  - match: \b((Long)?Sound|Text(Grid|Tier)|Formant(Grid)?|Strings|all|Intensity(Tier)?|Pitch(Tier)?|PointProcess|Table(OfReal)?|Matrix|Polygon|Distributions|PairDistribution|Permutation|ParamCurve|Harmonicity|Electroglottogram|Spectrum|Ltas|LPC|Cepstrum|(LF|MF)?CC|Excitation(s)?|Cochleagram|Manipulation|Duration(Tier)?|Speaker|Articulation|VocalTract|FFNet|PatternList|Categories|Eigen|Polynomial|Roots|ChebyshevSeries|LegendreSeries|(I|M)Spline|Covariance|Confusion|Discriminant|ExperimentMFC|PCA|Correlation|ClassificationTable|SSCP|DTW|Configuration|Dissimilarity|Similarity|Distance|ScalarProduct|ContingencyTable|OTGrammar|WordList|SpellingChecker)\b
+    scope: support.class.builtin.praat
+  repo_comments:
+  - match: (^|\s|\t|\b)(#|;)
+    captures:
+      0: punctuation.definition.comment.praat
+    push:
+    - meta_scope: comment.line.number-sign.praat
+    - match: $
+      pop: true
+  repo_console:
+  - match: \b(write|append)((Info|File)(Line)?)\b
+    scope: support.function.praat
+    captures:
+      1: support.function.praat
+      2: keyword.variable.language.praat
+  - match: \b(clear)
+    captures:
+      1: support.function.praat
+    push:
+    - meta_scope: support.function.praat
+    - match: (info)\b
+      pop: true
+      captures:
+        1: keyword.variable.language.praat
+  - match: \b(echo|printline)\b
+    scope: support.function.praat
+  repo_control:
+  - match: \b(for|while|end(for|while|if|form|proc|editor)|from|to|repeat|until|if|then|fi|else|elsif|elif|nowarn|noprogress|nocheck|assert|form|call|procedure|Edit|editor)\b
+    scope: keyword.control.praat
+  repo_file-function:
+  - match: (\s)*?\b(fileReadable|readFile(\$)?|createFolder|deleteFile|fileNames\$\#)(\b|\s)
+    scope: support.function.string.praat
+  repo_import:
+  - match: (?i)\b(include)\s
+    scope: keyword.control.import.include.praat
+  repo_interface-function:
+  - match: \b(pauseScript|beginPause|endPause|runSystem(_nocheck)?)\b
+    scope: support.function.praat
+  - match: (\s)*?\b(printline|exit|pause|echo|print|exitScript[:])\s
+    captures:
+      0: support.function.praat
+    push:
+    - match: (.)*?$
+      pop: true
+      captures:
+        0: string.punctuation.praat
+  - match: (\s)*?\bform\s
+    captures:
+      0: keyword.control.praat
+    push:
+    - match: (.)*?$
+      pop: true
+      captures:
+        0: string.punctuation.praat
+  - match: (\s)*?\bcomment\s
+    captures:
+      0: storage.type.praat
+    push:
+    - match: (.)*?$
+      pop: true
+      captures:
+        0: string.punctuation.praat
+  repo_interpolation:
+  - match: \\[0-7]{1,3}
+    scope: constant.character.escape.octal.praat
+  - match: \\x[0-9A-Fa-f]{1,2}
+    scope: constant.character.escape.hex.praat
+  - match: \\u{[0-9A-Fa-f]+}
+    scope: constant.character.escape.unicode.praat
+  - match: \\[nrtvef$\\]
+    scope: constant.character.escape.praat
+  repo_language:
+  - include: repo_comments
+  - include: repo_predefined-numeric
+  - include: repo_predefined-string
+  - include: repo_sound-function
+  - include: repo_string-function
+  - include: repo_file-function
+  - include: repo_interface-function
+  - include: repo_open-menu-function
+  - include: repo_new-menu-function
+  - include: repo_sound-save-function
+  - include: repo_other-save-function
+  - include: repo_textgrid-query-function
+  - include: repo_textgrid-gui-function
+  - include: repo_textgrid-tabulate-function
+  - include: repo_textgrid-analyse-function
+  - include: repo_textgrid-synthesize-function
+  - include: repo_textgrid-sound-function
+  - include: repo_sound-draw-function
+  - include: repo_sound-query-function
+  - include: repo_sound-modify-function
+  - include: repo_sound-annotate-function
+  - include: repo_sound-periodicity-function
+  - include: repo_sound-spectrum-function
+  - include: repo_sound-convert-function
+  - include: repo_sound-filter-function
+  - include: repo_sound-combine-function
+  - include: repo_strings-function
+  - include: repo_select-function
+  - include: repo_proc-declaration
+  - include: repo_string-variables
+  - include: repo_strings
+  - include: repo_operators
+  - include: repo_console
+  - include: repo_import
+  - include: repo_control
+  - include: repo_class-builtin
+  - include: repo_types-builtin
+  - include: repo_numeric-variables
+  - include: repo_numbers
+  repo_math:
+  - match: \-|\^|\*|\/|\+|(\<\>)|\<|\>|(\<\=)|(\>\=)
+    scope: keyword.operator.key.praat
+  - match: \b(abs|round|floor|ceiling|sqrt|min|max|imin|imax|sin(c(pi)?|h)?|cos(h)?|tan(h)?|arcsin(h)?|arccos(h)?|arctan(h|2)?|exp|ln|log(10|2)|sigmoid|invSigmoid|erf(c)?|random(Uniform|Integer|Gauss|Poisson|Gamma|_initilialize(WithSeedUnsafelyButPredictably|SafelyAndUnpredictably))|Gauss(P|Q)|lnGamma|invGaussQ|chiSquare(P|Q)|invChiSquareQ|student(P|Q)|fisher(P|Q)|invFisherQ|binomial(P|Q)|incBinomial(P|Q)|hertzTo(Bark|Mel|Semitomes|Erb)|barkToHertz|melToHertz|semitonesToHertz|erb(ToHertz)?|phonToDifferenceLimens|differenceLimensToPhon|beta|bessel(I|K))\b
+    scope: support.function.math.praat
+  repo_new-menu-function:
+  - match: (\s)*?\b(Record (mono|stereo) Sound|Create (Sound (from formula|as (pure tone|tone complex|gammatone|Shepard tone)|from VowelEditor)|(simple )?Matrix( from values)?|(simple )? Photo|Table with(out)? column names|simple (Confusion|Covariance|Correlation)|empty EditCostsTable|empty PointProcess|Poisson process|(Pitch|Intensity|Duration|Amplitude|Real)Tier|FormantGrid|TextGrid|Corpus|Strings (as file list|as folder list|from tokens)|Articulation|Speaker|Artword|Vocal Tract from phone|Permutation|SpeechSynthesizer))\b
+    scope: support.function.praat
+  repo_numbers:
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)\b
+    scope: constant.numeric.praat
+  repo_numeric-variables:
+  - match: ^(\b|\s|\t)*?([a-z])(?i)((?:_?[a-z0-9_]+))?(\b|\s)*?\=
+    captures:
+      1: variable.other.praat
+      2: variable.other.praat
+      3: variable.other.praat
+      4: keyword.operator.praat
+  repo_open-menu-function:
+  - match: (\s)*?\b(Read (from file|Sound (Alaw file|16\-bit (Little|Big) Endian file)|separate channels from sound file|Matrix from raw text file|TableOfReal from headerless spreadsheet file|Table from (tab|comma|semicolon|whitespace)\-separated file|Strings from raw text file|(Text|Interval)Tier from Xwaves)|Open long sound file)\b
+    scope: support.function.string.praat
+  repo_operators:
+  - match: \.\.\.\s|\b(\:\s|not|and|or|div|mod|yes|no|self)\b
+    scope: constant.language.operator.praat
+  - include: repo_math
+  - include: repo_assignment
+  repo_other-save-function:
+  - match: (\s)*?\b((Save as|Write to) ((short |chronological |matrix )?text|binary|headerless spreadsheet) file)\b
+    scope: support.function.string.praat
+  repo_paren-expression:
+  - match: \(
+    captures:
+      0: punctuation.paren.open.praat
+    push:
+    - meta_scope: expression.group
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.paren.close.praat
+    - include: repo_language
+  repo_predefined-numeric:
+  - match: \b(macintosh|windows|unix|praatVersion|pi|e|undefined|stopwatch)\b
+    scope: constant.language.praat
+  repo_predefined-string:
+  - match: \s*(newline|tab|shellDirectory|environment)\$\s*
+    scope: constant.language.praat
+  repo_proc-declaration:
+  - match: (\b|\s|\t)*?(procedure)\s([a-z][a-zA-Z0-9_]+)(\:)?(\b|\s)?
+    captures:
+      2: keyword.control.praat
+      3: support.function.praat
+      4: support.function.praat
+  repo_regex-double-quoted:
+  - match: (?x)"/ (?= (\\.|[^"/])++/[imsxeADSUXu]*" )
+    captures:
+      0: punctuation.definition.string.begin.praat
+    push:
+    - meta_scope: string.regexp.double-quoted.praat
+    - match: (/)([imsxeADSUXu]*)(")
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.praat
+    - match: (\\){1,2}[.$^\[\]{}]
+      scope: constant.character.escape.regex.praat
+    - include: repo_interpolation
+    - match: (\{)\d+(,\d+)?(\})
+      scope: string.regexp.arbitrary-repetition.praat
+      captures:
+        1: punctuation.definition.arbitrary-repetition.praat
+        3: punctuation.definition.arbitrary-repetition.praat
+    - match: \[(?:\^?\])?
+      captures:
+        0: punctuation.definition.character-class.praat
+      push:
+      - meta_scope: string.regexp.character-class.praat
+      - match: \]
+        pop: true
+        captures:
+          0: punctuation.definition.character-class.praat
+      - include: repo_interpolation
+    - match: '[$^+*]'
+      scope: keyword.operator.regexp.praat
+  repo_regex-single-quoted:
+  - match: '(?x)''/ (?= ( \\ (?: \\ (?: \\ [\\'']? | [^''] ) | . ) | [^''/] )++/[imsxeADSUXu]*'' )'
+    captures:
+      0: punctuation.definition.string.begin.praat
+    push:
+    - meta_scope: string.regexp.single-quoted.praat
+    - match: (/)([imsxeADSUXu]*)(')
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.praat
+    - match: (\{)\d+(,\d+)?(\})
+      scope: string.regexp.arbitrary-repetition.praat
+      captures:
+        1: punctuation.definition.arbitrary-repetition.praat
+        3: punctuation.definition.arbitrary-repetition.praat
+    - match: \[(?:\^?\])?
+      captures:
+        0: punctuation.definition.character-class.praat
+      push:
+      - meta_scope: string.regexp.character-class.praat
+      - match: \]
+        pop: true
+        captures:
+          0: punctuation.definition.character-class.praat
+    - match: '[$^+*]'
+      scope: keyword.operator.regexp.praat
+  repo_select-function:
+  - match: (\s)*?\b(select(Object| all)?|plus(Object)?|minus(Object)?|Remove|removeObject|Concatenate|Rename|Selected(\$)?|Info|Inspect|Copy)\b
+    captures:
+      2: support.function.praat
+  repo_sound-annotate-function:
+  - match: (\s)*?\b(To TextGrid( \((silences|voice activity)\))?)
+    scope: support.function.praat
+  repo_sound-combine-function:
+  - match: (\s)*?\b(Combine (to stereo|into Sound(List|Set))|Concatenate( recoverably| with overlap)?|Convolve|Cross\-correlate|To (CrossCorrelationTable \(combined\)|DTW|ParamCurve))
+    scope: support.function.praat
+  repo_sound-convert-function:
+  - match: (\s)*?\b(Convert to (mono|stereo)|Extract (all channels|one channel|channels|part( for overlap)?|Electroglottogram)|Resample|To (Sound \((white channels|bss)\)|CrossCorrelationTable)|Lengthen \(overlap-add\)|Deepen band modulation|Change gender|Down to Matrix)
+    scope: support.function.praat
+  repo_sound-draw-function:
+  - match: \b(Draw( where)?|Paint (where|enclosed))\b
+    scope: support.function.praat
+  repo_sound-filter-function:
+  - match: (\s)*?\b(Filter \((pass Hann band|stop Hann band|formula|one formant|pre\-emphasis|de\-emphasis|gammatone|inverse)\)|Reduce noise)
+    scope: support.function.praat
+  repo_sound-function:
+  - match: \b(Play|To Intensity|Down to)\b
+    scope: support.function.praat
+  repo_sound-modify-function:
+  - match: \b(Shift times (by|to)|Scale (peak|intensity|times (by|to))|Reverse|Formula( \(part\))?|Add|Subtract mean|Multiply( by window)?|Set (value at sample number|part to zero)|Override sampling frequency|Pre-emphasize \(in-place\)|De-emphasize \(in-place\))
+    scope: support.function.praat
+  repo_sound-periodicity-function:
+  - match: (\s)*?\b(To (Manipulation|Pitch( \((ac|cc|SPINET|shs)\))?|PointProcess \((periodic\, cc|periodic\, peaks|extrema|zeroes)\)|Harmonicity \(cc|ac|gne\)|PowerCepstrogram)|Autocorrelate)
+    scope: support.function.praat
+  repo_sound-query-function:
+  - match: \b(Get (start time|end time|total duration|number of channels|number of samples|sampling period|sampling frequency|time from sample number|sample number from time|value at (time|sample number)|minimum|maximum|time of (minimum|maximum)|absolute extremum|nearest (zero crossing|level crossing)|mean|root-mean-square|standard deviation|energy( in air)?|power( in air)?|intensity \(dB\))|List all sample times)
+    scope: support.function.praat
+  repo_sound-save-function:
+  - match: (\s)*?\b((Save as|Write to) ((short)? text|binary|((24|32)\-bit )?WAV|AIFF|AIFC|Next\/Sun|NIST|FLAC|Kay|raw (8\-bit (un)?signed|(16|24|32)\-bit (big|little)\-endian)) file|Append to existing sound file)\b
+    captures:
+      2: support.function.praat
+  repo_sound-spectrum-function:
+  - match: \b(To (Spectrum|Ltas( \(pitch-corrected\))?|Spectrogram( \(pitch-dependent\))?|Cochleagram|BarkSpectrogram|MelSpectrogram|Formant \((burg|keep all|sl|robust)\)|FormantPath( \(burg\))?|LPC \((autocorrelation|covariance|burg|marple)\)|MFCC))
+    scope: support.function.praat
+  repo_string-double-quoted:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.praat
+    push:
+    - meta_scope: string.quoted.double.praat
+    - meta_content_scope: meta.string-contents.quoted.double.praat
+    - match: ("|$)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.praat
+    - include: repo_interpolation
+    - include: repo_string-variables
+    - include: repo_string-single-quoted
+  repo_string-function:
+  - match: (\s)*?\b(length|left\$|right\$|mid\$|index(_regex)?|rindex(_regex)?|startsWith|endsWith|replace\$|replace_regex(\$)?|string\$|fixed\$|percent\$|number|date\$|unicode\$|extract(Number|Word\$|Line\$)|backslashTrigraphsToUnicode\$)(\s)?
+    scope: support.function.string.praat
+  repo_string-single-quoted:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.praat
+    push:
+    - meta_scope: variable.string.quoted.single.praat
+    - meta_content_scope: meta.string-contents.quoted.single.praat
+    - match: ('|$)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.praat
+    - match: \\[\\']
+      scope: constant.character.escape.praat
+  repo_string-variables:
+  - match: (\b|\s|\t)*?[a-z](?i)(?:_?[a-z0-9_]+)\$(\b|\s)?
+    scope: variable.other.praat
+  - match: \b(this)\b
+    scope: variable.language.this.praat
+    captures:
+      1: punctuation.definition.variable.praat
+  repo_strings:
+  - include: repo_string-variables
+  - include: repo_predefined-string
+  - include: repo_string-single-quoted
+  - include: repo_regex-double-quoted
+  - include: repo_string-double-quoted
+  - include: repo_regex-single-quoted
+  repo_strings-function:
+  - match: (\s)*?\b(Get (number of strings|string)|List all strings|(Set|Insert|Remove) string|Randomize|Sort|Convert to (backslash trigraphs|Unicode)|Replace all|To (Distributions|Permutation|WordList|Categories)|Append)\b
+    scope: support.function.praat
+  repo_textgrid-analyse-function:
+  - match: (\s)*?\b(Extract (one tier|part)|To Table \(text alignment\)|Get (starting|centre|end) points|Get points \((preceded|followed)\))
+    scope: support.function.praat
+  repo_textgrid-gui-function:
+  - match: (\s)*?\b(View \& Edit alone)
+    scope: support.function.praat
+  repo_textgrid-query-function:
+  - match: (\s)*?\b(Get (start time( of interval)?|end time( of interval)?|total duration( of interval)?|(maximum )?number of (tiers|intervals|points)|tier name|(start|end) time of (interval|point)|label of (interval|point)|(low |high )?interval at time|interval (edge|boundary) from time|total dutaion of intervals where|(low|high|nearest) index from time)|Is interval tier|Count (intervals|points) where)
+    scope: support.function.praat
+  repo_textgrid-sound-function:
+  - match: (\s)*?\b(View \& Edit|Draw|Extract (all|non\-empty) intervals|Extract intervals where|Scale times|Close time domain)
+    scope: support.function.praat
+  repo_textgrid-synthesize-function:
+  - match: (\s)*?\b(Merge|Concatenate|To DurationTier)
+    scope: support.function.praat
+  repo_textgrid-tabulate-function:
+  - match: (\s)*?\b(Down to table|List|Tabulate occurrences)
+    scope: support.function.praat
+  repo_types-builtin:
+  - match: \b(real|positive|integer|natural|word|sentence|text|boolean|choice|button|comment|(in|out)file|folder|option(menu)?|(?i)hertz|(?i)mono|(?i)stereo)\b
+    scope: storage.type.praat

@@ -1,0 +1,1087 @@
+%YAML 1.2
+---
+# Slice (source.ice): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/zeroc-ice/vscode-slice via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Slice
+scope: source.ice
+file_extensions:
+- ice
+contexts:
+  main:
+  - include: repo_standard
+  - include: repo_metadata
+  - include: repo_constant
+  - include: repo_storage.module
+  - include: repo_storage.enum
+  - include: repo_storage.struct
+  - include: repo_storage.sequence
+  - include: repo_storage.dictionary
+  - include: repo_storage.interface
+  - include: repo_storage.exception
+  - include: repo_storage.class
+  - include: repo_storage.operation
+  repo_annotation:
+  - match: (@)\S*\b
+    scope: storage.type.annotation.ice
+    captures:
+      1: punctuation.definition.annotation.ice
+  repo_comment:
+  - include: repo_comment.line
+  - include: repo_comment.block
+  repo_comment.block:
+  - match: \/\*
+    captures:
+      0: punctuation.definition.comment.block.begin.ice
+    push:
+    - meta_scope: comment.block.ice
+    - meta_content_scope: text.ice
+    - match: \*\/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.end.ice
+    - include: repo_annotation
+    - include: repo_link
+    - include: repo_line.continuation
+  repo_comment.line:
+  - match: \/\/
+    captures:
+      0: punctuation.definition.comment.line.begin.ice
+    push:
+    - meta_scope: comment.line.ice
+    - meta_content_scope: text.ice
+    - match: $
+      pop: true
+    - include: repo_annotation
+    - include: repo_link
+    - include: repo_line.continuation
+  repo_constant:
+  - include: repo_constant.boolean
+  - include: repo_constant.string
+  - include: repo_constant.numeric.float
+  - include: repo_constant.numeric.hex
+  - include: repo_constant.numeric.oct
+  - include: repo_constant.numeric.dec
+  repo_constant.boolean:
+  - match: \b(?:(true)|(false))\b
+    captures:
+      0: constant.language.ice
+      1: constant.boolean.true.ice
+      2: constant.boolean.false.ice
+  repo_constant.numeric.dec:
+  - match: (-|\+)?\b(?:0|[1-9]\d*)\b
+    scope: constant.numeric.integer.ice
+    captures:
+      1: punctuation.definition.numeric.sign.ice
+  repo_constant.numeric.float:
+  - match: (-|\+)?(?:\d+(\.)\d*|\d*(\.)\d+|\d+(?=e|E|f|F))(?:(e|E)-?\d+)?(f|F)?
+    scope: constant.numeric.float.ice
+    captures:
+      1: punctuation.numeric.sign.ice
+      2: punctuation.separator.decimal.ice
+      3: punctuation.separator.decimal.ice
+      4: punctuation.numeric.exponent.ice
+      5: punctuation.definition.float.ice
+  repo_constant.numeric.hex:
+  - match: (-|\+)?\b(0x)[\da-fA-F]+\b
+    scope: constant.numeric.hex.ice
+    captures:
+      1: punctuation.definition.numeric.sign.ice
+      2: punctuation.definition.numeric.hex.ice
+  repo_constant.numeric.oct:
+  - match: (-|\+)?\b(0)(\d+)\b
+    scope: constant.numeric.octal.ice
+    captures:
+      1: punctuation.definition.numeric.sign.ice
+      2: punctuation.definition.numeric.oct.ice
+  repo_constant.string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.ice
+    push:
+    - meta_scope: string.quoted.double.ice
+    - match: (")|$
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.ice
+        2: invalid.illegal.mismatched-quotes.ice
+    - match: \\.
+    - include: repo_line.continuation
+  repo_invalid:
+  - match: \S
+    scope: invalid.illegal
+  repo_line.continuation:
+  - match: (\\)\s*$
+    captures:
+      1: punctuation.separator.continuation.backslash.ice
+    push:
+    - match: ^
+      pop: true
+  repo_link:
+  - match: (\b\S*)?(#)\S*\b
+    scope: variable.link.ice
+    captures:
+      1: punctuation.definition.link.ice
+  repo_metadata:
+  - include: repo_metadata.global
+  - include: repo_metadata.local
+  repo_metadata.content:
+  - include: repo_standard
+  - match: (")
+    captures:
+      0: string.quoted.double.ice
+      1: punctuation.definition.string.begin.ice
+    push:
+    - match: (?=\])|(?<=,)
+      pop: true
+    - include: repo_line.continuation
+    - match: ((?:[^\\"]|\\.)+)
+      scope: string.quoted.double.ice
+    - match: (")
+      captures:
+        0: string.quoted.double.ice
+        1: punctuation.definition.string.end.ice
+      push:
+      - match: (?=\])|(,)
+        pop: true
+        captures:
+          1: punctuation.separator.metadata.ice
+      - include: repo_standard
+  repo_metadata.global:
+  - match: \[\[
+    captures:
+      0: punctuation.definition.metadata.global.begin.ice
+    push:
+    - meta_scope: meta.metadata.global.ice
+    - match: \]\]
+      pop: true
+      captures:
+        0: punctuation.definition.metadata.global.end.ice
+    - include: repo_metadata.content
+  repo_metadata.identifier:
+  - match: \S+
+    scope: entity.metadata.directive.ice
+  repo_metadata.local:
+  - match: \[
+    captures:
+      0: punctuation.definition.metadata.local.begin.ice
+    push:
+    - meta_scope: meta.metadata.local.ice
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.metadata.local.end.ice
+    - include: repo_metadata.content
+  repo_preprocessor:
+  - include: repo_preprocessor.ifdef
+  - include: repo_preprocessor.ifndef
+  - include: repo_preprocessor.if
+  - include: repo_preprocessor.elif
+  - include: repo_preprocessor.else
+  - include: repo_preprocessor.endif
+  - include: repo_preprocessor.define
+  - include: repo_preprocessor.undef
+  - include: repo_preprocessor.include
+  - include: repo_preprocessor.pragma
+  - include: repo_preprocessor.line
+  - include: repo_preprocessor.error
+  - include: repo_preprocessor.null
+  repo_preprocessor.define:
+  - match: (#)\s*define\b
+    captures:
+      0: keyword.control.preprocessor.define.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.define.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b(\w+)((\())
+      captures:
+        2: meta.group.parameters.preprocessor.ice
+        3: punctuation.section.group.parameters.begin.ice
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+      - match: \b\w+\b
+        push:
+        - match: (?=\))|(,)|($)
+          pop: true
+          captures:
+            1: punctuation.separator.parameter.preprocessor.ice
+            2: invalid.mismatched.parenthesis.ice
+        - include: repo_standardP
+      - match: \b\w+\b
+        captures:
+          0: punctuation.variable.parameter.preprocessor.ice
+        push:
+        - match: (?=\))|((,))|($)
+          pop: true
+          captures:
+            1: punctuation.separator.parameter.preprocessor.ice
+            2: invalid.trailing-comma.ice
+            3: invalid.mismatched.parenthesis.ice
+        - include: repo_standardP
+      - match: (\))
+        captures:
+          0: meta.group.parameters.preprocessor.ice
+          1: punctuation.section.group.parameters.end.ice
+        push:
+        - match: $
+          pop: true
+        - include: repo_standardP
+        - match: \S
+          scope: constant.preprocessor.ice
+    - match: \b\w+\b
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+      - match: \S
+        scope: constant.preprocessor.ice
+  repo_preprocessor.elif:
+  - match: (#)\s*elif\b
+    captures:
+      0: keyword.control.preprocessor.elif.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.elif.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+  repo_preprocessor.else:
+  - match: (#)\s*else\b
+    captures:
+      0: keyword.control.preprocessor.else.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.endif.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+  repo_preprocessor.endif:
+  - match: (#)\s*endif\b
+    captures:
+      0: keyword.control.preprocessor.endif.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.endif.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+  repo_preprocessor.error:
+  - match: ((#)\s*error)\b
+    captures:
+      1: keyword.control.preprocessor.error.ice
+      2: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.error.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: .
+      scope: text.error.ice
+  repo_preprocessor.identifier:
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+    scope: entity.identifier.preprocessor.ice
+  - include: repo_invalid
+  repo_preprocessor.if:
+  - match: (#)\s*if\b
+    captures:
+      0: keyword.control.preprocessor.if.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.if.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+  repo_preprocessor.ifdef:
+  - match: (#)\s*ifdef\b
+    captures:
+      0: keyword.control.preprocessor.ifdef.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.ifdef.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b\w+\b
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+  repo_preprocessor.ifndef:
+  - match: (#)\s*ifndef\b
+    captures:
+      0: keyword.control.preprocessor.ifndef.ice
+      1: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.ifndef.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b\w+\b
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+  repo_preprocessor.include:
+  - match: ((#)\s*include)\b
+    captures:
+      1: keyword.control.preprocessor.include.ice
+      2: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.include.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: (?<="|>)
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.ice
+      push:
+      - meta_scope: string.quoted.double.ice
+      - meta_content_scope: entity.name.header.ice
+      - match: (")|($)
+        pop: true
+        captures:
+          1: punctuation.definition.string.end.ice
+          2: invalid.illegal.mismatched-quotes.ice
+      - match: \\.
+      - include: repo_line.continuation
+    - match: <
+      captures:
+        0: punctuation.definition.string.begin.ice
+      push:
+      - meta_scope: string.quoted.other.angle.ice
+      - meta_content_scope: entity.name.header.ice
+      - match: (>)|($)
+        pop: true
+        captures:
+          1: punctuation.definition.string.end.ice
+          2: invalid.illegal.mismatched-quotes.ice
+      - match: \\.
+      - include: repo_line.continuation
+  repo_preprocessor.line:
+  - match: ((#)\s*line)\b
+    captures:
+      1: keyword.control.preprocessor.line.ice
+      2: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.line.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b[\d]+\b
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+      - match: (?<=")
+        push:
+        - match: $
+          pop: true
+        - include: repo_standardP
+      - match: '"'
+        captures:
+          0: punctuation.definition.string.begin.ice
+        push:
+        - meta_scope: string.quoted.double.ice
+        - meta_content_scope: entity.name.file.ice
+        - match: (")|($)
+          pop: true
+          captures:
+            1: punctuation.definition.string.end.ice
+            2: invalid.illegal.mismatched-quotes.ice
+        - match: \\.
+        - include: repo_line.continuation
+  repo_preprocessor.null:
+  - match: (#)
+    captures:
+      0: punctuation.definition.preprocessor.ice
+      1: keyword.control.preprocessor.null.ice
+    push:
+    - meta_scope: meta.preprocessor.null.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+  repo_preprocessor.pragma:
+  - match: ((#)\s*pragma)\b
+    captures:
+      1: keyword.control.preprocessor.pragma.ice
+      2: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.pragma.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b\S+\b
+      captures:
+        0: keyword.control.preprocessor.pragma.other.ice
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+  repo_preprocessor.undef:
+  - match: ((#)\s*undef)\b
+    captures:
+      1: keyword.control.preprocessor.undef.ice
+      2: punctuation.definition.preprocessor.ice
+    push:
+    - meta_scope: meta.preprocessor.undef.ice
+    - match: $
+      pop: true
+    - include: repo_standardP
+    - match: \b\w+\b
+      push:
+      - match: $
+        pop: true
+      - include: repo_standardP
+  repo_standard:
+  - include: repo_comment
+  - include: repo_preprocessor
+  - include: repo_line.continuation
+  repo_standardP:
+  - include: repo_comment
+  - include: repo_line.continuation
+  repo_storage:
+  - include: repo_storage.module
+  - include: repo_storage.enum
+  - include: repo_storage.struct
+  - include: repo_storage.sequence
+  - include: repo_storage.dictionary
+  - include: repo_storage.interface
+  - include: repo_storage.exception
+  - include: repo_storage.class
+  - include: repo_storage.basic
+  repo_storage.basic:
+  - include: repo_storage.modifier
+  - match: \\?\bbool\b
+    push:
+    - meta_scope: meta.bool.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.bool.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bbyte\b
+    push:
+    - meta_scope: meta.byte.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.byte.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bshort\b
+    push:
+    - meta_scope: meta.short.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.short.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bint\b
+    push:
+    - meta_scope: meta.int.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.int.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\blong\b
+    push:
+    - meta_scope: meta.long.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.long.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bfloat\b
+    push:
+    - meta_scope: meta.float.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.float.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bdouble\b
+    push:
+    - meta_scope: meta.double.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.double.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\bstring\b
+    push:
+    - meta_scope: meta.string.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.string.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  - match: \\?\b[:\w]+\b
+    push:
+    - meta_scope: meta.type.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_storage.basic.assignment
+  repo_storage.basic.assignment:
+  - include: repo_standard
+  - match: '='
+    captures:
+      0: keyword.operator.assignment.ice
+    push:
+    - match: (?=;|})
+      pop: true
+    - include: repo_standard
+    - include: repo_constant
+  repo_storage.class:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bclass\b
+    captures:
+      0: storage.type.class.ice
+    push:
+    - meta_scope: meta.class.ice
+    - match: (})|(;)
+      pop: true
+      captures:
+        1: punctuation.section.block.end.ice
+        2: punctuation.terminator.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.class.ice
+      push:
+      - match: (?=}|;)
+        pop: true
+      - include: repo_standard
+      - match: (?<!\\)\bextends\b
+        captures:
+          0: storage.modifier.extends.ice
+        push:
+        - match: (?=})|((?=;))
+          pop: true
+          captures:
+            1: invalid.illegal.missing-brace.ice
+        - include: repo_standard
+        - match: \\?[:\w]+
+          push:
+          - match: (?=}|;)
+            pop: true
+          - include: repo_standard
+          - include: repo_storage.class.implements
+        - include: repo_storage.class.implements
+      - include: repo_storage.class.implements
+  repo_storage.class.body:
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.ice
+    push:
+    - match: (?=})
+      pop: true
+    - include: repo_standard
+    - include: repo_storage.basic
+  repo_storage.class.implements:
+  - match: (?<!\\)\bimplements\b
+    captures:
+      0: storage.modifier.implements.ice
+    push:
+    - match: (?=})|((?=;))
+      pop: true
+      captures:
+        1: invalid.illegal.missing-brace.ice
+    - include: repo_standard
+    - match: \\?[:\w]+
+      push:
+      - match: (?={|}|;)|(,)
+        pop: true
+        captures:
+          1: punctuation.separator.class.implements.ice
+      - include: repo_standard
+    - include: repo_storage.class.body
+  - include: repo_storage.class.body
+  repo_storage.dictionary:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bdictionary\b
+    captures:
+      0: storage.type.dictionary.ice
+    push:
+    - meta_scope: meta.dictionary.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: (\<)
+      captures:
+        0: meta.generic.dictionary.ice
+        1: punctuation.definition.generic.begin.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_standard
+      - include: repo_storage.modifier
+      - match: (\\?[:\w]+)|(?=\>)
+        captures:
+          1: meta.generic.dictionary.ice
+          2: invalid.illegal.missing-type.ice
+        push:
+        - match: (?=;|})
+          pop: true
+        - include: repo_standard
+        - match: (,)|(?=\>)
+          captures:
+            0: meta.generic.dictionary.ice
+            1: punctuation.separator.dictionary.ice
+            2: invalid.illegal.missing-type.ice
+          push:
+          - match: (?=;|{|})
+            pop: true
+          - include: repo_standard
+          - include: repo_storage.modifier
+          - match: (\\?[:\w]+)|(?=\>)
+            captures:
+              1: meta.generic.dictionary.ice
+              2: invalid.illegal.missing-type.ice
+            push:
+            - match: (?=;|})
+              pop: true
+            - include: repo_standard
+            - match: (\>)
+              captures:
+                0: meta.generic.dictionary.ice
+                1: punctuation.definition.generic.end.ice
+              push:
+              - match: (?=;|})
+                pop: true
+              - include: repo_standard
+              - match: \\?\b\w+\b
+                captures:
+                  0: entity.name.dictionary.ice
+                push:
+                - match: (?=;|})
+                  pop: true
+  repo_storage.enum:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\benum\b
+    captures:
+      0: storage.type.enum.ice
+    push:
+    - meta_scope: meta.enum.ice
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.enum.ice
+      push:
+      - match: (?=})
+        pop: true
+      - include: repo_standard
+      - match: '{'
+        captures:
+          0: punctuation.section.block.begin.ice
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_standard
+        - match: (?=\[)
+          push:
+          - match: (?<=])
+            pop: true
+          - include: repo_standard
+          - include: repo_metadata.local
+        - match: \\?\b\w+\b
+          captures:
+            0: constant.other.enum.ice
+          push:
+          - match: (?=})|(,)
+            pop: true
+            captures:
+              1: punctuation.separator.enum.ice
+          - include: repo_standard
+          - match: '='
+            captures:
+              0: keyword.operator.assignment.ice
+            push:
+            - match: (?=})|(?=,)
+              pop: true
+            - include: repo_standard
+            - include: repo_constant
+  repo_storage.exception:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bexception\b
+    captures:
+      0: storage.type.exception.ice
+    push:
+    - meta_scope: meta.exception.ice
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.exception.ice
+      push:
+      - match: (?=})
+        pop: true
+      - include: repo_standard
+      - match: (?<!\\)\bextends\b
+        captures:
+          0: storage.modifier.extends.ice
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_standard
+        - match: \\?[:\w]+
+          push:
+          - match: (?={|})|(,)
+            pop: true
+            captures:
+              1: punctuation.separator.exception.extends.ice
+          - include: repo_standard
+        - include: repo_storage.exception.body
+      - include: repo_storage.exception.body
+  repo_storage.exception.body:
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.ice
+    push:
+    - match: (?=})
+      pop: true
+    - include: repo_standard
+    - include: repo_storage.basic
+  repo_storage.identifier:
+  - match: (?<!\\)\b(?:bool|byte|class|const|dictionary|double|enum|exception|extends|false|float|idempotent|implements|int|interface|local|LocalObject|long|module|Object|optional|out|sequence|short|string|struct|throws|true|Value|void)\b
+    scope: invalid.illegal.reserved.identifier.ice
+  - match: (\\)?\b([a-zA-Z_][a-zA-Z0-9_]*)\b
+    captures:
+      1: punctuation.escape.backslash.ice
+  - match: .
+    scope: invalid.illegal.identifier.ice
+  repo_storage.interface:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\binterface\b
+    captures:
+      0: storage.type.interface.ice
+    push:
+    - meta_scope: meta.interface.ice
+    - match: (})|(;)
+      pop: true
+      captures:
+        1: punctuation.section.block.end.ice
+        2: punctuation.terminator.semicolon.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.interface.ice
+      push:
+      - match: (?=}|;)
+        pop: true
+      - include: repo_standard
+      - match: (?<!\\)\bextends\b
+        captures:
+          0: storage.modifier.extends.ice
+        push:
+        - match: (?=})|((?=;))
+          pop: true
+          captures:
+            1: invalid.illegal.missing-brace.ice
+        - include: repo_standard
+        - match: \\?[:\w]+
+          push:
+          - match: (?={|}|;)|(,)
+            pop: true
+            captures:
+              1: punctuation.separator.interface.extends.ice
+          - include: repo_standard
+        - include: repo_storage.interface.body
+      - include: repo_storage.interface.body
+  repo_storage.interface.body:
+  - match: '{'
+    captures:
+      0: punctuation.section.block.begin.ice
+    push:
+    - match: (?=})
+      pop: true
+    - include: repo_standard
+    - include: repo_storage.operation
+  repo_storage.modifier:
+  - match: (?=\[)
+    push:
+    - match: (?<=])
+      pop: true
+    - include: repo_standard
+    - include: repo_metadata.local
+  - match: (?<!\\)\b(?:(local)|(const)|(idempotent)|(out)|(optional\([-a-zA-Z0-9_:]*\)))(?:\b|(?<=\)))
+    captures:
+      1: storage.modifier.local.ice
+      2: storage.modifier.const.ice
+      3: storage.modifier.idempotent.ice
+      4: storage.modifier.out.ice
+  repo_storage.module:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bmodule\b
+    captures:
+      0: storage.type.module.ice
+    push:
+    - meta_scope: meta.module.ice
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.module.ice
+      push:
+      - match: (?=})
+        pop: true
+      - include: repo_standard
+      - match: '{'
+        captures:
+          0: punctuation.section.block.begin.ice
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_standard
+        - include: repo_storage
+  repo_storage.operation:
+  - include: repo_storage.modifier
+  - match: \\?[:\w]+
+    push:
+    - meta_scope: meta.operation.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing-brace.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.function.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_standard
+      - match: \(
+        captures:
+          0: punctuation.section.group.operation.parameters.begin.ice
+        push:
+        - match: (?=;|})
+          pop: true
+        - include: repo_standard
+        - match: \)
+          captures:
+            0: punctuation.section.group.operation.parameters.end.ice
+          push:
+          - match: (?=;|})
+            pop: true
+          - include: repo_standard
+          - match: (?<!\\)\bthrows\b
+            captures:
+              0: storage.modifier.throws.ice
+            push:
+            - match: (?=;|})
+              pop: true
+            - include: repo_standard
+            - match: \\?[:\w]+
+              push:
+              - match: (?=;|})|(,)
+                pop: true
+                captures:
+                  1: punctuation.separator.operation.throws.ice
+              - include: repo_standard
+        - include: repo_storage.modifier
+        - match: \\?[:\w]+
+          push:
+          - match: (?=\))|(?<=,)
+            pop: true
+          - match: \\?\b\w+\b
+            captures:
+              0: entity.name.operation.parameter
+            push:
+            - match: (?=\))|(,)
+              pop: true
+              captures:
+                1: punctuation.separator.operation.parameter.ice
+  repo_storage.sequence:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bsequence\b
+    captures:
+      0: storage.type.sequence.ice
+    push:
+    - meta_scope: meta.sequence.ice
+    - match: (;)|((?=}))
+      pop: true
+      captures:
+        1: punctuation.terminator.semicolon.ice
+        2: invalid.illegal.missing.semicolon.ice
+    - include: repo_standard
+    - match: (\<)
+      captures:
+        0: meta.generic.sequence.ice
+        1: punctuation.definition.generic.begin.ice
+      push:
+      - match: (?=;|})
+        pop: true
+      - include: repo_standard
+      - include: repo_storage.modifier
+      - match: (\\?[:\w]+)|(?=\>)
+        captures:
+          1: meta.generic.sequence.ice
+          2: invalid.illegal.missing-type.ice
+        push:
+        - match: (?=;|})
+          pop: true
+        - include: repo_standard
+        - match: (\>)
+          captures:
+            0: meta.generic.sequence.ice
+            1: punctuation.definition.generic.end.ice
+          push:
+          - match: (?=;|})
+            pop: true
+          - include: repo_standard
+          - match: \\?\b\w+\b
+            captures:
+              0: entity.name.sequence.ice
+            push:
+            - match: (?=;|})
+              pop: true
+  repo_storage.struct:
+  - include: repo_storage.modifier
+  - match: (?<!\\)\bstruct\b
+    captures:
+      0: storage.type.struct.ice
+    push:
+    - meta_scope: meta.struct.ice
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.block.end.ice
+    - include: repo_standard
+    - match: \\?\b\w+\b
+      captures:
+        0: entity.name.struct.ice
+      push:
+      - match: (?=})
+        pop: true
+      - include: repo_standard
+      - match: '{'
+        captures:
+          0: punctuation.section.block.begin.ice
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_standard
+        - include: repo_storage.basic
+  repo_storage.types:
+  - match: (\\)?\b(?:(bool)|(byte)|(short)|(int)|(long)|(float)|(double)|(string)|(Object)|(LocalObject)|(Value))\b
+    captures:
+      1: punctuation.escape.backslash.ice
+      10: storage.type.object.ice
+      11: storage.type.localobject.ice
+      12: storage.type.value.ice
+      2: storage.type.bool.ice
+      3: storage.type.byte.ice
+      4: storage.type.short.ice
+      5: storage.type.int.ice
+      6: storage.type.long.ice
+      7: storage.type.float.ice
+      8: storage.type.double.ice
+      9: storage.type.string.ice
+  - include: repo_storage.types.custom
+  repo_storage.types.custom:
+  - match: (\\)?([:\w]+)
+    captures:
+      1: punctuation.escape.backslash.ice
+  - include: repo_invalid
+  repo_storage.types.void:
+  - match: (\\)?\bvoid\b
+    scope: storage.type.void.ice
+    captures:
+      1: punctuation.escape.backslash.ice

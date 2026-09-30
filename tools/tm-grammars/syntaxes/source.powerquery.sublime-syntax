@@ -1,0 +1,171 @@
+%YAML 1.2
+---
+# Power Query (source.powerquery): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/microsoft/powerquery-language.git via GitHub Linguist v9.7.0 (license: mit).
+name: Power Query
+scope: source.powerquery
+file_extensions:
+- pq
+contexts:
+  main:
+  - include: repo_Noise
+  - include: repo_LiteralExpression
+  - include: repo_Keywords
+  - include: repo_ImplicitVariable
+  - include: repo_IntrinsicVariable
+  - include: repo_Operators
+  - include: repo_DotOperators
+  - include: repo_TypeName
+  - include: repo_RecordExpression
+  - include: repo_Punctuation
+  - include: repo_QuotedIdentifier
+  - include: repo_Identifier
+  repo_BlockComment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.powerquery
+    - match: \*/
+      pop: true
+  repo_DecimalNumber:
+  - match: (?<![\d\w])(\d*\.\d+)\b
+    scope: constant.numeric.decimal.powerquery
+  repo_DotOperators:
+  - match: (?<!\.)(?:(\.\.\.)|(\.\.))(?!\.)
+    captures:
+      1: keyword.operator.ellipsis.powerquery
+      2: keyword.operator.list.powerquery
+  repo_EscapeSequence:
+  - match: '#\('
+    captures:
+      0: punctuation.definition.escapesequence.begin.powerquery
+    push:
+    - meta_scope: constant.character.escapesequence.powerquery
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.escapesequence.end.powerquery
+    - match: (#|[[:xdigit:]]{4}|[[:xdigit:]]{8}|cr|lf|tab)(?:,(#|[[:xdigit:]]{4}|[[:xdigit:]]{8}|cr|lf|tab))*
+    - match: '[^\)]'
+      scope: invalid.illegal.escapesequence.powerquery
+  repo_FloatNumber:
+  - match: (\d*\.)?\d+(e|E)(\+|-)?\d+
+    scope: constant.numeric.float.powerquery
+  repo_HexNumber:
+  - match: 0(x|X)[[:xdigit:]]+
+    scope: constant.numeric.integer.hexadecimal.powerquery
+  repo_Identifier:
+  - match: (?x:(?<![\._\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}])(@?)([_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}]*(?:\.[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}][_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}])*)\b)
+    captures:
+      1: keyword.operator.inclusiveidentifier.powerquery
+      2: entity.name.powerquery
+  repo_ImplicitVariable:
+  - match: \b_\b
+    scope: keyword.operator.implicitvariable.powerquery
+  repo_InclusiveIdentifier:
+  - match: '@'
+    captures:
+      0: inclusiveidentifier.powerquery
+  repo_IntNumber:
+  - match: \b(\d+)\b
+    captures:
+      1: constant.numeric.integer.powerquery
+  repo_IntrinsicVariable:
+  - match: (?<![\d\w])(#sections|#shared)\b
+    captures:
+      1: constant.language.intrinsicvariable.powerquery
+  repo_Keywords:
+  - match: \b(?:(and|or|not)|(if|then|else)|(try|otherwise)|(as|each|in|is|let|meta|type|error)|(section|shared))\b
+    captures:
+      1: keyword.operator.word.logical.powerquery
+      2: keyword.control.conditional.powerquery
+      3: keyword.control.exception.powerquery
+      4: keyword.other.powerquery
+      5: keyword.powerquery
+  repo_LineComment:
+  - match: //.*
+    scope: comment.line.double-slash.powerquery
+  repo_LiteralExpression:
+  - include: repo_String
+  - include: repo_NumericConstant
+  - include: repo_LogicalConstant
+  - include: repo_NullConstant
+  - include: repo_FloatNumber
+  - include: repo_DecimalNumber
+  - include: repo_HexNumber
+  - include: repo_IntNumber
+  repo_LogicalConstant:
+  - match: \b(true|false)\b
+    scope: constant.language.logical.powerquery
+  repo_Noise:
+  - include: repo_BlockComment
+  - include: repo_LineComment
+  - include: repo_Whitespace
+  repo_NullConstant:
+  - match: \b(null)\b
+    scope: constant.language.null.powerquery
+  repo_NumericConstant:
+  - match: (?<![\d\w])(#infinity|#nan)\b
+    captures:
+      1: constant.language.numeric.float.powerquery
+  repo_Operators:
+  - match: (=>)|(=)|(<>|<|>|<=|>=)|(&)|(\+|-|\*|\/)|(!)|(\?)
+    captures:
+      1: keyword.operator.function.powerquery
+      2: keyword.operator.assignment-or-comparison.powerquery
+      3: keyword.operator.comparison.powerquery
+      4: keyword.operator.combination.powerquery
+      5: keyword.operator.arithmetic.powerquery
+      6: keyword.operator.sectionaccess.powerquery
+      7: keyword.operator.optional.powerquery
+  repo_Punctuation:
+  - match: (,)|(\()|(\))|({)|(})
+    captures:
+      1: punctuation.separator.powerquery
+      2: punctuation.section.parens.begin.powerquery
+      3: punctuation.section.parens.end.powerquery
+      4: punctuation.section.braces.begin.powerquery
+      5: punctuation.section.braces.end.powerquery
+  repo_QuotedIdentifier:
+  - match: '#"'
+    captures:
+      0: punctuation.definition.quotedidentifier.begin.powerquery
+    push:
+    - meta_scope: entity.name.powerquery
+    - match: '"(?!")'
+      pop: true
+      captures:
+        0: punctuation.definition.quotedidentifier.end.powerquery
+    - match: '""'
+      scope: constant.character.escape.quote.powerquery
+    - include: repo_EscapeSequence
+  repo_RecordExpression:
+  - match: \[
+    captures:
+      0: punctuation.section.brackets.begin.powerquery
+    push:
+    - meta_content_scope: meta.recordexpression.powerquery
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.brackets.end.powerquery
+    - include: main
+  repo_String:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.powerquery
+    push:
+    - meta_scope: string.quoted.double.powerquery
+    - match: '"(?!")'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.powerquery
+    - match: '""'
+      scope: constant.character.escape.quote.powerquery
+    - include: repo_EscapeSequence
+  repo_TypeName:
+  - match: \b(?:(optional|nullable)|(action|any|anynonnull|binary|date|datetime|datetimezone|duration|function|list|logical|none|null|number|record|table|text|type))\b
+    captures:
+      1: storage.modifier.powerquery
+      2: storage.type.powerquery
+  repo_Whitespace:
+  - match: \s+

@@ -1,0 +1,216 @@
+%YAML 1.2
+---
+# FontForge Script (source.fontforge): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-fontforge via GitHub Linguist v9.7.0 (license: isc).
+name: FontForge Script
+scope: source.fontforge
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_codepoint:
+  - match: 0[uU][A-Fa-f0-9]+
+    scope: constant.numeric.other.codepoint.fontforge
+  repo_comments:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.fontforge
+    push:
+    - meta_scope: comment.line.number-sign.fontforge
+    - match: $
+      pop: true
+    - include: repo_lineContinuation
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.fontforge
+    push:
+    - meta_scope: comment.block.fontforge
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.fontforge
+  - match: //
+    captures:
+      0: punctuation.definition.comment.fontforge
+    push:
+    - meta_scope: comment.line.double-slash
+    - match: $
+      pop: true
+    - include: repo_lineContinuation
+  repo_control:
+  - match: (?<![$.@/])\b(if|elseif|else|endif|while|endloop|foreach|break|return|shift)\b(?![$.@/])
+  repo_integer:
+  - match: (?<!\w)[-+]?0[Xx][A-Fa-f0-9]+
+    scope: constant.numeric.integer.hexadecimal.fontforge
+  - match: (?<!\w)[-+]?(?=0)\d+
+    scope: constant.numeric.integer.octal.fontforge
+  - match: (?<!\w)[-+]?\d+
+    scope: constant.numeric.integer.decimal.fontforge
+  repo_lineContinuation:
+  - match: (\\)$\s*
+    captures:
+      1: constant.character.escape.line-continuation.fontforge
+    push:
+    - match: ^
+      pop: true
+  repo_main:
+  - include: repo_comments
+  - include: repo_codepoint
+  - include: repo_strings
+  - include: repo_control
+  - include: repo_real
+  - include: repo_integer
+  - include: repo_operators
+  - include: repo_procedureCall
+  - include: repo_punctuation
+  - include: repo_variables
+  - include: repo_lineContinuation
+  repo_operators:
+  - match: ==|!=|>=|<=|>|<
+    scope: keyword.operator.comparison.fontforge
+  - match: =|[-+*/%]=
+    scope: keyword.operator.assignment.compound.fontforge
+  - match: --
+    scope: keyword.operator.decrement.fontforge
+  - match: \+{2}
+    scope: keyword.operator.increment.fontforge
+  - match: '[-+/*~!]'
+    scope: keyword.operator.arithmetic.fontforge
+  - match: '&&|\|\|'
+    scope: keyword.operator.logical.fontforge
+  - match: '&|\||\\\^'
+    scope: keyword.operator.bitwise.fontforge
+  - match: :[htre]
+    scope: keyword.operator.pathspec.fontforge
+  repo_procedureCall:
+  - match: (?x) (?<![$.@/]) \b ( ATan2 | AddAccent | AddAnchorClass | AddAnchorPoint | AddDHint | AddExtrema | AddHHint | AddInstrs | AddLookupSubtable | AddLookup | AddPosSub | AddSizeFeature | AddVHint | ApplySubstitution | Array | AskUser | AutoCounter | AutoHint | AutoInstr | AutoKern | AutoTrace | AutoWidth | BitmapsAvail | BitmapsRegen | BuildAccented | BuildComposite | BuildDuplicate | CIDChangeSubFont | CIDFlattenByCMap | CIDFlatten | CIDSetFontNames | CanonicalContours | CanonicalStart | Ceil | CenterInWidth | ChangePrivateEntry | ChangeWeight | CharCnt | CheckForAnchorClass | Chr | ClearBackground | ClearGlyphCounterMasks | ClearHints | ClearInstrs | ClearPrivateEntry | ClearTable | Clear | Close | CompareFonts | CompareGlyphs | ConvertByCMap | ConvertToCID | CopyAnchors | CopyFgToBg | CopyLBearing | CopyRBearing | CopyReference | CopyUnlinked | CopyVWidth | CopyWidth | Copy | CorrectDirection | Cos | Cut | DefaultOtherSubrs | DefaultRoundToGrid | DefaultUseMyMetrics | DetachAndRemoveGlyphs
+      | DetachGlyphs | DontAutoHint | DrawsSomething | Error | ExpandStroke | Export | Exp | FileAccess | FindIntersections | FindOrAddCvtIndex | Floor | FontImage | FontsInFile | GenerateFamily | GenerateFeatureFile | Generate | GetAnchorPoints | GetCvtAt | GetEnv | GetFontBoundingBox | GetLookupInfo | GetLookupOfSubtable | GetLookupSubtables | GetLookups | GetMaxpValue | GetOS2Value | GetPosSub | GetPref | GetPrivateEntry | GetSubtableOfAnchor | GetTTFName | GetTeXParam | GlyphInfo | HFlip | HasPreservedTable | HasPrivateEntry | Import | InFont | Inline | InterpolateFonts | Int | IsAlNum | IsAlpha | IsDigit | IsFinite | IsFraction | IsHexDigit | IsLigature | IsLower | IsNan | IsOtherFraction | IsSpace | IsUpper | IsVulgarFraction | Italic | Join | LoadEncodingFile | LoadNamelistDir | LoadNamelist | LoadPrefs | LoadStringFromFile | LoadTableFromFile | Log | LookupSetFeatureList | LookupStoreLigatureInAfm | MMAxisBounds | MMAxisNames | MMBlendToNewFont | MMChangeInstance | MMChangeWeight
+      | MMInstanceNames | MMWeightedName | MergeFeature | MergeFonts | MergeKern | MergeLookupSubtables | MergeLookups | MoveReference | Move | MultipleEncodingsToReferences | NameFromUnicode | NearlyHvCps | NearlyHvLines | NearlyLines | New | NonLinearTransform | Open | Ord | Outline | OverlapIntersect | PasteWithOffset | Paste | PositionReference | PostNotice | Pow | PreloadCidmap | PrintFont | PrintSetup | Print | Quit | Rand | ReadOtherSubrsFile | Real | Reencode | RemoveAllKerns | RemoveAllVKerns | RemoveAnchorClass | RemoveDetachedGlyphs | RemoveLookupSubtable | RemoveLookup | RemoveOverlap | RemovePosSub | RemovePreservedTable | RenameGlyphs | ReplaceCvtAt | ReplaceGlyphCounterMasks | ReplaceWithReference | RevertToBackup | Revert | Rotate | RoundToCluster | RoundToInt | Round | SameGlyphAs | SavePrefs | SaveTableToFile | Save | ScaleToEm | Scale | SelectAllInstancesOf | SelectAll | SelectBitmap | SelectByPosSub | SelectChanged | SelectFewerSingletons | SelectFewer | SelectGlyphsBoth
+      | SelectGlyphsReferences | SelectGlyphsSplines | SelectHintingNeeded | SelectIf | SelectInvert | SelectMoreIf | SelectMoreSingletonsIf | SelectMoreSingletons | SelectMore | SelectNone | SelectSingletonsIf | SelectSingletons | SelectWorthOutputting | Select | SetCharCnt | SetFondName | SetFontHasVerticalMetrics | SetFontNames | SetFontOrder | SetGasp | SetGlyphChanged | SetGlyphClass | SetGlyphColor | SetGlyphComment | SetGlyphCounterMask | SetGlyphName | SetGlyphTeX | SetItalicAngle | SetKern | SetLBearing | SetMacStyle | SetMaxpValue | SetOS2Value | SetPanose | SetPref | SetRBearing | SetTTFName | SetTeXParams | SetUnicodeValue | SetUniqueID | SetVKern | SetVWidth | SetWidth | Shadow | Simplify | Sin | SizeOf | Skew | SmallCaps | Sqrt | StrJoin | StrSplit | Strcasecmp | Strcasestr | Strftime | Strlen | Strrstr | Strskipint | Strstr | Strsub | Strtod | Strtol | SubstitutionPoints | Tan | ToLower | ToMirror | ToString | ToUpper | Transform | TypeOf | UCodePoint | Ucs4 | UnicodeFromName
+      | UnlinkReference | Utf8 | VFlip | VKernFromHKern | Wireframe | WorthOutputting | WriteStringToFile ) \s* (\()
+    captures:
+      1: support.function.built-in.fontforge
+      2: punctuation.definition.arguments.bracket.round.begin.fontforge
+    push:
+    - meta_scope: meta.function-call.builtin.fontforge
+    - meta_content_scope: meta.function-call.arguments.fontforge
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.bracket.round.begin.fontforge
+    - include: repo_main
+  - match: (?:(?<![$.@/])\b((?!\.?\d)[A-Za-z$_.\d@/]+)|(?<=['"\)]))\s*(\()
+    captures:
+      1: entity.name.function.fontforge
+      2: punctuation.definition.arguments.bracket.round.begin.fontforge
+    push:
+    - meta_scope: meta.function-call.user-defined.fontforge
+    - meta_content_scope: meta.function-call.arguments.fontforge
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.bracket.round.end.fontforge
+    - include: repo_main
+  - match: '(?x)
+
+      (?:^|(?<!\*/|[''"\)A-Za-z$_.\d@/])
+
+      (?<=\S))
+
+      \s* (\()
+
+      ( "[^"]*+"
+
+      | ''[^'']*+''
+
+      | (?!["'']) [^\(\)]* [^\s\(\)]+ [^\(\)]*
+
+      ) (\))
+
+      (?=\s*\()'
+    scope: meta.function-call.indirect.fontforge
+    captures:
+      0: meta.expression.fontforge
+      1: punctuation.bracket.begin.round.fontforge
+      3: punctuation.bracket.end.round.fontforge
+  repo_punctuation:
+  - match: ','
+    scope: punctuation.separator.comma.fontforge
+  - match: ;
+    scope: punctuation.terminator.statement.fontforge
+  - match: ':'
+    scope: punctuation.delimiter.colon.fontforge
+  - match: \[
+    captures:
+      0: punctuation.bracket.begin.square.fontforge
+    push:
+    - meta_scope: meta.expression.chained.fontforge
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.bracket.end.square.fontforge
+    - include: repo_main
+  - match: \(
+    captures:
+      0: punctuation.bracket.begin.round.fontforge
+    push:
+    - meta_scope: meta.expression.fontforge
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.bracket.end.round.fontforge
+    - include: repo_main
+  repo_real:
+  - match: (?<!\w)[-+]?\d*\.\d+
+    scope: constant.numeric.float.fontforge
+  repo_shared:
+  - include: repo_codepoint
+  - include: repo_strings
+  - include: repo_real
+  - include: repo_integer
+  - include: repo_punctuation
+  - include: repo_operators
+  repo_stringEscapes:
+  - match: \\n
+    scope: constant.character.escape.newline.fontforge
+  - include: repo_lineContinuation
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.fontforge
+    push:
+    - meta_scope: string.double.quoted.fontforge
+    - match: '"|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.fontforge
+    - include: repo_stringEscapes
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.fontforge
+    push:
+    - meta_scope: string.single.quoted.fontforge
+    - match: '''|$'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.fontforge
+    - include: repo_stringEscapes
+  repo_variables:
+  - match: (\$)\d+(?=\W)
+    scope: variable.language.readonly.positional.fontforge
+    captures:
+      1: punctuation.definition.variable.fontforge
+  - match: (\$)\w+
+    scope: variable.language.readonly.fontforge
+    captures:
+      1: punctuation.definition.variable.fontforge
+  - match: (_)\w+
+    scope: variable.other.global.fontforge
+    captures:
+      1: punctuation.definition.variable.fontforge
+  - match: (@)\w+
+    scope: variable.other.font.fontforge
+    captures:
+      1: punctuation.definition.variable.fontforge
+  - match: (?=[A-Za-z])\w+
+    scope: variable.other.local.fontforge

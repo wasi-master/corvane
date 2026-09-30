@@ -1,0 +1,355 @@
+%YAML 1.2
+---
+# D2 (source.d2): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/terrastruct/d2-vscode.git via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: D2
+scope: source.d2
+file_extensions:
+- d2
+contexts:
+  main:
+  - include: repo_block_comment
+  - include: repo_comment
+  - include: repo_semicolon
+  - include: repo_spread_substitution
+  - include: repo_spread_import
+  - include: repo_key_value
+  - include: repo_key
+  - include: repo_error
+  repo_array:
+  - match: \[
+    captures:
+      0: punctuation.array.d2
+    push:
+    - meta_scope: meta.array.d2
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.array.d2
+    - include: repo_block_comment
+    - include: repo_comment
+    - include: repo_semicolon
+    - include: repo_substitution
+    - include: repo_import
+    - include: repo_spread_substitution
+    - include: repo_spread_import
+    - include: repo_value
+    - include: repo_error
+  repo_block_comment:
+  - match: '"""'
+    captures:
+      0: punctuation.comment.start.d2
+    push:
+    - meta_scope: comment.block.d2
+    - match: '"""'
+      pop: true
+      captures:
+        0: punctuation.comment.end.d2
+  repo_boolean:
+  - match: (?:true|false)(?=\s|\n)
+    scope: constant.language.boolean.d2
+  repo_comment:
+  - match: '#.*$'
+    scope: comment.line.number-sign.d2
+  repo_debug:
+  - match: .*invalid\.illegal.*
+    scope: invalid.illegal
+  - match: .*punctuation.*
+    scope: punctuation
+  - match: .*string.*
+    scope: string
+  - match: .*constant\.character\.escape.*
+    scope: constant.character.escape
+  - match: .*entity\.name\.tag.*
+    scope: entity.name.tag
+  - match: .*keyword.*
+    scope: keyword
+  - match: .*keyword\.operator.*
+    scope: keyword.operator
+  - match: .*constant\.numeric.*
+    scope: constant.numeric
+  - match: .*constant\.language\.boolean.*
+    scope: constant.language.boolean
+  - match: .*constant\.language\.null.*
+    scope: constant.language.null
+  - match: .*comment.*
+    scope: comment
+  repo_error:
+  - match: \S[^;\n]*
+    scope: invalid.illegal.d2
+  repo_escape:
+  - match: \\U[[:xdigit:]]{8}
+    scope: constant.character.escape.d2
+  - match: \\u[[:xdigit:]]{4}
+    scope: constant.character.escape.d2
+  - match: \\[0-7]{3}
+    scope: constant.character.escape.d2
+  - match: \\x[[:xdigit:]]{2}
+    scope: constant.character.escape.d2
+  - match: \\.
+    scope: constant.character.escape.d2
+  - match: \\\n
+    scope: constant.character.escape.d2
+  repo_import:
+  - match: '@'
+    captures:
+      0: keyword.operator.import.d2
+    push:
+    - meta_scope: meta.operator.import.d2
+    - match: (?=\s*[\n#;\[\]{}|$])
+      pop: true
+      captures:
+        0: keyword.operator.import.d2
+    - include: repo_key
+  repo_key:
+  - match: ''''
+    captures:
+      0: punctuation.quote.single.d2
+    push:
+    - meta_scope: meta.key.quoted.single.d2
+    - meta_content_scope: entity.name.tag.quoted.single.d2
+    - match: '''|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.quote.single.d2
+    - include: repo_escape
+  - match: '"'
+    captures:
+      0: punctuation.quote.double.d2
+    push:
+    - meta_scope: meta.key.quoted.double.d2
+    - meta_content_scope: entity.name.tag.quoted.double.d2
+    - match: '"|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.quote.double.d2
+    - include: repo_escape
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.d2
+    push:
+    - meta_scope: meta.key.group.d2
+    - match: \)(?:\[(?:[0-9_]+|\*)\])?
+      pop: true
+      captures:
+        0: punctuation.parenthesis.d2
+    - include: repo_key
+    - include: repo_error
+  - match: (?:grid\-gap|vertical\-gap|horizontal\-gap|classes|direction|grid\-columns|grid\-rows|text\-transform|shape|layers|steps|tooltip|font|bold|italic|underline|top|left|icon|constraint|near|opacity|stroke|fill\-pattern|fill|filled|stroke\-width|width|height|double\-border|border\-radius|source\-arrowhead|target\-arrowhead|link|stroke\-dash|font\-size|font\-color|shadow|multiple|3d|animated|class|label|style|vars|scenarios|on_click|src|dst)(?=\s*[\n#;\[\]{}|$'":.<>*&()]|-+-|-+>|-+\*)
+    scope: keyword.reserved.d2
+  - match: \.
+    scope: punctuation.period.d2
+  - match: \*
+    scope: keyword.operator.glob.d2
+  - match: \*\*
+    scope: keyword.operator.double_glob.d2
+  - match: '&'
+    scope: keyword.operator.ampersand.d2
+  - match: '!&'
+    scope: keyword.operator.not_ampersand.d2
+  - match: (?=[^[:space:]\n#;\[\]{}|$'":.<>*&()])(?!-+-)(?!-+>)(?!-+\*)
+    push:
+    - meta_scope: entity.name.tag.unquoted.d2
+    - match: (?=\s*[\n#;\[\]{}|$:.<>*&()]|-+-|-+>|-+\*)
+      pop: true
+    - include: repo_escape
+  - match: '[\-<>]+'
+    captures:
+      0: punctuation.edge.d2
+    push:
+    - meta_scope: meta.key.edge.d2
+    - match: (?=[^\-<>])
+      pop: true
+      captures:
+        0: punctuation.edge.d2
+    - include: repo_line_continuation
+  repo_key_value:
+  - match: ':'
+    captures:
+      0: punctuation.colon.d2
+    push:
+    - meta_scope: meta.key_value.d2
+    - match: (?=\s*[\n#;\]}])
+      pop: true
+    - include: repo_value
+    - include: repo_error
+  repo_line_continuation:
+  - match: \\\n
+    scope: constant.character.escape.d2
+  repo_map:
+  - match: \{
+    captures:
+      0: punctuation.map.d2
+    push:
+    - meta_scope: meta.map.d2
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.map.d2
+    - include: main
+  repo_null:
+  - match: null(?=\s|\n)
+    scope: constant.language.null.d2
+  repo_number:
+  - match: '[+-]?0[xX][[:xdigit:]_]*\.?[[:xdigit:]_]*(?:[eEpP][+-]?[0-9_]*)?(?=\s|\n)'
+    scope: constant.numeric.hexadecimal.d2
+  - match: '[+-]?0[bB][01_]*\.?[01_]*(?:[eEpP][+-]?[0-9_]*)?(?=\s|\n)'
+    scope: constant.numeric.binary.d2
+  - match: '[+-]?0[oO]?[0-7_]*\.?[0-7_]*(?=\s|\n)'
+    scope: constant.numeric.octal.d2
+  - match: '[+-]?[0-9_]+(?:[eEpP][+-]?[0-9_]*)?(?=\s|\n)'
+    scope: constant.numeric.decimal.d2
+  - match: '[+-]?[0-9_]*\.[0-9_]+(?:[eEpP][+-]?[0-9_]*)?(?=\s|\n)'
+    scope: constant.numeric.decimal.d2
+  repo_semicolon:
+  - match: ;
+    scope: punctuation.semicolon.d2
+  repo_spread_import:
+  - match: \.\.\.@
+    captures:
+      0: keyword.operator.import.d2
+    push:
+    - meta_scope: meta.operator.import.d2
+    - match: (?=\s*[\n#;\[\]{}|$])
+      pop: true
+      captures:
+        0: keyword.operator.import.d2
+    - include: repo_key
+  repo_spread_substitution:
+  - match: \.\.\.\$\{
+    captures:
+      0: keyword.operator.substitution.d2
+    push:
+    - meta_scope: meta.operator.substitution.d2
+    - match: \}
+      pop: true
+      captures:
+        0: keyword.operator.substitution.d2
+    - include: repo_key
+  repo_string:
+  - match: ''''
+    captures:
+      0: punctuation.quote.single.d2
+    push:
+    - meta_scope: meta.string.quoted.single.d2
+    - meta_content_scope: string.quoted.single.d2
+    - match: '''|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.quote.single.d2
+    - include: repo_escape
+  - match: '"'
+    captures:
+      0: punctuation.quote.double.d2
+    push:
+    - meta_scope: meta.string.quoted.double.d2
+    - meta_content_scope: string.quoted.double.d2
+    - match: '"|(?=\n)'
+      pop: true
+      captures:
+        0: punctuation.quote.double.d2
+    - include: repo_escape
+  - match: \|([^[:alnum:]]*)sh[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.shellscript.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: scope:source.shell
+  - match: \|([^[:alnum:]]*)md[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.markdown.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: scope:text.html.markdown.d2
+  - match: \|([^[:alnum:]]*)js[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.js.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: scope:source.js
+  - match: \|([^[:alnum:]]*)go[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.go.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: scope:source.go
+  - match: \|([^[:alnum:]]*)text[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.text.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+  - match: \|([^[:alnum:]]*)d2[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.d2.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: main
+  - match: \|([^[:alnum:]]*)[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.markdown.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+    - include: scope:text.html.markdown.d2
+  - match: \|([^[:alnum:]]*)[^[:space:]]+[\n[:space:]]
+    captures:
+      0: punctuation.block.d2
+    push:
+    - meta_scope: meta.string.block.d2
+    - match: \1\|
+      pop: true
+      captures:
+        0: punctuation.block.d2
+  - match: (?=[^[:space:]\n#;\[\]{}|$'"])
+    push:
+    - meta_scope: string.unquoted.d2
+    - match: (?=\s*[\n#;\[\]{}])
+      pop: true
+    - include: repo_escape
+  repo_substitution:
+  - match: \$\{
+    captures:
+      0: keyword.operator.substitution.d2
+    push:
+    - meta_scope: meta.operator.substitution.d2
+    - match: \}
+      pop: true
+      captures:
+        0: keyword.operator.substitution.d2
+    - include: repo_key
+  repo_value:
+  - include: repo_boolean
+  - include: repo_null
+  - include: repo_number
+  - include: repo_substitution
+  - include: repo_import
+  - include: repo_array
+  - include: repo_map
+  - include: repo_string

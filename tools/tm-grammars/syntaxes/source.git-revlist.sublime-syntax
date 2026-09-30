@@ -1,0 +1,29 @@
+%YAML 1.2
+---
+# Git Revision List (source.git-revlist): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Git Revision List
+scope: source.git-revlist
+file_extensions:
+- .git-blame-ignore-revs
+contexts:
+  main:
+  - include: repo_main
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.git-revlist
+    push:
+    - meta_scope: comment.line.number-sign.git-revlist
+    - match: $
+      pop: true
+  repo_invalid:
+  - match: \S.*?
+    scope: invalid.illegal.git-revlist
+  repo_main:
+  - include: repo_comment
+  - include: repo_sha
+  - include: repo_invalid
+  repo_sha:
+  - match: \b[0-9a-fA-F]{40}\b
+    scope: constant.numeric.sha.git-revlist

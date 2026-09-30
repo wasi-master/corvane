@@ -1,0 +1,96 @@
+%YAML 1.2
+---
+# Record Jar (source.record-jar): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: Record Jar
+scope: source.record-jar
+file_extensions:
+- language-subtag-registry.txt
+contexts:
+  main:
+  - match: \A
+    push:
+    - meta_scope: meta.database.record-jar
+    - match: (?=A)B
+      pop: true
+    - include: repo_main
+  - include: repo_separator
+  - include: repo_field
+  - include: scope:etc
+  repo_escape:
+  - match: \\$\s*
+    captures:
+      0: constant.character.escape.newline.record-jar
+    push:
+    - match: (?<=[^\s#%"'])(?!)
+      pop: true
+  - match: \\.
+    scope: constant.character.escape.backslash.record-jar
+  repo_field:
+  - match: (?:|^)(\s*)((?!%%|#)\S.*?)\s*(:)\s*
+    captures:
+      1: punctuation.whitespace.leading.field.record-jar
+      2: variable.assignment.field-name.record-jar
+    push:
+    - meta_scope: meta.field.record-jar
+    - match: (?!)^(?!\1\s)(?=\S)
+      pop: true
+    - match: ([0-9]{4})(-)(0[0-9]|1[0-2])(-)([0-2][0-9]|3[01])(?=\s|$)
+      scope: constant.other.date.record-jar
+      captures:
+        1: constant.numeric.integer.year.record-jar
+        3: constant.numeric.integer.month.record-jar
+        5: constant.numeric.integer.day.record-jar
+    - match: \s*(?="|')
+      push:
+      - meta_scope: meta.list.record-jar
+      - match: (?=^)(?! |\t)
+        pop: true
+      - include: repo_string
+      - include: scope:etc
+      - include: repo_escape
+    - match: \s*(?=[^"'#%\s])
+      push:
+      - meta_content_scope: string.unquoted.record-jar
+      - match: (?=^)(?! |\t)
+        pop: true
+      - include: repo_escape
+    - include: scope:etc
+  repo_main:
+  - include: repo_separator
+  - include: repo_record
+  - include: scope:etc
+  repo_record:
+  - match: ^(?!%%)(?=\s*\S)
+    push:
+    - meta_scope: meta.record.record-jar
+    - match: ^(?=%%)(?!)
+      pop: true
+    - include: repo_field
+    - include: scope:etc
+  repo_separator:
+  - match: (?:^|)(%%+)(?:\s*(\S.*?))?[ \t]*$
+    captures:
+      1: meta.separator.record-jar
+      2: comment.line.ignored.record-jar
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.record-jar
+    push:
+    - meta_scope: string.quoted.double.record-jar
+    - match: '"|(?=\s*(?<!\\)$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.record-jar
+    - include: repo_escape
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.record-jar
+    push:
+    - meta_scope: string.quoted.single.record-jar
+    - match: '''(?=\s*(?<!\\)$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.record-jar
+    - include: repo_escape

@@ -1,0 +1,24 @@
+%YAML 1.2
+---
+# HTML+ECR (text.html.ecr): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/atom-crystal/language-crystal via GitHub Linguist v9.7.0 (license: mit).
+name: HTML+ECR
+scope: text.html.ecr
+file_extensions:
+- ecr
+contexts:
+  main:
+  - include: scope:text.html.basic
+  repo_tags:
+  - match: (<%)(=)?
+    captures:
+      0: punctuation.section.embedded.begin.ecr
+      2: punctuation.section.embedded.return.ecr
+    push:
+    - meta_scope: meta.embedded.line.ecr
+    - meta_content_scope: source.crystal.embedded.ecr
+    - match: '%>'
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.ecr
+    - include: scope:source.crystal

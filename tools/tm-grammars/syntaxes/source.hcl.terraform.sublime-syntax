@@ -1,0 +1,350 @@
+%YAML 1.2
+---
+# Terraform Template (source.hcl.terraform): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/hashicorp/syntax.git via GitHub Linguist v9.7.0 (license: mpl-2.0).
+name: Terraform Template
+scope: source.hcl.terraform
+file_extensions:
+- tftpl
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_attribute_definition
+  - include: repo_block
+  - include: repo_expressions
+  repo_attribute_access:
+  - match: \.(?!\*)
+    captures:
+      0: keyword.operator.accessor.hcl
+    push:
+    - match: '[[:alpha:]][\w-]*|\d*'
+      pop: true
+  repo_attribute_definition:
+  - match: (\()?(\b(?!null\b|false\b|true\b)[[:alpha:]][[:alnum:]_-]*)(\))?\s*(\=(?!\=|\>))\s*
+    scope: variable.declaration.hcl
+    captures:
+      1: punctuation.section.parens.begin.hcl
+      2: variable.other.readwrite.hcl
+      3: punctuation.section.parens.end.hcl
+      4: keyword.operator.assignment.hcl
+  repo_attribute_splat:
+  - match: \.
+    captures:
+      0: keyword.operator.accessor.hcl
+    push:
+    - match: \*
+      pop: true
+      captures:
+        0: keyword.operator.splat.hcl
+  repo_block:
+  - match: ([\w][\-\w]*)([\s\"\-\w]*)(\{)
+    captures:
+      3: punctuation.section.block.begin.hcl
+      5: punctuation.section.block.begin.hcl
+    push:
+    - meta_scope: meta.block.hcl
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.block.end.hcl
+    - include: repo_comments
+    - include: repo_attribute_definition
+    - include: repo_block
+    - include: repo_expressions
+  repo_block_inline_comments:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.hcl
+    push:
+    - meta_scope: comment.block.hcl
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.hcl
+  repo_brackets:
+  - match: \[
+    captures:
+      0: punctuation.section.brackets.begin.hcl
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.brackets.end.hcl
+    - match: \*
+      scope: keyword.operator.splat.hcl
+    - include: repo_comma
+    - include: repo_comments
+    - include: repo_inline_for_expression
+    - include: repo_inline_if_expression
+    - include: repo_expressions
+    - include: repo_local_identifiers
+  repo_char_escapes:
+  - match: \\[nrt"\\]|\\u([[:xdigit:]]{8}|[[:xdigit:]]{4})
+    scope: constant.character.escape.hcl
+  repo_comma:
+  - match: \,
+    scope: punctuation.separator.hcl
+  repo_comments:
+  - include: repo_hash_line_comments
+  - include: repo_double_slash_line_comments
+  - include: repo_block_inline_comments
+  repo_double_slash_line_comments:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.hcl
+    push:
+    - meta_scope: comment.line.double-slash.hcl
+    - match: $\n?
+      pop: true
+      captures:
+        0: punctuation.definition.comment.hcl
+  repo_expressions:
+  - include: repo_literal_values
+  - include: repo_operators
+  - include: repo_tuple_for_expression
+  - include: repo_object_for_expression
+  - include: repo_brackets
+  - include: repo_objects
+  - include: repo_attribute_access
+  - include: repo_attribute_splat
+  - include: repo_functions
+  - include: repo_parens
+  repo_for_expression_body:
+  - match: \bin\b
+    scope: keyword.operator.word.hcl
+  - match: \bif\b
+    scope: keyword.control.conditional.hcl
+  - match: '\:'
+    scope: keyword.operator.hcl
+  - include: repo_expressions
+  - include: repo_comments
+  - include: repo_comma
+  - include: repo_local_identifiers
+  repo_functions:
+  - match: ([:\-\w]+)(\()
+    captures:
+      2: punctuation.section.parens.begin.hcl
+    push:
+    - meta_scope: meta.function-call.hcl
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.parens.end.hcl
+    - include: repo_comments
+    - include: repo_expressions
+    - include: repo_comma
+  repo_hash_line_comments:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.hcl
+    push:
+    - meta_scope: comment.line.number-sign.hcl
+    - match: $\n?
+      pop: true
+      captures:
+        0: punctuation.definition.comment.hcl
+  repo_hcl_type_keywords:
+  - match: \b(any|string|number|bool|list|set|map|tuple|object)\b
+    scope: storage.type.hcl
+  repo_heredoc:
+  - match: (\<\<\-?)\s*(\w+)\s*$
+    captures:
+      1: keyword.operator.heredoc.hcl
+      2: keyword.control.heredoc.hcl
+    push:
+    - meta_scope: string.unquoted.heredoc.hcl
+    - match: ^\s*\2\s*$
+      pop: true
+      captures:
+        0: keyword.control.heredoc.hcl
+    - include: repo_string_interpolation
+  repo_inline_for_expression:
+  - match: (for)\b(.*)\n
+    captures:
+      1: keyword.control.hcl
+  repo_inline_if_expression:
+  - match: (if)\b
+    captures:
+      1: keyword.control.conditional.hcl
+    push:
+    - match: \n
+      pop: true
+    - include: repo_expressions
+    - include: repo_comments
+    - include: repo_comma
+    - include: repo_local_identifiers
+  repo_language_constants:
+  - match: \b(true|false|null)\b
+    scope: constant.language.hcl
+  repo_literal_values:
+  - include: repo_numeric_literals
+  - include: repo_language_constants
+  - include: repo_string_literals
+  - include: repo_heredoc
+  - include: repo_hcl_type_keywords
+  - include: repo_named_value_references
+  repo_local_identifiers:
+  - match: \b(?!null|false|true)[[:alpha:]][[:alnum:]_-]*\b
+    scope: variable.other.readwrite.hcl
+  repo_named_value_references:
+  - match: \b(var|local|module|data|path|terraform)\b
+    scope: variable.other.readwrite.terraform
+  repo_numeric_literals:
+  - match: \b\d+([Ee][+-]?)\d+\b
+    scope: constant.numeric.float.hcl
+    captures:
+      1: punctuation.separator.exponent.hcl
+  - match: \b\d+(\.)\d+(?:([Ee][+-]?)\d+)?\b
+    scope: constant.numeric.float.hcl
+    captures:
+      1: punctuation.separator.decimal.hcl
+      2: punctuation.separator.exponent.hcl
+  - match: \b\d+\b
+    scope: constant.numeric.integer.hcl
+  repo_object_for_expression:
+  - match: (\{)\s?(for)\b
+    captures:
+      1: punctuation.section.braces.begin.hcl
+      2: keyword.control.hcl
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.braces.end.hcl
+    - match: \=\>
+      scope: storage.type.function.hcl
+    - include: repo_for_expression_body
+  repo_object_key_values:
+  - include: repo_comments
+  - include: repo_literal_values
+  - include: repo_operators
+  - include: repo_tuple_for_expression
+  - include: repo_object_for_expression
+  - include: repo_heredoc
+  - include: repo_functions
+  repo_objects:
+  - match: \{
+    captures:
+      0: punctuation.section.braces.begin.hcl
+    push:
+    - meta_scope: meta.braces.hcl
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.braces.end.hcl
+    - include: repo_comments
+    - include: repo_objects
+    - include: repo_inline_for_expression
+    - include: repo_inline_if_expression
+    - match: \b((?!null|false|true)[[:alpha:]][[:alnum:]_-]*)\s*(\=\>?)\s*
+      captures:
+        1: meta.mapping.key.hcl variable.other.readwrite.hcl
+        2: keyword.operator.assignment.hcl
+    - match: \b((").*("))\s*(\=)\s*
+      captures:
+        1: meta.mapping.key.hcl string.quoted.double.hcl
+        2: punctuation.definition.string.begin.hcl
+        3: punctuation.definition.string.end.hcl
+        4: keyword.operator.hcl
+    - match: ^\s*\(
+      captures:
+        0: punctuation.section.parens.begin.hcl
+      push:
+      - meta_scope: meta.mapping.key.hcl
+      - match: (\))\s*(=|:)\s*
+        pop: true
+        captures:
+          1: punctuation.section.parens.end.hcl
+          2: keyword.operator.hcl
+      - include: repo_named_value_references
+      - include: repo_attribute_access
+    - include: repo_object_key_values
+  repo_operators:
+  - match: \>\=
+    scope: keyword.operator.hcl
+  - match: \<\=
+    scope: keyword.operator.hcl
+  - match: \=\=
+    scope: keyword.operator.hcl
+  - match: \!\=
+    scope: keyword.operator.hcl
+  - match: \+
+    scope: keyword.operator.arithmetic.hcl
+  - match: \-
+    scope: keyword.operator.arithmetic.hcl
+  - match: \*
+    scope: keyword.operator.arithmetic.hcl
+  - match: \/
+    scope: keyword.operator.arithmetic.hcl
+  - match: \%
+    scope: keyword.operator.arithmetic.hcl
+  - match: \&\&
+    scope: keyword.operator.logical.hcl
+  - match: \|\|
+    scope: keyword.operator.logical.hcl
+  - match: \!
+    scope: keyword.operator.logical.hcl
+  - match: \>
+    scope: keyword.operator.hcl
+  - match: \<
+    scope: keyword.operator.hcl
+  - match: \?
+    scope: keyword.operator.hcl
+  - match: \.\.\.
+    scope: keyword.operator.hcl
+  - match: '\:'
+    scope: keyword.operator.hcl
+  - match: \=\>
+    scope: keyword.operator.hcl
+  repo_parens:
+  - match: \(
+    captures:
+      0: punctuation.section.parens.begin.hcl
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.parens.end.hcl
+    - include: repo_comments
+    - include: repo_expressions
+  repo_string_interpolation:
+  - match: (?<![%$])([%$]{)
+    captures:
+      1: keyword.other.interpolation.begin.hcl
+    push:
+    - meta_scope: meta.interpolation.hcl
+    - match: \}
+      pop: true
+      captures:
+        0: keyword.other.interpolation.end.hcl
+    - match: \~\s
+      scope: keyword.operator.template.left.trim.hcl
+    - match: \s\~
+      scope: keyword.operator.template.right.trim.hcl
+    - match: \b(if|else|endif|for|in|endfor)\b
+      scope: keyword.control.hcl
+    - include: repo_expressions
+    - include: repo_local_identifiers
+  repo_string_literals:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.hcl
+    push:
+    - meta_scope: string.quoted.double.hcl
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.hcl
+    - include: repo_string_interpolation
+    - include: repo_char_escapes
+  repo_tuple_for_expression:
+  - match: (\[)\s?(for)\b
+    captures:
+      1: punctuation.section.brackets.begin.hcl
+      2: keyword.control.hcl
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.brackets.end.hcl
+    - include: repo_for_expression_body

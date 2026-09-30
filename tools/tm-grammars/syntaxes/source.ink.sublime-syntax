@@ -1,0 +1,578 @@
+%YAML 1.2
+---
+# Ink (source.ink): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/inkle/ink-tmlanguage.git via GitHub Linguist v9.7.0 (license: mit).
+name: Ink
+scope: source.ink
+file_extensions:
+- ink
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_tag
+  - include: repo_todo
+  - include: repo_import
+  - include: repo_declaration
+  - include: repo_knot
+  - include: repo_stitch
+  - include: repo_choice
+  - include: repo_divert
+  - include: repo_gather
+  - include: repo_logic
+  - include: repo_glue
+  - include: repo_interpolevaluablock
+  repo_alternativeClause:
+  - match: ^(?:[^\S\n\r])*(-(?!>))
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=^)|(?=\})|(?=\-)
+      pop: true
+    - include: repo_comment
+    - include: repo_interpolevaluablock
+    - include: repo_divert
+    - include: repo_logic
+    - include: repo_choice
+    - include: repo_comment
+  repo_alternativeItem:
+  - match: (?<!\\)(\|)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=\})|(?=\|)
+      pop: true
+    - include: repo_languageLiteral
+    - include: repo_numberLiteral
+    - include: repo_stringLiteral
+    - include: repo_comment
+    - include: repo_interpolevaluablock
+    - include: repo_divert
+    - include: repo_tag
+  repo_assignment:
+  - match: ([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)(?:[^\S\n\r])*(=)
+    captures:
+      1: entity.name.variable.other.ink
+      2: keyword.operator.assignment.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+    - include: repo_languageLiteral
+    - include: repo_numberLiteral
+    - include: repo_stringLiteral
+    - include: repo_divert
+    - include: repo_expressionIdentifier
+    - include: repo_expression
+  repo_caseClause:
+  - match: ^(?:[^\S\n\r])*(-(?!>))(?:[^\S\n\r])?(else|[^\|\{\}\:]+)(?:[^\S\n\r])*(?<!\\)(\:)
+    captures:
+      1: keyword.control.ink
+      2: keyword.control.ink
+      3: keyword.control.ink
+    push:
+    - match: (?=^)|(?=\})|(?=\-)
+      pop: true
+    - include: repo_interpolevaluablock
+    - include: repo_divert
+    - include: repo_logic
+    - include: repo_glue
+    - include: repo_choiceInClause
+    - include: repo_tag
+    - include: repo_comment
+  repo_choice:
+  - match: "(?x)\n (?<=^|\\-)\n (?:[^\\S\\n\\r])*\n (?:\n   ((?:(?:[^\\S\\n\\r])*[\\*])+)\n   |\n   ((?:(?:[^\\S\\n\\r])*[\\+])+)\n )"
+    captures:
+      1: keyword.choice.ink
+      2: keyword.choice.sticky.ink
+    push:
+    - match: (?=\#|$)
+      pop: true
+    - include: repo_comment
+    - include: repo_label
+    - include: repo_inlineConditionalSubstitution
+    - include: repo_textSuppression
+    - include: repo_divert
+    - include: repo_tag
+    - include: repo_glue
+    - include: repo_logic
+  repo_choiceInClause:
+  - match: "(?x)\n (?<=^|\\-|\\:)\n (?:[^\\S\\n\\r])*\n (?:\n   ((?:(?:[^\\S\\n\\r])*[\\*])+)\n   |\n   ((?:(?:[^\\S\\n\\r])*[\\+])+)\n )"
+    captures:
+      2: keyword.choice.ink
+      3: keyword.choice.sticky.ink
+    push:
+    - match: (?=\#|$)
+      pop: true
+    - include: repo_comment
+    - include: repo_label
+    - include: repo_inlineConditionalSubstitution
+    - include: repo_textSuppression
+    - include: repo_divert
+    - include: repo_tag
+    - include: repo_glue
+    - include: repo_logic
+  repo_commas:
+  - match: \,
+    scope: punctuation.separator.ink
+  repo_comment:
+  - match: (/\*)
+    captures:
+      1: punctuation.definition.comment.ink
+    push:
+    - meta_scope: comment.block.ink
+    - match: (\*/)
+      pop: true
+      captures:
+        1: punctuation.definition.comment.ink
+  - match: (\/\/)
+    captures:
+      1: punctuation.definition.comment.ink
+    push:
+    - meta_scope: comment.line.ink
+    - match: (?=$)
+      pop: true
+  repo_conditionalSubstitution:
+  - match: ((?:[^\{\}\|]|\|(?=\|))+(?:[^\S\n\r])*\:)(?:[^\S\n\r])*(?!$)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=\})
+      pop: true
+    - include: repo_comment
+    - include: repo_divert
+    - include: repo_glue
+    - include: repo_inlineElseClause
+    - include: repo_interpolevaluablock
+  repo_constAssignment:
+  - match: ([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)(?:[^\S\n\r])*(=)
+    captures:
+      1: variable.other.constant.ink entity.name.variable.other.constant.ink
+      2: keyword.operator.assignment.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+    - include: repo_languageLiteral
+    - include: repo_numberLiteral
+    - include: repo_stringLiteral
+    - include: repo_divert
+    - include: repo_expressionIdentifier
+    - include: repo_expression
+  repo_declaration:
+  - match: (?:^)(?:[^\S\n\r])*((VAR)|(LIST))(?:[^\S\n\r])*
+    captures:
+      1: storage.type.ink
+      2: storage.type.var.ink
+      3: storage.type.list.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_assignment
+    - include: repo_comment
+  - match: (?:^)(?:[^\S\n\r])*(CONST)(?:[^\S\n\r])*
+    captures:
+      1: storage.type.const.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_constAssignment
+    - include: repo_comment
+  - match: (?:^)(?:[^\S\n\r])*(EXTERNAL)(?:[^\S\n\r])*
+    captures:
+      1: storage.type.external.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_externalFunctionDeclaration
+    - include: repo_comment
+  repo_divert:
+  - match: (?:[^\S\n\r])*(->|<-)(?:[^\S\n\r])*
+    captures:
+      1: keyword.divert.ink keyword.other.ink
+    push:
+    - match: (?=($|\}|\)|\||\-|\#))
+      pop: true
+    - include: repo_comment
+    - include: repo_function
+    - include: repo_divertIdentifier
+    - include: repo_tunnel
+  repo_divertIdentifier:
+  - match: "(?x) (?:[^\\S\\n\\r])* (?:\n  (END|DONE)\n  |\n  (?:\n    ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)\n    (?:\n      (\\.)\n      ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)\n      (?:\n        (\\.)\n \
+      \       ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)\n      )?\n    )?\n  )\n)"
+    captures:
+      1: support.constant.ink constant.language.divert constant.language.ink
+      2: variable.other.knot.ink entity.name.variable.other.knot.ink
+      3: punctuation.accessor.ink
+      4: variable.other.stitch.ink entity.name.variable.other.stitch.ink
+      5: punctuation.accessor.ink
+      6: variable.other.label.ink entity.name.variable.other.label.ink
+    push:
+    - match: (?=($|\}|\)|\||\#))
+      pop: true
+    - include: repo_comment
+    - include: repo_tunnel
+  repo_expression:
+  - include: repo_comment
+  - include: repo_parentheses
+  - include: repo_function
+  - include: repo_operator
+  - include: repo_languageLiteral
+  - include: repo_stringLiteral
+  - include: repo_expressionIdentifier
+  - include: repo_numberLiteral
+  - include: repo_commas
+  repo_expressionIdentifier:
+  - match: "(?x)\n  (?:(?<=return) |\n     (?<=&&) | (?<=\\|\\|) |\n     (?<=\\=) |\n     (?<=/)  | (?<=%)    | (?<=\\*) | (?<=\\+) | (?<=\\-) |\n     (?<=\\?) | (?<=!\\?)  | (?<=\\^) | (?<=\\~) |\n     (?<=,)  | (?=\\)))\n  (?:[^\\S\\n\\r])*\n  ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*\n  (?:\\.[a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\\
+      x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)?)"
+    captures:
+      1: entity.name.variable.other.ink
+  - match: "(?x)\n  (?:[^\\S\\n\\r])*\n  (?:(?<=not) | (?<=and) | (?<=or) | (?<=has) | (?<=hasnt) | (?<=mod))\n  [^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]\n  ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*\n  (?:\\.[a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\\
+      x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)?)"
+    captures:
+      1: entity.name.variable.other.ink
+  - match: "(?x)\n  (?:[^\\S\\n\\r])*\n  ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*\n  (?:\\.[a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)?)\n  (?:[^\\S\\n\\r])*\n  (?:(?=&&) | (?=\\|\\|) |\n     (?=\\=) | (?=!\\=)  | (?=\\\
+      >) | (?=\\<) |\n     (?=/)  | (?=%)    | (?=\\*) | (?=\\+) | (?=\\-) |\n     (?=\\?) | (?=!\\?)  | (?=\\^) |\n     (?=,)  | (?=\\)))"
+    captures:
+      1: entity.name.variable.other.ink
+  - match: "(?x)\n  (?:[^\\S\\n\\r])*\n  ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*\n  (?:\\.[a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)?)\n  [^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\\
+      x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]\n  (?:(?=not) | (?=and) | (?=or) | (?=has) | (?=hasnt) | (?=mod))"
+    captures:
+      1: entity.name.variable.other.ink
+  repo_externalFunctionDeclaration:
+  - match: ([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)(?:[^\S\n\r])*
+    captures:
+      1: entity.name.function.ink
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_functionDeclarationParameters
+  repo_firstAlternativeItem:
+  - match: (?<=\{)(?:[^\S\n\r])*(&|!|~)
+    captures:
+      1: keyword.control.ink keyword.alternative.type.ink
+    push:
+    - match: (?=\|)
+      pop: true
+    - include: repo_languageLiteral
+    - include: repo_numberLiteral
+    - include: repo_stringLiteral
+    - include: repo_divert
+    - include: repo_tag
+    - include: repo_comment
+    - include: repo_conditionalSubstitution
+    - include: repo_interpolevaluablock
+  repo_function:
+  - match: (?:[^\S\n\r])*((LIST_COUNT|LIST_MIN|LIST_MAX|LIST_ALL|LIST_INVERT|LIST_RANDOM|CHOICE_COUNT|TURNS_SINCE|LIST_RANGE|TURNS|POW|FLOOR|CEILING|INT|FLOAT)|([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*))(?:[^\S\n\r])*(\()(?:[^\S\n\r])*
+    captures:
+      2: constant.language.ink
+      3: entity.name.function.ink
+      4: punctuation.section.parens.begin.ink
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.parens.end.ink
+    - include: repo_comment
+    - match: ','
+      scope: punctuation.separator.ink
+    - include: repo_divert
+    - include: repo_expression
+  repo_functionDeclaration:
+  - match: (?x)(?:[^\S\n\r])*(function)(?:[^\S\n\r])*([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)(?:[^\S\n\r])*
+    captures:
+      1: storage.type.ink
+      2: entity.name.function.ink
+    push:
+    - match: (?<=\))|(?=$)|(?=\=)
+      pop: true
+    - include: repo_comment
+    - include: repo_functionDeclarationParameters
+  repo_functionDeclarationParameters:
+  - match: (\()
+    captures:
+      1: punctuation.section.parens.begin.ink
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.parens.end.ink
+    - include: repo_comment
+    - match: ref
+      scope: storage.modifier.ref.ink
+    - match: '[a-zA-Z0-9_]+'
+      scope: variable.parameter.function.ink
+    - match: ','
+      scope: punctuation.separator.ink
+    - include: repo_divert
+  repo_gather:
+  - match: (?<=^)(?:[^\S\n\r])*((?:(?:[^\S\n\r])*\-(?!>))+)
+    captures:
+      1: keyword.gather.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+    - include: repo_choice
+    - include: repo_label
+    - include: repo_divert
+    - include: repo_todo
+    - include: repo_glue
+    - include: repo_logic
+    - include: repo_tag
+    - include: repo_interpolevaluablock
+  repo_glue:
+  - match: <>
+    scope: keyword.glue.ink keyword.other.ink
+  repo_import:
+  - match: (?:^)(?:[^\S\n\r])*(INCLUDE)(?:(?:[^\S\n\r])*)(.*)$
+    captures:
+      1: keyword.control.import.ink
+      2: string.quoted.other.ink
+  repo_inlineCondition:
+  - match: ([^\{\}]*)
+    scope: keyword.control.ink
+    captures:
+      1: keyword.control.ink
+  repo_inlineConditionalSubstitution:
+  - match: (?<!\\)(\{)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?<!\\)(\})
+      pop: true
+      captures:
+        1: keyword.control.ink
+    - include: repo_conditionalSubstitution
+    - include: repo_substitution
+    - include: repo_firstAlternativeItem
+    - include: repo_alternativeItem
+    - include: repo_interpolevaluablock
+    - include: repo_inlineCondition
+  repo_inlineElseClause:
+  - match: (?<!\\)(\|)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=\})
+      pop: true
+    - include: repo_comment
+    - include: repo_divert
+    - include: repo_interpolevaluablock
+  repo_interpolatedIdentifier:
+  - match: (?<=\{)(?<!^)(?:[^\S\n\r])*[a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*(\.[a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)?(?:[^\S\n\r])*(?!$)(?=\})
+    scope: entity.name.variable.other.ink
+  repo_interpolevaluablock:
+  - match: (?<!\\)(\{)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?<!\\)(\})
+      pop: true
+      captures:
+        1: keyword.control.ink
+    - include: repo_multilineAlternative
+    - include: repo_multilineBlock
+    - include: repo_conditionalSubstitution
+    - include: repo_divert
+    - include: repo_substitution
+    - include: repo_firstAlternativeItem
+    - include: repo_alternativeItem
+    - include: repo_interpolevaluablock
+  repo_knot:
+  - match: ^(?:[^\S\n\r])*(={2,})
+    captures:
+      1: storage.knot.ink storage.type.ink
+    push:
+    - match: (={2,})|(?=$)
+      pop: true
+      captures:
+        1: storage.knot.ink storage.type.ink
+    - include: repo_comment
+    - include: repo_functionDeclaration
+    - include: repo_knotStitchDeclaration
+  repo_knotStitchDeclaration:
+  - match: (?:[^\S\n\r])*([a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*)(?:[^\S\n\r])*
+    captures:
+      1: entity.name.function.ink
+    push:
+    - match: (?<=\))|(?=$|\=|\/\/)
+      pop: true
+    - include: repo_comment
+    - include: repo_functionDeclarationParameters
+  repo_label:
+  - match: (\()(?:[^\S\n\r])*[a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*[a-zA-Z_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}][a-zA-Z0-9_\x{0100}-\x{017F}\x{0180}-\x{024F}\x{0600}-\x{06FF}\x{0530}-\x{058F}\x{0400}-\x{04FF}\x{0370}-\x{03FF}\x{0590}-\x{05FF}]*(?:[^\S\n\r])*(\))
+    scope: string.label.ink entity.name.label.ink string.quoted.other.ink
+    captures:
+      1: punctuation.definition.string.label.begin.ink punctuation.definition.string.begin.ink
+      2: punctuation.definition.string.label.begin.ink punctuation.definition.string.begin.ink
+  repo_languageLiteral:
+  - match: (?:[^\S\n\r])*(false|true)(?:[^\S\n\r])*
+    captures:
+      1: constant.language.boolean.ink constant.language.ink
+  repo_logic:
+  - match: (?:(?<=^)|(?<=\-)|(?<=\:))(?:[^\S\n\r])*(~)
+    captures:
+      1: keyword.logic.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_returnStatement
+    - include: repo_tempDeclaration
+    - include: repo_expression
+  repo_multilineAlternative:
+  - match: (?<=\{)(?:[^\S\n\r])*$
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=\})
+      pop: true
+    - include: repo_comment
+    - include: repo_caseClause
+    - include: repo_alternativeClause
+    - include: repo_divert
+    - include: repo_logic
+    - include: repo_choice
+    - include: repo_glue
+    - include: repo_todo
+    - include: repo_interpolevaluablock
+    - include: repo_comment
+  repo_multilineBlock:
+  - match: ([^\{\}]+(?:[^\S\n\r])*\:)(?:[^\S\n\r])*(?=$|\/\/)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=\})
+      pop: true
+    - include: repo_comment
+    - include: repo_caseClause
+    - include: repo_alternativeClause
+    - include: repo_divert
+    - include: repo_logic
+    - include: repo_choice
+    - include: repo_glue
+    - include: repo_todo
+    - include: repo_interpolevaluablock
+    - include: repo_comment
+  repo_numberLiteral:
+  - match: (?:[^\S\n\r])*([0-9]+(\.[0-9]+)?)(?:[^\S\n\r])*
+    captures:
+      1: constant.numeric.ink
+  repo_operator:
+  - match: "(?x)\n  \\~     |\n  !(?!=) |\n  &&     |\n  \\|\\|"
+    scope: keyword.operator.logical.ink
+  - match: "(?x)\n  =(?!=)"
+    scope: keyword.operator.assignment.ink
+  - match: "(?x)\n  %=  |\n  &=  |\n  \\*= |\n  \\+= |\n  \\-= |\n  /="
+    scope: keyword.operator.assignment.augmented.ink
+  - match: "(?x)\n  <=   |\n  >=   |\n  <    |\n  >"
+    scope: keyword.operator.relational.ink
+  - match: "(?x)\n  ==   |\n  !="
+    scope: keyword.operator.comparison.ink
+  - match: "(?x)\n  \\-\\- |\n  \\+\\+ |\n  /    |\n  %    |\n  \\*   |\n  \\+   |\n  (?<!$)(?:[^\\S\\n\\r])*-(?:[^\\S\\n\\r])*(?!=)"
+    scope: keyword.operator.arithmetic.ink
+  - match: "(?x)\n  \\?  |\n  !\\? |\n  \\^"
+    scope: keyword.operator.membership.ink
+  - match: "(?x)\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])not   (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])   |\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])and   (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])   |\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])or    (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])   |\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\\
+      x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])has   (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])   |\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])hasnt (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])   |\n  (?<=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])mod   (?=[^a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}])"
+    scope: keyword.operator.word.ink
+  repo_parentheses:
+  - match: \(
+    scope: punctuation.section.parens.begin.ink
+  - match: \)
+    scope: punctuation.section.parens.end.ink
+  repo_returnStatement:
+  - match: (?:[^\S\n\r])*(return)(?=\s)
+    captures:
+      1: keyword.control.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_function
+    - include: repo_divert
+    - include: repo_languageLiteral
+    - include: repo_stringLiteral
+    - include: repo_expressionIdentifier
+    - include: repo_expression
+    - include: repo_numberLiteral
+  repo_stitch:
+  - match: ^(?:[^\S\n\r])*(=)
+    captures:
+      1: storage.knot.ink storage.type.ink
+    push:
+    - match: (?=^)
+      pop: true
+    - include: repo_comment
+    - include: repo_knotStitchDeclaration
+  repo_stringLiteral:
+  - match: (?:[^\S\n\r]*)(\")
+    captures:
+      1: punctuation.definition.string.begin.ink
+    push:
+    - match: (\")(?:[^\S\n\r]*)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.ink
+    - match: \\.
+      scope: constant.character.escape.ink
+    - match: '[^\n\r\"]+'
+      scope: string.quoted.double.ink
+  repo_substitution:
+  - match: (?<=\{)([^\{\}\:\|]+)(?=\})
+    captures:
+      1: keyword.control.ink
+  repo_tag:
+  - match: (?<!\\)(\#)
+    captures:
+      1: punctuation.definition.comment.ink comment.line.ink entity.tag.begin.ink
+    push:
+    - meta_scope: string.quoted.other.ink entity.tag.ink
+    - match: (?=$|\#)
+      pop: true
+    - include: repo_comment
+    - include: repo_tag
+  repo_tempDeclaration:
+  - match: "(?x)\n (?:(?<=^)|(?<=\\~))\n (?:[^\\S\\n\\r])*\n (temp)\n (?:[^\\S\\n\\r])*\n ([a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*[a-zA-Z_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}][a-zA-Z0-9_\\x{0100}-\\x{017F}\\x{0180}-\\x{024F}\\x{0600}-\\x{06FF}\\x{0530}-\\x{058F}\\x{0400}-\\x{04FF}\\x{0370}-\\x{03FF}\\x{0590}-\\x{05FF}]*)\n (?:[^\\S\\n\\r])*\n (=)"
+    captures:
+      1: storage.modifier.ink
+      2: entity.name.variable.other.ink
+      3: keyword.assignment.ink
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+    - include: repo_function
+    - include: repo_divert
+    - include: repo_languageLiteral
+    - include: repo_stringLiteral
+    - include: repo_expressionIdentifier
+    - include: repo_expression
+    - include: repo_numberLiteral
+  repo_textSuppression:
+  - match: (?<!\\)(\[)
+    captures:
+      1: keyword.choice.suppression.ink keyword.control.ink
+    push:
+    - match: (?<!\\)(\])
+      pop: true
+      captures:
+        1: keyword.choice.suppression.ink keyword.control.ink
+    - include: repo_interpolevaluablock
+  repo_todo:
+  - match: (?<=^|\-)(?:[^\S\n\r])*(TODO)
+    captures:
+      1: constant.other entity.todo.begin.ink
+    push:
+    - meta_scope: comment.line.ink entity.todo.ink
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+  repo_tunnel:
+  - match: (?:[^\S\n\r])*(->(?:->)?|<-)(?:[^\S\n\r])*
+    captures:
+      1: keyword.divert.ink keyword.other.ink
+    push:
+    - match: (?=($|\}|\)|\|))
+      pop: true
+    - include: repo_comment
+    - include: repo_function
+    - include: repo_divertIdentifier

@@ -1,0 +1,551 @@
+%YAML 1.2
+---
+# JSONiq (source.jsoniq): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/wcandillon/language-jsoniq via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: JSONiq
+scope: source.jsoniq
+hidden: true
+contexts:
+  main:
+  - include: repo_main
+  repo_AbbrevForwardStep:
+  - match: (@)(?:\*\s|(?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-._a-zA-Z0-9]*)
+    scope: support.type.jsoniq
+    captures:
+      1: punctuation.definition.type.jsoniq
+  repo_Annotation:
+  - match: (%+)((?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-._a-zA-Z0-9]*)
+    scope: meta.declaration.annotation.jsoniq
+    captures:
+      1: punctuation.definition.annotation.jsoniq
+      2: entity.name.annotation.jsoniq
+  repo_CDATA:
+  - match: <!\[CDATA\[
+    captures:
+      0: punctuation.definition.string.begin.jsoniq
+    push:
+    - meta_scope: string.unquoted.cdata.jsoniq
+    - match: \]\]>
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.jsoniq
+  repo_CharRef:
+  - match: (&#)([0-9]+|x[0-9A-Fa-f]+)(;)
+    scope: constant.character.entity.jsoniq
+    captures:
+      1: punctuation.definition.entity.begin.jsoniq
+      2: entity.name.entity.other.jsoniq
+      3: punctuation.definition.entity.end.jsoniq
+  repo_CloseTag:
+  - match: (<\/)((?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-_a-zA-Z0-9]*)\s*(>)
+    scope: meta.tag.closetag.jsoniq
+    captures:
+      1: punctuation.definition.tag.begin.jsoniq
+      2: entity.name.tag.localname.jsoniq
+      3: punctuation.definition.tag.end.jsoniq
+  repo_Comments:
+  - match: \(:~
+    captures:
+      0: punctuation.definition.comment.begin.jsoniq
+    push:
+    - meta_scope: comment.block.doc.jsoniq
+    - match: :\)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.jsoniq
+    - match: (@)[a-zA-Z0-9_\.\-]+
+      scope: constant.language.jsoniq
+      captures:
+        1: punctuation.definition.jsoniq
+  - match: <\?
+    captures:
+      0: punctuation.definition.comment.begin.jsoniq
+    push:
+    - meta_scope: comment.block.jsoniq
+    - match: \?>
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.jsoniq
+  - match: '\(:'
+    captures:
+      0: punctuation.definition.comment.begin.jsoniq
+    push:
+    - meta_scope: comment.block.jsoniq
+    - match: :\)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.jsoniq
+  repo_EQName:
+  - match: (?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-_a-zA-Z0-9]*(?=\s*\()
+    scope: support.function.eqname.jsoniq
+  repo_EmbeddedXQuery:
+  - match: ^(?=xquery\s+version\s+)
+    push:
+    - meta_content_scope: source.embedded.xq
+    - match: \z
+      pop: true
+    - include: scope:source.xq
+  repo_EnclosedExpr:
+  - match: '{'
+    captures:
+      0: punctuation.section.scope.begin.jsoniq
+    push:
+    - meta_scope: meta.enclosed.expression.jsoniq
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.jsoniq
+    - include: repo_main
+  repo_Keywords:
+  - match: \b(NaN|null)\b
+  - match: \b(true|false)\b
+  - match: \b(function|let)\b
+  - match: '(?x) \b
+
+      ( break
+
+      | case
+
+      | catch
+
+      | continue
+
+      | end
+
+      | exit
+
+      | for
+
+      | from
+
+      | if
+
+      | import
+
+      | in
+
+      | loop
+
+      | return
+
+      | switch
+
+      | then
+
+      | try
+
+      | when
+
+      | where
+
+      | while
+
+      | with
+
+      ) \b'
+  - match: '(?x) \b
+
+      ( after
+
+      | allowing
+
+      | ancestor-or-self
+
+      | ancestor
+
+      | and
+
+      | append
+
+      | array
+
+      | ascending
+
+      | as
+
+      | attribute
+
+      | at
+
+      | base-uri
+
+      | before
+
+      | boundary-space
+
+      | by
+
+      | castable
+
+      | cast
+
+      | child
+
+      | collation
+
+      | comment
+
+      | constraint
+
+      | construction
+
+      | contains
+
+      | context
+
+      | copy-namespaces
+
+      | copy
+
+      | count
+
+      | decimal-format
+
+      | decimal-separator
+
+      | declare
+
+      | default
+
+      | delete
+
+      | descendant-or-self
+
+      | descendant
+
+      | descending
+
+      | digit
+
+      | div
+
+      | document-node
+
+      | document
+
+      | element
+
+      | else
+
+      | empty-sequence
+
+      | empty
+
+      | encoding
+
+      | eq
+
+      | every
+
+      | except
+
+      | external
+
+      | first
+
+      | following-sibling
+
+      | following
+
+      | ft-option
+
+      | ge
+
+      | greatest
+
+      | grouping-separator
+
+      | group
+
+      | gt
+
+      | idiv
+
+      | index
+
+      | infinity
+
+      | insert
+
+      | instance
+
+      | integrity
+
+      | intersect
+
+      | into
+
+      | is
+
+      | item
+
+      | json-item
+
+      | jsoniq
+
+      | json
+
+      | last
+
+      | lax
+
+      | least
+
+      | le
+
+      | lt
+
+      | minus-sign
+
+      | modify
+
+      | module
+
+      | mod
+
+      | namespace-node
+
+      | namespace
+
+      | next
+
+      | ne
+
+      | nodes
+
+      | node
+
+      | not
+
+      | object
+
+      | of
+
+      | only
+
+      | option
+
+      | ordered
+
+      | ordering
+
+      | order
+
+      | or
+
+      | paragraphs
+
+      | parent
+
+      | pattern-separator
+
+      | per-mille
+
+      | percent
+
+      | preceding-sibling
+
+      | preceding
+
+      | previous
+
+      | processing-instruction
+
+      | rename
+
+      | replace
+
+      | returning
+
+      | revalidation
+
+      | satisfies
+
+      | schema-attribute
+
+      | schema-element
+
+      | schema
+
+      | score
+
+      | select
+
+      | self
+
+      | sentences
+
+      | sliding
+
+      | some
+
+      | stable
+
+      | start
+
+      | strict
+
+      | text
+
+      | times
+
+      | to
+
+      | treat
+
+      | tumbling
+
+      | typeswitch
+
+      | type
+
+      | union
+
+      | unordered
+
+      | updating
+
+      | validate
+
+      | value
+
+      | variable
+
+      | version
+
+      | window
+
+      | words
+
+      | xquery
+
+      | zero-digit
+
+      ) (?!:|-)\b'
+  repo_Numbers:
+  - match: (?:\.[0-9]+|\b[0-9]+(?:\.[0-9]*)?)[Ee][+#x002D]?[0-9]+\b
+    scope: constant.numeric.exponential.jsoniq
+  - match: (?:\.[0-9]+|\b[0-9]+\.[0-9]*)\b
+    scope: constant.numeric.float.jsoniq
+  - match: \b[0-9]+\b
+    scope: constant.numeric.integer.jsoniq
+  repo_OpenTag:
+  - match: (<)((?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-_a-zA-Z0-9]*)
+    captures:
+      1: punctuation.definition.tag.begin.jsoniq
+      2: entity.name.tag.localname.jsoniq
+    push:
+    - meta_scope: meta.tag.opentag.jsoniq
+    - match: /?>
+      pop: true
+      captures:
+        0: punctuation.definition.tag.end.jsoniq
+    - match: ([-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?([-_a-zA-Z0-9][-_a-zA-Z0-9]*)
+      scope: entity.other.attribute-name.jsoniq
+    - match: '='
+      scope: keyword.operator.assignment.jsoniq
+    - match: ''''
+      push:
+      - meta_scope: string.quoted.single.jsoniq
+      - match: '''(?!'')'
+        pop: true
+      - match: ''''''
+        scope: constant.character.escape.quote.jsoniq
+      - include: repo_PredefinedEntityRef
+      - include: repo_CharRef
+      - match: ({{|}})
+        scope: constant.jsoniq
+      - include: repo_EnclosedExpr
+    - match: '"'
+      push:
+      - meta_scope: string.quoted.double.jsoniq
+      - match: '"(?!")'
+        pop: true
+      - match: '""'
+        scope: constant.character.escape.quote.jsoniq
+      - include: repo_PredefinedEntityRef
+      - include: repo_CharRef
+      - match: ({{|}})
+        scope: string.jsoniq
+      - include: repo_EnclosedExpr
+  repo_Pragma:
+  - match: \(#
+    captures:
+      0: punctuation.definition.pragma.begin.jsoniq
+    push:
+    - meta_scope: meta.pragma.jsoniq
+    - meta_content_scope: constant.other.pragma.jsoniq
+    - match: '#\)'
+      pop: true
+      captures:
+        0: punctuation.definition.pragma.end.jsoniq
+  repo_PredefinedEntityRef:
+  - match: (&)(lt|gt|amp|quot|apos)(;)
+    scope: constant.language.entity.predefined.jsoniq
+    captures:
+      1: punctuation.definition.entity.begin.jsoniq
+      2: entity.name.entity.other.jsoniq
+      3: punctuation.definition.entity.end.jsoniq
+  repo_String:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.jsoniq
+    - match: '"'
+      pop: true
+    - match: \\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})
+      scope: constant.character.escape.jsoniq
+    - match: \\.
+      scope: invalid.illegal.unrecognized-string-escape.jsoniq
+  repo_Symbols:
+  - match: :=?
+    scope: keyword.operator.assignment.definition.jsoniq
+  - match: ','
+    scope: punctuation.separator.delimiter.comma.jsoniq
+  - match: \.
+    scope: punctuation.separator.delimiter.dot.jsoniq
+  - match: \[
+    scope: punctuation.definition.bracket.square.begin.jsoniq
+  - match: \]
+    scope: punctuation.definition.bracket.square.end.jsoniq
+  - match: \{
+    scope: punctuation.definition.bracket.curly.begin.jsoniq
+  - match: \}
+    scope: punctuation.definition.bracket.curly.end.jsoniq
+  - match: \(
+    scope: punctuation.definition.bracket.round.begin.jsoniq
+  - match: \)
+    scope: punctuation.definition.bracket.round.end.jsoniq
+  repo_Variable:
+  - match: (\$)(?:[-_a-zA-Z0-9][-._a-zA-Z0-9]*:)?[-_a-zA-Z0-9][-_a-zA-Z0-9]*
+    scope: meta.definition.variable.name.jsoniq
+    captures:
+      0: variable.other.jsoniq
+      1: punctuation.definition.variable.jsoniq
+  repo_XMLComment:
+  - match: <!--
+    captures:
+      0: punctuation.definition.comment.begin.jsoniq
+    push:
+    - meta_scope: comment.block.jsoniq
+    - match: -->
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.jsoniq
+  repo_main:
+  - include: repo_EmbeddedXQuery
+  - include: repo_Pragma
+  - include: repo_XMLComment
+  - include: repo_CDATA
+  - include: repo_PredefinedEntityRef
+  - include: repo_CharRef
+  - include: repo_Comments
+  - include: repo_String
+  - include: repo_Annotation
+  - include: repo_AbbrevForwardStep
+  - include: repo_Variable
+  - include: repo_Numbers
+  - include: repo_Keywords
+  - include: repo_EQName
+  - include: repo_Symbols
+  - include: repo_OpenTag
+  - include: repo_CloseTag

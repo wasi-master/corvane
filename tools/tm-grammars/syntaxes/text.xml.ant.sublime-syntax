@@ -1,0 +1,118 @@
+%YAML 1.2
+---
+# Ant Build System (text.xml.ant): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/ant.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: Ant Build System
+scope: text.xml.ant
+file_extensions:
+- ant.xml
+- build.xml
+contexts:
+  main:
+  - match: <[!%]--
+    captures:
+      0: punctuation.definition.comment.xml.ant
+    push:
+    - meta_scope: comment.block.xml.ant
+    - match: --%?>
+      pop: true
+      captures:
+        0: punctuation.definition.comment.xml.ant
+  - match: (<target)\b
+    captures:
+      1: entity.name.tag.target.xml.ant
+    push:
+    - meta_scope: meta.tag.target.xml.ant
+    - match: (/?>)
+      pop: true
+      captures:
+        1: entity.name.tag.target.xml.ant
+    - include: repo_tagStuff
+  - match: (<macrodef)\b
+    captures:
+      1: entity.name.tag.macrodef.xml.ant
+    push:
+    - meta_scope: meta.tag.macrodef.xml.ant
+    - match: (/?>)
+      pop: true
+      captures:
+        1: entity.name.tag.macrodef.xml.ant
+    - include: repo_tagStuff
+  - match: (</?)(?:([-_a-zA-Z0-9]+)((:)))?([-_a-zA-Z0-9:]+)
+    captures:
+      1: punctuation.definition.tag.xml.ant
+      2: entity.name.tag.namespace.xml.ant
+      3: entity.name.tag.xml.ant
+      4: punctuation.separator.namespace.xml.ant
+      5: entity.name.tag.localname.xml.ant
+    push:
+    - meta_scope: meta.tag.xml.ant
+    - match: (/?>)
+      pop: true
+      captures:
+        1: punctuation.definition.tag.xml.ant
+        2: entity.name.tag.namespace.xml.ant
+        3: entity.name.tag.xml.ant
+        4: punctuation.separator.namespace.xml.ant
+        5: entity.name.tag.localname.xml.ant
+    - include: repo_tagStuff
+  - include: scope:text.xml
+  - include: repo_javaProperties
+  - include: repo_javaAttributes
+  repo_doublequotedString:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.xml.ant
+    push:
+    - meta_scope: string.quoted.double.xml.ant
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.xml.ant
+    - include: repo_javaAttributes
+    - include: repo_javaProperties
+  repo_javaAttributes:
+  - match: '@\{'
+    captures:
+      0: punctuation.section.embedded.begin.ant
+    push:
+    - meta_scope: meta.embedded.line.java
+    - meta_content_scope: source.java
+    - match: (\})
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.ant
+        1: source.java
+  repo_javaProperties:
+  - match: \$\{
+    captures:
+      0: punctuation.section.embedded.begin.ant
+    push:
+    - meta_scope: meta.embedded.line.java-props
+    - meta_content_scope: source.java-props
+    - match: (\})
+      pop: true
+      captures:
+        0: punctuation.section.embedded.end.ant
+        1: source.java-props
+  repo_singlequotedString:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.xml.ant
+    push:
+    - meta_scope: string.quoted.single.xml.ant
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.xml.ant
+    - include: repo_javaAttributes
+    - include: repo_javaProperties
+  repo_tagStuff:
+  - match: ' (?:([-_a-zA-Z0-9]+)((:)))?([_a-zA-Z-]+)='
+    captures:
+      1: entity.other.attribute-name.namespace.xml.ant
+      2: entity.other.attribute-name.xml.ant
+      3: punctuation.separator.namespace.xml.ant
+      4: entity.other.attribute-name.localname.xml.ant
+  - include: repo_doublequotedString
+  - include: repo_singlequotedString

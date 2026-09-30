@@ -1,0 +1,26 @@
+%YAML 1.2
+---
+# UrWeb (source.ur): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/UrWeb-Language-Definition via GitHub Linguist v9.7.0 (license: mit).
+name: UrWeb
+scope: source.ur
+file_extensions:
+- ur
+- urs
+contexts:
+  main:
+  - match: \b(EQUAL|GREATER|LESS|NONE|SOME|abstraction|abstype|and|andalso|array|as|before|bool|case|char|datatype|do|else|end|eqtype|exception|exn|false|fn|fun|functor|handle|if|in|include|infix|infixr|int|let|list|local|nil|nonfix|not|o|of|op|open|option|orelse|overload|print|raise|real|rec|ref|sharing|sig|signature|string|struct|structure|substring|then|true|type|unit|val|vector|where|while|with|withtype|word)\b
+    scope: keyword.source.ur
+  - match: \b[0-9]+\b
+    scope: constant.numeric.ur
+  - match: \b[A-Z]([A-z0-9]*)\b
+    scope: support.type.ur
+  - match: '"(\\"|[^"])*"'
+    scope: string.ur
+  - match: \(\*
+    push:
+    - meta_scope: comment.ur
+    - match: \*\)
+      pop: true
+  - match: (\(\)|=>|::|\[\]|->|:>)
+    scope: constant.character.ur

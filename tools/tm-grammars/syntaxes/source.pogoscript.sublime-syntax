@@ -1,0 +1,52 @@
+%YAML 1.2
+---
+# PogoScript (source.pogoscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/PogoScript.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: PogoScript
+scope: source.pogoscript
+file_extensions:
+- pogo
+contexts:
+  main:
+  - match: '[(){}@]'
+    scope: variable.language.pogoscript
+  - match: \b[0-9]+\b
+    scope: constant.numeric.pogoscript
+  - match: //[^\n]*
+    scope: comment.line.double-slash.pogoscript
+  - match: /\*
+    push:
+    - meta_scope: comment.block.pogoscript
+    - match: \*/
+      pop: true
+  - match: =>|[.:?!;,=]|self
+    scope: keyword
+  - match: \t
+    scope: invalid
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.pogoscript
+    - match: ''''
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.pogoscript
+  - match: r/
+    push:
+    - meta_scope: string.regexp.pogoscript
+    - match: /[gim]?
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.pogoscript
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.pogoscript
+    - match: '"'
+      pop: true
+    - include: repo_interpolated
+  repo_interpolated:
+  - match: '#\('
+    push:
+    - meta_scope: source.pogoscript
+    - match: \)
+      pop: true
+    - include: main

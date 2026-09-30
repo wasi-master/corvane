@@ -1,0 +1,164 @@
+%YAML 1.2
+---
+# ABNF (source.abnf): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-grammars via GitHub Linguist v9.7.0 (license: isc).
+name: ABNF
+scope: source.abnf
+file_extensions:
+- abnf
+contexts:
+  main:
+  - include: repo_main
+  repo_assignment:
+  - match: =/
+    scope: keyword.operator.assignment.increment.abnf
+  - match: :+=
+    scope: keyword.operator.assignment.colon.non-standard.abnf
+  - match: '='
+    scope: keyword.operator.assignment.abnf
+  repo_comment:
+  - match: ;
+    captures:
+      0: punctuation.definition.comment.abnf
+    push:
+    - meta_scope: comment.line.semicolon.abnf
+    - match: $
+      pop: true
+  repo_core-rules:
+  - match: '(?x)
+
+      \b (?<!-)
+
+      (ALPHA|BIT|CHAR|CRLF|CR|CTL|DIGIT|DQUOTE
+
+      |HEXDIG|HTAB|LF|LWSP|OCTET|SP|VCHAR|WSP)
+
+      \b (?!-)'
+    scope: support.constant.reference.core-rule.abnf
+  repo_group:
+  - match: \(
+    captures:
+      0: punctuation.definition.round.bracket.begin.abnf
+    push:
+    - meta_scope: meta.group.abnf
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.round.bracket.end.abnf
+    - include: repo_rhs
+  repo_main:
+  - include: repo_comment
+  - include: repo_rule
+  repo_optional:
+  - match: \[
+    captures:
+      0: punctuation.definition.square.bracket.begin.abnf
+    push:
+    - meta_scope: meta.optional.abnf
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.square.bracket.end.abnf
+    - include: repo_rhs
+  repo_prose:
+  - match: <
+    captures:
+      0: punctuation.definition.string.begin.abnf
+    push:
+    - meta_scope: string.other.prose.abnf
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.abnf
+  repo_quantifier:
+  - match: ([0-9]*)(\*)
+    scope: meta.quantifier.abnf
+    captures:
+      1: constant.numeric.decimal.integer.int.abnf
+      2: keyword.operator.logical.repetition.asterisk.star.abnf
+  repo_reference:
+  - match: '[A-Za-z][-A-Za-z0-9]*'
+    scope: variable.parameter.argument.identifier.reference.abnf
+  repo_rhs:
+  - include: repo_assignment
+  - include: repo_string
+  - include: repo_terminal
+  - include: repo_comment
+  - include: repo_quantifier
+  - include: repo_group
+  - include: repo_optional
+  - include: repo_core-rules
+  - include: repo_reference
+  - include: repo_prose
+  - match: /
+    scope: keyword.operator.logical.or.alternation.pipe.abnf
+  repo_rule:
+  - match: (?:^|)(\s*)([A-Za-z][-A-Za-z0-9]*)
+    captures:
+      0: meta.lhs.abnf
+      1: punctuation.whitespace.leading.abnf
+      2: entity.name.rule.identifier.abnf
+    push:
+    - meta_content_scope: meta.rhs.abnf
+    - match: ^(?!\1\s+\S)|^(?=\S)
+      pop: true
+    - include: repo_rhs
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.abnf
+    push:
+    - meta_scope: string.quoted.double.abnf
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.abnf
+  repo_terminal:
+  - match: (%)(d|D)
+    captures:
+      1: punctuation.definition.terminal.percentage-sign.abnf
+      2: storage.type.modifier.radix.abnf
+    push:
+    - meta_scope: meta.terminal.numeric.decimal.abnf
+    - match: (?=$|[;()\[\]{}\s])
+      pop: true
+    - match: '[0-9A-Fa-f]*[^-\s0-9.;()\[\]{}][^-.;()\[\]{}]*'
+      scope: invalid.illegal.syntax.abnf
+    - match: '[0-9]+'
+      scope: constant.numeric.integer.int.decimal.abnf
+    - match: '-'
+      scope: punctuation.separator.range.dash.hyphen.abnf
+    - match: \.
+      scope: keyword.operator.concatenation.abnf
+  - match: (%)(x|X)
+    captures:
+      1: punctuation.definition.terminal.percentage-sign.abnf
+      2: storage.type.modifier.radix.abnf
+    push:
+    - meta_scope: meta.terminal.numeric.hexadecimal.hex.abnf
+    - match: (?=$|[;()\[\]{}\s])
+      pop: true
+    - match: '[0-9A-Fa-f]*[^-\s0-9A-Fa-f.;()\[\]{}][^-.;()\[\]{}]*'
+      scope: invalid.illegal.syntax.abnf
+    - match: '[0-9A-Fa-f]+'
+      scope: constant.numeric.integer.int.hexadecimal.hex.abnf
+    - match: '-'
+      scope: punctuation.separator.range.dash.hyphen.abnf
+    - match: \.
+      scope: keyword.operator.concatenation.abnf
+  - match: (%)(b|B)
+    captures:
+      1: punctuation.definition.terminal.percentage-sign.abnf
+      2: storage.type.modifier.radix.abnf
+    push:
+    - meta_scope: meta.terminal.numeric.binary.bin.abnf
+    - match: (?=$|[;()\[\]{}\s])
+      pop: true
+    - match: '[0-1]*[^-\s0-1.;()\[\]{}][^-.;()\[\]{}]*'
+      scope: invalid.illegal.syntax.abnf
+    - match: '[0-1]+'
+      scope: constant.numeric.integer.int.binary.bin.abnf
+    - match: '-'
+      scope: punctuation.separator.range.dash.hyphen.abnf
+    - match: \.
+      scope: keyword.operator.concatenation.abnf

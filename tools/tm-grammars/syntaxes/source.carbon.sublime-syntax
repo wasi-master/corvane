@@ -1,0 +1,272 @@
+%YAML 1.2
+---
+# Carbon (source.carbon): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/carbon-language/carbon.tmbundle.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Carbon
+scope: source.carbon
+file_extensions:
+- carbon
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_cpp-inline
+  - include: repo_strings
+  - include: repo_types
+  - include: repo_functions
+  - include: repo_variables
+  - include: repo_operators
+  - include: repo_special-keywords
+  - include: repo_introducer-keywords
+  - include: repo_modifier-keywords
+  - include: repo_misc-keywords
+  - include: repo_self-keywords
+  - include: repo_underscore
+  - include: repo_true-false
+  - include: repo_type-literals
+  - include: repo_numbers
+  - include: repo_parameter-bindings
+  - include: repo_customs
+  repo_comments:
+  - match: ^\s*(?=//\s).*$
+    scope: comment.line.carbon
+  - match: ^\s*//@dump-sem-ir-(begin|end)\s*$
+    scope: comment.line.carbon
+  - match: ^\s*//@include-in-dumps\s*$
+    scope: comment.line.carbon
+  repo_common:
+  - include: repo_comments
+  - include: repo_strings
+  - include: repo_operators
+  - include: repo_special-keywords
+  - include: repo_introducer-keywords
+  - include: repo_modifier-keywords
+  - include: repo_misc-keywords
+  - include: repo_self-keywords
+  - include: repo_true-false
+  - include: repo_type-literals
+  - include: repo_numbers
+  repo_cpp-inline:
+  - match: \b(import)\b\s+\b(Cpp)\b\s+\b(inline)\b\s*(''')([^\s'#]*\n)?
+    captures:
+      1: storage.type.carbon
+      2: support.type.property-name.carbon
+      3: storage.type.carbon
+      4: string.quoted.triple.carbon
+      5: constant.character.escape.carbon
+    push:
+    - meta_content_scope: meta.embedded.block.cpp
+    - match: (''')\s*(;)
+      pop: true
+      captures:
+        1: string.quoted.triple.carbon
+        2: punctuation.terminator.carbon
+    - include: scope:source.c++
+  - match: \b(import)\b\s+\b(Cpp)\b\s+\b(inline)\b\s*(")
+    captures:
+      1: storage.type.carbon
+      2: support.type.property-name.carbon
+      3: storage.type.carbon
+      4: string.quoted.double.carbon
+    push:
+    - meta_content_scope: meta.embedded.inline.cpp
+    - match: (")\s*(;)
+      pop: true
+      captures:
+        1: string.quoted.double.carbon
+        2: punctuation.terminator.carbon
+    - include: scope:source.c++
+  - match: \b(inline)\b\s+\b(Cpp)\b\s*(''')([^\s'#]*\n)?
+    captures:
+      1: storage.type.carbon
+      2: support.type.property-name.carbon
+      3: string.quoted.triple.carbon
+      4: constant.character.escape.carbon
+    push:
+    - meta_content_scope: meta.embedded.block.cpp
+    - match: (''')\s*(;)
+      pop: true
+      captures:
+        1: string.quoted.triple.carbon
+        2: punctuation.terminator.carbon
+    - include: scope:source.c++
+  - match: \b(inline)\b\s+\b(Cpp)\b\s*(")
+    captures:
+      1: storage.type.carbon
+      2: support.type.property-name.carbon
+      3: string.quoted.double.carbon
+    push:
+    - meta_content_scope: meta.embedded.inline.cpp
+    - match: (")\s*(;)
+      pop: true
+      captures:
+        1: string.quoted.double.carbon
+        2: punctuation.terminator.carbon
+    - include: scope:source.c++
+  repo_customs:
+  - match: (?<=\bpackage\s)\w+
+    scope: support.class.carbon
+  - match: (?<=\bCore\s)\w+
+    scope: support.class.carbon
+  - match: (?<=\bimport\s)\w+
+    scope: support.type.property-name.carbon
+  - match: \b\w+\s*\(
+    scope: support.function.carbon
+  - match: \b\w+\b
+    scope: support.variable.carbon
+  repo_functions:
+  - match: \bfn\b
+    captures:
+      0: storage.type.carbon
+    push:
+    - match: (?=[\[\(])
+      pop: true
+    - include: repo_common
+    - match: \w+
+      scope: support.function.carbon
+  repo_introducer-keywords:
+  - match: \b(adapt|alias|choice|class|constraint|fn|import|inline|interface|let|library|namespace|var)\b
+    scope: storage.type.carbon
+  - match: \b(base)\b(?!\s*class\b)
+    scope: storage.type.carbon
+  - match: \b(export)\b(?!\s*import\b)
+    scope: storage.type.carbon
+  - match: \b(impl)\b(?!\s*(fn|library|package)\b)
+    scope: storage.type.carbon
+  - match: \b(package)\b(?!\.)
+    scope: storage.type.carbon
+  repo_misc-keywords:
+  - match: \b(auto|destructor|forall|friend|observe|override|require)\b
+    scope: keyword.other.carbon
+  - match: (?<=\.)\b(base)\b
+    scope: keyword.other.carbon
+  repo_modifier-keywords:
+  - match: \b(abstract|const|extend|extern|final|private|protected|static|virtual)\b
+    scope: storage.modifier.carbon
+  - match: \b(base)\b(?=\s*class\b)
+    scope: storage.modifier.carbon
+  - match: \b(default)\b(?!\s*=>)
+    scope: storage.modifier.carbon
+  - match: \b(export)\b(?=\s*import\b)
+    scope: storage.modifier.carbon
+  - match: \b(impl)\b(?=\s*(fn|library|package)\b)
+    scope: storage.modifier.carbon
+  repo_numbers:
+  - match: 0x[_0-9a-fA-F]*(\.[_0-9a-fA-F]+(p[-+]?[0-9]+)?)?
+    scope: constant.numeric.carbon
+  - match: 0b[_01]*
+    scope: constant.numeric.carbon
+  - match: '[0-9][_0-9]*(\.[_0-9]+(e[-+]?[0-9]+)?)?'
+    scope: constant.numeric.carbon
+  repo_operators:
+  - match: \b(>>=|<=>|<<=|\&=|==|!=|>=|>>|<=|<<|-=|->|--|%=|\|=|\+=|\+\+|/=|\*=|\&|\^|=|>|<|-|%|\.|\||\+|/|\*)\b
+    scope: keyword.operator.carbon
+  - match: \b(and|as|generic|impls|in|like|not|or|partial|ref|runtime|template|unused|where)\b
+    scope: keyword.control.carbon
+  repo_parameter-bindings:
+  - match: \b(\w+)\s*(?=:)
+    captures:
+      1: support.variable.carbon
+  repo_self-keywords:
+  - match: \b(self|Self)\b
+    scope: variable.language.carbon
+  repo_special-keywords:
+  - match: \b(break|case|continue|else|if|for|match|return|returned|then|while)\b
+    scope: keyword.control.carbon
+  - match: \b(default)\b(?=\s*=>)
+    scope: keyword.control.carbon
+  repo_string_escapes:
+  - match: \\([tnr'"0\0]|x[0-9A-F]{2}|u\{[0-9A-F]{4,}\})
+    scope: constant.character.escape.carbon
+  repo_strings:
+  - match: '''''''([^\s''#]*\n)?'
+    captures:
+      1: constant.character.escape.carbon
+    push:
+    - meta_scope: string.quoted.triple.carbon
+    - match: ''''''''
+      pop: true
+    - include: repo_string_escapes
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.carbon
+    - match: '"'
+      pop: true
+    - include: repo_string_escapes
+  repo_true-false:
+  - match: \b(true|false)\b
+    scope: constant.language.carbon
+  repo_type-literals:
+  - match: \b(array|bool|char|str|type)\b
+    scope: constant.language.carbon
+  - match: \b[iuf](8|16|32|64|128)\b
+    scope: constant.language.carbon
+  repo_types:
+  - match: \b((adapt|alias|class|constraint|interface|impl)|(as|impls))\b
+    captures:
+      2: storage.type.carbon
+      3: keyword.control.carbon
+    push:
+    - match: (?=[;{])
+      pop: true
+    - include: repo_common
+    - include: repo_parameter-bindings
+    - match: \w+
+      scope: support.type.carbon
+  - match: ':'
+    push:
+    - match: (?=([;{=,]|->|in|where))
+      pop: true
+    - include: repo_common
+    - include: repo_variables
+    - include: repo_parameter-bindings
+    - match: \w+
+      scope: support.type.carbon
+  - match: ->
+    push:
+    - match: (?=([;{]|=>))
+      pop: true
+    - include: repo_common
+    - match: \w+
+      scope: support.type.carbon
+  - match: \bwhere\b
+    captures:
+      0: keyword.control.carbon
+    push:
+    - match: (?=[;{])
+      pop: true
+    - include: repo_common
+    - include: repo_variables
+    - include: repo_parameter-bindings
+    - match: \w+
+      scope: support.type.carbon
+  - match: \bchoice\b
+    captures:
+      0: storage.type.carbon
+    push:
+    - match: (?=[;}])
+      pop: true
+    - include: repo_common
+    - include: repo_variables
+    - include: repo_parameter-bindings
+    - match: \w+
+      scope: support.type.carbon
+    - match: \{
+      push:
+      - match: (?=})
+        pop: true
+      - include: repo_common
+      - match: \w+
+        scope: variable.other.enummember.carbon
+  repo_underscore:
+  - match: \b(_)\b
+    scope: variable.language.carbon
+  repo_variables:
+  - match: \b(var|let)\b
+    captures:
+      0: storage.type.carbon
+    push:
+    - match: (?=:)
+      pop: true
+    - include: repo_common
+    - match: \w+
+      scope: support.variable.carbon

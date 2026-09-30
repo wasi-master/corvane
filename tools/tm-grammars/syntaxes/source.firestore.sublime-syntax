@@ -1,0 +1,154 @@
+%YAML 1.2
+---
+# Cloud Firestore Security Rules (source.firestore): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/atom-firestore-grammar via GitHub Linguist v9.7.0 (license: mit).
+name: Cloud Firestore Security Rules
+scope: source.firestore
+file_extensions:
+- firestore.rules
+contexts:
+  main:
+  - include: repo_main
+  repo_accessControl:
+  - match: \b(get|list|read|create|update|delete|write)\b(?=[\s,:;]|$)
+    scope: storage.modifier.access-control.firestore
+  repo_arithmetic:
+  - match: '[-+*/%]'
+    scope: keyword.operator.arithmetic.firestore
+  repo_basicTypes:
+  - match: \b(request|math|user|duration|string|int|cloud)\b
+  repo_booleans:
+  - match: \b(true|false)\b
+  repo_comment:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.firestore
+    push:
+    - meta_scope: comment.line.double-slash.firestore
+    - match: $
+      pop: true
+  repo_comparisons:
+  - match: '!!|&&|\|\||[!=]==?|>=|<=|<<[<=]?|>>[>=]?|[=!><|&]'
+    scope: keyword.operator.comparison.firestore
+  repo_functionName:
+  - match: '[.\s\(][a-zA-Z]+(?=\()'
+    scope: entity.name.function.firestore
+  repo_functionParameter:
+  - match: \b(?<!['"])[a-zA-Z0-9_]+(?!['"])\b
+    scope: variable.parameter.function.firestore
+  repo_functionParameterList:
+  - match: \(
+    captures:
+      0: punctuation.definition.parameters.begin.bracket.round.firestore
+    push:
+    - meta_scope: meta.function.parameters.firestore
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.bracket.round.firestore
+    - include: repo_functionParameter
+    - include: repo_main
+  repo_globalFunc:
+  - match: ^\s*(service|match|allow)(?=\s)
+  repo_keywords:
+  - match: \b(if|in|return|is)\b
+  - match: \b(null)\b
+    scope: constant.language.null.firestore
+  - match: \b(function)\b
+    scope: storage.type.function.firestore
+  repo_main:
+  - include: repo_comment
+  - include: repo_pathMatchLiteral
+  - include: repo_pathMatchVariable
+  - include: repo_basicTypes
+  - include: repo_number
+  - include: repo_strings
+  - include: repo_functionName
+  - include: repo_functionParameterList
+  - include: repo_globalFunc
+  - include: repo_accessControl
+  - include: repo_keywords
+  - include: repo_booleans
+  - include: repo_comparisons
+  - include: repo_arithmetic
+  - include: repo_typeMember
+  - include: repo_punctuation
+  repo_number:
+  - match: '(?x)
+
+      -?[0-9]+\.[0-9]* | # 1.2, -3.4, -3.
+
+      -?      \.[0-9]+   # .12, -.34, -.3'
+    scope: constant.numeric.decimal.float.firestore
+  - match: -?[0-9]+
+    scope: constant.numeric.decimal.integer.firestore
+  repo_pathMatchLiteral:
+  - match: (/)[-a-zA-Z0-9_]+(?=[\s/])
+    scope: string.unquoted.path.firestore
+    captures:
+      1: punctuation.definition.string.slash.firestore
+  repo_pathMatchVariable:
+  - match: '(?x)
+
+      (/)         #1
+
+      ({)         #2
+
+      ([^}]+?)    #3
+
+      ((=)\*+)?  #4-5
+
+      (})         #6
+
+      (?=[\s/])'
+    scope: string.unquoted.path.interpolation.firestore
+    captures:
+      1: punctuation.definition.string.slash.firestore
+      2: punctuation.definition.section.begin.firestore
+      3: variable.parameter.path.match.firestore
+      4: keyword.operator.wildcard.firestore
+      5: punctuation.separator.key-value.firestore
+      6: punctuation.definition.section.end.firestore
+  repo_punctuation:
+  - match: ':'
+    scope: keyword.operator.assignment.colon.key-value.firestore
+  - match: ;
+    scope: punctuation.terminator.statement.semicolon.firestore
+  - match: ','
+    scope: punctuation.separator.delimiter.comma.firestore
+  - match: '{'
+    scope: punctuation.definition.bracket.curly.begin.firestore
+  - match: '}'
+    scope: punctuation.definition.bracket.curly.end.firestore
+  - match: \[
+    scope: punctuation.definition.bracket.square.begin.firestore
+  - match: \]
+    scope: punctuation.definition.bracket.square.end.firestore
+  - match: \(
+    scope: punctuation.definition.bracket.round.begin.firestore
+  - match: \)
+    scope: punctuation.definition.bracket.round.end.firestore
+  - match: \.
+    scope: punctuation.definition.full-stop.dot.period.firestore
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.firestore
+    push:
+    - meta_scope: string.quoted.double.firestore
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.firestore
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.firestore
+    push:
+    - meta_scope: string.quoted.single.firestore
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.firestore
+  repo_typeMember:
+  - match: \.[a-zA-Z0-9_]+
+    scope: variable.parameter.type.member.firestore

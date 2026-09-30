@@ -1,0 +1,381 @@
+%YAML 1.2
+---
+# SurrealQL (source.surrealql): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/surrealdb/surrealql-grammar.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: SurrealQL
+scope: source.surrealql
+file_extensions:
+- surql
+contexts:
+  main:
+  - include: repo_comment
+  - include: repo_type-clause
+  - include: repo_keywords
+  - include: repo_operators
+  - include: repo_js-function
+  - include: repo_function
+  - include: repo_value
+  repo_analyzer-tokenizer:
+  - match: (?i)\b(blank|camel|class|punct)\b
+    scope: support.constant.analyzer-tokenizer.surrealql
+  repo_array:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_array-content
+  repo_array-content:
+  - include: main
+  - match: ','
+    scope: punctuation.separator.array
+  repo_block:
+  - match: \{
+    push:
+    - meta_scope: surrealql.block
+    - match: \}
+      pop: true
+    - include: repo_block-content
+  repo_block-content:
+  - include: repo_string
+  - include: repo_object-key
+  - include: main
+  repo_boolean:
+  - match: \b(true|TRUE|false|FALSE|True|False)\b
+    scope: constant.language.bool
+  repo_comment:
+  - include: repo_comment.line.dash
+  - include: repo_comment.line.slash
+  - include: repo_comment.line.hash
+  - include: repo_comment.block
+  repo_comment.block:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.surrealql
+    - match: \*/
+      pop: true
+  repo_comment.line.dash:
+  - match: --
+    push:
+    - meta_scope: comment.line.double-dash
+    - match: \n
+      pop: true
+  repo_comment.line.hash:
+  - match: '#'
+    push:
+    - meta_scope: comment.line.number-sign
+    - match: \n
+      pop: true
+  repo_comment.line.slash:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash
+    - match: \n
+      pop: true
+  repo_distance-name:
+  - match: (?i)\b(chebyshev|euclidean|manhattan|minkowski|hamming|jaccard|pearson|cosine)\b
+    scope: support.constant.distance.surrealql
+  repo_duration:
+  - match: "(\\d+(?:_\\d+)* *(?:ns|\xB5s|ms|s|m|h|d|w|y)(?![A-Za-z_]))+"
+    scope: constant.other
+  repo_filter-name:
+  - match: (?i)\b(edgengram|uppercase|snowball|ascii|ngram)\b
+    scope: support.constant.filter.surrealql
+  repo_function:
+  - match: (?=((?:\b\w+(?:::\b\w+)+)|count|rand)\s*\()
+    captures:
+      1: support.function
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_comment
+    - match: \(
+      push:
+      - meta_scope: meta.function.arguments
+      - match: \)
+        pop: true
+      - include: repo_value
+  repo_ident:
+  - match: '`'
+    push:
+    - meta_scope: support.type.property-name
+    - match: (?<!\\)`
+      pop: true
+  - match: "\u27E8"
+    push:
+    - meta_scope: support.type.property-name
+    - match: "(?<!\\\\)\u27E9"
+      pop: true
+  repo_identifier:
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+    scope: variable.other.surrealql
+  repo_index-type:
+  - match: (?i)\b(f32|f64|i16|i32|i64)\b
+    scope: constant.language.index-type.surrealql
+  repo_js-function:
+  - match: (?=(\bfunction\b))
+    captures:
+      1: support.function.js
+    push:
+    - match: (?<=})
+      pop: true
+    - include: repo_comment
+    - match: \(
+      push:
+      - meta_scope: meta.function.arguments
+      - match: \)
+        pop: true
+      - include: repo_value
+    - match: '{'
+      push:
+      - meta_scope: meta.embedded.block.javascript
+      - match: '}'
+        pop: true
+      - include: scope:source.js
+  repo_keywords:
+  - match: (?i)\b(keep_pruned_connections|doc_lengths_cache|doc_lengths_order|extend_candidates|postings_cache|postings_order|doc_ids_cache|doc_ids_order|authenticate|concurrently|mtree_cache|permissions|terms_cache|terms_order|transaction|changefeed|highlights|middleware|schemafull|schemaless|tokenizers|algorithm|dimension|duplicate|functions|namespace|overwrite|reference|structure|tempfiles|analyzer|capacity|computed|continue|database)\b
+    scope: keyword.control keyword.control.surrealql
+  - match: (?i)\b(duration|enforced|flexible|function|parallel|passhash|password|readonly|relation|backend|cascade|changes|collate|columns|comment|content|default|exclude|explain|expunge|filters|graphql|include|noindex|numeric|rebuild|replace|session|timeout|version|access|always|assert|bucket|cancel)\b
+    scope: keyword.control keyword.control.surrealql
+  - match: (?i)\b(commit|config|create|define|delete|exists|fields|ignore|insert|issuer|normal|option|record|reject|relate|remove|return|search|select|signin|signup|strict|tables|unique|update|upsert|values|alter|async|begin|break|defer|event|fetch|field)\b
+    scope: keyword.control keyword.control.surrealql
+  - match: (?i)\b(group|index|limit|merge|mtree|order|param|patch|roles|scope|since|sleep|split|start|table|throw|token|trace|unset|value|where|auto|bm25|desc|dist|drop|else|from|hnsw|info|into|kill|live|omit|only)\b
+    scope: keyword.control keyword.control.surrealql
+  - match: (?i)\b(root|show|then|type|user|when|with|all|any|api|asc|efc|end|for|get|jwt|key|let|not|out|put|set|url|use|as|at|by|db|if|in|lm|m0|ns|on|sc)\b
+    scope: keyword.control keyword.control.surrealql
+  - match: (?i)\b(tb|to|m)\b
+    scope: keyword.control keyword.control.surrealql
+  repo_literal-keyword:
+  - match: (?i)\b(diff|full)\b
+    scope: constant.language.literal.surrealql
+  repo_number:
+  - match: \b\d+(?:_\d+)*(?:\.\d+(?:_\d+)*)?(?:[eE][+-]?\d+(?:_\d+)*)?dec\b
+    scope: constant.numeric.decimal
+  - match: \b(?:\d+(?:_\d+)*f|\d+(?:_\d+)*(?:\.\d+(?:_\d+)*(?:[eE][+-]?\d+(?:_\d+)*)?|[eE][+-]?\d+(?:_\d+)*)(?:f)?)\b
+    scope: constant.numeric.decimal
+  - match: \b\d+(?:_\d+)*\b
+    scope: constant.numeric.int
+  repo_object-key:
+  - match: "(?:^|{|,)[ \t]*(\"[^(?:\\\")]+\")(?=:(?!:))"
+    captures:
+      1: string.quoted.double
+  - match: "(?:^|{|,)[ \t]*('[^(?:\\')]+')(?=:(?!:))"
+    captures:
+      1: string.quoted.single
+  - match: "(^|\\{|\\,)[ \t]*([a-zA-Z_0-9]+)(?=:(?!:))"
+    captures:
+      2: meta.object-literal.key
+  repo_operators:
+  - match: <->|->|<-|<~
+    scope: keyword.operator.arrow.surrealql
+  - include: repo_regex-literal
+  - match: \.\.(?=\=)
+    scope: keyword.operator.range.surrealql
+  - match: \.\.(?!\.)
+    scope: keyword.operator.range.surrealql
+  - match: (?i)\b(containsnone|containsnot|containsall|containsany|noneinside|intersects|notinside|allinside|anyinside|contains|outside|inside|and|or)\b
+    scope: keyword.operator.word.surrealql
+  - match: '&&'
+    scope: keyword.operator.logical-and.surrealql
+  - match: \|\|
+    scope: keyword.operator.logical-or.surrealql
+  - match: \b(IS NOT|is not)\b|!=
+    scope: keyword.operator.is-not.surrealql
+  - match: \b(IS|is)\b|=
+    scope: keyword.operator.is.surrealql
+  - match: \b(CONTAINSSOME|containssome)\b
+    scope: keyword.operator.containssome.surrealql
+  - match: "\u220B"
+    scope: keyword.operator.contains.surrealql
+  - match: "\u2287"
+    scope: keyword.operator.containsall.surrealql
+  - match: "\u2283"
+    scope: keyword.operator.containsany.surrealql
+  - match: "\u2285"
+    scope: keyword.operator.containsnone.surrealql
+  - match: "\u220C"
+    scope: keyword.operator.containsnot.surrealql
+  - match: "\u2286"
+    scope: keyword.operator.allinside.surrealql
+  - match: "\u2282"
+    scope: keyword.operator.anyinside.surrealql
+  - match: "\u2284"
+    scope: keyword.operator.noneinside.surrealql
+  - match: "\u2209"
+    scope: keyword.operator.notinside.surrealql
+  - match: "\u2208"
+    scope: keyword.operator.inside.surrealql
+  - match: ==
+    scope: keyword.operator.equal.surrealql
+  - match: \*=
+    scope: keyword.operator.all-equal.surrealql
+  - match: \?=
+    scope: keyword.operator.any-equal.surrealql
+  - match: '!~'
+    scope: keyword.operator.fuzzy-inequal.surrealql
+  - match: \*~
+    scope: keyword.operator.fuzzy-all-equal.surrealql
+  - match: \?~
+    scope: keyword.operator.fuzzy-any-equal.surrealql
+  - match: '~'
+    scope: keyword.operator.fuzzy-equal.surrealql
+  - match: <=
+    scope: keyword.operator.less-or-equal.surrealql
+  - match: <(?!-|[a-z]+[^:])
+    scope: keyword.operator.less.surrealql
+  - match: '>='
+    scope: keyword.operator.more-or-equal.surrealql
+  - match: (?<!-)>
+    scope: keyword.operator.more.surrealql
+  - match: \+
+    scope: keyword.operator.add.surrealql
+  - match: '-'
+    scope: keyword.operator.subtract.surrealql
+  - match: "\\*|\xD7|\u2219"
+    scope: keyword.operator.multiply.surrealql
+  - match: "\\/|\xF7"
+    scope: keyword.operator.devide.surrealql
+  - match: '@([0-9]+)?@'
+    scope: keyword.operator.matches.surrealql
+    captures:
+      1: constant.numeric.int
+  - match: \.\?
+    scope: keyword.operator.optional.surrealql
+  - match: '\?:'
+    scope: keyword.operator.either.surrealql
+  - match: \?\?
+    scope: keyword.operator.truthy.surrealql
+  - match: \<\|([a-zA-Z|\d|,])+\|\>
+    scope: keyword.operator.knn.surrealql
+  repo_positional:
+  - match: \b(AFTER|after|BEFORE|before)\b
+    scope: constant.language.positional
+  repo_query:
+  - include: main
+  repo_record:
+  - match: "(\\b\\w+\\b):\u27E8([^\u27E9]+)\u27E9"
+    captures:
+      1: entity.name.class
+      2: entity.name.class
+  - match: (\b\w+\b):`([^`]+)`
+    captures:
+      1: entity.name.class
+      2: entity.name.class
+  - match: (\b\w+\b):(?=(\b[\w:]+\b)\s*\()
+    captures:
+      1: entity.name.class
+      2: support.function
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_comment
+    - match: \(
+      push:
+      - meta_scope: meta.function.arguments
+      - match: \)
+        pop: true
+      - include: repo_value
+  - match: (\b\w+\b):(\b\w+\b)
+    captures:
+      1: entity.name.class
+      2: entity.name.class
+  - match: (\b\w+\b):\[
+    captures:
+      1: entity.name.class
+    push:
+    - match: \]
+      pop: true
+      captures:
+        1: entity.name.class
+    - include: repo_array-content
+  - match: (\b\w+\b):(?=\{)
+    captures:
+      1: entity.name.class
+    push:
+    - match: \}
+      pop: true
+      captures:
+        1: entity.name.class
+    - include: repo_block-content
+  repo_regex-literal:
+  - match: (?<![A-Za-z0-9])(\/)(?:[^\\/]|\\.|\[(?:[^\]\\]|\\.)*\])*(\/)([a-z]*)
+    scope: string.regexp.surrealql
+  repo_string:
+  - match: '[a-z]?"'
+    push:
+    - meta_scope: string.quoted.double
+    - match: (?<!\\)"
+      pop: true
+  - match: '[a-z]?'''
+    push:
+    - meta_scope: string.quoted.single
+    - match: (?<!\\)'
+      pop: true
+  repo_subquery:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_query
+    - include: repo_value
+  repo_token-type:
+  - match: (?i)\b(eddsa|es256|es384|es512|ps256|ps384|ps512|rs256|rs384|rs512|jwks)\b
+    scope: support.constant.token-type.surrealql
+  repo_type:
+  - match: '[a-z]*<[a-zA-Z][a-zA-Z0-9<>|, _]+[a-zA-Z0-9>]+>'
+    scope: meta.type.annotation.surrealql
+  repo_type-clause:
+  - match: (?i)\b(TYPE)\b
+    captures:
+      1: keyword.control.surrealql
+    push:
+    - meta_scope: meta.type.annotation.surrealql
+    - match: (?=\b(DEFAULT|ASSERT|VALUE|COMMENT|PERMISSIONS|REFERENCE|READONLY|FLEXIBLE|COMPUTED|DIST|DIMENSION|EFC|M|LM|M0)\b|;|$)
+      pop: true
+    - include: repo_comment
+    - include: repo_string
+    - include: repo_number
+    - include: repo_void-type
+    - match: \|
+      scope: keyword.operator.union.surrealql
+    - match: '[\[\]<>]'
+      scope: punctuation.definition.type.surrealql
+    - match: ','
+      scope: punctuation.separator.type.surrealql
+    - include: repo_index-type
+    - match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+      scope: entity.name.type.surrealql
+  repo_value:
+  - include: repo_comment
+  - include: repo_js-function
+  - include: repo_function
+  - include: repo_block
+  - include: repo_array
+  - include: repo_var-name
+  - include: repo_boolean
+  - include: repo_string
+  - include: repo_ident
+  - include: repo_void-type
+  - include: repo_positional
+  - include: repo_duration
+  - include: repo_number
+  - include: repo_record
+  - include: repo_subquery
+  - include: repo_type
+  - include: repo_index-type
+  - include: repo_token-type
+  - include: repo_distance-name
+  - include: repo_filter-name
+  - include: repo_analyzer-tokenizer
+  - include: repo_literal-keyword
+  - include: repo_regex-literal
+  - include: repo_identifier
+  repo_var-name:
+  - match: \$\w+
+    scope: variable.name
+  - match: \$`\w+`
+    scope: variable.name
+  - match: "\\$\u27E8\\w+\u27E9"
+    scope: variable.name
+  repo_void-type:
+  - match: \b(null|NULL|none|NONE)\b
+    scope: constant.language.void

@@ -1,0 +1,57 @@
+%YAML 1.2
+---
+# Ox (source.ox): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-text-ox via GitHub Linguist v9.7.0 (license: mit).
+name: Ox
+scope: source.ox
+file_extensions:
+- ox
+- oxh
+- oxo
+contexts:
+  main:
+  - include: repo_comments
+  - match: \b(break|case|continue|default|delete|do|else|for|new|parallel for|foreach|goto|if|_Pragma|return|switch|switch_single|while)\b
+    scope: keyword.control.ox
+  - match: \b(array|char|class|const|decl|double|enum|extern|int|matrix|static|serial|string|struct)\b
+    scope: storage.type.ox
+  - match: ^\s*.\s*(.NaN|.Inf|TRUE|FALSE)\b
+    scope: constant.language.ox
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\b
+    scope: constant.numeric.ox
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.ox
+    push:
+    - meta_scope: string.quoted.double.ox
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.ox
+  - match: ^\s*#\s*(include|import|pragma)\b\s+
+    captures:
+      1: keyword.control.import.include.ox
+    push:
+    - match: (?=(?://|/\*))|$
+      pop: true
+      captures:
+        1: keyword.control.import.include.ox
+  repo_comments:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.ox
+    push:
+    - meta_scope: comment.block.ox
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.ox
+  - match: //
+    captures:
+      0: punctuation.definition.comment.ox
+    push:
+    - meta_scope: comment.line.double-slash.ox
+    - match: $\n?
+      pop: true
+    - match: (?>\\\s*\n)
+      scope: punctuation.separator.continuation.ox

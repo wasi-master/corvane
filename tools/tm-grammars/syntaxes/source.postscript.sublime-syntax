@@ -1,0 +1,1713 @@
+%YAML 1.2
+---
+# PostScript (source.postscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/Atom-PostScript via GitHub Linguist v9.7.0 (license: isc).
+name: PostScript
+scope: source.postscript
+file_extensions:
+- ps
+- eps
+- epsi
+- pfa
+contexts:
+  main:
+  - match: \A(?=%PDF)
+    push:
+    - meta_scope: meta.document.pdf
+    - match: (?=A)B
+      pop: true
+    - include: repo_main
+  - match: \A(?=/(?:(?:Menus|collection1|precision) {|textImportantVisualLinesSnapping \d)(?:\r|$))
+    push:
+    - meta_scope: meta.ai-prefs.postscript
+    - match: (?=A)B
+      pop: true
+    - include: repo_main
+  - include: repo_main
+  repo_array:
+  - match: \[
+    captures:
+      0: punctuation.definition.array.begin.postscript
+    push:
+    - meta_scope: meta.array.postscript
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.array.end.postscript
+    - include: repo_main
+  repo_base85:
+  - match: <~
+    captures:
+      0: punctuation.definition.string.begin.postscript
+    push:
+    - meta_scope: string.other.base85.postscript
+    - match: ~>
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.postscript
+    - match: (?:[^!-uz\s]|~(?!>))++
+      scope: invalid.illegal.base85.char.postscript
+  repo_comment:
+  - match: ^[ \t]+(?=%)
+    scope: punctuation.whitespace.comment.leading.postscript
+  - include: repo_dsc
+  - match: '%'
+    captures:
+      0: punctuation.definition.comment.postscript
+    push:
+    - meta_scope: comment.line.percentage.postscript
+    - match: (?=$|\r|\f)
+      pop: true
+  repo_compatibility:
+  - match: '(?x) (?<![^/\s{}()<>\[\]%]) (?:\b|(?=\.))
+
+      ( 11x17tray
+
+      | 11x17
+
+      | a3tray
+
+      | a3
+
+      | a4small
+
+      | a4tray
+
+      | a4
+
+      | accuratescreens
+
+      | appletalktype
+
+      | b5tray
+
+      | b5
+
+      | buildtime
+
+      | byteorder
+
+      | checkpassword
+
+      | checkscreen
+
+      | defaulttimeouts
+
+      | devdismount
+
+      | devforall
+
+      | devformat
+
+      | devmount
+
+      | devstatus
+
+      | diskonline
+
+      | diskstatus
+
+      | doprinterrors
+
+      | dostartpage
+
+      | dosysstart
+
+      | duplexmode
+
+      | emulate
+
+      | firstside
+
+      | hardwareiomode
+
+      | initializedisk
+
+      | jobname
+
+      | jobtimeout
+
+      | ledgertray
+
+      | ledger
+
+      | legaltray
+
+      | legal
+
+      | lettersmall
+
+      | lettertray
+
+      | letter
+
+      | manualfeedtimeout
+
+      | manualfeed
+
+      | margins
+
+      | mirrorprint
+
+      | newsheet
+
+      | note
+
+      | pagecount
+
+      | pagemargin
+
+      | pageparams
+
+      | pagestackorder
+
+      | printername
+
+      | processcolors
+
+      | ramsize
+
+      | realformat
+
+      | resolution
+
+      | sccbatch
+
+      | sccinteractive
+
+      | setaccuratescreens
+
+      | setdefaulttimeouts
+
+      | setdoprinterrors
+
+      | setdostartpage
+
+      | setdosysstart
+
+      | setduplexmode
+
+      | sethardwareiomode
+
+      | setjobtimeout
+
+      | setmargins
+
+      | setmirrorprint
+
+      | setpagemargin
+
+      | setpageparams
+
+      | setpagestackorder
+
+      | setpage
+
+      | setprintername
+
+      | setresolution
+
+      | setsccbatch
+
+      | setsccinteractive
+
+      | setsoftwareiomode
+
+      | settumble
+
+      | setuserdiskpercent
+
+      | softwareiomode
+
+      | tumble
+
+      | userdiskpercent
+
+      | waittimeout
+
+      ) \b (?![^/\s{}()<>\[\]%])'
+    scope: keyword.operator.level-1.compatibility.postscript
+  repo_dictionary:
+  - match: '<<'
+    captures:
+      0: punctuation.definition.dictionary.begin.postscript
+    push:
+    - meta_scope: meta.dictionary.postscript
+    - match: '>>'
+      pop: true
+      captures:
+        0: punctuation.definition.dictionary.end.postscript
+    - include: repo_main
+  repo_dsc:
+  - match: '(?x) ^ (%%)
+
+      ( BeginBinary
+
+      | BeginCustomColor
+
+      | BeginData
+
+      | BeginDefaults
+
+      | BeginDocument
+
+      | BeginEmulation
+
+      | BeginExitServer
+
+      | BeginFeature
+
+      | BeginFile
+
+      | BeginFont
+
+      | BeginObject
+
+      | BeginPageSetup
+
+      | BeginPaperSize
+
+      | BeginPreview
+
+      | BeginProcSet
+
+      | BeginProcessColor
+
+      | BeginProlog
+
+      | BeginResource
+
+      | BeginSetup
+
+      | BoundingBox
+
+      | CMYKCustomColor
+
+      | ChangeFont
+
+      | Copyright
+
+      | CreationDate
+
+      | Creator
+
+      | DocumentCustomColors
+
+      | DocumentData
+
+      | DocumentFonts
+
+      | DocumentMedia
+
+      | DocumentNeededFiles
+
+      | DocumentNeededFonts
+
+      | DocumentNeededProcSets
+
+      | DocumentNeededResources
+
+      | DocumentPaperColors
+
+      | DocumentPaperForms
+
+      | DocumentPaperSizes
+
+      | DocumentPaperWeights
+
+      | DocumentPrinterRequired
+
+      | DocumentProcSets
+
+      | DocumentProcessColors
+
+      | DocumentSuppliedFiles
+
+      | DocumentSuppliedFonts
+
+      | DocumentSuppliedProcSets
+
+      | DocumentSuppliedResources
+
+      | EOF
+
+      | Emulation
+
+      | EndBinary
+
+      | EndComments
+
+      | EndCustomColor
+
+      | EndData
+
+      | EndDefaults
+
+      | EndDocument
+
+      | EndEmulation
+
+      | EndExitServer
+
+      | EndFeature
+
+      | EndFile
+
+      | EndFont
+
+      | EndObject
+
+      | EndPageSetup
+
+      | EndPaperSize
+
+      | EndPreview
+
+      | EndProcSet
+
+      | EndProcessColor
+
+      | EndProlog
+
+      | EndResource
+
+      | EndSetup
+
+      | ExecuteFile
+
+      | Extensions
+
+      | Feature
+
+      | For
+
+      | IncludeDocument
+
+      | IncludeFeature
+
+      | IncludeFile
+
+      | IncludeFont
+
+      | IncludeProcSet
+
+      | IncludeResource
+
+      | LanguageLevel
+
+      | OperatorIntervention
+
+      | OperatorMessage
+
+      | Orientation
+
+      | PageBoundingBox
+
+      | PageCustomColors
+
+      | PageFiles
+
+      | PageFonts
+
+      | PageMedia
+
+      | PageOrder
+
+      | PageOrientation
+
+      | PageProcessColors
+
+      | PageRequirements
+
+      | PageResources
+
+      | PageTrailer
+
+      | Pages
+
+      | Page
+
+      | PaperColor
+
+      | PaperForm
+
+      | PaperSize
+
+      | PaperWeight
+
+      | ProofMode
+
+      | RGBCustomColor
+
+      | Requirements
+
+      | Routing
+
+      | Title
+
+      | Trailer
+
+      | VMlocation
+
+      | VMusage
+
+      | Version
+
+      | \+
+
+      | \?BeginFeatureQuery
+
+      | \?BeginFileQuery
+
+      | \?BeginFontListQuery
+
+      | \?BeginFontQuery
+
+      | \?BeginPrinterQuery
+
+      | \?BeginProcSetQuery
+
+      | \?BeginQuery
+
+      | \?BeginResourceListQuery
+
+      | \?BeginResourceQuery
+
+      | \?BeginVMStatus
+
+      | \?EndFeatureQuery
+
+      | \?EndFileQuery
+
+      | \?EndFontListQuery
+
+      | \?EndFontQuery
+
+      | \?EndPrinterQuery
+
+      | \?EndProcSetQuery
+
+      | \?EndQuery
+
+      | \?EndResourceListQuery
+
+      | \?EndResourceQuery
+
+      | \?EndVMStatus
+
+      ) (:)? [^\S\r\n]*'
+    captures:
+      0: keyword.other.DSC.postscript
+      1: punctuation.definition.keyword.DSC.postscript
+      3: keyword.operator.assignment.key-value.colon.postscript
+    push:
+    - meta_scope: meta.Document-Structuring-Comment.postscript
+    - meta_content_scope: string.unquoted.DSC.postscript
+    - match: (?=$|\r|\f)
+      pop: true
+  repo_embedded:
+  - match: (?<![^/\s{}()<>\[\]%])\b(currentfile)\s+((?=\S)[^{}%]+?)\s+(readline)(?!\s*})\b(?![^/\s{}()<>\[\]%])(?:$\s*)?
+    captures:
+      1: keyword.operator.postscript
+      3: keyword.operator.postscript
+    push:
+    - meta_content_scope: string.unquoted.heredoc.postscript
+    - match: (?!)$
+      pop: true
+  - match: (?<![^/\s{}()<>\[\]%])\b(currentfile)\s*((/)ASCII85Decode)\s+(filter)\b(?![^/\s{}()<>\[\]%])([^}>\]%]*?(?:exec|image|readstring)\s*)$\s*+
+    captures:
+      1: keyword.operator.postscript
+      2: variable.other.literal.postscript
+      3: punctuation.definition.name.postscript
+      4: keyword.operator.postscript
+    push:
+    - meta_scope: meta.encrypted-source.base85.postscript
+    - meta_content_scope: string.other.base85.postscript
+    - match: ~>|(?=cleartomark|closefile)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.postscript
+  - match: (?<![^/\s{}()<>\[\]%])\b(currentfile)\s+(eexec)(?:$|(?=.*[\0-\x08\x14-\x31\x7F\x80-\x9F])(?=.{0,3}?[^A-Fa-f0-9]|\b[A-Fa-f0-9]))
+    captures:
+      1: keyword.operator.postscript
+      2: keyword.operator.postscript
+    push:
+    - meta_scope: meta.encrypted-source.eexec.postscript
+    - match: (cleartomark|closefile)\b(?![^/\s{}()<>\[\]%])|(?<=)(?=[^\s0-9A-Fa-f])
+      pop: true
+      captures:
+        1: keyword.operator.postscript
+    - match: (?=\s*$)
+      push:
+      - match: (?=\s*\S)
+        pop: true
+    - match: (?:|(?<=\n|^))\s*(?=\S)
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?!cleartomark|closefile)(?=.{0,3}?[^A-Fa-f0-9])
+        push:
+        - meta_scope: string.other.raw.binary.postscript
+        - meta_content_scope: sublimelinter.gutter-mark
+        - match: (?=\s*(?:cleartomark|closefile))
+          pop: true
+      - match: (?!cleartomark|closefile)(?=\s{0,3}?(?:[A-Fa-f0-9]))
+        push:
+        - meta_scope: string.other.hexadecimal.postscript
+        - match: (?=\s*[^A-Fa-f0-9\s]|cleartomark|closefile)
+          pop: true
+  repo_embeddedRow:
+  - match: ^[!-uz]{0,78}(~>)
+    scope: string.other.base85.postscript
+    captures:
+      1: punctuation.definition.string.end.postscript
+  - match: '(?x) ^
+
+      (?= [^%\[]*? \]
+
+      |   [^%(]*?   \)
+
+      |   [^%<]*?   >
+
+      |   .*? <(?!~|<) [A-Fa-f0-9]* [^~>A-Fa-f0-9]
+
+      ) [!-uz]{60,80} [^\S\r\n]* $'
+    push:
+    - meta_scope: string.other.base85.postscript
+    - match: ^[!-uz]{0,78}(~>)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.postscript
+  repo_extensions:
+  - match: (?<![^/\s{}()<>\[\]%])\b((?:current|set)distillerparams)\b(?![^/\s{}()<>\[\]%])
+    scope: keyword.operator.distiller.postscript
+  - match: '(?x) (?<![^/\s{}()<>\[\]%]) (?:\b|(?=\.))
+
+      ( \.activatepathcontrol
+
+      | \.addcontrolpath
+
+      | \.begintransparencygroup
+
+      | \.begintransparencymaskgroup
+
+      | \.bind
+
+      | \.bindnow
+
+      | \.currentalphaisshape
+
+      | \.currentblendmode
+
+      | \.currentfillconstantalpha
+
+      | \.currentopacityalpha
+
+      | \.currentoverprintmode
+
+      | \.currentpathcontrolstate
+
+      | \.currentshapealpha
+
+      | \.currentstrokeconstantalpha
+
+      | \.currenttextknockout
+
+      | \.dicttomark
+
+      | \.endtransparencygroup
+
+      | \.endtransparencymask
+
+      | \.fileposition
+
+      | \.genordered
+
+      | \.knownget
+
+      | \.locksafe
+
+      | \.max
+
+      | \.min
+
+      | \.PDFClose
+
+      | \.PDFDrawAnnots
+
+      | \.PDFDrawPage
+
+      | \.PDFFile
+
+      | \.PDFInfo
+
+      | \.PDFInit
+
+      | \.PDFMetadata
+
+      | \.PDFPageInfo
+
+      | \.PDFPageInfoExt
+
+      | \.PDFStream
+
+      | \.popdf14devicefilter
+
+      | \.pushpdf14devicefilter
+
+      | \.setalphaisshape
+
+      | \.setblendmode
+
+      | \.setdebug
+
+      | \.setfillconstantalpha
+
+      | \.setopacityalpha
+
+      | \.setoverprintmode
+
+      | \.setsafe
+
+      | \.setshapealpha
+
+      | \.setstrokeconstantalpha
+
+      | \.settextknockout
+
+      | \.shellarguments
+
+      | \.tempfile
+
+      | %Type1BuildChar
+
+      | %Type1BuildGlyph
+
+      | arccos
+
+      | arcsin
+
+      | copydevice
+
+      | copyscanlines
+
+      | currentdevice
+
+      | dopdfpages
+
+      | finddevice
+
+      | findlibfile
+
+      | findprotodevice
+
+      | getdeviceprops
+
+      | getenv
+
+      | makeimagedevice
+
+      | pdfclose
+
+      | pdfgetpage
+
+      | pdfopen
+
+      | pdfshowpage
+
+      | pdfshowpage_finish
+
+      | pdfshowpage_init
+
+      | pdfshowpage_setpage
+
+      | putdeviceprops
+
+      | runpdf
+
+      | runpdfbegin
+
+      | runpdfend
+
+      | runpdfpagerange
+
+      | setdevice
+
+      ) \b (?![^/\s{}()<>\[\]%])'
+    scope: keyword.operator.ghostscript.postscript
+  repo_hex:
+  - match: <
+    captures:
+      0: punctuation.definition.string.begin.postscript
+    push:
+    - meta_scope: string.other.hexadecimal.postscript
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.postscript
+    - match: '[^>0-9A-Fa-f\s]+'
+      scope: invalid.illegal.hexadecimal.char.postscript
+  repo_main:
+  - include: repo_string
+  - include: repo_comment
+  - include: repo_dictionary
+  - include: repo_array
+  - include: repo_procedure
+  - include: repo_base85
+  - include: repo_hex
+  - include: repo_radix
+  - include: repo_number
+  - include: repo_embedded
+  - include: repo_operators
+  - include: repo_extensions
+  - include: repo_compatibility
+  - include: repo_embeddedRow
+  - include: repo_names
+  repo_names:
+  - match: (//)[^()<>\[\]{}/%\s]*
+    scope: variable.other.constant.immediately-evaluated.postscript
+    captures:
+      1: punctuation.definition.name.postscript
+  - match: (/)[^()<>\[\]{}/%\s]*
+    scope: variable.other.constant.literal.postscript
+    captures:
+      1: punctuation.definition.name.postscript
+  - match: '[^()<>\[\]{}/%\s]+'
+    scope: variable.other.executable.postscript
+  repo_number:
+  - match: '[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?(?=$|[\s\[\]{}(/%<])'
+    scope: constant.numeric.postscript
+  repo_operators:
+  - match: '(?x) (?<![^/\s{}()<>\[\]%]) \b
+
+      ( GetHalftoneName
+
+      | GetPageDeviceName
+
+      | GetSubstituteCRD
+
+      | StartData
+
+      | StartData
+
+      | addglyph
+
+      | beginbfchar
+
+      | beginbfrange
+
+      | begincidchar
+
+      | begincidrange
+
+      | begincmap
+
+      | begincodespacerange
+
+      | beginnotdefchar
+
+      | beginnotdefrange
+
+      | beginrearrangedfont
+
+      | beginusematrix
+
+      | cliprestore
+
+      | clipsave
+
+      | composefont
+
+      | currentsmoothness
+
+      | currenttrapparams
+
+      | endbfchar
+
+      | endbfrange
+
+      | endcidchar
+
+      | endcidrange
+
+      | endcmap
+
+      | endcodespacerange
+
+      | endnotdefchar
+
+      | endnotdefrange
+
+      | endrearrangedfont
+
+      | endusematrix
+
+      | findcolorrendering
+
+      | removeall
+
+      | removeglyphs
+
+      | setsmoothness
+
+      | settrapparams
+
+      | settrapzone
+
+      | shfill
+
+      | usecmap
+
+      | usefont
+
+      ) \b (?![^/\s{}()<>\[\]%])'
+    scope: keyword.operator.level-3.postscript
+  - match: '(?x) (?<![^/\s{}()<>\[\]%]) \b
+
+      ( GlobalFontDirectory
+
+      | ISOLatin1Encoding
+
+      | SharedFontDirectory
+
+      | UserObjects
+
+      | arct
+
+      | colorimage
+
+      | configurationerror
+
+      | cshow
+
+      | currentblackgeneration
+
+      | currentcacheparams
+
+      | currentcmykcolor
+
+      | currentcolorrendering
+
+      | currentcolorscreen
+
+      | currentcolorspace
+
+      | currentcolortransfer
+
+      | currentcolor
+
+      | currentdevparams
+
+      | currentglobal
+
+      | currentgstate
+
+      | currenthalftone
+
+      | currentobjectformat
+
+      | currentoverprint
+
+      | currentpacking
+
+      | currentpagedevice
+
+      | currentshared
+
+      | currentstrokeadjust
+
+      | currentsystemparams
+
+      | currentundercolorremoval
+
+      | currentuserparams
+
+      | defineresource
+
+      | defineuserobject
+
+      | deletefile
+
+      | execform
+
+      | execuserobject
+
+      | filenameforall
+
+      | fileposition
+
+      | filter
+
+      | findencoding
+
+      | findresource
+
+      | gcheck
+
+      | globaldict
+
+      | glyphshow
+
+      | gstate
+
+      | ineofill
+
+      | infill
+
+      | instroke
+
+      | inueofill
+
+      | inufill
+
+      | inustroke
+
+      | languagelevel
+
+      | makepattern
+
+      | packedarray
+
+      | printobject
+
+      | product
+
+      | realtime
+
+      | rectclip
+
+      | rectfill
+
+      | rectstroke
+
+      | renamefile
+
+      | resourceforall
+
+      | resourcestatus
+
+      | revision
+
+      | rootfont
+
+      | scheck
+
+      | selectfont
+
+      | serialnumber
+
+      | setbbox
+
+      | setblackgeneration
+
+      | setcachedevice2
+
+      | setcacheparams
+
+      | setcmykcolor
+
+      | setcolorrendering
+
+      | setcolorscreen
+
+      | setcolorspace
+
+      | setcolortransfer
+
+      | setcolor
+
+      | setdevparams
+
+      | setfileposition
+
+      | setglobal
+
+      | setgstate
+
+      | sethalftone
+
+      | setobjectformat
+
+      | setoverprint
+
+      | setpacking
+
+      | setpagedevice
+
+      | setpattern
+
+      | setshared
+
+      | setstrokeadjust
+
+      | setsystemparams
+
+      | setucacheparams
+
+      | setundercolorremoval
+
+      | setuserparams
+
+      | setvmthreshold
+
+      | shareddict
+
+      | startjob
+
+      | uappend
+
+      | ucachestatus
+
+      | ucache
+
+      | ueofill
+
+      | ufill
+
+      | undefinedresource
+
+      | undefinefont
+
+      | undefineresource
+
+      | undefineuserobject
+
+      | undef
+
+      | upath
+
+      | ustrokepath
+
+      | ustroke
+
+      | vmreclaim
+
+      | writeobject
+
+      | xshow
+
+      | xyshow
+
+      | yshow
+
+      ) \b (?![^/\s{}()<>\[\]%])'
+    scope: keyword.operator.level-2.postscript
+  - match: '(?x) (?<![^/\s{}()<>\[\]%]) \b
+
+      ( FontDirectory
+
+      | StandardEncoding
+
+      | VMerror
+
+      | abs
+
+      | add
+
+      | aload
+
+      | anchorsearch
+
+      | and
+
+      | arcn
+
+      | arcto
+
+      | arc
+
+      | array
+
+      | ashow
+
+      | astore
+
+      | atan
+
+      | awidthshow
+
+      | begin
+
+      | bind
+
+      | bitshift
+
+      | bytesavailable
+
+      | cachestatus
+
+      | ceiling
+
+      | charpath
+
+      | cleardictstack
+
+      | cleartomark
+
+      | clear
+
+      | clippath
+
+      | clip
+
+      | closefile
+
+      | closepath
+
+      | colorimage
+
+      | concatmatrix
+
+      | concat
+
+      | condition
+
+      | copypage
+
+      | copy
+
+      | cos
+
+      | countdictstack
+
+      | countexecstack
+
+      | counttomark
+
+      | count
+
+      | currentcontext
+
+      | currentdash
+
+      | currentdict
+
+      | currentfile
+
+      | currentflat
+
+      | currentfont
+
+      | currentgray
+
+      | currenthalftonephase
+
+      | currenthsbcolor
+
+      | currentlinecap
+
+      | currentlinejoin
+
+      | currentlinewidth
+
+      | currentmatrix
+
+      | currentmiterlimit
+
+      | currentpoint
+
+      | currentrgbcolor
+
+      | currentscreen
+
+      | currenttransfer
+
+      | curveto
+
+      | cvi
+
+      | cvlit
+
+      | cvn
+
+      | cvrs
+
+      | cvr
+
+      | cvs
+
+      | cvx
+
+      | defaultmatrix
+
+      | definefont
+
+      | defineusername
+
+      | def
+
+      | detach
+
+      | deviceinfo
+
+      | dictfull
+
+      | dictstackoverflow
+
+      | dictstackunderflow
+
+      | dictstack
+
+      | dict
+
+      | div
+
+      | dtransform
+
+      | dup
+
+      | echo
+
+      | eexec
+
+      | end
+
+      | eoclip
+
+      | eofill
+
+      | eoviewclip
+
+      | eq
+
+      | erasepage
+
+      | errordict
+
+      | exch
+
+      | execstackoverflow
+
+      | execstack
+
+      | executeonly
+
+      | executive
+
+      | exec
+
+      | exitserver
+
+      | exit
+
+      | exp
+
+      | false
+
+      | file
+
+      | fill
+
+      | findfont
+
+      | flattenpath
+
+      | floor
+
+      | flushfile
+
+      | flush
+
+      | forall
+
+      | fork
+
+      | for
+
+      | getinterval
+
+      | get
+
+      | ge
+
+      | grestoreall
+
+      | grestore
+
+      | gsave
+
+      | gt
+
+      | handleerror
+
+      | identmatrix
+
+      | idiv
+
+      | idtransform
+
+      | ifelse
+
+      | if
+
+      | imagemask
+
+      | image
+
+      | index
+
+      | initclip
+
+      | initgraphics
+
+      | initmatrix
+
+      | initviewclip
+
+      | internaldict
+
+      | interrupt
+
+      | invalidaccess
+
+      | invalidcontext
+
+      | invalidexit
+
+      | invalidfileaccess
+
+      | invalidfont
+
+      | invalidid
+
+      | invalidrestore
+
+      | invertmatrix
+
+      | ioerror
+
+      | itransform
+
+      | known
+
+      | kshow
+
+      | length
+
+      | le
+
+      | limitcheck
+
+      | lineto
+
+      | ln
+
+      | load
+
+      | lock
+
+      | log
+
+      | loop
+
+      | lt
+
+      | makefont
+
+      | mark
+
+      | matrix
+
+      | maxlength
+
+      | mod
+
+      | monitor
+
+      | moveto
+
+      | mul
+
+      | neg
+
+      | newpath
+
+      | ne
+
+      | noaccess
+
+      | nocurrentpoint
+
+      | notify
+
+      | not
+
+      | nulldevice
+
+      | null
+
+      | or
+
+      | pathbbox
+
+      | pathforall
+
+      | pdfmark
+
+      | pop
+
+      | print
+
+      | prompt
+
+      | pstack
+
+      | putinterval
+
+      | put
+
+      | quit
+
+      | rand
+
+      | rangecheck
+
+      | rcheck
+
+      | rcurveto
+
+      | readhexstring
+
+      | readline
+
+      | readonly
+
+      | readstring
+
+      | read
+
+      | rectviewclip
+
+      | repeat
+
+      | resetfile
+
+      | restore
+
+      | reversepath
+
+      | rlineto
+
+      | rmoveto
+
+      | roll
+
+      | rotate
+
+      | round
+
+      | rrand
+
+      | run
+
+      | save
+
+      | scalefont
+
+      | scale
+
+      | search
+
+      | serverdict
+
+      | setcachedevice
+
+      | setcachelimit
+
+      | setcharwidth
+
+      | setdash
+
+      | setflat
+
+      | setfont
+
+      | setgray
+
+      | sethalftonephase
+
+      | sethsbcolor
+
+      | setlinecap
+
+      | setlinejoin
+
+      | setlinewidth
+
+      | setmatrix
+
+      | setmiterlimit
+
+      | setrgbcolor
+
+      | setscreen
+
+      | settransfer
+
+      | showpage
+
+      | show
+
+      | sin
+
+      | sqrt
+
+      | srand
+
+      | stackoverflow
+
+      | stackunderflow
+
+      | stack
+
+      | start
+
+      | statusdict
+
+      | status
+
+      | stopped
+
+      | stop
+
+      | store
+
+      | stringwidth
+
+      | string
+
+      | strokepath
+
+      | stroke
+
+      | sub
+
+      | syntaxerror
+
+      | systemdict
+
+      | timeout
+
+      | token
+
+      | transform
+
+      | translate
+
+      | true
+
+      | truncate
+
+      | typecheck
+
+      | type
+
+      | undefinedfilename
+
+      | undefinedresult
+
+      | undefined
+
+      | unmatchedmark
+
+      | unregistered
+
+      | userdict
+
+      | usertime
+
+      | version
+
+      | viewclippath
+
+      | viewclip
+
+      | vmstatus
+
+      | wait
+
+      | wcheck
+
+      | where
+
+      | widthshow
+
+      | writehexstring
+
+      | writestring
+
+      | write
+
+      | wtranslation
+
+      | xcheck
+
+      | xor
+
+      | yield
+
+      ) \b (?![^/\s{}()<>\[\]%])
+
+      |
+
+      # Stuff that starts with a non-word character
+
+      (?<=^|[/\s{}()<>\[\]%])
+
+      (=?=|\$error)
+
+      (?=$|[/\s{}()<>\[\]%])'
+    scope: keyword.operator.level-1.postscript
+  - match: (?<![^/\s{}()<>\[\]%])\b(banddevice|framedevice|renderbands)\b(?![^/\s{}()<>\[\]%])
+    scope: keyword.operator.level-1.obsolete.postscript
+  repo_procedure:
+  - match: '{'
+    captures:
+      0: punctuation.definition.procedure.begin.postscript
+    push:
+    - meta_scope: meta.procedure.postscript
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.procedure.end.postscript
+    - include: repo_main
+  repo_radix:
+  - match: '[0-3]?[0-9]#[0-9a-zA-Z]+'
+    scope: constant.numeric.radix.postscript
+  repo_specialFiles:
+  - match: (%)([-\w]+)(?=%|\)|$)(%)?
+    captures:
+      1: punctuation.definition.device-name.begin.postscript
+      3: punctuation.definition.device-name.end.postscript
+  - match: (%)(stderr|stdin|stdout)(?=\)|$)
+    captures:
+      1: punctuation.definition.special-file.begin.postscript
+      3: punctuation.definition.special-file.end.postscript
+  - match: (%)(lineedit|statementedit)(?=\)|$)
+    captures:
+      1: punctuation.definition.special-file.begin.postscript
+      3: punctuation.definition.special-file.end.postscript
+  repo_string:
+  - match: \(
+    captures:
+      0: punctuation.definition.string.begin.postscript
+    push:
+    - meta_scope: string.other.postscript
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.postscript
+    - include: repo_stringInnards
+  repo_stringInnards:
+  - include: repo_specialFiles
+  - match: \\[0-7]{1,3}
+    scope: constant.numeric.octal.postscript
+  - match: \\(\\|[bfnrt()]|[0-7]{1,3}|\r?\n)
+    scope: constant.character.escape.postscript
+  - match: \\
+    scope: invalid.illegal.unknown-escape.postscript.ignored
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_stringInnards

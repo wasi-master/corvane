@@ -1,0 +1,147 @@
+%YAML 1.2
+---
+# Jasmin (source.jasmin): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/atmarksharp/jasmin-sublime via GitHub Linguist v9.7.0 (license: wtfpl).
+name: Jasmin
+scope: source.jasmin
+file_extensions:
+- j
+contexts:
+  main:
+  - include: repo_class-def
+  - include: repo_interface-def
+  - include: repo_super-def
+  - include: repo_implements-def
+  - include: repo_method-def
+  - include: repo_field-def
+  - include: repo_var-def
+  - include: repo_comment
+  - include: repo_directive
+  - include: repo_modifier
+  - include: repo_type-descriptor
+  - include: repo_double-string
+  - include: repo_number
+  - include: repo_label
+  - include: repo_true-false-null
+  - include: repo_control
+  repo_class-def:
+  - match: (?=\.class)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - include: repo_modifier
+    - include: repo_directive
+    - match: ([\w/]+)(?=$|\s+(?:;.*)?$)
+      captures:
+        1: entity.name.type.jasmin
+  repo_comment:
+  - match: "(?<=^|[ \t]);.*"
+    scope: comment.line.jasmin
+  repo_control:
+  - match: (?<=^|\s)return(?=$|\s)
+    scope: keyword.control.jasmin
+  repo_directive:
+  - match: (?<=^|\s)\.(?:catch|class|end method|field|implements|interface|limit|line|method|source|super|throws|var)(?=$|\s)
+    scope: keyword.meta.directive.jasmin
+  repo_double-string:
+  - match: '"'
+    captures:
+      0: string.begin.jasmin
+    push:
+    - match: '"'
+      pop: true
+      captures:
+        0: string.end.jasmin
+    - match: \\.
+      scope: constant.character.escape.jasmin
+    - match: .
+      scope: string.double.jasmin
+  repo_field-def:
+  - match: (?=\.field)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - include: repo_modifier
+    - include: repo_directive
+    - include: repo_number
+    - include: repo_double-string
+    - include: repo_type-descriptor
+    - match: ([\w/]+)\s+((?:\[+)?(?:L[/\w_]+;|[BCDFIJSZV]))(?=(\s+)?[=]|(\s+)?$|\s+;)
+      captures:
+        1: variable.parameter.jasmin
+        2: storage.type.type-descriptor.jasmin
+  repo_implements-def:
+  - match: (?=\.implements)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - match: (\.implements)\s+([\w/]+)
+      captures:
+        1: keyword.meta.directive.jasmin
+        2: entity.other.inherited-class.jasmin
+  repo_interface-def:
+  - match: (?=\.interface)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - include: repo_modifier
+    - include: repo_directive
+    - match: ([\w/]+)(?=$|\s+(?:;.*)?$)
+      captures:
+        1: entity.name.type.jasmin
+  repo_label:
+  - match: '^[^0-9][^=^:."-]*:'
+    scope: keyword.meta.label.jasmin
+  repo_method-def:
+  - match: (?=\.method)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - include: repo_modifier
+    - include: repo_directive
+    - include: repo_type-descriptor
+    - match: ([\w/<>]+)(?=\()
+      captures:
+        1: entity.name.function.jasmin
+  repo_modifier:
+  - match: (?<=^|\s)(?:final|static|abstract|public|friend|protected|private)(?=$|\s)
+    scope: storage.modifier.jasmin
+  repo_number:
+  - match: (?<=^|[\s(,=])[-+]?(?:[1-9][0-9]*|[-+]?(?:0?\.|[1-9]\.)[0-9]+|0x[0-9A-F]+|0)(?=$|[\s,)=])
+    scope: constant.numeric.jasmin
+  repo_super-def:
+  - match: (?=\.super)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - match: (\.super)\s+([\w/]+)
+      captures:
+        1: keyword.meta.directive.jasmin
+        2: entity.other.inherited-class.jasmin
+  repo_true-false-null:
+  - match: (?<=^|[\s(,])(?:null|false|true)(?=$|[\s,)])
+    scope: constant.language.jasmin
+  repo_type-descriptor:
+  - match: (?<=^|[\s()=,])(?:(?:\[+)?(?:L[/\w_]+;|[BCDFIJSZV]))(?=$|[\s,)=])
+    scope: storage.type.type-descriptor.jasmin
+  repo_var-def:
+  - match: (?=\.var)
+    push:
+    - match: $
+      pop: true
+    - include: repo_comment
+    - match: (\.var)\s+([1-9][0-9]*|[0])\s+(is)\s+([\w_]+)\s+((?:\[+)?(?:L[/\w_]+;|[BCDFIJSZV]))\s+(from)\s+(?:[\w_]+)\s+(to)\s+(?:[\w_]+)
+      captures:
+        1: keyword.meta.directive.jasmin
+        2: constant.numeric.jasmin
+        3: keyword.meta.is.jasmin
+        4: variable.parameter.jasmin
+        5: storage.type.type-descriptor.jasmin
+        6: keyword.meta.from.jasmin
+        7: keyword.meta.to.jasmin

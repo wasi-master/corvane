@@ -1,0 +1,362 @@
+%YAML 1.2
+---
+# Red (source.red): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Oldes/Sublime-Red via GitHub Linguist v9.7.0 (license: mit).
+name: Red
+scope: source.red
+file_extensions:
+- red
+- reds
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_type-literal
+  - include: repo_strings
+  - include: repo_values
+  - include: repo_words
+  repo_binary-base-sixteen:
+  - match: (16)?#\{
+    captures:
+      0: string.binary.prefix
+    push:
+    - meta_scope: binary.base16.red
+    - match: \}
+      pop: true
+      captures:
+        0: string.binary.prefix
+    - match: ;.*?$
+      scope: comment.line.red
+    - match: '[0-9a-fA-F\s]*'
+      scope: string.binary.base16.red
+    - match: .
+      scope: invalid.illegal.red
+  repo_binary-base-sixtyfour:
+  - match: 64#\{
+    captures:
+      0: string.binary.prefix
+    push:
+    - meta_scope: binary.base64.red
+    - match: \}
+      pop: true
+      captures:
+        0: string.binary.prefix
+    - match: ;.*?$
+      scope: comment.line.red
+    - match: '[0-9a-zA-Z+/=\s]*'
+      scope: string.binary.base64.red
+    - match: .
+      scope: invalid.illegal.red
+  repo_binary-base-two:
+  - match: 2#\{
+    captures:
+      0: string.binary.prefix
+    push:
+    - meta_scope: binary.base2.red
+    - match: \}
+      pop: true
+      captures:
+        0: string.binary.prefix
+    - match: ;.*?$
+      scope: comment.line.red
+    - match: '[01\s]*'
+      scope: string.binary.base2.red
+    - match: .
+      scope: invalid.illegal.red
+  repo_character:
+  - match: '#"(\^(\(([0-9a-fA-F]+|del)\)|.)|[^\^\"])"'
+    scope: string.character.red
+  repo_character-html:
+  - match: (&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)
+    scope: constant.character.entity.html
+    captures:
+      0: punctuation.definition.entity.html
+      2: punctuation.definition.entity.html
+  repo_character-inline:
+  - match: \^(\(([0-9a-fA-F]+|del)\)|.)
+    scope: string.escaped.red
+  repo_comment-docline:
+  - match: ;-.*?(?=\%>|$)
+    scope: comment.docline.red
+  repo_comment-line:
+  - match: ;.*?(?=\%>|$)
+    scope: comment.line.red
+  repo_comment-multiline-block:
+  - match: comment\s*\[
+    push:
+    - meta_scope: comment.multiline.red
+    - match: \]
+      pop: true
+    - include: repo_comment-multiline-block-string
+    - include: repo_comment-multiline-string-nested
+    - include: repo_comment-multiline-block-nested
+  repo_comment-multiline-block-nested:
+  - match: \[
+    push:
+    - meta_scope: comment.multiline.red
+    - match: \]
+      pop: true
+    - include: repo_comment-multiline-block-string
+    - include: repo_comment-multiline-string-nested
+    - include: repo_comment-multiline-block-nested
+  repo_comment-multiline-block-string:
+  - match: '"'
+    push:
+    - meta_scope: comment.multiline.red
+    - match: '"'
+      pop: true
+    - match: \^.
+  repo_comment-multiline-string:
+  - match: comment\s*\{
+    push:
+    - meta_scope: comment.multiline.red
+    - match: \}
+      pop: true
+    - match: \^.
+    - include: repo_comment-multiline-string-nested
+  repo_comment-multiline-string-nested:
+  - match: \{
+    push:
+    - meta_scope: comment.multiline.red
+    - match: \}
+      pop: true
+    - match: \^.
+    - include: repo_comment-multiline-string-nested
+  repo_comment-todo:
+  - match: ;@@.*?(?=\%>|$)
+    scope: comment.todo.red
+  repo_comments:
+  - include: repo_comment-docline
+  - include: repo_comment-todo
+  - include: repo_comment-line
+  - include: repo_comment-multiline-string
+  - include: repo_comment-multiline-block
+  repo_doublequotedString:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.xml
+    - match: '"'
+      pop: true
+  repo_function-definition:
+  - match: ([A-Za-z=\!\?\*_\+][A-Za-z0-9=_\-\!\?\*\+\.~']*):\s+(?i)(function|func|funct|routine|has)\s*(\[)
+    captures:
+      1: support.variable.function.red
+      2: keyword.function
+      3: support.strong
+    push:
+    - meta_scope: function.definition
+    - match: ']'
+      pop: true
+      captures:
+        0: support.strong
+    - include: repo_function-definition-block
+    - include: repo_comments
+    - include: repo_strings
+    - include: repo_word-setword
+    - include: repo_word-datatype
+    - include: repo_word-refinement
+  repo_function-definition-block:
+  - match: \[
+    push:
+    - meta_scope: function.definition.block
+    - match: ']'
+      pop: true
+    - include: repo_comments
+    - include: repo_word-datatype
+  repo_function-definition-does:
+  - match: ([A-Za-z=\!\?\*_\+][A-Za-z0-9=_\-\!\?\*\+\.]*):\s+(?i)(does|context)(?=\s*|\[)
+    scope: function.definition.does
+    captures:
+      1: support.variable.function.red
+      2: keyword.function
+  repo_parens:
+  - match: (\[|\]|\(|\))
+    scope: keyword.operator.comparison
+  repo_rsp-tag:
+  - match: <%=
+    push:
+    - meta_scope: source.red
+    - match: '%>'
+      pop: true
+    - include: main
+  repo_singlequotedString:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.xml
+    - match: ''''
+      pop: true
+  repo_string-email:
+  - match: '[^\s\n:/\[\]\(\)]+@[^\s\n:/\[\]\(\)]+'
+    scope: string.email.red
+  repo_string-file:
+  - match: '%[^\s\n\[\]\(\)]+'
+    scope: string.file.red
+  repo_string-file-quoted:
+  - match: '%"'
+    captures:
+      0: string.file.quoted.red
+    push:
+    - meta_scope: string.file.quoted.red
+    - match: '"'
+      pop: true
+      captures:
+        0: string.file.quoted.red
+    - match: '%[A-Fa-f0-9]{2}'
+      scope: string.escape.ssraw
+  repo_string-issue:
+  - match: '#[^\s\n\[\]\(\)\/]*'
+    scope: string.issue.red
+  repo_string-multiline:
+  - match: \{
+    push:
+    - meta_scope: string.multiline.red
+    - match: \}
+      pop: true
+    - include: repo_rsp-tag
+    - include: repo_character-inline
+    - include: repo_character-html
+    - include: repo_string-nested-multiline
+  repo_string-nested-multiline:
+  - match: \{
+    push:
+    - meta_scope: string.multiline.red
+    - match: \}
+      pop: true
+    - include: repo_string-nested-multiline
+  repo_string-quoted:
+  - match: '"'
+    push:
+    - meta_scope: string.red
+    - match: '"'
+      pop: true
+    - include: repo_rsp-tag
+    - include: repo_character-inline
+    - include: repo_character-html
+  repo_string-tag:
+  - match: <(?:\/|%\=?\ )?(?:([-_a-zA-Z0-9]+):)?([-_a-zA-Z0-9:]+)
+    captures:
+      0: entity.other.namespace.xml
+      1: entity.name.tag.xml
+    push:
+    - meta_scope: entity.tag.red
+    - match: (?:\s/|\ %)?>
+      pop: true
+    - match: ' (?:([-_a-zA-Z0-9]+):)?([_a-zA-Z-]+)'
+      captures:
+        0: entity.other.namespace.xml
+        1: entity.other.attribute-name.xml
+    - include: repo_singlequotedString
+    - include: repo_doublequotedString
+  repo_string-url:
+  - match: '[A-Za-z][\w]{1,9}:(/{0,3}[^\s\n\[\]\(\)]+|//)'
+    scope: string.url.red
+  repo_strings:
+  - include: repo_character
+  - include: repo_string-quoted
+  - include: repo_string-multiline
+  - include: repo_string-tag
+  - include: repo_string-file-quoted
+  - include: repo_string-file
+  - include: repo_string-url
+  - include: repo_string-email
+  - include: repo_binary-base-two
+  - include: repo_binary-base-sixtyfour
+  - include: repo_binary-base-sixteen
+  - include: repo_string-issue
+  repo_type-literal:
+  - match: '#\[(?:(\w+!)|(true|false|none))'
+    captures:
+      0: native.datatype.red
+      1: logic.red
+    push:
+    - meta_scope: series.literal.red
+    - match: ']'
+      pop: true
+    - include: main
+  repo_value-date:
+  - match: \d{1,2}\-([A-Za-z]{3}|January|Febuary|March|April|May|June|July|August|September|October|November|December)\-\d{4}(/\d{1,2}[:]\d{1,2}([:]\d{1,2}(\.\d{1,5})?)?([+-]\d{1,2}[:]\d{1,2})?)?
+    scope: date.red
+    captures:
+      1: time.red
+  repo_value-money:
+  - match: (?<!\w)-?[a-zA-Z]*\$\d+(\.\d*)?
+    scope: number.money.red
+  repo_value-number:
+  - match: (?<!\w|\.)([-+]?((\d+\.?\d*)|(\.\d+))((e|E)(\+|-)?\d+)?)(?=\W|$)
+    scope: constant.numeric.red
+  repo_value-number-hex:
+  - match: (?<=^|\s|\[|\]|\)|\()([0-9A-F]+)h(?=\s|\)|\]|/|;|\"|{\[|\(|$)
+    scope: number.red
+    captures:
+      1: constant.numeric.red
+  repo_value-pair:
+  - match: (?<!\w)[-+]?[[:digit:]]+[x][[:digit:]]+
+    scope: constant.pair.red
+  repo_value-time:
+  - match: ([-+]?[:]\d{1,2}([aApP][mM])?)|([-+]?[:]\d{1,2}[.]\d{0,9})|([-+]?\d{1,2}[:]\d{1,2}([aApP][mM])?)|([-+]?\d{1,2}[:]\d{1,2}[.]\d{0,9})|([-+]?\d{1,2}[:]\d{1,2}[:]\d{1,2}([.]\d{0,9})?([aApP][mM])?)(?!\w)
+    scope: time.red
+  repo_value-tuple:
+  - match: ([[:digit:]]{0,3}[.][[:digit:]]{0,3}[.][[:digit:]]{0,3}([.][[:digit:]]{0,3}){0,7})
+    scope: tuple.red
+  repo_values:
+  - include: repo_value-tuple
+  - include: repo_value-number
+  - include: repo_value-pair
+  - include: repo_value-money
+  - include: repo_value-number-hex
+  - include: repo_value-date
+  - include: repo_value-time
+  repo_word:
+  - match: (?<=^|\s|\[|\]|\)|\()[A-Za-z_\*\?=_-]+[A-Za-z_0-9=_\-\!\?\*\+\.~:']*(?=\s|\)|\]|/|;|\"|{|$)
+    scope: word.red
+  repo_word-datatype:
+  - match: (?<=^|\s|\[|\]|\)|\()([A-Za-z_0-9=_\-\?\*\+\.~:']+\!|as|to|as-float|as-integer|as-byte)(?=\s|\)|\]|$)
+    scope: support.type.red
+  repo_word-getword:
+  - match: (?<=^|\s|\[|\]|\)|\():[A-Za-z_0-9=_\-\!\?\*\+\.~:']+(?=\s|\)|\]|$)
+    scope: support.variable.getword.red
+  repo_word-group1:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(native|alias|all|any|as-string|as-binary|bind|bound\?|case|catch|checksum|comment|debase|dehex|exclude|difference|disarm|enbase|form|free|get|get-env|in|intersect|minimum-of|maximum-of|mold|new-line|new-line\?|not|now|prin|print|reduce|compose|construct|reverse|save|script\?|set|shift|throw|to-hex|trace|try|type\?|union|charset|unique|unprotect|unset|use|value\?|compress|decompress|secure|open|close|read|read-io|write-io|write|update|query|wait|input\?|exp|log-10|log-2|log-e|square-root|cosine|sine|tangent|arccosine|arcsine|arctangent|arctangent2|atan2|protect|lowercase|uppercase|entab|detab|connected\?|browse|launch|stats|get-modes|set-modes|to-local-file|to-rebol-file|encloak|decloak|create-link|do-browser|bind\?|hide|draw|show|size-text|textinfo|offset-to-caret|caret-to-offset|local-request-file|rgb-to-hsv|hsv-to-rgb|crypt-strength\?|dh-make-key|dh-generate-key|dh-compute-key|dsa-make-key|dsa-generate-key|dsa-make-signature|dsa-verify-signature|rsa-make-key|rsa-generate-key|rsa-encrypt)(?=\s|\(|\[|/|;|\"|{|$)
+    scope: support.function.red
+  repo_word-group2:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(if|either|unless|else|for|foreach|forall|remove-each|until|while|case|loop|repeat|switch)(?=\s|\(|\[|/|;|\"|{|$)
+    scope: support.function.group2.red
+  repo_word-group3:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(at|insert|append|tail|head|back|repend|next)(?=\s|\(|\[|\)|\]|/|;|\"|{|$)
+    scope: keyword.series.red
+  repo_word-group4:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(off|false|none|on|true|yes|no|null)(?=\s|\(|\[|\)|\]|;|\"|{|$)
+    scope: logic.red
+  repo_word-group5:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(halt|quit|exit|return|break|quit)(?=\s|\(|\[|/|;|\"|{|$)
+    scope: keyword.breaks.red
+  repo_word-litword:
+  - match: (?<=^|\s|\[|\]|\)|\()'[A-Za-z_0-9=_\-\!\?\*\+\.~:']+(?=\s|\)|\]|$)
+    scope: keyword.litword.red
+  repo_word-operator:
+  - match: (==|!=|<=|>=|<>|<|>|>>|>>>|<<|\+|-|=|\*|%|/|\b(and|or|xor))(?=\s|\(|\[|\)|\]|/|;|\"|{|$)
+    scope: keyword.operator.comparison
+  repo_word-reds-contexts:
+  - match: (?<=^|\s|\[|\]|\)|\()(?i)(_context|_function|_random|action|actions|bitset|block|char|datatype|error|file|function|get-path|get-word|hash|integer|issue|lit-path|lit-word|logic|native|natives|none|object|op|paren|path|platform|point|redbin|refinement|refinements|routine|set-path|set-word|string|symbol|system|typeset|unset|url|vector|word|interpreter|stack|words|float|binary|parser|unicode)(?=/)
+    scope: entity.other.inherited-class.red
+  repo_word-refinement:
+  - match: /[^\s\n\[\]\(\)]*
+    scope: keyword.refinement.red
+  repo_word-setword:
+  - match: '[^:\s\n\[\]\(\)]*:'
+    scope: support.variable.setword.red
+  repo_words:
+  - include: repo_function-definition
+  - include: repo_function-definition-does
+  - include: repo_word-refinement
+  - include: repo_word-operator
+  - include: repo_word-getword
+  - include: repo_word-setword
+  - include: repo_word-refinement
+  - include: repo_word-datatype
+  - include: repo_word-group4
+  - include: repo_word-reds-contexts
+  - include: repo_word-group1
+  - include: repo_word-group2
+  - include: repo_word-group3
+  - include: repo_word-group5
+  - include: repo_word

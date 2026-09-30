@@ -1,0 +1,60 @@
+%YAML 1.2
+---
+# Redirect Rules (source.redirects): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Nixinova/NovaGrammars via GitHub Linguist v9.7.0 (license: isc).
+name: Redirect Rules
+scope: source.redirects
+file_extensions:
+- _redirects
+contexts:
+  main:
+  - include: repo_main
+  repo_code:
+  - match: (?<==)[a-z]{2}(?:-[A-Z]{2})?(?=\s|$)
+    scope: string.unquoted.code.redirects
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.redirects
+    push:
+    - meta_scope: comment.line.hash.redirects
+    - match: $
+      pop: true
+  repo_main:
+  - include: repo_comment
+  - include: repo_uri
+  - include: repo_query
+  - include: repo_number
+  - include: repo_code
+  - include: repo_punct
+  - include: repo_text
+  repo_number:
+  - match: (\d+)(!)?
+    captures:
+      1: constant.numeric.integer.redirects
+      2: constant.character.force.redirects
+  repo_punct:
+  - match: :|=
+    scope: punctuation.accessor.redirects
+  - match: ',(?!\s)'
+    scope: punctuation.separator.redirects
+  repo_query:
+  - match: '[^\s]+(?==)'
+    scope: keyword.other.query-selector.redirects
+  repo_splat:
+  - match: :\w+
+    scope: variable.other.splat.redirects
+  repo_text:
+  - match: (?<==)[^\s]+
+    scope: string.unquoted.text.redirects
+  repo_uri:
+  - match: (?:[a-z]+:)?\/
+    push:
+    - meta_scope: string.unquoted.uri.redirects
+    - match: '[\s$]'
+      pop: true
+    - include: repo_wildcard
+    - include: repo_splat
+  repo_wildcard:
+  - match: \*
+    scope: constant.character.wildcard.redirects

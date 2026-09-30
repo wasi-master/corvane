@@ -1,0 +1,150 @@
+%YAML 1.2
+---
+# FreeBASIC (source.vbnet): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/angryant0007/VBDotNetSyntax via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: FreeBASIC
+scope: source.vbnet
+file_extensions:
+- bi
+- bas
+- rbbas
+- rbfrm
+- rbmnu
+- rbres
+- rbtbar
+- rbuistate
+- vbs
+contexts:
+  main:
+  - include: repo_comment-single-quote
+  - include: repo_comment-rem
+  - include: repo_keyword-a
+  - include: repo_keyword-b
+  - include: repo_keyword-c
+  - include: repo_keyword-d
+  - include: repo_keyword-e
+  - include: repo_keyword-f
+  - include: repo_keyword-g
+  - include: repo_keyword-h
+  - include: repo_keyword-i
+  - include: repo_keyword-j
+  - include: repo_keyword-k
+  - include: repo_keyword-l
+  - include: repo_keyword-m
+  - include: repo_keyword-n
+  - include: repo_keyword-o
+  - include: repo_keyword-p
+  - include: repo_keyword-r
+  - include: repo_keyword-s
+  - include: repo_keyword-t
+  - include: repo_keyword-u
+  - include: repo_keyword-v
+  - include: repo_keyword-w
+  - include: repo_keyword-x
+  - include: repo_keyword-y
+  - include: repo_integer-literal
+  - include: repo_floating-point-literal
+  - include: repo_character-literal
+  - include: repo_string-literal
+  - include: repo_date-literal
+  - include: repo_symbol
+  - include: repo_identifier
+  repo_character-literal:
+  - match: (?i:["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]|["\x{201C}\x{201D}]{2})["\x{201C}\x{201D}]C)
+    scope: string.quoted.double.vbnet
+  repo_comment-rem:
+  - match: (?i)(?<=[^_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Mn}\p{Mc}\p{Cf}\p{Pc}])REM((?=[\r|\n])| [^\r\n]*)
+    scope: comment.line.singlequote.vbnet
+  repo_comment-single-quote:
+  - match: '[''\x{2018}\x{2019}][^\r\n]*'
+    scope: comment.line.singlequote.vbnet
+  repo_date-literal:
+  - match: (#\s*(((((\d+/\d+/\d+)|(\d+-\d+-\d+))\s+(\d+:\d+(:\d+)?\s*(AM|PM)?)))|((\d+/\d+/\d+)|(\d+-\d+-\d+))|(\d+:\d+(:\d+)?\s*(AM|PM)?))\s*#)
+    scope: string.quoted.double.vbnet
+  repo_floating-point-literal:
+  - match: (?i:[0-9]*(\.[0-9]+)?((?<=[0-9])E[+-]?[0-9]+)?(?<=[0-9])[FRD@&#]?)
+    scope: string.quoted.double.vbnet
+  repo_identifier:
+  - match: (([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}]|_[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Mn}\p{Mc}\p{Cf}\p{Pc}])[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Mn}\p{Mc}\p{Cf}\p{Pc}]*[%&@!#$]?|\[([\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}]|_[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Mn}\p{Mc}\p{Cf}\p{Pc}])[_\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Mn}\p{Mc}\p{Cf}\p{Pc}]*\])
+    scope: variable.other.namespace-alias.vbnet
+  repo_integer-literal:
+  - match: (?i)(&H[0-9A-F]+|&O[0-7]+|&B[0-1]+|[0-9]+)(S|I|L|US|UI|UL|%|!)?
+    scope: string.quoted.double.vbnet
+  repo_keyword-a:
+  - match: (?i)(?<![.!])(AddHandler|AddressOf|Aggregate|Alias|And|AndAlso|Ansi|As|Ascending|Assembly|Async(?=\s+(Sub|Function))|Auto|Await)\b
+    scope: keyword.other.vbnet
+  repo_keyword-b:
+  - match: (?i)(?<![.!])((?<=Compare)\s+Binary|Boolean|ByRef|Byte|ByVal)\b
+    scope: keyword.other.vbnet
+  repo_keyword-c:
+  - match: (?i)(?<![.!])(Call|Case|Catch|CBool|CByte|CChar|CDate|CDbl|CDec|Char|CInt|Class|CLng|CObj|(?<=Option\s)Compare|Const|Continue|CShort|CSng|CStr|CType|Custom(?=\s+Event))\b
+    scope: keyword.other.vbnet
+  repo_keyword-d:
+  - match: (?i)(?<![.!])(Date|Decimal|Declare|Default|Delegate|Descending|Dim|DirectCast|Distinct|Do|Double)\b
+    scope: keyword.other.vbnet
+  repo_keyword-e:
+  - match: (?i)(?<![.!])(Each|Else|ElseIf|End|EndIf|Enum|Equals|Erase|Error|Event|Exit|(?<=Option)\s+Explicit)\b
+    scope: keyword.other.vbnet
+  repo_keyword-f:
+  - match: (?i)(?<![.!])(False|Finally|For|Friend|From(?=\s+{)|From|Function)\b
+    scope: keyword.other.vbnet
+  repo_keyword-g:
+  - match: (?i)(?<![.!])(Get|GetType|Global|GoSub|GoTo|Group\s+By|Group)\b
+    scope: keyword.other.vbnet
+  repo_keyword-h:
+  - match: (?i)(?<![.!])(Handles)\b
+    scope: keyword.other.vbnet
+  repo_keyword-i:
+  - match: (?i)(?<![.!])(If|Implements|Imports|In|(?<=Option)\s+Infer|Inherits|Integer|Interface|Into|Is|IsNot|Iterator(?=\s+(Function|Property)))\b
+    scope: keyword.other.vbnet
+  repo_keyword-j:
+  - match: (?i)(?<![.!])(Join)\b
+    scope: keyword.other.vbnet
+  repo_keyword-k:
+  - match: (?i)(?<![.!])(Key)\b
+    scope: keyword.other.vbnet
+  repo_keyword-l:
+  - match: (?i)(?<![.!])(Let|Lib|Like|Long|Loop)\b
+    scope: keyword.other.vbnet
+  repo_keyword-m:
+  - match: (?i)(?<![.!])(Me|Mod|Module|MustInherit|MustOverride|MyBase|MyClass)\b
+    scope: keyword.other.vbnet
+  repo_keyword-n:
+  - match: (?i)(?<![.!])(NameOf|Namespace|Narrowing|New|Next|Not|Nothing|NotInheritable|NotOverridable)\b
+    scope: keyword.other.vbnet
+  repo_keyword-o:
+  - match: (?i)(?<![.!])(Object|Of|(?<=Explicit|Infer|Strict)\s+Off|On|Operator|Option|Optional|Or|Order\s+By|OrElse|Out|Overloads|Overridable|Overrides)\b
+    scope: keyword.other.vbnet
+  repo_keyword-p:
+  - match: (?i)(?<![.!])(ParamArray|Partial(?=\s+(Class|Structure|Module|Interface))|Partial(?=\s+(Class|Structure|Module|Interface|Sub|Public|Private|Protected|Friend|MustInherit|NotInheritable|NotOverrideable|Overridable|Shared))|Preserve|Private|Property|Protected|Public)\b
+    scope: keyword.other.vbnet
+  repo_keyword-r:
+  - match: (?i)(?<![.!])(RaiseEvent|ReadOnly|ReDim|(?<=#|#End\s)Region|RemoveHandler|Resume|Return)\b
+    scope: keyword.other.vbnet
+  repo_keyword-s:
+  - match: (?i)(?<![.!])(Select|Set|Shadows|Shared|Short|Single|Skip|Static|Step|Stop|(?<=Option)\s+Strict|String|Structure|Sub|SyncLock)\b
+    scope: keyword.other.vbnet
+  repo_keyword-t:
+  - match: (?i)(?<![.!])(Take|(?<=Compare)\s+Text|Then|Throw|To|True|Try|TryCast|TypeOf)\b
+    scope: keyword.other.vbnet
+  repo_keyword-u:
+  - match: (?i)(?<![.!])(Unicode|Until|Using)\b
+    scope: keyword.other.vbnet
+  repo_keyword-v:
+  - match: (?i)(?<![.!])(Variant)\b
+    scope: keyword.other.vbnet
+  repo_keyword-w:
+  - match: (?i)(?<![.!])(Wend|When|Where|While|Widening|With|WithEvents|WriteOnly)\b
+    scope: keyword.other.vbnet
+  repo_keyword-x:
+  - match: (?i)(?<![.!])(Xor)\b
+    scope: keyword.other.vbnet
+  repo_keyword-y:
+  - match: (?i)(?<![.!])(Yield)\b
+    scope: keyword.other.vbnet
+  repo_string-literal:
+  - match: (["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]|["\x{201C}\x{201D}]{2})*["\x{201C}\x{201D}])
+    scope: string.quoted.double.vbnet
+  repo_symbol:
+  - match: (([&*+\-/\\^<=>])|([(){}!#,.:]|((?<= )_(?=\s$)))|\?)
+    scope: variable.other.namespace-alias.vbnet

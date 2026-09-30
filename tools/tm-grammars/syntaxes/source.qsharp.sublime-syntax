@@ -1,0 +1,743 @@
+%YAML 1.2
+---
+# Q# (source.qsharp): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/microsoft/qsharp.git via GitHub Linguist v9.7.0 (license: mit).
+name: Q#
+scope: source.qsharp
+file_extensions:
+- qs
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_attributes
+  - include: repo_namespace-declaration
+  - include: repo_import-export-directive
+  - include: repo_new-expression
+  - include: repo_struct-declaration
+  - include: repo_member-access
+  - include: repo_tuple-binding
+  - include: repo_keywords
+  - include: repo_library-invocation
+  - include: repo_library
+  - include: repo_operations
+  - include: repo_types
+  - include: repo_literals
+  - include: repo_strings
+  - include: repo_callable-invocation
+  - include: repo_callable-declaration
+  - include: repo_udt-declaration
+  - include: repo_array-creation-expression
+  - include: repo_local-declaration
+  - include: repo_array-assignment
+  - include: repo_local-assignment
+  - include: repo_quantum-declaration
+  - include: repo_if-statement
+  - include: repo_parenthesized-expression
+  - include: repo_expression-operators
+  - include: repo_declaration-keywords
+  - include: repo_identifier
+  repo_argument:
+  - include: repo_expression
+  repo_argument-list:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.open.qsharp
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.close.qsharp
+    - include: repo_argument
+    - include: repo_punctuation-comma
+  repo_array-assignment:
+  - match: '(?x)
+
+      \b(set)\b\s*
+
+      ([_[:alpha:]][_[:alnum:]]*)\b\s*
+
+      (?:(=)\s*([_[:alpha:]][_[:alnum:]]*)\b\s*(w\/)|(w\/=))'
+    captures:
+      1: keyword.other.set.qsharp
+      2: entity.name.variable.local.qsharp
+      3: keyword.operator.assignment.qsharp
+      4: entity.name.variable.local.qsharp
+      5: keyword.operator.assignment.qsharp
+      6: keyword.operator.assignment.qsharp
+    push:
+    - match: (?=;|\)|})
+      pop: true
+    - match: <-
+      scope: keyword.operator.assignment.qsharp
+    - include: repo_expression
+  repo_array-creation-expression:
+  - match: (?<!\w)\[
+    captures:
+      0: punctuation.squarebracket.open.qsharp
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.squarebracket.close.qsharp
+    - match: \b(size)\s*(?=\=)
+      captures:
+        1: keyword.other.size.qsharp
+      push:
+      - match: (?=\])
+        pop: true
+      - include: repo_expression
+    - include: repo_argument
+    - include: repo_punctuation-comma
+  repo_attributes:
+  - match: (@)([_[:alpha:]][_[:alnum:]]*)\s*(?=\()
+    captures:
+      1: punctuation.definition.attribute.qsharp
+      2: entity.name.function.attribute.qsharp
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_argument-list
+  - match: (@)([_[:alpha:]][_[:alnum:]]*)
+    captures:
+      1: punctuation.definition.attribute.qsharp
+      2: entity.name.function.attribute.qsharp
+  repo_boolean-literal:
+  - match: (?<!\.)\btrue\b
+    scope: constant.language.boolean.true.qsharp
+  - match: (?<!\.)\bfalse\b
+    scope: constant.language.boolean.false.qsharp
+  repo_callable-declaration:
+  - match: '(?x)
+
+      \b(operation|function)\b\s+
+
+      ([_[:alpha:]][_[:alnum:]]*)\s*                      # callable name
+
+      (?<type_args>\s*<([^<>]|\g<type_args>)+>\s*)?\s*    # type arguments
+
+      (?=\()                                              # open parentheses of argument list'
+    captures:
+      1: keyword.other.callable.qsharp
+      2: entity.name.function.qsharp
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_parameter-list
+  repo_callable-invocation:
+  - match: '(?x)
+
+      (?:(\:\:|\.)\s*)?                                   # preceding member access (:: or .)
+
+      (?!(?:let|mutable|set|use|borrow|new|fixup|for|in|while|repeat|until|return|fail|within|apply|if|elif|else|not|and|or|namespace|import|export|open|operation|function|struct|newtype|internal|is)\b)
+
+      ([_[:alpha:]][_[:alnum:]]*)\s*                      # callable name (not a keyword)
+
+      (?<type_args>\s*<([^<>]|\g<type_args>)+>\s*)?\s*    # type arguments
+
+      (?=\()                                              # open parentheses of argument list'
+    captures:
+      1: punctuation.accessor.qsharp
+      2: entity.name.function.qsharp
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_argument-list
+  repo_comments:
+  - match: (^\s+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.qsharp
+    push:
+    - match: (?=$)
+      pop: true
+    - match: (?<!/)///(?!/)
+      captures:
+        0: punctuation.definition.comment.qsharp
+      push:
+      - meta_scope: comment.block.documentation.qsharp
+      - match: (?=$)
+        pop: true
+    - match: (?<!/)//(?:(?!/))
+      captures:
+        0: punctuation.definition.comment.qsharp
+      push:
+      - meta_scope: comment.line.double-slash.qsharp
+      - match: (?=$)
+        pop: true
+  repo_declaration-keywords:
+  - match: \b(operation|function)\b
+    scope: keyword.other.callable.qsharp
+  - match: \b(let)\b
+    scope: keyword.other.let.qsharp
+  - match: \b(mutable)\b
+    scope: keyword.other.mutable.qsharp
+  - match: \b(set)\b
+    scope: keyword.other.set.qsharp
+  - match: \b(use)\b
+    scope: keyword.other.use.qsharp
+  - match: \b(borrow)\b
+    scope: keyword.other.borrow.qsharp
+  repo_expression:
+  - include: repo_comments
+  - include: repo_if-statement
+  - include: repo_new-expression
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_member-access
+  - include: repo_library-invocation
+  - include: repo_callable-invocation
+  - include: repo_library
+  - include: repo_types
+  - include: repo_literals
+  - include: repo_parenthesized-expression
+  - include: repo_array-creation-expression
+  - include: repo_expression-operators
+  - include: repo_identifier
+  repo_expression-operators:
+  - match: \b(not|and|or)\b
+    scope: keyword.operator.logical.qsharp
+  - match: (->|=>)
+    scope: keyword.operator.lambda.qsharp
+  - match: (\+=|-=|\*=|/=|%=|\^=|&&&=|\|\|\|=|\^\^\^=|<<<=|>>>=|\bw/=)
+    scope: keyword.operator.assignment.compound.qsharp
+  - match: (\bw/|<-)
+    scope: keyword.operator.copy-update.qsharp
+  - match: (?<![=<>!+\-*/%^&|~])=(?![=>])
+    scope: keyword.operator.assignment.qsharp
+  - match: (\.\.\.|\.\.)
+    scope: keyword.operator.range.qsharp
+  - match: (&&&|\|\|\||\^\^\^|~~~|<<<|>>>)
+    scope: keyword.operator.bitwise.qsharp
+  - match: (==|!=|<=|>=|<|>)
+    scope: keyword.operator.comparison.qsharp
+  - match: (\+|\-|\*|/|%|\^)
+    scope: keyword.operator.arithmetic.qsharp
+  - match: (\?|\|)
+    scope: keyword.operator.ternary.qsharp
+  repo_field-initializer:
+  - match: ([_[:alpha:]][_[:alnum:]]*)\s*(=)(?![=>])
+    captures:
+      1: variable.other.property.qsharp
+      2: keyword.operator.assignment.qsharp
+    push:
+    - match: (?=(,|\}))
+      pop: true
+    - include: repo_expression
+  repo_identifier:
+  - match: \b[_[:alpha:]][_[:alnum:]]*\b
+    scope: variable.other.readwrite.qsharp
+  repo_if-statement:
+  - match: (?<!\.)\b(if)\b\s*(?=\S)
+    captures:
+      1: keyword.control.conditional.if.qsharp
+    push:
+    - match: (?<=})(?!\s*\b(?:elif|else)\b)|(?=;)
+      pop: true
+    - match: \b(elif|else)\b
+      scope: keyword.control.conditional.qsharp
+    - match: \{
+      captures:
+        0: punctuation.curlybrace.open.qsharp
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.curlybrace.close.qsharp
+      - include: repo_statements
+    - include: repo_expression
+  repo_import-export-directive:
+  - match: \b(import|export)\b
+    captures:
+      1: keyword.other.import.qsharp
+    push:
+    - match: (?=;)|$
+      pop: true
+    - include: repo_comments
+    - match: \b(as)\b\s*
+      captures:
+        1: keyword.other.qsharp
+      push:
+      - match: (?=(,|;)|$)
+        pop: true
+      - include: repo_comments
+      - match: '[_[:alpha:]][_[:alnum:]]*'
+        scope: entity.name.type.alias.qsharp
+    - match: \*
+      scope: keyword.operator.wildcard.qsharp
+    - match: '[_[:alpha:]][_[:alnum:]]*'
+      scope: entity.name.namespace.qsharp
+    - include: repo_punctuation-accessor
+    - include: repo_punctuation-comma
+  repo_keywords:
+  - match: \b(elif|else|repeat|until|fixup|for|in|while|break|continue|return|fail|within|apply|parallel)\b
+    scope: keyword.control.qsharp
+  - match: \b(using|borrowing)\b
+    scope: keyword.other.qsharp
+  - match: \b(new)\b
+    scope: keyword.other.qsharp
+  repo_library:
+  - match: \b(CCNOT|CNOT|CX|CY|CZ|SWAP|SX|H|S|T|I|X|Y|Z|Rxx|Ryy|Rzz|Rx|Ry|Rz|R1Frac|R1|RFrac|R|ExpFrac|Exp|MResetEachZ|MResetX|MResetY|MResetZ|MeasureEachZ|MeasureAllZ|Measure|M|ResetAll|Reset)\b
+    scope: support.function.quantum.qsharp
+  repo_library-invocation:
+  - match: '(?x)
+
+      \b(CCNOT|CNOT|CX|CY|CZ|SWAP|SX|H|S|T|I|X|Y|Z|Rxx|Ryy|Rzz|Rx|Ry|Rz|R1Frac|R1|RFrac|R|ExpFrac|Exp|MResetEachZ|MResetX|MResetY|MResetZ|MeasureEachZ|MeasureAllZ|Measure|M|ResetAll|Reset)\b\s*
+
+      (?=\()'
+    captures:
+      1: support.function.quantum.qsharp
+    push:
+    - match: (?<=\))
+      pop: true
+    - include: repo_argument-list
+  repo_literals:
+  - include: repo_boolean-literal
+  - include: repo_result-literal
+  - include: repo_pauli-literal
+  - include: repo_numeric-literal
+  repo_local-assignment:
+  - match: '(?x)
+
+      (?:\b(set)\b\s*)
+
+      ([_[:alpha:]][_[:alnum:]]*)\b\s*
+
+      (?=;|\+=|-=|=|\))'
+    captures:
+      1: keyword.other.set.qsharp
+      2: entity.name.variable.local.qsharp
+    push:
+    - match: (?=;|\)|})
+      pop: true
+    - include: repo_variable-initializer
+  repo_local-declaration:
+  - match: '(?x)
+
+      (?:\b(?:(let)|(mutable))\b\s*)
+
+      ([_[:alpha:]][_[:alnum:]]*)\b\s*
+
+      (?=;|=|\))'
+    captures:
+      1: keyword.other.let.qsharp
+      2: keyword.other.mutable.qsharp
+      3: entity.name.variable.local.qsharp
+    push:
+    - match: (?=;|\)|})
+      pop: true
+    - include: repo_variable-initializer
+  repo_member-access:
+  - match: '(?x)
+
+      (\.)\s*
+
+      ([_[:alpha:]][_[:alnum:]]*)\b
+
+      (?!\s*\()'
+    captures:
+      1: punctuation.accessor.qsharp
+      2: variable.other.property.qsharp
+  repo_namespace-declaration:
+  - match: \b(namespace)\s+
+    captures:
+      1: keyword.other.namespace.qsharp
+    push:
+    - match: (?<=\})
+      pop: true
+    - match: '[_[:alpha:]][_[:alnum:]]*'
+      scope: entity.name.type.namespace.qsharp
+    - include: repo_punctuation-accessor
+    - match: \{
+      captures:
+        0: punctuation.curlybrace.open.qsharp
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.curlybrace.close.qsharp
+      - include: repo_comments
+      - include: repo_attributes
+      - include: repo_import-export-directive
+      - include: repo_new-expression
+      - include: repo_struct-declaration
+      - include: repo_member-access
+      - include: repo_tuple-binding
+      - include: repo_keywords
+      - include: repo_library-invocation
+      - include: repo_library
+      - include: repo_operations
+      - include: repo_types
+      - include: repo_literals
+      - include: repo_strings
+      - include: repo_callable-invocation
+      - include: repo_callable-declaration
+      - include: repo_udt-declaration
+      - include: repo_open-directive
+      - include: repo_array-creation-expression
+      - include: repo_local-declaration
+      - include: repo_array-assignment
+      - include: repo_local-assignment
+      - include: repo_quantum-declaration
+      - include: repo_if-statement
+      - include: repo_parenthesized-expression
+      - include: repo_expression-operators
+      - include: repo_declaration-keywords
+      - include: repo_identifier
+  repo_new-expression:
+  - match: '(?x)
+
+      \b(new)\b\s+
+
+      ([_[:alpha:]][_[:alnum:]]*)\s*
+
+      (?=\{)'
+    captures:
+      1: keyword.other.new.qsharp
+      2: entity.name.type.struct.qsharp
+    push:
+    - match: (?<=\})
+      pop: true
+    - match: \{
+      captures:
+        0: punctuation.curlybrace.open.qsharp
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.curlybrace.close.qsharp
+      - include: repo_comments
+      - include: repo_spread-operator
+      - include: repo_field-initializer
+      - include: repo_punctuation-comma
+      - include: repo_expression
+  repo_numeric-literal:
+  - match: \b0[xX][0-9a-fA-F][0-9a-fA-F_]*[lL]?\b
+    scope: constant.numeric.hexadecimal.qsharp
+  - match: \b0[bB][01][01_]*[lL]?\b
+    scope: constant.numeric.binary.qsharp
+  - match: \b0[oO][0-7][0-7_]*[lL]?\b
+    scope: constant.numeric.octal.qsharp
+  - match: '(?x)
+
+      \b\d[\d_]* \. \d[\d_]* (?:[eE][+-]?\d+)?    # 1.0   3.14   1.0e-3
+
+      | \b\d[\d_]* [eE][+-]?\d+                    # 1e10
+
+      | \b\d[\d_]* [lL]?                           # 42   42L   1_000'
+    scope: constant.numeric.decimal.qsharp
+  repo_open-directive:
+  - match: \b(open)\s*
+    captures:
+      1: keyword.other.open.qsharp
+    push:
+    - match: (?=;)
+      pop: true
+    - include: repo_comments
+    - match: \b(as)\s+(?<alias>[_[:alpha:]][_[:alnum:]]*)
+      captures:
+        1: keyword.other.alias.qsharp
+        2: entity.name.type.alias.qsharp
+      push:
+      - match: (?=;)
+        pop: true
+    - match: '[_[:alpha:]][_[:alnum:]]*'
+      scope: entity.name.type.namespace.qsharp
+    - include: repo_punctuation-accessor
+  repo_operations:
+  - match: \b(as|internal|body|(a|A)djoint|(c|C)ontrolled|self|auto|distribute|invert|intrinsic|is)\b
+    scope: keyword.other.qsharp
+  repo_parameter:
+  - match: ([_[:alpha:]][_[:alnum:]]*)\s*(:)
+    captures:
+      1: entity.name.variable.parameter.qsharp
+      2: punctuation.separator.colon.qsharp
+    push:
+    - match: (?=(,|\)|\]))
+      pop: true
+    - include: repo_comments
+    - include: repo_literals
+    - include: repo_types
+    - include: repo_library
+    - include: repo_expression-operators
+  repo_parameter-list:
+  - match: (\()
+    captures:
+      0: punctuation.parenthesis.open.qsharp
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        0: punctuation.parenthesis.close.qsharp
+    - include: repo_comments
+    - include: repo_parameter
+    - include: repo_punctuation-comma
+  repo_parenthesized-expression:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.open.qsharp
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.close.qsharp
+    - include: repo_expression
+    - include: repo_punctuation-comma
+  repo_pauli-literal:
+  - match: \b(Pauli(I|X|Y|Z))\b
+    scope: constant.language.pauli.qsharp
+  repo_punctuation-accessor:
+  - match: \.
+    scope: punctuation.accessor.qsharp
+  repo_punctuation-comma:
+  - match: ','
+    scope: punctuation.separator.comma.qsharp
+  repo_quantum-declaration:
+  - match: '(?x)
+
+      (?:\b(?:(use)|(borrow))\b\s*)
+
+      ([_[:alpha:]][_[:alnum:]]*)\b\s*
+
+      (?=;|=|\))'
+    captures:
+      1: keyword.other.use.qsharp
+      2: keyword.other.borrow.qsharp
+      3: entity.name.variable.local.qsharp
+    push:
+    - match: (?=;|\)|})
+      pop: true
+    - include: repo_quantum-initializer
+  repo_quantum-initializer:
+  - match: (?<!=|!)(=)(?!=|>)
+    captures:
+      1: keyword.operator.assignment.qsharp
+    push:
+    - match: (?=[,\)\];}])
+      pop: true
+    - include: repo_expression
+  repo_result-literal:
+  - match: (?<!\.)\bZero\b
+    scope: constant.language.result.zero.qsharp
+  - match: (?<!\.)\bOne\b
+    scope: constant.language.result.one.qsharp
+  repo_spread-operator:
+  - match: \.\.\.
+    scope: keyword.operator.spread.qsharp
+  repo_statements:
+  - include: repo_comments
+  - include: repo_attributes
+  - include: repo_import-export-directive
+  - include: repo_open-directive
+  - include: repo_new-expression
+  - include: repo_struct-declaration
+  - include: repo_member-access
+  - include: repo_tuple-binding
+  - include: repo_keywords
+  - include: repo_library-invocation
+  - include: repo_library
+  - include: repo_operations
+  - include: repo_types
+  - include: repo_literals
+  - include: repo_strings
+  - include: repo_callable-invocation
+  - include: repo_callable-declaration
+  - include: repo_udt-declaration
+  - include: repo_array-creation-expression
+  - include: repo_local-declaration
+  - include: repo_array-assignment
+  - include: repo_local-assignment
+  - include: repo_quantum-declaration
+  - include: repo_if-statement
+  - include: repo_parenthesized-expression
+  - include: repo_expression-operators
+  - include: repo_declaration-keywords
+  - include: repo_identifier
+  repo_strings:
+  - match: \$"
+    captures:
+      0: punctuation.definition.string.begin.qsharp
+    push:
+    - meta_scope: string.quoted.double.interpolated.qsharp
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.qsharp
+    - match: \\.
+      scope: constant.character.escape.qsharp
+    - match: \{
+      captures:
+        0: punctuation.section.interpolation.begin.qsharp
+      push:
+      - meta_scope: meta.interpolation.qsharp
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.interpolation.end.qsharp
+      - include: repo_expression
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.qsharp
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.qsharp
+  repo_struct-declaration:
+  - match: '(?x)
+
+      \b(struct)\b\s+
+
+      ([_[:alpha:]][_[:alnum:]]*)'
+    captures:
+      1: keyword.other.struct.qsharp
+      2: entity.name.type.struct.qsharp
+    push:
+    - match: (?<=\})
+      pop: true
+    - include: repo_comments
+    - match: \{
+      captures:
+        0: punctuation.curlybrace.open.qsharp
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.curlybrace.close.qsharp
+      - include: repo_comments
+      - include: repo_struct-field
+      - include: repo_punctuation-comma
+      - include: repo_types
+      - include: repo_library
+  repo_struct-field:
+  - match: ([_[:alpha:]][_[:alnum:]]*)\s*(:)
+    captures:
+      1: variable.other.property.qsharp
+      2: punctuation.separator.colon.qsharp
+    push:
+    - match: (?=(,|\}))
+      pop: true
+    - include: repo_comments
+    - include: repo_type-parameter
+    - include: repo_types
+    - include: repo_library
+  repo_tuple-binding:
+  - match: '(?x)
+
+      \b(?:(let)|(mutable)|(set)|(use)|(borrow))\b\s*
+
+      (?=\()'
+    captures:
+      1: keyword.other.let.qsharp
+      2: keyword.other.mutable.qsharp
+      3: keyword.other.set.qsharp
+      4: keyword.other.use.qsharp
+      5: keyword.other.borrow.qsharp
+    push:
+    - match: (?=;|\bin\b)
+      pop: true
+    - include: repo_tuple-pattern
+    - include: repo_variable-initializer
+    - include: repo_expression
+  repo_tuple-pattern:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.open.qsharp
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.close.qsharp
+    - include: repo_comments
+    - include: repo_tuple-pattern
+    - match: \b[_[:alpha:]][_[:alnum:]]*\b
+      scope: entity.name.variable.local.qsharp
+    - include: repo_punctuation-comma
+  repo_type-array-suffix:
+  - match: \b\[
+    captures:
+      0: punctuation.squarebracket.open.qsharp
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.squarebracket.close.qsharp
+    - include: repo_punctuation-comma
+    - include: repo_expression
+  repo_type-parameter:
+  - match: '''[_[:alpha:]][_[:alnum:]]*'
+    scope: entity.name.type.type-parameter.qsharp
+  repo_type-parameter-list:
+  - match: \<
+    captures:
+      0: punctuation.definition.typeparameters.begin.qsharp
+    push:
+    - match: \>
+      pop: true
+      captures:
+        0: punctuation.definition.typeparameters.end.qsharp
+    - include: repo_comments
+    - match: ('[_[:alpha:]][_[:alnum:]]*)\b
+      captures:
+        1: entity.name.type.type-parameter.qsharp
+    - match: ':'
+      scope: punctuation.separator.colon.qsharp
+    - match: \+
+      scope: keyword.operator.qsharp
+    - match: \b(Eq|Add|Sub|Mul|Div|Mod|Signed|Ord|Show|Integral|Iterable|Exp)\b
+      scope: support.type.constraint.qsharp
+    - match: \[
+      scope: punctuation.squarebracket.open.qsharp
+    - match: \]
+      scope: punctuation.squarebracket.close.qsharp
+    - include: repo_punctuation-comma
+  repo_types:
+  - include: repo_type-parameter
+  - match: \b(Int|BigInt|Double|Bool|Qubit|Pauli|Result|Range|String|Unit|Ctl|Adj)\b
+    scope: storage.type.qsharp
+  - include: repo_type-array-suffix
+  repo_udt-declaration:
+  - match: (?=\bnewtype\b)
+    push:
+    - match: (?<=\)|;)
+      pop: true
+    - match: '(?x)
+
+        (newtype)\b\s+
+
+        ([_[:alpha:]][_[:alnum:]]*)'
+      captures:
+        1: keyword.other.udt.qsharp
+        2: entity.name.type.udt.qsharp
+      push:
+      - match: (?=\s*=)
+        pop: true
+    - match: (?:\s*=\s*)(\()
+      captures:
+        1: punctuation.parenthesis.open.qsharp
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.parenthesis.close.qsharp
+      - include: repo_comments
+      - include: repo_literals
+      - include: repo_punctuation-comma
+      - include: repo_types
+      - include: repo_library
+    - match: (?:\s*=\s*)
+      push:
+      - match: (?=;)
+        pop: true
+      - include: repo_comments
+      - include: repo_literals
+      - include: repo_punctuation-comma
+      - include: repo_types
+      - include: repo_library
+  repo_variable-initializer:
+  - match: (?<!=|!)(?:(\+=)|(-=)|(=)|(<-))(?!=|>)
+    captures:
+      1: keyword.operator.assignment.increment.qsharp
+      2: keyword.operator.assignment.decrement.qsharp
+      3: keyword.operator.assignment.qsharp
+    push:
+    - match: (?=[,\)\];}])
+      pop: true
+    - include: repo_expression

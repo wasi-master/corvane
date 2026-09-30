@@ -1,0 +1,175 @@
+%YAML 1.2
+---
+# Nunjucks Templates (source.nunjucks): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-nunjucks via GitHub Linguist v9.7.0 (license: mit).
+name: Nunjucks Templates
+scope: source.nunjucks
+hidden: true
+contexts:
+  main:
+  - match: ({%-?)\s*(raw)\s*(-?%})
+    captures:
+      1: entity.other.nunjucks.delimiter.tag
+      2: keyword.control.nunjucks
+      3: entity.other.nunjucks.delimiter.tag
+    push:
+    - meta_scope: comment.block.nunjucks.raw
+    - match: ({%-?)\s*(endraw)\s*(-?%})
+      pop: true
+      captures:
+        1: entity.other.nunjucks.delimiter.tag
+        2: keyword.control.nunjucks
+        3: entity.other.nunjucks.delimiter.tag
+  - match: '{#-?'
+    captures:
+      0: entity.other.nunjucks.delimiter.comment
+    push:
+    - meta_scope: comment.block.nunjucks
+    - match: -?#}
+      pop: true
+      captures:
+        0: entity.other.nunjucks.delimiter.comment
+  - match: '{{-?'
+    captures:
+      0: entity.other.nunjucks.delimiter.variable
+    push:
+    - meta_scope: meta.scope.nunjucks.variable
+    - match: -?}}
+      pop: true
+      captures:
+        0: entity.other.nunjucks.delimiter.variable
+    - include: repo_expression
+  - match: '{%-?'
+    captures:
+      0: entity.other.nunjucks.delimiter.tag
+    push:
+    - meta_scope: meta.scope.nunjucks.tag
+    - match: -?%}
+      pop: true
+      captures:
+        0: entity.other.nunjucks.delimiter.tag
+    - include: repo_expression
+  repo_escaped_char:
+  - match: \\x[0-9A-F]{2}
+    scope: constant.character.escape.hex.nunjucks
+  repo_escaped_unicode_char:
+  - match: (\\U[0-9A-Fa-f]{8})|(\\u[0-9A-Fa-f]{4})|(\\N\{[a-zA-Z ]+\})
+    captures:
+      1: constant.character.escape.unicode.16-bit-hex.nunjucks
+      2: constant.character.escape.unicode.32-bit-hex.nunjucks
+      3: constant.character.escape.unicode.name.nunjucks
+  repo_expression:
+  - match: \s*\b(block)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b
+    captures:
+      1: keyword.control.nunjucks
+      2: variable.other.nunjucks.block
+  - match: \s*\b(filter)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b
+    captures:
+      1: keyword.control.nunjucks
+      2: variable.other.nunjucks.filter
+  - match: \s*\b(is)\s+([a-zA-Z_][a-zA-Z0-9_]*)\b
+    captures:
+      1: keyword.control.nunjucks
+      2: variable.other.nunjucks.test
+  - match: (?<=\{\%-|\{\%)\s*\b([a-zA-Z_][a-zA-Z0-9_]*)\b(?!\s*[,=])
+    captures:
+      1: keyword.control.nunjucks
+  - match: \b(and|else|if|in|import|not|or|recursive|with(out)?\s+context)\b
+    scope: keyword.control.nunjucks
+  - match: \b(true|false|none)\b
+    scope: constant.language.nunjucks
+  - match: \b(loop|super|self|varargs|kwargs)\b
+    scope: variable.language.nunjucks
+  - match: '[a-zA-Z_][a-zA-Z0-9_]*'
+    scope: variable.other.nunjucks
+  - match: (\+|\-|\*\*|\*|//|/|%)
+    scope: keyword.operator.arithmetic.nunjucks
+  - match: (\|)([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: punctuation.other.nunjucks
+      2: variable.other.nunjucks.filter
+  - match: (\.)([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: punctuation.other.nunjucks
+      2: variable.other.nunjucks.attribute
+  - match: \[
+    captures:
+      0: punctuation.other.nunjucks
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.other.nunjucks
+    - include: repo_expression
+  - match: \(
+    captures:
+      0: punctuation.other.nunjucks
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.other.nunjucks
+    - include: repo_expression
+  - match: \{
+    captures:
+      0: punctuation.other.nunjucks
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.other.nunjucks
+    - include: repo_expression
+  - match: (\.|:|\||,)
+    scope: punctuation.other.nunjucks
+  - match: (==|<=|=>|<|>|!=)
+    scope: keyword.operator.comparison.nunjucks
+  - match: '='
+    scope: keyword.operator.assignment.nunjucks
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.nunjucks
+    push:
+    - meta_scope: string.quoted.double.nunjucks
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.nunjucks
+    - include: repo_string
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.nunjucks
+    push:
+    - meta_scope: string.quoted.single.nunjucks
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.nunjucks
+    - include: repo_string
+  - match: '@/'
+    captures:
+      0: punctuation.definition.regexp.begin.nunjucks
+    push:
+    - meta_scope: string.regexp.nunjucks
+    - match: /
+      pop: true
+      captures:
+        0: punctuation.definition.regexp.end.nunjucks
+    - include: repo_simple_escapes
+  repo_simple_escapes:
+  - match: (\\\n)|(\\\\)|(\\\")|(\\')|(\\a)|(\\b)|(\\f)|(\\n)|(\\r)|(\\t)|(\\v)
+    captures:
+      1: constant.character.escape.newline.nunjucks
+      10: constant.character.escape.tab.nunjucks
+      11: constant.character.escape.vertical-tab.nunjucks
+      2: constant.character.escape.backlash.nunjucks
+      3: constant.character.escape.double-quote.nunjucks
+      4: constant.character.escape.single-quote.nunjucks
+      5: constant.character.escape.bell.nunjucks
+      6: constant.character.escape.backspace.nunjucks
+      7: constant.character.escape.formfeed.nunjucks
+      8: constant.character.escape.linefeed.nunjucks
+      9: constant.character.escape.return.nunjucks
+  repo_string:
+  - include: repo_simple_escapes
+  - include: repo_escaped_char
+  - include: repo_escaped_unicode_char

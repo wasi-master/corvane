@@ -1,0 +1,42 @@
+%YAML 1.2
+---
+# CIL (source.cil): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/google/selinux-policy-languages via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: CIL
+scope: source.cil
+file_extensions:
+- cil
+contexts:
+  main:
+  - include: repo_main
+  repo_comments:
+  - match: (;).*
+    scope: comment.line.number-sign.cil
+    captures:
+      1: punctuation.definition.comment.cil
+  repo_constants:
+  - match: \b([0-9]+)\b
+    scope: constant.numeric.integer.decimal.cil
+  - match: (")([^\"]*)(")
+    scope: meta.string.aidl
+    captures:
+      1: punctuation.definition.string.begin.aidl
+      2: string.quoted.double.aidl
+      3: punctuation.definition.string.end.aidl
+  repo_keywords:
+  - match: \b(allow|allowx|any|auditallow|auditallowx|block|blockabstract|blockinherit|boolean|booleanif|call|category|categoryalias|categoryaliasactual|categoryorder|categoryset|char|class|classcommon|classmap|classmapping|classorder|classpermission|classpermissionset|common|constrain|context|defaultrange|defaultrole|defaulttype|defaultuser|deny|devicetreecon|dir|dontaudit|dontauditx|expandtypeattribute|file|filecon|fsuse|genfscon|glblub|handleunknown|high|ibendportcon|ibpkeycon|in|ioctl|iomemcon|ioportcon|ipaddr|level|levelrange|low|low-high|macro|mls|mlsconstrain|mlsvalidatetrans|name|netifcon|neverallow|neverallowx|<node>|nodecon|optional|pcidevicecon|perm|permissionx|pipe|pirqcon|policycap|portcon|rangetransition|reject|role|roleallow|roleattribute|roleattributeset|rolebounds|roletransition|roletype|<root>|selinuxuser|selinuxuserdefault|sensitivity|sensitivityalias|sensitivityaliasactual|sensitivitycategory|sensitivityorder|sid|sidcontext|sidorder|socket|source|<src_cil>|<src_hll>|<src_info>|string|symlink|target|task|trans|tunable|tunableif|type|typealias|typealiasactual|typeattribute|typeattributeset|typebounds|typechange|typemember|typepermissive|typetransition|unordered|user|userattribute|userattributeset|userbounds|userlevel|userprefix|userrange|userrole|validatetrans|xattr)\b
+    scope: keyword.cil
+  - match: \b(and|or|xor|not|all|eq|neq|dom|domby|incomp|range)\b
+    scope: keyword.operator.word.cil
+  - match: \b(\*|dccp|false|h1|h2|l1|l2|object_r|r1|r2|r3|sctp|self|t1|t2|t2|tcp|true|u1|u2|u3|udp)\b
+    scope: constant.language.cil
+  repo_main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_constants
+  - include: repo_punctuation
+  repo_punctuation:
+  - match: (\()
+    scope: punctuation.section.parens.begin.cil
+  - match: (\))
+    scope: punctuation.section.parens.end.cil

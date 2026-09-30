@@ -1,0 +1,110 @@
+%YAML 1.2
+---
+# Xojo (source.xojo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/jimmckay/XojoSyntaxTM via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Xojo
+scope: source.xojo
+file_extensions:
+- xojo_code
+- xojo_menu
+- xojo_report
+- xojo_script
+- xojo_toolbar
+- xojo_window
+contexts:
+  main:
+  - include: repo_xml
+  - include: repo_tags
+  repo_block:
+  - match: ^\s*Begin.*$
+    captures:
+      0: entity.name.section
+    push:
+    - match: ^\s*End$
+      pop: true
+      captures:
+        0: entity.name.section
+    - include: repo_block
+    - include: repo_string-literal
+    - include: repo_keywords-numeric
+    - include: repo_numbers
+    - include: repo_numbers-literal
+    - include: repo_numbers-binary
+  repo_comment:
+  - match: (//|').*$
+    scope: comment
+  repo_comment-rem:
+  - match: (?i)(rem .++)$
+    scope: comment
+  repo_declare:
+  - match: ^\s*(?i)((protected|private|public)\s+)*(soft\s+)*(?i)declare\s+(sub|function)\s+\w+
+    scope: keyword
+  repo_directives:
+  - match: (?i)#(if|else|elseif|endif|pragma).*$\b
+    scope: keyword
+  repo_keywords:
+  - match: \b(?i)(me|self|super|return|dim|var|const|static|as|if|then|else|elseif|for|next|do|loop|until|while|wend|end if|select case|case|end select|inherits|try|catch|finally|nil|and|or|not|mod|to|downto|new|get|set|end|return|call|invoke)\b
+    scope: keyword
+  repo_keywords-functions:
+  - match: \b(?i)(private|protected|public|shared|end)? ?(sub|function|class)\b(\s\w++\b)?
+    scope: entity.name.function
+  repo_keywords-numeric:
+  - match: \b(?i)(boolean|integer|double|single|ptr|wstring|cgfloat|long|string|color|true|false|(u)*int(8|16|32|64))\b
+    scope: keyword
+  repo_numbers:
+  - match: \b((-)?[0-9.]+)\b
+    captures:
+      1: constant.numeric
+  repo_numbers-binary:
+  - match: (?i)&b[01]+
+    scope: constant.numeric.integer
+  repo_numbers-literal:
+  - match: (?i)(&h|&c)[0-9a-f]+
+    scope: constant.numeric.integer
+  repo_string-literal:
+  - match: (\".*?\")
+    scope: string.quoted.double
+  repo_tags:
+  - match: ^\s*(#tag\s\w+)(\s\w+)?(.*)$
+    captures:
+      1: punctuation.definition.tag.begin
+      2: entity.name.type
+    push:
+    - match: ^\s*(#tag end.*)$
+      pop: true
+      captures:
+        1: punctuation.definition.tag.end
+    - include: repo_block
+    - include: repo_comment
+    - include: repo_comment-rem
+    - include: repo_tags
+    - include: repo_string-literal
+    - include: repo_directives
+    - include: repo_keywords-numeric
+    - include: repo_keywords-functions
+    - include: repo_keywords
+    - include: repo_declare
+    - include: repo_numbers
+    - include: repo_numbers-literal
+    - include: repo_numbers-binary
+  repo_xml:
+  - match: ^\s*(<[^/].*?>)
+    captures:
+      1: punctuation.definition.tag.begin
+    push:
+    - match: (</\w*>)$
+      pop: true
+      captures:
+        1: punctuation.definition.tag.end
+    - include: repo_xml
+    - include: repo_comment
+    - include: repo_comment-rem
+    - include: repo_string-literal
+    - include: repo_directives
+    - include: repo_keywords-numeric
+    - include: repo_keywords-functions
+    - include: repo_keywords
+    - include: repo_declare
+    - include: repo_numbers
+    - include: repo_numbers-literal
+    - include: repo_numbers-binary

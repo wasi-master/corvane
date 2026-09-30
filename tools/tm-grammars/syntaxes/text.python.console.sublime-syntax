@@ -1,0 +1,12 @@
+%YAML 1.2
+---
+# Python Console (text.python.console): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/MagicStack/MagicPython via GitHub Linguist v9.7.0 (license: mit).
+name: Python Console
+scope: text.python.console
+hidden: true
+contexts:
+  main:
+  - match: ^(>{3}|\.{3}|In \[\d+\]:) (.+)$
+    captures:
+      1: punctuation.separator.prompt.python.console

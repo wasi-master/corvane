@@ -1,0 +1,80 @@
+%YAML 1.2
+---
+# CameLIGO (source.mligo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/pewulfman/Ligo-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: CameLIGO
+scope: source.mligo
+file_extensions:
+- mligo
+contexts:
+  main:
+  - include: repo_string
+  - include: repo_block_comment
+  - include: repo_line_comment
+  - include: repo_attribute
+  - include: repo_macro
+  - include: repo_letbinding
+  - include: repo_lambda
+  - include: repo_typedefinition
+  - include: repo_controlkeywords
+  - include: repo_numericliterals
+  - include: repo_operators
+  - include: repo_identifierconstructor
+  - include: repo_module
+  repo_attribute:
+  - match: \[@.*\]
+    scope: keyword.control.attribute.mligo
+  repo_block_comment:
+  - match: \(\*
+    push:
+    - meta_scope: comment.block.mligo
+    - match: \*\)
+      pop: true
+  repo_controlkeywords:
+  - match: \b(match|with|if|then|else|assert|failwith|begin|end|in)\b
+    scope: keyword.control.mligo
+  repo_identifierconstructor:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\s+
+    captures:
+      1: variable.other.enummember.mligo
+  repo_lambda:
+  - match: \b(fun)\b
+    captures:
+      1: keyword.other.mligo
+    push:
+    - match: (->)
+      pop: true
+      captures:
+        1: keyword.operator.mligo
+  repo_letbinding:
+  - match: \b(let)\b\s*\b(rec|)\s*\b([a-zA-Z$_][a-zA-Z0-9$_]*)
+    captures:
+      1: keyword.other.mligo
+      2: storage.modifier.mligo
+      3: entity.name.function.mligo
+  repo_line_comment:
+  - match: \/\/.*$
+    scope: comment.block.mligo
+  repo_macro:
+  - match: ^\#[a-zA-Z]+
+    scope: meta.preprocessor.mligo
+  repo_module:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\.([a-z][a-zA-Z0-9_$]*)
+    captures:
+      1: storage.class.mligo
+      2: storage.var.mligo
+  repo_numericliterals:
+  - match: (\+|\-)?[0-9]+(n|tz|tez|mutez|)\b
+    scope: constant.numeric.mligo
+  repo_operators:
+  - match: \s+(::|\-|\+|mod|land|lor|lxor|lsl|lsr|&&|\|\||>|<>|<=|=>|<|>)\s+
+    scope: keyword.operator.mligo
+  repo_string:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double.mligo
+    - match: \"
+      pop: true
+  repo_typedefinition:
+  - match: \b(type)\b
+    scope: entity.name.type.mligo

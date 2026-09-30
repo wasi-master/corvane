@@ -1,0 +1,219 @@
+%YAML 1.2
+---
+# Jison Lex (source.jisonlex): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-jison via GitHub Linguist v9.7.0 (license: mit).
+name: Jison Lex
+scope: source.jisonlex
+file_extensions:
+- jisonlex
+contexts:
+  main:
+  - match: '%%'
+    captures:
+      0: meta.separator.section.jisonlex
+    push:
+    - match: \z
+      pop: true
+    - match: ^%%
+      captures:
+        0: meta.separator.section.jisonlex
+      push:
+      - match: \z
+        pop: true
+      - match: ''
+        push:
+        - meta_scope: meta.section.user-code.jisonlex
+        - meta_content_scope: source.js.embedded.jison
+        - match: \z
+          pop: true
+        - include: repo_user_code_section
+    - match: ''
+      push:
+      - meta_scope: meta.section.rules.jisonlex
+      - match: (?=^%%)
+        pop: true
+      - include: repo_rules_section
+  - match: ^
+    push:
+    - meta_scope: meta.section.definitions.jisonlex
+    - match: (?=%%)
+      pop: true
+    - include: repo_definitions_section
+  repo_definitions_section:
+  - include: scope:source.jison
+  - include: scope:source.jison
+  - match: \b[[:alpha:]_](?:[\w-]*\w)?\b
+    captures:
+      0: entity.name.other.definition.jisonlex
+    push:
+    - meta_scope: meta.definition.jisonlex
+    - match: $
+      pop: true
+    - include: scope:source.jison
+    - match: (?=\S)
+      push:
+      - meta_scope: string.regexp.jisonlex
+      - match: (?=\s)
+        pop: true
+      - include: repo_regexp
+  - match: '%[sx]\b'
+    captures:
+      0: keyword.other.start-condition.jisonlex
+    push:
+    - meta_scope: meta.start-condition.jisonlex
+    - match: $
+      pop: true
+    - include: scope:source.jison
+    - match: \b[[:alpha:]_](?:[\w-]*\w)?\b
+      scope: entity.name.function.jisonlex
+    - match: \S
+      scope: invalid.illegal.jisonlex
+  - include: scope:source.jison
+  - match: '%(?:array|pointer)'
+    scope: invalid.unimplemented.jisonlex
+  - include: scope:source.jison
+  repo_name_uses:
+  - match: (\{)[[:alpha:]_](?:[\w-]*\w)?(\})
+    scope: constant.other.name-use.jisonlex
+    captures:
+      1: punctuation.definition.name-use.begin.jisonlex
+      2: punctuation.definition.name-use.end.jisonlex
+  repo_regexp:
+  - include: scope:source.jison
+  - match: \.
+    scope: keyword.other.character-class.any.regexp.jisonlex
+  - match: \\b
+    scope: keyword.other.anchor.word-boundary.regexp.jisonlex
+  - match: \\B
+    scope: keyword.other.anchor.non-word-boundary.regexp.jisonlex
+  - match: \^
+    scope: keyword.other.anchor.start-of-input.regexp.jisonlex
+  - match: \$
+    scope: keyword.other.anchor.end-of-input.regexp.jisonlex
+  - match: \\[1-9]\d*
+    scope: keyword.other.back-reference.regexp.jisonlex
+  - match: (?:[+*?]|\{(?:\d+(?:,(?:\d+)?)?|,\d+)\})\??
+    scope: keyword.operator.quantifier.regexp.jisonlex
+  - match: \|
+    scope: keyword.operator.alternation.regexp.jisonlex
+  - match: '\(\?:'
+    captures:
+      0: punctuation.definition.group.begin.regexp.jisonlex
+    push:
+    - meta_scope: meta.non-capturing.group.regexp.jisonlex
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.regexp.jisonlex
+    - include: repo_regexp
+  - match: \(\?=
+    captures:
+      0: punctuation.definition.group.begin.regexp.jisonlex
+    push:
+    - meta_scope: meta.lookahead.assertion.regexp.jisonlex
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.regexp.jisonlex
+    - include: repo_regexp
+  - match: \(\?!
+    captures:
+      0: punctuation.definition.group.begin.regexp.jisonlex
+    push:
+    - meta_scope: meta.negative.lookahead.assertion.regexp.jisonlex
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.regexp.jisonlex
+    - include: repo_regexp
+  - match: \(
+    captures:
+      0: punctuation.definition.group.begin.regexp.jisonlex
+    push:
+    - meta_scope: meta.group.regexp.jisonlex
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.end.regexp.jisonlex
+    - include: repo_regexp
+  - match: (\[)(\^)?
+    captures:
+      1: punctuation.definition.character-class.begin.regexp.jisonlex
+      2: keyword.operator.negation.regexp.jisonlex
+    push:
+    - meta_scope: constant.other.character-class.set.regexp.jisonlex
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.character-class.end.regexp.jisonlex
+    - include: repo_name_uses
+    - include: repo_regexp_character_class
+  - include: repo_regexp_character_class
+  - include: repo_name_uses
+  - include: scope:source.jison
+  - match: <<EOF>>
+    scope: keyword.other.eof.regexp.jisonlex
+  - match: /!
+    scope: keyword.operator.negative.lookahead.regexp.jisonlex
+  - match: /
+    scope: keyword.operator.lookahead.regexp.jisonlex
+  repo_regexp_character_class:
+  - match: \\w
+    scope: constant.character.escape.character-class.word.regexp.jisonlex
+  - match: \\W
+    scope: constant.character.escape.character-class.non-word.regexp.jisonlex
+  - match: \\s
+    scope: constant.character.escape.character-class.space.regexp.jisonlex
+  - match: \\S
+    scope: constant.character.escape.character-class.non-space.regexp.jisonlex
+  - match: \\d
+    scope: constant.character.escape.character-class.digit.regexp.jisonlex
+  - match: \\D
+    scope: constant.character.escape.character-class.non-digit.regexp.jisonlex
+  - match: \\c[A-Z]
+    scope: constant.character.escape.character-class.control.regexp.jisonlex
+  - include: scope:source.js
+  repo_rules_section:
+  - include: scope:source.jison
+  - match: (?:^|(?<=%\}))<(?!<EOF>>)
+    captures:
+      0: punctuation.definition.start-conditions.begin.jisonlex
+    push:
+    - meta_scope: meta.start-conditions.jisonlex
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.start-conditions.end.jisonlex
+    - match: \bINITIAL\b
+      scope: keyword.other.jisonlex
+    - match: \b[[:alpha:]_](?:[\w-]*\w)?\b
+      scope: entity.name.function.jisonlex
+    - match: ','
+      scope: punctuation.separator.start-condition.jisonlex
+    - match: (?<=<)\*(?=>)
+      scope: keyword.other.any-start-condition.jisonlex
+    - match: .
+      scope: invalid.illegal.jisonlex
+  - match: (?=%\{)
+    push:
+    - meta_scope: meta.rule.action.jisonlex
+    - match: (?<=%\})
+      pop: true
+    - include: scope:source.jison
+  - match: (?:^|(?<=>|%\}))(?=\S)
+    push:
+    - meta_scope: string.regexp.jisonlex
+    - match: (?=\s|%\{)
+      pop: true
+    - include: repo_regexp
+  - match: (?=\S)
+    push:
+    - meta_scope: meta.rule.action.jisonlex
+    - meta_content_scope: source.js.embedded.jison
+    - match: $
+      pop: true
+    - include: scope:source.jison
+    - include: scope:source.js
+  repo_user_code_section:
+  - include: scope:source.jison
+  - include: scope:source.js

@@ -1,0 +1,50 @@
+%YAML 1.2
+---
+# Pyret (source.arr): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/samuela/language-pyret via GitHub Linguist v9.7.0 (license: mit).
+name: Pyret
+scope: source.arr
+file_extensions:
+- arr
+contexts:
+  main:
+  - match: (!|->|=>|:=|\[|\]|{|}|:\s)
+    scope: keyword.other.delimiters.arr
+  - match: (\(|\)|\.|::|=)
+    scope: variable.arr
+  - match: (\|)
+    scope: storage.type.delimiters.arr
+  - match: (?<!-)(\b|^)[A-Z][A-Za-z]*(?!-)(\b|$)
+    scope: entity.name.type.arr
+  - match: (?x)(?<!-)(\b|^) (end|block:|type|type-let|newtype|include|import|provide|provide-types|as| fun|lam|doc:|where:|check:|examples:| is==|is=~|is<=>|is-not==|is-not=~|is-not<=>|is|is-not|satisfies|violates| raises|does-not-raise|raises-violates|raises-satisfies|raises-other-than| data|with:|sharing:|deriving| for|from|and|or|not| if|else|when|cases|ask|then:|otherwise:) (?!-)(\b|$)
+    scope: keyword.operators.arr
+  - match: (?x)(?<!-)(\b|^) (var|ref|shadow|let|letrec|rec|method) (?!-)(\b|$)
+    scope: storage.modifier.arr
+  - match: (?<!-)(\b|^)(true|false|nothing)(?!-)(\b|$)
+    scope: constant.language
+  - match: ( \+ | - | \/ | \* | > | < | >= | <= | <> )
+    scope: keyword.operator.arr
+  - match: (#\|)
+    push:
+    - meta_scope: comment.block.arr
+    - match: (\|#)
+      pop: true
+  - match: '#.*$'
+    scope: comment.line.number-sign.arr
+  - match: '''[^'']*'''
+    scope: string.quoted.single.arr
+  - match: '"[^"]*"'
+    scope: string.quoted.double.arr
+  - match: '```'
+    push:
+    - meta_scope: string.quoted.triple.arr
+    - match: '```'
+      pop: true
+  - match: '''[^'']*$'
+    scope: invalid.illegal
+  - match: '"[^"]*$'
+    scope: invalid.illegal
+  - match: (?<![a-zA-Z0-9_-])-?[0-9]+([/.][0-9]+)?
+    scope: constant.numeric.arr
+  - match: (?<![a-zA-Z0-9_-])~-?[0-9]+(\.[0-9]+)?
+    scope: constant.other.arr

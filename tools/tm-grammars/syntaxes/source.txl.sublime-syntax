@@ -1,0 +1,33 @@
+%YAML 1.2
+---
+# TXL (source.txl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/MikeHoffert/Sublime-Text-TXL-syntax via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: TXL
+scope: source.txl
+file_extensions:
+- txl
+contexts:
+  main:
+  - match: \b(?<!')(define|end|function|keys|compounds|tokens|comments|replace|construct|by|replace|rule|deconstruct|not|where|all|not|assert|export|import|redefine|external|match|skipping|include|then)\b
+    scope: keyword.control
+  - match: (?<!')#\s*(pragma|endif|else|define|undef|undefine|ifn|elifn|elifdef|elifndef|ifndef|ifdef|if|end)
+    scope: meta.preprocessor
+    captures:
+      1: keyword.control
+  - match: (?<!')%[\({]
+    push:
+    - meta_scope: comment
+    - match: (?<!')[\)}]%
+      pop: true
+  - match: (?<!')%.*
+    scope: comment
+  - match: (?<!')\[(not|opt|repeat|list|see|push|pop|\+|-|/|\*|=|<|>|\^|\.|div|rem|:|#|index|_|length|select|head|tail|,|~=|>=|<=|grep|\$|quote|unquote|parse|unparse|reparse|typeof|istype|read|write|fget|getp|fput|putp|fputp|fputs|fclose|fopen|fgets|message|pragma|quit|system|pipe|attr) .+?\]
+    scope: entity.name.function
+  - match: (?<!')\[(NL|EX(_\d+)?|IN(_\d+)?|SP(_\d+)?|TAB(_\d+)?|SPON|SPOFF|\!|round|trunc|toupper|tolower|get|put|gets|print|printattr|debug|breakpoint)\]
+    scope: constant.language
+  - match: (?<!')\[.+?\]
+    scope: storage.type
+  - match: \b(\d+)|(\d+\.\d+([\+-][Ee]\d+)?)\b
+    scope: constant.numeric
+  - match: '".*"'
+    scope: string.quoted.double

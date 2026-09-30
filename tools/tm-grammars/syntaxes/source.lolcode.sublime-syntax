@@ -1,0 +1,72 @@
+%YAML 1.2
+---
+# LOLCODE (source.lolcode): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/KrazIvan/LOLCODE-grammar-vscode.git via GitHub Linguist v9.7.0 (license: mit).
+name: LOLCODE
+scope: source.lolcode
+file_extensions:
+- lol
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_numbers
+  - include: repo_variables
+  - include: repo_operators
+  - include: repo_parentheses
+  repo_comments:
+  - match: (?<!\S)BTW(?:[^\n]*)
+    scope: comment.line.lolcode
+  - match: (?<!\S)OBTW(?!\S)
+    captures:
+      0: punctuation.definition.comment.lolcode
+    push:
+    - meta_scope: comment.block.lolcode
+    - match: (?<!\S)TLDR(?!\S)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.lolcode
+  repo_keywords:
+  - match: (?:(?<=[^a-zA-Z0-9\?])|(?:^))(O HAI IM|HAI|AWSUM THX|O NOES|KTHX|KTHXBYE|ITZ LIEK|IS NOW A|BOTH SAEM|BIGGR OF|SMALLR OF|UPPIN YR|NERFIN YR|TIL|WILE|DIFFRINT|ITZ A|ITZ|IS|IZ|AN|BIGGR|SMALLR|EITHER|MAEK|WON|NOT|ALL|ANY|MKAY|IF U SAY SO|OIC|I HAS A|IM OUTTA YR|GTFO|WTF\?|YA RLY|O RLY\?|MEBBE|IM IN YR|YR|HAS A|NO WAI|FOUND|OF|R|I IZ|OMG|OMGWTF|A)(?:(?=[^a-zA-Z0-9\?])|(?:$))
+    scope: keyword.control.lolcode
+  - match: (CAN HAS )(.*?)(\?)
+    captures:
+      1: keyword.control.lolcode
+      2: entity.name.class.lolcode
+      3: keyword.control.lolcode
+  - match: (PLZ OPEN FILE )(.*?)(\?)
+    captures:
+      1: keyword.control.lolcode
+      2: variable.other.lolcode
+      3: keyword.control.lolcode
+  - match: \b(?:VISIBLE|GIMMEH|SUM|DIFF|SRS|PRODUKT|QUOSHUNT|MOD|BIGGER THAN|SMALLER THAN|SMOOSH|INVISIBLE)\b
+    scope: support.function.lolcode
+  - match: \b(?:HOW IZ I|HOW DUZ I)\b
+    scope: storage.type.function.lolcode
+  - match: \b(?:TROOF|NUMBR|NUMBAR|YARN|BUKKIT|NOOB)\b
+    scope: storage.type.lolcode
+  - match: \b(?:WIN|FAIL)\b
+    scope: constant.language.boolean.lolcode
+  repo_numbers:
+  - match: \b\d+\.\d+\b
+    scope: constant.numeric.float.lolcode
+  - match: \b\d+\b
+    scope: constant.numeric.integer.lolcode
+  repo_operators:
+  - match: '\+|-|\*|/|%|>|<|=|!|\?|:'
+    scope: keyword.operator.lolcode
+  - include: repo_parentheses
+  repo_parentheses:
+  - match: \(|\)
+    scope: punctuation.parenthesis.lolcode
+  repo_strings:
+  - match: ("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])*')
+    captures:
+      1: string.quoted.double.lolcode
+      2: string.quoted.single.lolcode
+  repo_variables:
+  - match: (?<=\b)([A-Za-z][A-Za-z0-9_]*)\b
+    scope: variable.other.lolcode
+  - match: (?<=CAN HAS )(\w*)(?=\?)
+    scope: variable.other.lolcode

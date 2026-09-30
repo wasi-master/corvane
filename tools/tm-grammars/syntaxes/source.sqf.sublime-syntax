@@ -1,0 +1,84 @@
+%YAML 1.2
+---
+# SQF (source.sqf): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/JonBons/Sublime-SQF-Language via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: SQF
+scope: source.sqf
+file_extensions:
+- sqf
+- hqf
+contexts:
+  main:
+  - match: \#ifdef|\#ifndef|\#else|\#endif
+    scope: keyword.other.sqf
+  - match: \#include
+    scope: keyword.control.import.sqf
+  - match: private|\#define|\#undef
+    scope: keyword.declaration.sqf
+  - match: \b(?i:_exception|_foreachindex|_this|_thisfsm|_thislist|_thisscript|_x)\b
+    scope: variable.language.sqf
+  - match: \b(?i:__eval|__exec|__file__|__line__|blufor|civilian|confignull|controlnull|displaynull|east|endl|false|grpnull|independent|linebreak|locationnull|nil|objnull|opfor|pi|resistance|scriptnull|sideambientlife|sideempty|sidelogic|sideunknown|tasknull|teammembernull|true|west)\b|\:|\!|&&|\|\||>>
+    scope: constant.language.sqf
+  - match: \b(?i:and|break|breakout|breakto|breakwith|call|case|catch|continue|continuewith|default|do|else|execfsm|execvm|exitwith|for|foreach|foreachmember|foreachmemberagent|foreachmemberteam|from|if|not|or|preprocessfile|preprocessfilelinenumbers|scopename|spawn|step|switch|then|throw|to|try|while|with)\b|\:|\!|&&|\|\||>>
+    scope: keyword.control.sqf
+  - match: \b(?i:abs|acctime|acos|asin|atan|atan2|behaviour|boundingbox|boundingcenter|breakout|breakto|call|ceil|combatmode|cos|count|deleteat|diag_log|exp|floor|format|group|isnull|ln|log|max|min|objnull|player|random|round|select|sin|sqrt|str|tan|typename|vectordir|vectorup|vehicle)\b
+    scope: support.function.sqf
+  - match: \b(?i:isequalto|isequaltype)\b
+    scope: support.function.sqf
+  - match: \b0x[a-fA-F\d]+|\b\d+(\.\d+)?([eE]-?\d+)?|\.\d+([eE]-?\d+)?
+    scope: constant.numeric.sqf
+  - match: <\=|>\=|\=\=|<|>|\!\=
+    scope: keyword.operator.comparison.sqf
+  - match: //
+    captures:
+      0: punctuation.definition.comment.sqf
+    push:
+    - meta_scope: comment.line.sqf
+    - match: $\n?
+      pop: true
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.sqf
+    push:
+    - meta_scope: comment.block.sqf
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.sqf
+  - match: \+|\-|\*|\/|%|\^
+    scope: keyword.operator.arithmetic.sqf
+  - match: \=
+    scope: keyword.operator.assignment.sqf
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.sqf
+    push:
+    - meta_scope: string.quoted.double.sqf
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.sqf
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.sqf
+    push:
+    - meta_scope: string.quoted.sqf
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.sqf
+  - match: '@"'
+    captures:
+      0: punctuation.definition.string.begin.sqf
+    push:
+    - meta_scope: string.quoted.region.sqf
+    - match: '"@'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.sqf
+  - match: \b_[a-zA-Z_][a-zA-Z0-9_]*
+    scope: variable.other.sqf
+  - match: '[a-zA-Z]\w+_fnc_\w+'
+    scope: variable.function.sqf
+  - match: \b__[a-zA-Z_][a-zA-Z0-9_]*
+    scope: constant.other.sqf

@@ -1,0 +1,74 @@
+%YAML 1.2
+---
+# LigoLANG (source.ligo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/pewulfman/Ligo-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: LigoLANG
+scope: source.ligo
+file_extensions:
+- ligo
+contexts:
+  main:
+  - include: repo_string
+  - include: repo_block_comment
+  - include: repo_line_comment
+  - include: repo_attribute
+  - include: repo_macro
+  - include: repo_controlkeywords
+  - include: repo_function
+  - include: repo_operators
+  - include: repo_typedefinition
+  - include: repo_module
+  - include: repo_identifierconstructor
+  - include: repo_constorvar
+  - include: repo_numericliterals
+  repo_attribute:
+  - match: \[@.*\]
+    scope: keyword.control.attribute.ligo
+  repo_block_comment:
+  - match: \(\*
+    push:
+    - meta_scope: comment.block.ligo
+    - match: \*\)
+      pop: true
+  repo_constorvar:
+  - match: \b(const|var)\b
+    captures:
+      1: keyword.other.ligo
+  repo_controlkeywords:
+  - match: \b(case|with|if|then|else|assert|failwith|begin|end|in|is|from|skip|block|contains|to|step|of|while|for|remove)\b
+    scope: keyword.control.ligo
+  repo_function:
+  - match: \b(function)\b\s*\b([a-zA-Z$_][a-zA-Z0-9$_]*)
+    captures:
+      1: keyword.other.ligo
+      2: entity.name.function.ligo
+  repo_identifierconstructor:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\s+
+    captures:
+      1: variable.other.enummember.ligo
+  repo_line_comment:
+  - match: \/\/.*$
+    scope: comment.block.ligo
+  repo_macro:
+  - match: ^\#[a-zA-Z]+
+    scope: meta.preprocessor.ligo
+  repo_module:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\.([a-z][a-zA-Z0-9_$]*)
+    captures:
+      1: storage.class.ligo
+      2: storage.var.ligo
+  repo_numericliterals:
+  - match: (\+|\-)?[0-9]+(n|tz|tez|mutez|)\b
+    scope: constant.numeric.ligo
+  repo_operators:
+  - match: \s+(\-|\+|mod|land|lor|lxor|lsl|lsr|&&|\|\||>|=/=|<=|=>|<|>)\s+
+    scope: keyword.operator.ligo
+  repo_string:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double.ligo
+    - match: \"
+      pop: true
+  repo_typedefinition:
+  - match: \b(type)\b
+    scope: entity.name.type.ligo

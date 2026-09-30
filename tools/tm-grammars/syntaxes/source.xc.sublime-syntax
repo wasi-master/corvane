@@ -1,0 +1,172 @@
+%YAML 1.2
+---
+# XC (source.xc): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/xc.tmbundle via GitHub Linguist v9.7.0 (license: permissive).
+name: XC
+scope: source.xc
+file_extensions:
+- xc
+contexts:
+  main:
+  - match: \b(par|select|master|slave|client|server|asm|service|transaction|move|extends)\b
+    scope: keyword.control.xc
+  - match: \b(chan|chanend|port|interface|timer|clock)\b
+    scope: storage.type.c++
+  - match: \b(unsafe|alias|noalias|movable|in|out|buffered|streaming)\b
+    scope: keyword.operator.xc
+  - match: \b(on|when|isnull)\b
+    scope: keyword.operator.xc
+  - match: \b(tile|core|tileref)\b
+    scope: keyword.operator.xc
+  - match: \b(\[\[(combinable|distributed)\]\])\b
+    scope: keyword.operator.xc
+  - include: repo_special_block
+  - include: scope:source.c
+  - match: \b(friend|explicit|virtual)\b
+  - match: '\b(private|protected|public):'
+  - match: \b(catch|operator|try|throw|using)\b
+    scope: keyword.control.c++
+  - match: \bdelete\b(\s*\[\])?|\bnew\b(?!])
+    scope: keyword.control.c++
+  - match: \b(f|m)[A-Z]\w*\b
+    scope: variable.other.readwrite.member.c++
+  - match: \b(this|nullptr)\b
+    scope: variable.language.c++
+  - match: \btemplate\b\s*
+    scope: storage.type.template.c++
+  - match: \b(const_cast|dynamic_cast|reinterpret_cast|static_cast)\b\s*
+    scope: keyword.operator.cast.c++
+  - match: \b(and|and_eq|bitand|bitor|compl|not|not_eq|or|or_eq|typeid|xor|xor_eq)\b
+    scope: keyword.operator.c++
+  - match: \b(class|wchar_t)\b
+    scope: storage.type.c++
+  - match: \b(constexpr|export|mutable|typename|thread_local)\b
+    scope: storage.modifier.c++
+  - match: "(?x)\n    \t\t\t\t(?:  ^                                 # begin-of-line\n    \t\t\t\t  |  (?: (?<!else|new|=) )             #  or word + space before name\n    \t\t\t\t)\n    \t\t\t\t((?:[A-Za-z_][A-Za-z0-9_]*::)*+~[A-Za-z_][A-Za-z0-9_]*) # actual name\n    \t\t\t\t \\s*(\\()                           # start bracket or end-of-line\n    \t\t\t"
+    captures:
+      1: entity.name.function.c++
+      2: punctuation.definition.parameters.begin.c
+    push:
+    - meta_scope: meta.function.destructor.c++
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.c
+    - include: main
+  - match: "(?x)\n    \t\t\t\t(?:  ^                                 # begin-of-line\n    \t\t\t\t  |  (?: (?<!else|new|=) )             #  or word + space before name\n    \t\t\t\t)\n    \t\t\t\t((?:[A-Za-z_][A-Za-z0-9_]*::)*+~[A-Za-z_][A-Za-z0-9_]*) # actual name\n    \t\t\t\t \\s*(\\()                           # terminating semi-colon\n    \t\t\t"
+    captures:
+      1: entity.name.function.c++
+      2: punctuation.definition.parameters.begin.c
+    push:
+    - meta_scope: meta.function.destructor.prototype.c++
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.c
+    - include: main
+  repo_angle_brackets:
+  - match: <
+    push:
+    - meta_scope: meta.angle-brackets.c++
+    - match: '>'
+      pop: true
+    - include: repo_angle_brackets
+    - include: main
+  repo_block:
+  - match: \{
+    captures:
+      0: punctuation.section.block.begin.c
+    push:
+    - meta_scope: meta.block.c++
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.block.end.c
+    - match: "(?x)\n    \t\t\t\t(\n    \t\t\t\t\t(?!while|for|do|if|else|switch|catch|enumerate|return|r?iterate)(?: \\b[A-Za-z_][A-Za-z0-9_]*+\\b | :: )*+                  # actual name\n    \t\t\t\t)\n    \t\t\t\t \\s*(\\()"
+      scope: meta.function-call.c
+      captures:
+        1: support.function.any-method.c
+        2: punctuation.definition.parameters.c
+    - include: main
+  repo_constructor:
+  - match: "(?x)\n    \t\t\t\t(?:  ^\\s*)                             # begin-of-line\n    \t\t\t\t((?!while|for|do|if|else|switch|catch|enumerate|r?iterate)[A-Za-z_][A-Za-z0-9_:]*) # actual name\n    \t\t\t\t \\s*(\\()                            # start bracket or end-of-line\n    \t\t\t"
+    captures:
+      1: entity.name.function.c++
+      2: punctuation.definition.parameters.begin.c
+    push:
+    - meta_scope: meta.function.constructor.c++
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.c
+    - include: main
+  - match: "(?x)\n    \t\t\t\t(:)                            # begin-of-line\n    \t\t\t\t((?=\\s*[A-Za-z_][A-Za-z0-9_:]* # actual name\n    \t\t\t\t \\s*(\\()))                      # start bracket or end-of-line\n    \t\t\t"
+    captures:
+      1: punctuation.definition.parameters.c
+    push:
+    - meta_scope: meta.function.constructor.initializer-list.c++
+    - match: (?=\{)
+      pop: true
+    - include: main
+  repo_special_block:
+  - match: \b(namespace)\b\s*([_A-Za-z][_A-Za-z0-9]*\b)?+
+    captures:
+      1: storage.type.c++
+      2: entity.name.type.c++
+    push:
+    - match: (?<=\})|(?=(;|,|\(|\)|>|\[|\]|=))
+      pop: true
+    - match: \{
+      captures:
+        0: punctuation.definition.scope.c++
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.scope.c++
+      - include: repo_special_block
+      - include: repo_constructor
+      - include: main
+    - include: main
+  - match: \b(class|struct)\b\s*([_A-Za-z][_A-Za-z0-9]*\b)?+(\s*:\s*(public|protected|private)\s*([_A-Za-z][_A-Za-z0-9]*\b)((\s*,\s*(public|protected|private)\s*[_A-Za-z][_A-Za-z0-9]*\b)*))?
+    captures:
+      1: storage.type.c++
+      2: entity.name.type.c++
+      4: storage.type.modifier.c++
+      5: entity.name.type.inherited.c++
+    push:
+    - meta_scope: meta.class-struct-block.c++
+    - match: (?<=\})|(?=(;|\(|\)|>|\[|\]|=))
+      pop: true
+    - include: repo_angle_brackets
+    - match: \{
+      captures:
+        0: punctuation.section.block.begin.c++
+      push:
+      - match: (\})(\s*\n)?
+        pop: true
+        captures:
+          1: punctuation.definition.invalid.c++
+          2: invalid.illegal.you-forgot-semicolon.c++
+      - include: repo_special_block
+      - include: repo_constructor
+      - include: main
+    - include: main
+  - match: \b(extern)(?=\s*")
+    captures:
+      1: storage.modifier.c++
+    push:
+    - meta_scope: meta.extern-block.c++
+    - match: (?<=\})|(?=\w)
+      pop: true
+    - match: \{
+      captures:
+        0: punctuation.section.block.begin.c
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.block.end.c
+      - include: repo_special_block
+      - include: main
+    - include: main

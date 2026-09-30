@@ -1,0 +1,90 @@
+%YAML 1.2
+---
+# Go Module (go.mod): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/golang/vscode-go via GitHub Linguist v9.7.0 (license: mit).
+name: Go Module
+scope: go.mod
+file_extensions:
+- go.mod
+- go.work
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_directive
+  - include: repo_invalid
+  repo_arguments:
+  - include: repo_comments
+  - include: repo_double_quoted_string
+  - include: repo_raw_quoted_string
+  - include: repo_operator
+  - include: repo_semver
+  - include: repo_semver_range
+  - include: repo_unquoted_string
+  repo_comments:
+  - match: //
+    captures:
+      0: punctuation.definition.comment.go.mod
+    push:
+    - meta_scope: comment.line.double-slash.go.mod
+    - match: $
+      pop: true
+  repo_directive:
+  - match: (\w+)\s*\(
+    captures:
+      1: keyword.go.mod
+    push:
+    - match: \)
+      pop: true
+    - include: repo_arguments
+  - match: (\w+)\s*(.*)
+    captures:
+      1: keyword.go.mod
+  repo_double_quoted_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.go.mod
+    push:
+    - meta_scope: string.quoted.double
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.go.mod
+    - include: repo_string_escaped_char
+    - include: repo_string_placeholder
+  repo_invalid:
+  - match: .*
+    scope: invalid.illegal.unknown.go.mod
+  repo_operator:
+  - match: (=>)
+    scope: operator.go.mod
+  repo_raw_quoted_string:
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.go.mod
+    push:
+    - meta_scope: string.quoted.raw
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.go.mod
+    - include: repo_string_placeholder
+  repo_semver:
+  - match: v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z-]+(?:\.[\da-z-]+)*)?(?:\+[\da-z-]+(?:\.[\da-z-]+)*)?
+    scope: constant.language.go.mod
+  repo_semver_range:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_semver
+  repo_string_escaped_char:
+  - match: \\([0-7]{3}|[abfnrtv\\'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})
+    scope: constant.character.escape.go.mod
+  - match: \\[^0-7xuUabfnrtv\'"]
+    scope: invalid.illegal.unknown-escape.go.mod
+  repo_string_placeholder:
+  - match: '%(\[\d+\])?([\+#\-0\x20]{,2}((\d+|\*)?(\.?(\d+|\*|(\[\d+\])\*?)?(\[\d+\])?)?))?[vT%tbcdoqxXUbeEfFgGsp]'
+    scope: constant.other.placeholder.go.mod
+  repo_unquoted_string:
+  - match: ([^\s/]|/(?!/))+
+    scope: string.unquoted.go.mod

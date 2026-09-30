@@ -1,0 +1,76 @@
+%YAML 1.2
+---
+# Shen (source.shen): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-shen via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Shen
+scope: source.shen
+file_extensions:
+- shen
+contexts:
+  main:
+  - include: repo_expressions
+  repo_atoms:
+  - match: (\")
+    push:
+    - meta_scope: string.quoted.double
+    - match: (\")
+      pop: true
+    - match: (~A|~R|~S|~%|c#\d+;)
+      scope: constant.character.escape
+    - match: (c#[^;]*;)
+      scope: invalid.illegal
+  - match: (?<=^|[\s()\[\]])[+-]*\d+\.?\d*(?=$|[\s;()\[\]])
+    scope: constant.numeric
+  - match: (?<=^|[\s()\[\]])[+-]*\d+\.?\d*[^\s;()\[\]]+(?=$|[\s;()\[\]])
+    scope: invalid.illegal
+  - match: (?<=\()(and|or|if|do|lambda|freeze|let|cond|cases|trap-error|where|package|defun|/.|define|defmacro|defcc|defprolog|datatype)(?=$|[\s;()\[\]{}])
+    scope: keyword.control
+  - match: (?<=^|[\s()\[\]{}])(->|<-|-->|<--|==>|<==|:=|__+)(?=$|[\s;()\[\]{}])
+    scope: keyword.control
+  - match: (?<=^|[\s()\[\]{}])(=|==|<|>|<=|>=|\+|-|\*|/)(?=$|[\s;()\[\]{}])
+    scope: keyword.operator
+  - match: (?<=\(define\s)([^\s()\[\]{}]*)(?=$|[\s;()\[\]{}])
+    scope: entity.name.function
+  - match: (?<=\(defmacro\s)([^\s()\[\]{}]*)(?=$|[\s;()\[\]{}])
+    scope: entity.name.function
+  - match: (?<=\(defprolog\s)([^\s()\[\]{}]*)(?=$|[\s;()\[\]{}])
+    scope: entity.name.function
+  - match: (?<=\(package\s)([^\s()\[\]{}]*)(?=$|[\s;()\[\]{}])
+    scope: entity.name.section
+  - match: (?<=\(datatype\s)([^\s()\[\]{}]*)(?=$|[\s;()\[\]{}])
+    scope: entity.name.type
+  - match: (?<=^|[\s()\[\]{}])([A-Z][^\s()\[\];{}]*)(?=$|[\s;()\[\]{}])
+    scope: variable.language
+  - match: (?<=^|[\s()\[\]])(<[^\s()\[\]]*>)(?=$|[\s;()\[\]])
+    scope: entity.name.tag
+  - match: (?<=^|[\s)\[\]{}])([^A-Z\s()\[\]:;\|{}][^\s()\[\];{}]*)(?=$|[\s;()\[\]{}])
+    scope: constant.language
+  - match: (\(\)|\[\])
+    scope: constant.language
+  repo_comments:
+  - match: (\\\\.*$)
+    scope: comment.line
+  - match: (\\\*)
+    push:
+    - meta_scope: comment.block
+    - match: (\*\\)
+      pop: true
+  repo_expressions:
+  - include: repo_comments
+  - include: repo_atoms
+  - include: repo_parens
+  - include: repo_squares
+  repo_parens:
+  - match: (\()
+    push:
+    - meta_scope: meta.group
+    - match: (\))
+      pop: true
+    - include: repo_expressions
+  repo_squares:
+  - match: (\[)
+    push:
+    - meta_scope: meta.group
+    - match: (\])
+      pop: true
+    - include: repo_expressions

@@ -1,0 +1,24 @@
+%YAML 1.2
+---
+# NetLinx+ERB (source.netlinx.erb): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-netlinx via GitHub Linguist v9.7.0 (license: mit).
+name: NetLinx+ERB
+scope: source.netlinx.erb
+file_extensions:
+- axs.erb
+- axi.erb
+contexts:
+  main:
+  - include: repo_erb
+  - include: scope:source.netlinx
+  repo_erb:
+  - match: <%
+    captures:
+      0: punctuation.section.scope.netlinx.erb
+    push:
+    - meta_scope: meta.block.netlinx.erb
+    - match: '%>'
+      pop: true
+      captures:
+        0: punctuation.section.scope.netlinx.erb
+    - include: scope:source.ruby

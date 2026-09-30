@@ -1,0 +1,51 @@
+%YAML 1.2
+---
+# C-ObjDump (objdump.x86asm): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/assembly via GitHub Linguist v9.7.0 (license: mit).
+name: C-ObjDump
+scope: objdump.x86asm
+file_extensions:
+- c-objdump
+- cppobjdump
+- c++-objdump
+- c++objdump
+- cpp-objdump
+- cxx-objdump
+- d-objdump
+- objdump
+contexts:
+  main:
+  - match: ^(.*):\s+file format (.*)$
+    captures:
+      0: comment.x86.assembly
+      1: entity.name.type.x86.assembly
+    push:
+    - meta_scope: meta.embedded.x86asm
+    - match: ^
+      pop: true
+  - match: ^Disassembly of section (.*):$
+    captures:
+      0: comment.x86.assembly
+      1: entity.name.tag.x86.assembly
+    push:
+    - meta_scope: meta.embedded.x86asm
+    - match: ^
+      pop: true
+  - match: ^[0-9A-Za-z]+ <(.*)>:$
+    captures:
+      0: comment.x86.assembly
+      1: entity.name.function.x86.assembly
+    push:
+    - meta_scope: meta.embedded.x86asm
+    - match: ^
+      pop: true
+  - match: ^\s*[0-9A-Za-z]+:(?:\t[0-9A-Za-z]{2}\s+){0,1}(?:\t|$)
+    captures:
+      0: comment.x86.assembly
+    push:
+    - meta_scope: meta.embedded.x86asm
+    - match: ^
+      pop: true
+    - include: scope:source.x86asm
+  - include: scope:source.c
+  - include: scope:source.c++

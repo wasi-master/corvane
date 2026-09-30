@@ -1,0 +1,330 @@
+%YAML 1.2
+---
+# Redscript (source.redscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/jackhumbert/redscript-syntax-highlighting.git via GitHub Linguist v9.7.0 (license: mit).
+name: Redscript
+scope: source.redscript
+file_extensions:
+- reds
+contexts:
+  main:
+  - include: repo_root
+  repo_attributes:
+  - match: ((@)(?:(?:wrap|add|replace)Method|replaceGlobal|addField|runtimeProperty))(\()
+    captures:
+      1: storage.modifier.attribute.redscript
+      2: punctuation.definition.attribute.redscript
+      3: punctuation.definition.arguments.begin.redscript
+    push:
+    - meta_scope: meta.attribute.redscript
+    - match: (?!)\)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.redscript
+    - match: ((?<q>`?)[\p{L}_][\p{L}_\p{N}\p{M}]*(\k<q>))
+      scope: entity.name.class.redscript
+  repo_builtin-functions:
+  - match: (?<=\.)(?:DetectScriptableCycles|GetClassName|IsA|IsExactlyA|ToString)(?=\s*[({])\b
+    scope: support.function.redscript
+  repo_builtin-global-functions:
+  - match: \b(Equals|NotEquals|IsDefined|To(String|Variant)|EnumInt|IntEnum|Array(Size|Resize|Push|Pop|Clear|Find(First|Last)|Contains|Count|Insert|Remove|Grow|Erase|Last))(?=\s*\()
+    scope: support.function.redscript
+  repo_builtin-properties:
+  - match: (?<=\.)(?:value)\b
+    scope: support.variable.redscript
+  repo_builtin-types:
+  - match: \bAny\b
+    scope: support.type.any.redscript
+  repo_code-block:
+  - match: \{
+    captures:
+      0: punctuation.section.scope.begin.redscript
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.redscript
+    - include: main
+  repo_comments:
+  - match: \A^(#!).*$\n?
+    scope: comment.line.number-sign.redscript
+    captures:
+      1: punctuation.definition.comment.redscript
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.begin.redscript
+    push:
+    - meta_scope: comment.block.documentation.redscript
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.redscript
+  - match: '/\*:'
+    captures:
+      0: punctuation.definition.comment.begin.redscript
+    push:
+    - meta_scope: comment.block.documentation.playground.redscript
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.redscript
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.redscript
+    push:
+    - meta_scope: comment.block.redscript
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.redscript
+  - match: \*/
+    scope: invalid.illegal.unexpected-end-of-block-comment.redscript
+  - match: (^[ \t]+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.redscript
+    push:
+    - match: (?!)
+      pop: true
+    - match: ///
+      captures:
+        0: punctuation.definition.comment.redscript
+      push:
+      - meta_scope: comment.line.triple-slash.documentation.redscript
+      - match: ^
+        pop: true
+    - match: '//:'
+      captures:
+        0: punctuation.definition.comment.redscript
+      push:
+      - meta_scope: comment.line.double-slash.documentation.redscript
+      - match: ^
+        pop: true
+    - match: //
+      captures:
+        0: punctuation.definition.comment.redscript
+      push:
+      - meta_scope: comment.line.double-slash.redscript
+      - match: ^
+        pop: true
+  repo_compiler-control:
+  - match: ^\s*(#)(if|elseif)\s+(false)\b.*?(?=$|//|/\*)
+    captures:
+      0: meta.preprocessor.conditional.redscript
+      1: punctuation.definition.preprocessor.redscript
+      2: keyword.control.preprocessor.conditional.redscript
+      3: constant.language.boolean.redscript
+    push:
+    - meta_content_scope: comment.block.preprocessor.redscript
+    - match: (?=^\s*(#(elseif|else|endif)\b))
+      pop: true
+  - match: ^\s*(#)(if|elseif)\s+
+    captures:
+      1: punctuation.definition.preprocessor.redscript
+      2: keyword.control.preprocessor.conditional.redscript
+    push:
+    - meta_scope: meta.preprocessor.conditional.redscript
+    - match: (?=\s*(?://|/\*))|$
+      pop: true
+      captures:
+        1: punctuation.definition.preprocessor.redscript
+        2: keyword.control.preprocessor.conditional.redscript
+    - match: (&&|\|\|)
+      scope: keyword.operator.logical.redscript
+    - match: \b(true|false)\b
+      scope: constant.language.boolean.redscript
+    - match: \b(arch)\s*(\()\s*(?:(arm|arm64|powerpc64|powerpc64le|i386|x86_64|s390x)|\w+)\s*(\))
+      captures:
+        1: keyword.other.condition.redscript
+        2: punctuation.definition.parameters.begin.redscript
+        3: support.constant.platform.architecture.redscript
+        4: punctuation.definition.parameters.end.redscript
+    - match: \b(os)\s*(\()\s*(?:(macOS|OSX|iOS|tvOS|watchOS|Android|Linux|FreeBSD|Windows|PS4)|\w+)\s*(\))
+      captures:
+        1: keyword.other.condition.redscript
+        2: punctuation.definition.parameters.begin.redscript
+        3: support.constant.platform.os.redscript
+        4: punctuation.definition.parameters.end.redscript
+    - match: \b(canImport)\s*(\()([\p{L}_][\p{L}_\p{N}\p{M}]*)(\))
+      captures:
+        1: keyword.other.condition.redscript
+        2: punctuation.definition.parameters.begin.redscript
+        3: entity.name.type.module.redscript
+        4: punctuation.definition.parameters.end.redscript
+    - match: \b(targetEnvironment)\s*(\()
+      captures:
+        1: keyword.other.condition.redscript
+        2: punctuation.definition.parameters.begin.redscript
+      push:
+      - match: (\))|$
+        pop: true
+        captures:
+          1: punctuation.definition.parameters.end.redscript
+      - match: \b(simulator|UIKitForMac)\b
+        scope: support.constant.platform.environment.redscript
+    - match: \b(redscript|compiler)\s*(\()
+      captures:
+        1: keyword.other.condition.redscript
+        2: punctuation.definition.parameters.begin.redscript
+      push:
+      - match: (\))|$
+        pop: true
+        captures:
+          1: punctuation.definition.parameters.end.redscript
+      - match: '>=|<'
+        scope: keyword.operator.comparison.redscript
+      - match: \b[0-9]+(?:\.[0-9]+)*\b
+        scope: constant.numeric.redscript
+  - match: ^\s*(#)(else|endif)(.*?)(?=$|//|/\*)
+    scope: meta.preprocessor.conditional.redscript
+    captures:
+      1: punctuation.definition.preprocessor.redscript
+      2: keyword.control.preprocessor.conditional.redscript
+  - match: ^\s*(#)(sourceLocation)((\()([^)]*)(\)))(.*?)(?=$|//|/\*)
+    scope: meta.preprocessor.sourcelocation.redscript
+    captures:
+      1: punctuation.definition.preprocessor.redscript
+      2: keyword.control.preprocessor.sourcelocation.redscript
+      4: punctuation.definition.parameters.begin.redscript
+      6: punctuation.definition.parameters.begin.redscript
+  repo_constructor:
+  - match: \bnew\s
+    captures:
+      0: keyword.other.declarataion-specifier.redscript
+      1: entity.name.class.redscript
+    push:
+    - meta_scope: meta.constructor.redscript
+    - match: (?!)(\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.redscript
+    - match: ((?<q>`?)[\p{L}_][\p{L}_\p{N}\p{M}]*(\k<q>))(\()
+      captures:
+        1: entity.name.class.redscript
+        4: punctuation.definition.arguments.begin.redscript
+      push:
+      - meta_scope: meta.constructor.class.redscript
+      - match: (?!)|
+        pop: true
+  repo_declarations: []
+  repo_expressions:
+  - include: repo_comments
+  - include: repo_code-block
+  - include: repo_attributes
+  - include: repo_literals
+  - include: repo_operators
+  - include: repo_builtin-types
+  - include: repo_builtin-functions
+  - include: repo_builtin-global-functions
+  - include: repo_global-cast-functions
+  - include: repo_builtin-properties
+  - include: repo_keywords
+  - include: repo_constructor
+  - match: \b_\b
+    scope: support.variable.discard-value.redscript
+  repo_global-cast-functions:
+  - match: \bCast(\<)
+    captures:
+      0: support.function.redscript
+      1: punctuation.definition.arguments.begin.redscript
+    push:
+    - meta_scope: support.function.redscript
+    - match: (?!)\>
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.redscript
+    - match: ((?<q>`?)[\p{L}_][\p{L}_\p{N}\p{M}]*(\k<q>))
+      scope: entity.name.class.redscript
+  repo_keywords:
+  - match: (?<!\.)\b(?:if|else|guard|where|switch|case|default|fallthrough)\b
+    scope: keyword.control.branch.redscript
+  - match: (?<!\.)\b(?:continue|break|fallthrough|return)\b
+    scope: keyword.control.transfer.redscript
+  - match: (?<!\.)\b(?:while|for|in)\b
+    scope: keyword.control.loop.redscript
+  - match: (?<!\.)\b(repeat)\b(\s*)
+    captures:
+      1: keyword.control.loop.redscript
+      2: punctuation.whitespace.trailing.repeat.redscript
+  - match: (?<!\.)\bdefer\b
+    scope: keyword.control.defer.redscript
+  - match: (?<!\.)\b(?:(await\s+try)|(await)\b)
+    captures:
+      1: invalid.illegal.try-must-precede-await.redscript
+      2: keyword.control.await.redscript
+  - match: (?<!\.)\b(?:catch|throws?|rethrows|try)\b|\btry[?!]\B
+    scope: keyword.control.exception.redscript
+  - match: (?<!\.)\b(do)\b(\s*)
+    captures:
+      1: keyword.control.exception.redscript
+      2: punctuation.whitespace.trailing.do.redscript
+  - match: (?<!\.)\b(?:let)\b
+    scope: keyword.other.declaration-specifier.redscript
+  - match: (?<!\.)\b(class|enum|struct|module)\b
+  - match: (?<!\.)\b(?:static|cb|final|abstract|native|const|persistent|browsable|replicated|inline|edit)\b
+    scope: storage.modifier.redscript
+  - match: \binit[?!]|\binit\b|(?<!\.)\b(?:func|deinit|subscript|didSet|get|set|willSet)\b
+    scope: storage.type.function.redscript
+  - match: (?<!\.)\b(?:fileprivate|private|internal|public|protected|open)\b
+    scope: keyword.other.declaration-specifier.accessibility.redscript
+  - match: (?<!\.)\bunowned\((?:safe|unsafe)\)|(?<!\.)\b(?:weak|unowned)\b
+    scope: keyword.other.capture-specifier.redscript
+  - match: (?<=\.)(?:(dynamicType|self)|(Protocol|Type))\b
+    captures:
+      1: keyword.operator.type.redscript
+      2: keyword.operator.type.metatype.redscript
+  - match: (?<!\.)\b(?:super|self|this|wrappedMethod)\b
+    scope: variable.language.redscript
+  - match: \B(?:#file|#filePath|#fileID|#line|#column|#function|#dsohandle)\b|\b(?:__FILE__|__LINE__|__COLUMN__|__FUNCTION__|__DSO_HANDLE__)\b
+    scope: support.variable.redscript
+  - match: (?<!\.)\bimport\b
+    scope: keyword.control.import.redscript
+  repo_literals:
+  - match: \bnull\b
+    scope: constant.language.nil.redscript
+  - match: \B#keyPath\b
+    scope: support.function.key-path.redscript
+  - match: \B(#selector)(\()(?:\s*(getter|setter)\s*(:))?
+    captures:
+      1: support.function.selector-reference.redscript
+      2: punctuation.definition.arguments.begin.redscript
+      3: support.variable.parameter.redscript
+      4: punctuation.separator.argument-label.redscript
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.arguments.end.redscript
+    - include: repo_expressions
+  repo_operators:
+  - match: \b(as)\b\s+
+    captures:
+      1: keyword.operator.type-casting.redscript
+    push:
+    - meta_scope: meta.type-casting
+    - match: (?!)
+      pop: true
+    - match: ((?<q>`?)[\p{L}_][\p{L}_\p{N}\p{M}]*(\k<q>))
+      scope: entity.name.class.redscript
+  - match: "(?x)\n\t\t\t\t\t\t(?=\n\t\t\t\t\t\t\t(?<oph>\t\t\t\t\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t[/=\\-+!*%<>&|^~?]\n\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t)\n\t\t\t\t\t\t  | \\.\n\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\\g<oph>\t\t\t\t\t\t\t# operator-head\n\t\t\t\t\t\t\t  | \\.\n\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\
+      \t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t)\n\t\t\t\t\t\t)\n\t\t\t\t\t"
+    push:
+    - match: (?!)
+      pop: true
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t(?<=^|[\\s(\\[{,;:])\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t[/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\
+        \t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t\t(?![\\s)\\]},;:]|\\z)\n\t\t\t\t\t\t\t"
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t(?<!^|[\\s(\\[{,;:])\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t[/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\
+        \t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t\t(?=[\\s)\\]},;:]|\\z)\n\t\t\t\t\t\t\t"
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t[/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\
+        \t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t"
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t(?<=^|[\\s(\\[{,;:])\n\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t\t  | [/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\
+        \t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t\t(?![\\s)\\]},;:]|\\z)\n\t\t\t\t\t\t\t"
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t(?<!^|[\\s(\\[{,;:])\n\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t\t  | [/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\
+        \t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t\t(?=[\\s)\\]},;:]|\\z)\n\t\t\t\t\t\t\t"
+    - match: "(?x)\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# Matching from the beginning ensures\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t# that we start with operator-head\n\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t(?!(//|/\\*|\\*/))\n\t\t\t\t\t\t\t\t\t(\n\t\t\t\t\t\t\t\t\t\t\\.\t\t\t\t\t\t\t\t# dot\n\t\t\t\t\t\t\t\t\t  | [/=\\-+!*%<>&|^~?]\t\t\t\t# operator-head\n\t\t\t\t\t\t\t\t\t  | [\\x{00A1}-\\x{00A7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00A9}\\x{00AB}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00AC}\\x{00AE}]\n\t\t\t\t\t\t\t\t\t  | [\\x{00B0}-\\x{00B1}\\x{00B6}\\x{00BB}\\x{00BF}\\x{00D7}\\x{00F7}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2016}-\\x{2017}\\x{2020}-\\x{2027}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2030}-\\x{203E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2041}-\\x{2053}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2055}-\\x{205E}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2190}-\\x{23FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2500}-\\x{2775}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2794}-\\x{2BFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{2E00}-\\x{2E7F}]\n\
+        \t\t\t\t\t\t\t\t\t  | [\\x{3001}-\\x{3003}]\n\t\t\t\t\t\t\t\t\t  | [\\x{3008}-\\x{3030}]\n\t\t\t\t\t\t\t\t  \n\t\t\t\t\t\t\t\t\t  | [\\x{0300}-\\x{036F}]\t\t\t\t# operator-character\n\t\t\t\t\t\t\t\t\t  | [\\x{1DC0}-\\x{1DFF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{20D0}-\\x{20FF}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE00}-\\x{FE0F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{FE20}-\\x{FE2F}]\n\t\t\t\t\t\t\t\t\t  | [\\x{E0100}-\\x{E01EF}]\n\t\t\t\t\t\t\t\t\t)\n\t\t\t\t\t\t\t\t)++\n\t\t\t\t\t\t\t"
+  - match: ':'
+    scope: keyword.operator.ternary.redscript
+  repo_root:
+  - include: repo_compiler-control
+  - include: repo_declarations
+  - include: repo_expressions

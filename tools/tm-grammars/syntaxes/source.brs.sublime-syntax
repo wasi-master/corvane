@@ -1,0 +1,500 @@
+%YAML 1.2
+---
+# BrighterScript (source.brs): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/rokucommunity/vscode-brightscript-language.git via GitHub Linguist v9.7.0 (license: mit).
+name: BrighterScript
+scope: source.brs
+file_extensions:
+- bs
+contexts:
+  main:
+  - include: repo_entire_language
+  repo_alias_statement:
+  - match: (?i:(alias)\s+([a-z0-9_]+)\s*(=)\s*)
+    captures:
+      1: keyword.declaration.alias.brs
+      2: entity.name.variable.brs
+      3: keyword.operator.assignment.brs
+  repo_annotation:
+  - match: ^\s*(@)\s*([a-zA-Z0-9_]+)
+    captures:
+      1: punctuation.decorator.brs
+      2: entity.name.function.brs meta.function-call.brs
+  - match: (@)\s*([a-zA-Z0-9_]+)\s*(\()
+    captures:
+      1: punctuation.decorator.brs
+      2: entity.name.function.brs meta.function-call.brs
+      3: meta.brace.round.brs
+    push:
+    - meta_scope: meta.decorator.brs
+    - match: (\))
+      pop: true
+      captures:
+        1: meta.brace.round.brs
+    - include: repo_entire_language
+  repo_apostrophe_comment:
+  - match: ('[^\r\n]*)$
+    scope: comment.line.apostrophe.brs
+    captures:
+      1: punctuation.definition.comment.brs
+  repo_bsdoc:
+  - include: repo_bsdoc_param_and_type
+  - include: repo_bsdoc_return_and_type
+  - include: repo_bsdoc_generic
+  repo_bsdoc_generic:
+  - match: (?i:\s*(rem|'+)\s*(@)(\w+)(.*$))
+    captures:
+      1: comment.line.apostrophe.brs
+      2: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      3: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      4: comment.block.documentation.brs
+  repo_bsdoc_param_and_type:
+  - match: (?i:\s*(rem|'+)\s*(@)(param|type)\s+(?:(\{)\s*([^\}]+)\s*(\}))?\s*([a-z0-9_.]+)?(.*))
+    captures:
+      1: comment.line.apostrophe.brs
+      2: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      3: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      4: punctuation.definition.bracket.curly.begin.bsdoc
+      5: comment.block.documentation.brs entity.name.type.instance.bsdoc
+      6: punctuation.definition.bracket.curly.end.bsdoc
+      7: variable.other.bsdoc
+      8: comment.block.documentation.brs
+  repo_bsdoc_return_and_type:
+  - match: (?i:\s*(rem|'+)\s*(@)(return|returns)\s+(?:(\{)\s*([^\}]+)\s*(\}))?\s*([a-z0-9_.]+.*)?)
+    captures:
+      1: comment.line.apostrophe.brs
+      2: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      3: punctuation.definition.block.tag.bsdoc storage.type.class.bsdoc
+      4: punctuation.definition.bracket.curly.begin.bsdoc
+      5: comment.block.documentation.brs entity.name.type.instance.bsdoc
+      6: punctuation.definition.bracket.curly.end.bsdoc
+      7: comment.block.documentation.brs
+  repo_class_declaration:
+  - match: (?i:(class)\s+([a-z0-9_]+)(?:\s+(extends)(?:\s+([a-z0-9_]+))?)?)
+    captures:
+      1: keyword.other.class.brs
+      2: entity.name.type.class.brs
+      3: storage.modifier.brs
+      4: entity.name.type.class.brs
+  repo_class_roku_builtin:
+  - match: (?i:(?<=")(roAppInfo|roAppManager|roAppMemoryMonitor|roAppMemoryMonitorEvent|roAppendFile|roArray|roAssetCollection|roAssetFetcher|roAssetFetcherEvent|roAssetFetcherProgressEvent|roAssetPool|roAssetPoolFiles|roAssetRealizer|roAssetRealizerEvent|roAssociativeArray|roAudioConfiguration|roAudioEvent|roAudioEventMx|roAudioGuide|roAudioMetadata|roAudioOutput|roAudioPlayer|roAudioPlayerEvent|roAudioPlayerMx|roAudioResource|roBitmap|roBlockCipher|roBoolean|roBrSub|roBrightPackage|roBtClient|roBtClientEvent|roBtClientManager|roBtClientManagerEvent|roBtManager|roByteArray|roCECStatus|roCECStatusEvent|roCanvasWidget|roCaptionRenderer|roCaptionRendererEvent|roCecInterface|roCecRxFrameEvent|roCecTxCompleteEvent|roChannelManager|roChannelStore|roChannelStoreEvent|roCharDisplay|roClockWidget|roCodeRegistrationScreen|roCodeRegistrationScreenEvent|roCompositor|roConfigurationElements|roControlDown|roControlPort|roControlUp|roCreateFile|roDataGramSocket|roDatagramEvent|roDatagramReceiver|roDatagramSender|roDatagramSocket|roDateTime|roDeviceCrypto|roDeviceCustomization|roDeviceInfo|roDeviceInfoEvent|roDiskErrorEvent|roDiskMonitor|roDouble|roDsa|roEVPCipher|roEVPDigest|roElectron|roElectronEvent|roFileSystem|roFileSystemEvent|roFloat|roFont|roFontMetrics|roFontRegistry|roFunction|roGPIOButton|roGPIOControlPort|roGlobal|roGpioButton|roGpioControlPort|roGridScreen|roGridScreenEvent|roHMAC|roHashGenerator|roHdmiHotPlugEvent|roHdmiInputChanged|roHdmiOutputChanged|roHdmiStatus|roHdmiStatusEvent|roHtmlWidget|roHtmlWidgetEvent|roHttpAgent|roHttpEvent|roHttpServer|roIRDownEvent|roIRRepeatEvent|roIRUpEvent|roIRReceiver|roIRRemote|roIRRemotePress|roIRTransmitCompleteEvent|roIRTransmitter|roImageBuffer|roImageCanvas|roImageCanvasEvent|roImageMetaData|roImageMetadata|roImagePlayer|roImageWidget|roInput|roInputEvent|roInt|roIntrinsicDouble|roInvalid|roJRE|roKeyStore|roKeyboard|roKeyboardPress|roKeyboardScreen|roKeyboardScreenEvent|roList|roListScreen|roListScreenEvent|roLocalization|roLongInteger|roMediaServer|roMediaStreamer|roMediaStreamerEvent|roMessageDialog|roMessageDialogEvent|roMessagePort|roMicrophone|roMicrophoneEvent|roMimeStream|roMimeStreamEvent|roNetworkAdvertisement|roNetworkAttached|roNetworkConfiguration|roNetworkDetached|roNetworkDiscovery|roNetworkHotplug|roNetworkStatistics|roNetworkTimeEvent|roNodeJs|roNodeJsEvent|roOneLineDialog|roOneLineDialogEvent|roOpenVpn|roParagraphScreen|roParagraphScreenEvent|roPassKey|roPath|roPinEntryDialog|roPinEntryDialogEvent|roPosterScreen|roPosterScreenEvent|roPowerEvent|roPowerManager|roProgramGuide|roPtp|roPtpEvent|roQuadravoxButton|roQuadravoxSNS5|roRSA|roRSSArticle|roRSSParser|roReadFile|roReadWriteFile|roRectangle|roRegex|roRegion|roRegistry|roRegistrySection|roRemoteInfo|roResourceManager|roRssArticle|roRssParser|roRtspStream|roRtspStreamEvent|roSGNode|roSGNodeEvent|roSGScreen|roSGScreenEvent|roScreen|roSearchHistory|roSearchScreen|roSearchScreenEvent|roSequenceMatchEvent|roSequenceMatcher|roSerialPort|roSlideShow|roSlideShowEvent|roSnmpAgent|roSnmpEvent|roSocketAddress|roSocketEvent|roSpringboardScreen|roSpringboardScreenEvent|roSprite|roSqliteDatabase|roSqliteEvent|roSqliteStatement|roStorageAttached|roStorageDetached|roStorageHotplug|roStorageInfo|roStreamByteEvent|roStreamConnectResultEvent|roStreamEndEvent|roStreamLineEvent|roStreamQueue|roStreamQueueEvent|roStreamSocket|roString|roSyncManager|roSyncManagerEvent|roSyncPool|roSyncPoolEvent|roSyncPoolFiles|roSyncPoolProgressEvent|roSyncSpec|roSystemLog|roSystemLogEvent|roSystemTime|roTCPConnectEvent|roTCPServer|roTCPStream|roTextField|roTextScreen|roTextScreenEvent|roTextToSpeech|roTextToSpeechEvent|roTextWidget|roTextWidgetEvent|roTextureManager|roTextureRequest|roTextureRequestEvent|roTimeSpan|roTimer|roTimerEvent|roTimespan|roTouchCalibrationEvent|roTouchEvent|roTouchScreen|roTuner|roTunerEvent|roUPnPActionResult|roUPnPController|roUPnPDevice|roUPnPSearchEvent|roUPnPService|roUPnPServiceEvent|roUniversalControlEvent|roUrlEvent|roUrlTransfer|roUsbFilesystem|roUsbHidEmulator|roUsbHidLedEmulatorEvent|roUsbPowerControl|roVideoEvent|roVideoInput|roVideoMode|roVideoPlayer|roVideoPlayerEvent|roVideoScreen|roVideoScreenEvent|roVirtualMemory|roWriteFile|roXMLElement|roXMLList)(?="))
+    scope: support.class.brs
+  repo_comment:
+  - include: repo_rem_comment
+  - include: repo_apostrophe_comment
+  repo_component_statement:
+  - match: "(?i)^[ \t]*(component)\\s+(?:([a-z0-9_]+)|(\".*?\"))(?:\\s+(extends)(?:\\s+(?:([a-z0-9_]+)|(\".*?\")))?)?\\s*"
+    captures:
+      1: storage.type.component.brs
+      2: entity.name.type.component.brs
+      3: string.quoted.double.brs
+      4: storage.modifier.extends.brs
+      5: entity.name.type.component.brs
+      6: string.quoted.double.brs
+    push:
+    - meta_scope: meta.component.brs
+    - match: (?i)(?<![_[:alnum:]])(?<!\.)\s*(end\s*component)
+      pop: true
+      captures:
+        1: storage.type.component.brs
+    - include: repo_entire_language
+  repo_end_class:
+  - match: (?i:\s*(end\s*class))
+    scope: storage.type.class.brs
+  repo_end_function:
+  - match: (?i)[ \t]*end\s*(sub|function)
+    scope: keyword.declaration.function.brs
+  repo_end_namespace:
+  - match: ^(?i:\s*(end\s*namespace)\s*(?=['\n]))
+    captures:
+      1: keyword.other.namespace.brs
+  repo_end_region_comment:
+  - match: ^(i?\s*'\s*#endregion(\s*.*)?$)
+    scope: keyword.preprocessor.region.brs
+  repo_entire_language:
+  - include: repo_regex
+  - include: repo_bsdoc
+  - include: repo_if_with_paren
+  - include: repo_component_statement
+  - include: repo_apostrophe_comment
+  - include: repo_template_string
+  - include: repo_rem_comment
+  - include: repo_import_statement
+  - include: repo_alias_statement
+  - include: repo_namespace_declaration
+  - include: repo_enum_declaration
+  - include: repo_end_namespace
+  - include: repo_method
+  - include: repo_field
+  - include: repo_class_declaration
+  - include: repo_end_class
+  - include: repo_preprocessor_keywords
+  - include: repo_region_comment
+  - include: repo_end_region_comment
+  - include: repo_global_constants
+  - include: repo_keyword_logical_operator
+  - include: repo_function_call
+  - include: repo_numeric_literal
+  - include: repo_object_properties
+  - include: repo_vscode_rale_tracker_entry_comment
+  - include: repo_identifiers_with_type_designators
+  - include: repo_m_and_global
+  - include: repo_keyword_return
+  - include: repo_primitive_literal_expression
+  - include: repo_function_declaration
+  - include: repo_inline_function_declaration
+  - include: repo_end_function
+  - include: repo_interface_declaration
+  - include: repo_function_param_ish
+  - include: repo_storage_types
+  - include: repo_loop_keywords
+  - include: repo_program_statements
+  - include: repo_try_catch
+  - include: repo_non_identifier_keywords
+  - include: repo_operators
+  - include: repo_variables_and_params
+  - include: repo_annotation
+  repo_enum_declaration:
+  - match: (?i)\b(enum)[ \t]+([a-zA-Z0-9_]+)\b
+    captures:
+      1: storage.type.enum.brs
+      2: entity.name.type.enum.brs
+    push:
+    - meta_scope: meta.enum.declaration.brs
+    - match: (?i)[ \t]*(end[ \t]*enum)
+      pop: true
+      captures:
+        1: storage.type.enum.brs
+    - include: repo_comment
+    - include: repo_annotation
+    - include: repo_enum_field
+  repo_enum_field:
+  - match: (?i)\s*\b([a-z0-9_]+)(?:[ \t]*(=))?
+    captures:
+      1: variable.object.enummember.brs
+      2: keyword.operator.assignment.brs
+    push:
+    - match: "\r?\n"
+      pop: true
+    - include: repo_primitive_literal_expression
+    - include: repo_comment
+    - include: repo_annotation
+  repo_field:
+  - match: (?i:(public|protected|private)\s+([a-z0-9_]+))
+    captures:
+      1: storage.modifier.brs
+      2: variable.object.property.brs
+  repo_function_call:
+  - match: (?i:\b([a-z_][a-z0-9_]*)[ \t]*(?=\())
+    captures:
+      1: entity.name.function.brs
+  repo_function_declaration:
+  - match: (?i:(?:(public|protected|private)\s+)?(?:(override)\s+)?((?:sub|function))(?:\s+(?:\(|([a-z_][a-z0-9_]*))))
+    captures:
+      1: storage.modifier.brs
+      2: storage.modifier.brs
+      3: keyword.declaration.function.brs
+      4: entity.name.function.brs
+  repo_function_param_ish:
+  - match: (?i:)(?<=[\(,])[ \t]*\b([a-z0-9_]+)[ \t]+(as\b)
+    captures:
+      1: variable.parameter.brs
+      2: keyword.control.as.brs
+  repo_global_constants:
+  - match: (?i:\b(line_num)\b)
+    scope: variable.language
+  repo_identifiers_with_type_designators:
+  - match: (?i:\b([a-z_][a-z0-9_]*)[\$%!#&])
+    scope: entity.name.variable.local.brs
+  repo_if_with_paren:
+  - match: (?i:(?<!\.)(if)\s*\()
+    captures:
+      1: keyword.control.brs
+    push:
+    - match: "\b(then)|\n"
+      pop: true
+      captures:
+        1: keyword.control.brs
+    - include: repo_entire_language
+  repo_import_statement:
+  - match: (?i:(import)\s*(".*"))
+    captures:
+      1: keyword.control.import.brs
+      2: string.quoted.double.brs
+  repo_inline_function_declaration:
+  - match: (?i)[^a-z0-9_"](function|sub)\s*\(
+    captures:
+      1: keyword.declaration.function.brs
+      2: keyword.declaration.function.brs
+  repo_interface_declaration:
+  - match: (?i)^[\s\t]*(interface)[\s\t]+([a-zA-Z0-9_]+)\b
+    captures:
+      1: storage.type.interface.brs
+      2: entity.name.type.interface.brs
+    push:
+    - meta_scope: meta.interface.brs
+    - match: (?i)[\s\t]*(end[\s\t]*interface)
+      pop: true
+      captures:
+        1: storage.type.interface.brs
+    - include: repo_comment
+    - include: repo_annotation
+    - include: repo_interface_function
+    - include: repo_interface_field
+  repo_interface_field:
+  - match: (?i)\s*\b([a-z0-9_]+)(?:[\s\t]*(as))?
+    captures:
+      1: variable.object.property.brs
+      2: keyword.control.as.brs
+    push:
+    - match: "\r?\n"
+      pop: true
+    - include: repo_type_expression
+    - include: repo_comment
+  repo_interface_function:
+  - include: repo_interface_function_with_return_type
+  - include: repo_interface_function_plain
+  repo_interface_function_plain:
+  - match: (?i:\s*\b(function|sub)[\s\t]+([a-z0-9_]+)(\())(\))[\s\t]
+    captures:
+      1: storage.type.function.brs
+      2: entity.name.function.member.brs
+      3: punctuation.definition.parameters.begin.brs
+      4: punctuation.definition.parameters.end.brs
+      5: keyword.control.as.brs
+  repo_interface_function_with_return_type:
+  - match: (?i:\s*\b(function|sub)[\s\t]+([a-z0-9_]+)(\()).*?(\))[\s\t]+(as)
+    captures:
+      1: storage.type.function.brs
+      2: entity.name.function.member.brs
+      3: punctuation.definition.parameters.begin.brs
+      4: punctuation.definition.parameters.end.brs
+      5: keyword.control.as.brs
+    push:
+    - match: "\r?\n"
+      pop: true
+    - include: repo_type_expression
+    - include: repo_comment
+  repo_keyword_logical_operator:
+  - match: (?i:\b(and|or|not)\b)
+    scope: keyword.operator.logical.word
+  repo_keyword_return:
+  - match: (?i:\b(return)\b)
+    captures:
+      1: keyword.control.flow.return.brs
+  repo_loop_keywords:
+  - match: (?i:(?<!\.)(continue\s+(for|while)\b))
+    scope: keyword.control.loop.brs
+  repo_m_and_global:
+  - match: (?i:(?<!\.)\b(m|super)\b(?:\s*\.\s*(top|global)\b)?)
+    captures:
+      1: keyword.other.this.brs
+      2: keyword.other.this.brs
+  repo_method:
+  - match: (?i:(?:(public|protected|private)\s+)?(?:(override)\s+)?((?:sub|function))(?:\s+(?:\(|([a-z_][a-z0-9_]*))))
+    captures:
+      1: storage.modifier.brs
+      2: storage.modifier.brs
+      3: keyword.declaration.function.brs
+      4: entity.name.function.brs
+  repo_namespace_declaration:
+  - match: (?i:(namespace))\s+
+    captures:
+      1: keyword.other.namespace.brs
+    push:
+    - match: '[\s''\n]'
+      pop: true
+    - match: (?i:([a-z0-9_]+))
+      scope: entity.name.type.namespace.brs
+    - match: \.
+      scope: punctuation.accessor.brs
+  repo_non_identifier_keywords:
+  - match: (?i:[^\.\w\"](then|stop|run|end|each|next|throw)(?!(\s*:)|[\d\w_]))
+    captures:
+      1: keyword.control.brs
+  repo_numeric_literal:
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f)?\b
+    scope: constant.numeric.brs
+  repo_object_properties:
+  - match: (?i:(?<=\.)([a-z0-9_][a-z0-9_\$%!#&]*))
+    captures:
+      1: variable.other.object.property.brs
+  repo_operators:
+  - match: =|>=|<zz|>|<|<>|\+|-|\*|\/|\^|&|\b(?i:(And|Not|Or|Mod))\b
+    scope: keyword.operator.brs
+  repo_preprocessor_keywords:
+  - match: "(?i:(#[ \t]*const))"
+    scope: keyword.preprocessor.const.brs
+  - match: "(?i:(#[ \t]*if))"
+    scope: keyword.preprocessor.if.brs
+  - match: "(?i:(#[ \t]*else[ \t]*if))"
+    scope: keyword.preprocessor.elseif.brs
+  - match: "(?i:(#[ \t]*end[ \t]*if))"
+    scope: keyword.preprocessor.endif.brs
+  - match: "(?i:(#[ \t]*else))"
+    scope: keyword.preprocessor.else.brs
+  - match: "(?i:(#[ \t]*error))"
+    scope: keyword.preprocessor.error.brs
+  repo_primitive_literal_expression:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.brs
+    - match: '"'
+      pop: true
+    - match: '""'
+      scope: constant.character.escape.brs
+    - include: repo_class_roku_builtin
+  - include: repo_numeric_literal
+  - match: (?i)\b(true)\b
+    scope: constant.language.boolean.true.brs
+  - match: (?i)\b(false)\b
+    scope: constant.language.boolean.false.brs
+  - match: (?i:\b(invalid)\b)
+    captures:
+      1: constant.language.null.brs
+  repo_program_statements:
+  - match: (?i:(?<!\.)(if|else\s*if|else|print|library|while|for\s+each|for|end\s*for|exit\s+for|end\s*while|exit\s*while|end\s*if|to|step|in|goto|rem|as)\b)
+    scope: keyword.control.brs
+  repo_regex:
+  - match: (?<!\+\+|--|})(?<=[=(:,\[?+!]|^return|[^\._$[:alnum:]]return|^case|[^\._$[:alnum:]]case|=>|&&|\|\||\*\/)\s*(\/)(?![\/*])(?=(?:[^\/\\\[\()]|\\.|\[([^\]\\]|\\.)+\]|\(([^\)\\]|\\.)+\))+\/([gmixsuXUAJ]+|(?![\/\*])|(?=\/\*))(?!\s*[a-zA-Z0-9_$]))
+    captures:
+      1: punctuation.definition.string.begin.brs
+    push:
+    - meta_scope: string.regexp.brs
+    - match: (/)([gmixsuXUAJ]*)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.brs
+        2: keyword.other.brs
+    - include: repo_regexp
+  - match: ((?<![_$[:alnum:])\]]|\+\+|--|}|\*\/)|((?<=^return|[^\._$[:alnum:]]return|^case|[^\._$[:alnum:]]case))\s*)\/(?![\/*])(?=(?:[^\/\\\[]|\\.|\[([^\]\\]|\\.)*\])+\/([gmixsuXUAJ]+|(?![\/\*])|(?=\/\*))(?!\s*[a-zA-Z0-9_$]))
+    captures:
+      0: punctuation.definition.string.begin.brs
+    push:
+    - meta_scope: string.regexp.brs
+    - match: (/)([gmixsuXUAJ]*)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.brs
+        2: keyword.other.brs
+    - include: repo_regexp
+  repo_regex-character-class:
+  - match: \\[wWsSdDtrnvf]|\.
+    scope: constant.other.character-class.regexp
+  - match: \\([0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})
+    scope: constant.character.numeric.regexp
+  - match: \\c[A-Z]
+    scope: constant.character.control.regexp
+  - match: \\.
+    scope: constant.character.escape.backslash.regexp
+  repo_regexp:
+  - match: \\[bB]|\^|\$
+    scope: keyword.control.anchor.regexp
+  - match: \\[1-9]\d*|\\k<([a-zA-Z_$][\w$]*)>
+    captures:
+      0: keyword.other.back-reference.regexp
+      1: variable.other.regexp
+  - match: '[?+*]|\{(\d+,\d+|\d+,|,\d+|\d+)\}\??'
+    scope: keyword.operator.quantifier.regexp
+  - match: \|
+    scope: keyword.operator.or.regexp
+  - match: (\()((\?=)|(\?!)|(\?\|)|(\?<=)|(\?<!))
+    captures:
+      1: punctuation.definition.group.regexp
+      2: punctuation.definition.group.assertion.regexp
+      3: meta.assertion.look-ahead.regexp
+      4: meta.assertion.negative-look-ahead.regexp
+      5: meta.assertion.look-behind.regexp
+      6: meta.assertion.negative-look-behind.regexp
+    push:
+    - meta_scope: meta.group.assertion.regexp
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.group.regexp
+    - include: repo_regexp
+  - match: \((?:(\?[:>])|(?:\?<([a-zA-Z_$][\w$]*)>))?
+    captures:
+      0: punctuation.definition.group.regexp
+      1: punctuation.definition.group.no-capture.regexp
+      2: variable.other.regexp
+    push:
+    - meta_scope: meta.group.regexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.regexp
+    - include: repo_regexp
+  - match: (\[)(\^)?
+    captures:
+      1: punctuation.definition.character-class.regexp
+      2: keyword.operator.negation.regexp
+    push:
+    - meta_scope: constant.other.character-class.set.regexp
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.character-class.regexp
+    - match: (?:.|(\\(?:[0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}))|(\\c[A-Z])|(\\.))\-(?:[^\]\\]|(\\(?:[0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}))|(\\c[A-Z])|(\\.))
+      scope: constant.other.character-class.range.regexp
+      captures:
+        1: constant.character.numeric.regexp
+        2: constant.character.control.regexp
+        3: constant.character.escape.backslash.regexp
+        4: constant.character.numeric.regexp
+        5: constant.character.control.regexp
+        6: constant.character.escape.backslash.regexp
+    - include: repo_regex-character-class
+  - include: repo_regex-character-class
+  repo_region_comment:
+  - match: (?i:^\s*('\s*#region)(?:(\s+.*)?))$
+    captures:
+      1: keyword.preprocessor.region.brs
+      2: string.unquoted.preprocessor.message.brs
+  repo_rem_comment:
+  - match: ^\s*?(?i:rem\s.*)$
+    scope: comment.line.rem.brs
+    captures:
+      1: punctuation.definition.comment.brs
+  repo_storage_types:
+  - match: (?i:\b(boolean|integer|longinteger|float|double|string|object|function|sub|interface|dynamic|brsub|dim|const)\b)
+    captures:
+      1: storage.type.brs
+  repo_template_string:
+  - match: (`)
+    captures:
+      1: string.template.brs
+    push:
+    - match: (`)
+      pop: true
+      captures:
+        1: string.template.brs
+    - match: (\$\{)
+      captures:
+        1: punctuation.definition.template-expression.begin.brs
+      push:
+      - match: (\})
+        pop: true
+        captures:
+          1: punctuation.definition.template-expression.end
+      - include: repo_entire_language
+    - match: (.)
+      scope: string.template.brs
+  repo_try_catch:
+  - match: (?i:\b(try|catch|(end[ \t]*try))\b)
+    scope: keyword.control.trycatch.brs
+  repo_type_expression:
+  - match: (?i)(boolean|integer|longinteger|float|double|string)
+    captures:
+      1: storage.type.brs
+  - match: (?i)\b([a-z0-9_]+)
+    captures:
+      1: support.type.brs entity.name.type.brs
+  repo_variables_and_params:
+  - match: (?i:(?:\b(new)\s)?\b(?<!\.)([a-z_][a-z0-9_\$%!#]*)\b)
+    captures:
+      1: keyword.operator.new.brs
+      2: entity.name.variable.local.brs
+  repo_vscode_rale_tracker_entry_comment:
+  - match: ('\s*vscode_rale_tracker_entry[^\S\r\n]*)
+    scope: keyword.preprocessor.brs

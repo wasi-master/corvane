@@ -1,0 +1,671 @@
+%YAML 1.2
+---
+# Cadence (source.cadence): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/onflow/vscode-cadence.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Cadence
+scope: source.cadence
+file_extensions:
+- cdc
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_declarations
+  - include: repo_keywords
+  - include: repo_code-block
+  - include: repo_expressions
+  - include: repo_composite
+  - include: repo_event
+  repo_code-block:
+  - match: \{
+    captures:
+      0: punctuation.section.scope.begin.cadence
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cadence
+    - include: main
+  repo_comments:
+  - match: \A^(#!).*$\n?
+    scope: comment.line.number-sign.cadence
+    captures:
+      1: punctuation.definition.comment.cadence
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.begin.cadence
+    push:
+    - meta_scope: comment.block.documentation.cadence
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.cadence
+  - match: '/\*:'
+    captures:
+      0: punctuation.definition.comment.begin.cadence
+    push:
+    - meta_scope: comment.block.documentation.playground.cadence
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.cadence
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.cadence
+    push:
+    - meta_scope: comment.block.cadence
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.cadence
+  - match: \*/
+    scope: invalid.illegal.unexpected-end-of-block-comment.cadence
+  - match: (^[ \t]+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.cadence
+    push:
+    - match: (?!)
+      pop: true
+    - match: ///
+      captures:
+        0: punctuation.definition.comment.cadence
+      push:
+      - meta_scope: comment.line.triple-slash.documentation.cadence
+      - match: $
+        pop: true
+    - match: '//:'
+      captures:
+        0: punctuation.definition.comment.cadence
+      push:
+      - meta_scope: comment.line.double-slash.documentation.cadence
+      - match: $
+        pop: true
+    - match: //
+      captures:
+        0: punctuation.definition.comment.cadence
+      push:
+      - meta_scope: comment.line.double-slash.cadence
+      - match: $
+        pop: true
+  repo_composite:
+  - match: \b((?:(?:struct|resource|contract|attachment)(?:\s+interface)?)|enum)\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)
+    push:
+    - meta_scope: meta.definition.type.composite.cadence
+    - match: (?<=\})|(?=\s*\Z)
+      pop: true
+    - include: repo_comments
+    - include: repo_conformance-clause
+    - match: \{
+      captures:
+        0: punctuation.section.type.begin.cadence
+      push:
+      - meta_scope: meta.definition.type.body.cadence
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.type.end.cadence
+      - include: main
+  repo_conformance-clause:
+  - match: (:)(?=\s*\{)|(:)\s*
+    captures:
+      1: invalid.illegal.empty-conformance-clause.cadence
+      2: punctuation.separator.conformance-clause.cadence
+    push:
+    - meta_scope: meta.conformance-clause.cadence
+    - match: (?!)$|(?=[={}])
+      pop: true
+    - match: ''
+      push:
+      - match: (?!)$|(?=[={}])
+        pop: true
+      - include: repo_comments
+      - include: repo_type
+  repo_declarations:
+  - include: repo_var-let-declaration
+  - include: repo_function
+  - include: repo_initializer
+  - include: repo_prepare-execute
+  - include: repo_execute-phase
+  - include: repo_pre-post
+  - include: repo_transaction
+  repo_event:
+  - match: \b(event)\b\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*
+    captures:
+      1: storage.type.event.cadence
+      2: entity.name.type.event.cadence
+    push:
+    - meta_scope: meta.definition.type.event.cadence
+    - match: (?<=\))
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+  repo_execute-phase:
+  - match: (?<!\.)\b(execute)\b\s*(?=\{)
+    captures:
+      1: storage.modifier.phase.cadence
+    push:
+    - meta_scope: meta.definition.transaction.phase.cadence
+    - match: (?<=\})
+      pop: true
+    - include: repo_comments
+    - match: \{
+      captures:
+        0: punctuation.section.phase.begin.cadence
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.phase.end.cadence
+      - include: main
+  repo_expression-element-list:
+  - include: repo_comments
+  - match: ([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(:)
+    captures:
+      1: variable.parameter.function-call.cadence
+      2: punctuation.separator.argument-label.cadence
+    push:
+    - match: (?=[,)\]])
+      pop: true
+    - include: repo_expressions
+  - match: (?![,)\]])(?=\S)
+    push:
+    - match: (?=[,)\]])
+      pop: true
+    - include: repo_expressions
+  repo_expressions:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_language-variables
+  - include: repo_function-expression
+  - include: repo_path-literals
+  - match: (?!\b(?:if|while|for|return|create|destroy|emit|as)\b)([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(<)(?=[\p{Lu}_&@\[{(]|auth\b|\s*$)
+    captures:
+      1: entity.name.function.cadence
+      2: punctuation.definition.type-arguments.begin.cadence
+    push:
+    - meta_scope: meta.type.arguments.cadence
+    - match: (>)(?!\s*[=<>])
+      pop: true
+      captures:
+        1: punctuation.definition.type-arguments.end.cadence
+    - include: repo_type
+    - match: ','
+      scope: punctuation.separator.type-argument.cadence
+  - match: (\()
+    captures:
+      1: punctuation.definition.arguments.begin.cadence
+    push:
+    - meta_scope: meta.group.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.cadence
+    - include: repo_expression-element-list
+  - match: (?<=\.)([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(\()
+    captures:
+      1: entity.name.function.cadence
+      2: punctuation.definition.arguments.begin.cadence
+    push:
+    - meta_scope: meta.function-call.method.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.cadence
+    - include: repo_expression-element-list
+  - match: (?<=\.)[\p{L}_][\p{L}_\p{N}\p{M}]*
+    scope: variable.other.member.cadence
+  - include: repo_function-call-expression
+  - match: (?<!\.)\b(?!(?:contract|struct|resource|event|enum|attachment|entitlement|import|fun|let|var|if|else|switch|case|default|while|for|in|break|continue|return|emit|as|create|destroy|attach|to|remove|from|pub|priv|access|all|self|view|auth|transaction|prepare|execute|pre|post|init|true|false|nil|Type|Int|UInt|Int8|Int16|Int32|Int64|Int128|Int256|UInt8|UInt16|UInt32|UInt64|UInt128|UInt256|Word8|Word16|Word32|Word64|Fix64|Fix128|UFix64|UFix128|String|Character|Bool|Address|Void|AnyStruct|AnyResource|Any|Never|mapping|include)\b)[\p{L}_][\p{L}_\p{N}\p{M}]*\b
+    scope: variable.other.readwrite.cadence
+  - include: repo_literals
+  - include: repo_operators
+  repo_function:
+  - match: \b(fun)\b\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*
+    captures:
+      1: storage.type.function.cadence
+      2: entity.name.function.cadence
+    push:
+    - meta_scope: meta.definition.function.cadence
+    - match: (?<=\})|;|(?=\}[\s]*$)|$
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+    - include: repo_function-result
+    - match: (\{)
+      captures:
+        1: punctuation.section.function.begin.cadence
+      push:
+      - meta_scope: meta.definition.function.body.cadence
+      - match: (\})
+        pop: true
+        captures:
+          1: punctuation.section.function.end.cadence
+      - include: main
+  repo_function-call-expression:
+  - match: (?<!\.)\b(?!(?:set|init|transaction|prepare|execute|access|auth))([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(\()
+    captures:
+      1: entity.name.function.cadence
+      2: punctuation.definition.arguments.begin.cadence
+    push:
+    - meta_scope: meta.function-call.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.cadence
+    - include: repo_expression-element-list
+  repo_function-expression:
+  - match: (?<!\.)\b(?:(view)\s+)?(fun)\b(?=\s*\()
+    captures:
+      1: storage.modifier.view.cadence
+      2: storage.type.function.cadence
+    push:
+    - meta_scope: meta.function.expression.cadence
+    - match: (?<=\})|$
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+    - include: repo_function-result
+    - match: (\{)
+      captures:
+        1: punctuation.section.function.begin.cadence
+      push:
+      - meta_scope: meta.definition.function.body.cadence
+      - match: (\})
+        pop: true
+        captures:
+          1: punctuation.section.function.end.cadence
+      - include: main
+  repo_function-result:
+  - match: (?<![/=\-+!*%<>&|\^~.])(:)(?![/=\-+!*%<>&|\^~.])\s*
+    captures:
+      1: keyword.operator.function-result.cadence
+    push:
+    - meta_scope: meta.function-result.cadence
+    - match: (?<![@&\[<])(?!)(?=\s*\{)|(?=;|(?<!\{)\})|$
+      pop: true
+    - include: repo_type
+  repo_initializer:
+  - match: (?<!\.)\b(init)\s*(?=\(|<)
+    captures:
+      1: storage.type.function.cadence
+    push:
+    - meta_scope: meta.definition.function.initializer.cadence
+    - match: (?<=\})|$
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+    - match: (\{)
+      captures:
+        1: punctuation.section.function.begin.cadence
+      push:
+      - meta_scope: meta.definition.function.body.cadence
+      - match: (\})
+        pop: true
+        captures:
+          1: punctuation.section.function.end.cadence
+      - include: main
+  repo_keywords:
+  - match: (?<!\.)\bvar\b
+    scope: storage.type.var.cadence
+  - match: (?<!\.)\blet\b
+    scope: storage.type.let.cadence
+  - match: (?<!\.)\b(entitlement)\s+(mapping)\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(\{)
+    captures:
+      1: keyword.declaration.entitlement.cadence
+      2: keyword.other.mapping.cadence
+      3: entity.name.type.entitlement-mapping.cadence
+      4: punctuation.definition.type.begin.cadence
+    push:
+    - meta_scope: meta.definition.entitlement-mapping.cadence
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.definition.type.end.cadence
+    - include: repo_comments
+    - match: \binclude\b
+      scope: keyword.other.mapping.include.cadence
+    - match: (?<=\binclude)\s+([\p{L}_][\p{L}_\p{N}\p{M}.]*)
+      captures:
+        1: entity.name.type.entitlement-mapping.cadence
+    - match: '[\p{L}_][\p{L}_\p{N}\p{M}.]*'
+      scope: entity.name.type.entitlement.cadence
+    - match: ->
+      scope: punctuation.separator.mapping.cadence
+  - match: (?<!\.)\b(entitlement)\b\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)
+    captures:
+      1: keyword.declaration.entitlement.cadence
+      2: entity.name.type.entitlement.cadence
+  - match: (?<!\.)\b(access)\b\s*(\()
+    captures:
+      1: storage.modifier.access.cadence
+      2: punctuation.section.group.begin.cadence
+    push:
+    - meta_scope: meta.access.modifier.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.group.end.cadence
+    - include: repo_comments
+    - match: \bmapping\b
+      scope: keyword.other.mapping.cadence
+    - match: (?<=\bmapping)\s+([\p{L}_][\p{L}_\p{N}\p{M}.]*)
+      captures:
+        1: entity.name.type.entitlement-mapping.cadence
+    - match: \b(?:all|self|contract|account)\b
+      scope: constant.language.access.audience.cadence
+    - match: ','
+      scope: punctuation.separator.entitlement.cadence
+    - match: \|
+      scope: punctuation.separator.entitlement.cadence
+    - match: '[\p{L}_][\p{L}_\p{N}\p{M}.]*'
+      scope: entity.name.type.entitlement.cadence
+  - match: (?<!\.)\b(?:if|else|switch|case|default)\b
+    scope: keyword.control.branch.cadence
+  - match: (?<!\.)\b(?:return|continue|break)\b
+    scope: keyword.control.transfer.cadence
+  - match: (?<!\.)\b(?:while|for|in)\b
+    scope: keyword.control.loop.cadence
+  - match: (?<!\.)\b(?:create|destroy|emit|attach|to|remove|from)\b
+    scope: keyword.other.cadence
+  - match: (?<!\.)\b(pub|priv)\b
+    scope: invalid.deprecated.keyword.cadence
+  - match: (?<!\.)\bview\b
+    scope: storage.modifier.view.cadence
+  - match: (?<!\.)\b(auth)\b
+    scope: keyword.other.auth.cadence
+  - match: (?<!\.)\b(import)\b
+    captures:
+      1: keyword.control.import.cadence
+    push:
+    - meta_scope: meta.import.cadence
+    - match: (?=$|//|/\*|;)
+      pop: true
+    - match: \bfrom\b
+      scope: keyword.control.import.cadence
+    - include: repo_literals
+    - match: \b[\p{L}_][\p{L}_\p{N}\p{M}]*\b
+      scope: variable.other.readwrite.cadence
+  repo_language-variables:
+  - match: \b(self)\b
+    scope: variable.language.cadence
+  repo_literals:
+  - match: \bnil\b
+    scope: constant.language.nil.cadence
+  repo_operators:
+  - match: <->
+    scope: keyword.operator.swap.cadence
+  - match: \?\.
+    scope: keyword.operator.optional.chain.cadence
+  - match: \b(as\?|as!|as)\b
+    captures:
+      0: keyword.operator.type.cast.cadence
+    push:
+    - meta_scope: meta.type.cast-target.cadence
+    - match: (?=$|;|//|/\\*|\")|(?=\)|,|\})|(?<=\>)(?=\s*\{(?!\s*[\p{L}_][\p{L}_\p{N}\p{M}.]*\s*:))|(?<=[\p{L}\p{N}\}\>\)\]\?])(?=\s*\{(?!\s*[\p{L}_][\p{L}_\p{N}\p{M}.]*\s*:))|(?=\?\?)
+      pop: true
+    - match: \{(?=\s*[\p{L}_][\p{L}_\p{N}\p{M}.]*\s*:)
+      captures:
+        0: punctuation.definition.type.dictionary.begin.cadence
+      push:
+      - meta_scope: meta.type.dictionary.cadence
+      - match: (\})
+        pop: true
+        captures:
+          1: punctuation.definition.type.dictionary.end.cadence
+      - include: repo_comments
+      - include: repo_type
+      - match: ':'
+        scope: punctuation.separator.type.dictionary.cadence
+      - match: ','
+        scope: punctuation.separator.type.dictionary.cadence
+    - include: repo_type
+  - match: \-
+    scope: keyword.operator.arithmetic.unary.cadence
+  - match: (?<=\))!
+    scope: keyword.operator.force-unwrap.cadence
+  - match: '!'
+    scope: keyword.operator.logical.not.cadence
+  - match: '='
+    scope: keyword.operator.assignment.cadence
+  - match: <-
+    scope: keyword.operator.move.cadence
+  - match: <-!
+    scope: keyword.operator.force-move.cadence
+  - match: \+|\-|\*|/
+    scope: keyword.operator.arithmetic.cadence
+  - match: '%'
+    scope: keyword.operator.arithmetic.remainder.cadence
+  - match: '>>'
+    scope: keyword.operator.bitwise.shift.cadence
+  - match: '<<'
+    scope: keyword.operator.bitwise.shift.cadence
+  - match: ==|!=|>|<|>=|<=
+    scope: keyword.operator.comparison.cadence
+  - match: \?\?
+    scope: keyword.operator.coalescing.cadence
+  - match: '&&|\|\|'
+    scope: keyword.operator.logical.cadence
+  - match: '[?!]'
+    scope: keyword.operator.type.optional.cadence
+  repo_parameter-clause:
+  - match: (\()
+    captures:
+      1: punctuation.definition.parameters.begin.cadence
+    push:
+    - meta_scope: meta.parameter-clause.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.cadence
+    - include: repo_comments
+    - include: repo_parameter-list
+  repo_parameter-list:
+  - include: repo_comments
+  - match: (_)\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)(?=\s*:)
+    captures:
+      1: keyword.operator.unnamed-parameter.cadence
+      2: variable.parameter.cadence
+  - match: ([\p{L}_][\p{L}_\p{N}\p{M}]*)\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)(?=\s*:)
+    captures:
+      1: entity.name.label.cadence
+      2: variable.parameter.cadence
+  - match: ([\p{L}_][\p{L}_\p{N}\p{M}]*)(?=\s*:)
+    captures:
+      1: variable.parameter.cadence
+  - match: :\s*(?!\s)
+    push:
+    - match: (?=[,)])
+      pop: true
+    - include: repo_type
+    - match: ':'
+      scope: invalid.illegal.extra-colon-in-parameter-list.cadence
+  repo_path-literals:
+  - match: (/)((storage|public)(/[\p{L}_][\p{L}_\p{N}\p{M}]*)?)
+    captures:
+      1: punctuation.separator.path.cadence
+      2: constant.other.path.cadence
+  repo_pre-post:
+  - match: (?<!\.)\b(pre|post)\b\s*(?=\{)
+    captures:
+      1: storage.modifier.phase.cadence
+    push:
+    - meta_scope: meta.definition.transaction.phase.cadence
+    - match: (?<=\})
+      pop: true
+    - include: repo_comments
+    - match: \{
+      captures:
+        0: punctuation.section.phase.begin.cadence
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.phase.end.cadence
+      - include: main
+  repo_prepare-execute:
+  - match: (?<!\.)\b(prepare)\b\s*(?=\()
+    captures:
+      1: storage.modifier.phase.cadence
+    push:
+    - meta_scope: meta.definition.transaction.phase.cadence
+    - match: (?<=\})
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+    - match: \{
+      captures:
+        0: punctuation.section.phase.begin.cadence
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.phase.end.cadence
+      - include: main
+  repo_transaction:
+  - match: \b(transaction)\b
+    captures:
+      1: storage.type.transaction.cadence
+    push:
+    - meta_scope: meta.definition.transaction.cadence
+    - match: (?<=\))|(?<=\})
+      pop: true
+    - include: repo_comments
+    - include: repo_parameter-clause
+    - match: \{
+      captures:
+        0: punctuation.section.transaction.begin.cadence
+      push:
+      - meta_scope: meta.definition.transaction.body.cadence
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.section.transaction.end.cadence
+      - include: main
+  repo_type:
+  - match: (?<!\.)\b(?:(view)\s+)?(fun)\b\s*(\()
+    captures:
+      1: storage.modifier.view.cadence
+      2: storage.type.function.cadence
+      3: punctuation.definition.parameters.begin.cadence
+    push:
+    - meta_scope: meta.type.function.cadence
+    - match: (?=,|[)>}\]]|$)
+      pop: true
+    - include: repo_comments
+    - match: ''
+      push:
+      - match: (\))
+        pop: true
+        captures:
+          1: punctuation.definition.parameters.end.cadence
+      - include: repo_type
+      - match: ','
+        scope: punctuation.separator.parameter.cadence
+    - match: (:)
+      captures:
+        1: keyword.operator.function-result.cadence
+      push:
+      - meta_scope: meta.function-result.cadence
+      - match: (?=,|[)>}\]]|$)
+        pop: true
+      - include: repo_type
+  - include: repo_comments
+  - match: (?<!\.)([\p{L}_][\p{L}_\p{N}\p{M}]*)\s*(<)
+    captures:
+      1: entity.name.type.cadence
+      2: punctuation.definition.type-arguments.begin.cadence
+    push:
+    - meta_scope: meta.type.arguments.cadence
+    - match: (>)
+      pop: true
+      captures:
+        1: punctuation.definition.type-arguments.end.cadence
+    - include: repo_type
+    - match: ','
+      scope: punctuation.separator.type-argument.cadence
+  - match: (?<!\.)\b(auth)\b\s*(\()
+    captures:
+      1: keyword.other.auth.cadence
+      2: punctuation.section.group.begin.cadence
+    push:
+    - meta_scope: meta.auth.entitlements.cadence
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.section.group.end.cadence
+    - include: repo_comments
+    - match: \bmapping\b
+      scope: keyword.other.mapping.cadence
+    - match: (?<=\bmapping)\s+([\p{L}_][\p{L}_\p{N}\p{M}.]*)
+      captures:
+        1: entity.name.type.entitlement-mapping.cadence
+    - match: ','
+      scope: punctuation.separator.entitlement.cadence
+    - match: \|
+      scope: punctuation.separator.entitlement.cadence
+    - match: '[\p{L}_][\p{L}_\p{N}\p{M}.]*'
+      scope: entity.name.type.entitlement.cadence
+  - match: \{(?![^}]*:)(?!.*\}\s*\()
+    captures:
+      0: punctuation.definition.type.intersection.begin.cadence
+    push:
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.definition.type.intersection.end.cadence
+    - include: repo_comments
+    - include: repo_type
+    - match: ','
+      scope: punctuation.separator.type.intersection.cadence
+  - match: \{(?=\s*[\p{L}_][\p{L}_\p{N}\p{M}.]*\s*:)(?!.*\}\s*\()
+    captures:
+      0: punctuation.definition.type.dictionary.begin.cadence
+    push:
+    - meta_scope: meta.type.dictionary.cadence
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.definition.type.dictionary.end.cadence
+    - include: repo_comments
+    - include: repo_type
+    - match: ':'
+      scope: punctuation.separator.type.dictionary.cadence
+    - match: ','
+      scope: punctuation.separator.type.dictionary.cadence
+  - match: \[
+    captures:
+      0: punctuation.definition.type.array.begin.cadence
+    push:
+    - meta_scope: meta.type.array.cadence
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.type.array.end.cadence
+    - include: repo_comments
+    - include: repo_type
+  - match: (&|@)(?=\s*\{)
+    captures:
+      1: punctuation.definition.type.reference.cadence
+  - match: (&|@)\s*([\p{L}_][\p{L}_\p{N}\p{M}.]*)
+    captures:
+      1: punctuation.definition.type.reference.cadence
+      2: entity.name.type.cadence
+  - match: ([\p{L}_][\p{L}_\p{N}\p{M}]*)
+    scope: entity.name.type.cadence
+  - match: '[?!]'
+    scope: keyword.operator.type.optional.cadence
+  repo_var-let-declaration:
+  - match: \b(var|let)\b\s+([\p{L}_][\p{L}_\p{N}\p{M}]*)
+    captures:
+      2: variable.other.declaration.cadence
+    push:
+    - match: =|<-|<-!|;|(?=//)|$
+      pop: true
+    - include: repo_comments
+    - match: :\s*(?!\s)
+      captures:
+        0: keyword.operator.type.annotation.cadence
+      push:
+      - match: (?=//|=|<-|<-!|;|$)
+        pop: true
+      - include: repo_type
+      - include: repo_comments

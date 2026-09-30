@@ -1,0 +1,572 @@
+%YAML 1.2
+---
+# CAP CDS (source.cds): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/SAP/cds-textmate-grammar.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: CAP CDS
+scope: source.cds
+file_extensions:
+- cds
+contexts:
+  main:
+  - match: \b(aspect|(abstract\s+)?entity|type|event)\b
+    captures:
+      1: keyword.strong.cds
+    push:
+    - match: (?<=})(;)?|(;)
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.cds
+        2: punctuation.terminator.statement.cds
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - match: ':'
+      captures:
+        0: keyword.operator.cds
+      push:
+      - match: (?=[{;@])
+        pop: true
+      - include: repo_identifiers
+      - match: ','
+        scope: punctuation.separator.object.cds
+    - include: repo_bracedElementDef
+    - include: repo_keywords
+    - include: repo_identifiers
+  - match: (?i)\b(extend)\s+((context|service|aspect|entity|projection|type)\s+)?((?!@)\S+)(\s+(with)(\s+(actions|definitions|columns|elements|enum))?|(?=\s*{))
+    captures:
+      1: keyword.strong.cds
+      3: keyword.cds
+      4: entity.name.type.cds
+      6: keyword.cds
+      8: keyword.cds
+    push:
+    - match: (?<=})(;)?|(;)
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.cds
+        2: punctuation.terminator.statement.cds
+    - include: repo_bracedElementDef
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - include: repo_keywords
+    - include: repo_identifiers
+    - match: ','
+      scope: punctuation.separator.object.cds
+  - match: (?<!\.)\b(annotate)\b\s*([\w.]+)\b\s*\b(with)?\b
+    captures:
+      1: keyword.strong.control.import.cds
+      2: entity.name.type.cds
+      3: keyword.strong.control.import.cds
+  - match: (?<!\.)\b(using)(?!\s*:)\b
+    captures:
+      1: keyword.strong.control.import.cds
+    push:
+    - match: (;)|\n
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.cds
+    - match: '{'
+      captures:
+        0: punctuation.definition.modules.begin.cds
+      push:
+      - match: '}'
+        pop: true
+        captures:
+          0: punctuation.definition.modules.end.cds
+      - match: (?:\b(default)\b|\b([$_a-zA-Z][$_a-zA-Z0-9]*)\b)\s*(\bas\b)\s*(?:\b([$_a-zA-Z][$_a-zA-Z0-9]*)\b)
+        captures:
+          1: variable.language.default.cds
+          2: entity.name.type.cds
+          3: keyword.strong.cds
+          4: entity.name.type.cds
+      - match: ','
+        scope: punctuation.separator.object.cds
+      - include: repo_comments
+      - match: \b([$_a-zA-Z][$_a-zA-Z0-9]*)\b
+        scope: entity.name.type.cds
+    - match: (?:(\*)|(?=\D)(\b[\$\.\w]+\b))\s*(\bas\b)\s*(?=\D)(\b[\$\.\w]+\b)
+      captures:
+        1: keyword.operator.asterisk
+        2: entity.name.type.cds
+        3: keyword.strong.control.cds
+        4: entity.name.type.cds
+    - match: \*
+      scope: keyword.operator.asterisk
+    - match: \b(default)\b
+      scope: variable.language.default.cds
+    - include: repo_strings
+    - include: repo_comments
+    - match: (?i)\b(from)\b
+      scope: keyword.strong.control.cds
+    - match: \b([$_a-zA-Z][$_a-zA-Z0-9]*)\b(?=.*\bfrom\b)
+      scope: entity.name.type.cds
+    - match: ','
+      scope: punctuation.separator.object.cds
+  - match: (?i)\b(export)\b\s*\b(default)\b(?:\s*)\b((?!\bclass\b|\blet\b|\bvar\b|\bconst\b)[$_a-zA-Z][$_a-zA-Z0-9]*)?\b
+    scope: meta.export.cds
+    captures:
+      1: keyword.control.cds
+      2: variable.language.default.cds
+      3: variable.other.module.cds
+  - match: (?i)\b(action|function)\s+([$_a-zA-Z][$_a-zA-Z0-9]*)\s*(\()
+    captures:
+      1: keyword.strong.cds
+      2: entity.name.function.cds
+      3: punctuation.definition.parameters.begin.cds
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.cds
+    - include: repo_function-params
+  - match: \b(class)(?:\s+([$_a-zA-Z][$_a-zA-Z0-9]*))?(?:\s+(extends)\s+([$_a-zA-Z][$_a-zA-Z0-9]*))?\s*($|(?={))
+    scope: meta.class.cds
+    captures:
+      1: storage.type.class.cds
+      2: entity.name.type.class.cds
+      3: storage.modifier.cds
+      4: entity.other.inherited-class.cds
+  - match: =>
+    scope: storage.type.arrow.cds
+  - match: (?<!\.|\$)\b(let|var)\b(?!\$)
+    scope: storage.type.var.cds
+  - match: (?<!\.|\$)\b(get|set|const)\b(?!\$)
+    scope: storage.modifier.cds
+  - match: (?<!\.)\b(yield)(?!\s*:)\b(?:\s*(\*))?
+    scope: meta.control.yield.cds
+    captures:
+      1: keyword.control.cds
+      2: storage.modifier.cds
+  - match: \b(false|Infinity|NaN|null|true|undefined)\b
+    scope: constant.language.cds
+  - match: (?<!\.)\b(super|this)(?!\s*:)\b
+    scope: variable.language.cds
+  - match: \;
+    scope: punctuation.terminator.statement.cds
+  - match: (\[)(\])
+    captures:
+      1: punctuation.section.scope.begin.cds
+      2: punctuation.section.scope.end.cds
+  - match: '{'
+    captures:
+      0: punctuation.section.scope.begin.cds
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: main
+  - match: \(
+    captures:
+      0: punctuation.section.scope.begin.cds
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: main
+  - match: \[|\]
+    scope: meta.brace.square.cds
+  - match: (?<=new )([$_a-zA-Z][$_a-zA-Z0-9]*)(?!\w)
+    scope: support.class.cds
+  - match: (?<= instanceof )([$_a-zA-Z][$_a-zA-Z0-9]*)(?!\w)
+    scope: support.class.cds
+  - match: (?<!\w)([$_a-zA-Z][$_a-zA-Z0-9]*)(?=\.prototype\b)
+    scope: support.class.cds
+  - match: (?i)(?<=\.)(prototype)\b
+    scope: keyword.other.cds
+  - include: repo_atAnnoParen
+  - include: repo_atAnnoNoParen
+  - include: repo_keywords
+  - include: repo_numbers
+  - include: repo_strings
+  - include: repo_comments
+  - include: repo_operators
+  - include: repo_identifiers
+  repo_annotationName:
+  - match: (?=[$_"!a-zA-Z0-9])
+    push:
+    - match: (?:(?<=[$"\]])(?=\s*[@:;])|(?<=[_a-zA-Z0-9])\b)(?!\s*[#.])
+      pop: true
+    - match: '[$_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\]'
+      scope: entity.name.tag.cds
+    - match: \s*(\.)\s*(@)?
+      captures:
+        1: entity.name.tag.dot.cds
+        2: entity.name.tag.at.cds
+    - match: \s*(#)\s*
+      captures:
+        1: entity.name.tag.hash.cds
+  repo_atAnnoName:
+  - match: (@)
+    captures:
+      1: entity.name.tag.at.cds
+    push:
+    - match: (?:(?<=[$"\]])(?=\s*[@:;])|(?<=[_a-zA-Z0-9])\b)(?![#.])
+      pop: true
+    - include: repo_annotationName
+  repo_atAnnoNoParen:
+  - match: (@)(?!\s*\()
+    captures:
+      1: entity.name.tag.at.cds
+    push:
+    - match: (?<=[}\]'`])(?=\s*($|[@;]))|(?<![@:])(?!\s*:)(?=$|[\s@,;(){}\[\]'`/"!]|\b[$_a-zA-Z])
+      pop: true
+      captures:
+        1: entity.name.tag.at.cds
+    - include: repo_annotationName
+    - include: repo_optColonAndStructure
+    - include: repo_optColonAndArray
+    - include: repo_colonAndNumber
+    - include: repo_colonAndString
+    - include: repo_colonAndTemplateString
+    - include: repo_colonAndHashIdent
+    - include: repo_colonAndConstant
+    - include: repo_comments
+  repo_atAnnoParen:
+  - match: (@)\s*(\()
+    captures:
+      1: entity.name.tag.at.cds
+      2: punctuation.section.scope.begin.cds
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: repo_annotationName
+    - include: repo_optColonAndStructure
+    - include: repo_optColonAndArray
+    - include: repo_colonAndNumber
+    - include: repo_colonAndString
+    - include: repo_colonAndTemplateString
+    - include: repo_colonAndHashIdent
+    - include: repo_colonAndConstant
+    - match: ','
+      scope: punctuation.separator.object.cds
+    - include: repo_comments
+  repo_bracedElementDef:
+  - match: '{'
+    captures:
+      0: punctuation.section.scope.begin.cds
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: repo_comments
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - include: repo_extendElement
+    - include: repo_selectItemDef
+    - include: repo_elementDef
+  repo_bracketedExpression:
+  - match: \(
+    captures:
+      0: punctuation.section.scope.begin.cds
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: repo_bracedElementDef
+    - include: repo_keywords
+    - match: (?i)(?<!@|select from )(?:\$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+      captures:
+        0: entity.other.attribute-name.cds
+    - include: repo_identifiers
+    - include: repo_operators
+  repo_colonAndConstant:
+  - match: (?i)(:)\s*(null|true|false)\b
+    captures:
+      1: keyword.operator.colon
+      2: constant.language.cds
+  repo_colonAndHashIdent:
+  - match: (:)\s*(#)\s*([$_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+    captures:
+      1: keyword.operator.colon
+      2: entity.name.tag.hash.cds
+      3: entity.name.tag.cds
+  repo_colonAndNumber:
+  - match: (:)\s*(?=[0-9+-])
+    captures:
+      1: keyword.operator.colon
+    push:
+    - match: (?<=[[[:xdigit:]]0-9])\b
+      pop: true
+    - include: repo_numbers
+    - include: repo_comments
+  repo_colonAndString:
+  - match: (:)\s*(x|date|time(?:stamp)?)?\s*(')
+    captures:
+      1: keyword.operator.colon
+      2: support.class.cds
+      3: string.quoted.single.cds punctuation.definition.string.begin.cds
+    push:
+    - match: '''(?!'')'
+      pop: true
+      captures:
+        0: string.quoted.single.cds punctuation.definition.string.end.cds
+    - match: ''''''
+      scope: string.quoted.single.cds meta.single-quote.doubled.cds
+    - match: .
+      scope: string.quoted.single.cds
+    - include: repo_comments
+  repo_colonAndTemplateString:
+  - match: (:)\s*(?=`)
+    captures:
+      1: keyword.operator.colon
+    push:
+    - match: (?<=`)
+      pop: true
+    - include: repo_strings
+    - include: repo_comments
+  repo_comments:
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.begin.cds
+    push:
+    - meta_scope: comment.block.documentation.cds
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.cds
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.cds
+    push:
+    - meta_scope: comment.block.cds
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.cds
+  - match: //.*
+    scope: comment.line.double-slash.cds
+  repo_elementDef:
+  - match: (?!\s*@)(?:(?=\()|\b(virtual(?:\s+))?(key(?:\s+))?(masked(?:\s+))?(element(?:\s+))?)
+    captures:
+      1: keyword.cds
+      2: keyword.strong.cds
+      3: keyword.cds
+      4: keyword.cds
+    push:
+    - match: (?=})|(;)
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.cds
+    - include: repo_bracedElementDef
+    - include: repo_strings
+    - include: repo_comments
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - include: repo_keywords
+    - include: repo_bracketedExpression
+    - match: (?<!@)(?:\$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])(?=\s*[:{,@])
+      scope: entity.other.attribute-name.cds
+    - match: ^\s*([$_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])\s*$
+      captures:
+        1: entity.other.attribute-name.cds
+    - include: repo_identifiers
+    - include: repo_operators
+    - include: repo_numbers
+    - match: ','
+      scope: punctuation.separator.object.cds
+  repo_escapes:
+  - match: \\([xu$]\{?[0-9a-fA-F]+}?|.|$)
+    scope: constant.character.escape.cds
+  repo_extendElement:
+  - match: \b(?=extend\b.*\bwith\b)
+    push:
+    - match: (?<=})(;)?|(;)
+      pop: true
+      captures:
+        1: punctuation.terminator.statement.cds
+        2: punctuation.terminator.statement.cds
+    - match: \bextend\b
+      captures:
+        0: keyword.strong.cds
+      push:
+      - match: \bwith\b
+        pop: true
+        captures:
+          0: keyword.cds
+      - match: element(?!(?:\s*/\*.*\*/\s*|\s+)?with\b)
+        scope: keyword.cds
+      - match: (?<!@)(?:\$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+        scope: entity.other.attribute-name.cds
+      - include: repo_comments
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - match: '{'
+      captures:
+        0: punctuation.section.scope.begin.cds
+      push:
+      - match: '}'
+        pop: true
+        captures:
+          0: punctuation.section.scope.end.cds
+      - include: repo_extendElement
+      - include: repo_elementDef
+    - include: repo_comments
+    - include: repo_keywords
+    - include: repo_identifiers
+    - include: repo_operators
+    - match: \(
+      scope: punctuation.section.scope.begin.cds
+    - match: \)
+      scope: punctuation.section.scope.end.cds
+    - include: repo_numbers
+  repo_function-params:
+  - match: \$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\]
+    scope: variable.parameter.function.cds
+  - match: ','
+    scope: punctuation.separator.object.cds
+  - include: repo_comments
+  - include: repo_operators
+  repo_identifiers:
+  - match: (?<!@)(?:\$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+    scope: entity.name.type.cds
+  repo_keywords:
+  - match: (?<!\.|\$)\b(Association\b\s*(?:\[[0-9.eE+, *-]*\]\s*)?to\b\s*(?:many\s*|one\s*)?|Composition\b\s*(?:\[[0-9.eE+, *-]*\]\s*)?of\b\s*(?:many\s*|one\s*)?)(?:(?=\s*{)|([$_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\]))
+    captures:
+      1: support.class.cds
+      2: entity.name.type.cds
+  - match: (?<!\.|\$)\b(Binary|Boolean|DateTime|Date|DecimalFloat|Decimal|Double|Int(16|32|64)|Integer64|Integer|LargeBinary|LargeString|Number|String|Timestamp|Time|UInt8|UUID)\b\s*(\([^()]*\))?(?!\$|\s*:)
+    scope: support.class.cds
+  - match: (?i)(?<!\.|\$)\b(all|and|any|asc|between|by|case|cast|cross|desc|distinct|element|elements|escape|except|excluding|exists|first|from|full|group|group by|having|in|inner|intersect|into|is|join|last|left|like|limit|many|minus|mixin|not null|not|null|nulls|offset|one|or|order by|outer|redirected to|select|some|top|type of|union|where|with)\b(?!\$|\s*:)
+    scope: keyword.cds
+  - match: (?i)(?<!\.|\$)\b(as|key|on|type)\b(?!\$|\s*:)
+    scope: keyword.strong.cds
+  - match: (?<!\.|\$)\b(array of|column|columns|current|day|default|depends|else|enabled|end|generated|hana|hour|identity|import|index|language|layout|leading|masked|merge|minute|minutes|mode|month|name|new|no|off|only|others|parameters|partition|partitions|priority|projection|projection on|queue|range|ratio|reset|returns|right|row|search|second|start|storage|store|table|technical|then|trailing|trim|unique|unload|value|values|virtual|when|with parameters|year)\b(?!\$|\s*:)
+    scope: keyword.cds
+  - match: (?<!\.|\$)\b(abstract|action|actions|annotation|aspect|context|define|entity|enum|event|extend|function|namespace|service|view)\b(?!\$|\s*:)
+    scope: keyword.strong.cds
+  repo_literalValue:
+  - match: (#)\s*([$_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+    captures:
+      1: entity.name.tag.hash.cds
+      2: entity.name.tag.cds
+  - match: (?i)\b(?:null|true|false)\b
+    scope: constant.language.cds
+  - include: repo_numbers
+  - include: repo_strings
+  - match: (?i)\b(x|date|time(?:stamp)?)\s*((')[^']*('))
+    captures:
+      1: support.class.cds
+      2: string.quoted.single.cds
+      3: punctuation.definition.string.begin.cds
+      4: punctuation.definition.string.end.cds
+  repo_numbers:
+  - match: (?<!\w|\$)0[xX][[:xdigit:]]+\b
+    scope: constant.numeric.hex.cds
+  - match: (?<!\w|\$)0[bB][01]+\b
+    scope: constant.numeric.binary.cds
+  - match: (?<!\w|\$)0[oO][0-7]+\b
+    scope: constant.numeric.octal.cds
+  - match: (?<!\w|\$)[+-]?[0-9]+('.'[0-9]+)?([eE][+-]?[0-9]+)?(?!\w)
+    scope: constant.numeric.cds
+  repo_operators:
+  - match: '!=|<=|>=|<>|<|>'
+    scope: keyword.operator.comparison.cds
+  - match: \|\|
+    scope: keyword.operator.concatenator.cds
+  - match: '&|\||\^|~'
+    scope: keyword.operator.bitwise.cds
+  - match: \:\s*(localized)\s+
+    captures:
+      1: keyword.cds
+  - match: '[?:]'
+    scope: keyword.operator.cds
+  - match: '!'
+    scope: keyword.operator.logical.cds
+  - match: '=|\:'
+    scope: keyword.operator.assignment.cds
+  - match: '%|\*|/|\-|\+'
+    scope: keyword.operator.arithmetic.cds
+  repo_optColonAndArray:
+  - match: (:)?\s*(\[)
+    captures:
+      1: keyword.operator.colon
+      2: punctuation.section.scope.begin.cds
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: repo_atAnnoNoParen
+    - include: repo_annotationName
+    - match: \.{3}
+      captures:
+        0: keyword.operator.ellipsis
+    - match: (?i)(up)\s+(to)\b
+      captures:
+        1: keyword.cds
+        2: keyword.cds
+    - include: repo_optColonAndStructure
+    - include: repo_optColonAndArray
+    - include: repo_literalValue
+    - match: ','
+      scope: punctuation.separator.object.cds
+    - include: repo_comments
+  repo_optColonAndStructure:
+  - match: (:)?\s*({)
+    captures:
+      1: keyword.operator.colon
+      2: punctuation.section.scope.begin.cds
+    push:
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.scope.end.cds
+    - include: repo_atAnnoNoParen
+    - include: repo_annotationName
+    - include: repo_optColonAndStructure
+    - include: repo_optColonAndArray
+    - include: repo_colonAndNumber
+    - include: repo_colonAndString
+    - include: repo_colonAndTemplateString
+    - include: repo_colonAndHashIdent
+    - include: repo_colonAndConstant
+    - match: ','
+      scope: punctuation.separator.object.cds
+    - include: repo_comments
+  repo_selectItemDef:
+  - match: ^\s*(?=\*|.+\s+as\s+)
+    push:
+    - match: (?=})|(,)
+      pop: true
+    - include: repo_bracedElementDef
+    - include: repo_strings
+    - include: repo_comments
+    - include: repo_atAnnoParen
+    - include: repo_atAnnoNoParen
+    - include: repo_keywords
+    - include: repo_bracketedExpression
+    - match: (?<!@)(?:\$?\b[_a-zA-Z][$_a-zA-Z0-9]*|"[^"]*(?:""[^"]*)*"|!\[[^\]]*(?:\]\][^\]]*)*\])
+      scope: entity.other.attribute-name.cds
+    - include: repo_operators
+    - include: repo_numbers
+    - match: ','
+      scope: punctuation.separator.object.cds
+  repo_strings:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.cds
+    push:
+    - meta_scope: string.quoted.single.cds
+    - match: '''(?!'')'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.cds
+    - match: ''''''
+      scope: meta.single-quote.doubled.cds
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.cds
+    push:
+    - meta_scope: string.quoted.other.template.cds
+    - match: '`(?!`)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.cds
+    - match: '``'
+      scope: string.quoted.other.template.block.cds
+    - include: repo_escapes

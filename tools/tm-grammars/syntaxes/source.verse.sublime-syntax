@@ -1,0 +1,676 @@
+%YAML 1.2
+---
+# Verse (source.verse): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/simnjs/verse-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Verse
+scope: source.verse
+file_extensions:
+- verse
+contexts:
+  main:
+  - include: repo_ListInd
+  repo_Backslash:
+  - match: \\(\<(?!#)|[rnt'\"\\{}#<>&~]|$)
+    scope: constant.character.escape.verse
+  repo_BlockCmt:
+  - match: <#(?!>)
+    push:
+    - meta_scope: comment.block.verse
+    - match: (?<!<)#>
+      pop: true
+    - include: repo_BlockCmt
+  repo_Braces:
+  - match: '[{]'
+    push:
+    - match: '[}]'
+      pop: true
+    - include: repo_ListInd
+  repo_Brackets:
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_ListInd
+  repo_Call:
+  - include: repo_BlockCmt
+  - include: repo_LineCmt
+  - include: repo_Num
+  - include: repo_Char
+  - include: repo_Path
+  - include: repo_String
+  - include: repo_CodeMarkup
+  - include: repo_Keyword
+  - include: repo_Ident
+  - include: repo_Parens
+  - include: repo_Brackets
+  - include: repo_Braces
+  - include: repo_Specs
+  repo_Char:
+  - include: repo_CharLit
+  - include: repo_Char8
+  - include: repo_Char32
+  repo_Char32:
+  - match: 0u[0-9A-Fa-f]++
+    scope: string.quoted.single.verse
+  repo_Char8:
+  - match: 0o[0-9A-Fa-f]++
+    scope: string.quoted.single.verse
+  repo_CharLit:
+  - include: repo_CharLit0
+  - include: repo_CharLit1
+  - include: repo_CharLitInvalid
+  repo_CharLit0:
+  - match: '''(.|$)(''(?!'')|$)'
+    scope: string.quoted.single.verse
+  repo_CharLit1:
+  - match: '''(?=\\(\<(?!#)|[rnt''\"\\{}#<>&~]|$)(''|$))'
+    captures:
+      0: string.quoted.single.verse
+    push:
+    - match: '''|$'
+      pop: true
+      captures:
+        0: string.quoted.single.verse
+    - include: repo_Backslash
+  repo_CharLitInvalid:
+  - match: '''[^'']*''?'
+    scope: invalid.verse
+  repo_CodeMark0:
+  - match: ^(?=(\t|    ){0}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){0}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){0}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark1:
+  - match: ^(?=(\t|    ){1}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){1}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){1}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark2:
+  - match: ^(?=(\t|    ){2}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){2}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){2}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark3:
+  - match: ^(?=(\t|    ){3}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){3}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){3}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark4:
+  - match: ^(?=(\t|    ){4}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){4}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){4}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark5:
+  - match: ^(?=(\t|    ){5}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){5}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){5}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark6:
+  - match: ^(?=(\t|    ){6}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){6}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){6}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMark7:
+  - match: ^(?=(\t|    ){7}[^#]*:>\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){7}(\s|[^#]*:>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){7}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ContentsInd
+    - include: repo_List
+  repo_CodeMarkup:
+  - match: (^|(?<=[({\[\-\&;,+*/=|:<.@]|->|=>|\Win|^in|\Wis|^is|\Wdo|^do|\Wthen|^then|\Wuntil|^until|\Welse|^else|\Wwhere|^where|\Wof|\Wreturn|^return|\Wyield|^yield|\Wbreak|^break|\Wcontinue|^continue))([?^\s]*+)(<(?![/#=>])\s*([A-Za-z_][A-Za-z0-9_]*)?)
+    captures:
+      2: keyword.operator.verse
+      3: punctuation.definition.tag
+    push:
+    - match: (?<!#>)(?<=>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - include: repo_Call
+    - include: repo_MarkupTail1
+    - include: repo_MarkupTail2
+  repo_Contents:
+  - include: repo_BlockCmt
+  - include: repo_LineCmt
+  - include: repo_Backslash
+  - include: repo_Markup
+  - include: repo_Interp
+  - match: '~'
+    scope: punctuation.definition.tag
+  - match: (?=&)
+    push:
+    - match: $|\#|\;
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - include: repo_ListInd
+  - match: '["\-\[\]`!@$%^*()+=|:;'',.?/A-Za-z0-9_ ]+'
+    scope: text.verse
+  repo_ContentsInd:
+  - include: repo_MarkCmt7
+  - include: repo_MarkCmt6
+  - include: repo_MarkCmt5
+  - include: repo_MarkCmt4
+  - include: repo_MarkCmt3
+  - include: repo_MarkCmt2
+  - include: repo_MarkCmt1
+  - include: repo_MarkCmt0
+  - include: repo_MarkCode7
+  - include: repo_MarkCode6
+  - include: repo_MarkCode5
+  - include: repo_MarkCode4
+  - include: repo_MarkCode3
+  - include: repo_MarkCode2
+  - include: repo_MarkCode1
+  - include: repo_MarkCode0
+  - include: repo_Contents
+  repo_DefineIdent1:
+  - match: (^|(?<=[({\[\-\&;,+*/|<=>.]|->|=>|:\)|\Wvar|^var|\Wref|^ref|\Walias|^alias|\Wlive|^live|\Win|^in|\Wis|^is|\Wdo|^do|\Wthen|^then|\Wuntil|^until|\Welse|^else|\Wover|\Wwhile|\Wupon|\Wnext|\Wwhere|\Wof|^of|\Wat|^at|\Wreturn|^return|\Wyield|^yield|\Wbreak|^break|\Wcontinue|^continue))([\s\^?]*+)([A-Za-z_][A-Za-z0-9_]*+('((?!<#|#>|[\\{}"'])[ -~])*')?+)(?=((?<Call>(?<BlockCmt><#(\g<BlockCmt>|(?!#>).)*+#>)|[\s\^?]++|(&|->)\s*[A-Za-z_][A-Za-z0-9_]*+|->|'(\\.|[^'])*+'|"(\\.|[{](\g<Call>)*+[}]|<[^#]|#[^>]|[^\<#"{}]|\g<BlockCmt>)*+"|<(\g<Call>|[A-Za-z0-9_])*+>|[\[({](\g<Call>|<[^#]|[A-Za-z0-9_\-\&\^.%+*/,;>:@=!|?])*+[\])}]))*+((:|in\W|is\W)\s*+(?![)#]|$)))
+    captures:
+      3: entity.name.function.verse
+  repo_DefineIdent2:
+  - match: (?<=\Wvar|^var|\Wref|^ref|\Walias|^alias|\Wlive|^live)([\s\^?]*+)([A-Za-z_][A-Za-z0-9_]*+)(?=((?<Call>(?<BlockCmt><#(\g<BlockCmt>|(?!#>).)*+#>)|[\s\^?]++|(&|->)\s*[A-Za-z_][A-Za-z0-9_]*+|->|'(\\.|[^'])*+'|"(\\.|[{](\g<Call>)*+[}]|<[^#]|#[^>]|[^\<#"{}]|\g<BlockCmt>)*+"|<(\g<Call>|[A-Za-z0-9_])*+>|[\[({](\g<Call>|<[^#]|[A-Za-z0-9_\-\&\^.%+*/,;>:@=!|?])*+[\])}]))*+=)
+    captures:
+      2: entity.name.function.verse
+  repo_EatIndCmt:
+  - match: <#>
+    push:
+    - meta_scope: comment.block.verse
+    - match: $
+      pop: true
+    - include: repo_BlockCmt
+  repo_Ident:
+  - match: '[.]?[A-Za-z_][A-Za-z0-9_]*+(''((?!<#|#>|[\\{}"''])[ -~])*+'')?+'
+    scope: variable.verse
+  repo_In:
+  - match: ((?!:[)]):|in(?=\W)|(?=(var|set|ref|alias|live)\W))\s*+(?!#|$)
+    captures:
+      0: punctuation.definition.tag
+    push:
+    - match: (=(?!>)|$|(\+=|-=|\*=|/=)|(?=:|=>|@|,|;|\)|\]|\}|(over|when|where|while|next|in|is|with|do|until|catch|then|else|of|at)\W))
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - match: (var|set|ref|alias|live)(?=\W)
+      scope: keyword.declaration.verse
+    - include: repo_DefineIdent1
+    - include: repo_DefineIdent2
+    - include: repo_Call
+  repo_IndCmt0:
+  - match: ^(?=(\t|    ){0}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){0}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){0}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt1:
+  - match: ^(?=(\t|    ){1}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){1}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){1}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt2:
+  - match: ^(?=(\t|    ){2}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){2}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){2}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt3:
+  - match: ^(?=(\t|    ){3}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){3}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){3}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt4:
+  - match: ^(?=(\t|    ){4}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){4}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){4}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt5:
+  - match: ^(?=(\t|    ){5}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){5}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){5}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt6:
+  - match: ^(?=(\t|    ){6}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){6}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){6}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_IndCmt7:
+  - match: ^(?=(\t|    ){7}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){7}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){7}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_List
+  repo_Interp:
+  - match: \{
+    captures:
+      0: constant.character.escape.verse
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: constant.character.escape.verse
+    - include: repo_ListInd
+  repo_Keyword:
+  - match: (and|or|not)(?=\W)
+    scope: keyword.operator.logical.verse
+  - match: '[:.]\s*+(?=(#|$))|[.](?=\s)|@|&'
+    scope: punctuation.definition.tag
+  - match: (with|do|until|catch|then|else|of|at)(?=\W)
+    scope: keyword.declaration.verse
+  repo_LineCmt:
+  - match: (?<!<)#(?!>)
+    push:
+    - meta_scope: comment.line.verse
+    - match: $
+      pop: true
+    - include: repo_BlockCmt
+  repo_List:
+  - include: repo_Keyword
+  - match: (return|yield|break|continue)(?=\W)
+    scope: keyword.control.verse
+  - match: (is)(?=\W)
+    scope: keyword.declaration.verse
+  - match: (?<=\w\s|\)|\]|\})\s*(over|when|where|while|next)(?=\W)
+    scope: keyword.declaration.verse
+  - include: repo_DefineIdent1
+  - include: repo_DefineIdent2
+  - include: repo_In
+  - match: (in|var|set|ref|alias|live)(?=\W)
+    scope: keyword.declaration.verse
+  - include: repo_Call
+  - match: :=
+    scope: punctuation.definition.tag
+  - match: '[|]|[.][.]|=>|[+\-*/]='
+    scope: keyword.operator.verse
+  - match: '[+\-*/]|->'
+    scope: keyword.operator.arithmetic.verse
+  - match: =(?!=)|<>|<=|<|>=|>
+    scope: keyword.operator.comparison.verse
+  - match: '[;,]'
+    scope: punctuation.definition.tag
+  - match: '[`~$>)},\]\\]|#>|[.][0-9]+|!=|=='
+    scope: invalid.verse
+  repo_ListInd:
+  - include: repo_CodeMark7
+  - include: repo_CodeMark6
+  - include: repo_CodeMark5
+  - include: repo_CodeMark4
+  - include: repo_CodeMark3
+  - include: repo_CodeMark2
+  - include: repo_CodeMark1
+  - include: repo_CodeMark0
+  - include: repo_IndCmt7
+  - include: repo_IndCmt6
+  - include: repo_IndCmt5
+  - include: repo_IndCmt4
+  - include: repo_IndCmt3
+  - include: repo_IndCmt2
+  - include: repo_IndCmt1
+  - include: repo_IndCmt0
+  - include: repo_List
+  repo_MarkCmt0:
+  - match: ^(?=(\t|    ){0}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){0}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){0}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt1:
+  - match: ^(?=(\t|    ){1}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){1}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){1}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt2:
+  - match: ^(?=(\t|    ){2}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){2}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){2}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt3:
+  - match: ^(?=(\t|    ){3}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){3}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){3}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt4:
+  - match: ^(?=(\t|    ){4}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){4}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){4}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt5:
+  - match: ^(?=(\t|    ){5}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){5}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){5}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt6:
+  - match: ^(?=(\t|    ){6}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){6}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){6}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCmt7:
+  - match: ^(?=(\t|    ){7}[^#]*<#>)
+    push:
+    - match: ^(?!(\t|    ){7}(\s|[^#]*<#>)|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){7}\s+(?!$))
+      push:
+      - meta_scope: comment.block.verse
+      - match: $
+        pop: true
+      - include: repo_BlockCmt
+    - include: repo_EatIndCmt
+    - include: repo_Contents
+  repo_MarkCode0:
+  - match: ^(?=(\t|    ){0}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){0}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){0}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode1:
+  - match: ^(?=(\t|    ){1}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){1}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){1}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode2:
+  - match: ^(?=(\t|    ){2}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){2}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){2}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode3:
+  - match: ^(?=(\t|    ){3}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){3}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){3}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode4:
+  - match: ^(?=(\t|    ){4}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){4}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){4}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode5:
+  - match: ^(?=(\t|    ){5}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){5}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){5}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode6:
+  - match: ^(?=(\t|    ){6}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){6}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){6}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_MarkCode7:
+  - match: ^(?=(\t|    ){7}[^#]*&[^#]*[:.]\s*(#|$))
+    push:
+    - match: ^(?!(\t|    ){7}(\s|[^#]*&[^#]*[:.]\s*(#|$))|\s*$)
+      pop: true
+    - match: ^(?=(\t|    ){7}\s+(?!$))
+      push:
+      - match: $
+        pop: true
+      - include: repo_ListInd
+    - include: repo_Contents
+  repo_Markup:
+  - match: (<(?![/#=]))\s*([A-Za-z_][A-Za-z0-9_]*)?
+    captures:
+      0: punctuation.definition.tag
+    push:
+    - match: (?<!#>)(?<=>)
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - include: repo_Call
+    - include: repo_MarkupTail1
+    - include: repo_MarkupTail2
+  repo_MarkupTail1:
+  - match: :(?=>)|;
+    captures:
+      0: punctuation.definition.tag
+    push:
+    - match: '>'
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - include: repo_ContentsInd
+  repo_MarkupTail2:
+  - match: '>'
+    captures:
+      0: punctuation.definition.tag
+    push:
+    - match: </\s*([A-Za-z_][A-Za-z0-9_]*)?\s*>
+      pop: true
+      captures:
+        0: punctuation.definition.tag
+    - include: repo_ContentsInd
+  repo_Num:
+  - match: 0x[0-9A-Fa-f]++
+    scope: constant.numeric.verse
+  - match: (?!0o|0u)[0-9]++([.][0-9]++)?(e[+-]?[0-9]+)?(%|[A-Za-z_][A-Za-z0-9_]*+)?+
+    scope: constant.numeric.verse
+    captures:
+      3: keyword.other.unit.verse
+  repo_Parens:
+  - match: '[(]'
+    push:
+    - match: '[)]'
+      pop: true
+    - include: repo_ListInd
+  repo_Path:
+  - match: (^|(?<=[({\[\-\&;,+*/|<=>.]|->|=>|:\)|\Wvar|^var|\Wref|^ref|\Walias|^alias|\Wlive|^live|\Win|^in|\Wis|^is|\Wdo|^do|\Wthen|^then|\Wuntil|^until|\Welse|^else|\Wover|\Wwhile|\Wupon|\Wnext|\Wwhere|\Wof|^of|\Wat|^at|\Wreturn|^return|\Wyield|^yield|\Wbreak|^break|\Wcontinue|^continue))([\s\^?]*+)(?<Path>(/[A-Za-z0-9_][A-Za-z0-9_\-.]*+(@[A-Za-z0-9_][A-Za-z0-9_\-.]*+)?+)(/([(]\g<Path>:[)])?+[A-Za-z_][A-Za-z0-9_]*+('((?!<#|#>|[\\{}"'])[ -~])*')?+)*+)
+    scope: constant.language.path.verse
+  repo_Special:
+  - include: repo_Backslash
+  - include: repo_BlockCmt
+  repo_Specs:
+  - match: <(?![=#>])(?<Call>(?<BlockCmt><#(\g<BlockCmt>|(?!#>).)*+#>)|[\s\^\&?]|(?!(and\W|or\W|not\W|where\W|in\W|is\W|of\W|at\W))[A-Za-z_][A-Za-z0-9_]*+|[0-9/][A-Za-z0-9_.@]++|'(\\.|[^'])*+'|"(\\.|[{](\g<Call>)*+[}]|<[^#]|#[^>]|[^\<#"{}])*+"|<\g<Call>*+>|[\[{(](\g<Call>|<[^#]|[\-\&\^.%+*/,;>:@=!|?])*+[\]})])*+>
+    scope: punctuation.definition.tag
+  repo_String:
+  - match: '"'
+    captures:
+      0: string.quoted.double.verse
+    push:
+    - match: ("|$)
+      pop: true
+      captures:
+        0: string.quoted.double.verse
+    - include: repo_Interp
+    - include: repo_Special
+    - match: '[\-\[\]\&`~!@#$%^*()+=|:;'',.?/A-Za-z0-9_ ]++'
+      scope: string.quoted.double.verse

@@ -1,0 +1,375 @@
+%YAML 1.2
+---
+# Rhai (source.rhai): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/rhaiscript/vscode-rhai.git via GitHub Linguist v9.7.0 (license: mpl-2.0).
+name: Rhai
+scope: source.rhai
+file_extensions:
+- rhai
+contexts:
+  main:
+  - include: repo_core
+  repo_brackets:
+  - include: repo_round-brackets
+  - include: repo_square-brackets
+  - include: repo_curly-brackets
+  repo_comments:
+  - match: /\*\*(?![/|\*])
+    captures:
+      0: punctuation.definition.comment.block.documentation.rhai
+    push:
+    - meta_scope: comment.block.documentation.rhai
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.documentation.rhai
+    - include: repo_comments
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.block.rhai
+    push:
+    - meta_scope: comment.block.rhai
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.block.rhai
+    - include: repo_comments
+  - match: (///)[^/].*$\n?
+    scope: comment.line.documentation.rhai
+    captures:
+      1: punctuation.definition.comment.documentation.rhai
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.rhai
+    captures:
+      1: punctuation.definition.comment.double-slash.rhai
+  - match: ^(#!).*$\n?
+    scope: comment.line.shebang.rhai
+    captures:
+      1: punctuation.definition.comment.rhai
+  repo_core:
+  - include: repo_expression
+  repo_curly-brackets:
+  - match: \{
+    captures:
+      0: meta.brace.curly.rhai
+    push:
+    - meta_scope: meta.group.braces.curly
+    - match: \}
+      pop: true
+      captures:
+        0: meta.brace.curly.rhai
+    - include: main
+  repo_expression:
+  - include: repo_literal-closure-labels
+  - include: repo_literal-labels
+  - include: repo_literal-keywords
+  - include: repo_support
+  - include: repo_literal-function
+  - include: repo_literal-closure
+  - include: repo_literal-constant
+  - include: repo_literal-template-string
+  - include: repo_literal-language-variable
+  - include: repo_literal-module
+  - include: repo_literal-method-call
+  - include: repo_literal-function-call
+  - include: repo_comments
+  - include: repo_brackets
+  - include: repo_literal-operators
+  - include: repo_literal-namespace
+  - include: repo_literal-variable
+  - include: repo_literal-punctuation
+  repo_function-declaration-parameters:
+  - match: \(
+    captures:
+      0: punctuation.definition.parameters.begin.rhai
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.rhai
+    - match: '[_a-zA-Z]\w*'
+      scope: variable.parameter.function.rhai
+    - match: \,
+      scope: punctuation.separator.parameter.function.rhai
+    - include: repo_parameters-list
+  repo_literal-closure:
+  - match: (\|)(?=\s*[_a-zA-Z\|])
+    captures:
+      1: punctuation.definition.parameters.closure.begin.rhai
+    push:
+    - meta_scope: meta.function.closure.rhai
+    - match: (\|)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.closure.end.rhai
+    - include: repo_parameters-list
+  - match: (\b[_a-zA-Z]\w*)\s*(=)\s*(\|)(?=\s*[_a-zA-Z\|])
+    captures:
+      1: entity.name.function.closure.rhai
+      2: keyword.operator.assignment.rhai
+      3: punctuation.definition.parameters.closure.begin.rhai
+    push:
+    - meta_scope: meta.function.closure.rhai
+    - match: (\|)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.closure.end.rhai
+    - include: repo_parameters-list
+  - match: (=>)\s*(\|)(?=\s*[_a-zA-Z\|])
+    captures:
+      1: punctuation.separator.switch.case.rhai
+      2: punctuation.definition.parameters.closure.begin.rhai
+    push:
+    - meta_scope: meta.function.closure.rhai
+    - match: (\|)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.closure.end.rhai
+    - include: repo_parameters-list
+  repo_literal-closure-labels:
+  - match: (\b[_a-zA-Z]\w*)\s*(\:)\s*(\|)(?=\s*[_a-zA-Z\|])
+    captures:
+      1: string.unquoted.label.rhai entity.name.function.method.rhai
+      2: punctuation.separator.key-value.rhai
+      3: punctuation.definition.parameters.closure.begin.rhai
+    push:
+    - meta_scope: meta.function.closure.rhai
+    - match: (\|)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.closure.end.rhai
+    - include: repo_parameters-list
+  - match: ((\")((?:[^"]|\\")*)(\"))\s*(:)\s*(\|)(?=\s*[_a-zA-Z\|])
+    captures:
+      1: string.quoted.double.rhai
+      2: punctuation.definition.string.begin.rhai
+      3: entity.name.function.method.rhai
+      4: punctuation.definition.string.end.rhai
+      5: punctuation.separator.key-value.rhai
+      6: punctuation.definition.parameters.closure.begin.rhai
+    push:
+    - meta_scope: meta.function.closure.rhai
+    - match: (\|)
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.closure.end.rhai
+    - include: repo_parameters-list
+  repo_literal-constant:
+  - include: repo_literal-number
+  - include: repo_literal-string
+  - include: repo_literal-language-constant
+  repo_literal-function:
+  - match: "(?x)\n  (?:\\b(private)\\s+)?\n  \\s*(fn)\n  \\s*([_a-zA-Z]\\w*)\\s*"
+    captures:
+      1: storage.modifier.rhai
+      2: storage.type.function.rhai
+      3: entity.name.function.rhai
+    push:
+    - meta_scope: meta.function.rhai
+    - match: (?<=\))
+      pop: true
+    - include: repo_parameters-list
+  - match: \b(fn)\b
+    scope: keyword.other.function.rhai
+  - match: \b(private)\b
+    scope: keyword.other.modifier.rhai
+  repo_literal-function-call:
+  - match: "(?x)\n  ([_a-zA-Z]\\w*)(!)?\\s*\n  (\\(\\s*\\))"
+    scope: meta.function-call.without-arguments.rhai
+    captures:
+      1: entity.name.function.rhai
+      2: punctuation.function-call.capture.rhai
+      3: meta.group.braces.round.function.arguments.rhai
+  - match: "(?x)\n  ([_a-zA-Z]\\w*)(!)?\\s*\n  (?=\\()"
+    scope: meta.function-call.with-arguments.rhai
+    captures:
+      1: entity.name.function.rhai
+      2: punctuation.function-call.capture.rhai
+  repo_literal-keyword-storage:
+  - match: \b(const|let)\b
+    scope: storage.type.rhai
+  repo_literal-keywords:
+  - include: repo_literal-keyword-storage
+  - match: \b(return)\b
+    scope: keyword.control.flow.rhai
+  - match: \b(if|else|switch)\b
+    scope: keyword.control.conditional.rhai
+  - match: \b(throw|try|catch)\b
+    scope: keyword.control.trycatch.rhai
+  - match: \b(for|in|loop|do|while|until|break|continue)\b
+    scope: keyword.control.loop.rhai
+  repo_literal-labels:
+  - match: "(?x)\n  (?<!\\?)(?<!\\?\\s)\n    (?=((\")((?:[^\\:\"]|\\\\\")*)(\"))\\s*:)"
+    push:
+    - match: ':'
+      pop: true
+      captures:
+        0: punctuation.separator.key-value.rhai
+    - include: repo_literal-string
+  - match: (?<!\.|\?|\?\s)([_a-zA-Z]\w*)\s*(:)(?!\:)
+    scope: constant.other.object.key.rhai
+    captures:
+      1: string.unquoted.label.rhai
+      2: punctuation.separator.key-value.rhai
+  repo_literal-language-constant:
+  - match: \btrue\b
+    scope: constant.language.boolean.true.rhai
+  - match: \bfalse\b
+    scope: constant.language.boolean.false.rhai
+  repo_literal-language-namespace:
+  - match: (?<!\:\:)\s*((global)\s*(\:\:))(?!<)
+    captures:
+      1: meta.path.rhai
+      2: constant.language.namespace.global.rhai entity.name.namespace.rhai
+      3: punctuation.separator.namespace.rhai
+  repo_literal-language-variable:
+  - match: \bthis\b
+    scope: variable.language.this.rhai
+  repo_literal-method-call:
+  - match: "(?x)\n  (?:(?<=\\.)|(?<=\\?\\.))\n  \\s*([_a-zA-Z]\\w*)\\s*\n  (\\(\\s*\\))"
+    scope: meta.function-call.method.without-arguments.rhai
+    captures:
+      1: entity.name.function.rhai
+      2: meta.group.braces.round.function.arguments.rhai
+  - match: "(?x)\n  (?:(?<=\\.)|(?<=\\?\\.))\n  \\s*([_a-zA-Z]\\w*)\\s*\n  (?=\\()"
+    scope: meta.function-call.method.with-arguments.rhai
+    captures:
+      1: entity.name.function.rhai
+  repo_literal-module:
+  - match: \b(import|export|as)\b
+    scope: keyword.other.module.rhai
+  repo_literal-namespace:
+  - include: repo_literal-language-namespace
+  - match: ([_a-zA-Z]\w*)\s*(\:\:)(?!<)
+    scope: meta.path.rhai
+    captures:
+      1: entity.name.namespace.rhai
+      2: punctuation.separator.namespace.rhai
+  - match: (?<=\:\:)(\s*([_a-zA-Z]\w*))\s*(?!\:\:)
+    captures:
+      1: meta.path.rhai
+      2: variable.other.constant.rhai
+  repo_literal-number:
+  - match: "(?xi)\n  (?:\n    \\b0b[0-1][_0-1]*|                         # binary\n    \\b0o[0-7][_0-7]*|                         # octal\n    \\b0x[\\da-f][_\\da-f]*|                     # hex\n    (\\B[+\\-])?\\b\\d[_\\d]*\\.\\d[_\\d]*(e[+\\-]?\\d[_\\d]*)?| # e.g. 999.999, 999.99e+123\n    (\\B[+\\-])?\\b\\d[_\\d]*\\.(?!\\.)\\B|           # e.g. 999.\n    (\\B[+\\-])?\\b\\d[_\\d]*(e[+\\-]?\\d[_\\d]*)?    # e.g. 999, 999e+123\n  )"
+    scope: constant.numeric.rhai
+  repo_literal-operators:
+  - match: "(?x)\n  !(?!=)| # logical-not     right-to-left   right\n  &&    | # logical-and     left-to-right   both\n  \\|\\|    # logical-or      left-to-right   both"
+    scope: keyword.operator.logical.rhai
+  - match: "(?x)\n  \\bin\\b   | # in             left-to-right   both\n  \\B!in\\b    # not-in         left-to-right   both"
+    scope: keyword.operator.containment.rhai
+  - match: "(?x)\n  \\?\\?    # null-coalesce   left-to-right   both"
+    scope: keyword.operator.coalesce.rhai
+  - match: "(?x)\n  =(?![=>]) # assignment    right-to-left   both"
+    scope: keyword.operator.assignment.rhai
+  - match: "(?x)\n  %=   | # assignment       right-to-left   both\n  &=   | # assignment       right-to-left   both\n  \\*\\*=| # assignment       right-to-left   both\n  (?<!\\*)\\*= | # assignment right-to-left   both\n  \\+=  | # assignment       right-to-left   both\n  -=   | # assignment       right-to-left   both\n  /=   | # assignment       right-to-left   both\n  \\^=  | # assignment       right-to-left   both\n  \\|=  | # assignment       right-to-left   both\n  <<=  | # assignment       right-to-left   both\n  >>=    # assignment       right-to-left   both"
+    scope: keyword.operator.assignment.augmented.rhai
+  - match: "(?x)\n  <<   | # bitwise-shift    left-to-right   both\n  >>   | # bitwise-shift    left-to-right   both\n  &    | # bitwise-and      left-to-right   both\n  \\^   | # bitwise-xor      left-to-right   both\n  \\|     # bitwise-or       left-to-right   both"
+    scope: keyword.operator.bitwise.rhai
+  - match: "(?x)\n  <=     | # relational     left-to-right   both\n  >=     | # relational     left-to-right   both\n  <(?!-) | # relational     left-to-right   both\n  (?<!-)>  # relational     left-to-right   both"
+    scope: keyword.operator.relational.rhai
+  - match: "(?x)\n  ==(?!=) | # equality       left-to-right   both\n  !=(?!=)   # equality       left-to-right   both"
+    scope: keyword.operator.comparison.rhai
+  - match: "(?x)\n  /         | # division        left-to-right   both\n  %         | # modulus         left-to-right   both\n  \\*\\*      | # power           left-to-right   both\n  \\*(?!\\))  | # multiplication  left-to-right   both\n  \\+(?!\\+)  | # addition        left-to-right   both\n  -(?![>-])   # subtraction     left-to-right   both"
+    scope: keyword.operator.arithmetic.rhai
+  - match: \.\.(?![\.=])
+    scope: keyword.operator.range.exclusive.rhai
+  - match: \.\.=
+    scope: keyword.operator.range.inclusive.rhai
+  - match: \.(?!\.)|\?\.
+    scope: keyword.operator.accessor.rhai punctuation.accessor.rhai
+  - match: =>
+    scope: punctuation.separator.switch.case.rhai
+  - match: (\(\*|\*\)|\+\+|--|\.\.\.+|~|#(?!{)|@|\?|\$(?!{)|->|<-|===|!==|\:=|\:\:<)
+    scope: invalid.illegal.operator.rhai
+  repo_literal-punctuation:
+  - match: \;
+    scope: punctuation.terminator.statement.rhai
+  - match: \,
+    scope: meta.delimiter.comma.rhai
+  repo_literal-string:
+  - match: ('([^'\\]|\\([tnr'\\]|x[[:xdigit:]]{2}|u[[:xdigit:]]{4}|U[[:xdigit:]]{8}))')
+    scope: string.quoted.single.rhai
+  - match: (")
+    captures:
+      1: punctuation.definition.string.begin.rhai
+    push:
+    - meta_scope: string.quoted.double.rhai
+    - match: (")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.rhai
+    - include: repo_string-content
+    - match: (?<!\\)\n
+      scope: invalid.illegal.newline.rhai
+    - match: \\\n
+      scope: constant.character.escape.newline.rhai punctuation.separator.continuation
+  repo_literal-template-string:
+  - match: '`'
+    captures:
+      0: punctuation.definition.string.begin.rhai
+    push:
+    - meta_scope: string.interpolated.rhai
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.rhai
+    - include: repo_string-content
+    - match: \${
+      captures:
+        0: punctuation.section.interpolation.begin.rhai
+      push:
+      - meta_scope: meta.interpolation.rhai
+      - match: '}'
+        pop: true
+        captures:
+          0: punctuation.section.interpolation.end.rhai
+      - include: repo_expression
+  repo_literal-variable:
+  - match: '[A-Z][_\dA-Z]*\b'
+    scope: variable.other.constant.rhai
+  - match: (?<!\.)\s*([_a-zA-Z]\w*)\s*(?=(\.|\?\.))
+    captures:
+      1: variable.other.object.rhai
+  - match: (?:(?<=\.)|(?<=\?\.))\s*([_a-zA-Z]\w*)
+    captures:
+      1: variable.other.property.rhai entity.name.property.rhai
+  - match: '[_a-zA-Z]\w*'
+    scope: variable.other.readwrite.rhai
+  repo_parameters-list:
+  - match: '[_a-zA-Z]\w*'
+    scope: variable.parameter.function.rhai
+  - match: \,
+    scope: punctuation.separator.parameter.function.rhai
+  - include: repo_comments
+  repo_round-brackets:
+  - match: \((?!\*)
+    captures:
+      0: meta.brace.round.rhai
+    push:
+    - meta_scope: meta.group.braces.round
+    - match: (?<!\*)\)
+      pop: true
+      captures:
+        0: meta.brace.round.rhai
+    - include: repo_expression
+  repo_square-brackets:
+  - match: \[|\?\[
+    captures:
+      0: meta.brace.square.rhai
+    push:
+    - meta_scope: meta.group.braces.square
+    - match: \]
+      pop: true
+      captures:
+        0: meta.brace.square.rhai
+    - include: repo_expression
+  repo_string-content:
+  - match: \\(x[\da-fA-F]{2}|u[\da-fA-F]{4}|U[\da-fA-F]{8}|t|r|n|\\)
+    scope: constant.character.escape.rhai
+  - match: \\[^xuUtrn\\\n]
+    scope: invalid.illegal.escape.rhai
+  repo_support:
+  - match: \b(print|debug|Fn|call|curry|eval|type_of|is_def_var|is_def_fn|is_shared)\b
+    scope: support.function.rhai
+  - match: \b(var|static|shared|goto|exit|match|case|public|protected|new|use|with|module|package|super|thread|spawn|go|await|async|sync|yield|default|void|null|nil)\b
+    scope: invalid.illegal.keyword.rhai

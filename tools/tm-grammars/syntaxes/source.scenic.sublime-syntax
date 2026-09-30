@@ -1,0 +1,2051 @@
+%YAML 1.2
+---
+# Scenic (source.scenic): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/UCSCFormalMethods/Scenic-tmLanguage.git via GitHub Linguist v9.7.0 (license: mit).
+name: Scenic
+scope: source.scenic
+file_extensions:
+- scenic
+first_line_match: ^#!.*\b(scenic)\b
+contexts:
+  main:
+  - include: repo_statement
+  - include: repo_expression
+  repo_annotated-parameter:
+  - match: "(?x)\n  \\b\n  ([[:alpha:]_]\\w*) \\s* (:)\n"
+    captures:
+      1: variable.parameter.function.language.scenic
+      2: punctuation.separator.annotation.scenic
+    push:
+    - match: (,)|(?=\))
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.scenic
+    - include: repo_expression
+    - match: =(?!=)
+      scope: keyword.operator.assignment.scenic
+  repo_assignment-operator:
+  - match: "(?x)\n     <<= | >>= | //= | \\*\\*=\n    | \\+= | -= | /= | @=\n    | \\*= | %= | ~= | \\^= | &= | \\|=\n    | =(?!=)\n"
+    scope: keyword.operator.assignment.scenic
+  repo_backticks:
+  - match: \`
+    push:
+    - meta_scope: invalid.deprecated.backtick.scenic
+    - match: (?:\`|(?<!\\)(\n))
+      pop: true
+    - include: repo_expression
+  repo_builtin-callables:
+  - include: repo_illegal-names
+  - include: repo_illegal-object-name
+  - include: repo_builtin-exceptions
+  - include: repo_builtin-functions
+  - include: repo_builtin-types
+  - include: repo_builtin-types-scenic
+  repo_builtin-exceptions:
+  - match: "(?x) (?<!\\.) \\b(\n  (\n    Arithmetic | Assertion | Attribute | Buffer | BlockingIO\n    | BrokenPipe | ChildProcess\n    | (Connection (Aborted | Refused | Reset)?)\n    | EOF | Environment | FileExists | FileNotFound\n    | FloatingPoint | IO | Import | Indentation | Index | Interrupted\n    | IsADirectory | NotADirectory | Permission | ProcessLookup\n    | Timeout\n    | Key | Lookup | Memory | Name | NotImplemented | OS | Overflow\n    | Reference | Runtime | Recursion | Syntax | System\n    | Tab | Type | UnboundLocal | Unicode(Encode|Decode|Translate)?\n    | Value | Windows | ZeroDivision | ModuleNotFound\n  ) Error\n|\n  ((Pending)?Deprecation | Runtime | Syntax | User | Future | Import\n    | Unicode | Bytes | Resource\n  )? Warning\n|\n  SystemExit | Stop(Async)?Iteration\n  | KeyboardInterrupt\n  | GeneratorExit | (Base)?Exception\n  | (Guard | Precondition | Invariant)Violation\n)\\b\n"
+    scope: support.type.exception.scenic
+  repo_builtin-functions:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    __import__ | abs | aiter | all | any | anext | ascii | bin\n    | breakpoint | callable | chr | compile | copyright | credits\n    | delattr | dir | divmod | enumerate | eval | exec | exit\n    | filter | format | getattr | globals | hasattr | hash | help\n    | hex | id | input | isinstance | issubclass | iter | len\n    | license | locals | map | max | memoryview | min | next\n    | oct | open | ord | pow | print | quit | range | reload | repr\n    | reversed | round | setattr | sorted | sum | vars | zip\n  )\\b\n"
+    scope: support.function.builtin.scenic
+  - match: "(?x)\n  (?<!\\.) \\b(\n    resample | localPath | verbosePrint | simulation\n    | sin | cos | hypot\n  )\\b\n"
+    scope: support.function.builtin.scenic
+  - match: "(?x)\n  (?<!\\.) \\b(\n    file | reduce | intern | raw_input | unicode | cmp | basestring\n    | execfile | long | xrange\n  )\\b\n"
+    scope: variable.legacy.builtin.scenic
+  repo_builtin-names-scenic:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    globalParameters\n  )\\b\n"
+    scope: support.constant.scenic
+  repo_builtin-possible-callables:
+  - include: repo_builtin-callables
+  - include: repo_magic-names
+  repo_builtin-types:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    bool | bytearray | bytes | classmethod | complex | dict\n    | float | frozenset | int | list | object | property\n    | set | slice | staticmethod | str | tuple | type\n\n    (?# Although 'super' is not a type, it's related to types,\n        and is special enough to be highlighted differently from\n        other built-ins)\n    | super\n  )\\b\n"
+    scope: support.type.scenic
+  repo_builtin-types-scenic:
+  - match: "(?x)\n  (?<!\\.) \\b(\n    Point | OrientedPoint | Object\n    | Vector | Orientation | VectorField | PolygonalVectorField\n    | Shape | MeshShape | BoxShape | CylinderShape | ConeShape | SpheroidShape\n    | Region | PointSetRegion | RectangularRegion | CircularRegion\n    | SectorRegion | PolygonalRegion | PolylineRegion | PathRegion\n    | MeshVolumeRegion | MeshSurfaceRegion | BoxRegion | SpheroidRegion\n    | Workspace\n    | Range | DiscreteRange | Options | Discrete | Uniform\n    | Normal | TruncatedNormal\n    | VerifaiParameter | VerifaiRange | VerifaiDiscreteRange | VerifaiOptions\n  )\\b\n"
+    scope: support.type.scenic
+  repo_call-wrapper-inheritance:
+  - match: "(?x)\n  \\b(?=\n    ([[:alpha:]_]\\w*) \\s* (\\()\n  )\n"
+    push:
+    - meta_scope: meta.function-call.scenic
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+    - include: repo_inheritance-name
+    - include: repo_function-arguments
+  repo_class-declaration:
+  - match: "(?x)\n  \\s*(class)\\s+\n    (?=\n      [[:alpha:]_]\\w* \\s* (:|\\()\n    )\n"
+    captures:
+      1: storage.type.class.scenic
+    push:
+    - meta_scope: meta.class.scenic
+    - match: (:)
+      pop: true
+      captures:
+        1: punctuation.section.class.begin.scenic
+    - include: repo_class-name
+    - include: repo_class-inheritance
+  repo_class-inheritance:
+  - match: (\()
+    captures:
+      1: punctuation.definition.inheritance.begin.scenic
+    push:
+    - meta_scope: meta.class.inheritance.scenic
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.inheritance.end.scenic
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.arguments.scenic
+    - match: ','
+      scope: punctuation.separator.inheritance.scenic
+    - match: =(?!=)
+      scope: keyword.operator.assignment.scenic
+    - match: \bmetaclass\b
+      scope: support.type.metaclass.scenic
+    - include: repo_illegal-names
+    - include: repo_class-kwarg
+    - include: repo_call-wrapper-inheritance
+    - include: repo_expression-base
+    - include: repo_member-access-class
+    - include: repo_inheritance-identifier
+  repo_class-kwarg:
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\s*(=)(?!=)\n"
+    captures:
+      1: entity.other.inherited-class.scenic variable.parameter.class.scenic
+      2: keyword.operator.assignment.scenic
+  repo_class-name:
+  - include: repo_illegal-object-name
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: entity.name.type.class.scenic
+  repo_codetags:
+  - match: (?:\b(NOTE|XXX|HACK|FIXME|BUG|TODO)\b)
+    captures:
+      1: keyword.codetag.notation.scenic
+  repo_comments:
+  - match: "(?x)\n  (?:\n    \\# \\s* (type:)\n    \\s*+ (?# we want `\\s*+` which is possessive quantifier since\n             we do not actually want to backtrack when matching\n             whitespace here)\n    (?! $ | \\#)\n  )\n"
+    captures:
+      0: meta.typehint.comment.scenic
+      1: comment.typehint.directive.notation.scenic
+    push:
+    - meta_scope: comment.line.number-sign.scenic
+    - meta_content_scope: meta.typehint.comment.scenic
+    - match: (?:$|(?=\#))
+      pop: true
+    - match: "(?x)\n   ignore\n  (?= \\s* (?: $ | \\#))\n"
+      scope: comment.typehint.ignore.notation.scenic
+    - match: "(?x)\n  (?<!\\.)\\b(\n    bool | bytes | float | int | object | str\n    | List | Dict | Iterable | Sequence | Set\n    | FrozenSet | Callable | Union | Tuple\n    | Any | None\n  )\\b\n"
+      scope: comment.typehint.type.notation.scenic
+    - match: ([\[\]\(\),\.\=\*]|(->))
+      scope: comment.typehint.punctuation.notation.scenic
+    - match: ([[:alpha:]_]\w*)
+      scope: comment.typehint.variable.notation.scenic
+  - include: repo_comments-base
+  repo_comments-base:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.scenic
+    push:
+    - meta_scope: comment.line.number-sign.scenic
+    - match: ($)
+      pop: true
+    - include: repo_codetags
+  repo_comments-string-double-three:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.scenic
+    push:
+    - meta_scope: comment.line.number-sign.scenic
+    - match: ($|(?="""))
+      pop: true
+    - include: repo_codetags
+  repo_comments-string-single-three:
+  - match: (\#)
+    captures:
+      1: punctuation.definition.comment.scenic
+    push:
+    - meta_scope: comment.line.number-sign.scenic
+    - match: ($|(?='''))
+      pop: true
+    - include: repo_codetags
+  repo_curly-braces:
+  - match: \{
+    captures:
+      0: punctuation.definition.dict.begin.scenic
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.dict.end.scenic
+    - match: ':'
+      scope: punctuation.separator.dict.scenic
+    - include: repo_expression
+  repo_decorator:
+  - match: "(?x)\n  ^\\s*\n  ((@)) \\s* (?=[[:alpha:]_]\\w*)\n"
+    captures:
+      1: entity.name.function.decorator.scenic
+      2: punctuation.definition.decorator.scenic
+    push:
+    - meta_scope: meta.function.decorator.scenic
+    - match: "(?x)\n  ( \\) )\n    # trailing whitespace and comments are legal\n    (?: (.*?) (?=\\s*(?:\\#|$)) )\n  | (?=\\n|\\#)\n"
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+        2: invalid.illegal.decorator.scenic
+    - include: repo_decorator-name
+    - include: repo_function-arguments
+  repo_decorator-name:
+  - include: repo_builtin-callables
+  - include: repo_illegal-object-name
+  - match: "(?x)\n  ([[:alpha:]_]\\w*) | (\\.)\n"
+    scope: entity.name.function.decorator.scenic
+    captures:
+      2: punctuation.separator.period.scenic
+  - include: repo_line-continuation
+  - match: "(?x)\n  \\s* ([^([:alpha:]\\s_\\.#\\\\] .*?) (?=\\#|$)\n"
+    scope: invalid.illegal.decorator.scenic
+    captures:
+      1: invalid.illegal.decorator.scenic
+  repo_docstring:
+  - match: (\'\'\'|\"\"\")
+    captures:
+      1: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.docstring.multi.scenic
+    - match: (\1)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+    - include: repo_docstring-prompt
+    - include: repo_codetags
+    - include: repo_docstring-guts-unicode
+  - match: ([rR])(\'\'\'|\"\"\")
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.docstring.raw.multi.scenic
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+    - include: repo_string-consume-escape
+    - include: repo_docstring-prompt
+    - include: repo_codetags
+  - match: (\'|\")
+    captures:
+      1: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.docstring.single.scenic
+    - match: (\1)|(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_codetags
+    - include: repo_docstring-guts-unicode
+  - match: ([rR])(\'|\")
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.docstring.raw.single.scenic
+    - match: (\2)|(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-consume-escape
+    - include: repo_codetags
+  repo_docstring-guts-unicode:
+  - include: repo_escape-sequence-unicode
+  - include: repo_escape-sequence
+  - include: repo_string-line-continuation
+  repo_docstring-prompt:
+  - match: "(?x)\n  (?:\n    (?:^|) \\s* (?# '' is necessary for ST)\n    ((?:>>>|\\.\\.\\.) \\s) (?=\\s*\\S)\n  )\n"
+    captures:
+      1: keyword.control.flow.scenic
+  repo_docstring-statement:
+  - match: ^(?=\s*[rR]?(\'\'\'|\"\"\"|\'|\"))
+    push:
+    - match: ((?<=\1)|^)(?!\s*[rR]?(\'\'\'|\"\"\"|\'|\"))
+      pop: true
+    - include: repo_docstring
+  repo_double-one-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_regexp-charecter-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_double-one-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_codetags
+  repo_double-one-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_double-one-regexp-character-set
+  - include: repo_double-one-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_double-one-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_double-one-regexp-lookahead
+  - include: repo_double-one-regexp-lookahead-negative
+  - include: repo_double-one-regexp-lookbehind
+  - include: repo_double-one-regexp-lookbehind-negative
+  - include: repo_double-one-regexp-conditional
+  - include: repo_double-one-regexp-parentheses-non-capturing
+  - include: repo_double-one-regexp-parentheses
+  repo_double-one-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-one-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?="))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_double-three-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?="""))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_regexp-charecter-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_double-three-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_codetags
+  repo_double-three-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_double-three-regexp-character-set
+  - include: repo_double-three-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_double-three-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_double-three-regexp-lookahead
+  - include: repo_double-three-regexp-lookahead-negative
+  - include: repo_double-three-regexp-lookbehind
+  - include: repo_double-three-regexp-lookbehind-negative
+  - include: repo_double-three-regexp-conditional
+  - include: repo_double-three-regexp-parentheses-non-capturing
+  - include: repo_double-three-regexp-parentheses
+  - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_double-three-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?="""))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+    - include: repo_comments-string-double-three
+  repo_ellipsis:
+  - match: \.\.\.
+    scope: constant.other.ellipsis.scenic
+  repo_escape-sequence:
+  - match: "(?x)\n  \\\\ (\n        x[0-9A-Fa-f]{2}\n        | [0-7]{1,3}\n        | [\\\\\"'abfnrtv]\n     )\n"
+    scope: constant.character.escape.scenic
+  repo_escape-sequence-unicode:
+  - match: "(?x)\n  \\\\ (\n        u[0-9A-Fa-f]{4}\n        | U[0-9A-Fa-f]{8}\n        | N\\{[\\w\\s]+?\\}\n     )\n"
+    scope: constant.character.escape.scenic
+  repo_expression:
+  - include: repo_expression-base
+  - include: repo_member-access
+  - match: (?x) \b ([[:alpha:]_]\w*) \b
+  repo_expression-bare:
+  - include: repo_backticks
+  - include: repo_illegal-anno
+  - include: repo_literal
+  - include: repo_regexp
+  - include: repo_string
+  - include: repo_lambda
+  - include: repo_inline-keywords
+  - include: repo_illegal-operator
+  - include: repo_operator
+  - include: repo_curly-braces
+  - include: repo_item-access
+  - include: repo_list
+  - include: repo_round-braces
+  - include: repo_function-call
+  - include: repo_instance-creation
+  - include: repo_builtin-functions
+  - include: repo_builtin-types
+  - include: repo_builtin-types-scenic
+  - include: repo_builtin-exceptions
+  - include: repo_magic-names
+  - include: repo_special-names
+  - include: repo_builtin-names-scenic
+  - include: repo_illegal-names
+  - include: repo_special-variables
+  - include: repo_ellipsis
+  - include: repo_punctuation
+  - include: repo_line-continuation
+  repo_expression-base:
+  - include: repo_comments
+  - include: repo_expression-bare
+  - include: repo_line-continuation
+  repo_f-expression:
+  - include: repo_expression-bare
+  - include: repo_member-access
+  - match: (?x) \b ([[:alpha:]_]\w*) \b
+  repo_fregexp-base-expression:
+  - include: repo_fregexp-quantifier
+  - include: repo_fstring-formatting-braces
+  - match: \{.*?\}
+  - include: repo_regexp-base-common
+  repo_fregexp-quantifier:
+  - match: "(?x)\n  \\{\\{(\n    \\d+ | \\d+,(\\d+)? | ,\\d+\n  )\\}\\}\n"
+    scope: keyword.operator.quantifier.regexp
+  repo_fstring-fnorm-quoted-multi-line:
+  - match: (\b[fF])([bBuU])?('''|""")
+    captures:
+      1: string.interpolated.scenic string.quoted.multi.scenic storage.type.string.scenic
+      2: invalid.illegal.prefix.scenic
+      3: punctuation.definition.string.begin.scenic string.interpolated.scenic string.quoted.multi.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.multi.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-multi-core
+  repo_fstring-fnorm-quoted-single-line:
+  - match: (\b[fF])([bBuU])?((['"]))
+    captures:
+      1: string.interpolated.scenic string.quoted.single.scenic storage.type.string.scenic
+      2: invalid.illegal.prefix.scenic
+      3: punctuation.definition.string.begin.scenic string.interpolated.scenic string.quoted.single.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.single.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-single-core
+  repo_fstring-formatting:
+  - include: repo_fstring-formatting-braces
+  - include: repo_fstring-formatting-singe-brace
+  repo_fstring-formatting-braces:
+  - match: ({)(\s*?)(})
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+      2: invalid.illegal.brace.scenic
+      3: constant.character.format.placeholder.other.scenic
+  - match: ({{|}})
+    scope: constant.character.escape.scenic
+  repo_fstring-formatting-singe-brace:
+  - match: (}(?!}))
+    scope: invalid.illegal.brace.scenic
+  repo_fstring-guts:
+  - include: repo_escape-sequence-unicode
+  - include: repo_escape-sequence
+  - include: repo_string-line-continuation
+  - include: repo_fstring-formatting
+  repo_fstring-illegal-multi-brace:
+  - include: repo_impossible
+  repo_fstring-illegal-single-brace:
+  - match: (\{)(?=[^\n}]*$\n?)
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+    push:
+    - match: (\})|(?=\n)
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.scenic
+    - include: repo_fstring-terminator-single
+    - include: repo_f-expression
+  repo_fstring-multi-brace:
+  - match: (\{)
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+    push:
+    - match: "(?x)\n  (\\})\n"
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.scenic
+    - include: repo_fstring-terminator-multi
+    - include: repo_f-expression
+  repo_fstring-multi-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|'''|\"\"\")\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.scenic string.quoted.multi.scenic
+  repo_fstring-normf-quoted-multi-line:
+  - match: (\b[bBuU])([fF])('''|""")
+    captures:
+      1: invalid.illegal.prefix.scenic
+      2: string.interpolated.scenic string.quoted.multi.scenic storage.type.string.scenic
+      3: punctuation.definition.string.begin.scenic string.quoted.multi.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.multi.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-multi-core
+  repo_fstring-normf-quoted-single-line:
+  - match: (\b[bBuU])([fF])((['"]))
+    captures:
+      1: invalid.illegal.prefix.scenic
+      2: string.interpolated.scenic string.quoted.single.scenic storage.type.string.scenic
+      3: punctuation.definition.string.begin.scenic string.quoted.single.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.single.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-single-core
+  repo_fstring-raw-guts:
+  - include: repo_string-consume-escape
+  - include: repo_fstring-formatting
+  repo_fstring-raw-multi-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|'''|\"\"\")\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.scenic string.quoted.raw.multi.scenic
+  repo_fstring-raw-quoted-multi-line:
+  - match: (\b(?:[rR][fF]|[fF][rR]))('''|""")
+    captures:
+      1: string.interpolated.scenic string.quoted.raw.multi.scenic storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic string.quoted.raw.multi.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.raw.multi.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-raw-guts
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - include: repo_fstring-raw-multi-core
+  repo_fstring-raw-quoted-single-line:
+  - match: (\b(?:[rR][fF]|[fF][rR]))((['"]))
+    captures:
+      1: string.interpolated.scenic string.quoted.raw.single.scenic storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic string.quoted.raw.single.scenic
+    push:
+    - meta_scope: meta.fstring.scenic
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic string.interpolated.scenic string.quoted.raw.single.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_fstring-raw-guts
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - include: repo_fstring-raw-single-core
+  repo_fstring-raw-single-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.scenic string.quoted.raw.single.scenic
+  repo_fstring-single-brace:
+  - match: (\{)
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+    push:
+    - match: "(?x)\n  (\\})|(?=\\n)\n"
+      pop: true
+      captures:
+        1: constant.character.format.placeholder.other.scenic
+    - include: repo_fstring-terminator-single
+    - include: repo_f-expression
+  repo_fstring-single-core:
+  - match: "(?x)\n  (.+?)\n    (\n      (?# .* and .*? in multi-line match need special handling of\n        newlines otherwise SublimeText and Atom will match slightly\n        differently.\n\n        The guard for newlines has to be separate from the\n        lookahead because of special $ matching rule.)\n      ($\\n?)\n      |\n      (?=[\\\\\\}\\{]|(['\"])|((?<!\\\\)\\n))\n    )\n  (?# due to how multiline regexps are matched we need a special case\n    for matching a newline character)\n  | \\n\n"
+    scope: string.interpolated.scenic string.quoted.single.scenic
+  repo_fstring-terminator-multi:
+  - match: (=(![rsa])?)(?=})
+    scope: storage.type.format.scenic
+  - match: (=?![rsa])(?=})
+    scope: storage.type.format.scenic
+  - match: "(?x)\n  ( (?: =?) (?: ![rsa])? )\n    ( : \\w? [<>=^]? [-+ ]? \\#?\n      \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )(?=})\n"
+    captures:
+      1: storage.type.format.scenic
+      2: storage.type.format.scenic
+  - include: repo_fstring-terminator-multi-tail
+  repo_fstring-terminator-multi-tail:
+  - match: ((?:=?)(?:![rsa])?)(:)(?=.*?{)
+    captures:
+      1: storage.type.format.scenic
+      2: storage.type.format.scenic
+    push:
+    - match: (?=})
+      pop: true
+    - include: repo_fstring-illegal-multi-brace
+    - include: repo_fstring-multi-brace
+    - match: ([bcdeEfFgGnosxX%])(?=})
+      scope: storage.type.format.scenic
+    - match: (\.\d+)
+      scope: storage.type.format.scenic
+    - match: (,)
+      scope: storage.type.format.scenic
+    - match: (\d+)
+      scope: storage.type.format.scenic
+    - match: (\#)
+      scope: storage.type.format.scenic
+    - match: ([-+ ])
+      scope: storage.type.format.scenic
+    - match: ([<>=^])
+      scope: storage.type.format.scenic
+    - match: (\w)
+      scope: storage.type.format.scenic
+  repo_fstring-terminator-single:
+  - match: (=(![rsa])?)(?=})
+    scope: storage.type.format.scenic
+  - match: (=?![rsa])(?=})
+    scope: storage.type.format.scenic
+  - match: "(?x)\n  ( (?: =?) (?: ![rsa])? )\n    ( : \\w? [<>=^]? [-+ ]? \\#?\n      \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )(?=})\n"
+    captures:
+      1: storage.type.format.scenic
+      2: storage.type.format.scenic
+  - include: repo_fstring-terminator-single-tail
+  repo_fstring-terminator-single-tail:
+  - match: ((?:=?)(?:![rsa])?)(:)(?=.*?{)
+    captures:
+      1: storage.type.format.scenic
+      2: storage.type.format.scenic
+    push:
+    - match: (?=})|(?=\n)
+      pop: true
+    - include: repo_fstring-illegal-single-brace
+    - include: repo_fstring-single-brace
+    - match: ([bcdeEfFgGnosxX%])(?=})
+      scope: storage.type.format.scenic
+    - match: (\.\d+)
+      scope: storage.type.format.scenic
+    - match: (,)
+      scope: storage.type.format.scenic
+    - match: (\d+)
+      scope: storage.type.format.scenic
+    - match: (\#)
+      scope: storage.type.format.scenic
+    - match: ([-+ ])
+      scope: storage.type.format.scenic
+    - match: ([<>=^])
+      scope: storage.type.format.scenic
+    - match: (\w)
+      scope: storage.type.format.scenic
+  repo_function-arguments:
+  - match: (\()
+    captures:
+      1: punctuation.definition.arguments.begin.scenic
+    push:
+    - meta_content_scope: meta.function-call.arguments.scenic
+    - match: (?=\))(?!\)\s*\()
+      pop: true
+    - match: (,)
+      scope: punctuation.separator.arguments.scenic
+    - match: "(?x)\n  (?:(?<=[,(])|^) \\s* (\\*{1,2})\n"
+      captures:
+        1: keyword.operator.unpacking.arguments.scenic
+    - include: repo_lambda-incomplete
+    - include: repo_illegal-names
+    - match: \b([[:alpha:]_]\w*)\s*(=)(?!=)
+      captures:
+        1: variable.parameter.function-call.scenic
+        2: keyword.operator.assignment.scenic
+    - match: =(?!=)
+      scope: keyword.operator.assignment.scenic
+    - include: repo_expression
+    - match: \s*(\))\s*(\()
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+        2: punctuation.definition.arguments.begin.scenic
+  repo_function-call:
+  - match: "(?x)\n  \\b(?=\n    ([[:alpha:]_]\\w*) \\s* (\\()\n  )\n"
+    push:
+    - meta_scope: meta.function-call.scenic
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+    - include: repo_special-variables
+    - include: repo_function-name
+    - include: repo_function-arguments
+  repo_function-declaration:
+  - match: "(?x)\n  \\s*\n  (?:\\b(async) \\s+)? \\b(def)\\s+\n    (?=\n      [[:alpha:]_][[:word:]]* \\s* \\(\n    )\n"
+    captures:
+      1: storage.type.function.async.scenic
+      2: storage.type.function.scenic
+    push:
+    - meta_scope: meta.function.scenic
+    - match: (:|(?=[#'"\n]))
+      pop: true
+      captures:
+        1: punctuation.section.function.begin.scenic
+    - include: repo_function-def-name
+    - include: repo_parameters
+    - include: repo_line-continuation
+    - include: repo_return-annotation
+  repo_function-def-name:
+  - include: repo_illegal-object-name
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: entity.name.function.scenic
+  repo_function-name:
+  - include: repo_builtin-possible-callables
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    scope: variable.function.scenic meta.function-call.generic.scenic
+  repo_illegal-anno:
+  - match: ->
+    scope: invalid.illegal.annotation.scenic
+  repo_illegal-names:
+  - match: "(?x)\n  \\b(?:\n    (\n      and | as | assert | async | await | break | class | continue | def\n      | del | elif | else | except | finally | for | from | global\n      | if | in | is | (?<=\\.)lambda | lambda(?=\\s*[\\.=])\n      | nonlocal | not | or | pass | raise | return | try | while | with\n      | yield\n      | at | by | do | of | to | until\n    ) | (\n      import\n    )\n  )\\b\n"
+    captures:
+      1: keyword.control.flow.scenic
+      2: keyword.control.import.scenic
+  repo_illegal-object-name:
+  - match: \b(True|False|None)\b
+    scope: keyword.illegal.name.scenic
+  repo_illegal-operator:
+  - match: '&&|\|\||--|\+\+'
+    scope: invalid.illegal.operator.scenic
+  - match: '[?$]'
+    scope: invalid.illegal.operator.scenic
+  - match: '!\b'
+    scope: invalid.illegal.operator.scenic
+  repo_import:
+  - match: "(?x)\n  \\s* \\b(from) \\s*(\\.+)\\s* (import\\b)?\n"
+    captures:
+      1: keyword.control.import.scenic
+      2: punctuation.separator.period.scenic
+      3: keyword.control.import.scenic
+  - match: \b(?<!\.)import\b
+    scope: keyword.control.import.scenic
+  repo_impossible:
+  - match: $.^
+  repo_inheritance-identifier:
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+    captures:
+      1: entity.other.inherited-class.scenic
+  repo_inheritance-name:
+  - include: repo_lambda-incomplete
+  - include: repo_builtin-possible-callables
+  - include: repo_inheritance-identifier
+  repo_inline-keywords:
+  - match: "(?x)\n  \\b(?<!\\.)(\n    initial\\ scenario | until | to | by | from\n  )\\b\n"
+    captures:
+      1: keyword.control.flow.scenic
+  repo_instance-creation:
+  - match: "(?x)\n  (new) \\s+\n  (?: (Point | OrientedPoint | Object)\\b | ([[:alpha:]_]\\w*))\n  [^\\S\\n]*\n"
+    captures:
+      1: keyword.other.new.scenic
+      2: markup.italic markup.bold entity.name.instance.scenic
+      3: markup.bold entity.name.instance.scenic
+    push:
+    - meta_scope: meta.instance.scenic
+    - include: repo_specifier
+    - include: repo_line-continuation
+    - match: (?=[\S\n])
+      pop: true
+      captures:
+        1: comment.line.number-sign.scenic
+  repo_item-access:
+  - match: "(?x)\n  \\b(?=\n    [[:alpha:]_]\\w* \\s* \\[\n  )\n"
+    push:
+    - meta_scope: meta.item-access.scenic
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+    - include: repo_item-name
+    - include: repo_item-index
+    - include: repo_expression
+  repo_item-index:
+  - match: (\[)
+    captures:
+      1: punctuation.definition.arguments.begin.scenic
+    push:
+    - meta_content_scope: meta.item-access.arguments.scenic
+    - match: (?=\])
+      pop: true
+    - match: ':'
+      scope: punctuation.separator.slice.scenic
+    - include: repo_expression
+  repo_item-name:
+  - include: repo_special-variables
+  - include: repo_builtin-functions
+  - include: repo_special-names
+  - match: "(?x)\n  \\b ([[:alpha:]_]\\w*) \\b\n"
+  repo_lambda:
+  - match: ((?<=\.)lambda|lambda(?=\s*[\.=]))
+    captures:
+      1: keyword.control.flow.scenic
+  - match: \b(lambda)\s*?(?=[,\n]|$)
+    captures:
+      1: storage.type.function.lambda.scenic
+  - match: "(?x)\n  \\b (lambda) \\b\n"
+    captures:
+      1: storage.type.function.lambda.scenic
+    push:
+    - meta_scope: meta.lambda-function.scenic
+    - meta_content_scope: meta.function.lambda.parameters.scenic
+    - match: (:)|(\n)
+      pop: true
+      captures:
+        1: punctuation.section.function.lambda.begin.scenic
+    - match: /
+      scope: keyword.operator.positional.parameter.scenic
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.parameter.scenic
+    - include: repo_lambda-nested-incomplete
+    - include: repo_illegal-names
+    - match: ([[:alpha:]_]\w*)\s*(?:(,)|(?=:|$))
+      captures:
+        1: variable.parameter.function.language.scenic
+        2: punctuation.separator.parameters.scenic
+    - include: repo_comments
+    - include: repo_backticks
+    - include: repo_illegal-anno
+    - include: repo_lambda-parameter-with-default
+    - include: repo_line-continuation
+    - include: repo_illegal-operator
+  repo_lambda-incomplete:
+  - match: \blambda(?=\s*[,)])
+    scope: storage.type.function.lambda.scenic
+  repo_lambda-nested-incomplete:
+  - match: \blambda(?=\s*[:,)])
+    scope: storage.type.function.lambda.scenic
+  repo_lambda-parameter-with-default:
+  - match: "(?x)\n  \\b\n  ([[:alpha:]_]\\w*) \\s* (=)\n"
+    captures:
+      1: variable.parameter.function.language.scenic
+      2: keyword.operator.scenic
+    push:
+    - match: (,)|(?=:|$)
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.scenic
+    - include: repo_expression
+  repo_line-continuation:
+  - match: (\\)\s*(\S.*$\n?)
+    captures:
+      1: punctuation.separator.continuation.line.scenic
+      2: invalid.illegal.line.continuation.scenic
+  - match: (\\)\s*$\n?
+    captures:
+      1: punctuation.separator.continuation.line.scenic
+    push:
+    - match: "(?x)\n  (?=^\\s*$)\n  |\n  (?! (\\s* [rR]? (\\'\\'\\'|\\\"\\\"\\\"|\\'|\\\"))\n      |\n      ( $)  (?# '' is necessary for ST)\n  )\n"
+      pop: true
+    - include: repo_regexp
+    - include: repo_string
+  repo_list:
+  - match: \[
+    captures:
+      0: punctuation.definition.list.begin.scenic
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.list.end.scenic
+    - include: repo_expression
+  repo_literal:
+  - match: \b(True|False|None|NotImplemented|Ellipsis)\b
+    scope: constant.language.scenic
+  - match: \b(everywhere|nowhere)\b
+    scope: constant.language.scenic
+  - include: repo_number
+  repo_loose-default:
+  - match: (=)
+    captures:
+      1: keyword.operator.scenic
+    push:
+    - match: (,)|(?=\))
+      pop: true
+      captures:
+        1: punctuation.separator.parameters.scenic
+    - include: repo_expression
+  repo_magic-function-names:
+  - match: "(?x)\n  \\b(\n    __(?:\n      abs | add | aenter | aexit | aiter | and | anext\n      | await | bool | call | ceil | class_getitem\n      | cmp | coerce | complex | contains | copy\n      | deepcopy | del | delattr | delete | delitem\n      | delslice | dir | div | divmod | enter | eq\n      | exit | float | floor | floordiv | format | ge\n      | get | getattr | getattribute | getinitargs\n      | getitem | getnewargs | getslice | getstate | gt\n      | hash | hex | iadd | iand | idiv | ifloordiv |\n      | ilshift | imod | imul | index | init\n      | instancecheck | int | invert | ior | ipow\n      | irshift | isub | iter | itruediv | ixor | le\n      | len | long | lshift | lt | missing | mod | mul\n      | ne | neg | new | next | nonzero | oct | or | pos\n      | pow | radd | rand | rdiv | rdivmod | reduce\n      | reduce_ex | repr | reversed | rfloordiv |\n      | rlshift | rmod | rmul | ror | round | rpow\n      | rrshift | rshift | rsub | rtruediv | rxor | set\n    \
+      \  | setattr | setitem | set_name | setslice\n      | setstate | sizeof | str | sub | subclasscheck\n      | truediv | trunc | unicode | xor | matmul\n      | rmatmul | imatmul | init_subclass | set_name\n      | fspath | bytes | prepare | length_hint\n    )__\n  )\\b\n"
+    captures:
+      1: support.function.magic.scenic
+  repo_magic-names:
+  - include: repo_magic-function-names
+  - include: repo_magic-variable-names
+  repo_magic-variable-names:
+  - match: "(?x)\n  \\b(\n    __(?:\n      all | annotations | bases | builtins | class\n      | closure | code | debug | defaults | dict | doc | file | func\n      | globals | kwdefaults | match_args | members | metaclass | methods\n      | module | mro | mro_entries | name | qualname | post_init | self\n      | signature | slots | subclasses | version | weakref | wrapped\n      | classcell | spec | path | package | future | traceback\n    )__\n  )\\b\n"
+    captures:
+      1: support.variable.magic.scenic
+  repo_member-access:
+  - match: (\.)\s*(?!\.)
+    captures:
+      1: punctuation.separator.period.scenic
+    push:
+    - match: "(?x)\n  # stop when you've just read non-whitespace followed by non-word\n  # i.e. when finished reading an identifier or function call\n  (?<=\\S)(?=\\W) |\n  # stop when seeing the start of something that's not a word,\n  # i.e. when seeing a non-identifier\n  (^|(?<=\\s))(?=[^\\\\\\w\\s]) |\n  $\n"
+      pop: true
+    - include: repo_function-call
+    - include: repo_member-access-base
+  repo_member-access-base:
+  - include: repo_magic-names
+  - include: repo_illegal-names
+  - include: repo_illegal-object-name
+  - include: repo_special-names
+  - include: repo_line-continuation
+  - include: repo_item-access
+  repo_member-access-class:
+  - match: (\.)\s*(?!\.)
+    captures:
+      1: punctuation.separator.period.scenic
+    push:
+    - match: (?<=\S)(?=\W)|$
+      pop: true
+    - include: repo_call-wrapper-inheritance
+    - include: repo_member-access-base
+    - include: repo_inheritance-identifier
+  repo_number:
+  - include: repo_number-float
+  - include: repo_number-dec
+  - include: repo_number-hex
+  - include: repo_number-oct
+  - include: repo_number-bin
+  - include: repo_number-long
+  - match: \b[0-9]+\w+
+    scope: invalid.illegal.name.scenic
+  repo_number-bin:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[bB]) (_?[01])+\n  \\b\n"
+    scope: constant.numeric.bin.scenic
+    captures:
+      1: storage.type.number.scenic
+  repo_number-dec:
+  - match: "(?x)\n  (?<![\\w\\.])(?:\n      [1-9](?: _?[0-9] )*\n      |\n      0+\n      |\n      [0-9](?: _?[0-9] )* ([jJ])\n      |\n      0 ([0-9]+)(?![eE\\.])\n  )\\b\n"
+    scope: constant.numeric.dec.scenic
+    captures:
+      1: storage.type.imaginary.number.scenic
+      2: invalid.illegal.dec.scenic
+      3: invalid.illegal.dec.scenic
+  repo_number-float:
+  - match: "(?x)\n  (?<! \\w)(?:\n    (?:\n      \\.[0-9](?: _?[0-9] )*\n      |\n      [0-9](?: _?[0-9] )* \\. [0-9](?: _?[0-9] )*\n      |\n      [0-9](?: _?[0-9] )* \\.\n    ) (?: [eE][+-]?[0-9](?: _?[0-9] )* )?\n    |\n    [0-9](?: _?[0-9] )* (?: [eE][+-]?[0-9](?: _?[0-9] )* )\n  )([jJ])?\\b\n"
+    scope: constant.numeric.float.scenic
+    captures:
+      1: storage.type.imaginary.number.scenic
+  repo_number-hex:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[xX]) (_?[0-9a-fA-F])+\n  \\b\n"
+    scope: constant.numeric.hex.scenic
+    captures:
+      1: storage.type.number.scenic
+  repo_number-long:
+  - match: "(?x)\n  (?<![\\w\\.])\n    ([1-9][0-9]* | 0) ([lL])\n  \\b\n"
+    scope: constant.numeric.bin.scenic
+    captures:
+      2: storage.type.number.scenic
+  repo_number-oct:
+  - match: "(?x)\n  (?<![\\w\\.])\n    (0[oO]) (_?[0-7])+\n  \\b\n"
+    scope: constant.numeric.oct.scenic
+    captures:
+      1: storage.type.number.scenic
+  repo_old-instance-statement:
+  - match: "(?x)\n  # Case 1: at least one specifier.\n  ^\\s*\n  (?: (?: (ego) | [[:alpha:]_]\\w* ) \\s* (=) | (return))? \\s*\n  (?! True|False|None|NotImplemented|Ellipsis)\n  (?: (Point | OrientedPoint | Object)\\b | ([[:upper:]]\\w*))\n  (?=\n    \\s+ (?:\n      (?: with) \\s+ \\b[[:alpha:]_]\\w*\n      | (?:\n        at | offset\\ by | offset\\ along\n        | (?: (?: left | right | ahead)\\ of) | behind\n        | above | below\n        | beyond\n        | visible\\ from | visible\n        | not\\ visible\\ from | not\\ visible\n        | in | on\n        | contained\\ in\n        | following\n        | facing\\ (?: directly\\ )? (?: toward | away\\ from)\n        | facing | apparently\\ facing\n      )\n    )\n  )\\b\n\n# Case 2: assignment with no specifiers. Only match ego since otherwise\n#   we'd get annoying false positives while typing Python lines like\n#   'x = MyPythonClass()' before adding the parentheses.\n| ^\\s* (ego) \\s* (=) \\s*\n  (?: (Object)\\b | ([[:upper:]]\\\
+      w*))\n  (?= \\s* (?: \\#.*)? $ )\n\n# Case 3: name with no specifiers. We'll allow this since we only match\n#   capitalized names, which are rare as variable or side-effecting\n#   function names so we should get few false positives.\n| ^\\s* (?: (Object)\\b | ([[:upper:]]\\w*))\n  (?= \\s* (?: \\#.*)? $ )\n"
+    captures:
+      1: variable.language.special.ego.scenic
+      10: markup.italic markup.bold entity.name.instance.scenic
+      11: markup.bold entity.name.instance.scenic
+      2: keyword.operator.assignment.scenic
+      3: keyword.control.flow.scenic
+      4: markup.italic markup.bold entity.name.instance.scenic
+      5: markup.bold entity.name.instance.scenic
+      6: variable.language.special.ego.scenic
+      7: keyword.operator.assignment.scenic
+      8: markup.italic markup.bold entity.name.instance.scenic
+      9: markup.bold entity.name.instance.scenic
+    push:
+    - meta_scope: meta.instance.scenic
+    - match: \n
+      pop: true
+    - include: repo_specifier
+    - include: repo_line-continuation
+  repo_old-monitor-declaration:
+  - match: "(?x)\n  ^\\s*\n  (monitor)\\s+\n    (?=\n      [[:alpha:]_][[:word:]]* \\s* :\n    )\n"
+    captures:
+      1: storage.type.function.scenic
+    push:
+    - meta_scope: meta.function.scenic
+    - match: (:)
+      pop: true
+      captures:
+        1: punctuation.section.function.begin.scenic
+    - include: repo_function-def-name
+  repo_operator:
+  - match: "(?x)\n    \\b(?<!\\.)\n      (?:\n        (and | or | not | in | is)                         (?# 1)\n        |\n        (for | if | else | await | (?:yield(?:\\s+from)?))  (?# 2)\n      )\n    (?!\\s*:)\\b\n\n    | (<< | >> | & | \\| | \\^ | ~)                          (?# 3)\n\n    | (\\*\\* | \\* | \\+ | - | % | // | / | @)                (?# 4)\n\n    | (!= | == | >= | <= | < | >)                          (?# 5)\n\n    | (:=)                                                 (?# 6)\n\n    | (                                                    (?# 7)\n      deg\n      | (?:\n          (?:relative | apparent)\\ heading\\ of\n          | distance\\ (?:from | to | past)\n          | (?:angle | altitude)\\ (?:from | to) | can\\ see\n          | at | relative\\ to\n          | offset\\ by | offset\\ along\n          | visible | not\\ visible\n          | (?:front | back | left | right | top | bottom)\\ of\n          | (?:(?:front | back | top | bottom)\\ (?:left | right))\\ of\n \
+      \         | (?:(?:top | bottom)\\ (?:front | back))\\ of\n          | (?:(?:top | bottom)\\ (?:front | back)\\ (?:left | right))\\ of\n        )\\b(?! \\s* (?: [)}\\]=:.;,#] | $))\n      )\n"
+    captures:
+      1: keyword.operator.logical.scenic
+      2: keyword.control.flow.scenic
+      3: keyword.operator.bitwise.scenic
+      4: keyword.operator.arithmetic.scenic
+      5: keyword.operator.comparison.scenic
+      6: keyword.operator.assignment.scenic
+      7: keyword.operator.scenic
+  repo_override-statement:
+  - match: "(?x)\n  ^\\s*\n  (override) \\s+ (?: (ego) | [[:alpha:]_]\\w*)\n  \\s+\n"
+    captures:
+      1: keyword.control.flow.scenic
+      2: variable.language.special.ego.scenic
+    push:
+    - meta_scope: meta.override.scenic
+    - match: \n
+      pop: true
+    - include: repo_specifier
+    - include: repo_line-continuation
+  repo_param-statement:
+  - match: ^\s*(param)\s+
+    captures:
+      1: keyword.control.flow.scenic
+    push:
+    - match: (\#.*)?\n
+      pop: true
+      captures:
+        1: comment.line.number-sign.scenic
+    - match: "(?x)\n  ([[:alpha:]_]\\w* | '[^\\\\'\"%{\\n]+' | \"[^\\\\'\"%{\\n]+\")\n  \\s* (=) \\s*\n"
+      scope: meta.param.scenic
+      captures:
+        1: variable.parameter.global.scenic
+        2: keyword.operator.assignment.scenic
+    - include: repo_expression
+  repo_parameter-special:
+  - match: "(?x)\n  \\b ((self)|(cls)) \\b \\s*(?:(,)|(?=\\)))\n"
+    captures:
+      1: variable.parameter.function.language.scenic
+      2: variable.parameter.function.language.special.self.scenic
+      3: variable.parameter.function.language.special.cls.scenic
+      4: punctuation.separator.parameters.scenic
+  repo_parameters:
+  - match: (\()
+    captures:
+      1: punctuation.definition.parameters.begin.scenic
+    push:
+    - meta_scope: meta.function.parameters.scenic
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.parameters.end.scenic
+    - match: /
+      scope: keyword.operator.positional.parameter.scenic
+    - match: (\*\*|\*)
+      scope: keyword.operator.unpacking.parameter.scenic
+    - include: repo_lambda-incomplete
+    - include: repo_illegal-names
+    - include: repo_illegal-object-name
+    - include: repo_parameter-special
+    - match: "(?x)\n  ([[:alpha:]_]\\w*)\n    \\s* (?: (,) | (?=[)#\\n=]))\n"
+      captures:
+        1: variable.parameter.function.language.scenic
+        2: punctuation.separator.parameters.scenic
+    - include: repo_comments
+    - include: repo_loose-default
+    - include: repo_annotated-parameter
+  repo_property-attribute:
+  - match: \b(additive|dynamic|final)\b
+    scope: storage.type.property.scenic
+  repo_property-declaration:
+  - match: "(?x)\n  ^\\s+\n  (?!else|except|finally) ([[:alpha:]_]\\w*)\n  \\s*\n  (?: (\\[) (?= [\\w\\s,]* \\] \\s* : \\s* [^\\s\\#])\n    | (?= : \\s* [^\\s\\#]))\n"
+    captures:
+      1: entity.name.property.scenic
+      2: punctuation.definition.arguments.begin.scenic
+    push:
+    - meta_scope: meta.property.scenic
+    - match: "(?x)\n  (\\])? \\s* (:)\n"
+      pop: true
+      captures:
+        1: punctuation.definition.arguments.end.scenic
+        2: punctuation.separator.colon.scenic
+    - include: repo_property-attribute
+    - match: ','
+      scope: punctuation.separator.element.scenic
+  repo_punctuation:
+  - match: ':'
+    scope: punctuation.separator.colon.scenic
+  - match: ','
+    scope: punctuation.separator.element.scenic
+  repo_regexp:
+  - include: repo_regexp-single-three-line
+  - include: repo_regexp-double-three-line
+  - include: repo_regexp-single-one-line
+  - include: repo_regexp-double-one-line
+  repo_regexp-backreference:
+  - match: "(?x)\n  (\\()  (\\?P= \\w+(?:\\s+[[:alnum:]]+)?)  (\\))\n"
+    scope: meta.backreference.named.regexp
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.backreference.named.begin.regexp
+      2: entity.name.tag.named.backreference.regexp
+      3: support.other.parenthesis.regexp punctuation.parenthesis.backreference.named.end.regexp
+  repo_regexp-backreference-number:
+  - match: (\\[1-9]\d?)
+    scope: meta.backreference.regexp
+    captures:
+      1: entity.name.tag.backreference.regexp
+  repo_regexp-base-common:
+  - match: \.
+    scope: support.other.match.any.regexp
+  - match: \^
+    scope: support.other.match.begin.regexp
+  - match: \$
+    scope: support.other.match.end.regexp
+  - match: '[+*?]\??'
+    scope: keyword.operator.quantifier.regexp
+  - match: \|
+    scope: keyword.operator.disjunction.regexp
+  - include: repo_regexp-escape-sequence
+  repo_regexp-base-expression:
+  - include: repo_regexp-quantifier
+  - include: repo_regexp-base-common
+  repo_regexp-charecter-set-escapes:
+  - match: \\[abfnrtv\\]
+    scope: constant.character.escape.regexp
+  - include: repo_regexp-escape-special
+  - match: \\([0-7]{1,3})
+    scope: constant.character.escape.regexp
+  - include: repo_regexp-escape-character
+  - include: repo_regexp-escape-unicode
+  - include: repo_regexp-escape-catchall
+  repo_regexp-double-one-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(")
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: storage.type.string.scenic
+      5: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.regexp.quoted.single.scenic
+    - match: (")|(?<!\\)(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-one-regexp-expression
+  repo_regexp-double-three-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(""")
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: storage.type.string.scenic
+      5: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.regexp.quoted.multi.scenic
+    - match: (""")
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_double-three-regexp-expression
+  repo_regexp-escape-catchall:
+  - match: \\(.|\n)
+    scope: constant.character.escape.regexp
+  repo_regexp-escape-character:
+  - match: "(?x)\n  \\\\ (\n        x[0-9A-Fa-f]{2}\n        | 0[0-7]{1,2}\n        | [0-7]{3}\n     )\n"
+    scope: constant.character.escape.regexp
+  repo_regexp-escape-sequence:
+  - include: repo_regexp-escape-special
+  - include: repo_regexp-escape-character
+  - include: repo_regexp-escape-unicode
+  - include: repo_regexp-backreference-number
+  - include: repo_regexp-escape-catchall
+  repo_regexp-escape-special:
+  - match: \\([AbBdDsSwWZ])
+    scope: support.other.escape.special.regexp
+  repo_regexp-escape-unicode:
+  - match: "(?x)\n  \\\\ (\n        u[0-9A-Fa-f]{4}\n        | U[0-9A-Fa-f]{8}\n     )\n"
+    scope: constant.character.unicode.regexp
+  repo_regexp-flags:
+  - match: \(\?[aiLmsux]+\)
+    scope: storage.modifier.flag.regexp
+  repo_regexp-quantifier:
+  - match: "(?x)\n  \\{(\n    \\d+ | \\d+,(\\d+)? | ,\\d+\n  )\\}\n"
+    scope: keyword.operator.quantifier.regexp
+  repo_regexp-single-one-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(\')
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: storage.type.string.scenic
+      5: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.regexp.quoted.single.scenic
+    - match: (\')|(?<!\\)(\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_regexp-single-three-line:
+  - match: \b(([uU]r)|([bB]r)|(r[bB]?))(\'\'\')
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: storage.type.string.scenic
+      5: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.regexp.quoted.multi.scenic
+    - match: (\'\'\')
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+  repo_require-statement:
+  - match: "(?x)\n  ^\\s* (require) \\s+ (?!monitor)\n"
+    captures:
+      1: keyword.control.flow.scenic
+    push:
+    - meta_scope: meta.requirement.scenic
+    - match: (?x) (\#.*)? \n
+      pop: true
+      captures:
+        1: comment.line.number-sign.scenic
+    - include: repo_temporal-expression
+  repo_return-annotation:
+  - match: (->)
+    captures:
+      1: punctuation.separator.annotation.result.scenic
+    push:
+    - match: (?=:)
+      pop: true
+    - include: repo_expression
+  repo_round-braces:
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.begin.scenic
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.end.scenic
+    - include: repo_expression
+  repo_scenario-declaration:
+  - match: "(?x)\n  ^\\s*\n  (scenario | behavior | monitor)\\s+\n    (?=\n      [[:alpha:]_][[:word:]]* \\s* \\(\n    )\n"
+    captures:
+      1: storage.type.function.scenic
+    push:
+    - meta_scope: meta.function.scenic
+    - match: (:|(?=[#'"\n]))
+      pop: true
+      captures:
+        1: punctuation.section.function.begin.scenic
+    - include: repo_function-def-name
+    - include: repo_parameters
+    - include: repo_line-continuation
+    - include: repo_return-annotation
+  repo_semicolon:
+  - match: \;$
+    scope: invalid.deprecated.semicolon.scenic
+  repo_single-one-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_regexp-charecter-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_single-one-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_codetags
+  repo_single-one-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_single-one-regexp-character-set
+  - include: repo_single-one-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_single-one-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_single-one-regexp-lookahead
+  - include: repo_single-one-regexp-lookahead-negative
+  - include: repo_single-one-regexp-lookbehind
+  - include: repo_single-one-regexp-lookbehind-negative
+  - include: repo_single-one-regexp-conditional
+  - include: repo_single-one-regexp-parentheses-non-capturing
+  - include: repo_single-one-regexp-parentheses
+  repo_single-one-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-one-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?=\'))|((?=(?<!\\)\n))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-one-regexp-expression
+  repo_single-three-regexp-character-set:
+  - match: "(?x)\n  \\[ \\^? \\] (?! .*?\\])\n"
+  - match: (\[)(\^)?(\])?
+    captures:
+      1: punctuation.character.set.begin.regexp constant.other.set.regexp
+      2: keyword.operator.negation.regexp
+      3: constant.character.set.regexp
+    push:
+    - meta_scope: meta.character.set.regexp
+    - match: (\]|(?=\'\'\'))
+      pop: true
+      captures:
+        1: punctuation.character.set.end.regexp constant.other.set.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_regexp-charecter-set-escapes
+    - match: '[^\n]'
+      scope: constant.character.set.regexp
+  repo_single-three-regexp-comments:
+  - match: \(\?#
+    captures:
+      0: punctuation.comment.begin.regexp
+    push:
+    - meta_scope: comment.regexp
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: punctuation.comment.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_codetags
+  repo_single-three-regexp-conditional:
+  - match: (\()\?\((\w+(?:\s+[[:alnum:]]+)?|\d+)\)
+    captures:
+      0: keyword.operator.conditional.regexp
+      1: punctuation.parenthesis.conditional.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.conditional.negative.regexp punctuation.parenthesis.conditional.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-expression:
+  - include: repo_regexp-base-expression
+  - include: repo_single-three-regexp-character-set
+  - include: repo_single-three-regexp-comments
+  - include: repo_regexp-flags
+  - include: repo_single-three-regexp-named-group
+  - include: repo_regexp-backreference
+  - include: repo_single-three-regexp-lookahead
+  - include: repo_single-three-regexp-lookahead-negative
+  - include: repo_single-three-regexp-lookbehind
+  - include: repo_single-three-regexp-lookbehind-negative
+  - include: repo_single-three-regexp-conditional
+  - include: repo_single-three-regexp-parentheses-non-capturing
+  - include: repo_single-three-regexp-parentheses
+  - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookahead:
+  - match: (\()\?=
+    captures:
+      0: keyword.operator.lookahead.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookahead-negative:
+  - match: (\()\?!
+    captures:
+      0: keyword.operator.lookahead.negative.regexp
+      1: punctuation.parenthesis.lookahead.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookahead.negative.regexp punctuation.parenthesis.lookahead.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookbehind:
+  - match: (\()\?<=
+    captures:
+      0: keyword.operator.lookbehind.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-lookbehind-negative:
+  - match: (\()\?<!
+    captures:
+      0: keyword.operator.lookbehind.negative.regexp
+      1: punctuation.parenthesis.lookbehind.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: keyword.operator.lookbehind.negative.regexp punctuation.parenthesis.lookbehind.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-named-group:
+  - match: "(?x)\n  (\\()  (\\?P <\\w+(?:\\s+[[:alnum:]]+)?>)\n"
+    captures:
+      1: support.other.parenthesis.regexp punctuation.parenthesis.named.begin.regexp
+      2: entity.name.tag.named.group.regexp
+    push:
+    - meta_scope: meta.named.regexp
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.named.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-parentheses:
+  - match: \(
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_single-three-regexp-parentheses-non-capturing:
+  - match: '\(\?:'
+    captures:
+      0: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.begin.regexp
+    push:
+    - match: (\)|(?=\'\'\'))
+      pop: true
+      captures:
+        1: support.other.parenthesis.regexp punctuation.parenthesis.non-capturing.end.regexp
+        2: invalid.illegal.newline.scenic
+    - include: repo_single-three-regexp-expression
+    - include: repo_comments-string-single-three
+  repo_special-names:
+  - match: "(?x)\n  \\b\n    # we want to see \"enough\", meaning 2 or more upper-case\n    # letters in the beginning of the constant\n    #\n    # for more details refer to:\n    #   https://github.com/MagicStack/MagicPython/issues/42\n    (\n      _* [[:upper:]] [_\\d]* [[:upper:]]\n    )\n    [[:upper:]\\d]* (_\\w*)?\n  \\b\n"
+    scope: constant.other.caps.scenic
+  repo_special-variables:
+  - match: "(?x)\n  \\b (?<!\\.) (?:\n    (self) | (cls) | (ego) | (workspace)\n  )\\b\n"
+    captures:
+      1: variable.language.special.self.scenic
+      2: variable.language.special.cls.scenic
+      3: variable.language.special.ego.scenic
+      4: variable.language.special.workspace.scenic
+  repo_specifier:
+  - match: "(?x)\n  \\b(?<!\\.) (?:\n    (with) \\s+ \\b([[:alpha:]_]\\w*)\n    | (\n      at | offset\\ by | offset\\ along\n      | ((left | right | ahead)\\ of) | behind\n      | above | below\n      | beyond\n      | visible\\ from | visible\n      | not\\ visible\\ from | not\\ visible\n      | in | on\n      | contained\\ in\n      | following\n      | facing\\ (?:directly\\ )? (toward | away\\ from)\n      | facing | apparently\\ facing\n    )\n  )\\b\n"
+    captures:
+      1: keyword.other.specifier.scenic
+      2: entity.name.property.scenic
+      3: keyword.other.specifier.scenic
+    push:
+    - meta_scope: meta.specifier.scenic
+    - match: "(?x)\n  (,) \\s* (?: (\\#.*)? \\n)?\n  | (?=[)}\\]\\n])\n"
+      pop: true
+      captures:
+        1: punctuation.separator.specifier.scenic
+        2: comment.line.number-sign.scenic
+    - match: (\\)\s*\n
+      captures:
+        1: punctuation.separator.continuation.line.scenic
+    - include: repo_expression
+  repo_statement:
+  - include: repo_import
+  - include: repo_class-declaration
+  - include: repo_function-declaration
+  - include: repo_scenario-declaration
+  - include: repo_old-monitor-declaration
+  - include: repo_statement-keyword
+  - include: repo_override-statement
+  - include: repo_param-statement
+  - include: repo_require-statement
+  - include: repo_statement-keyword-scenic
+  - include: repo_assignment-operator
+  - include: repo_decorator
+  - include: repo_property-declaration
+  - include: repo_docstring-statement
+  - include: repo_semicolon
+  - include: repo_old-instance-statement
+  repo_statement-keyword:
+  - match: \b((async\s+)?\s*def)\b
+    scope: storage.type.function.scenic
+  - match: "(?x)\n  \\b(?<!\\.)(\n    as | async | continue | del | assert | break | finally | for\n    | from | elif | else | if | except | pass | raise\n    | return | try | while | with\n  )\\b\n"
+    scope: keyword.control.flow.scenic
+  - match: "(?x)\n  \\b(?<!\\.)(\n    global | nonlocal\n  )\\b\n"
+    scope: storage.modifier.declaration.scenic
+  - match: \b(?<!\.)(class)\b
+    scope: storage.type.class.scenic
+  - match: "(?x)\n  ^\\s*(\n    case | match\n  )(?=\\s*([-+\\w\\d(\\[{'\":#]|$))\\b\n"
+    captures:
+      1: keyword.control.flow.scenic
+  repo_statement-keyword-scenic:
+  - match: "(?x)\n  ^\\s*(\n    model | simulator | param\n    | require\\ monitor | require\n    | terminate\\ when | terminate\\ after\n    | terminate\\ simulation\\ when\n    | mutate\n    | record\\ initial | record\\ final | record\n    | take | wait | terminate\\ simulation | terminate\n    | do\\ choose | do\\ shuffle | do\n    | abort | override\n    | interrupt\\ when\n  )\\b (?!\\s*[:.;,])\n"
+    scope: keyword.control.flow.scenic
+  - match: "(?x)\n  \\b(?<!\\.)(seconds | steps)\\b (?= \\s*(\\#.*)? $)\n"
+    scope: keyword.control.flow.scenic
+  - match: "(?x)\n  ^\\s*(setup | compose | precondition | invariant)(:)\n"
+    scope: keyword.control.flow.scenic
+    captures:
+      1: keyword.control.flow.scenic
+      2: punctuation.section.function.begin.scenic
+  repo_string:
+  - include: repo_string-quoted-multi-line
+  - include: repo_string-quoted-single-line
+  - include: repo_string-bin-quoted-multi-line
+  - include: repo_string-bin-quoted-single-line
+  - include: repo_string-raw-quoted-multi-line
+  - include: repo_string-raw-quoted-single-line
+  - include: repo_string-raw-bin-quoted-multi-line
+  - include: repo_string-raw-bin-quoted-single-line
+  - include: repo_fstring-fnorm-quoted-multi-line
+  - include: repo_fstring-fnorm-quoted-single-line
+  - include: repo_fstring-normf-quoted-multi-line
+  - include: repo_fstring-normf-quoted-single-line
+  - include: repo_fstring-raw-quoted-multi-line
+  - include: repo_fstring-raw-quoted-single-line
+  repo_string-bin-quoted-multi-line:
+  - match: (\b[bB])('''|""")
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.binary.multi.scenic
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-entity
+  repo_string-bin-quoted-single-line:
+  - match: (\b[bB])((['"]))
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.binary.single.scenic
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-entity
+  repo_string-brace-formatting:
+  - match: "(?x)\n  (\n    {{ | }}\n    | (?:\n      {\n        \\w* (\\.[[:alpha:]_]\\w* | \\[[^\\]'\"]+\\])*\n        (![rsa])?\n        ( : \\w? [<>=^]? [-+ ]? \\#?\n          \\d* ,? (\\.\\d+)? [bcdeEfFgGnosxX%]? )?\n      })\n  )\n"
+    scope: meta.format.brace.scenic
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+      3: storage.type.format.scenic
+      4: storage.type.format.scenic
+  - match: "(?x)\n  (\n    {\n      \\w* (\\.[[:alpha:]_]\\w* | \\[[^\\]'\"]+\\])*\n      (![rsa])?\n      (:)\n        [^'\"{}\\n]* (?:\n          \\{ [^'\"}\\n]*? \\} [^'\"{}\\n]*\n        )*\n    }\n  )\n"
+    scope: meta.format.brace.scenic
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+      3: storage.type.format.scenic
+      4: storage.type.format.scenic
+  repo_string-consume-escape:
+  - match: \\['"\n\\]
+  repo_string-entity:
+  - include: repo_escape-sequence
+  - include: repo_string-line-continuation
+  - include: repo_string-formatting
+  repo_string-formatting:
+  - match: "(?x)\n  (\n    % (\\([\\w\\s]*\\))?\n      [-+#0 ]*\n      (\\d+|\\*)? (\\.(\\d+|\\*))?\n      ([hlL])?\n      [diouxXeEfFgGcrsab%]\n  )\n"
+    scope: meta.format.percent.scenic
+    captures:
+      1: constant.character.format.placeholder.other.scenic
+  repo_string-line-continuation:
+  - match: \\$
+    scope: constant.language.scenic
+  repo_string-multi-bad-brace1-formatting-raw:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!'''|\"\"\") )\n        %\\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_string-consume-escape
+  repo_string-multi-bad-brace1-formatting-unicode:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!'''|\"\"\") )\n        %\\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_escape-sequence
+    - include: repo_string-line-continuation
+  repo_string-multi-bad-brace2-formatting-raw:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!'''|\"\"\") [^!:\\.\\[}\\w]\n           )\n        .*?(?!'''|\"\"\")\n        \\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_string-consume-escape
+    - include: repo_string-formatting
+  repo_string-multi-bad-brace2-formatting-unicode:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!'''|\"\"\") [^!:\\.\\[}\\w]\n           )\n        .*?(?!'''|\"\"\")\n        \\}\n    )\n"
+    push:
+    - match: (?='''|""")
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_string-entity
+  repo_string-quoted-multi-line:
+  - match: (?:\b([rR])(?=[uU]))?([uU])?('''|""")
+    captures:
+      1: invalid.illegal.prefix.scenic
+      2: storage.type.string.scenic
+      3: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.multi.scenic
+    - match: (\3)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-multi-bad-brace1-formatting-unicode
+    - include: repo_string-multi-bad-brace2-formatting-unicode
+    - include: repo_string-unicode-guts
+  repo_string-quoted-single-line:
+  - match: (?:\b([rR])(?=[uU]))?([uU])?((['"]))
+    captures:
+      1: invalid.illegal.prefix.scenic
+      2: storage.type.string.scenic
+      3: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.single.scenic
+    - match: (\3)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-single-bad-brace1-formatting-unicode
+    - include: repo_string-single-bad-brace2-formatting-unicode
+    - include: repo_string-unicode-guts
+  repo_string-raw-bin-guts:
+  - include: repo_string-consume-escape
+  - include: repo_string-formatting
+  repo_string-raw-bin-quoted-multi-line:
+  - match: (\b(?:R[bB]|[bB]R))('''|""")
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.raw.binary.multi.scenic
+    - match: (\2)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-raw-bin-guts
+  repo_string-raw-bin-quoted-single-line:
+  - match: (\b(?:R[bB]|[bB]R))((['"]))
+    captures:
+      1: storage.type.string.scenic
+      2: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.raw.binary.single.scenic
+    - match: (\2)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-raw-bin-guts
+  repo_string-raw-guts:
+  - include: repo_string-consume-escape
+  - include: repo_string-formatting
+  - include: repo_string-brace-formatting
+  repo_string-raw-quoted-multi-line:
+  - match: \b(([uU]R)|(R))('''|""")
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.raw.multi.scenic
+    - match: (\4)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-multi-bad-brace1-formatting-raw
+    - include: repo_string-multi-bad-brace2-formatting-raw
+    - include: repo_string-raw-guts
+  repo_string-raw-quoted-single-line:
+  - match: \b(([uU]R)|(R))((['"]))
+    captures:
+      2: invalid.deprecated.prefix.scenic
+      3: storage.type.string.scenic
+      4: punctuation.definition.string.begin.scenic
+    push:
+    - meta_scope: string.quoted.raw.single.scenic
+    - match: (\4)|((?<!\\)\n)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.scenic
+        2: invalid.illegal.newline.scenic
+    - include: repo_string-single-bad-brace1-formatting-raw
+    - include: repo_string-single-bad-brace2-formatting-raw
+    - include: repo_string-raw-guts
+  repo_string-single-bad-brace1-formatting-raw:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!(['\"])|((?<!\\\\)\\n)) )\n        %\\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_string-consume-escape
+  repo_string-single-bad-brace1-formatting-unicode:
+  - match: "(?x)\n    (?= \\{%\n          ( .*? (?!(['\"])|((?<!\\\\)\\n)) )\n        %\\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_escape-sequence
+    - include: repo_string-line-continuation
+  repo_string-single-bad-brace2-formatting-raw:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!(['\"])|((?<!\\\\)\\n)) [^!:\\.\\[}\\w]\n           )\n        .*?(?!(['\"])|((?<!\\\\)\\n))\n        \\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_string-consume-escape
+    - include: repo_string-formatting
+  repo_string-single-bad-brace2-formatting-unicode:
+  - match: "(?x)\n    (?!\\{\\{)\n    (?= \\{ (\n              \\w*? (?!(['\"])|((?<!\\\\)\\n)) [^!:\\.\\[}\\w]\n           )\n        .*?(?!(['\"])|((?<!\\\\)\\n))\n        \\}\n    )\n"
+    push:
+    - match: (?=(['"])|((?<!\\)\n))
+      pop: true
+    - include: repo_escape-sequence-unicode
+    - include: repo_string-entity
+  repo_string-unicode-guts:
+  - include: repo_escape-sequence-unicode
+  - include: repo_string-entity
+  - include: repo_string-brace-formatting
+  repo_temporal-expression:
+  - match: "(?x)\n  (always | eventually | next | until | implies)\\b\n"
+    scope: keyword.control.flow.scenic
+  - match: \(
+    captures:
+      0: punctuation.parenthesis.begin.scenic
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.parenthesis.end.scenic
+    - include: repo_temporal-expression
+  - include: repo_expression

@@ -1,0 +1,11 @@
+%YAML 1.2
+---
+# NWScript (source.c.nwscript): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: NWScript
+scope: source.c.nwscript
+file_extensions:
+- nss
+contexts:
+  main:
+  - include: scope:source.c

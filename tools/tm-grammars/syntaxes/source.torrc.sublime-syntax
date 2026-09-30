@@ -1,0 +1,1004 @@
+%YAML 1.2
+---
+# Tor Config (source.torrc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: Tor Config
+scope: source.torrc
+file_extensions:
+- torrc
+contexts:
+  main:
+  - match: \A(?=[ \t]*$|This document)
+    push:
+    - match: ^(?=This document specifies the current format and semantics of the torrc)
+      push:
+      - meta_scope: meta.document.torrc-spec
+      - match: (?=A)B
+        pop: true
+      - match: (?i)^(\s*)((1\.)\s+File\s+Syntax)[ \t]*$
+        captures:
+          1: punctuation.whitespace.leading.indentation.torrc-spec
+          2: markup.heading.1.numbered.torrc-spec
+          3: constant.numeric.section-number.torrc-spec
+        push:
+        - meta_scope: meta.section.file-syntax.torrc-spec
+        - meta_content_scope: source.embedded.abnf
+        - match: (?=^(?:(?!\s)|\1)(?:\d+\.)+\s+)
+          pop: true
+        - include: scope:source.abnf
+      - match: (?i)^(\s*)(((?:\d+\.){2})\s+Syntax\s+examples)[ \t]*$
+        captures:
+          1: punctuation.whitespace.leading.indentation.torrc-spec
+          2: markup.heading.2.numbered.torrc-spec
+          3: constant.numeric.section-number.torrc-spec
+        push:
+        - meta_scope: meta.section.syntax-examples.torrc-spec
+        - meta_content_scope: source.embedded.torrc
+        - match: (?=A)B
+          pop: true
+        - include: main
+      - match: (?i)^(\s*)((\d+\.)\s+(?!Syntax\s+examples\s*$)\S.*)[ \t]*$
+        captures:
+          1: punctuation.whitespace.leading.indentation.torrc-spec
+          2: markup.heading.1.numbered.torrc-spec
+          3: constant.numeric.section-number.torrc-spec
+        push:
+        - meta_scope: meta.section.other.torrc-spec
+        - meta_content_scope: text.embedded.plain
+        - match: (?=^(?:(?!\s)|\1)(?:\d+\.)+\s+)
+          pop: true
+    - match: (?=\S)
+      pop: true
+  - include: repo_main
+  repo_address:
+  - match: "(?ix)\n(?:\n\t# \u201Chostname:\u2026\u201D\n\t([^\\[\\]\\s:#,]+) (:)\n\t|\n\t# No first part, just match anything that quacks like an IP addy\n\t(?=\\[)\n)\n\n# DRY and TextMate-friendly hack to assert balanced but optional brackets\n(?:\n\t# If an opening bracket follows, require an accompanying closing bracket \n\t(?= \\[ [^\\[\\]\\s,\\#]*+ \\])\n\t|\n\t# Otherwise, avoid matching unbalanced brackets\n\t(?!\\[)\n)\n\n(\\[)?\n(?: (\\d{1,3}(?:\\.\\d{1,3})+)     # IPv4 address\n|   (:*[0-9A-F]+(?::+[0-9A-F]*)*+) # IPv6 address\n|   (\\d+)                         # Port?\n)\n(\\])?\n(?=\\s|,|$|\\#)"
+    scope: meta.address.torrc
+    captures:
+      3: punctuation.definition.address.begin.torrc
+      7: punctuation.definition.address.end.torrc
+  - match: (\[)([^\[\]]+)(\])((/)(\d+))
+    captures:
+      1: punctuation.definition.ipv6-address.begin.torrc
+      3: punctuation.definition.ipv6-address.end.torrc
+      4: meta.cidr-notation
+      5: keyword.operator.assignment.cidr
+  repo_anyIP:
+  - match: \*[46]?(?::\*)?
+  repo_cc:
+  - match: (\{)(?:([A-Za-z]{2})|(\?\?))(\})
+    captures:
+      1: punctuation.definition.country-code.begin.torrc
+      3: constant.character.escape.wildcard.match-any.torrc
+      4: punctuation.definition.country-code.end.torrc
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.torrc
+    push:
+    - meta_scope: comment.line.number-sign.torrc
+    - match: $
+      pop: true
+  repo_commentEmbedded:
+  - match: '[ \t]*(?=#)'
+    push:
+    - meta_content_scope: comment.line.number-sign.embedded.torrc
+    - match: (?!)^
+      pop: true
+    - match: '#'
+      scope: punctuation.definition.comment.torrc
+  repo_entry:
+  - match: ^\s*(?:(/)|(\+))?((?:[^\s#\0\\]|\\(?!$))++)
+    captures:
+      1: keyword.operator.flag.clear-value.torrc
+      2: keyword.operator.flag.append-value.torrc
+      3: variable.assignment.entry.torrc
+    push:
+    - match: (?!)
+      pop: true
+    - match: '(?ix)
+
+        # Unitless
+
+        (?<= AddressDisableIPv6
+
+        | AllowNonRFC953Hostnames
+
+        | AssumeReachableIPv6
+
+        | AssumeReachable
+
+        | AuthDirHasIPv6Connectivity
+
+        | AuthDirListBadExits
+
+        | AuthDirListMiddleOnly
+
+        | AuthDirMaxServersPerAddr
+
+        | AuthDirPinKeys
+
+        | AuthDirRejectRequestsUnderLoad
+
+        | AuthDirSharedRandomness
+
+        | AuthDirTestEd25519LinkKeys
+
+        | AuthDirTestReachability
+
+        | AuthoritativeDirectory
+
+        | AutomapHostsOnResolve
+
+        | AvoidDiskWrites
+
+        | BridgeAuthoritativeDir
+
+        | BridgeRecordUsageByCountry
+
+        | BridgeRelay
+
+        | CacheDirectoryGroupReadable
+
+        | CellStatistics
+
+        | CircuitBuildTimeout
+
+        | CircuitPadding
+
+        | CircuitPriorityHalflife
+
+        | CircuitStreamTimeout
+
+        | CircuitsAvailableTimeout
+
+        | ClientBootstrapConsensusAuthorityDownloadInitialDelay
+
+        | ClientBootstrapConsensusAuthorityOnlyDownloadInitialDelay
+
+        | ClientBootstrapConsensusFallbackDownloadInitialDelay
+
+        | ClientBootstrapConsensusMaxInProgressTries
+
+        | ClientDNSRejectInternalAddresses
+
+        | ClientOnly
+
+        | ClientPreferIPv6DirPort
+
+        | ClientPreferIPv6ORPort
+
+        | ClientRejectInternalAddresses
+
+        | ClientUseIPv4
+
+        | ClientUseIPv6
+
+        | CompiledProofOfWorkHash
+
+        | ConfluxEnabled
+
+        | ConnDirectionStatistics
+
+        | ConnLimit
+
+        | ConnectionPadding
+
+        | ConstrainedSockets
+
+        | ControlPortFileGroupReadable
+
+        | ControlSocketsGroupWritable
+
+        | CookieAuthFileGroupReadable
+
+        | CookieAuthentication
+
+        | CountPrivateBandwidth
+
+        | DataDirectoryGroupReadable
+
+        | DirAllowPrivateAddresses
+
+        | DirAuthorityFallbackRate
+
+        | DirCache
+
+        | DirReqStatistics
+
+        | DisableAllSwap
+
+        | DisableDebuggerAttachment
+
+        | DisableNetwork
+
+        | DisableOOSCheck
+
+        | DoSCircuitCreationBurst
+
+        | DoSCircuitCreationDefenseType
+
+        | DoSCircuitCreationEnabled
+
+        | DoSCircuitCreationMinConnections
+
+        | DoSCircuitCreationRate
+
+        | DoSConnectionConnectBurst
+
+        | DoSConnectionConnectRate
+
+        | DoSConnectionDefenseType
+
+        | DoSConnectionEnabled
+
+        | DoSConnectionMaxConcurrentCount
+
+        | DoSRefuseSingleHopClientRendezvous
+
+        | DoSStreamCreationBurst
+
+        | DoSStreamCreationDefenseType
+
+        | DoSStreamCreationEnabled
+
+        | DoSStreamCreationRate
+
+        | DormantCanceledByStartup
+
+        | DormantOnFirstStartup
+
+        | DormantTimeoutDisabledByIdleStreams
+
+        | DormantTimeoutEnabled
+
+        | DownloadExtraInfo
+
+        | EnforceDistinctSubnets
+
+        | EntryStatistics
+
+        | ExitPolicyRejectLocalInterfaces
+
+        | ExitPolicyRejectPrivate
+
+        | ExitPortStatistics
+
+        | ExitRelay
+
+        | ExtORPortCookieAuthFileGroupReadable
+
+        | ExtendAllowPrivateAddresses
+
+        | ExtendByEd25519ID
+
+        | ExtraInfoStatistics
+
+        | FascistFirewall
+
+        | FetchDirInfoEarly
+
+        | FetchDirInfoExtraEarly
+
+        | FetchHidServDescriptors
+
+        | FetchServerDescriptors
+
+        | FetchUselessDescriptors
+
+        | GeoIPExcludeUnknown
+
+        | HardwareAccel
+
+        | HiddenServiceAllowUnknownPorts
+
+        | HiddenServiceDirGroupReadable
+
+        | HiddenServiceEnableIntroDoSBurstPerSec
+
+        | HiddenServiceEnableIntroDoSDefense
+
+        | HiddenServiceEnableIntroDoSRatePerSec
+
+        | HiddenServiceMaxStreamsCloseCircuit
+
+        | HiddenServiceMaxStreams
+
+        | HiddenServiceNonAnonymousMode
+
+        | HiddenServiceNumIntroductionPoints
+
+        | HiddenServiceOnionBalanceInstance
+
+        | HiddenServicePoWDefensesEnabled
+
+        | HiddenServicePoWQueueBurst
+
+        | HiddenServicePoWQueueRate
+
+        | HiddenServiceSingleHopMode
+
+        | HiddenServiceStatistics
+
+        | HiddenServiceVersion
+
+        | IPv6Exit
+
+        | KISTSockBufSizeFactor
+
+        | KeepBindCapabilities
+
+        | KeepalivePeriod
+
+        | KeyDirectoryGroupReadable
+
+        | LearnCircuitBuildTimeout
+
+        | LogMessageDomains
+
+        | LogTimeGranularity
+
+        | MainloopStats
+
+        | MaxCircuitDirtiness
+
+        | MaxClientCircuitsPending
+
+        | MinMeasuredBWsForAuthToIgnoreAdvertised
+
+        | NewCircuitPeriod
+
+        | NoExec
+
+        | NumCPUs
+
+        | NumDirectoryGuards
+
+        | NumEntryGuards
+
+        | NumPrimaryGuards
+
+        | OfflineMasterKey
+
+        | OverloadStatistics
+
+        | PaddingStatistics
+
+        | PathBiasScaleThreshold
+
+        | PathBiasScaleUseThreshold
+
+        | PathsNeededToBuildCircuits
+
+        | ProtocolWarnings
+
+        | PublishHidServDescriptors
+
+        | PublishServerDescriptor
+
+        | ReducedCircuitPadding
+
+        | ReducedConnectionPadding
+
+        | ReducedExitPolicy
+
+        | ReevaluateExitPolicy
+
+        | RefuseUnknownExits
+
+        | RunAsDaemon
+
+        | SafeLogging
+
+        | SafeSocks
+
+        | Sandbox
+
+        | ServerDNSAllowBrokenConfig
+
+        | ServerDNSAllowNonRFC953Hostnames
+
+        | ServerDNSDetectHijacking
+
+        | ServerDNSRandomizeCase
+
+        | ServerDNSSearchDomains
+
+        | ShutdownWaitLength
+
+        | SocksTimeout
+
+        | StrictNodes
+
+        | TestSocks
+
+        | TestingBridgeBootstrapDownloadInitialDelay
+
+        | TestingBridgeDownloadInitialDelay
+
+        | TestingClientConsensusDownloadInitialDelay
+
+        | TestingClientDownloadInitialDelay
+
+        | TestingDirAuthVoteExitIsStrict
+
+        | TestingDirAuthVoteGuardIsStrict
+
+        | TestingDirAuthVoteHSDirIsStrict
+
+        | TestingEnableCellStatsEvent
+
+        | TestingEnableConnBwEvent
+
+        | TestingServerConsensusDownloadInitialDelay
+
+        | TestingServerDownloadInitialDelay
+
+        | TestingTorNetwork
+
+        | TrackHostExitsExpire
+
+        | TruncateLogFile
+
+        | UnixSocksGroupWritable
+
+        | UpdateBridgesFromAuthority
+
+        | UseBridges
+
+        | UseDefaultFallbackDirs
+
+        | UseEntryGuards
+
+        | UseGuardFraction
+
+        | UseMicrodescriptors
+
+        | V3AuthNIntervalsValid
+
+        | V3AuthUseLegacyKey
+
+        | V3AuthoritativeDirectory
+
+        | VanguardsLiteEnabled
+
+        | VersioningAuthoritativeDirectory
+
+        | __OwningControllerProcess
+
+
+        # Units in use
+
+        | AccountingMax
+
+        | AuthDirFastGuarantee
+
+        | AuthDirGuardBWGuarantee
+
+        | AuthDirVoteGuardGuaranteeTimeKnown
+
+        | AuthDirVoteStableGuaranteeMTBF
+
+        | AuthDirVoteStableGuaranteeMinUptime
+
+        | BandwidthBurst
+
+        | BandwidthRate
+
+        | ConstrainedSockSize
+
+        | DoSCircuitCreationDefenseTimePeriod
+
+        | DoSConnectionConnectDefenseTimePeriod
+
+        | DormantClientTimeout
+
+        | GuardLifetime
+
+        | HeartbeatPeriod
+
+        | KISTSchedRunInterval
+
+        | MaxAdvertisedBandwidth
+
+        | MaxConsensusAgeForDiffs
+
+        | MaxMemInQueues
+
+        | MaxOnionQueueDelay
+
+        | MaxUnparseableDescSizeToLog
+
+        | MinUptimeHidServDirectoryV2
+
+        | PerConnBWBurst
+
+        | PerConnBWRate
+
+        | RelayBandwidthBurst
+
+        | RelayBandwidthRate
+
+        | RephistTrackTime
+
+        | SSLKeyLifetime
+
+        | SigningKeyLifetime
+
+        | TestingAuthDirTimeToLearnReachability
+
+        | TestingAuthKeyLifetime
+
+        | TestingClientMaxIntervalWithoutRequest
+
+        | TestingDirConnectionMaxStall
+
+        | TestingLinkCertLifetime
+
+        | TestingMinExitFlagThreshold
+
+        | TestingMinFastFlagThreshold
+
+        | TestingMinTimeToReportBandwidth
+
+        | TestingSigningKeySlop
+
+        | TestingV3AuthInitialDistDelay
+
+        | TestingV3AuthInitialVoteDelay
+
+        | TestingV3AuthInitialVotingInterval
+
+        | TestingV3AuthVotingStartOffset
+
+        | TokenBucketRefillInterval
+
+        | V3AuthDistDelay
+
+        | V3AuthVoteDelay
+
+        | V3AuthVotingInterval
+
+
+        # Ports lists
+
+        | FirewallPorts
+
+        | LongLivedPorts
+
+        | RejectPlaintextPorts
+
+        | WarnPlaintextPorts
+
+        )  '
+      push:
+      - meta_scope: meta.numeric-setting.torrc
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryNumeric
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryNumeric
+    - match: (?i)(?<=[/+\s]Log|^Log)
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryLogging
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryLogging
+    - match: '(?ix)
+
+        (?<= AccelDir
+
+        | CacheDirectory
+
+        | ClientOnionAuthDir
+
+        | ControlPortWriteToFile
+
+        | ControlSocket
+
+        | CookieAuthFile
+
+        | DataDirectory
+
+        | DirPortFrontPage
+
+        | ExtORPortCookieAuthFile
+
+        | GeoIPFile
+
+        | GeoIPv6File
+
+        | GuardfractionFile
+
+        | HiddenServiceDir
+
+        | KeyDirectory
+
+        | PidFile
+
+        | ServerDNSResolvConfFile
+
+        | V3BandwidthsFile
+
+        ) '
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryFile
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryFile
+    - match: '(?ix)
+
+        (?<= AuthDirVoteGuard
+
+        | EntryNodes
+
+        | ExcludeExitNodes
+
+        | ExcludeNodes
+
+        | ExitNodes
+
+        | HSLayer2Nodes
+
+        | HSLayer3Nodes
+
+        | HTTPProxy
+
+        | HTTPSProxy
+
+        | HiddenServicePort
+
+        | MapAddress
+
+        | MiddleNodes
+
+        | NodeFamily
+
+        | OutboundBindAddressExit
+
+        | OutboundBindAddressOR
+
+        | OutboundBindAddressPT
+
+        | OutboundBindAddress
+
+        | Socks4Proxy | SOCKS4Proxy    # FIXME; Remove different casing once issue with
+
+        | Socks5Proxy | SOCKS5Proxy    # scoped modifiers in lookbehinds is worked out.
+
+        | TestingDirAuthVoteExit
+
+        | TestingDirAuthVoteGuard
+
+        | TestingDirAuthVoteHSDir
+
+        | VirtualAddrNetworkIPv6
+
+        ) '
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryNode
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryNode
+    - match: (?i)(?<=DirPolicy|ExitPolicy|MetricsPortPolicy|SocksPolicy|SOCKSPolicy)
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryPolicies
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryPolicies
+    - match: (?i)(?<=ConsensusParams|ServerTransportOptions)
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryParams
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryParams
+    - match: '(?ix)
+
+        (?<= MinimalAcceptedServerVersion
+
+        | RecommendedClientVersions
+
+        | RecommendedServerVersions
+
+        | RecommendedVersions
+
+        ) '
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryVersions
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryVersions
+    - match: ''
+      push:
+      - match: (?!)
+        pop: true
+      - match: (?=(?:\s+(?:[^"#\s]+|"(?:[^\\"]|\\.)*+"))++\s*#)
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (?=\s*#)
+          pop: true
+        - include: repo_entryGeneric
+      - match: (?:\s*(\\$\r?\n?)|[ \t]+|(?=$|#))
+        push:
+        - meta_content_scope: meta.value.torrc
+        - match: (\s+((?=\S)(?!#)[^\\\n#\0]+))(?=\s*(?:$|#))|(?=\s*$)
+          pop: true
+          captures:
+            1: meta.value.torrc
+        - include: repo_commentEmbedded
+        - include: repo_esc
+        - include: repo_entryGeneric
+  repo_entryFile:
+  - match: (?=[^#\s])
+    push:
+    - meta_scope: string.other.link.filename.torrc
+    - match: (?=\s*(?:$|#))
+      pop: true
+  repo_entryGeneric:
+  - include: repo_typed
+  - include: repo_address
+  - include: scope:etc
+  - include: repo_num
+  - include: repo_str
+  - include: repo_portSuffix
+  - include: scope:etc
+  - include: repo_anyIP
+  - include: repo_unq
+  repo_entryLogging:
+  - match: '(?ix)
+
+      ((\[)((?:~?(?:[a-z]+|\*)(?:,|(?=\])))*+)(\]))?
+
+      ((?!-)(?:(?:debug|err|info|notice|warn)-?){1,2}(?<!-))
+
+      (?=$|\s)'
+    scope: meta.log-selector.torrc
+    captures:
+      1: meta.domain-list.torrc
+      2: punctuation.section.begin.domains.torrc
+      4: punctuation.section.end.domains.torrc
+      5: meta.severity-levels.torrc
+  - match: (?i)(?<=\s|^|)\b(stderr|stdout|syslog)\b(?=$|\s|#)
+  - match: (?i)(?<=\s|^|)(file)(?=\s|$|#)[ \t]*
+    captures:
+      1: keyword.operator.log-destination.filename.torrc
+    push:
+    - meta_scope: meta.log-file.torrc
+    - meta_content_scope: string.other.link.filename.torrc
+    - match: (?=\s*(?:$|#))
+      pop: true
+  repo_entryNode:
+  - include: repo_cc
+  - include: repo_port
+  - match: (?i)(?<=\s|^||,)(unix)(:)((?:[^\r\n#\s\\]|\\.)++)
+    captures:
+      1: storage.type.domain.unix.torrc
+      3: string.other.link.filename.torrc
+  - match: (?<=\s|^||,)\*(?=\s|,|$|#)
+    scope: keyword.operator.wildcard.match-all.torrc
+  - include: repo_address
+  - include: scope:etc
+  - include: scope:etc
+  - include: scope:source.hosts
+  repo_entryNumeric:
+  - match: (?i)(?<=\s|^|)\b(auto|bridge|relay|v3)\b(?=$|\s|#)
+  - include: scope:etc
+  - include: repo_typed
+  - include: repo_unit
+  - include: repo_num
+  - match: (?:[^#\s\d,]|(?<!\d),(?!\d))++
+    scope: invalid.illegal.syntax.non-numeric.torrc
+  repo_entryParams:
+  - match: (?<=\s|^||,)([^\s#=]+)(=)
+    captures:
+      1: entity.name.parameter.torrc
+    push:
+    - meta_scope: meta.parameter.torrc
+    - meta_content_scope: meta.parameter-value.torrc
+    - match: (?=$|\s|,|#)
+      pop: true
+    - include: repo_typed
+    - match: '[^\s,#]+'
+      scope: string.unquoted.torrc
+  - match: (?<=\s|^||,)[^\s#=,]+(?=$|\s|,|#)
+    scope: constant.language.parameter.niladic.torrc
+  - include: scope:etc
+  repo_entryPolicies:
+  - match: (?i)(?<=\s|^||,)((accept|reject)6?)(?=$|\s|#|,)
+    captures:
+      1: keyword.control.policy-action.torrc
+  - include: scope:etc
+  - include: repo_address
+  - include: scope:etc
+  - include: scope:etc
+  - include: scope:etc
+  repo_entryVersions:
+  - include: repo_version
+  - include: scope:etc
+  repo_esc:
+  - match: ((\\))$\r?\n?
+    scope: constant.character.escape.newline.torrc
+    captures:
+      1: punctuation.definition.escape.backslash.torrc
+      2: sublimelinter.gutter-mark.torrc
+  repo_include:
+  - match: (?i)^\s*((%)include)(?=$|\s|#)[ \t]*
+    captures:
+      1: keyword.control.directive.include.torrc
+      2: punctuation.definition.directive.torrc
+    push:
+    - meta_scope: meta.preprocessor.include.torrc
+    - match: (?=\s*$)
+      pop: true
+    - match: '"'
+      captures:
+        0: punctuation.definition.string.begin.torrc
+      push:
+      - meta_scope: string.quoted.double.include.filename.torrc
+      - meta_content_scope: constant.other.reference.link.include.torrc
+      - match: '"|(?=$)'
+        pop: true
+        captures:
+          0: punctuation.definition.string.end.torrc
+      - include: repo_strEsc
+      - include: scope:etc
+    - match: (?=[^"\s#\\])
+      push:
+      - meta_scope: string.unquoted.include.filename.torrc
+      - match: (?=\s*(?:$|#))
+        pop: true
+      - match: (?:[^"\r\n#\\]|\\.)++
+        scope: constant.other.reference.link.include.torrc
+      - include: repo_esc
+  repo_main:
+  - include: repo_comment
+  - include: repo_include
+  - include: repo_entry
+  repo_num:
+  - match: (?i)(?:(?<=\s|^||,)[-+]|\b)0x[A-F0-9]+\b
+    scope: constant.numeric.integer.int.hexadecimal.hex.torrc
+  - match: (?:(?<=\s|^||,)[-+]|\b)\d*\.\d+\b
+    scope: constant.numeric.float.real.decimal.dec.torrc
+  - match: (?:(?<=\s|^||,)[-+]|\b)\d+(?!\.)\b
+    scope: constant.numeric.integer.int.decimal.dec.torrc
+  repo_port:
+  - include: repo_portLone
+  - include: repo_portSuffix
+  repo_portLone:
+  - match: (?<=\s|^||,)\d+(?=\s|$|,|#)
+    scope: constant.numeric.integer.port-number.torrc
+  repo_portSuffix:
+  - match: (?:(?<=\d:)|(?<=\d)(:))(\d+)(?=\s|$|,|#)
+    captures:
+      2: constant.numeric.integer.port-number.torrc
+  repo_str:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.torrc
+    push:
+    - meta_scope: string.quoted.double.torrc
+    - match: (")|((?:[^\\"]|\\.)*)$
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.torrc
+        2: invalid.illegal.syntax.unclosed-string.torrc
+    - include: repo_strEsc
+  repo_strEsc:
+  - match: (\\)[nrt\\'"]
+    scope: constant.character.escape.simple.torrc
+  - match: (\\)x[A-Fa-f0-9]{2}
+    scope: constant.character.escape.codepoint.hexadecimal.torrc
+  - match: (\\)([0-7]{1,3})
+    scope: constant.character.escape.codepoint.octal.torrc
+  repo_typed:
+  - match: (?i)(?:^||(?<=\s))([-+]?(?:0[xX][A-F0-9]+|\d+(?:\.\d+)?))\s+((?:second|minute|hour|day|week)s?)(?=$|\s|#)
+    scope: meta.duration.torrc
+  - match: (?i)(?:^||(?<=\s))([-+]?(?:0[xX][A-F0-9]+|\d+(?:\.\d+)?))\s+([KMGT]?(?:Bytes|Bits))(?=$|\s|#)
+    scope: meta.data-size.torrc
+  repo_unit:
+  - match: (?i)(?<=\s|^|)\b(?:(([KMGT]?(?:Bit|Byte|B))s?)|((msec|second|minute|hour|day|week|month)s?))\b(?=$|\s|#)
+  repo_unq:
+  - match: '[^\s\0#]'
+    push:
+    - meta_scope: string.unquoted.torrc
+    - match: (?=\s*(?:\\?$|#))
+      pop: true
+  repo_version:
+  - match: (?i)(?<=\s|^||,)(\d+(?:\.\d+)*)(?:(-)(?!-)[-A-Z]+)?(?=$|,|\s|#)
+    scope: constant.other.version-string.torrc

@@ -1,0 +1,100 @@
+%YAML 1.2
+---
+# MiniScript (source.ms): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/ayecue/miniscript-textmate-linguist.git via GitHub Linguist v9.7.0 (license: mit).
+name: MiniScript
+scope: source.ms
+file_extensions:
+- ms
+contexts:
+  main:
+  - include: repo_string
+  - include: repo_numeric
+  - include: repo_comment
+  - include: repo_constant
+  - include: repo_keyword
+  - include: repo_function
+  - include: repo_type
+  - include: repo_general-functions
+  - include: repo_type-methods
+  - include: repo_variables
+  - include: repo_identifier
+  repo_comment:
+  - match: //(?!(include|import))
+    push:
+    - meta_scope: comment.line
+    - match: \n
+      pop: true
+  repo_constant:
+  - match: \b(true|false|null)\b
+    scope: constant.language.miniscript
+  repo_function:
+  - match: (?<=function\()
+    push:
+    - match: \)
+      pop: true
+    - include: repo_string
+    - match: ([^=\),]+)(=[^\),"]+)?
+  repo_general-functions:
+  - match: \b(abs|acos|asin|atan|bitAnd|bitOr|bitXor|ceil|char|code|cos|floor|funcRef|hasIndex|hash|indexOf|indexes|insert|join|len|list|log|lower|map|number|pi|pop|print|pull|push|range|refEquals|remove|replace|rnd|round|shuffle|sign|sin|slice|sort|split|sqrt|stackTrace|str|string|sum|tan|time|upper|val|values|version|wait|yield')\b
+    scope: support.function.miniscript
+  repo_identifier:
+  - match: (?<=[^.]\.)\b([a-zA-Z_][\w]*)
+    scope: entity.other.attribute.miniscript
+  - match: \b([A-Z_]+)\b
+    scope: constant.other.miniscript
+  - match: \b([A-Z][\w]*)\b
+    scope: entity.name.type.miniscript
+  - match: \b([a-z_][\w]*)\b
+    scope: variable.other.miniscript
+  repo_keyword:
+  - match: \b(if|then|end|else|function|in|while|for|from)\b
+    scope: keyword.control.block.miniscript
+  - match: \b(return|continue|break)\b
+    scope: keyword.control.statement.miniscript
+  - match: \b(and|or|isa)\b
+    scope: keyword.control.logical.miniscript
+  - match: \b(not|new)\b
+    scope: keyword.control.unary.miniscript
+  - match: \b(repeat)\b
+    scope: keyword.control.notused.miniscript
+  - match: '#(include|import|envar|inject)\b'
+    scope: keyword.control.greybel.miniscript
+  - match: //(include|import)\b
+    scope: keyword.control.greybel.miniscript
+  - match: \b(debugger)\b
+    scope: keyword.control.greybel.miniscript
+  - match: ([\^|\&]|<<|>>>?)
+    scope: keyword.operator.binary.miniscript
+  - match: ([+\-*\/%])
+    scope: keyword.operator.arithmetic.miniscript
+  - match: ([<>=!]=|[<>])
+    scope: keyword.operator.comparison.miniscript
+  - match: ([+\-*\/%]?=)
+    scope: keyword.operator.assignment.miniscript
+  repo_numeric:
+  - match: (?<![\w\d.])\d+(\.\d+)?([eE]-?\d*)?
+    scope: constant.numeric
+  repo_string:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.miniscript
+    - match: '"'
+      pop: true
+  repo_type:
+  - match: \b(list|map|number|string|funcRef)\b
+    scope: support.class.miniscript
+  repo_type-methods:
+  - match: \.(remove|push|pop|pull|shuffle|sum|hasIndex|indexOf|sort|join|indexes|len|values)\b
+    scope: support.function.miniscript
+  - match: \.(remove|push|pop|pull|shuffle|sum|sum|hasIndex|indexOf|indexes|len|values)\b
+    scope: support.function.miniscript
+  - match: \.(remove|hasIndex|indexOf|split|replace|trim|indexes|code|len|lower|upper|val|values)\b
+    scope: support.function.miniscript
+  repo_variables:
+  - match: \b(params|locals|globals|outer)\b
+    scope: support.variable.miniscript
+  - match: \b(self)\b
+    scope: variable.language.self.miniscript
+  - match: \b(super)\b
+    scope: variable.language.super.miniscript

@@ -1,0 +1,900 @@
+%YAML 1.2
+---
+# Bluespec BH (source.bh): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/B-Lang-org/language-bh.git via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Bluespec BH
+scope: source.bh
+file_extensions:
+- bs
+contexts:
+  main:
+  - include: repo_comment_like
+  - include: repo_numeric_literals
+  - include: repo_string_literal
+  - include: repo_char_literal
+  - match: (?<!@|#)-\}
+    scope: invalid
+  - match: (\()\s*(\))
+    scope: constant.language.unit.bh
+    captures:
+      1: punctuation.paren.bh
+      2: punctuation.paren.bh
+  - match: (\()(#)\s*(#)(\))
+    scope: constant.language.unit.unboxed.bh
+    captures:
+      1: punctuation.paren.bh
+      2: keyword.operator.hash.bh
+      3: keyword.operator.hash.bh
+      4: punctuation.paren.bh
+  - match: (\()\s*,[\s,]*(\))
+    scope: support.constant.tuple.bh
+    captures:
+      1: punctuation.paren.bh
+      2: punctuation.paren.bh
+  - match: (\()(#)\s*,[\s,]*(#)(\))
+    scope: support.constant.tuple.unboxed.bh
+    captures:
+      1: punctuation.paren.bh
+      2: keyword.operator.hash.bh
+      3: keyword.operator.hash.bh
+      4: punctuation.paren.bh
+  - match: (\[)\s*(\])
+    scope: constant.language.empty-list.bh
+    captures:
+      1: punctuation.bracket.bh
+      2: punctuation.bracket.bh
+  - match: (\b(?<!')(package)|^(signature))(\b(?!'))
+    captures:
+      2: keyword.other.package.bh
+      3: keyword.other.signature.bh
+    push:
+    - meta_scope: meta.declaration.package.bh
+    - match: (?=\b(?<!')where\b(?!'))
+      pop: true
+    - include: repo_comment_like
+    - include: repo_package_name
+    - include: repo_package_exports
+    - match: '[a-z]+'
+      scope: invalid
+  - include: repo_ffi
+  - match: ^(\s*)(class)(\s+(:?in?)coherent)?(\b(?!'))
+    captures:
+      2: keyword.other.class.bh
+      3: keyword.other.coherent.bh
+    push:
+    - meta_scope: meta.declaration.class.bh
+    - match: "(?x) # Detect end of class declaration:\n         # 'where' keyword\n   (?=(?<!')\\bwhere\\b(?!'))  \n         # Decreasing indentation\n   |(?=\\}|;)      # Explicit indentation\n   |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n       \\1\\s+\\S    # - more indented, or\n     | \\s*        # - starts with whitespace, followed by:\n       (?: $      #   - the end of the line (i.e. empty line), or\n       |\\{-[^@]   #   - the start of a block comment, or\n       |--+       #   - the start of a single-line comment.\n          (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                  # The double dash may not be followed by other operator characters\n                  # (then it would be an operator, not a comment)\n     )"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_where
+    - include: repo_type_signature
+  - include: repo_role_annotation
+  - match: "^(\\s*)(pattern)\\s+(.*?)\\s+(::|\u2237)(?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])"
+    captures:
+      2: keyword.other.pattern.bh
+      4: keyword.operator.double-colon.bh
+    push:
+    - meta_scope: meta.declaration.pattern.type.bh
+    - match: "(?x) # Detect end of pattern type definition by decreasing indentation:\n  (?=\\}|;)       # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_type_signature
+  - match: ^\s*(pattern)\b(?!')
+    captures:
+      1: keyword.other.pattern.bh
+    push:
+    - meta_scope: meta.declaration.pattern.bh
+    - match: "(?x) # Detect end of pattern type definition by decreasing indentation:\n  (?=\\}|;)       # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+      captures:
+        1: keyword.other.pattern.bh
+    - include: main
+  - match: "(?x)\n  # Data declaration\n  ^(\\s*)(data|newtype|interface|struct)\\s+\n  # Keep consuming characters until:\n  (((?!\n  # the equals symbol or the start of a single-line comment, or\n    (?: \n      (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]) # non-symbol\n      (?:=|--+)\n      (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])  # non-symbol\n    )\n  # the \"where\" or \"deriving\" keywords, or\n  | (?:\\b(?<!')(?:where|deriving)\\b(?!'))\n  # the start of a block comment.\n  | {-\n  #\n  ).)*)"
+    push:
+    - match: "(?x) # Detect end of data declaration: \n     # Decreasing indentation\n   (?=\\}|;)      # Explicit indentation\n   |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n       \\1\\s+\\S    # - more indented, or\n     | \\s*        # - starts with whitespace, followed by:\n       (?: $      #   - the end of the line (i.e. empty line), or\n       |\\{-[^@]   #   - the start of a block comment, or\n       |--+       #   - the start of a single-line comment.\n          (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                  # The double dash may not be followed by other operator characters\n                  # (then it would be an operator, not a comment)\n     )"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_deriving
+    - include: repo_forall
+    - include: repo_adt_constructor
+    - include: repo_data_context
+    - include: repo_record_decl
+    - include: repo_type_signature
+  - match: "(?x)\n  # Type declaration\n  ^(\\s*)(type)(?:\\s+(instance))?\\s+\n  # Keep consuming characters until:\n  (((?!\n  # the equals symbol, the start of a single-line comment, or a type signature\n    (?: \n      (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]) # non-symbol\n      (?:=|--+|::|\u2237)\n      (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])  # non-symbol\n    )\n  # the start of a block comment.\n  | {-\n  #\n  ).)*)"
+    captures:
+      2: keyword.other.type.bh
+      3: keyword.other.instance.bh
+    push:
+    - meta_scope: meta.declaration.type.bh
+    - match: "(?x) # Detect end of type definition by decreasing indentation:\n  (?=\\}|;)       # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_type_signature
+  - match: ^(\s*)(instance)(\b(?!'))
+    captures:
+      2: keyword.other.instance.bh
+    push:
+    - meta_scope: meta.declaration.instance.bh
+    - match: "(?x) # Detect end of instance declaration:\n  # 'where' keyword\n  (?=\\b(?<!')(where)\\b(?!'))\n  # Decreasing indentation\n  |(?=\\}|;)      # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_where
+    - include: repo_type_signature
+  - match: ^(\s*)(import)(\b(?!'))
+    captures:
+      2: keyword.other.import.bh
+    push:
+    - meta_scope: meta.import.bh
+    - match: "(?x) # Detect end of import\n  # 'where' keyword\n  (?=\\b(?<!')(where)\\b(?!'))\n  # Decreasing indentation\n  |(?=\\}|;)      # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_where
+    - match: (qualified|as|hiding)
+    - include: repo_package_name
+    - include: repo_package_exports
+  - include: repo_deriving
+  - include: repo_layout_herald
+  - include: repo_keyword
+  - match: ^\s*(infix[lr]?)\s+(.*)
+    scope: meta.fixity-declaration.bh
+  - include: repo_start_type_signature
+  - include: repo_overloaded_label
+  - include: repo_type_application
+  - include: repo_reserved_symbol
+  - include: repo_fun_decl
+  - include: repo_qualifier
+  - match: :[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*
+    scope: constant.other.operator.infix.bh
+  - include: repo_data_constructor
+  - include: repo_prefix_op
+  - include: repo_infix_op
+  - match: (\()(#)\s
+    captures:
+      1: punctuation.paren.bh
+      2: keyword.operator.hash.bh
+    push:
+    - match: (#)(\))
+      pop: true
+      captures:
+        1: keyword.operator.hash.bh
+        2: punctuation.paren.bh
+    - include: repo_comma
+    - include: main
+  - match: (\()
+    captures:
+      1: punctuation.paren.bh
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.paren.bh
+    - include: repo_comma
+    - include: main
+  - include: repo_quasi_quote
+  - match: (\[)
+    captures:
+      1: punctuation.bracket.bh
+    push:
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.bracket.bh
+    - include: repo_comma
+    - include: main
+  - include: repo_record
+  repo_adt_constructor:
+  - include: repo_comment_like
+  - match: "(?x)\n  (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]) # non-symbol\n  (?:(=)|(\\|))\n  (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])  # non-symbol"
+    captures:
+      1: keyword.operator.eq.bh
+      2: keyword.operator.pipe.bh
+    push:
+    - match: "(?x)\n  (?: # Infix data constructor\n    # First argument\n    (?:\n    # Simple type\n      (?<!')\\b((?:[\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'\\.])+)\n    # Type inside balanced parentheses\n    | ('? # Optional promotion tick\n        (?<paren>\n          \\(          # Opening parenthesis\n          (?:\n            [^\\(\\)]*  # Match non-parentheses\n          | \\g<paren> # or recurse into further depth\n          )*\n          \\)          # Closing parenthesis\n        )\n      )\n    # Type inside balanced brackets\n    | ('? # Optional promotion tick\n        (?<brac>\n          \\[          # Opening bracket\n          (?:\n            [^\\[\\]]*  # Match non-brackets\n          | \\g<brac>  # or recurse into further depth\n          )*\n          \\]          # Closing bracket\n        )\n      )\n    )\n    # Then either\n    \\s*\n      # - a symbolic infix constructor, or\n    (?:(?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])(:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]*)\n \
+        \     # - an alphabetic infix constructor\n    | (`)([\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)(`)\n    )\n  ) # Otherwise, prefix data constructor, either:\n  | # - an alphabetic data constructor e.g. \"Cons_123\"\n    (?:(?<!')\\b([\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*))\n  | # - a symbolic (prefix) data constructor\n    (\\()\\s*(:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]*)\\s*(\\))\n  | # Otherwise, try to fail early to avoid excessive backtracking (https://github.com/JustusAdam/language-bh/issues/161)\n      # Fail when detecting a lowercase identifier and then something not starting with a tick or colon\n      (?=\\b(?<!')(?!(?:forall|deriving)\\s)[\\p{Ll}_]\\S+\\s+[^`:])\n      # Fail when seeing another equal signs or pipe symbol\n     |(?=\n        (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]) # non-symbol\n        (?:=|\\|)\n        (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])  # non-symbol\n      )"
+      pop: true
+      captures:
+        10: constant.other.bh
+        11: punctuation.paren.bh
+        12: constant.other.operator.prefix.bh
+        13: punctuation.paren.bh
+        6: constant.other.operator.infix.bh
+        7: punctuation.backtick.bh
+        8: constant.other.infix.bh
+        9: punctuation.backtick.bh
+    - include: repo_comment_like
+    - include: repo_deriving
+    - include: repo_record_decl
+    - include: repo_forall
+    - include: repo_data_context
+    - include: repo_type_signature
+  repo_block_comment:
+  - match: \{-
+    captures:
+      0: punctuation.definition.comment.bh
+    push:
+    - meta_scope: comment.block.bh
+    - include: repo_block_comment
+    - match: -\}
+      pop: true
+      captures:
+        0: punctuation.definition.comment.bh
+  repo_char_literal:
+  - match: "(?x)\n  (?<![\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'])\n  (')\n  (?:\n    [\\ -\\[\\]-~]                         # Basic Char\n  | (\\\\(?:NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE\n       |DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS\n       |US|SP|DEL|[abfnrtv\\\\\\\"'\\\\&]))   # Escapes\n  | (\\\\o[0-7]+)                         # Octal Escapes\n  | (\\\\x[0-9A-Fa-f]+)                   # Hexadecimal Escapes\n  | (\\\\\\^[A-Z@\\[\\]\\\\\\^_])                 # Control Chars\n  )\n  (')\n"
+    scope: string.quoted.single.bh
+    captures:
+      1: punctuation.definition.string.begin.bh
+      2: constant.character.escape.bh
+      3: constant.character.escape.octal.bh
+      4: constant.character.escape.hexadecimal.bh
+      5: constant.character.escape.control.bh
+      6: punctuation.definition.string.end.bh
+  repo_comma:
+  - match: ','
+    scope: punctuation.separator.comma.bh
+  repo_comment_like:
+  - include: repo_cpp
+  - include: repo_pragma
+  - include: repo_comments
+  repo_comments:
+  - match: ^(\s*)(--\s[\|\$])
+    captures:
+      2: punctuation.whitespace.comment.leading.bh
+    push:
+    - meta_scope: comment.block.documentation.bh
+    - match: (?=^(?!\1--+(?![\p{S}\p{P}&&[^(),;\[\]`{}_"']])))
+      pop: true
+  - match: (^[ \t]+)?(--(@)\s)
+    captures:
+      1: punctuation.whitespace.comment.leading.bh
+    push:
+    - meta_scope: comment.line.documentation.bh
+    - match: \n
+      pop: true
+  - match: \{-\s?[\|\$\*\^]
+    captures:
+      0: punctuation.definition.comment.bh
+    push:
+    - meta_scope: comment.block.documentation.bh
+    - include: repo_block_comment
+    - match: -\}
+      pop: true
+      captures:
+        0: punctuation.definition.comment.bh
+  - match: (^[ \t]+)?(?=--+(?![\p{S}\p{P}&&[^(),;\[\]`{}_"']]))
+    captures:
+      1: punctuation.whitespace.comment.leading.bh
+    push:
+    - match: (?!)
+      pop: true
+    - match: --
+      captures:
+        0: punctuation.definition.comment.bh
+      push:
+      - meta_scope: comment.line.double-dash.bh
+      - match: \n
+        pop: true
+  - include: repo_block_comment
+  repo_cpp:
+  - match: ^(#).*$
+    scope: meta.preprocessor.c
+    captures:
+      1: punctuation.definition.preprocessor.c
+  repo_data_constructor:
+  - match: \b(?<!')[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*(?![\.'\w])
+    scope: constant.other.bh
+  - match: (\()\s*(:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*)\s*(\))
+    scope: constant.other.operator.bh
+  repo_data_context:
+  - match: "(?x)\n  (.*)\n  (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n  (=>|\u21D2)\n  (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n"
+    captures:
+      2: keyword.operator.big-arrow.bh
+  repo_deriving:
+  - match: ^(\s*)(deriving)\s+(?:(via|stock|newtype|anyclass)\s+)?
+    captures:
+      2: keyword.other.deriving.bh
+    push:
+    - meta_scope: meta.deriving.bh
+    - match: "(?x) # Detect end of deriving statement\n  # Decreasing indentation\n   (?=\\}|;)      # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )"
+      pop: true
+    - include: repo_comment_like
+    - match: (?<!')\b(instance)\b(?!')
+      scope: keyword.other.instance.bh
+    - match: (?<!')\b(via|stock|newtype|anyclass)\b(?!')
+    - include: repo_type_signature
+  - match: (deriving)(?:\s+(stock|newtype|anyclass))?\s*(\()
+    captures:
+      1: keyword.other.deriving.bh
+      3: punctuation.paren.bh
+    push:
+    - meta_scope: meta.deriving.bh
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.paren.bh
+    - include: repo_type_signature
+  - match: "(?x)\n  (deriving)(?:\\s+(stock|newtype|anyclass))?\\s+\n    ([\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\n    (\\s+(via)\\s+(.*)$)?\n"
+    scope: meta.deriving.bh
+    captures:
+      1: keyword.other.deriving.bh
+      5: keyword.other.deriving.strategy.via.bh
+  - match: (?<!')\b(via)\b(?!')
+    scope: keyword.other.deriving.strategy.via.bh
+  repo_double_colon:
+  - match: "\\s*(::|\u2237)(?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\\s*"
+    captures:
+      1: keyword.operator.double-colon.bh
+  repo_export_constructs:
+  - include: repo_comment_like
+  - match: \b(?<!')(pattern)\b(?!')
+    captures:
+      1: keyword.other.pattern.bh
+    push:
+    - match: "(?x)\n   # Data constructor\n   ([\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\n   # Prefix form of symbolic constructor\n   | (\\()\\s*(:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\\s*(\\))"
+      pop: true
+      captures:
+        1: constant.other.bh
+        2: punctuation.paren.bh
+        3: constant.other.operator.prefix.bh
+        4: punctuation.paren.bh
+    - include: repo_comment_like
+  - match: \b(?<!')(type)\b(?!')
+    captures:
+      1: keyword.other.type.bh
+    push:
+    - match: (?=,|\))
+      pop: true
+    - include: repo_comment_like
+    - include: repo_reserved_symbol
+    - include: repo_type_constructor
+    - include: repo_type_operator
+  - include: repo_record_wildcard
+  - include: repo_reserved_symbol
+  - match: (\()\s*(:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*)\s*(\))
+    scope: storage.type.operator.bh
+  - match: (?<!')\b[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+    scope: entity.name.function.bh
+  - match: (?<!')\b[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+    scope: storage.type.bh
+  - include: repo_prefix_op
+  repo_ffi:
+  - match: ^(\s*)(foreign)\s+(import|export)\s+
+    captures:
+      2: keyword.other.foreign.bh
+    push:
+    - match: "(?x) # Detect end of FFI block by decreasing indentation:\n  (?=\\}|;)       # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_comment_like
+    - match: \b(?<!')(ccall|cplusplus|dotnet|jvm|stdcall|prim|capi)\s+
+    - match: (?=")|(?=\b(?<!')([\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*)\b(?!'))
+      push:
+      - match: "(?=(::|\u2237)(?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]))"
+        pop: true
+      - include: repo_comment_like
+      - match: "(?x)\n  \\b(?<!')(safe|unsafe|interruptible)\\b(?!')\n  \\s*\n  (\"(?:\\\\\"|[^\"])*\")?\n  \\s*\n  (?:\n    (?:\\b(?<!'')([\\p{Ll}_][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\\b(?!'))\n   |(?:\\(\\s*(?!--+\\))([\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\\s*\\))\n  )\n"
+        captures:
+          2: entity.name.foreign.bh
+          3: entity.name.function.bh
+          4: entity.name.function.infix.bh
+      - match: "(?x)\n  \\b(?<!')(safe|unsafe|interruptible)\\b(?!')\n  \\s*\n  (\"(?:\\\\\"|[^\"])*\")?\n  \\s*$\n"
+        captures:
+          2: entity.name.foreign.bh
+      - match: "(?x)\n  \"(?:\\\\\"|[^\"])*\""
+        captures:
+          0: entity.name.foreign.bh
+      - match: "(?x)\n   (?:\\b(?<!'')([\\p{Ll}_][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\\b(?!'))\n  |(?:(\\()\\s*(?!--+\\))([\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\\s*(\\)))\n"
+        captures:
+          1: entity.name.function.bh
+          2: punctuation.paren.bh
+          3: entity.name.function.infix.bh
+          4: punctuation.paren.bh
+    - include: repo_double_colon
+    - include: repo_type_signature
+  repo_float_literals:
+  - match: "(?x)\n  \\b(?<!')\n  (?:  # Decimal\n    ([0-9][_0-9]*\\.[0-9][_0-9]*(?:[eE][-+]?[0-9][_0-9]*)?\n    |[0-9][_0-9]*[eE][-+]?[0-9][_0-9]*\n    )\n  |    # Hexadecimal\n    (0[xX]_*[0-9a-fA-F][_0-9a-fA-F]*\\.[0-9a-fA-F][_0-9a-fA-F]*(?:[pP][-+]?[0-9][_0-9]*)?\n    |0[xX]_*[0-9a-fA-F][_0-9a-fA-F]*[pP][-+]?[0-9][_0-9]*\n    )\n  )\\b(?!')"
+    captures:
+      1: constant.numeric.floating.decimal.bh
+      2: constant.numeric.floating.hexadecimal.bh
+  repo_forall:
+  - match: "(?x)\n  # Alphabetic forall\n  (?:\n  \\b(?<!')\n  (forall)\n  \\b(?!')\n  )\n  |\n  # Symbolic forall\n  (?:\n  # Not preceded by a symbol except reserved symbols\n  (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"'']])\n  (\u2200)\n  # Not followed by a symbol except reserved symbols\n  (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"'']])\n  )"
+    captures:
+      1: keyword.other.forall.bh
+      2: keyword.other.forall.bh
+    push:
+    - match: "(\\.)|(->|\u2192)"
+      pop: true
+      captures:
+        1: keyword.operator.period.bh
+        2: keyword.operator.arrow.bh
+    - include: repo_comment_like
+    - include: repo_type_variable
+    - include: repo_type_signature
+  repo_fun_decl:
+  - match: "(?x)^(\\s*)\n  (primitive\\s+)?\n  (type\\s+)?\n  (?<fn>\n    (?:\n      [\\p{Ll}_\\p{Lu}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\#*\n    | \\(\\s*\n        (?!--+\\))\n        [\\p{S}\\p{P}&&[^(),:;\\[\\]`{}_\"']]\n        [\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]*\n      \\s*\\)\n    )\n    (?:\\s*,\\s*\\g<fn>)?\n  )\n  \\s*(?<![\\p{S}\\p{P}&&[^\\),;\\]`}_\"']])(::|\u2237)(?![\\p{S}\\p{P}&&[^\\(,;\\[`{_\"']])\n"
+    captures:
+      2: keyword.other.primitive.bh
+      3: keyword.other.type.bh
+      4: entity.name.function.bh
+      5: keyword.operator.double-colon.bh
+    push:
+    - meta_scope: meta.function.type-declaration.bh
+    - match: "(?x)\n  # End of type annotation:\n    # To the left of a reserved symbolic keyword such as = or <-\n  (?= \n      # non-symbolic character\n      (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n      # symbolic keyword except (->)\n      ((<-|\u2190)|(=)|(-<|\u21A2)|(-<<|\u291B))\n      # non-symbolic character\n      ([(),;\\[\\]`{}_\"']|[^\\p{S}\\p{P}])\n  )\n  # Decreasing indentation:\n  |(?=\\}|;)      # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then\
+        \ it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_type_signature
+  repo_gadt_constructor:
+  - match: "(?x)\n   ^(\\s*)\n      (?:\n        (\\b(?<!')[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\n      |(\\()\\s*(:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]*)\\s*(\\))\n      )"
+    captures:
+      2: constant.other.bh
+      3: punctuation.paren.bh
+      4: constant.other.operator.prefix.bh
+      5: punctuation.paren.bh
+    push:
+    - match: "(?x)\n  # GADT constructor ends\n  (?=\\b(?<!'')deriving\\b(?!'))  \n        # Decreasing indentation\n  |(?=\\}|;)      # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )\n"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_deriving
+    - include: repo_double_colon
+    - include: repo_record_decl
+    - include: repo_type_signature
+  - match: "(?x)\n  (\\b(?<!')[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}]*) # named constructor\n |(\\()\\s*(:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]*)\\s*(\\))    # prefix operator"
+    captures:
+      1: constant.other.bh
+      2: punctuation.paren.bh
+      3: constant.other.operator.prefix.bh
+      4: punctuation.paren.bh
+    push:
+    - match: (?=;|\}|$)
+      pop: true
+    - include: repo_comment_like
+    - include: repo_deriving
+    - include: repo_double_colon
+    - include: repo_record_decl
+    - include: repo_type_signature
+  repo_infix_op:
+  - match: "(?x)\n  ((?:(?<!'')('')?[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'']*\\.)*)\n    (\\#+|[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+(?<!\\#))"
+    captures:
+      1: keyword.operator.promotion.bh
+      2: entity.name.namespace.bh
+      3: keyword.operator.infix.bh
+  - match: (`)((?:[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*\.)*)([\p{Ll}\p{Lu}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'']*)(`)
+    scope: keyword.operator.function.infix.bh
+    captures:
+      1: punctuation.backtick.bh
+      2: entity.name.namespace.bh
+      4: punctuation.backtick.bh
+  repo_inline_phase:
+  - match: \[
+    captures:
+      0: punctuation.bracket.bh
+    push:
+    - meta_scope: meta.inlining-phase.bh
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.bracket.bh
+    - match: '~'
+      scope: punctuation.tilde.bh
+    - include: repo_integer_literals
+    - match: \w*
+      scope: invalid
+  repo_integer_literals:
+  - match: "(?x)\n  \\b(?<!')\n  (?:\n    ([0-9][_0-9]*)                    # Decimal integer\n  | (0[xX]_*[0-9a-fA-F][_0-9a-fA-F]*) # Hexadecimal integer\n  | (0[oO]_*[0-7][_0-7]*)             # Octal integer\n  | (0[bB]_*[01][_01]*)               # Binary integer\n  )\n  \\b(?!')"
+    captures:
+      1: constant.numeric.integral.decimal.bh
+      2: constant.numeric.integral.hexadecimal.bh
+      3: constant.numeric.integral.octal.bh
+      4: constant.numeric.integral.binary.bh
+  repo_keyword:
+  - match: \b(?<!')(?:(where|when|let|letseq|in)|(do|module|rules|action|if|then|else|case(?:s)?|of|verilog|synthesize))\b(?!')
+  repo_layout_herald:
+  - match: "(?x)\n  (?:(?<!')\\b(?:(where|let|letseq|do|module|rules|action)|(of))|(\\\\\\s*case(?:s)?))\n  \\s*(\\{)(?!-)"
+    captures:
+      2: keyword.control.of.bh
+      3: keyword.control.lambda-case.bh
+      4: punctuation.brace.bh
+    push:
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.brace.bh
+    - include: main
+    - match: ;
+      scope: punctuation.semicolon.bh
+  repo_numeric_literals:
+  - include: repo_float_literals
+  - include: repo_integer_literals
+  repo_overloaded_label:
+  - match: "(?x) \n  (?<![\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}\\p{S}\\p{P}&&[^(,;\\[`{]]) # Disallow closing characters\n  (\\#)\n    (?:\n    # String\n    (\"(?:\\\\\"|[^\"])*\")\n    # Sequence of allowed label identifiers\n    |[\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'\\.]+\n    )"
+    scope: entity.name.label.bh
+    captures:
+      1: keyword.operator.prefix.hash.bh
+  repo_package_exports:
+  - match: \(
+    captures:
+      0: punctuation.paren.bh
+    push:
+    - meta_scope: meta.declaration.exports.bh
+    - include: repo_comment_like
+    - match: \b(?<!')(package)\b(?!')
+      captures:
+        1: keyword.other.package.bh
+    - include: repo_comma
+    - include: repo_export_constructs
+    - match: \(
+      captures:
+        0: punctuation.paren.bh
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.paren.bh
+      - include: repo_comment_like
+      - include: repo_record_wildcard
+      - match: (\()\s*(:[\p{S}\p{P}&&[^(),;\[\]`{}_"']]*)\s*(\))
+        scope: constant.other.operator.prefix.bh
+      - include: repo_export_constructs
+      - include: repo_comma
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.paren.bh
+  repo_package_name:
+  - match: (?<conid>[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*(\.\g<conid>)?)
+    scope: entity.name.namespace.bh
+  repo_pragma:
+  - match: \{-#
+    push:
+    - meta_scope: meta.preprocessor.bh
+    - match: '#-\}'
+      pop: true
+    - include: repo_comments
+    - match: "(?xi) \\b(?<!')\n  (synthesize|verilog|noReady|alwaysEnabled|parameter|no_default_clock|no_default_reset|gate_input_clocks|clock_family|clock_prefix|gate_prefix|reset_prefix|alwaysReady|noReady|alwaysEnabled|scanInsert|bitBlast|CLK|RSTN|options|deprecate|properties)\\b(?!')"
+      scope: keyword.other.preprocessor.pragma.bh
+    - match: "(?xi) \\b(?<!')\n  (prefixs?|arg_names|ready|enable|result|always_ready|always_enabled)\\b(?!')"
+      scope: keyword.other.preprocessor.pragma.bh
+  repo_prefix_op:
+  - match: "(?x)\n  (\\()\\s*(?!(?:--+|\\.\\.)\\))(\\#+|[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+(?<!\\#))\\s*(\\))"
+    captures:
+      1: punctuation.paren.bh
+      2: entity.name.function.infix.bh
+      3: punctuation.paren.bh
+  repo_qualifier:
+  - match: \b(?<!')[\p{Lu}\p{Lt}][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*\.
+    scope: entity.name.namespace.bh
+  repo_quasi_quote:
+  - match: "(?x)\n  (\\[)\n  (e|d|p)?\n  (\\|(?:\\|(?!\\]))?)"
+    captures:
+      1: keyword.operator.quasi-quotation.begin.bh
+      2: entity.name.quasi-quoter.bh
+      3: keyword.operator.quasi-quotation.begin.bh
+    push:
+    - meta_scope: meta.quasi-quotation.bh
+    - match: \3\]
+      pop: true
+      captures:
+        0: keyword.operator.quasi-quotation.end.bh
+    - include: main
+  - match: "(?x)\n  (\\[)\n  (t)\n  (\\|(?:\\|(?!\\]))?)"
+    captures:
+      1: keyword.operator.quasi-quotation.begin.bh
+      2: entity.name.quasi-quoter.bh
+      3: keyword.operator.quasi-quotation.begin.bh
+    push:
+    - meta_scope: meta.quasi-quotation.bh
+    - match: \3\]
+      pop: true
+      captures:
+        0: keyword.operator.quasi-quotation.end.bh
+    - include: repo_type_signature
+  - match: "(?x)\n  (\\[)\n  (?:(\\$\\$)|(\\$))?\n  (?!'\\|')                                             # Don't parse ['|'...] as a quasi quotation\n  ((?:[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\.)*) # Optional qualifier\n  ((?:[^\\s\\p{S}\\p{P}]|['_])*)                          # Quasi-quoter\n  (\\|)"
+    captures:
+      1: keyword.operator.quasi-quotation.begin.bh
+      2: keyword.operator.prefix.double-dollar.bh
+      3: keyword.operator.prefix.dollar.bh
+      4: entity.name.namespace.bh
+      5: entity.name.quasi-quoter.bh
+      6: keyword.operator.quasi-quotation.begin.bh
+    push:
+    - meta_scope: meta.quasi-quotation.bh
+    - match: \|\]
+      pop: true
+      captures:
+        0: keyword.operator.quasi-quotation.end.bh
+  repo_record:
+  - match: ({)(?!-)
+    captures:
+      1: punctuation.brace.bh
+    push:
+    - meta_scope: meta.record.bh
+    - match: (?<!-)(})
+      pop: true
+      captures:
+        1: punctuation.brace.bh
+    - include: repo_comment_like
+    - include: repo_record_field
+  repo_record_decl:
+  - match: ({)(?!-)
+    captures:
+      1: punctuation.brace.bh
+    push:
+    - meta_scope: meta.record.definition.bh
+    - match: (?<!-)(})
+      pop: true
+      captures:
+        1: punctuation.brace.bh
+    - include: repo_comment_like
+    - include: repo_record_decl_field
+  repo_record_decl_field:
+  - match: "(?x)\n  (?:([\\p{Ll}_][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\n    |(\\()\\s*([\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\\s*(\\))\n  )\n"
+    captures:
+      1: variable.other.member.definition.bh
+      2: punctuation.paren.bh
+      3: variable.other.member.definition.bh
+      4: punctuation.paren.bh
+    push:
+    - match: (,)|(?=})
+      pop: true
+      captures:
+        1: punctuation.comma.bh
+    - include: repo_comment_like
+    - include: repo_comma
+    - include: repo_double_colon
+    - include: repo_type_signature
+    - include: repo_record_decl_field
+  repo_record_field:
+  - match: "(?x)\n  (?:([\\p{Ll}\\p{Lu}_][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}\\.']*)\n    |(\\()\\s*([\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\\s*(\\))\n  )\n"
+    captures:
+      1: variable.other.member.bh
+      2: punctuation.paren.bh
+      3: variable.other.member.bh
+      4: punctuation.paren.bh
+    push:
+    - match: (,)|(?=})
+      pop: true
+      captures:
+        1: punctuation.comma.bh
+    - include: repo_comment_like
+    - include: repo_comma
+    - include: main
+  - include: repo_record_wildcard
+  repo_record_wildcard:
+  - match: "(?x)\n  (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n  (\\.\\.)\n  (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])"
+    captures:
+      1: variable.other.member.wildcard.bh
+  repo_reserved_symbol:
+  - match: "(?x)\n  (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"'']])\n  (?:\n     (\\.\\.)\n    |(:)\n    |(=)\n    |(\\\\)     # \u03BB not reserved as it is a letter\n    |(\\|)\n    |(<-|\u2190)\n    |(->|\u2192)\n    |(-<|\u21A2)\n    |(-<<|\u291B)\n    |(>-|\u291A)\n    |(>>-|\u291C)\n  )\n  (?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"'']])"
+    captures:
+      1: keyword.operator.double-dot.bh
+      10: keyword.operator.arrow.tail.bh
+      11: keyword.operator.arrow.tail.double.bh
+      2: keyword.operator.colon.bh
+      3: keyword.operator.eq.bh
+      4: keyword.operator.lambda.bh
+      5: keyword.operator.pipe.bh
+      6: keyword.operator.arrow.left.bh
+      7: keyword.operator.arrow.bh
+      8: keyword.operator.arrow.left.tail.bh
+      9: keyword.operator.arrow.left.tail.double.bh
+  - match: "(?x)\n  (?<=[\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}\\p{S}\\p{P}&&[^\\#,;\\[`{]]) # Require closing characters\n  (\\#+)\n  (?![\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}\\p{S}\\p{P}&&[^),;\\]`}]])   # Disallow opening character"
+    captures:
+      1: keyword.operator.postfix.hash.bh
+  - match: "(?x)\n  (?<=[\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'\\)\\}\\]]) # Require closing characters\n  (@)\n  (?=[\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}'\\(\\[\\{]) # Require opening character"
+    captures:
+      1: keyword.operator.infix.tight.at.bh
+  - match: "(?x)\n  (?<![\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}\\p{S}\\p{P}&&[^(,;\\[`{]])  # Disallow closing characters\n  (?:(~)|(!)|(-)|(\\$\\$)|(\\$)|(%))\n  (?=[\\p{Ll}_'\\p{Lu}\\p{Lt}\\p{Nd}\\(\\{\\[]) # Require opening character (non operator symbol)"
+    captures:
+      1: keyword.operator.prefix.tilde.bh
+      2: keyword.operator.prefix.bang.bh
+      3: keyword.operator.prefix.minus.bh
+      4: keyword.operator.prefix.double-dollar.bh
+      5: keyword.operator.prefix.dollar.bh
+      6: keyword.operator.prefix.modifier.bh
+  repo_role_annotation:
+  - match: ^(\s*)(type)\s+(role)\b(?!')
+    captures:
+      2: keyword.other.type.bh
+      3: keyword.other.role.bh
+    push:
+    - meta_scope: meta.role-annotation.bh
+    - match: "(?x) # Detect end of block by decreasing indentation:\n  (?=\\}|;)       # Explicit indentation\n  |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n      \\1\\s+\\S    # - more indented, or\n    | \\s*        # - starts with whitespace, followed by:\n      (?: $      #   - the end of the line (i.e. empty line), or\n      |\\{-[^@]   #   - the start of a block comment, or\n      |--+       #   - the start of a single-line comment.\n         (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                 # The double dash may not be followed by other operator characters\n                 # (then it would be an operator, not a comment)\n    )"
+      pop: true
+    - include: repo_comment_like
+    - include: repo_type_constructor
+    - match: \b(?<!')(nominal|representational|phantom)\b(?!')
+  repo_start_type_signature:
+  - match: "^(\\s*)(::|\u2237)(?![\\p{S}\\p{P}&&[^\\(,;\\[`{_\"']])\\s*"
+    captures:
+      2: keyword.operator.double-colon.bh
+    push:
+    - meta_scope: meta.type-declaration.bh
+    - match: "(?x)\n  # End type annotation when seeing one of:\n  (?=\n    \\#?\\)                             # closing parenthesis\n    |\\]                               # closing bracket\n    |,                                # comma\n    |(?<!')\\b(in|then|else|of)\\b(?!') # keyword\n    |                                 # symbolic keyword except (->)\n      (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n      (?:\n         (\\\\|\u03BB)\n        |(<-|\u2190)\n        |(=)\n        |(-<|\u21A2)\n        |(-<<|\u291B)\n      )\n      ([(),;\\[\\]`{}_\"']|[^\\p{S}\\p{P}])\n    |(\\#|@)-\\}                             # End of annotation block (pragma)\n    # Decreasing indentation:\n    | (?=\\}|;)     # Explicit indentation\n    |^(?!          # Implicit indentation: end match on newline *unless* the new line is either:\n        \\1\\s*\\S    # - equally indented, or\n      | \\s*        # - starts with whitespace, followed by:\n        (?: $      #   - the end of the line (i.e. empty line),\
+        \ or\n        |\\{-[^@]   #   - the start of a block comment, or\n        |--+       #   - the start of a single-line comment.\n           (?![\\p{S}\\p{P}&&[^(),;\\[\\]{}`_\"']]).*$) # non-symbol\n                   # The double dash may not be followed by other operator characters\n                   # (then it would be an operator, not a comment)\n      )\n  )"
+      pop: true
+    - include: repo_type_signature
+  - match: "(?<![\\p{S}\\p{P}&&[^\\(,;\\[`{_\"']])(::|\u2237)(?![\\p{S}\\p{P}&&[^\\(,;\\[`{_\"']])"
+    captures:
+      1: keyword.operator.double-colon.bh
+    push:
+    - match: "(?x)\n  # End type annotation when seeing one of:\n  (?=\n    \\#?\\)                             # closing parenthesis\n    |\\]                               # closing bracket\n    |,                                # comma\n    |\\b(?<!')(in|then|else|of)\\b(?!') # keyword\n    |(\\#|@)-\\}                        # End of annotation block (Liquidbh or pragma)\n    |                                 # symbolic keyword except (->)\n      (?<![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])\n      (?:\n         (\\\\|\u03BB)\n        |(<-|\u2190)\n        |(=)\n        |(-<|\u21A2)\n        |(-<<|\u291B)\n      )\n      ([(),;\\[\\]`{}_\"']|[^\\p{S}\\p{P}])\n    # Indentation \n    |(?=\\}|;)      # Explicit indentation\n    |$             # End of line\n  )"
+      pop: true
+    - include: repo_type_signature
+  repo_string_literal:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.bh
+    push:
+    - meta_scope: string.quoted.double.bh
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.bh
+    - match: \\(NUL|SOH|STX|ETX|EOT|ENQ|ACK|BEL|BS|HT|LF|VT|FF|CR|SO|SI|DLE|DC1|DC2|DC3|DC4|NAK|SYN|ETB|CAN|EM|SUB|ESC|FS|GS|RS|US|SP|DEL|[abfnrtv\\\"'\&])
+      scope: constant.character.escape.bh
+    - match: \\o[0-7]+|\\x[0-9A-Fa-f]+|\\[0-9]+
+      scope: constant.character.escape.octal.bh
+    - match: \\\^[A-Z@\[\]\\\^_]
+      scope: constant.character.escape.control.bh
+    - match: \\\s
+      captures:
+        0: constant.character.escape.begin.bh
+      push:
+      - match: \\
+        pop: true
+        captures:
+          0: constant.character.escape.end.bh
+      - match: \S+
+        scope: invalid.illegal.character-not-allowed-here.bh
+  repo_type_application:
+  - match: (?<=[\s,;\[\]{}"])(@)(\(\s*\))
+    scope: meta.type-application.bh
+    captures:
+      1: keyword.operator.prefix.at.bh
+      2: support.constant.unit.bh
+  - match: (?<=[\s,;\[\]{}"])(@)(')?(\()
+    captures:
+      1: keyword.operator.prefix.at.bh
+      2: keyword.operator.promotion.bh
+      3: punctuation.paren.bh
+    push:
+    - meta_scope: meta.type-application.bh
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.paren.bh
+    - include: repo_type_signature
+  - match: (?<=[\s,;\[\]{}"])(@)(')?(\[)
+    captures:
+      1: keyword.operator.prefix.at.bh
+      2: keyword.operator.promotion.bh
+      3: punctuation.bracket.bh
+    push:
+    - meta_scope: meta.type-application.bh
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.bracket.bh
+    - include: repo_type_signature
+  - match: (?<=[\s,;\[\]{}"])(@)(?=\")
+    captures:
+      1: keyword.operator.prefix.at.bh
+    push:
+    - meta_scope: meta.type-application.bh
+    - match: (?<=\")
+      pop: true
+    - include: repo_string_literal
+  - match: (?<=[\s,;\[\]{}"])(@)(?=[\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'])
+    captures:
+      1: keyword.operator.prefix.at.bh
+    push:
+    - meta_scope: meta.type-application.bh
+    - match: (?![\p{Ll}_\p{Lu}\p{Lt}\p{Nd}'])
+      pop: true
+    - include: repo_type_signature
+  repo_type_constructor:
+  - match: "(?x)\n  # Optional promotion tick\n    (')?\n  # Optional qualified name\n    ((?:\\b[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\.)*)\n  # Type constructor proper\n    (\\b[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)"
+    captures:
+      1: keyword.operator.promotion.bh
+      2: entity.name.namespace.bh
+      3: storage.type.bh
+  - match: "(?x)\n  # Optional promotion tick\n    (')?\n  # Opening parenthesis\n    (\\()\\s*\n  # Optional qualified name\n    ((?:[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\.)*)\n  # Type operator proper\n    ([\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+)\n  # Closing parenthesis\n    \\s*(\\))"
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.paren.bh
+      3: entity.name.namespace.bh
+      4: storage.type.operator.bh
+      5: punctuation.paren.bh
+  repo_type_operator:
+  - match: "(?x)\n  # Optional promotion tick\n    (?:(?<!')('))?\n  # Optional qualified name\n    ((?:\\b[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\.)*)\n  # Type operator proper\n    (?![#@]?-})(\\#+|[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']]+(?<!\\#))\n    #((?:[\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']&&[^#@]]|[@#](?!-}))+)"
+    captures:
+      1: keyword.operator.promotion.bh
+      2: entity.name.namespace.bh
+      3: storage.type.operator.infix.bh
+  - match: "(?x)\n  # Optional promotion tick\n    (')?\n  # Opening backtick\n    (\\`)\n  # Optional qualified name\n    ((?:[\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*\\.)*)\n  # Type constructor proper\n    ([\\p{Lu}\\p{Lt}][\\p{Ll}_\\p{Lu}\\p{Lt}\\p{Nd}']*)\n  # Closing backtick\n    (`)"
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.backtick.bh
+      3: entity.name.namespace.bh
+      4: storage.type.infix.bh
+      5: punctuation.backtick.bh
+  repo_type_signature:
+  - include: repo_comment_like
+  - match: (')?(\()\s*(\))
+    scope: support.constant.unit.bh
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.paren.bh
+      3: punctuation.paren.bh
+  - match: (')?(\()\s*,[\s,]*(\))
+    scope: support.constant.tuple.bh
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.paren.bh
+      3: punctuation.paren.bh
+  - match: (')?(\[)\s*(\])
+    scope: support.constant.empty-list.bh
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.bracket.bh
+      3: punctuation.bracket.bh
+  - include: repo_integer_literals
+  - match: "(::|\u2237)(?![\\p{S}\\p{P}&&[^(),;\\[\\]`{}_\"']])"
+    scope: keyword.operator.double-colon.bh
+  - include: repo_forall
+  - match: "=>|\u21D2"
+    scope: keyword.operator.big-arrow.bh
+  - include: repo_string_literal
+  - match: '''[^'']'''
+    scope: invalid
+  - include: repo_type_application
+  - include: repo_reserved_symbol
+  - include: repo_type_operator
+  - include: repo_type_constructor
+  - match: (\()
+    captures:
+      1: punctuation.paren.bh
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        2: punctuation.paren.bh
+    - include: repo_comma
+    - include: repo_type_signature
+  - match: (')?(\()
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.paren.bh
+    push:
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.paren.bh
+    - include: repo_comma
+    - include: repo_type_signature
+  - match: (')?(\[)
+    captures:
+      1: keyword.operator.promotion.bh
+      2: punctuation.bracket.bh
+    push:
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.bracket.bh
+    - include: repo_comma
+    - include: repo_type_signature
+  - include: repo_type_variable
+  repo_type_variable:
+  - match: \b(?<!')(?!(?:forall|deriving)\b(?!'))[\p{Ll}_][\p{Ll}_\p{Lu}\p{Lt}\p{Nd}']*
+    scope: variable.other.generic-type.bh
+  repo_where:
+  - match: "(?x)\n  (?<!')\\b(where)\n  \\s*(\\{)(?!-)"
+    captures:
+      1: keyword.other.where.bh
+      2: punctuation.brace.bh
+    push:
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.brace.bh
+    - include: main
+    - match: ;
+      scope: punctuation.semicolon.bh
+  - match: \b(?<!')(where)\b(?!')
+    scope: keyword.other.where.bh

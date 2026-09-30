@@ -1,0 +1,525 @@
+%YAML 1.2
+---
+# Pic (source.pic): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-roff via GitHub Linguist v9.7.0 (license: isc).
+name: Pic
+scope: source.pic
+file_extensions:
+- pic
+- chem
+contexts:
+  main:
+  - include: repo_binary
+  - include: repo_tags
+  - include: repo_embedded-roff
+  - include: repo_embedded-latex
+  - include: repo_main
+  repo_attributes:
+  - match: \bsame\s+as\b
+    scope: entity.other.attribute-name.same-as.pikchr.pic
+  - match: (?x)\b (chop|cw|dashed|diameter|diam|dotted|down|figname|height|ht |invisible|invis|left|radius|rad|right|same|up|width|wid)\b
+  - match: \b(colou?r(?:ed)?|outlined?|shaded|fill)\b[ \t]*(?=\w)
+    push:
+    - match: 0[Xx][0-9A-Fa-f]{6}
+      scope: constant.numeric.hexadecimal.hex.pikchr.pic
+    - match: (?i)(None|Off)\b
+      scope: support.constant.no-colour.pikchr.pic
+    - match: (?xi) (AliceBlue|AntiqueWhite|Aquamarine|Aqua|Azure|Beige|Bisque|Black|BlanchedAlmond|BlueViolet|Blue|Brown|BurlyWood|CadetBlue |Chartreuse|Chocolate|Coral|CornflowerBlue|Cornsilk|Crimson|Cyan|DarkBlue|DarkCyan|DarkGoldenrod|DarkGreen|DarkGr[ae]y |DarkKhaki|DarkMagenta|DarkOliveGreen|DarkOrange|DarkOrchid|DarkRed|DarkSalmon|DarkSeaGreen|DarkSlateBlue|DarkSlateGr[ae]y |DarkTurquoise|DarkViolet|DeepPink|DeepSkyBlue|DimGr[ae]y|DodgerBlue|Firebrick|FloralWhite|ForestGreen|Fuchsia|Gainsboro |GhostWhite|Goldenrod|Gold|Gr[ae]y|GreenYellow|Green|Honeydew|HotPink|IndianRed|Indigo|Ivory|Khaki|LavenderBlush|Lavender |LawnGreen|LemonChiffon|LightBlue|LightCoral|LightCyan|LightGoldenrodYellow|LightGr[ae]y|LightGreen|LightPink|LightSalmon |LightSeaGreen|LightSkyBlue|LightSlateGr[ae]y|LightSteelBlue|LightYellow|LimeGreen|Lime|Linen|Magenta|Maroon|MediumAquamarine |MediumBlue|MediumOrchid|MediumPurple|MediumSeaGreen|MediumSlateBlue|MediumSpringGreen|MediumTurquoise|MediumVioletRed |MidnightBlue|MintCream|MistyRose|Moccasin|NavajoWhite|Navy|OldLace|OliveDrab|Olive|OrangeRed|Orange|Orchid
+        |PaleGoldenrod|PaleGreen|PaleTurquoise|PaleVioletRed|PapayaWhip|PeachPuff|Peru|Pink|Plum|PowderBlue|Purple|RebeccaPurple |Red|RosyBrown|RoyalBlue|SaddleBrown|Salmon|SandyBrown|SeaGreen|Seashell|Sienna|Silver|SkyBlue|SlateBlue|SlateGr[ae]y|Snow |SpringGreen|SteelBlue|Tan|Teal|Thistle|Tomato|Turquoise|Violet|Wheat|WhiteSmoke|White|YellowGreen|Yellow)\b
+      scope: support.constant.colour.pikchr.pic
+    - match: (?=\S)|(?<=\S)
+      pop: true
+  - match: \b(aligned|big|bold|fit|italic|mono(?:space)?|small|(?:thickness|color|fill)(?!\s*(?:[-:+/*%=!<>]?=|<|>))|thick|thin)\b
+  - match: \b(scaled)\b
+  repo_backref:
+  - match: \b(last|(?:\d*1[1-3]th|\d*0th|(?:(?!11st)\d)*1st|\d*2nd|(?:(?!13rd)\d*)3rd|\d*[4-9]th)(?:[ \t]+last)?)\b
+    scope: variable.language.backreference.pic
+  - match: ((')([^']*)('))(th)
+    scope: meta.backreference.computed.pic
+    captures:
+      1: string.quoted.single.pic
+      2: punctuation.definition.string.begin.pic
+      3: meta.expression.pic
+      4: punctuation.definition.string.end.pic
+      5: constant.language.ordinal-suffix.pic
+  - match: \b(first|previous)\b
+    scope: variable.language.backreference.pikchr.pic
+  repo_binary:
+  - match: ^(?=.*(?![\x02-\x07\f\x7F])[\x00-\x06\x{FFFD}])
+    push:
+    - meta_scope: raw.binary.data
+    - match: (?=A)B
+      pop: true
+  repo_boolean:
+  - match: \b(true|false|on|off)\b
+  repo_brackets:
+  - match: \(
+    captures:
+      0: punctuation.definition.bracket.round.pic
+    push:
+    - match: (?=\))|^(?=\.P[EF]\b)
+      pop: true
+    - match: \b(?:color|fill|thickness)\b
+      scope: variable.language.global.pikchr.pic
+    - include: repo_main
+  - match: \[
+    captures:
+      0: punctuation.definition.bracket.square.pic
+    push:
+    - match: (?=\])|^(?=\.P[EF]\b)
+      pop: true
+    - include: repo_main
+  - match: \{
+    captures:
+      0: punctuation.definition.bracket.curly.pic
+    push:
+    - match: (?=\})|^(?=\.P[EF]\b)
+      pop: true
+    - include: repo_main
+  repo_chem:
+  - include: repo_label
+  - match: \b(?:(?:(double|triple|front|back)[ \t]+)?\b(bond))\b
+    captures:
+      2: storage.type.bond.pic.chem
+  - match: (?:\b(aromatic)[ \t]+)?\b(benzene|(?:flat)?ring\d*)
+    captures:
+      1: storage.modifier.aromatic.pic.chem
+      2: storage.type.ring.pic.chem
+  - match: \b(pointing)\b
+    scope: storage.modifier.direction.pic.chem
+  - match: \b(size)\b[ \t]*(\d+)
+    scope: meta.set-size.pic.chem
+    captures:
+      1: entity.other.attribute-name.size.pic.chem
+      2: constant.numeric.parameter.pic.chem
+  - match: \bBP\b
+    scope: keyword.control.branch-point.pic.chem
+  - match: (?=[A-Z])(?!BP)([\w\(\).]+)
+    scope: string.unquoted.group-name.pic.chem
+  - match: \(
+    captures:
+      0: punctuation.definition.bracket.round.chem.pic
+    push:
+    - match: (?=\))|^(?=\.P[EF]\b|^[.']\s*cend\b)
+      pop: true
+    - include: repo_chem
+  - match: \[
+    captures:
+      0: punctuation.definition.bracket.square.chem.pic
+    push:
+    - match: (?=\])|^(?=\.P[EF]\b|^[.']\s*cend\b)
+      pop: true
+    - include: repo_chem
+  - match: \{
+    captures:
+      0: punctuation.definition.bracket.curly.chem.pic
+    push:
+    - match: (?=\})|^(?=\.P[EF]\b|^[.']\s*cend\b)
+      pop: true
+    - include: repo_chem
+  - include: main
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.pic
+    push:
+    - meta_scope: comment.line.number-sign.pic
+    - match: $
+      pop: true
+  - match: //
+    captures:
+      0: punctuation.definition.comment.pic
+    push:
+    - meta_scope: comment.line.double-slash.non-standard.pikchr.pic
+    - match: $
+      pop: true
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.pic
+    push:
+    - meta_scope: comment.block.non-standard.pikchr.pic
+    - match: \*/|^(?=\.P[EF]\b|^[.']\s*cend\b)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.pic
+  repo_dformat:
+  - include: repo_pic-line
+  - match: ^style\b
+    captures:
+      0: entity.other.attribute-name.style.dformat.pic
+    push:
+    - meta_scope: meta.format.dformat.pic
+    - match: $
+      pop: true
+    - include: repo_boolean
+    - match: '(?x)\b
+
+        (addr|addrdelta|addrht|bitwid|charwid|fill|linedisp
+
+        |linethrutext|recht|recspread|reset|textht)\b'
+      scope: constant.language.dformat.pic
+    - include: repo_number
+  - match: ^\S.*$\R?
+    captures:
+      0: markup.bold.heading.dformat.pic
+    push:
+    - meta_scope: meta.record.dformat.pic
+    - match: ^(?=\S)
+      pop: true
+    - match: ^([ \t]+[^:\s]+:)?(?:(?<=:)|[ \t]+)(\S+)\s+(.*)$
+      captures:
+        0: markup.list.unnumbered.dformat.pic
+  repo_embedded-latex:
+  - match: ^(?:\\\w|%).*$
+    scope: source.embedded.tex.pic
+  repo_embedded-roff:
+  - match: ^(?=[.'][ \t]*(?:\w|\\))
+    push:
+    - match: (?<!\\)$|(\\".*)$
+      pop: true
+    - include: scope:text.roff
+  repo_escaped-newline:
+  - match: \\$\R?
+    captures:
+      0: punctuation.definition.escape.pic
+    push:
+    - meta_scope: constant.character.escape.newline.pic
+    - match: ^(?:[.'])?
+      pop: true
+  repo_function-call:
+  - match: \b(?!\d)(\w+)(?=\()
+    push:
+    - meta_content_scope: meta.function-call.pic
+    - match: (?!)
+      pop: true
+    - match: \(
+      captures:
+        0: punctuation.definition.arguments.begin.pic
+      push:
+      - meta_scope: meta.arguments.pic
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.definition.arguments.end.pic
+      - include: repo_main
+  repo_function-name:
+  - match: (?:|^)(atan2|cos|exp|int|log|max|min|s?rand|sin|sqrt|sprintf)$
+  - match: (?:|^)\S+
+    scope: entity.name.function.user-defined.pic
+  repo_globals:
+  - match: '(?x)\b
+
+      (arcrad|arrowhead|arrowht|arrowwid|boxht|boxwid|circlerad|dashwid
+
+      |ellipseht|ellipsewid|fillval|lineht|linewid|maxpsht|maxpswid
+
+      |moveht|movewid|scale|textht|textwid)\b'
+    scope: variable.language.global.pic
+  - match: \b((?:left|right|top|bottom)?margin|charht|charwid|color|diamond(?:ht|wid)|fill|fontscale|thickness)\b
+    scope: variable.language.global.pikchr.pic
+  repo_grap:
+  - match: \bpid\b
+    scope: variable.language.process-id.pic.grap
+  - match: \bthen\b
+    scope: keyword.control.then.pic.grap
+  - match: \b(in|out|through)\b
+    scope: keyword.operator.pic.grap
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_number
+  - include: repo_boolean
+  - include: repo_punctuation
+  - include: repo_operators
+  - include: repo_function-call
+  - include: repo_macros
+  - include: repo_pic-line
+  - match: '(?x)\b
+
+      (assignment|circle|coord|copy|draw|for|frame|graph|grid|if|label
+
+      |line|new|next|numberlist|pic|plot|print|sh|ticks?)\b'
+    scope: keyword.function.pic.grap
+    captures:
+      0: entity.function.name.pic.grap
+  - match: '(?x)\b
+
+      (above|arrow|below|bot|bottom|dashed|dotted|down|ht|invis
+
+      |left|log|radius|right|[lr]just|size|solid|top|up|wid|x|y)\b'
+  - match: '(?x)\b
+
+      (atan2|cos|exp|int|log|max|min|rand|sin|sqrt|bullet
+
+      |plus|box|star|dot|times|htick|vtick|square|delta)\b'
+    scope: support.function.grap.pic
+  - match: \(
+    captures:
+      0: punctuation.definition.bracket.round.chem.pic
+    push:
+    - match: (?=\))|^(?=\.P[EF]\b|^[.']\s*G2\b)
+      pop: true
+    - include: repo_grap
+  - match: \[
+    captures:
+      0: punctuation.definition.bracket.square.chem.pic
+    push:
+    - match: (?=\])|^(?=\.P[EF]\b|^[.']\s*G2\b)
+      pop: true
+    - include: repo_grap
+  - match: \{
+    captures:
+      0: punctuation.definition.bracket.curly.chem.pic
+    push:
+    - match: (?=\})|^(?=\.P[EF]\b|^[.']\s*G2\b)
+      pop: true
+    - include: repo_grap
+  - include: repo_keywords
+  repo_keywords:
+  - match: \b(for|do|if|then(?=\s*\{)|else)\b
+  - match: \b(and|at|by|copy|from|reset|sh|then|thru|to|with|of(?:\s+the\s+way\s+between)?)\b
+  - match: \b(continue|exec)\b
+  - match: \b(above|below|close|go|heading|until\s+even\s+with|vertex\s+of)\b
+  repo_label:
+  - match: ([A-Z][^#("\s:]*)(:)
+    captures:
+      1: storage.type.label.pic
+      2: punctuation.separator.key-value.pic
+  repo_macros:
+  - match: (define|undef)\b\s*(\w*)
+    captures:
+      1: storage.type.function.pic
+      2: entity.name.function.pic
+  - match: (\$)\d+
+    scope: variable.other.positional.pic
+    captures:
+      1: punctuation.definition.variable
+  - match: (until)[ \t]+((")([^"]+)("))\s*$\R?
+    captures:
+      1: keyword.control.until.pic
+      2: string.quoted.double.pic
+      3: punctuation.definition.string.begin.pic
+      5: punctuation.definition.string.end.pic
+    push:
+    - match: ^[ ]*(\4)\b
+      pop: true
+      captures:
+        1: keyword.control.terminator.pic
+    - include: main
+  repo_main:
+  - include: repo_comment
+  - include: repo_shell-command
+  - include: repo_keywords
+  - include: repo_positions
+  - include: repo_backref
+  - include: repo_macros
+  - include: repo_string
+  - include: repo_number
+  - include: repo_escaped-newline
+  - include: repo_operators
+  - include: repo_brackets
+  - include: repo_punctuation
+  - include: repo_primitives
+  - include: repo_attributes
+  - include: repo_globals
+  - include: repo_function-call
+  - include: repo_label
+  - include: repo_name
+  repo_name:
+  - match: (\$)(?!0)\d+\b
+    scope: variable.positional.other.pic
+    captures:
+      1: punctuation.definition.variable.pic
+  - match: ([$@])\w+
+    scope: variable.other.user-defined.non-standard.pikchr.pic
+    captures:
+      1: punctuation.definition.variable.pikchr.pic
+  - match: (?!\d)\w+\b
+    scope: variable.other.user-defined.pic
+  repo_number:
+  - match: (?:(?<!\d)-)?(?:\d+(?:\.(?:\d+|(?=[Ee][-+]?\d)))?)(?:[Ee][-+]?\d+)?(?:(%)|(cm|in|mm|pc|pt|px)\b)?
+    scope: constant.numeric.pic
+    captures:
+      1: constant.other.unit.percentage.pikchr.pic
+  repo_operators:
+  - match: <->|<-|->
+    scope: keyword.operator.arrow.pic
+  - match: "\u2190|\u2192|\u2194"
+    scope: keyword.operator.arrow.unicode.pikchr.pic
+  - match: '&&|\|{2}'
+    scope: keyword.operator.logical.boolean.pic
+  - match: '[<>]=?'
+    scope: keyword.operator.comparison.relational.numeric.pic
+  - match: '[!=]='
+    scope: keyword.operator.comparison.relational.boolean.pic
+  - match: '[-+*/]='
+    scope: keyword.operator.assignment.compound.pic
+  - match: :?=
+    scope: keyword.operator.assignment.pic
+  - match: '[-/+*%^]'
+    scope: keyword.operator.arithmetic.pic
+  - match: '!'
+    scope: keyword.operator.logical.not.negation.pic
+  - match: '&(?:(?:left|right|leftright)arrow|[lr]arr);'
+    scope: keyword.operator.arrow.html-entity.pikchr.pic
+  repo_pic-line:
+  - match: ^(pic)\b
+    captures:
+      1: keyword.control.dformat.pic
+    push:
+    - match: $
+      pop: true
+    - include: repo_main
+  repo_positions:
+  - match: (?<=\.)(?:bottom|bot|center|end|left|right|start|top|[ns][ew]|[bcelnrstw])\b
+    scope: entity.other.attribute-name.corner.pic
+  - match: '(?x) \b
+
+      ( (?:bottom|center|east|end|north|south|start|top|west|Here)
+
+      | (?:lower|upper) \s+ (?:left|right)
+
+      | (?:left|right) (?=\s+ of \b)
+
+      ) \b'
+    scope: variable.language.placement.pic
+  - match: (?<balance><([^<>]++|\g<balance>)*+>){0}\g<balance>
+    scope: meta.position.pic
+  repo_primitives:
+  - match: \b(box|line|arrow|circle|ellipse|arc|move|spline|polygon|print|command|plot)\b
+  - match: \b(oval|diamond|cylinder|file|dot|text)\b
+  repo_punctuation:
+  - match: \}
+    scope: punctuation.definition.bracket.curly.pic
+  - match: \)
+    scope: punctuation.definition.bracket.round.pic
+  - match: \]
+    scope: punctuation.definition.bracket.square.pic
+  - match: ;
+    scope: punctuation.terminator.statement.pic
+  - match: ','
+    scope: punctuation.separator.comma.pic
+  - match: <|>
+    scope: punctuation.definition.bracket.angle.pic
+  - match: \.(?!\d)
+    scope: punctuation.delimiter.period.full-stop.pic
+  repo_shell-braces:
+  - match: '{'
+    captures:
+      0: punctuation.definition.group.shell.begin.shell
+    push:
+    - meta_scope: meta.scope.group.shell
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.definition.group.shell.end.shell
+    - include: repo_shell-braces
+    - include: scope:source.shell
+  repo_shell-command:
+  - match: \b(sh)\b[ \t]*
+    push:
+    - meta_scope: meta.shell-command.pic
+    - match: (?!)
+      pop: true
+    - match: '{'
+      captures:
+        0: punctuation.section.embedded.balanced-text.brace.begin.pic
+      push:
+      - meta_content_scope: source.embedded.shell
+      - include: repo_shell-braces
+      - include: scope:source.shell
+      - match: '}'
+        pop: true
+        captures:
+          0: punctuation.section.embedded.balanced-text.brace.end.pic
+    - match: (.)
+      captures:
+        0: punctuation.section.embedded.balanced-text.arbitrary-delimiter.begin.pic
+      push:
+      - meta_content_scope: source.embedded.shell
+      - match: \1
+        pop: true
+        captures:
+          0: punctuation.section.embedded.balanced-text.arbitrary-delimiter.end.pic
+      - include: scope:source.shell
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.pic
+    push:
+    - meta_scope: string.quoted.double.pic
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.pic
+    - include: repo_string-escapes
+  repo_string-escapes:
+  - match: (\\)[\\"]
+    scope: constant.character.escape.pic
+    captures:
+      1: punctuation.definition.escape.pic
+  - match: (?:[^"\\]|\\[^"])+
+  repo_tags:
+  - match: ^([.'])[ \t]*(PS)[ \t]*(<)(.*)(?=$|\\")
+    scope: invalid.deprecated.function.picture.macro.roff
+    captures:
+      1: punctuation.definition.macro.roff
+      2: entity.function.name.roff
+      3: punctuation.definition.filename.roff
+  - match: ^([.'])[ \t]*(PS)\b([\d \t]*(?:#.*)?)?(\\[#"].*)?$
+    captures:
+      0: meta.function.begin.picture.section.macro.roff
+      1: punctuation.definition.macro.roff
+      2: entity.function.name.roff
+    push:
+    - meta_content_scope: source.embedded.pic
+    - match: ^([.'])[ \t]*(P[EFY])\b
+      pop: true
+      captures:
+        0: meta.function.end.picture.section.macro.roff
+        1: punctuation.definition.macro.roff
+        2: entity.name.function.roff
+    - include: main
+  - match: ^([.'])[ \t]*(cstart)\b\s*(\S.*)?
+    captures:
+      0: meta.function.begin.chemical.picture.section.macro.roff
+      1: punctuation.definition.macro.pic.chem
+      2: entity.function.name.roff
+      3: invalid.illegal.unexpected-characters.pic.chem
+    push:
+    - meta_content_scope: source.embedded.chem.pic
+    - match: ^([.'])[ \t]*(cend)\b
+      pop: true
+      captures:
+        0: meta.function.end.chemical.picture.section.macro.roff
+        1: punctuation.definition.macro.roff
+        2: entity.function.name.roff
+    - include: repo_chem
+  - match: ^([.'])[ \t]*(begin[ \t]+dformat)\b
+    captures:
+      0: meta.function.begin.dformat.picture.section.macro.roff
+      1: punctuation.definition.macro.pic.dformat
+      2: entity.function.name.roff
+    push:
+    - meta_content_scope: source.embedded.dformat.pic
+    - match: ^([.'])[ \t]*(end)\b
+      pop: true
+      captures:
+        0: meta.function.end.dformat.picture.section.macro.roff
+        1: punctuation.definition.macro.roff
+        2: entity.function.name.roff
+    - include: repo_dformat
+  - match: ^([.'])[ \t]*(G1)\b(\s*\d+)?(\s*\\".*$)?
+    captures:
+      0: meta.function.begin.graph.picture.section.macro.roff
+      1: punctuation.definition.macro.pic.grap
+      2: entity.function.name.roff
+      3: constant.numeric.parameter.pic.grap
+    push:
+    - meta_content_scope: source.embedded.grap.pic
+    - match: ^([.'])[ \t]*(G2)\b
+      pop: true
+      captures:
+        0: meta.function.end.graph.picture.section.macro.roff
+        1: punctuation.definition.macro.pic.grap
+        2: entity.function.name.roff
+    - include: repo_grap

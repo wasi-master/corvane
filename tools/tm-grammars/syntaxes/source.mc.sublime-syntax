@@ -1,0 +1,757 @@
+%YAML 1.2
+---
+# Monkey C (source.mc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/ghisguth/vscode-monkey-c via GitHub Linguist v9.7.0 (license: mit).
+name: Monkey C
+scope: source.mc
+file_extensions:
+- mc
+contexts:
+  main:
+  - include: repo_statements
+  repo_access-modifier:
+  - match: (?<!\.|\$)\b(hidden|static|public|private|protected)\b(?!\$)
+    scope: storage.modifier.mc
+  repo_after-operator-block:
+  - match: (?<=[=(,\[?+!]|return|throw|in|of|typeof|&&|\|\||\*)\s*(\{)
+    captures:
+      1: punctuation.definition.block.mc
+    push:
+    - meta_scope: meta.objectliteral.mc
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.mc
+    - include: repo_object-member
+  repo_array-literal:
+  - match: \[
+    captures:
+      0: meta.brace.square.mc
+    push:
+    - meta_scope: meta.array.literal.mc
+    - match: \]
+      pop: true
+      captures:
+        0: meta.brace.square.mc
+    - include: repo_expression
+    - include: repo_punctuation-comma
+  repo_boolean-literal:
+  - match: (?<!\.|\$)\btrue\b(?!\$)
+    scope: constant.language.boolean.true.mc
+  - match: (?<!\.|\$)\bfalse\b(?!\$)
+    scope: constant.language.boolean.false.mc
+  repo_case-clause:
+  - match: (?<!\.|\$)\b(case|default(?=:))\b(?!\$)
+    captures:
+      1: keyword.control.switch.mc
+    push:
+    - meta_scope: case-clause.expr.mc
+    - match: ':'
+      pop: true
+      captures:
+        0: punctuation.definition.section.case-statement.mc
+    - include: repo_expression
+  repo_class-body:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.mc
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.mc
+    - include: repo_string
+    - include: repo_comment
+    - include: repo_decorator
+    - include: repo_method-declaration
+    - include: repo_enum-declaration
+    - include: repo_field-declaration
+    - include: repo_access-modifier
+    - include: repo_after-operator-block
+    - include: repo_decl-block
+    - include: repo_expression
+    - include: repo_punctuation-semicolon
+  repo_class-declaration:
+  - match: (?<!\.|\$)\b(?:(class))\b
+    captures:
+      1: storage.type.class.mc
+    push:
+    - meta_scope: meta.class.mc
+    - match: (?<=\})
+      pop: true
+      captures:
+        1: punctuation.definition.block.mc
+    - include: repo_comment
+    - include: repo_class-heritage
+    - match: '[_$[:alpha:]][_$[:alnum:]]*'
+      captures:
+        0: entity.name.type.class.mc
+    - include: repo_class-body
+  repo_class-heritage:
+  - match: (?<!\.|\$)(?:\b(extends)\b)(?!\$)
+    captures:
+      1: storage.modifier.mc
+    push:
+    - match: (?=\{)
+      pop: true
+      captures:
+        1: punctuation.definition.block.mc
+    - include: repo_comment
+    - include: repo_class-heritage
+    - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(\.)(?=\s*[_$[:alpha:]][_$[:alnum:]]*(\s*\.\s*[_$[:alpha:]][_$[:alnum:]]*)*\s*([,<{]|extends|//|/\*))
+      captures:
+        1: entity.name.type.module.mc
+        2: punctuation.accessor.mc
+    - match: ([_$[:alpha:]][_$[:alnum:]]*)(?=\s*([,<{]|extends|//|/\*))
+      captures:
+        1: entity.other.inherited-class.mc
+    - include: repo_expression
+  repo_comment:
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.mc
+    push:
+    - meta_scope: comment.block.documentation.mc
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.mc
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.mc
+    push:
+    - meta_scope: comment.block.mc
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.mc
+  - match: (^[ \t]+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.mc
+    push:
+    - match: (?=$)
+      pop: true
+    - match: //
+      captures:
+        0: punctuation.definition.comment.mc
+      push:
+      - meta_scope: comment.line.double-slash.mc
+      - match: (?=$)
+        pop: true
+  repo_control-statement:
+  - match: (?<!\.|\$)\b(typedef)\b(?!\$)
+    scope: keyword.control.typedef.mc
+  - match: (?<!\.|\$)\b(catch|finally|throw|try)\b(?!\$)
+    scope: keyword.control.trycatch.mc
+  - match: (?<!\.|\$)\b(break|continue|do|while)\b(?!\$)
+    scope: keyword.control.loop.mc
+  - match: (?<!\.|\$)\b(return)\b(?!\$)
+    scope: keyword.control.flow.mc
+  - match: (?<!\.|\$)\b(case|default|switch)\b(?!\$)
+    scope: keyword.control.switch.mc
+  - match: (?<!\.|\$)\b(else|if)\b(?!\$)
+    scope: keyword.control.conditional.mc
+  repo_decl-block:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.mc
+    push:
+    - meta_scope: meta.block.mc
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.mc
+    - include: repo_statements
+  repo_declaration:
+  - include: repo_decorator
+  - include: repo_access-modifier
+  - include: repo_var-expr
+  - include: repo_function-declaration
+  - include: repo_class-declaration
+  - include: repo_enum-declaration
+  - include: repo_namespace-declaration
+  - include: repo_import-declaration
+  repo_decorator:
+  - match: (?<!\.|\$)(\(:([_$[:alpha:]][_$[:alnum:]]*)\))
+    captures:
+      0: storage.type.decorator.mc
+  repo_enum-declaration:
+  - match: (?<!\.|\$)\b(enum)\b
+    captures:
+      1: storage.type.enum.mc
+    push:
+    - meta_scope: meta.enum.declaration.mc
+    - match: (?<=\})
+      pop: true
+    - include: repo_comment
+    - match: \{
+      captures:
+        0: punctuation.definition.block.mc
+      push:
+      - match: \}
+        pop: true
+        captures:
+          0: punctuation.definition.block.mc
+      - include: repo_comment
+      - match: ([_$[:alpha:]][_$[:alnum:]]*)
+        captures:
+          0: variable.other.enummember.mc
+        push:
+        - match: (?=,|\}|$)
+          pop: true
+        - include: repo_comment
+        - include: repo_variable-initializer
+      - match: (?=((\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]*\])+\])))
+        push:
+        - match: (?=,|\}|$)
+          pop: true
+        - include: repo_string
+        - include: repo_array-literal
+        - include: repo_comment
+        - include: repo_variable-initializer
+      - include: repo_punctuation-comma
+  repo_expression:
+  - include: repo_string
+  - include: repo_comment
+  - include: repo_literal
+  - include: repo_function-declaration
+  - include: repo_class-declaration
+  - include: repo_ternary-expression
+  - include: repo_new-expr
+  - include: repo_object-literal
+  - include: repo_expression-operators
+  - include: repo_function-call
+  - include: repo_support-objects
+  - include: repo_identifiers
+  - include: repo_paren-expression
+  - include: repo_punctuation-comma
+  - include: repo_punctuation-accessor
+  repo_expression-operators:
+  - match: (?<!\.|\$)\binstanceof\b(?!\$)
+    scope: keyword.operator.expression.instanceof.mc
+  - match: (?<!\.|\$)\bhas\b(?!\$)
+    scope: keyword.control.has.mc
+  - match: (?<!\.|\$)\bas\b(?!\$)
+    scope: keyword.control.as.mc
+  - match: (?<!\.|\$)\bnew\b(?!\$)
+    scope: keyword.operator.new.mc
+  - match: (?<!\.|\$)\bvoid\b(?!\$)
+    scope: keyword.operator.expression.void.mc
+  - match: \*=|(?<!\()/=|%=|\+=|\-=
+    scope: keyword.operator.assignment.compound.mc
+  - match: \&=|\^=|<<=|>>=|\|=
+    scope: keyword.operator.assignment.compound.bitwise.mc
+  - match: <<|>>
+    scope: keyword.operator.bitwise.shift.mc
+  - match: ==|!=
+    scope: keyword.operator.comparison.mc
+  - match: <=|>=|<>|<|>
+    scope: keyword.operator.relational.mc
+  - match: \!|&&|\|\|
+    scope: keyword.operator.logical.mc
+  - match: (?<!\.|\$)\band|or|not\b(?!\$)
+    scope: keyword.operator.expression.logical.mc
+  - match: \&|~|\^|\|
+    scope: keyword.operator.bitwise.mc
+  - match: \=
+    scope: keyword.operator.assignment.mc
+  - match: --
+    scope: keyword.operator.decrement.mc
+  - match: \+\+
+    scope: keyword.operator.increment.mc
+  - match: '%|\*|/|-|\+'
+    scope: keyword.operator.arithmetic.mc
+  - match: (?<=[_$[:alnum:])])\s*(/)(?![/*])
+    captures:
+      1: keyword.operator.arithmetic.mc
+  repo_field-declaration:
+  - match: (?<!\()(?:(?<!\.|\$)\b(const|var)\s+)(?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]*\])+\]))\s*(\?\s*)?(=)?)
+    captures:
+      1: storage.type.mc
+    push:
+    - meta_scope: meta.field.declaration.mc
+    - match: (?=\}|;|,|$)|(?<=\})
+      pop: true
+    - include: repo_type-clause
+    - include: repo_variable-initializer
+  repo_for-loop:
+  - match: (?<!\.|\$)\b(for)\s*(\()
+    captures:
+      1: keyword.control.loop.mc
+      2: meta.brace.round.mc
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.mc
+    - include: repo_var-expr
+    - include: repo_expression
+    - include: repo_punctuation-semicolon
+  repo_function-call:
+  - match: (?=(\.\s*)?([_$[:alpha:]][_$[:alnum:]]*)\s*(<([^<>]|\<[^<>]+\>)+>\s*)?\()
+    push:
+    - match: (?<=\))(?!(\.\s*)?([_$[:alpha:]][_$[:alnum:]]*)\s*(<([^<>]|\<[^<>]+\>)+>\s*)?\()
+      pop: true
+    - match: (?<!\.|\$)\b(Number|Float|Double|Long|Boolean|String|Char|Symbol|Array|Dictionary|Method|Null|Object|WeakReference|Void)\b(?!\$)
+      scope: storage.type.builtin.mc
+    - include: repo_support-objects
+    - include: repo_punctuation-accessor
+    - match: ([_$[:alpha:]][_$[:alnum:]]*)
+      scope: entity.name.function.mc
+    - include: repo_comment
+    - include: repo_paren-expression
+  repo_function-declaration:
+  - match: (?<!\.|\$)\b(function\b)(?:(?:\s+|(?<=\*))([_$[:alpha:]][_$[:alnum:]]*))?\s*
+    captures:
+      1: storage.type.function.mc
+      2: entity.name.function.mc
+    push:
+    - meta_scope: meta.function.mc
+    - match: (?=$|;|\})|(?<=\})
+      pop: true
+    - include: repo_comment
+    - include: repo_function-parameters
+    - include: repo_type-clause
+    - include: repo_decl-block
+  repo_function-parameters:
+  - match: \(
+    captures:
+      0: punctuation.definition.parameters.begin.mc
+    push:
+    - meta_scope: meta.parameters.mc
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.parameters.end.mc
+    - include: repo_comment
+    - include: repo_decorator
+    - include: repo_type-dictionary
+    - include: repo_parameter-name
+    - include: repo_type-clause
+    - include: repo_variable-initializer
+    - match: ','
+      scope: punctuation.separator.parameter.mc
+  repo_identifiers:
+  - match: (?<!\.|\$)\b(Number|Float|Double|Long|Boolean|String|Char|Symbol|Array|Dictionary|Method|Null|Object|WeakReference|Void)\b(?!\$)
+    scope: storage.type.builtin.mc
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)(?=\s*\.\s*prototype\b(?!\$))
+    scope: support.class.mc
+  - match: "(?x)(\\.)\\s*(?:\n  ([[:upper:]][_$[:digit:][:upper:]]*) |\n  ([_$[:alpha:]][_$[:alnum:]]*)\n)(?=\\s*\\.\\s*[_$[:alpha:]][_$[:alnum:]]*)"
+    captures:
+      1: punctuation.accessor.mc
+      2: variable.other.constant.object.property.mc
+      3: variable.other.object.property.mc
+  - match: "(?x)(?:(\\.)\\s*)?([_$[:alpha:]][_$[:alnum:]]*)(?=\\s*=\\s*(\n  (function\\s*[(<])|(function\\s+)|\n  ([_$[:alpha:]][_$[:alnum:]]*\\s*=>)|\n  ([(]\\s*(([)]\\s*:)|([_$[:alpha:]][_$[:alnum:]]*\\s*:) )) |\n  ([<]\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s*[^=>])|(\\s*[,]))) |\n  ((<([^<>]|\\<[^<>]+\\>)+>\\s*)?\\(([^()]|\\([^()]*\\))*\\)(\\s*:\\s*(.)*)?\\s*=>)))"
+    captures:
+      1: punctuation.accessor.mc
+      2: entity.name.function.mc
+  - match: (\.)\s*([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+    captures:
+      1: punctuation.accessor.mc
+      2: variable.other.constant.property.mc
+  - match: (\.)\s*([_$[:alpha:]][_$[:alnum:]]*)
+    captures:
+      1: punctuation.accessor.mc
+      2: variable.other.property.mc
+  - match: "(?x)(?:\n  ([[:upper:]][_$[:digit:][:upper:]]*) |\n  ([_$[:alpha:]][_$[:alnum:]]*)\n)(?=\\s*\\.\\s*[_$[:alpha:]][_$[:alnum:]]*)"
+    captures:
+      1: variable.other.constant.object.mc
+      2: variable.other.object.mc
+  - match: ([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+    scope: variable.other.constant.mc
+  - match: '[_$[:alpha:]][_$[:alnum:]]*'
+    scope: variable.other.readwrite.mc
+  repo_import-declaration:
+  - match: (?<!\.|\$)\b(using|import)(?!(\s*:)|(\$))\b
+    captures:
+      1: keyword.control.import.mc
+    push:
+    - meta_scope: meta.import.mc
+    - match: (?=;|$)
+      pop: true
+    - include: repo_import-export-declaration
+  repo_import-export-clause:
+  - include: repo_comment
+  - match: "(?x) ([_$[:alpha:]][_$[:alnum:]]*) \\s+ \n  (as) \\s+ ([_$[:alpha:]][_$[:alnum:]]*)"
+    captures:
+      1: variable.other.readwrite.mc
+      2: keyword.control.as.mc
+      3: entity.name.type.alias.mc
+  - include: repo_punctuation-comma
+  - match: \*
+    scope: constant.language.import-export-all.mc
+  - match: \b(default)\b
+    scope: keyword.control.default.mc
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)
+    scope: variable.other.readwrite.alias.mc
+  repo_import-export-declaration:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_import-export-clause
+  repo_literal:
+  - include: repo_numeric-literal
+  - include: repo_boolean-literal
+  - include: repo_null-literal
+  - include: repo_numericConstant-literal
+  - include: repo_array-literal
+  repo_method-declaration:
+  - match: (?<!\.|\$)(?:\b(hidden|public|private|protected)\s+)?(?:\b(function)\s+)(?:(?:\b(?:(initialize)|(initialize))\b(?!\$|:))|(?:(\*)\s*)?(?=((([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]*\])+\]))\s*(\??))?\s*[\(\<]))
+    captures:
+      1: storage.modifier.mc
+      2: storage.type.function.mc
+      3: keyword.operator.new.mc
+      4: storage.type.mc
+      5: keyword.generator.asterisk.mc
+    push:
+    - meta_scope: meta.method.declaration.mc
+    - match: (?=\}|;|,|$)|(?<=\})
+      pop: true
+    - include: repo_method-declaration-name
+    - include: repo_comment
+    - include: repo_function-parameters
+    - include: repo_type-clause
+    - include: repo_decl-block
+  repo_method-declaration-name:
+  - match: (?=(([_$[:alpha:]][_$[:alnum:]]*)|(\'[^']*\')|(\"[^"]*\")|(\[([^\[\]]|\[[^\[\]]*\])+\]))\s*(\??)\s*[\(\<])
+    push:
+    - match: (?=\(|\<)
+      pop: true
+    - include: repo_string
+    - include: repo_array-literal
+    - match: '[_$[:alpha:]][_$[:alnum:]]*'
+      scope: entity.name.function.mc
+  repo_namespace-declaration:
+  - match: (?<!\.|\$)\b(module)\s+(?=[_$[:alpha:]"'`])
+    captures:
+      1: storage.type.namespace.mc
+    push:
+    - meta_scope: meta.namespace.declaration.mc
+    - match: (?=$|\{)
+      pop: true
+    - include: repo_comment
+    - include: repo_string
+    - match: ([_$[:alpha:]][_$[:alnum:]]*)
+      scope: entity.name.type.module.mc
+    - include: repo_punctuation-accessor
+  repo_new-expr:
+  - match: (?<!\.|\$)\b(new)\b(?!\$)
+    captures:
+      1: keyword.operator.new.mc
+    push:
+    - meta_scope: new.expr.mc
+    - match: (?<=\))|(?=[;),}]|$|((?<!\.|\$)\bnew\b(?!\$)))
+      pop: true
+    - include: repo_paren-expression
+    - include: repo_class-declaration
+    - include: repo_type
+  repo_null-literal:
+  - match: (?<!\.|\$)\bnull\b(?!\$)
+    scope: constant.language.null.mc
+  repo_numeric-literal:
+  - match: \b(?<!\$)0(x|X)[0-9a-fA-F]+\b(?!\$)
+    scope: constant.numeric.hex.mc
+  - match: \b(?<!\$)0(b|B)[01]+\b(?!\$)
+    scope: constant.numeric.binary.mc
+  - match: \b(?<!\$)0(o|O)?[0-7]+\b(?!\$)
+    scope: constant.numeric.octal.mc
+  - match: "(?x)\n(?<!\\$)(?:\n  (?:\\b[0-9]+(\\.)[0-9]+[eE][+-]?[0-9]+[ld]?\\b)| # 1.1E+3\n  (?:\\b[0-9]+(\\.)[eE][+-]?[0-9]+[ld]?\\b)|       # 1.E+3\n  (?:\\B(\\.)[0-9]+[eE][+-]?[0-9]+[ld]?\\b)|       # .1E+3\n  (?:\\b[0-9]+[eE][+-]?[0-9]+[ld]?\\b)|            # 1E+3\n  (?:\\b[0-9]+(\\.)[0-9]+[ld]?\\b)|                # 1.1\n  (?:\\b[0-9]+(\\.)[ld]?\\B)|                      # 1.\n  (?:\\B(\\.)[0-9]+[ld]?\\b)|                      # .1\n  (?:\\b[0-9]+[ld]?\\b(?!\\.))                     # 1\n)(?!\\$)"
+    captures:
+      0: constant.numeric.decimal.mc
+      1: meta.delimiter.decimal.period.mc
+      2: meta.delimiter.decimal.period.mc
+      3: meta.delimiter.decimal.period.mc
+      4: meta.delimiter.decimal.period.mc
+      5: meta.delimiter.decimal.period.mc
+      6: meta.delimiter.decimal.period.mc
+  repo_numericConstant-literal:
+  - match: (?<!\.|\$)\bNaN\b(?!\$)
+    scope: constant.language.nan.mc
+  repo_object-literal:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.mc
+    push:
+    - meta_scope: meta.objectliteral.mc
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.mc
+    - include: repo_object-member
+  repo_object-member:
+  - include: repo_comment
+  - match: (:[_$[:alpha:]][_$[:alnum:]]*)\s*(=>)
+    captures:
+      1: constant.other.symbol.mc
+      2: punctuation.separator.key-value.mc
+    push:
+    - meta_scope: meta.object.member.mc
+    - match: (?=,|\})
+      pop: true
+    - include: repo_expression
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(=>)
+    captures:
+      1: meta.object-literal.key.mc
+      2: punctuation.separator.key-value.mc
+    push:
+    - meta_scope: meta.object.member.mc
+    - match: (?=,|\})
+      pop: true
+    - include: repo_expression
+  - include: repo_punctuation-comma
+  repo_parameter-name:
+  - match: \s*\b(hidden)(?=\s+(hidden)\s+)
+    captures:
+      1: storage.modifier.mc
+  - match: (?:\s*\b(hidden|static|public|private|protected)\s+)?\s*(?<!=|:)([_$[:alpha:]][_$[:alnum:]]*)(?=\s*(as|,|\)|=))
+    captures:
+      1: storage.modifier.mc
+      2: variable.parameter.mc
+  repo_paren-expression:
+  - match: \(
+    captures:
+      0: meta.brace.round.mc
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.mc
+    - include: repo_expression
+    - include: repo_punctuation-comma
+  repo_punctuation-accessor:
+  - match: \.
+    scope: punctuation.accessor.mc
+  repo_punctuation-comma:
+  - match: ','
+    scope: punctuation.separator.comma.mc
+  repo_punctuation-semicolon:
+  - match: ;
+    scope: punctuation.terminator.statement.mc
+  repo_qstring-double:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.mc
+    push:
+    - meta_scope: string.quoted.double.mc
+    - match: (")|((?:[^\\\n])$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.mc
+        2: invalid.illegal.newline.mc
+    - include: repo_string-character-escape
+  repo_qstring-single:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.mc
+    push:
+    - meta_scope: string.quoted.single.mc
+    - match: (\')|((?:[^\\\n])$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.mc
+        2: invalid.illegal.newline.mc
+    - include: repo_string-character-escape
+  repo_statements:
+  - include: repo_string
+  - include: repo_comment
+  - include: repo_literal
+  - include: repo_declaration
+  - include: repo_switch-statement
+  - include: repo_for-loop
+  - include: repo_after-operator-block
+  - include: repo_decl-block
+  - include: repo_control-statement
+  - include: repo_expression
+  - include: repo_punctuation-semicolon
+  repo_string:
+  - include: repo_qstring-single
+  - include: repo_qstring-double
+  repo_string-character-escape:
+  - match: \\(x[[:xdigit:]]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)
+    scope: constant.character.escape.mc
+  repo_support-objects:
+  - match: "(?x)(?<!\\.|\\$)\\b(Math)(?:\\s*(\\.)\\s*(?:\n  (abs|acos|acosh|asin|asinh|atan|atan2|atanh|cbrt|ceil|clz32|cos|cosh|exp|\n  expm1|floor|fround|hypot|imul|log|log10|log1p|log2|max|min|pow|random|\n  round|sign|sin|sinh|sqrt|tan|tanh|trunc)\n  |\n  (E|LN10|LN2|LOG10E|LOG2E|PI|SQRT1_2|SQRT2)))?\\b(?!\\$)"
+    captures:
+      1: support.constant.math.mc
+      2: punctuation.accessor.mc
+      3: support.function.math.mc
+      4: support.constant.property.math.mc
+  - match: "(?x)(?<!\\.|\\$)\\b(System)(?:\\s*(\\.)\\s*(\n  print|println|getTimer|getClockTime|getSystemStats|trap|exit|error))?\\b(?!\\$)"
+    captures:
+      1: support.class.system.mc
+      2: punctuation.accessor.mc
+      3: support.function.system.mc
+  - match: "(?x) (\\.) \\s* \n(?:\n (method)\n)(?=\\s*\\()"
+    captures:
+      1: punctuation.accessor.js
+      2: support.function.js
+  repo_switch-block:
+  - match: \{
+    captures:
+      0: punctuation.definition.block.mc
+    push:
+    - meta_scope: switch-block.expr.mc
+    - match: (?=\})
+      pop: true
+    - include: repo_case-clause
+    - include: repo_statements
+  repo_switch-expression:
+  - match: (?<!\.|\$)\b(switch)\s*(\()
+    captures:
+      1: keyword.control.switch.mc
+      2: meta.brace.round.mc
+    push:
+    - meta_scope: switch-expression.expr.mc
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.mc
+    - include: repo_expression
+  repo_switch-statement:
+  - match: (?<!\.|\$)(?=\bswitch\s*\()
+    push:
+    - meta_scope: switch-statement.expr.mc
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.block.mc
+    - include: repo_switch-expression
+    - include: repo_switch-block
+  repo_ternary-expression:
+  - match: (\?)
+    captures:
+      0: keyword.operator.ternary.mc
+    push:
+    - match: (:)
+      pop: true
+      captures:
+        0: keyword.operator.ternary.mc
+    - include: repo_expression
+  repo_type:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_numeric-literal
+  - include: repo_type-builtin-literals
+  - include: repo_type-fn-type-parameters
+  - include: repo_type-paren-or-function-parameters
+  - include: repo_type-name
+  repo_type-builtin-literals:
+  - match: (?<!\.|\$)\b(this|true|false|null|Number|Float|Double|Long|Boolean|String|Char|Symbol|Array|Dictionary|Method|Object|WeakReference|Void)\b(?!\$)
+    scope: storage.type.builtin.mc
+  repo_type-clause:
+  - match: (?<!\.|\$)\b(as)\b(?!\$)
+    captures:
+      1: keyword.control.as.mc
+    push:
+    - match: (?=[;,={)])|(?=^\s*$)
+      pop: true
+    - include: repo_type
+  repo_type-dictionary:
+  - match: \{
+    captures:
+      0: meta.brace.curly.mc
+    push:
+    - meta_scope: meta.type.dictionary.mc
+    - match: \}
+      pop: true
+      captures:
+        0: meta.brace.curly.mc
+    - include: repo_comment
+    - match: (:[_$[:alpha:]][_$[:alnum:]]*)
+      scope: constant.other.symbol.mc
+    - include: repo_type-clause
+    - match: ','
+      scope: punctuation.separator.parameter.mc
+  repo_type-fn-type-parameters:
+  - match: (?<!\.|\$)\b(new)\b(?=\s*\<)
+    scope: meta.type.constructor.mc
+    captures:
+      1: keyword.control.new.mc
+  - match: (?<!\.|\$)\b(new)\b\s*(?=\()
+    captures:
+      1: keyword.control.new.mc
+    push:
+    - meta_scope: meta.type.constructor.mc
+    - match: (?<=\))
+      pop: true
+    - include: repo_function-parameters
+  - match: (?<=\>)\s*(?=\()
+    push:
+    - meta_scope: meta.type.function.mc
+    - match: (?<=\))
+      pop: true
+    - include: repo_function-parameters
+  - match: "(?x)(\n  (?=\n    [(]\\s*(\n      ([)]) | \n      (\\.\\.\\.) |\n      ([_$[:alnum:]]+\\s*(\n        ([:,?=])|\n        ([)]\\s*=>)\n      ))\n    )\n  )\n)"
+    push:
+    - meta_scope: meta.type.function.mc
+    - match: (?<=\))
+      pop: true
+    - include: repo_function-parameters
+  repo_type-name:
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)\s*(\.)
+    captures:
+      1: entity.name.type.module.mc
+      2: punctuation.accessor.mc
+  - match: '[_$[:alpha:]][_$[:alnum:]]*'
+    scope: entity.name.type.mc
+  repo_type-paren-or-function-parameters:
+  - match: \(
+    captures:
+      0: meta.brace.round.mc
+    push:
+    - meta_scope: meta.type.paren.cover.mc
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.mc
+    - include: repo_type
+    - include: repo_function-parameters
+  repo_var-expr:
+  - match: (?<!\.|\$)\b(var|const(?!\s+enum\b))\b(?!\$)
+    captures:
+      1: storage.type.mc
+    push:
+    - meta_scope: meta.var.expr.mc
+    - match: (?=$|;|})
+      pop: true
+    - include: repo_var-single-variable
+    - include: repo_type-clause
+    - include: repo_variable-initializer
+    - include: repo_comment
+    - include: repo_punctuation-comma
+  repo_var-single-variable:
+  - match: "(?x)([_$[:alpha:]][_$[:alnum:]]*)(?=\\s*\n  (=\\s*(\n    (function\\s*[(<]) |\n    (function\\s+) |\n    ([_$[:alpha:]][_$[:alnum:]]*\\s*=>) |\n    ([(]\\s*(([)]\\s*:)|([_$[:alpha:]][_$[:alnum:]]*\\s*:)|(\\.\\.\\.) )) |\n    ([<]\\s*[_$[:alpha:]][_$[:alnum:]]*((\\s+extends\\s*[^=>])|(\\s*[,]))) |\n    ((<([^<>]|\\<[^<>]+\\>)+>\\s*)?\\(([^()]|\\([^()]*\\))*\\)(\\s*:\\s*(.)*)?\\s*=>))\n  ) |\n  (:\\s*(\n    (<) |\n    ([(]\\s*(\n      ([)]) |\n      (\\.\\.\\.) |\n      ([_$[:alnum:]]+\\s*(\n        ([:,?=])|\n        ([)]\\s*=>)\n      ))\n    )))\n  )\n)"
+    captures:
+      1: entity.name.function.mc
+    push:
+    - meta_scope: meta.var-single-variable.expr.mc
+    - match: (?=\s*(as|of|in|=|[;,}]))
+      pop: true
+  - match: ([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+    captures:
+      1: variable.other.constant.mc
+    push:
+    - meta_scope: meta.var-single-variable.expr.mc
+    - match: (?=\s*(as|of|in|=|[;,}]))
+      pop: true
+  - match: ([_$[:alpha:]][_$[:alnum:]]*)
+    captures:
+      1: variable.other.readwrite.mc
+    push:
+    - meta_scope: meta.var-single-variable.expr.mc
+    - match: (?=\s*(as|of|in|=|[;,}]))
+      pop: true
+  repo_variable-initializer:
+  - match: (?<!=|!)(=)(?!=)(?=\s*\S)
+    captures:
+      1: keyword.operator.assignment.mc
+    push:
+    - match: (?=$|[,);}\]])
+      pop: true
+    - include: repo_expression
+  - match: (?<!=|!)(=)(?!=)
+    captures:
+      1: keyword.operator.assignment.mc
+    push:
+    - match: (?=[,);}\]])|(?=^\s*$)
+      pop: true
+    - include: repo_expression

@@ -1,0 +1,53 @@
+%YAML 1.2
+---
+# Nextflow (source.nextflow): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/atom-language-nextflow via GitHub Linguist v9.7.0 (license: mit).
+name: Nextflow
+scope: source.nextflow
+file_extensions:
+- nf
+- nextflow.config
+first_line_match: ^#!.*\b(nextflow)\b
+contexts:
+  main:
+  - include: repo_nfl-rules
+  repo_code-block:
+  - match: '{'
+    push:
+    - meta_scope: code.block.nextflow
+    - match: '}'
+      pop: true
+    - include: repo_nfl-rules
+  repo_nfl-rules:
+  - include: repo_process-def
+  - include: repo_code-block
+  - include: scope:source.nextflow-groovy
+  repo_process-body:
+  - match: '{'
+    push:
+    - meta_scope: process.body.nextflow
+    - match: (?=})
+      pop: true
+    - match: (?:accelerator|afterScript|beforeScript|cache|cpus|conda|container|containerOptions|clusterOptions|disk|echo|errorStrategy|executor|ext|label|machineType|maxErrors|maxForks|maxRetries|memory|module|penv|pod|publishDir|queue|scratch|stageInMode|stageOutMode|storeDir|tag|time|validExitStatus)\b
+      scope: process.directive.type.nextflow
+    - match: '(?:input|output|when|script|shell|exec):'
+      scope: constant.block.nextflow
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+    - include: scope:source.nextflow-groovy
+  repo_process-def:
+  - match: ^\s*(process)\s+(\w+|"[^"]+"|'[^']+')\s*
+    captures:
+      1: keyword.nextflow
+      2: function.nextflow
+    push:
+    - meta_scope: process.nextflow
+    - match: '}'
+      pop: true
+    - include: repo_process-body

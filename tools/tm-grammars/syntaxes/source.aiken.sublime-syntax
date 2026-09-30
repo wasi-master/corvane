@@ -1,0 +1,84 @@
+%YAML 1.2
+---
+# Aiken (source.aiken): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/aiken-lang/vscode-aiken.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: Aiken
+scope: source.aiken
+file_extensions:
+- ak
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_constant
+  - include: repo_entity
+  repo_binary_number:
+  - match: \b0b[0-1]+\b
+    scope: constant.numeric.binary.aiken
+  repo_boolean:
+  - match: \b(True|False)\b
+    scope: constant.language.boolean.aiken
+  repo_comments:
+  - match: //.*
+    scope: comment.line.aiken
+  repo_constant:
+  - include: repo_binary_number
+  - include: repo_octal_number
+  - include: repo_hexadecimal_number
+  - include: repo_decimal_number
+  - include: repo_boolean
+  - match: '[[:upper:]][[:word:]]*'
+    scope: entity.name.type.aiken
+  repo_decimal_number:
+  - match: \b[[:digit:]][[:digit:]_]*(\.[[:digit:]]*)?\b
+    scope: constant.numeric.decimal.aiken
+  repo_entity:
+  - match: \b([[:lower:]][[:word:]]*)([[:space:]]*)?\(
+    captures:
+      1: entity.name.function.aiken
+    push:
+    - match: \)
+      pop: true
+      captures:
+        1: entity.name.function.aiken
+    - include: main
+  - match: \b([[:lower:]][[:word:]]*):\s
+    scope: variable.parameter.aiken
+  - match: '\b([[:lower:]][[:word:]]*):'
+    scope: entity.name.namespace.aiken
+  repo_hexadecimal_number:
+  - match: \b0x[[:xdigit:]]+\b
+    scope: constant.numeric.hexadecimal.aiken
+  repo_keywords:
+  - match: \b(if|else|when|is|fn|use|let|pub|type|opaque|const|todo|expect|test|bench|trace|fail|validator|and|or|as|via|once)\b
+    scope: keyword.control.aiken
+  - match: ->
+    scope: keyword.operator.arrow.aiken
+  - match: <-
+    scope: keyword.operator.back_arrow.aiken
+  - match: \|>
+    scope: keyword.operator.pipe.aiken
+  - match: \.\.
+    scope: keyword.operator.splat.aiken
+  - match: (<=|>=|==|!=|<|>)
+    scope: keyword.operator.comparison.aiken
+  - match: (&&|\|\|)
+    scope: keyword.operator.logical.aiken
+  - match: \|
+    scope: keyword.operator.other.aiken
+  - match: (\+|\-|/|\*|%)
+    scope: keyword.operator.arithmetic.aiken
+  - match: '='
+    scope: keyword.operator.assignment.aiken
+  repo_octal_number:
+  - match: \b0o[0-7]+\b
+    scope: constant.numeric.octal.aiken
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.aiken
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.aiken

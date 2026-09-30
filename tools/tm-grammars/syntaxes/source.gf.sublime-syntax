@@ -1,0 +1,39 @@
+%YAML 1.2
+---
+# Grammatical Framework (source.gf): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/johnjcamilleri/language-gf via GitHub Linguist v9.7.0 (license: mit).
+name: Grammatical Framework
+scope: source.gf
+file_extensions:
+- gf
+contexts:
+  main:
+  - match: \b(abstract|concrete|interface|instance|resource|incomplete|of|with|open|in)\b
+    scope: keyword.module.gf
+  - match: \b(cat|fun|def|data|lincat|lin|lindef|linref|printname|printname|param|oper|flags)\b
+    scope: keyword.judgement.gf
+  - match: \b(table|pre|case|variants|let|in|where)\b
+    scope: keyword.other.gf
+  - match: (=>|->|:|=|\.|\+|\*|!|\||\\)
+    scope: constant.gf
+  - match: (;|,)
+    scope: constant.gf
+  - match: '"'
+    captures:
+      0: punctuation.string.begin.gf
+    push:
+    - meta_scope: string.quoted.double.gf
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.string.end.gf
+  - match: --
+    push:
+    - meta_scope: comment.line.gf
+    - match: $
+      pop: true
+  - match: '{-'
+    push:
+    - meta_scope: comment.block.gf
+    - match: -}
+      pop: true

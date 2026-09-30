@@ -1,0 +1,59 @@
+%YAML 1.2
+---
+# Berry (source.berry): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/berry-lang/berry-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Berry
+scope: source.berry
+file_extensions:
+- be
+contexts:
+  main:
+  - include: repo_controls
+  - include: repo_strings
+  - include: repo_comment-block
+  - include: repo_comments
+  - include: repo_keywords
+  - include: repo_function
+  - include: repo_member
+  - include: repo_identifier
+  - include: repo_number
+  - include: repo_operator
+  repo_comment-block:
+  - match: \#\-
+    push:
+    - meta_scope: comment.berry
+    - match: \-#
+      pop: true
+  repo_comments:
+  - match: \#
+    push:
+    - meta_scope: comment.line.berry
+    - match: \n
+      pop: true
+  repo_controls:
+  - match: \b(if|elif|else|for|while|do|end|break|continue|return|try|except|raise)\b
+    scope: keyword.control.berry
+  repo_function:
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*(?=\s*\())
+    scope: entity.name.function.berry
+  repo_identifier:
+  - match: \b[_A-Za-z]\w+\b
+    scope: identifier.berry
+  repo_keywords:
+  - match: \b(var|static|def|class|true|false|nil|self|super|import|as)\b
+    scope: keyword.berry
+  repo_member:
+  - match: \.([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      0: entity.other.attribute-name.berry
+  repo_number:
+  - match: 0x[a-fA-F0-9]+|\d+|(\d+\.?|\.\d)\d*([eE][+-]?\d+)?
+    scope: constant.numeric.berry
+  repo_operator:
+  - match: '\(|\)|\[|\]|\.|-|\!|~|\*|/|%|\+|&|\^|\||<|>|=|:'
+    scope: keyword.operator.berry
+  repo_strings:
+  - match: '"(\\.|[^"])*"'
+    scope: string.quoted.double.berry
+  - match: '''(\\.|[^''])*'''
+    scope: string.quoted.single.berry

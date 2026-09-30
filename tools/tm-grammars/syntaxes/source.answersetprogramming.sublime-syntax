@@ -1,0 +1,79 @@
+%YAML 1.2
+---
+# Answer Set Programming (source.answersetprogramming): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nickswalker/asp-syntax-highlight.git via GitHub Linguist v9.7.0 (license: mit).
+name: Answer Set Programming
+scope: source.answersetprogramming
+file_extensions:
+- lp
+first_line_match: ^#!.*\b(clingo)\b
+contexts:
+  main:
+  - include: repo_keywords
+  repo_keywords:
+  - match: '%\*'
+    push:
+    - meta_scope: comment.asp
+    - match: \*%
+      pop: true
+  - match: '%.*'
+    scope: comment.asp
+  - match: \bnot\b
+    scope: constant.language.asp
+  - match: :-
+    scope: punctuation.section.embedded.asp
+  - match: ','
+    scope: punctuation.separator.and.asp
+  - match: ;
+    scope: punctuation.separator.or.asp
+  - match: '!='
+    scope: support.constant.cut.asp
+  - match: '>>'
+    scope: support.constant.cut.asp
+  - match: '#(count|max|min|sum)\b'
+    scope: keyword.asp
+  - match: (object|value|node|highway|robot|shelf|pickingStation|product|order|carries|occurs|pickup|putdown|move|deliver|action|grid)\b
+    scope: keyword.control.flow.asp
+  - match: (less\s*\(\s*cardinality\s*\)|more\s*\(\s*cardinality\s*\)|less\s*\(\s*weight\s*\)|more\s*\(\s*weight\s*\)|preference|pareto|subset|superset|minmax|maxmin|aso|poset|cp|#(preference|optimize))\b
+    scope: keyword.control.flow.asp
+  - match: '@[a-z][A-Za-z0-9_]*\b'
+    scope: support.function.asp
+  - match: '&(sum|dom|distinct|minimize|maximize)\b'
+    scope: support.function.asp
+  - match: '#(maximize|minimize|show|hide|heuristic|showsig|sup|inf|true|false|forget|external|cumulative|disjoint|const|base)\b'
+    scope: support.function.asp
+  - match: '#include\s([<](incmode|csp)[>][.])?'
+    scope: support.function.asp
+  - match: init\b
+    scope: support.function.asp
+  - match: '#program\s((base|step\(\w\)*|check\(\s*\w\s*\)*)[.])?'
+    scope: support.function.asp
+  - match: '#script\s*\(\s*python\s*\)'
+    captures:
+      0: support.function.asp
+    push:
+    - match: '#end[.]'
+      pop: true
+      captures:
+        0: support.function.asp
+    - include: scope:source.python
+  - match: '#script\s*\(\s*lua\s*\)'
+    captures:
+      0: support.function.asp
+    push:
+    - match: '#end[.]'
+      pop: true
+      captures:
+        0: support.function.asp
+    - include: scope:source.lua
+  - match: '[a-z][A-Za-z0-9_]*'
+    scope: entity.name.tag.asp
+  - match: \b[A-Z][A-Za-z0-9_]*
+    scope: variable.asp
+  - match: '"'
+    push:
+    - meta_scope: string.asp
+    - match: '"'
+      pop: true
+  - match: 0|[1-9][0-9]*
+    scope: constant.numeric.asp

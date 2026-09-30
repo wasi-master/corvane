@@ -1,0 +1,12 @@
+%YAML 1.2
+---
+# Nunjucks (text.html.nunjucks): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-nunjucks via GitHub Linguist v9.7.0 (license: mit).
+name: Nunjucks
+scope: text.html.nunjucks
+file_extensions:
+- njk
+contexts:
+  main:
+  - include: scope:source.nunjucks
+  - include: scope:text.html.basic

@@ -1,0 +1,101 @@
+%YAML 1.2
+---
+# Bikeshed (source.csswg): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/tabatkins/bikeshed.git via GitHub Linguist v9.7.0 (license: cc0-1.0).
+name: Bikeshed
+scope: source.csswg
+file_extensions:
+- bs
+contexts:
+  main:
+  - match: <<[^>]+>>
+    scope: string.quoted.double.csswg
+  - match: <\{[^}]+\}>
+    scope: string.quoted.double.csswg
+  - match: '{{'
+    push:
+    - meta_scope: string.quoted.double.csswg
+    - match: \}\}
+      pop: true
+  - match: \[=
+    push:
+    - meta_scope: string.quoted.double.csswg
+    - match: =]
+      pop: true
+  - match: \[\[[^\]]+\]\]
+    scope: constant.other.biblioLink.csswg
+  - match: \[[^\]]+\]
+    scope: constant.language.csswg
+  - match: ''''''
+    push:
+    - meta_scope: string.quoted.double.csswg
+    - match: ''''''
+      pop: true
+  - match: (?<!\w)'[^']+'
+    scope: string.quoted.single.csswg
+  - match: <h\d
+    push:
+    - meta_scope: invalid.illegal.heading.csswg
+    - match: </h\d>
+      pop: true
+  - match: <dfn[^>]*>
+    push:
+    - meta_scope: variable.parameter.definition.csswg
+    - match: </dfn>
+      pop: true
+  - match: <a[ >]
+    push:
+    - meta_scope: string.quoted.double.csswg
+    - match: </a>
+      pop: true
+  - match: <pre\s+class=.*?prod.*?>
+    push:
+    - meta_scope: entity.production.csswg
+    - match: </pre>
+      pop: true
+    - include: repo_production
+    - include: repo_definition
+  - match: <pre\s+class=.*?metadata.*?>
+    push:
+    - meta_scope: entity.metadata.csswg
+    - match: </pre>
+      pop: true
+    - match: ^(?i)(Abstract|Advisement Class|Assertion Class|Assume Explicit For|At Risk|Audience|Block Elements|Boilerplate|Can I Use URL|Canonical URL|Complain About|Custom Warning Text|Custom Warning Title|Dark Mode|Date|Deadline|Default Biblio Display|Default Biblio Status|Default Highlight|Default Ref Status|Die On|Die When|ED|Editor|Editor Term|Expires|External Infotrees|Favicon|Force Crossorigin|Former Editor|Group|H1|Ignore Can I Use Url Failure|Ignore MDN Failure|Ignored Terms|Ignored Vars|Image Auto Size|Implementation Report|Include Can I Use Panels|Include Mdn Panels|Indent|Indent Info|Infer Css Dfns|Informative Classes|Inline Github Issues|Inline Tag Command|Issue Class|Issue Tracker Template|Issue Tracking|Level|Line Numbers|Link Checker Timeout|Link Defaults|Local Boilerplate|Logo|Mailing List|Mailing List Archives|Markup Shorthands|Max ToC Depth|Metadata Include|Metadata Order|No Abstract|No Editor|Note Class|Opaque Elements|Org|Prepare For Tr|Previous Version|Remove Multiple
+        Links|Repository|Required Ids|Revision|Shortname|Slim Build Artifact|Status|Status Text|Test Suite|Text Macro|Title|Toggle Diffs|TR|Tracking Vector Alt Text|Tracking Vector Class|Tracking Vector Image|Tracking Vector Image Height|Tracking Vector Image Width|Tracking Vector Title|Translate Ids|Translation|URL|Use Dfn Panels|Version History|Warning|Work Status|Wpt Display|Wpt Path Prefix|)\s*:\s*(.*)$
+      captures:
+        1: keyword.other.knownKeyName.csswg
+        2: string.unquoted.csswg
+    - match: ^\s*(![\w -]+)\s*:\s*(.*)$
+      captures:
+        1: variable.other.customKeyName.csswg
+        2: string.unquoted.csswg
+    - match: ^\s*([\w -]+)\s*:\s*.*$
+      captures:
+        1: invalid.illegal.unknownKeyName.csswg
+  - match: <pre\s+class=.*?(propdef|descdef).*?>
+    push:
+    - meta_scope: entity.propdef.csswg
+    - match: </pre>
+      pop: true
+    - match: ^\s*(?i)(Name|Value|For|Initial|Applies to|Inherited|Percentages|Media|Computed value|Animation type|Canonical order|Logical property group)\s*:\s*(.*)$
+      captures:
+        1: keyword.other.keyName.csswg
+        2: string.unquoted.csswg
+    - match: ^\s*([\w -]+)\s*:\s*(.*)$
+      captures:
+        1: variable.other.unknownKeyName.csswg
+        2: string.unquoted.csswg
+  - match: </?[a-z]
+    push:
+    - meta_scope: entity.name.tag.csswg
+    - match: '>'
+      pop: true
+  repo_definition:
+  - match: <dfn( |>)
+    push:
+    - meta_scope: variable.parameter.definition.csswg
+    - match: </dfn>
+      pop: true
+  repo_production:
+  - match: <<[^>]+>>
+    scope: constant.other.production.csswg

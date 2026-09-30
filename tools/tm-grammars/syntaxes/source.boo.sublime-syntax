@@ -1,0 +1,87 @@
+%YAML 1.2
+---
+# Boo (source.boo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/drslump/sublime-boo via GitHub Linguist v9.7.0 (license: mit).
+name: Boo
+scope: source.boo
+file_extensions:
+- boo
+contexts:
+  main:
+  - match: ^\s*((static|partial|abstract|final)\s+)*(class)\s+([A-Za-z_][A-Za-z0-9_]*)
+    scope: meta.class.boo
+    captures:
+      1: storage.modifier.boo
+      3: storage.type.class.boo
+      4: entity.name.type.class.boo
+  - match: ^\s*((static|private|protected|public|virtual|override|abstract|final)\s+)*(def)\s+([A-Za-z_][A-Za-z0-9_]*)
+    scope: meta.function.boo
+    captures:
+      1: storage.modifier.boo
+      3: storage.type.function.boo
+      4: entity.name.function.boo
+  - match: \b(assert|break|block|callable|case|class|continue|def|debug|else|elif|ensure|enum|event|except|for|from|get|goto|if|import|in|interface|lock|macro|match|namespace|new|of|otherwise|override|pass|raise|ref|return|self|set|struct|then|try|unless|unsafe|using|virtual|while|yield)\b
+    scope: keyword.control.boo
+  - match: \b(and|or|not|is)\b
+    scope: keyword.operator.logical.boo
+  - match: \b(isa|as|cast)\b
+    scope: keyword.operator.cast.boo
+  - match: <\=|>\=|\=\=|<|>|\!\=
+    scope: keyword.operator.comparison.boo
+  - match: \+\=|-\=|\*\=|/\=|//\=|%\=|&\=|\|\=|\^\=|>>\=|<<\=|\*\*\=
+    scope: keyword.operator.assignment.augmented.boo
+  - match: \+|\-|\*|\*\*|\b/\b|%|<<|>>|&|\||\^|~
+    scope: keyword.operator.arithmetic.boo
+  - match: \=
+    scope: keyword.operator.assignment.boo
+  - match: (\(|\)|\[|\]|{|})
+    scope: punctuation.boo
+  - match: (#|//)
+    push:
+    - meta_scope: comment.line.boo
+    - match: \n
+      pop: true
+  - match: /\*
+    push:
+    - meta_scope: comment.block.boo
+    - match: \*/
+      pop: true
+  - match: \b\d+(\.\d+)?(f|F|L)?\b
+    scope: constant.numeric.boo
+  - match: \b(true|false|null|value)\b
+    scope: constant.language.boo
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.boo
+    - match: ''''
+      pop: true
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.boo
+    - match: '"'
+      pop: true
+  - match: '"""'
+    push:
+    - meta_scope: string.quoted.triple.boo
+    - match: '"""'
+      pop: true
+  - match: '`'
+    push:
+    - meta_scope: string.quoted.backtick.boo
+    - match: '`'
+      pop: true
+  - match: \b(bool|byte|char|date|decimal|double|duck|int|long|object|sbyte|short|single|string|uint|ulong|ushort)\b
+    scope: storage.type.boo
+  - match: \b(public|protected|internal|private|abstract|final|static|partial)\b
+    scope: storage.modifier.boo
+  - match: \b(self|super)\b
+    scope: variable.language.boo
+  - match: \b(print|gets|prompt|join|map|array|len|matrix|iterator|shellp|shell|shellm|enemurate|range|reversed|zip|cat|typeof|sizeof)\b
+    scope: support.function.builtin.boo
+  - match: \b([a-z_]+[A-Za-z0-9_]*(\s+as\s+([A-Za-z0-9_]+)))\b
+    captures:
+      1: variable.parameter.boo
+      2: keyword.operator.cast.boo
+      3: storage.type.boo
+  - match: \b[a-z_]+[A-Za-z_0-9]*\b
+    scope: variable.boo

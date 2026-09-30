@@ -1,0 +1,56 @@
+%YAML 1.2
+---
+# Promela (source.promela): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/corbanmailloux/sublime-promela-spin.git via GitHub Linguist v9.7.0 (license: mit).
+name: Promela
+scope: source.promela
+file_extensions:
+- pml
+contexts:
+  main:
+  - match: \/\*
+    push:
+    - meta_scope: comment.block
+    - match: \*\/
+      pop: true
+  - match: \b(assert|else|fi|if|unless|xr|xs|do|od|break|skip|atomic)\b
+    scope: keyword.control
+  - match: \b(run)\b
+    scope: keyword.operator
+  - match: ^(#)\s*(define)\s*([a-zA-Z_]+[0-9a-zA-Z_]*)
+    captures:
+      2: keyword.operator
+      3: entity.name.function
+  - match: '\b[a-zA-Z_]+[0-9a-zA-Z_]*(\s)*:'
+    scope: variable.other
+  - match: \b(printf|len|empty|nempty|full|nfull|enabled|eval|pc_value)\b
+    scope: entity.name.function
+  - match: \b([a-zA-Z_]+[0-9a-zA-Z_]*)\(
+    captures:
+      1: entity.name.function
+    push:
+    - match: \)
+      pop: true
+    - include: main
+  - match: \b(ltl)(\s)+([a-zA-Z_]+[0-9a-zA-Z_]*)(\s)*{
+    captures:
+      1: storage.type
+      3: entity.name.function
+    push:
+    - match: '}'
+      pop: true
+    - include: main
+  - match: '"([^\\"]|\\.)*"'
+    scope: string.quoted.double
+  - match: \b([0-9])+\b
+    scope: constant.numeric
+  - match: \b(true|false|TRUE|FALSE)\b
+    scope: constant.language
+  - match: \b(bit|bool|byte|pid|chan|int|mtype|proctype|short|unsigned|Dproctype)\b
+    scope: storage.type
+  - match: \b(hidden|init|inline|active|local|show)\b
+    scope: storage.modifier
+  - match: \b(typedef|c_state)\b
+    scope: storage.modifier
+  - match: \/\/.*$
+    scope: comment.double-slash

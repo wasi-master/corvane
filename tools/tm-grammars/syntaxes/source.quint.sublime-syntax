@@ -1,0 +1,72 @@
+%YAML 1.2
+---
+# Quint (source.quint): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/informalsystems/quint-grammars.git via GitHub Linguist v9.7.0 (license: mit).
+name: Quint
+scope: source.quint
+file_extensions:
+- qnt
+contexts:
+  main:
+  - include: repo_hashbangLine
+  - include: repo_docComments
+  - include: repo_lineComments
+  - include: repo_blockComments
+  - include: repo_keywords
+  - include: repo_storage
+  - include: repo_constants
+  - include: repo_punctuation
+  - include: repo_operators
+  - include: repo_identifiers
+  - include: repo_strings
+  - include: repo_numbers
+  repo_blockComments:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.quint
+    - match: \*/
+      pop: true
+  repo_constants:
+  - match: \b(false|true|Bool|Int|Nat)\b
+    scope: constant.language.quint
+  repo_docComments:
+  - match: ///.*$
+    scope: comment.block.documentation.quint
+  repo_hashbangLine:
+  - match: \A#!.*$
+    scope: comment.line.hashbang.quint
+  repo_identifiers:
+  - match: '[a-zA-Z_]([a-zA-Z0-9_])*'
+    scope: meta.quint
+  repo_keywords:
+  - match: \b(module|import|from|export|as|if|else|match|not|or|and|implies|iff|all|any|leadsTo|strongFair|weakFair)\b
+    scope: keyword.control.quint
+  repo_lineComments:
+  - match: //.*$
+    scope: comment.line.double-slash.quint
+  repo_numbers:
+  - match: -?(0x[0-9a-fA-F]([0-9a-fA-F]|_[0-9a-fA-F])*|0|[1-9]([0-9]|_[0-9])*)
+    scope: constant.numeric.quint
+  repo_operators:
+  - match: (=>|->|<=|>|<|=|!=|'|\.|\*|\+|-|/|%|\^)
+    scope: keyword.operator.quint
+  repo_punctuation:
+  - match: \.\.\.
+    scope: keyword.operator.spread.quint
+  - match: '::'
+    scope: punctuation.accessor.quint
+  - match: \|
+    scope: punctuation.separator.quint
+  repo_storage:
+  - match: \b(type|assume|const|var|val|nondet|def|pure|action|temporal|run)\b
+    scope: storage.modifier.quint
+  - match: \b(Set|List|int|str|bool)\b
+    scope: storage.type.quint
+  - match: \b(Map|Tup|Rec)\b
+    scope: support.type.quint
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.quint
+    - match: '"'
+      pop: true

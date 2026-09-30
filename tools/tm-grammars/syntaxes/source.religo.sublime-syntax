@@ -1,0 +1,70 @@
+%YAML 1.2
+---
+# ReasonLIGO (source.religo): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/pewulfman/Ligo-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: ReasonLIGO
+scope: source.religo
+file_extensions:
+- religo
+contexts:
+  main:
+  - include: repo_string
+  - include: repo_block_comment
+  - include: repo_line_comment
+  - include: repo_attribute
+  - include: repo_macro
+  - include: repo_letbinding
+  - include: repo_typedefinition
+  - include: repo_controlkeywords
+  - include: repo_numericliterals
+  - include: repo_operators
+  - include: repo_identifierconstructor
+  - include: repo_module
+  repo_attribute:
+  - match: \[@.*\]
+    scope: keyword.control.attribute.religo
+  repo_block_comment:
+  - match: /\*
+    push:
+    - meta_scope: comment.block.religo
+    - match: \*\/
+      pop: true
+  repo_controlkeywords:
+  - match: \b(switch|if|else|assert|failwith)\b
+    scope: keyword.control.religo
+  repo_identifierconstructor:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\s+
+    captures:
+      1: variable.other.enummember.religo
+  repo_letbinding:
+  - match: \b(let)\b\s*\b(rec|)\s*\b([a-zA-Z$_][a-zA-Z0-9$_]*)
+    captures:
+      1: keyword.other.religo
+      2: storage.modifier.religo
+      3: entity.name.function.religo
+  repo_line_comment:
+  - match: \/\/.*$
+    scope: comment.block.religo
+  repo_macro:
+  - match: ^\#[a-zA-Z]+
+    scope: meta.preprocessor.religo
+  repo_module:
+  - match: \b([A-Z][a-zA-Z0-9_$]*)\.([a-z][a-zA-Z0-9_$]*)
+    captures:
+      1: storage.class.religo
+      2: storage.var.religo
+  repo_numericliterals:
+  - match: (\+|\-)?[0-9]+(n|tz|tez|mutez|)\b
+    scope: constant.numeric.religo
+  repo_operators:
+  - match: \s+(\-|\+|mod|land|lor|lxor|lsl|lsr|&&|\|\||>|!=|<=|=>|<|>)\s+
+    scope: keyword.operator.religo
+  repo_string:
+  - match: \"
+    push:
+    - meta_scope: string.quoted.double.religo
+    - match: \"
+      pop: true
+  repo_typedefinition:
+  - match: \b(type)\b
+    scope: entity.name.type.religo

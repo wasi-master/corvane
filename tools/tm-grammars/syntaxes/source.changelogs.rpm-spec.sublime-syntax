@@ -1,0 +1,40 @@
+%YAML 1.2
+---
+# ChangeLogs (source.changelogs.rpm-spec): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/language-rpm-spec via GitHub Linguist v9.7.0 (license: mit).
+name: ChangeLogs
+scope: source.changelogs.rpm-spec
+hidden: true
+contexts:
+  main:
+  - match: ^[*+=-]{30}[+==-]*
+    scope: entity.section.name.changelogs
+  - match: ^[ \t]*- (.+)
+    captures:
+      1: comment.changelogs
+  - match: ^(?:\* )?([a-zA-Z]{3} [a-zA-Z]{3}[ ]+\d+ \d+:\d+:\d+ [A-Z]+ \d{4}) - (.*) (<.*>) ([#_a-zA-Z0-9.-]+)$
+    captures:
+      1: constant.changelogs
+      2: entity.name.changelogs
+      3: variable.other.changelogs
+      4: constant.numeric.changelogs
+  - match: '^(?:\* )?([a-zA-Z]{3} [a-zA-Z]{3}[ ]+\d+(?: \d+:\d+:\d+ [A-Z]+)? \d{4}) (.*) (<.*>)(?: -)? ([#a-zA-Z0-9.-]+)?$'
+    captures:
+      1: constant.changelogs
+      2: entity.name.changelogs
+      3: variable.other.changelogs
+      4: constant.numeric.changelogs
+  - match: '^(?:\* )?([a-zA-Z]{3} [a-zA-Z]{3}[ ]+\d+(?: \d+:\d+:\d+ [A-Z]+)? \d{4}) (.*) (<.*>)(?: -) (.*)$'
+    captures:
+      1: constant.changelogs
+      2: entity.name.changelogs
+      3: variable.other.changelogs
+      4: constant.numeric.changelogs
+  - match: '^(?:\* )?([a-zA-Z]{3} [a-zA-Z]{3}[ ]+\d+(?: \d+:\d+:\d+ [A-Z]+)? \d{4})(?: -) (.+@.+)$'
+    captures:
+      1: constant.changelogs
+      2: variable.other.changelogs
+  - match: ^(?:\* )?([a-zA-Z]{3} [a-zA-Z]+[ ]+\d+ \d{4}) (.+@.+)$
+    captures:
+      1: constant.changelogs
+      2: variable.other.changelogs

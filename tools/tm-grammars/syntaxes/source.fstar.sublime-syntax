@@ -1,0 +1,188 @@
+%YAML 1.2
+---
+# F* (source.fstar): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/FStarLang/atom-fstar via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: F*
+scope: source.fstar
+file_extensions:
+- fst
+- fsti
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_modules
+  - include: repo_options
+  - include: repo_expr
+  repo_commentblock:
+  - match: \(\*
+    captures:
+      0: punctuation.definition.comment.begin.fstar
+    push:
+    - meta_scope: comment.block.fstar
+    - match: \*\)
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.fstar
+    - include: repo_commentblock
+  repo_comments:
+  - match: //.*
+    scope: comment.line.fstar
+  - include: repo_commentblock
+  repo_expr:
+  - include: repo_comments
+  - match: '''[a-zA-Z0-9_]+\b'
+    scope: variable.other.generic-type.fstar
+  - include: repo_strings
+  - match: \b(int|nat|pos|bool|unit|string|Type|Type0|eqtype)\b
+    scope: support.class.base.fstar
+  - match: (/\\|\\/|<:|<@|[(][|]|[|][)]|u#|`|~>|->|<--|<-|<==>|==>|[?][.]|[.]\[|[.]\(|[{][:]pattern|::|:=|;;|[!][{]|\[[|]|[|]>|[|]\]|[~+^&?$|#,.:;=\[\](){}-])
+    scope: support.class.base.fstar
+  - match: \b(Pure|PURE|Tot|STATE|ST|St|Stack|StackInline|HST|ALL|All|EXN|Exn|Ex|DIV|Div|GHOST|Ghost|GTot|Lemma)\b
+    scope: constant.language.monad.fstar
+  - match: \b(_|[(]\s*[)]|\[\s*\])\b
+    scope: constant.language.fstar
+  - match: \b(let|in|type|kind|val|rec|and|if|then|else|assume|admit|assert|assert_norm|squash|failwith|SMTPat|SMTPatOr|hasEq|fun|function|forall|exists|exception|by|new_effect|reify|try|synth|with|when)\b
+    scope: keyword.other.fstar
+  - match: \b(abstract|attributes|noeq|unopteq|inline|inline_for_extraction|irreducible|logic|mutable|new|noextract|private|reifiable|reflectable|total|unfold|unfoldable)\b
+    scope: storage.modifier.fstar
+  - match: \b([tT]rue|[fF]alse)\b
+    scope: constant.language.boolean.fstar
+  - match: \b0[xX][0-9a-fA-F]+[uU]?[zyslL]?\b
+    scope: constant.numeric.hex.js
+  - match: \b[0-9]+[uU]?[zyslL]?\b
+    scope: constant.numeric.decimal.js
+  - match: "(?x)\n(?:\n  (?:\\b[0-9]+(\\.)[0-9]+[eE][+-]?[0-9]+\\b)| # 1.1E+3\n  (?:\\b[0-9]+(\\.)[eE][+-]?[0-9]+\\b)|       # 1.E+3\n  (?:\\B(\\.)[0-9]+[eE][+-]?[0-9]+\\b)|       # .1E+3\n  (?:\\b[0-9]+[eE][+-]?[0-9]+\\b)|            # 1E+3\n  (?:\\b[0-9]+(\\.)[0-9]+\\b)|                # 1.1\n  (?:\\b[0-9]+(\\.)\\B)|                      # 1.\n  (?:\\B(\\.)[0-9]+\\b)|                      # .1\n  (?:\\b[0-9]+\\b(?!\\.))                     # 1\n)[L]?[fF]?"
+    captures:
+      0: constant.numeric.decimal.fstar
+      1: meta.delimiter.decimal.period.fstar
+      2: meta.delimiter.decimal.period.fstar
+      3: meta.delimiter.decimal.period.fstar
+      4: meta.delimiter.decimal.period.fstar
+      5: meta.delimiter.decimal.period.fstar
+      6: meta.delimiter.decimal.period.fstar
+  - match: ([(])\s*(requires|ensures|decreases)?
+    captures:
+      1: punctuation.definition.scope.begin.bracket.round.fstar
+      2: keyword.other.fstar
+    push:
+    - match: ([)])
+      pop: true
+      captures:
+        1: punctuation.definition.scope.end.bracket.round.fstar
+    - include: repo_expr
+  - match: ([(])
+    captures:
+      1: punctuation.definition.clause.begin.bracket.round.fstar
+    push:
+    - match: ([)])
+      pop: true
+      captures:
+        1: punctuation.definition.clause.end.bracket.round.fstar
+    - include: repo_expr
+  - match: ([%]\[)
+    captures:
+      1: constant.language.termorder.begin.fstar
+    push:
+    - match: (\])
+      pop: true
+      captures:
+        1: constant.language.termorder.end.fstar
+    - include: repo_expr
+  - match: (\[[@])
+    captures:
+      1: storage.modifier.attributes.begin.fstar
+    push:
+    - match: (\])
+      pop: true
+      captures:
+        1: storage.modifier.attributes.end.fstar
+    - include: repo_expr
+  - match: \b(match)\b
+    captures:
+      1: keyword.control.match.fstar
+    push:
+    - match: \b(with)\b
+      pop: true
+      captures:
+        1: keyword.control.with.fstar
+    - include: repo_expr
+  - match: \b(begin)\b
+    captures:
+      1: keyword.control.begin.fstar
+    push:
+    - match: \b(end)\b
+      pop: true
+      captures:
+        1: keyword.control.end.fstar
+    - include: repo_expr
+  - match: \b([\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)\b(?!\s*[.])
+    captures:
+      1: support.function.constructor.fstar
+  - match: \b((?:[\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*[.])+)
+    captures:
+      1: variable.other.module.fstar
+  - match: \b([\p{Ll}_][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)
+    captures:
+      1: entity.name.function.fstar
+  repo_modules:
+  - match: \b(module)\s+([\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)\s*(=)
+    captures:
+      1: keyword.control.module.fstar
+      2: variable.other.module-alias.fstar
+      3: keyword.operator.assignment.fstar
+    push:
+    - match: \b((?<name>[\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)(?:[.]\g<name>)*)\b
+      pop: true
+      captures:
+        1: variable.other.module.fstar
+  - match: \b(module|open|include)\b
+    captures:
+      1: keyword.control.module.fstar
+    push:
+    - match: \b((?<name>[\p{Lu}\p{Lt}][\p{Lu}\p{Lt}\p{Ll}\p{Lo}\p{Lm}\d'_]*)(?:[.]\g<name>)*)\b
+      pop: true
+      captures:
+        1: variable.other.module.fstar
+  repo_op_names:
+  - match: \bop(?:_(?:Multiply|Star|Slash|Percent|Plus|Substraction|Equals|Less|Greater|Bang|Dollar|Amp|Dot|Hat|Colon|Pipe|Question))+\b
+    scope: entity.name.tag.fstar
+  repo_options:
+  - match: (#(?:re)?set-options)\s*(["])((?:[^"]|\\")*)(["])
+    captures:
+      1: keyword.control.setoption.fstar
+      2: punctuation.definition.options.begin.fstar
+      3: string.quoted.double.fstar
+      4: punctuation.definition.options.end.fstar
+  repo_string_escapes:
+  - match: \\u(?![A-Fa-f0-9]{4}|{[A-Fa-f0-9]+})[^'"]*
+    scope: invalid.illegal.unicode-escape.fstar
+  - match: \\u(?:[A-Fa-f0-9]{4}|({)([A-Fa-f0-9]+)(}))
+    scope: constant.character.escape.js
+    captures:
+      1: punctuation.definition.unicode-escape.begin.bracket.curly.fstar
+      3: punctuation.definition.unicode-escape.end.bracket.curly.fstar
+  - match: \\(x[0-9A-Fa-f]{2}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)
+    scope: constant.character.escape.fstar
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.fstar
+    push:
+    - meta_scope: string.quoted.double.fstar
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.fstar
+    - include: repo_string_escapes
+  - match: ''''
+    captures:
+      0: punctuation.definition.char.begin.fstar
+    push:
+    - meta_scope: string.quoted.single.fstar
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.char.end.fstar
+    - include: repo_string_escapes
+    - match: .{2,}
+      scope: invalid.illegal.string.js

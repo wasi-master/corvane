@@ -1,0 +1,92 @@
+%YAML 1.2
+---
+# AL (source.al): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/microsoft/AL via GitHub Linguist v9.7.0 (license: mit).
+name: AL
+scope: source.al
+file_extensions:
+- al
+contexts:
+  main:
+  - match: \b(?i:(ARRAY|ASSERTERROR|BEGIN|BREAK|CASE|DO|DOWNTO|ELSE|END|EVENT|EXIT|FOR|FOREACH|FUNCTION|IF|IMPLEMENTS|IN|INDATASET|INTERFACE|INTERNAL|LOCAL|OF|PROCEDURE|PROGRAM|PROTECTED|REPEAT|RUNONCLIENT|SECURITYFILTERING|SUPPRESSDISPOSE|TEMPORARY|THEN|TO|TRIGGER|UNTIL|VAR|WHILE|WITH|WITHEVENTS))\b
+    scope: keyword.control.al
+  - match: \b(?i:(AND|DIV|MOD|NOT|OR|XOR))\b
+    scope: keyword.operators.al
+  - match: \b(?i:(AVERAGE|CONST|COUNT|EXIST|FIELD|FILTER|LOOKUP|MAX|MIN|ORDER|SORTING|SUM|TABLEDATA|UPPERLIMIT|WHERE|ASCENDING|DESCENDING))\b
+    scope: keyword.other.property.al
+  - match: \b(?i:(CODEUNIT|PAGE|PAGEEXTENSION|PAGECUSTOMIZATION|DOTNET|ENUM|ENUMEXTENSION|VALUE|QUERY|REPORT|TABLE|TABLEEXTENSION|XMLPORT|PROFILE|CONTROLADDIN|REPORTEXTENSION|INTERFACE|PERMISSIONSET|PERMISSIONSETEXTENSION|ENTITLEMENT))\b
+    scope: keyword.other.applicationobject.al
+  - match: \b(?i:(Action|ActionRef|AnalysisView|AnalysisViews|Array|Automation|BigInteger|BigText|SecretText|Blob|Boolean|Byte|Char|ClientType|Code|Codeunit|CompletionTriggerErrorLevel|ConnectionType|CustomAction|Database|DataClassification|DataScope|DataTransfer|Date|DateFormula|DateTime|Decimal|DefaultLayout|Dialog|Dictionary|DotNet|DotNetAssembly|DotNetTypeDeclaration|Duration|Enum|ErrorInfo|ErrorType|ExecutionContext|ExecutionMode|FieldClass|FieldRef|FieldType|File|FilterPageBuilder|Guid|InStream|Integer|IsolationLevel|Joker|KeyRef|List|Media|MediaSet|ModuleDependencyInfo|ModuleInfo|None|Notification|NotificationScope|ObjectType|Option|OutStream|Page|PageResult|Query|Record|RecordId|RecordRef|Report|ReportFormat|SecurityFilter|SecurityFiltering|SystemAction|Table|TableConnectionType|TableFilter|TestAction|TestField|TestFilterField|TestPage|TestPermissions|TestRequestPage|Text|TextBuilder|TextConst|TextEncoding|Time|TransactionModel|TransactionType|Variant|Verbosity|Version|XmlPort|HttpContent|HttpHeaders|HttpClient|HttpRequestMessage|HttpResponseMessage|JsonToken|JsonValue|JsonArray|JsonObject|View|Views|XmlAttribute|XmlAttributeCollection|XmlComment|XmlCData|XmlDeclaration|XmlDocument|XmlDocumentType|XmlElement|XmlNamespaceManager|XmlNameTable|XmlNode|XmlNodeList|XmlProcessingInstruction|XmlReadOptions|XmlText|XmlWriteOptions|WebServiceActionContext|WebServiceActionResultCode|SessionSettings|PageBackgroundTaskErrorLevel))\b
+    scope: keyword.other.builtintypes.al
+  - match: \b([<>]=|<>|<|>)\b
+    scope: keyword.operators.comparison.al
+  - match: \b(\-|\+|\/|\*)\b
+    scope: keyword.operators.math.al
+  - match: \s*(\:=|\+=|-=|\/=|\*=)\s*
+    scope: keyword.operators.assigment.al
+  - match: \b(?i:(ADD|ADDFIRST|ADDLAST|ADDAFTER|ADDBEFORE|ACTION|ACTIONS|AREA|ASSEMBLY|CHARTPART|CUEGROUP|CUSTOMIZES|COLUMN|DATAITEM|DATASET|ELEMENTS|EXTENDS|FIELD|FIELDGROUP|FIELDATTRIBUTE|FIELDELEMENT|FIELDGROUPS|FIELDS|FILTER|FIXED|GRID|GROUP|MOVEAFTER|MOVEBEFORE|KEY|KEYS|LABEL|LABELS|LAYOUT|MODIFY|MOVEFIRST|MOVELAST|MOVEBEFORE|MOVEAFTER|NAMESPACE|PART|RENDERING|REPEATER|USERCONTROL|REQUESTPAGE|SCHEMA|SEPARATOR|SYSTEMPART|TABLEELEMENT|TEXTATTRIBUTE|TEXTELEMENT|TYPE|USING))\b
+    scope: keyword.other.metadata.al
+  - match: \s*[(\.\.)&\|]\s*
+    scope: keyword.operators.property.al
+  - match: \b(?i:(CODEUNIT|PAGE|QUERY|REPORT|TABLE|XMLPORT))\b
+    scope: meta.applicationobject.al
+    captures:
+      1: entity.name.applicationobject.al
+  - match: \b(?i:(trigger|procedure))\b\s+(\w+(\.\w+)?)(\(.*?\))?;\s*
+    scope: meta.function.al
+    captures:
+      1: entity.name.function.al
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)(L|l|UL|ul|u|U|F|f|ll|LL|ull|ULL)?\b
+    scope: constant.numeric.al
+  - match: (^[ \t]+)?(?=//)
+    captures:
+      1: punctuation.whitespace.comment.leading.al
+    push:
+    - match: (?!)
+      pop: true
+    - match: //
+      captures:
+        0: punctuation.definition.comment.al
+      push:
+      - meta_scope: comment.line.double-slash.al.two
+      - match: \n
+        pop: true
+  - match: (^[ \t]+)?(?=#)
+    captures:
+      1: punctuation.whitespace.directive.leading.al
+    push:
+    - match: (?!)
+      pop: true
+    - match: '#'
+      captures:
+        0: punctuation.definition.directive.al
+      push:
+      - meta_scope: comment.line.number-sign.al.two
+      - match: \n
+        pop: true
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.al
+    push:
+    - meta_scope: comment.block.al.one
+    - match: \*/\n?
+      pop: true
+      captures:
+        0: punctuation.definition.comment.al
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.al
+    push:
+    - meta_scope: string.quoted.single.al
+    - match: ''''''
+      scope: constant.character.escape.apostrophe.al
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.al
+  - match: '[;:,]'
+    scope: punctuation.al
+  - match: '"'
+    push:
+    - match: '"'
+      pop: true

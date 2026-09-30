@@ -1,0 +1,50 @@
+%YAML 1.2
+---
+# Lambdapi (source.lp): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Deducteam/sublime-lambdapi.git via GitHub Linguist v9.7.0 (license: mit).
+name: Lambdapi
+scope: source.lp
+file_extensions:
+- lp
+contexts:
+  main:
+  - include: repo_comments
+  - include: repo_tactics
+  - include: repo_signature-commands
+  - include: repo_warning
+  - include: repo_misc
+  - include: repo_keywords
+  - include: repo_external
+  repo_comments:
+  - match: //
+    push:
+    - meta_scope: comment.line.double-slash.lp
+    - match: $
+      pop: true
+  - match: /\*
+    push:
+    - meta_scope: comment.block.lp
+    - match: \*/
+      pop: true
+  repo_external:
+  - match: (open|require)\s+(([^\s+]*\s+)*$)
+    captures:
+      1: storage.type.lp
+      2: entity.name.function.theorem.lp
+  repo_keywords:
+  - match: \b(as|associative|begin|builtin|coerce_rule|commutative|constant|debug|end|flag|in|infix|injective|left|notation|off|on|opaque|postfix|prefix|private|protected|prover|prover_timeout|quantifier|right|sequential|TYPE|unif_rule)\b
+    scope: storage.modifier.lp
+  repo_misc:
+  - match: \b(assert|assertnot|compute|print|proofterm|search|type)\b
+    scope: keyword.control.query.lp
+  repo_signature-commands:
+  - match: (coerce_rule|inductive|rule|symbol|unif_rule|with)\s+([^\s+]*)
+    captures:
+      1: storage.type.lp
+      2: entity.name.function.theorem.lp
+  repo_tactics:
+  - match: \b(apply|assume|change|eval|focus|generalize|have|induction|orelse|refine|reflexivity|remove|repeat|rewrite|set|simplify|solve|symmetry|try|why3)\b
+    scope: keyword.control.tactics.lp
+  repo_warning:
+  - match: \b(abort|admit|admitted|fail)\b
+    scope: keyword.control.warning.lp

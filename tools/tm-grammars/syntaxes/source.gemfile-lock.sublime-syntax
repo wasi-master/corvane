@@ -1,0 +1,58 @@
+%YAML 1.2
+---
+# Gemfile.lock (source.gemfile-lock): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/hmarr/gemfile-lock-tmlanguage via GitHub Linguist v9.7.0 (license: mit).
+name: Gemfile.lock
+scope: source.gemfile-lock
+file_extensions:
+- Gemfile.lock
+contexts:
+  main:
+  - include: repo_dependencies-sections
+  - include: repo_other-sections
+  repo_dependencies-sections:
+  - match: ^(GEM|PATH|GIT|DEPENDENCIES)$
+    captures:
+      0: keyword.control.section.gemfile-lock
+    push:
+    - meta_scope: section.gemfile-lock
+    - match: ^$
+      pop: true
+    - include: repo_entries
+    - include: repo_dependency-specs
+  repo_dependency-specs:
+  - match: ^ {2,6}([^ !]+)\s*(\()?
+    captures:
+      1: entity.package.gemfile-lock
+      2: punctuation.parenthesis.begin.gemfile-lock
+    push:
+    - meta_scope: dependency.gemfile-lock
+    - match: ($|\))
+      pop: true
+      captures:
+        1: punctuation.parenthesis.end.gemfile-lock
+    - include: repo_versions
+  repo_entries:
+  - match: ^ +([a-z]+:) ?(.*)$
+    scope: entry.gemfile-lock
+    captures:
+      1: meta.property-name.gemfile-lock
+      2: string.gemfile-lock
+  repo_other-sections:
+  - match: ^[A-Z ]+$
+    captures:
+      0: keyword.control.section.gemfile-lock
+    push:
+    - meta_scope: section.gemfile-lock
+    - match: ^$
+      pop: true
+    - match: ^\s+(.*)$
+      captures:
+        1: string.gemfile-lock
+  repo_versions:
+  - match: (?:(<=|>=|=|~>|<|>|!=) )?([0-9A-Za-z_\-\.]+)(,)?
+    scope: version.gemfile-lock
+    captures:
+      1: keyword.operator.comparison.gemfile-lock
+      2: constant.numeric.gemfile-lock
+      3: punctuation.separator.gemfile-lock

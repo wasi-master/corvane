@@ -1,0 +1,130 @@
+%YAML 1.2
+---
+# Fancy (source.fancy): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/fancy-lang/fancy-tmbundle via GitHub Linguist v9.7.0 (license: bsd-3-clause).
+name: Fancy
+scope: source.fancy
+file_extensions:
+- fy
+- fancypack
+- Fakefile
+contexts:
+  main:
+  - match: ^\s*(class)\s+(([.a-zA-Z0-9_:]+(\s*(:)\s*[.a-zA-Z0-9_:\s]+)?))
+    scope: meta.class.fancy
+    captures:
+      1: keyword.control.class.fancy
+      2: variable.other.constant.fancy
+      4: entity.other.inherited-class.fancy
+      5: punctuation.separator.inheritance.fancy
+      6: variable.other.object.fancy
+  - match: "(?x)\n              (?=def\\b)                                                     # an optimization to help Oniguruma fail fast\n            (?<=^|\\s)(def)\\s+                                            # the def keyword\n            (self)\\s+                                                       # a method definition prefix in this case self\n            (([a-z]?\\w+[?!]?:?)\n            |===|>[>=]?|<=>|<[<=]?|[%&`/\\|]|\\*\\*?|=?~|[-+]@?|\\[\\]|=\\?)\\s+       # the method name\n              "
+    captures:
+      1: keyword.control.def.fancy
+      2: variable.language.fancy
+      3: entity.name.function.fancy
+    push:
+    - meta_scope: meta.function.method.fancy.self
+    - match: $
+      pop: true
+    - include: main
+    - include: repo_arg_name
+  - match: "(?x)\n              (?=def\\b)                                     # an optimization to help Oniguruma fail fast\n              (?<=^|\\s)(def)\\s+                          # the def keyword\n              (((?>[A-Z_-]\\w*(?>\\s+))?)+)              # a method definition prefix\n              (([a-z]?\\w+[?!]?:?)\n              |===|>[>=]?|<=>|<[<=]?|[%&`/\\|]|\\*\\*?|=?~|[-+]@?|\\[\\]|=\\?)\\s+   # the method name\n              "
+    captures:
+      1: keyword.control.def.fancy
+      2: variable.other.constant.fancy
+      4: entity.name.function.fancy
+    push:
+    - meta_scope: meta.function.method.fancy
+    - match: $
+      pop: true
+    - include: main
+    - include: repo_arg_name
+  - match: \b(require:)
+    captures:
+      1: keyword.other.special-method.fancy
+    push:
+    - meta_scope: meta.require.fancy
+    - match: $|(?=#)
+      pop: true
+      captures:
+        1: keyword.other.special-method.fancy
+    - include: main
+  - match: \b(include:)
+    captures:
+      1: keyword.other.special-method.fancy
+    push:
+    - meta_scope: meta.include.fancy
+    - match: $|(?=#)
+      pop: true
+      captures:
+        1: keyword.other.special-method.fancy
+    - include: main
+  - match: \b(return|return_local|match|case|try|catch|finally|retry)\b:?
+    scope: keyword.control.fancy
+  - match: ([a-z_-]\w*[?!]?:)
+    scope: meta.message.fancy
+    captures:
+      0: entity.name.function.fancy
+  - match: \b(false|nil|true)\b(?![?!])
+    scope: constant.language.fancy
+  - match: '''([^''\s\[\]\(\)\{\},]+|\[\])'
+    scope: constant.other.symbol.fancy
+    captures:
+      0: punctuation.definition.constant.fancy
+  - match: \*[a-zA-Z0-9_-]+\*
+    scope: constant.other.dynvar.fancy
+    captures:
+      0: punctuation.definition.constant.fancy
+  - match: \b(__(FILE|LINE)__|self|super)\b(?![?!])
+    scope: constant.language.fancy
+  - match: \b[A-Z]\w*\b
+    scope: variable.other.constant.fancy
+  - match: (@)[a-zA-Z_]\w*
+    scope: variable.other.readwrite.instance.fancy
+    captures:
+      1: punctuation.definition.variable.fancy
+  - match: (@@)[a-zA-Z_]\w*
+    scope: variable.other.readwrite.class.fancy
+    captures:
+      1: punctuation.definition.variable.fancy
+  - match: (<\[|\]>)
+    scope: punctuation.section.hash.fancy
+    captures:
+      1: punctuation.section.array.fancy
+  - match: (/[^/]*/)
+    scope: string.regexp.classic.fancy
+    captures:
+      1: string.regexp.classic.fancy
+  - match: <<=|%=|&=|\*=|\*\*=|\+=|\-=|\^=|\|{1,2}=|<<
+    scope: keyword.operator.assignment.augmented.fancy
+  - match: <=>|<(?!<|=)|>(?!<|=|>)|<=|>=|===|==|=~|!=|!~|(?<=[ \t])\?
+    scope: keyword.operator.comparison.fancy
+  - match: \b(not|and|or)\b:|(?<=[ \t])!+|&&|\|\||\^
+    scope: keyword.operator.logical.fancy
+  - match: (%|&|\*\*|\*|\+|\-|/)
+    scope: keyword.operator.arithmetic.fancy
+  - match: '='
+    scope: keyword.operator.assignment.fancy
+  - match: \;
+    scope: punctuation.separator.statement.fancy
+  - match: ','
+    scope: punctuation.separator.object.fancy
+  - match: \s
+    scope: punctuation.separator.method.ruby
+  - match: \[|\]
+    scope: punctuation.section.array.fancy
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.fancy
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.fancy
+  - match: (?:^[ \t]+)?(#).*$\n?
+    scope: comment.line.number-sign.fancy
+  - match: \b(0[xX][0-9A-Fa-f](?>_?[0-9A-Fa-f])*|\d(?>_?\d)*(\.(?![^[:space:][:digit:]])(?>_?\d)*)?([eE][-+]?\d(?>_?\d)*)?|0[bB][01]+)\b
+    scope: constant.numeric.fancy
+  repo_arg_name:
+  - match: ([a-z_-]\w*:)
+    scope: entity.name.function.fancy

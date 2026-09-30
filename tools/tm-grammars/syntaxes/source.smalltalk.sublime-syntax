@@ -1,0 +1,90 @@
+%YAML 1.2
+---
+# STON (source.smalltalk): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/smalltalk-tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: STON
+scope: source.smalltalk
+file_extensions:
+- ston
+contexts:
+  main:
+  - match: \b(class)\b
+  - match: \b(extend|super|self)\b
+  - match: \b(yourself|new|Smalltalk)\b
+  - match: :=
+    scope: keyword.operator.assignment.smalltalk
+  - match: /^:\w*\s*\|/
+    scope: constant.other.block.smalltalk
+  - match: (\|)(\s*\w[\w ]*)(\|)
+    captures:
+      1: punctuation.definition.instance-variables.begin.smalltalk
+      3: punctuation.definition.instance-variables.end.smalltalk
+  - match: \[((\s+|:\w+)*)\|
+  - match: <(?!<|=)|>(?!<|=|>)|<=|>=|=|==|~=|~~|>>|\^
+    scope: keyword.operator.comparison.smalltalk
+  - match: (\*|\+|\-|/|\\)
+    scope: keyword.operator.arithmetic.smalltalk
+  - match: (?<=[ \t])!+|\bnot\b|&|\band\b|\||\bor\b
+    scope: keyword.operator.logical.smalltalk
+  - match: (?<!\.)\b(ensure|resume|retry|signal)\b(?![?!])
+    scope: keyword.control.smalltalk
+  - match: 'ifCurtailed:|ifTrue:|ifFalse:|whileFalse:|whileTrue:'
+    scope: keyword.control.conditionals.smalltalk
+  - match: (\w+)(\s+(subclass:))\s*(\w*)
+    scope: meta.class.smalltalk
+    captures:
+      1: entity.other.inherited-class.smalltalk
+      3: keyword.control.smalltalk
+      4: entity.name.type.class.smalltalk
+  - match: '"'
+    captures:
+      0: punctuation.definition.comment.begin.smalltalk
+    push:
+    - meta_scope: comment.block.smalltalk
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.smalltalk
+  - match: \b(true|false)\b
+    scope: constant.language.boolean.smalltalk
+  - match: \b(nil)\b
+    scope: constant.language.nil.smalltalk
+  - match: (?>[a-zA-Z_]\w*(?>[?!])?)(:)(?!:)
+    scope: constant.other.messages.smalltalk
+    captures:
+      1: punctuation.definition.constant.smalltalk
+  - match: (#)[a-zA-Z_][a-zA-Z0-9_:]*
+    scope: constant.other.symbol.smalltalk
+    captures:
+      1: punctuation.definition.constant.smalltalk
+  - match: '#\['
+    captures:
+      0: punctuation.definition.constant.begin.smalltalk
+    push:
+    - meta_scope: constant.other.bytearray.smalltalk
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.constant.end.smalltalk
+  - match: '#\('
+    captures:
+      0: punctuation.definition.constant.begin.smalltalk
+    push:
+    - meta_scope: constant.other.array.smalltalk
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.constant.end.smalltalk
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.smalltalk
+    push:
+    - meta_scope: string.quoted.single.smalltalk
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.smalltalk
+  - match: \b(0[xX][0-9A-Fa-f](?>_?[0-9A-Fa-f])*|\d(?>_?\d)*(\.(?![^[:space:][:digit:]])(?>_?\d)*)?([eE][-+]?\d(?>_?\d)*)?|0[bB][01]+)\b
+    scope: constant.numeric.smalltalk
+  - match: \b[A-Z]\w*\b
+    scope: variable.other.constant.smalltalk

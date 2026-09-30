@@ -1,0 +1,75 @@
+%YAML 1.2
+---
+# Boogie (source.boogie): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/boogie-org/boogie-vscode via GitHub Linguist v9.7.0 (license: mit).
+name: Boogie
+scope: source.boogie
+file_extensions:
+- bpl
+first_line_match: ^#!.*\b(boogie)\b
+contexts:
+  main:
+  - include: repo_constants
+  - include: repo_keywords
+  - include: repo_strings
+  - include: repo_comments
+  - match: '{\s*:'
+    push:
+    - meta_scope: string.other.attribute.boogie
+    - match: '}'
+      pop: true
+    - include: main
+  - match: "(\\s*([^: ]+):(\n|\r))"
+    scope: entity.name.block.boogie
+  - match: ;
+    scope: punctuation.terminator.boogie
+  repo_comments:
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.boogie
+  - match: /\*
+    push:
+    - meta_scope: comment.block.boogie
+    - match: \*/
+      pop: true
+  repo_constants:
+  - match: (?<![\w$.])(true|false)(?![\w$.])
+    scope: constant.language.boolean.boogie
+  - match: (?<![\w$.])[0-9]+(?![\w$.])
+    scope: constant.numeric.integer.boogie
+  - match: (?<![\w$.])[0-9]+bv[0-9]+(?![\w$.])
+    scope: constant.numeric.bitvector.boogie
+  repo_keywords:
+  - match: \b(axiom|const|function|implementation|procedure|type|var)\b
+    scope: storage.type.declaration.boogie
+  - match: (?<![\w$.])(complete|extends|finite|free|unique|where)(?![\w$.])
+    scope: storage.modifier.boogie
+  - match: \b(requires|ensures|modifies|returns|invariant)\b
+    scope: keyword.other.specification.boogie
+  - match: \b(break|call|async|par|while|goto|return)\b
+    scope: keyword.control.boogie
+  - match: \b(if|then|else)\b
+    scope: keyword.control.conditional.boogie
+  - match: \b(assert|assume|havoc|yield)\b
+    scope: keyword.control.statement.boogie
+  - match: (:=)
+    scope: keyword.operator.assignment.boogie
+  - match: \bold\b
+    scope: keyword.other.old.boogie
+  - match: \b(forall|exists|lambda)\b
+    scope: keyword.other.logical.quantifier.boogie
+  - match: '::'
+    scope: keyword.operator.logical.boogie
+  - match: '!'
+    scope: keyword.operator.logical.unary.boogie
+  - match: <==>|==>|<==|&&|\|\|
+    scope: keyword.operator.logical.binary.boogie
+  - match: ==|!=|<=|>=|<:|<|>
+    scope: keyword.operator.comparison.boogie
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.boogie
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.boogie

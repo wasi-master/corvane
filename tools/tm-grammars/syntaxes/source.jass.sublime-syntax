@@ -1,0 +1,252 @@
+%YAML 1.2
+---
+# JASS (source.jass): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Drake53/language-jass.git via GitHub Linguist v9.7.0 (license: mit).
+name: JASS
+scope: source.jass
+file_extensions:
+- j
+contexts:
+  main:
+  - include: repo_type-declaration
+  - include: repo_globals-block
+  - include: repo_function-declaration
+  - include: repo_local-declaration
+  - include: repo_set-statement
+  - include: repo_call-statement
+  - include: repo_expression
+  repo_call-statement:
+  - match: ^[ \t]*(?:(debug)(?![0-9A-Za-z_])[ \t]+)?(call)(?![0-9A-Za-z_])(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?
+    scope: meta.statement.call.jass
+    captures:
+      1: keyword.control.debug.jass
+      2: keyword.control.jass
+  repo_character-literal:
+  - match: (')((?:(?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}]){4}|(?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}]){2}\\?[\x{80}-\x{7FF}]|(?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}])\\?[\x{80}-\x{7FF}](?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}])|\\?[\x{80}-\x{7FF}](?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}]){2}|(?:\\?[\x{80}-\x{7FF}]){2}|(?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}])\\?[\x{800}-\x{FFFF}]|\\?[\x{800}-\x{FFFF}](?:[^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}])|\\?[\x{10000}-\x{10FFFF}]))(')
+    scope: constant.numeric.integer.other.fourcc.jass
+    captures:
+      1: punctuation.definition.constant.begin.jass
+      3: punctuation.definition.constant.end.jass
+  - match: (')([^'\\\r\n\x{80}-\x{10FFFF}]|\\[^\r\n\x{80}-\x{10FFFF}])(')
+    scope: constant.character.jass
+    captures:
+      1: punctuation.definition.constant.begin.jass
+      3: punctuation.definition.constant.end.jass
+  - match: '''(?:[^''\\\r\n]|\\.)*'''
+    scope: invalid.illegal.character-literal-length.jass
+  - match: ''''
+    captures:
+      0: punctuation.definition.constant.begin.jass
+    push:
+    - meta_scope: constant.character.jass
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.constant.end.jass
+    - include: repo_escape-sequence
+  repo_comment:
+  - match: (//)[^\r\n]*
+    scope: comment.line.double-slash.jass
+    captures:
+      1: punctuation.definition.comment.jass
+  repo_escape-sequence:
+  - match: \\[\\"'nrtbf]
+    scope: constant.character.escape.jass
+  - match: \\[^\r\n]
+    scope: invalid.illegal.unknown-escape.jass
+  - match: \\
+    scope: invalid.illegal.unknown-escape.jass
+  repo_expression:
+  - include: repo_comment
+  - include: repo_string
+  - include: repo_character-literal
+  - include: repo_function-reference
+  - include: repo_keywords
+  - include: repo_numbers
+  - include: repo_function-call
+  - include: repo_identifier
+  - include: repo_operators
+  - include: repo_punctuation
+  - include: repo_illegal
+  repo_function-call:
+  - match: '[A-Za-z_][0-9A-Za-z_]*(?=[ \t]*\()'
+    scope: variable.function.jass
+  repo_function-declaration:
+  - match: ^[ \t]*((?:(constant)(?![0-9A-Za-z_])[ \t]+)?(function|native)(?![0-9A-Za-z_])(?:[ \t]+(?!(?:takes|returns)(?![0-9A-Za-z_]))([A-Za-z_][0-9A-Za-z_]*))?[ \t]*)
+    captures:
+      1: meta.function.jass
+      2: storage.modifier.constant.jass
+      3: storage.type.function.jass keyword.declaration.function.jass
+      4: meta.function.jass
+    push:
+    - match: (?=$)
+      pop: true
+    - include: repo_comment
+    - include: repo_function-parameters
+    - include: repo_function-return-type
+    - include: repo_keywords
+    - match: '[A-Za-z_][0-9A-Za-z_]*'
+      scope: support.type.jass
+    - include: repo_illegal
+  repo_function-parameters:
+  - match: (takes)(?![0-9A-Za-z_])
+    captures:
+      1: keyword.other.jass
+    push:
+    - meta_scope: meta.function.parameters.jass
+    - match: (?=returns(?![0-9A-Za-z_])|[ \t]*(?://|$))
+      pop: true
+    - include: repo_parameter
+    - match: ','
+      scope: punctuation.separator.comma.jass
+    - include: repo_keywords
+    - match: '[A-Za-z_][0-9A-Za-z_]*'
+      scope: support.type.jass
+    - include: repo_illegal
+  repo_function-reference:
+  - match: (function)(?![0-9A-Za-z_])[ \t]+([A-Za-z_][0-9A-Za-z_]*)
+    captures:
+      1: storage.type.function.jass
+  repo_function-return-type:
+  - match: (returns)(?![0-9A-Za-z_])
+    captures:
+      1: keyword.other.jass
+    push:
+    - meta_scope: meta.function.return-type.jass
+    - match: (?=[ \t]*(?://|$))
+      pop: true
+    - include: repo_keywords
+    - match: '[A-Za-z_][0-9A-Za-z_]*'
+      scope: support.type.jass
+    - include: repo_illegal
+  repo_global-declaration:
+  - match: ^[ \t]*(constant)(?![0-9A-Za-z_])[ \t]+([A-Za-z_][0-9A-Za-z_]*)[ \t]+(?:(array)(?![0-9A-Za-z_])[ \t]+)?([A-Za-z_][0-9A-Za-z_]*)
+    scope: meta.declaration.global.jass
+    captures:
+      1: storage.modifier.constant.jass
+      3: storage.modifier.array.jass
+  - match: ^[ \t]*([A-Za-z_][0-9A-Za-z_]*)[ \t]+(?:(array)(?![0-9A-Za-z_])[ \t]+)?([A-Za-z_][0-9A-Za-z_]*)
+    scope: meta.declaration.global.jass
+    captures:
+      2: storage.modifier.array.jass
+  repo_globals-block:
+  - match: ^[ \t]*(globals)(?![0-9A-Za-z_])
+    captures:
+      1: storage.type.globals.jass
+    push:
+    - meta_scope: meta.block.globals.jass
+    - match: ^[ \t]*(endglobals)(?![0-9A-Za-z_])|(?=^[ \t]*(?:globals|type|(?:constant[ \t]+)?(?:function|native)|local|set|call|return|exitwhen|if|elseif|else|endif|loop|endloop|endfunction|debug)(?![0-9A-Za-z_]))
+      pop: true
+      captures:
+        1: storage.type.globals.jass
+    - include: repo_global-declaration
+    - include: repo_expression
+  repo_identifier:
+  - match: '[A-Za-z_][0-9A-Za-z_]*'
+    scope: variable.other.jass
+  repo_illegal:
+  - match: '[^ \t\r\n]'
+    scope: invalid.illegal.character.jass
+  repo_keywords:
+  - match: (?:elseif|endif|else|then|if)(?![0-9A-Za-z_])
+    scope: keyword.control.conditional.jass
+  - match: (?:endloop|exitwhen|loop)(?![0-9A-Za-z_])
+    scope: keyword.control.loop.jass
+  - match: return(?![0-9A-Za-z_])
+    scope: keyword.control.flow.jass
+  - match: (?:call|set)(?![0-9A-Za-z_])
+    scope: keyword.control.jass
+  - match: debug(?![0-9A-Za-z_])
+    scope: keyword.control.debug.jass
+  - match: (?:and|not|or)(?![0-9A-Za-z_])
+    scope: keyword.operator.word.jass keyword.operator.logical.jass
+  - match: (?:true|false)(?![0-9A-Za-z_])
+    scope: constant.language.boolean.jass
+  - match: null(?![0-9A-Za-z_])
+    scope: constant.language.null.jass
+  - match: (?:boolean|integer|nothing|handle|string|code|real)(?![0-9A-Za-z_])
+    scope: storage.type.primitive.jass
+  - match: (?:endfunction|function|native)(?![0-9A-Za-z_])
+    scope: storage.type.function.jass
+  - match: (?:endglobals|globals)(?![0-9A-Za-z_])
+    scope: storage.type.globals.jass
+  - match: type(?![0-9A-Za-z_])
+    scope: storage.type.jass
+  - match: constant(?![0-9A-Za-z_])
+    scope: storage.modifier.constant.jass
+  - match: array(?![0-9A-Za-z_])
+    scope: storage.modifier.array.jass
+  - match: local(?![0-9A-Za-z_])
+    scope: storage.modifier.local.jass
+  - match: (?:extends|returns|takes|alias)(?![0-9A-Za-z_])
+    scope: keyword.other.jass
+  repo_local-declaration:
+  - match: ^[ \t]*(local)(?![0-9A-Za-z_])(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?(?:[ \t]+(array)(?![0-9A-Za-z_]))?(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?
+    scope: meta.declaration.local.jass
+    captures:
+      1: storage.modifier.local.jass
+      3: storage.modifier.array.jass
+  repo_numbers:
+  - match: (?:\$|0[xX])[0-9A-Fa-f]+
+    scope: constant.numeric.integer.hexadecimal.jass
+  - match: (?:\$|0[xX])(?![0-9A-Fa-f])
+    scope: invalid.illegal.number.jass
+  - match: '[0-9]+\.[0-9]*'
+    scope: constant.numeric.float.real.jass
+  - match: 0[0-9]*[89][0-9]*
+    scope: invalid.illegal.number.jass
+  - match: 0[0-7]+
+    scope: constant.numeric.integer.octal.jass
+  - match: '[0-9]+'
+    scope: constant.numeric.integer.decimal.jass
+  - match: \.[0-9]+
+    scope: constant.numeric.float.real.jass
+  - match: \.(?![0-9])
+    scope: invalid.illegal.number.jass
+  repo_operators:
+  - match: ==|!=|<=|>=|<|>
+    scope: keyword.operator.comparison.jass
+  - match: '='
+    scope: keyword.operator.assignment.jass
+  - match: '[-+*/]'
+    scope: keyword.operator.arithmetic.jass
+  repo_parameter:
+  - match: ([A-Za-z_][0-9A-Za-z_]*)[ \t]+(?!returns(?![0-9A-Za-z_]))([A-Za-z_][0-9A-Za-z_]*)
+  repo_punctuation:
+  - match: ','
+    scope: punctuation.separator.comma.jass
+  - match: \(
+    scope: punctuation.section.parens.begin.jass
+  - match: \)
+    scope: punctuation.section.parens.end.jass
+  - match: \[
+    scope: punctuation.section.brackets.begin.jass
+  - match: \]
+    scope: punctuation.section.brackets.end.jass
+  repo_set-statement:
+  - match: ^[ \t]*(?:(debug)(?![0-9A-Za-z_])[ \t]+)?(set)(?![0-9A-Za-z_])(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?
+    scope: meta.statement.set.jass
+    captures:
+      1: keyword.control.debug.jass
+      2: keyword.control.jass
+  repo_string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.jass
+    push:
+    - meta_scope: meta.string.jass string.quoted.double.jass
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.jass
+    - include: repo_escape-sequence
+  repo_type-declaration:
+  - match: ^[ \t]*(type)(?![0-9A-Za-z_])(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?(?:[ \t]+(extends)(?![0-9A-Za-z_])(?:[ \t]+([A-Za-z_][0-9A-Za-z_]*))?)?
+    scope: meta.declaration.type.jass
+    captures:
+      1: storage.type.jass keyword.declaration.type.jass
+      3: keyword.other.jass
+  repo_type-slot:
+  - include: repo_keywords
+  - match: '[A-Za-z_][0-9A-Za-z_]*'
+    scope: support.type.jass

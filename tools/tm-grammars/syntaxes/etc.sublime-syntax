@@ -1,0 +1,423 @@
+%YAML 1.2
+---
+# etc (etc): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-etc via GitHub Linguist v9.7.0 (license: isc).
+name: etc
+scope: etc
+hidden: true
+contexts:
+  main:
+  - include: repo_comma
+  - include: repo_comment
+  - include: repo_esc
+  - include: repo_float
+  - include: repo_int
+  - include: repo_str
+  - include: repo_colon
+  - include: repo_eql
+  - include: repo_dot
+  repo_bareword:
+  - match: '[^"\s][\S]*'
+    scope: string.unquoted.bareword
+  repo_base64:
+  - match: '[A-Za-z0-9+/=]{4,}'
+    scope: constant.numeric.base64
+  repo_bool:
+  - match: \b(true|false|TRUE|FALSE)\b
+  repo_boolish:
+  - match: (?i)\b(true|false|yes|no|on|off)\b
+  repo_bracket:
+  - match: \{
+    scope: punctuation.definition.bracket.curly.brace.begin
+  - match: \}
+    scope: punctuation.definition.bracket.curly.brace.end
+  - match: \[
+    scope: punctuation.definition.bracket.square.begin
+  - match: \]
+    scope: punctuation.definition.bracket.square.end
+  - match: \(
+    scope: punctuation.definition.bracket.round.parenthesis.begin
+  - match: \)
+    scope: punctuation.definition.bracket.round.parenthesis.end
+  - match: <
+    scope: punctuation.definition.bracket.angle.ascii.begin
+  - match: '>'
+    scope: punctuation.definition.bracket.angle.ascii.end
+  - match: "\u27E8"
+    scope: punctuation.definition.bracket.angle.unicode.begin
+  - match: "\u27E9"
+    scope: punctuation.definition.bracket.angle.unicode.end
+  repo_colon:
+  - match: ':'
+    scope: punctuation.delimiter.separator.colon
+  repo_comma:
+  - match: ','
+    scope: punctuation.separator.delimiter.comma
+  repo_comment:
+  - include: repo_commentHash
+  repo_commentHash:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment
+    push:
+    - meta_scope: comment.line.number-sign
+    - match: $
+      pop: true
+  repo_commentSemi:
+  - match: ;+
+    captures:
+      0: punctuation.definition.comment
+    push:
+    - meta_scope: comment.line.semicolon
+    - match: $
+      pop: true
+  repo_commentSlash:
+  - match: //
+    captures:
+      0: punctuation.definition.comment
+    push:
+    - meta_scope: comment.line.double-slash
+    - match: $
+      pop: true
+  repo_commentStart:
+  - include: repo_commentStartHash
+  repo_commentStartHash:
+  - match: ^(?=#)
+    push:
+    - match: (?!)
+      pop: true
+    - include: repo_commentHash
+  repo_commentStartSemi:
+  - match: ^(?=;)
+    push:
+    - match: (?!)
+      pop: true
+    - include: repo_commentSemi
+  repo_commentStartSlash:
+  - match: ^(?=//)
+    push:
+    - match: (?!)
+      pop: true
+    - include: repo_commentSlash
+  repo_dash:
+  - match: '-'
+    scope: punctuation.delimiter.separator.dash.hyphen
+  repo_dot:
+  - match: \.
+    scope: punctuation.delimiter.separator.property.period.dot
+  repo_dotDec:
+  - match: (?:|(?<!\.)\b)\d+(?:\.\d+)+\b(?!\.)
+    scope: constant.numeric.other.dot-decimal
+  repo_dotPair:
+  - match: "\\.\\.|\u2025"
+    scope: keyword.operator.punctuation.dots.splat.range.spread.rest
+  repo_dotTrail:
+  - match: \.{4,}
+    scope: punctuation.delimiter.separator.dotted.border.leader.dots
+  repo_dots:
+  - include: repo_ellipsis
+  - include: repo_dotPair
+  - include: repo_dot
+  repo_ellipsis:
+  - match: "\\.{3}|\u2026"
+    scope: keyword.operator.punctuation.ellipsis.splat.range.spread.rest
+  repo_email:
+  - include: repo_emailBracketed
+  - include: repo_emailQuoted
+  - include: repo_emailUnquoted
+  repo_emailBracketed:
+  - match: (<)\s*([^>@\s]+@[^>@\s]+)\s*(>)
+    scope: meta.email-address.bracketed.ascii.angle-brackets
+  - match: "(\u27E8)\\s*([^\u27E9@\\s]+@[^\u27E9@\\s]+)\\s*(\u27E9)"
+    scope: meta.email-address.bracketed.unicode.angle-brackets
+  - match: "(\xAB)\\s*([^\xBB@\\s]+@[^\xBB@\\s]+)\\s*(\xBB)"
+    scope: meta.email-address.bracketed.guillemots
+  - match: (\()\s*([^\)@\s]+@[^\)@\s]+)\s*(\))
+    scope: meta.email-address.bracketed.round-brackets
+  - match: ({)\s*([^}@\s]+@[^}@\s]+)\s*(})
+    scope: meta.email-address.bracketed.curly-brackets
+  - match: (\[)\s*([^\]@\s]+@[^\]@\s]+)\s*(\])
+    scope: meta.email-address.bracketed.square-brackets
+  repo_emailInnards:
+  - match: (?:|^|(?<=\n)).+
+    scope: constant.other.reference.link.underline.email
+  repo_emailQuoted:
+  - match: (")\s*([^"@\s]+@[^"@\s]+)\s*(")
+    scope: meta.email-address.quoted.ascii.double-quotes
+    captures:
+      0: string.quoted.double
+      1: punctuation.definition.string.begin.email-address
+      3: punctuation.definition.string.end.email-address
+  - match: "(\u201C)\\s*([^\u201D@\\s]+@[^\u201D@\\s]+)\\s*(\u201D)"
+    scope: meta.email-address.quoted.unicode.double-quotes
+    captures:
+      0: string.quoted.double
+      1: punctuation.definition.string.begin.email-address
+      3: punctuation.definition.string.end.email-address
+  - match: "(\u2018)\\s*([^\u2019@\\s]+@[^\u2019@\\s]+)\\s*(\u2019)"
+    scope: meta.email-address.quoted.unicode.single-quotes
+    captures:
+      0: string.quoted.single
+      1: punctuation.definition.string.begin.email-address
+      3: punctuation.definition.string.end.email-address
+  - match: (`)\s*([^`@\s]+@[^`@\s]+)\s*(`)
+    scope: meta.email-address.quoted.backticks
+    captures:
+      0: string.quoted.template.backticks
+      1: punctuation.definition.string.begin.email-address
+      3: punctuation.definition.string.end.email-address
+  - match: (`|')\s*([^'@\s]+@[^'@\s]+)\s*(')
+    scope: meta.email-address.quoted.single-quotes
+    captures:
+      0: string.quoted.single
+      1: punctuation.definition.string.begin.email-address
+      3: punctuation.definition.string.end.email-address
+  repo_emailUnquoted:
+  - match: "(?x)\n((?!\\.) (?:[^\\[\\(<\u27E8\xAB\"'\\s@.]|\\.(?!\\.))++ @\n([^\\[\\(<\u27E8\xAB\"'\\s@.]+?\\.(?=[^\\.\\s])(?:[^\\[\\(<\u27E8\xAB\"'\\s@.]|\\.(?!\\.))++))"
+    scope: meta.email-address.unquoted
+    captures:
+      1: string.unquoted.email-address
+  repo_eql:
+  - match: '='
+    scope: keyword.operator.assignment.key-value.equals-sign
+  repo_esc:
+  - match: (\\).
+    scope: constant.character.escape.backslash
+    captures:
+      1: punctuation.definition.escape.backslash
+  repo_float:
+  - include: repo_floatExp
+  - include: repo_floatNoExp
+  repo_floatExp:
+  - match: '[-+]?(?:[0-9]*\.[0-9]+|[0-9]+\.)(?:[eE][-+]?[0-9]+)++'
+    scope: constant.numeric.float.real.decimal.dec.exponential.scientific
+  repo_floatNoExp:
+  - match: '[-+]?(?:[0-9]*\.[0-9]+|[0-9]+\.)++'
+    scope: constant.numeric.float.real.decimal.dec
+  repo_glob:
+  - include: repo_globSimple
+  - include: repo_globSet
+  - include: repo_globBraces
+  repo_globBraces:
+  - include: repo_globBracesSeq
+  - include: repo_globBracesAlt
+  repo_globBracesAlt:
+  - match: "(?x)\n(?<char>[^\\s{,}\\\\]|\\\\[{,}\\\\]|\\g<braced>){0}\n(?<braced>{(?:[^{},\\\\]|\\\\.)*+}){0}\n(?<alt>\\g<char>*+,\\g<char>*+|\\g<char>++){0}\n(?<seq>{(?:-?\\d+\\.\\.-?\\d+|[a-zA-Z]\\.\\.[a-zA-Z])(?:\\.\\.-?\\d+)?}){0}\n(?<entry> \\g<char>*+ (?:\n\t\\g<seq>+\n\t|\n\t(?!\\g<braced>)\n\t{\n\t\t(?<braces>\n\t\t\t\\g<alt>*+\n\t\t\t(?:(?!\\g<braced>) { \\g<braces>*+ } | \\g<seq>++)\n\t\t\t\\g<alt>*+\n\t\t\t|\n\t\t\t\\g<alt>++\n\t\t)\n\t}\n) \\g<char>*+)"
+    scope: meta.brace-expansion.alternation
+  repo_globBracesSeq:
+  - match: ({)(?:(-?\d+\.\.-?\d+)|([a-zA-Z]\.\.[a-zA-Z]))(\.\.-?\d+)?(})
+    scope: meta.brace-expansion.sequence
+    captures:
+      2: meta.range.numeric
+      3: meta.range.alphabetic
+      4: meta.increment
+  repo_globSet:
+  - match: "(?x)\n(\\[) (!|\\^)?\n(\n\t(?: [^\\\\\\[\\]]\n\t|   \\\\.\n\t|   \\[ (?::[!^]?\\w+:|\\..+?\\.|=.+?=) \\]\n\t)*+\n)(\\])"
+    scope: meta.character-class.set
+    captures:
+      1: brackethighlighter.square.punctuation.definition.character-class.set.begin
+      2: keyword.operator.logical.not
+      4: brackethighlighter.square.punctuation.definition.character-class.set.end
+  repo_globSimple:
+  - match: \*{2}
+    scope: keyword.operator.glob.wildcard.globstar
+  - match: '[*?]'
+    scope: keyword.operator.glob.wildcard
+  repo_hex:
+  - match: '[-+]?[A-Fa-f0-9]+'
+    scope: constant.numeric.integer.int.hexadecimal.hex
+  repo_hexNoSign:
+  - match: '[A-Fa-f0-9]+'
+    scope: constant.numeric.integer.int.hexadecimal.hex
+  repo_int:
+  - include: repo_intExp
+  - include: repo_intNoExp
+  repo_intExp:
+  - match: '[-+]?[0-9]+[eE][-+]?[0-9]+'
+    scope: constant.numeric.integer.int.decimal.dec.exponential.scientific
+  repo_intNoExp:
+  - match: '[-+]?[0-9]+'
+    scope: constant.numeric.integer.int.decimal.dec
+  repo_ip:
+  - include: repo_ipv6
+  - include: repo_ipv4
+  repo_ipv4:
+  - match: "(?x) (?:|^|(?<!\\.)\\b)\n(?!\\.)\n((?:\n\t\\.?\n\t(?: 25[0-5]    # 250-255\n\t|   2[0-4]\\d  # 200-249\n\t|   1\\d\\d    # 100-199\n\t|   [1-9]?\\d  # 0-99\n\t)\\b\n){4})\n\n# CIDR notation: \u201C/[0-32]\u201D\n((/)(3[0-2]|[12]?\\d)\\b)?\n\n(?=$|\\s|(?!\\.)\\b)"
+    scope: constant.numeric.other.ip-address.v4
+    captures:
+      2: meta.cidr-notation
+      3: keyword.operator.assignment.cidr
+  repo_ipv6:
+  - match: "(?mix) (?:|^|(?<!\\.|:|\\w))\n(?<dec>25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d){0}\n(?<hex>[A-F0-9]{1,4}){0}\n(?<v4>\\g<dec>(?:\\.\\g<dec>){3}){0}\n(?<v6>\\g<hex>:){0}\n\n# Address\n(?: \\g<v6>{7} (?:                               \\g<hex>      |:)\n|   \\g<v6>{6} (?:                   \\g<v4>|   :\\g<hex>      |:)\n|   \\g<v6>{5} (?:                  :\\g<v4>|(?::\\g<hex>){1,2}|:)\n|   \\g<v6>{4} (?:(?::\\g<hex>)?    :\\g<v4>|(?::\\g<hex>){1,3}|:)\n|   \\g<v6>{3} (?:(?::\\g<hex>){0,2}:\\g<v4>|(?::\\g<hex>){1,4}|:)\n|   \\g<v6>{2} (?:(?::\\g<hex>){0,3}:\\g<v4>|(?::\\g<hex>){1,5}|:)\n|   \\g<v6>    (?:(?::\\g<hex>){0,4}:\\g<v4>|(?::\\g<hex>){1,6}|:)\n|          (?::(?:(?::\\g<hex>){0,5}:\\g<v4>|(?::\\g<hex>){1,7}|:))\n) (?:(?<!:)\\b|(?<=:)(?!\\w|:))\n\n# Zone ID (RFC 4007): \u201C%ne0\u201D\n(?:\n\t%\n\t(?!\\$)\n\t[^\\s();\"/]+\n)?\n\n# CIDR notation: \u201C/[0-128]\u201D\n(?:\n\t/\n\t(?: 12[0-8]   # 120-128\n\t|   1[01]\\d  # 100-119\n\t|   [1-9]?\\d # 0-99\n\t) \\b\n)?\n\n(?=$|\\\
+      s|[^.:%/\\s])"
+    scope: constant.numeric.other.ip-address.v6
+  repo_kolon:
+  - match: ':'
+    scope: keyword.operator.assignment.key-value.colon
+  repo_mime:
+  - match: "(?xi) (?<!-|\\.)\\b\n(?: (application|audio|example|font|image|message|model|multipart|text|video)\n|   (chemical|drawing|magnus-internal|paleovu|xgl|inode(?=/(?:blockdevice|chardevice|directory|door|fifo|mount-point|socket|symlink)))\n|   (x-[-a-z0-9+_.]{1,125})\n) (/) (?![.+])([-a-z0-9+_.]{1,127})(?<![.+])\n\\b (?!-|\\.)\n((?:\n\t# LHS: \u201C; name=\u201D\n\t\\s* ; \\s* [^;=]+ \\s* = [ \\t]*\n\t\n\t# RHS\n\t(?: \"(?:[^\"\\\\]|\\\\\")*+\" # Quoted value\n\t|   (?=\\S)[^;\\r\\n]+     # Unquoted value\n\t)?\n)++)?"
+    scope: constant.other.media-type
+    captures:
+      3: entity.name.type.extension.media-type
+      4: punctuation.separator.slash.media-type
+      6: meta.parameters.media-type
+  repo_num:
+  - include: repo_float
+  - include: repo_int
+  repo_op:
+  - include: repo_opBitAssign
+  - include: repo_opMathAssign
+  - include: repo_opBit
+  - include: repo_opFix
+  - include: repo_opCmp
+  - include: repo_opLog
+  - include: repo_opMath
+  repo_opBit:
+  - match: \^
+    scope: keyword.operator.bitwise.xor
+  - match: '~'
+    scope: keyword.operator.bitwise.not
+  - match: '&'
+    scope: keyword.operator.bitwise.and
+  - match: \|
+    scope: keyword.operator.bitwise.or
+  - match: '<<'
+    scope: keyword.operator.bitwise.shift.left
+  - match: '>>>'
+    scope: keyword.operator.bitwise.shift.right.unsigned
+  - match: '>>'
+    scope: keyword.operator.bitwise.shift.right.signed
+  repo_opBitAssign:
+  - match: \^=
+    scope: keyword.operator.assignment.bitwise.xor
+  - match: ~=
+    scope: keyword.operator.assignment.bitwise.not
+  - match: '&='
+    scope: keyword.operator.assignment.bitwise.and
+  - match: \|=
+    scope: keyword.operator.assignment.bitwise.or
+  - match: <<=
+    scope: keyword.operator.assignment.bitwise.shift.left
+  - match: '>>>='
+    scope: keyword.operator.assignment.bitwise.shift.right.unsigned
+  - match: '>>='
+    scope: keyword.operator.assignment.bitwise.shift.right.signed
+  repo_opCmp:
+  - match: <=>
+    scope: keyword.operator.logical.comparison.starship.spaceship
+  - match: <=
+    scope: keyword.operator.logical.comparison.less-than-or-equal-to.lte
+  - match: <
+    scope: keyword.operator.logical.comparison.less-than.lt
+  - match: '>='
+    scope: keyword.operator.logical.comparison.greater-than-or-equal-to.gte
+  - match: '>'
+    scope: keyword.operator.logical.comparison.greater-than.gt
+  - match: ===
+    scope: keyword.operator.logical.comparison.equal-to.equals.equal.eql.eq.strict
+  - match: ==
+    scope: keyword.operator.logical.comparison.equal-to.equals.equal.eql.eq
+  - match: '!=='
+    scope: keyword.operator.logical.comparison.not-equal-to.not-equal.unequal.neql.ne.strict
+  - match: '!='
+    scope: keyword.operator.logical.comparison.not-equal-to.not-equal.unequal.neql.ne
+  repo_opFix:
+  - match: \+{2}
+    scope: keyword.operator.increment
+  - match: -{2}
+    scope: keyword.operator.decrement
+  repo_opLog:
+  - match: '!!'
+    scope: keyword.operator.logical.boolean.cast
+  - match: '!'
+    scope: keyword.operator.logical.boolean.not.negation.negate
+  - match: '&&'
+    scope: keyword.operator.logical.boolean.and
+  - match: \|{2}
+    scope: keyword.operator.logical.boolean.or
+  - match: \?{2}
+    scope: keyword.operator.logical.boolean.or.nullish
+  repo_opMath:
+  - match: \*{2}|\^
+    scope: keyword.operator.arithmetic.exponentiation.exponent.exp.power
+  - match: \+
+    scope: keyword.operator.arithmetic.addition.add.plus
+  - match: \*
+    scope: keyword.operator.arithmetic.multiplication.multiply.times
+  - match: /
+    scope: keyword.operator.arithmetic.division.divide
+  - match: '%'
+    scope: keyword.operator.arithmetic.remainder.modulo.modulus.mod
+  - match: "[-\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D]"
+    scope: keyword.operator.arithmetic.subtraction.subtract.minus
+  repo_opMathAssign:
+  - match: \*{2}=|\^=
+    scope: keyword.operator.assignment.arithmetic.exponentiation.exponent.exp.power
+  - match: \+=
+    scope: keyword.operator.assignment.arithmetic.addition.add.plus
+  - match: \*=
+    scope: keyword.operator.assignment.arithmetic.multiplication.multiply.times
+  - match: /=
+    scope: keyword.operator.assignment.arithmetic.division.divide
+  - match: '%='
+    scope: keyword.operator.assignment.arithmetic.remainder.modulo.modulus.mod
+  - match: "[-\u058A\u05BE\u1400\u1806\u2010-\u2015\u2E17\u2E1A\u2E3A\u2E3B\u2E40\u301C\u3030\u30A0\uFE31\uFE32\uFE58\uFE63\uFF0D]="
+    scope: keyword.operator.assignment.arithmetic.subtraction.subtract.minus
+  repo_semi:
+  - match: ;
+    scope: punctuation.delimiter.separator.semicolon
+  repo_str:
+  - include: repo_strDouble
+  - include: repo_strSingle
+  repo_strDouble:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin
+    push:
+    - meta_scope: string.quoted.double
+    - match: '"|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end
+    - include: repo_esc
+  repo_strSingle:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin
+    push:
+    - meta_scope: string.quoted.single
+    - match: '''|(?=$)'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end
+    - include: repo_esc
+  repo_tab:
+  - match: ^\t+
+  - match: \t+$
+  - match: \t
+    scope: punctuation.whitespace.tab.hard-tab
+  repo_url:
+  - match: "(?x)\n(\"|'|\\b)\n(\n\t# Not part of official URL schemes, included here for convenience\n\t(?: (?:jdbc|mvn|odbc|view-source) :)?\n\n\t# Common protocols/URI schemes\n\t( https?\n\t| s?ftp\n\t| ftps\n\t| file\n\t| wss?\n\t| (?:git|svn) (?:\\+(?:https?|ssh))?\n\t| ssh\n\t\n\t# Less common URI schemes\n\t| aaas?\n\t| acap\n\t| adiumxtra\n\t| admin\n\t| afp\n\t| app\n\t| atom\n\t| aurora\n\t| aw\n\t| beshare\n\t| bolo\n\t| cassandra\n\t| chrome(?:-extension)?\n\t| coaps?\n\t| cockroach\n\t| content\n\t| couchbase\n\t| crid\n\t| cvs\n\t| dict\n\t| dns\n\t| docker\n\t| ed2k\n\t| facetime\n\t| feed\n\t| finger\n\t| fish\n\t| gemini\n\t| github(?:-(?:mac|linux|windows))?\n\t| gizmoproject\n\t| gopher\n\t| go\n\t| hcp\n\t| imap\n\t| irc[6s]?\n\t| issue\n\t| keyparc\n\t| lastfm\n\t| ldaps?\n\t| man(?:-?page)?\n\t| maria(?:db)?\n\t| market\n\t| message\n\t| mms\n\t| modern-?sqlite\n\t| mongodb\n\t| ms-help\n\t| mssql\n\t| mumble\n\t| my?sql\n\t| netezza\n\t| nfs\n\t| ni\n\t| nntp\n\t|\
+      \ notes\n\t| oleodbc\n\t| oracle\n\t| payto\n\t| pgsql\n\t| pg\n\t| pop\n\t| postgres(?:ql)?\n\t| postgresql\n\t| presto(?:dbs?|s)\n\t| reload\n\t| resource\n\t| res\n\t| rmi\n\t| rsync\n\t| rtmf?p\n\t| rtmp\n\t| s3\n\t| saphana\n\t| secondlife\n\t| sgn\n\t| shttp\n\t| slack\n\t| smb\n\t| snmp\n\t| soldat\n\t| sqlite3?\n\t| sqlserver\n\t| steam\n\t| stratum\\+[a-z]+\n\t| stuns?\n\t| teamspeak\n\t| telnet\n\t| turns?\n\t| txmt\n\t| udp\n\t| unreal\n\t| ut2004\n\t| ventrilo\n\t| vnc\n\t| wais\n\t| web\\+[a-z]+\n\t| webcal\n\t| wtai\n\t| wyciwyg\n\t| xmpp\n\t| xri\n\t| z39\\.50[rs]\n\t| zoommtg\n\t\n\t# User-defined/arbitrary URI scheme starting with `x-`\n\t| x(?:-[a-z][a-z0-9]*)++\n\t) ://\n\t\n\t# Path specifier\n\t(?:\n\t\t(?! \\#\\w*\\#)\n\t\t(?: [-:\\@\\w.,~%+_/?=&\\#;|!])\n\t)+\n\t\n\t# Don't include trailing punctuation\n\t(?<![-.,?:\\#;])\n)\n(\\1)"
+    captures:
+      1: punctuation.definition.link.begin.url
+      4: punctuation.definition.link.end.url
+  - match: "(?x)\n(\"|'|\\b)\n(\n\tmailto (:)\n\t(?:\n\t\t(?! \\#\\w*\\#)\n\t\t(?: [-:@\\w.,~%+_/?=&\\#;|!])\n\t)+\n\t(?<![-.,?:\\#;])\n)\n(\\1)"
+    captures:
+      1: punctuation.definition.link.begin.url
+      2: constant.other.reference.link.underline.mailto.url
+      3: punctuation.separator.delimiter.scheme.url
+      4: punctuation.definition.link.end.url
+  repo_version:
+  - match: "(?x)\n(\"|'|\\b)\n([vV]?)\n(0 | [1-9]\\d*) (\\.)\n(0 | [1-9]\\d*) (\\.)\n(0 | [1-9]\\d*)\n(?:\n\t(-)\n\t(\n\t\t(?: 0\n\t\t| [1-9]\\d*\n\t\t| \\d*[a-zA-Z-][0-9a-zA-Z-]*\n\t\t)\n\t\t\n\t\t(?:\n\t\t\t\\.\n\t\t\t(?: 0\n\t\t\t| [1-9]\\d*\n\t\t\t| \\d*[a-zA-Z-][0-9a-zA-Z-]*\n\t\t\t)\n\t\t)*\n\t)\n)?\n(?:\n\t(\\+)\n\t(\n\t\t[0-9a-zA-Z-]+\n\t\t(?:\\.[0-9a-zA-Z-]+)*\n\t)\n)?\n(\\1)"
+    scope: constant.other.version-string
+    captures:
+      1: punctuation.definition.version-string.begin
+      10: punctuation.delimiter.separator.plus
+      11: meta.build-metadata
+      12: punctuation.definition.version-string.end
+      2: punctuation.definition.version-prefix
+      3: meta.major.release-number
+      5: meta.minor.release-number
+      7: meta.patch.release-number
+      9: meta.prerelease.release-number

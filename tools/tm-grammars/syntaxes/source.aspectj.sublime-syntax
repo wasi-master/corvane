@@ -1,0 +1,483 @@
+%YAML 1.2
+---
+# AspectJ (source.aspectj): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/sublime-aspectj via GitHub Linguist v9.7.0 (license: mit).
+name: AspectJ
+scope: source.aspectj
+file_extensions:
+- aj
+contexts:
+  main:
+  - match: ^\s*(package)\b(?:\s*([^ ;$]+)\s*(;)?)?
+    scope: meta.package.java
+    captures:
+      1: keyword.other.package.java
+      2: storage.modifier.package.java
+      3: punctuation.terminator.java
+  - match: ^\s*(import)\b(?:\s*([^ ;$]+)\s*(;)?)?
+    scope: meta.import.java
+    captures:
+      1: keyword.other.import.java
+      2: storage.modifier.import.java
+      3: punctuation.terminator.java
+  - include: repo_code
+  repo_advice:
+  - match: (?!new)(?!.*pointcut)(?=[^=:]+\([^\)]*\)[^=]*:)
+    push:
+    - meta_scope: meta.advice.aspectj
+    - match: '}|(?=;)'
+      pop: true
+    - include: repo_storage-modifiers
+    - match: (around|after|before|throwing|returning)\s*\(
+      captures:
+        1: keyword.other.advice.aspectj
+      push:
+      - meta_scope: meta.method.identifier.java
+      - match: \)
+        pop: true
+      - include: repo_parameters
+    - match: (throwing|returning)(?=\s*:)
+      scope: keyword.other.advice.aspectj
+    - match: ':'
+      push:
+      - meta_scope: meta.advice.identifier.aspectj
+      - match: (?={)
+        pop: true
+      - include: repo_pointcut-definitions
+    - match: (?=\w.*\s+\w+\s*\()
+      push:
+      - meta_scope: meta.method.return-type.java
+      - match: (?=\w+\s*\()
+        pop: true
+      - include: repo_all-types
+    - include: repo_throws
+    - match: '{'
+      push:
+      - meta_scope: meta.method.body.java
+      - match: (?=})
+        pop: true
+      - include: repo_code
+  repo_all-types:
+  - include: repo_primitive-arrays
+  - include: repo_primitive-types
+  - include: repo_object-types
+  repo_annotations:
+  - match: (@[^ (]+)(\()
+    captures:
+      1: storage.type.annotation.java
+      2: punctuation.definition.annotation-arguments.begin.java
+    push:
+    - meta_scope: meta.declaration.annotation.java
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.annotation-arguments.end.java
+    - match: (\w*)\s*(=)
+      captures:
+        1: constant.other.key.java
+        2: keyword.operator.assignment.java
+    - include: repo_code
+    - match: ','
+      scope: punctuation.seperator.property.java
+  - match: '@\w*'
+    scope: storage.type.annotation.java
+  repo_anonymous-classes-and-new:
+  - match: \bnew\b
+    captures:
+      0: keyword.control.new.java
+    push:
+    - match: (?<=\)|\])(?!\s*{)|(?<=})|(?=;)
+      pop: true
+    - match: (\w+)\s*(?=\[)
+      captures:
+        1: storage.type.java
+      push:
+      - match: '}|(?=;|\))'
+        pop: true
+      - match: \[
+        push:
+        - match: \]
+          pop: true
+        - include: repo_code
+      - match: '{'
+        push:
+        - match: (?=})
+          pop: true
+        - include: repo_code
+    - match: (?=\w.*\()
+      push:
+      - match: (?<=\))
+        pop: true
+      - include: repo_object-types
+      - match: \(
+        captures:
+          1: storage.type.java
+        push:
+        - match: \)
+          pop: true
+        - include: repo_code
+    - match: '{'
+      push:
+      - meta_scope: meta.inner-class.java
+      - match: '}'
+        pop: true
+      - include: repo_class-body
+  repo_assertions:
+  - match: \b(assert)\s
+    captures:
+      1: keyword.control.assert.java
+    push:
+    - meta_scope: meta.declaration.assertion.java
+    - match: $
+      pop: true
+    - match: ':'
+      scope: keyword.operator.assert.expression-seperator.java
+    - include: repo_code
+  repo_class:
+  - match: (?=\w?[\w\s]*(?:class|(?:@)?interface|enum|aspect)\s+\w+)
+    push:
+    - meta_scope: meta.class.aspectj
+    - match: '}'
+      pop: true
+      captures:
+        0: punctuation.section.class.end.java
+    - include: repo_storage-modifiers
+    - include: repo_comments
+    - match: (class|(?:@)?interface|enum|aspect)\s+(\w+)
+      scope: meta.class.identifier.aspectj
+      captures:
+        1: storage.type.java
+        2: entity.name.type.class.java
+    - match: extends
+      captures:
+        0: storage.modifier.extends.java
+      push:
+      - meta_scope: meta.definition.class.inherited.classes.java
+      - match: (?={|implements)
+        pop: true
+      - include: repo_object-types-inherited
+      - include: repo_comments
+    - match: (implements)\s
+      captures:
+        1: storage.modifier.implements.java
+      push:
+      - meta_scope: meta.definition.class.implemented.interfaces.java
+      - match: (?=\s*extends|\{)
+        pop: true
+      - include: repo_object-types-inherited
+      - include: repo_comments
+    - match: '{'
+      push:
+      - meta_scope: meta.class.body.java
+      - match: (?=})
+        pop: true
+      - include: repo_class-body
+  repo_class-body:
+  - include: repo_comments
+  - include: repo_class
+  - include: repo_enums
+  - include: repo_methods
+  - include: repo_pointcuts
+  - include: repo_advice
+  - include: repo_annotations
+  - include: repo_storage-modifiers
+  - include: repo_code
+  - include: repo_declare-precedence
+  - include: repo_declare-parents
+  - include: repo_declare-constructs
+  - include: repo_declare-warnings-errors
+  repo_code:
+  - include: repo_comments
+  - include: repo_class
+  - match: '{'
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_code
+  - include: repo_assertions
+  - include: repo_parens
+  - include: repo_constants-and-special-vars
+  - include: repo_anonymous-classes-and-new
+  - include: repo_keywords
+  - include: repo_storage-modifiers
+  - include: repo_strings
+  - include: repo_all-types
+  - match: \b(proceed)\b
+    scope: support.function.builtin.aspectj
+  repo_comments:
+  - match: /\*\*/
+    scope: comment.block.empty.java
+    captures:
+      0: punctuation.definition.comment.java
+  - include: scope:text.html.javadoc
+  - include: repo_comments-inline
+  repo_comments-inline:
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.java
+    push:
+    - meta_scope: comment.block.java
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.java
+  - match: \s*((//).*$\n?)
+    captures:
+      1: comment.line.double-slash.java
+      2: punctuation.definition.comment.java
+  repo_constants-and-special-vars:
+  - match: \b(true|false|null)\b
+    scope: constant.language.java
+  - match: \b(this|super)\b
+    scope: variable.language.java
+  - match: \b((0(x|X)[0-9a-fA-F]*)|(([0-9]+\.?[0-9]*)|(\.[0-9]+))((e|E)(\+|-)?[0-9]+)?)([LlFfUuDd]|UL|ul)?\b
+    scope: constant.numeric.java
+  - match: (\.)?\b([A-Z][A-Z0-9_]+)(?!<|\.class|\s*\w+\s*=)\b
+    scope: constant.other.java
+    captures:
+      1: keyword.operator.dereference.java
+  repo_declare-constructs:
+  - match: '(declare)\s+(@(?:type|method|field|package|constructor))\s*:'
+    captures:
+      1: storage.type.declare.aspectj
+      2: storage.type.declare.construct.aspectj
+    push:
+    - meta_scope: meta.declare.construct.aspectj
+    - match: ;
+      pop: true
+    - include: repo_keywords
+    - include: repo_all-types
+    - include: repo_storage-modifiers
+    - include: repo_strings
+  repo_declare-parents:
+  - match: '(declare)\s+(parents)\s*:'
+    captures:
+      1: storage.type.declare.aspectj
+      2: storage.type.declare.parents.aspectj
+    push:
+    - meta_scope: meta.declare.precedence.aspectj
+    - match: ;
+      pop: true
+    - include: repo_keywords
+    - match: \b(implements|extends)\b
+      scope: storage.modifier.class.aspectj
+  repo_declare-precedence:
+  - match: '(declare)\s+(precedence)\s*:'
+    captures:
+      1: storage.type.declare.aspectj
+      2: storage.type.declare.precedence.aspectj
+    push:
+    - meta_scope: meta.declare.precedence.aspectj
+    - match: ;
+      pop: true
+  repo_declare-warnings-errors:
+  - match: '(declare)\s+(warning|error)\s*:'
+    captures:
+      1: storage.type.declare.aspectj
+      2: storage.type.declare.alerts.aspectj
+    push:
+    - meta_scope: meta.declare.alerts.aspectj
+    - match: ;
+      pop: true
+    - include: repo_pointcut-definitions
+    - include: repo_strings
+  repo_enums:
+  - match: ^(?=\s*[A-Z0-9_]+\s*({|\(|,))
+    push:
+    - match: (?=;|})
+      pop: true
+    - match: \w+
+      captures:
+        0: constant.other.enum.java
+      push:
+      - meta_scope: meta.enum.java
+      - match: (?=,|;|})
+        pop: true
+      - include: repo_parens
+      - match: '{'
+        push:
+        - match: '}'
+          pop: true
+        - include: repo_class-body
+  repo_keywords:
+  - match: \b(try|catch|finally|throw)\b
+    scope: keyword.control.catch-exception.java
+  - match: '\?|:'
+    scope: keyword.control.java
+  - match: \b(return|break|case|continue|default|do|while|for|switch|if|else)\b
+    scope: keyword.control.java
+  - match: \b(instanceof)\b
+    scope: keyword.operator.java
+  - match: (==|!=|<=|>=|<>|<|>)
+    scope: keyword.operator.comparison.java
+  - match: (=)
+    scope: keyword.operator.assignment.java
+  - match: (\-\-|\+\+)
+    scope: keyword.operator.increment-decrement.java
+  - match: (\-|\+|\*|\/|%)
+    scope: keyword.operator.arithmetic.java
+  - match: (!|&&|\|\|)
+    scope: keyword.operator.logical.java
+  - match: (?<=\S)\.(?=\S)
+    scope: keyword.operator.dereference.java
+  - match: ;
+    scope: punctuation.terminator.java
+  repo_methods:
+  - match: (?!new)(?!.*pointcut)(?=\w[^=:]*\s+)(?=[^=:]+\()(?!.*:)
+    push:
+    - meta_scope: meta.method.java
+    - match: '}|(?=;)'
+      pop: true
+    - include: repo_storage-modifiers
+    - match: ([\w\.]+)\s*\(
+      captures:
+        1: entity.name.function.java
+      push:
+      - meta_scope: meta.method.identifier.java
+      - match: \)
+        pop: true
+      - include: repo_parameters
+    - match: (?=\w.*\s+\w+\s*\()
+      push:
+      - meta_scope: meta.method.return-type.java
+      - match: (?=\w+\s*\()
+        pop: true
+      - include: repo_all-types
+    - include: repo_throws
+    - match: '{'
+      push:
+      - meta_scope: meta.method.body.java
+      - match: (?=})
+        pop: true
+      - include: repo_code
+  repo_object-types:
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)<
+    push:
+    - meta_scope: storage.type.generic.java
+    - match: '>|[^\w\s,\?<\[\]]'
+      pop: true
+    - include: repo_object-types
+    - match: <
+      push:
+      - meta_scope: storage.type.generic.java
+      - match: '>|[^\w\s,\[\]<]'
+        pop: true
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)(?=\[)
+    push:
+    - meta_scope: storage.type.object.array.java
+    - match: (?=[^\]\s])
+      pop: true
+    - match: \[
+      push:
+      - match: \]
+        pop: true
+      - include: repo_code
+  - match: \b(?:[a-z]\w*(\.))*[A-Z]+\w*\b
+    scope: storage.type.java
+    captures:
+      1: keyword.operator.dereference.java
+  repo_object-types-inherited:
+  - match: \b((?:[a-z]\w*\.)*[A-Z]+\w*)<
+    push:
+    - meta_scope: entity.other.inherited-class.java
+    - match: '>|[^\w\s,<]'
+      pop: true
+    - include: repo_object-types
+    - match: <
+      push:
+      - meta_scope: storage.type.generic.java
+      - match: '>|[^\w\s,<]'
+        pop: true
+  - match: \b(?:[a-z]\w*(\.))*[A-Z]+\w*
+    scope: entity.other.inherited-class.java
+    captures:
+      1: keyword.operator.dereference.java
+  repo_parameters:
+  - match: final
+    scope: storage.modifier.java
+  - include: repo_primitive-arrays
+  - include: repo_primitive-types
+  - include: repo_object-types
+  - match: \w+
+    scope: variable.parameter.java
+  repo_parens:
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_code
+  repo_pointcut-definitions:
+  - include: repo_keywords
+  - include: repo_all-types
+  - match: (@annotation|\b(get|set|adviceexecution|execution|call|target|args|within|withincode|handler|cflow|cflowbelow|this|if|preinitialization|staticinitialization|initialization)\b)
+    scope: support.function.builtin.aspectj
+  repo_pointcuts:
+  - match: (?=\w?.*\s+)(pointcut)(?=\s+[^=]+\()
+    captures:
+      1: storage.type.aspectj
+    push:
+    - meta_scope: meta.pointcut.aspectj
+    - match: ;
+      pop: true
+    - include: repo_storage-modifiers
+    - match: (\w+)\s*\(
+      captures:
+        1: entity.name.function.aspectj
+      push:
+      - meta_scope: meta.pointcut.identifier.aspectj
+      - match: \)
+        pop: true
+      - include: repo_parameters
+    - match: ':'
+      push:
+      - meta_scope: meta.pointcut.body.aspectj
+      - match: (?=;)
+        pop: true
+      - include: repo_pointcut-definitions
+  repo_primitive-arrays:
+  - match: \b(?:void|boolean|byte|char|short|int|float|long|double)(\[\])*\b
+    scope: storage.type.primitive.array.java
+  repo_primitive-types:
+  - match: \b(?:void|boolean|byte|char|short|int|float|long|double)\b
+    scope: storage.type.primitive.java
+  repo_storage-modifiers:
+  - match: \b(public|private|protected|static|final|native|synchronized|abstract|threadsafe|transient)\b
+    scope: storage.modifier.java
+  - match: \b(privileged)\b
+    scope: storage.modifier.aspectj
+  repo_strings:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.java
+    push:
+    - meta_scope: string.quoted.double.java
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.java
+    - match: \\.
+      scope: constant.character.escape.java
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.java
+    push:
+    - meta_scope: string.quoted.single.java
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.java
+    - match: \\.
+      scope: constant.character.escape.java
+  repo_throws:
+  - match: throws
+    captures:
+      0: storage.modifier.java
+    push:
+    - meta_scope: meta.throwables.java
+    - match: (?={|;)
+      pop: true
+    - include: repo_object-types
+  repo_values:
+  - include: repo_strings
+  - include: repo_object-types
+  - include: repo_constants-and-special-vars

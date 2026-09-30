@@ -1,0 +1,326 @@
+%YAML 1.2
+---
+# Clarity (source.clar): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/hirosystems/clarity.tmbundle.git via GitHub Linguist v9.7.0 (license: mit).
+name: Clarity
+scope: source.clar
+file_extensions:
+- clar
+contexts:
+  main:
+  - include: repo_expression
+  - include: repo_define-constant
+  - include: repo_define-data-var
+  - include: repo_define-map
+  - include: repo_define-function
+  - include: repo_define-fungible-token
+  - include: repo_define-non-fungible-token
+  - include: repo_define-trait
+  - include: repo_use-trait
+  repo_built-in-func:
+  - match: (?x) (\() \s* (\-|\+|<\=|>\=|<|>|\*|/|and|append|as-contract|as-contract\?|as-max-len\?|asserts!|at-block|begin|bit-and|bit-not|bit-or|bit-shift-left|bit-shift-right|bit-xor|buff-to-int-be|buff-to-int-le|buff-to-uint-be|buff-to-uint-le|concat|contract-call\?|contract-of|default-to|element-at|element-at\?|filter|fold|from-consensus-buff\?|ft-burn\?|ft-get-balance|ft-get-supply|ft-mint\?|ft-transfer\?|get-block-info\?|get-burn-block-info\?|get-stacks-block-info\?|get-tenure-info\?|hash160|if|impl-trait|index-of|index-of\?|int-to-ascii|int-to-utf8|is-eq|is-err|is-none|is-ok|is-some|is-standard|keccak256|len|log2|map|match|merge|mod|nft-burn\?|nft-get-owner\?|nft-mint\?|nft-transfer\?|not|or|pow|principal-construct\?|principal-destruct\?|principal-of\?|print|replace-at\?|secp256k1-recover\?|secp256k1-verify|sha256|sha512|sha512/256|slice\?|sqrti|string-to-int\?|string-to-uint\?|to-ascii\?|stx-account|stx-burn\?|stx-get-balance|stx-transfer-memo\?|stx-transfer\?|to-consensus-buff\?|to-int|to-uint|try!|unwrap!|unwrap-err!|unwrap-err-panic|unwrap-panic|xor|contract-hash\?|restrict-assets\?|with-stx|with-ft|with-nft|with-stacking|with-staking|with-pox|with-all-assets-unsafe|secp256r1-verify|verify-merkle-proof|get-bitcoin-tx-output\?|ed25519-verify|secp256k1-decompress\?)
+      \s+
+    captures:
+      1: punctuation.built-in-function.start.clarity
+      2: keyword.declaration.built-in-function.clarity
+    push:
+    - meta_scope: meta.built-in-function
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.built-in-function.end.clarity
+    - include: repo_expression
+    - include: repo_user-func
+  repo_comment:
+  - match: (?x) (?<=^|[()\[\]{}",'`;\s]) (;) .* $
+    scope: comment.line.semicolon.clarity
+  repo_data-type:
+  - include: repo_comment
+  - match: \b(uint|int)\b
+    scope: entity.name.type.numeric.clarity
+  - match: \b(principal)\b
+    scope: entity.name.type.principal.clarity
+  - match: \b(bool)\b
+    scope: entity.name.type.bool.clarity
+  - match: (?x) (\() \s* (?:(string-ascii|string-utf8)\s+(\d+)) \s* (\))
+    captures:
+      1: punctuation.string_type-def.start.clarity
+      2: entity.name.type.string_type.clarity
+      3: constant.numeric.string_type-len.clarity
+      4: punctuation.string_type-def.end.clarity
+  - match: (?x) (\() \s* (buff)\s+(\d+)\s* (\))
+    captures:
+      1: punctuation.buff-def.start.clarity
+      2: entity.name.type.buff.clarity
+      3: constant.numeric.buf-len.clarity
+      4: punctuation.buff-def.end.clarity
+  - match: (?x) (\() \s* (optional)\s+
+    captures:
+      1: punctuation.optional-def.start.clarity
+      2: storage.type.modifier
+    push:
+    - meta_scope: meta.optional-def
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.optional-def.end.clarity
+    - include: repo_data-type
+  - match: (?x) (\() \s* (response)\s+
+    captures:
+      1: punctuation.response-def.start.clarity
+      2: storage.type.modifier
+    push:
+    - meta_scope: meta.response-def
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.response-def.end.clarity
+    - include: repo_data-type
+  - match: (?x) (\() \s* (list) \s+ (\d+) \s+
+    captures:
+      1: punctuation.list-def.start.clarity
+      2: entity.name.type.list.clarity
+      3: constant.numeric.list-len.clarity
+    push:
+    - meta_scope: meta.list-def
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.list-def.end.clarity
+    - include: repo_data-type
+  - match: (\{)
+    captures:
+      1: punctuation.tuple-def.start.clarity
+    push:
+    - meta_scope: meta.tuple-def
+    - match: (\})
+      pop: true
+      captures:
+        1: punctuation.tuple-def.end.clarity
+    - match: ([a-zA-Z][\w\?\!\-]*)(?=:)
+      scope: entity.name.tag.tuple-data-type-key.clarity
+    - include: repo_data-type
+  repo_define-constant:
+  - match: (?x) (\() \s* (define-constant) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.define-constant.start.clarity
+      2: keyword.declaration.define-constant.clarity
+      3: entity.name.constant-name.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.define-constant
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-constant.end.clarity
+    - include: repo_expression
+  repo_define-data-var:
+  - match: (?x) (\() \s* (define-data-var) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.define-data-var.start.clarity
+      2: keyword.declaration.define-data-var.clarity
+      3: entity.name.data-var-name.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.define-data-var
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-data-var.end.clarity
+    - include: repo_data-type
+    - include: repo_expression
+  repo_define-function:
+  - match: (?x) (\() \s* (define-(?:public|private|read-only)) \s+
+    captures:
+      1: punctuation.define-function.start.clarity
+      2: keyword.declaration.define-function.clarity
+    push:
+    - meta_scope: meta.define-function
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-function.end.clarity
+    - include: repo_expression
+    - match: (?x) (\() \s* ([a-zA-Z][\w\?\!\-]*) \s*
+      captures:
+        1: punctuation.function-signature.start.clarity
+        2: entity.name.function.clarity
+      push:
+      - meta_scope: meta.define-function-signature
+      - match: (\))
+        pop: true
+        captures:
+          1: punctuation.function-signature.end.clarity
+      - match: (?x) (\() \s* ([a-zA-Z][\w\?\!\-]*) \s+
+        captures:
+          1: punctuation.function-argument.start.clarity
+          2: variable.parameter.clarity
+        push:
+        - meta_scope: meta.function-argument
+        - match: (\))
+          pop: true
+          captures:
+            1: punctuation.function-argument.end.clarity
+        - include: repo_data-type
+    - include: repo_user-func
+  repo_define-fungible-token:
+  - match: (?x) (\() \s* (define-fungible-token) \s+ ([a-zA-Z][\w\?\!\-]*) (?:\s+(u\d+))?
+    captures:
+      1: punctuation.define-fungible-token.start.clarity
+      2: keyword.declaration.define-fungible-token.clarity
+      3: entity.name.fungible-token-name.clarity variable.other.clarity
+      4: constant.numeric.fungible-token-total-supply.clarity
+      5: punctuation.define-fungible-token.end.clarity
+  repo_define-map:
+  - match: (?x) (\() \s* (define-map) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.define-map.start.clarity
+      2: keyword.declaration.define-map.clarity
+      3: entity.name.map-name.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.define-map
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-map.end.clarity
+    - include: repo_data-type
+    - include: repo_expression
+  repo_define-non-fungible-token:
+  - match: (?x) (\() \s* (define-non-fungible-token) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.define-non-fungible-token.start.clarity
+      2: keyword.declaration.define-non-fungible-token.clarity
+      3: entity.name.non-fungible-token-name.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.define-non-fungible-token
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-non-fungible-token.end.clarity
+    - include: repo_data-type
+  repo_define-trait:
+  - match: (?x) (\() \s* (define-trait) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.define-trait.start.clarity
+      2: keyword.declaration.define-trait.clarity
+      3: entity.name.trait-name.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.define-trait
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.define-trait.end.clarity
+    - match: (?x) (\() \s*
+      captures:
+        1: punctuation.define-trait-body.start.clarity
+      push:
+      - meta_scope: meta.define-trait-body
+      - match: (\))
+        pop: true
+        captures:
+          1: punctuation.define-trait-body.end.clarity
+      - include: repo_expression
+      - match: (?x) (\() \s* ([a-zA-Z][\w\!\?\-]*) \s+
+        captures:
+          1: punctuation.trait-function.start.clarity
+          2: entity.name.function.clarity
+        push:
+        - meta_scope: meta.trait-function
+        - match: (\))
+          pop: true
+          captures:
+            1: punctuation.trait-function.end.clarity
+        - include: repo_data-type
+        - match: (?x) (\() \s*
+          captures:
+            1: punctuation.trait-function-args.start.clarity
+          push:
+          - meta_scope: meta.trait-function-args
+          - match: (\))
+            pop: true
+            captures:
+              1: punctuation.trait-function-args.end.clarity
+          - include: repo_data-type
+  repo_expression:
+  - include: repo_comment
+  - include: repo_keyword
+  - include: repo_literal
+  - include: repo_let-func
+  - include: repo_built-in-func
+  - include: repo_get-set-func
+  repo_get-set-func:
+  - match: (?x) (\() \s* (var-get|var-set|map-get\?|map-set|map-insert|map-delete|get) \s+ ([a-zA-Z][\w\?\!\-]*) \s*
+    captures:
+      1: punctuation.get-set-func.start.clarity
+      2: keyword.control.clarity
+      3: variable.other.clarity
+    push:
+    - meta_scope: meta.get-set-func
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.get-set-func.end.clarity
+    - include: repo_expression
+  repo_keyword:
+  - match: (?<!\S)(?!-)\b(?:block-height|burn-block-height|chain-id|contract-caller|is-in-regtest|stacks-block-height|stx-liquid-supply|tenure-height|tx-sender|tx-sponsor?|current-contract|stacks-block-time)\b(?!\s*-)
+    scope: constant.language.clarity
+  repo_let-func:
+  - match: (?x) (\() \s* (let) \s*
+    captures:
+      1: punctuation.let-function.start.clarity
+      2: keyword.declaration.let-function.clarity
+    push:
+    - meta_scope: meta.let-function
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.let-function.end.clarity
+    - include: repo_expression
+    - include: repo_user-func
+    - match: (?x) (\() \s*
+      captures:
+        1: punctuation.let-var.start.clarity
+      push:
+      - meta_scope: meta.let-var
+      - match: (\))
+        pop: true
+        captures:
+          1: punctuation.let-var.end.clarity
+      - match: (?x) (\() ([a-zA-Z][\w\?\!\-]*) \s+
+        captures:
+          1: punctuation.let-local-var.start.clarity
+          2: entity.name.let-local-var-name.clarity variable.parameter.clarity
+        push:
+        - meta_scope: meta.let-local-var
+        - match: (\))
+          pop: true
+          captures:
+            1: punctuation.let-local-var.end.clarity
+        - include: repo_expression
+        - include: repo_user-func
+      - include: repo_expression
+  repo_literal: []
+  repo_use-trait:
+  - match: (?x) (\() \s* (use-trait) \s+ ([a-zA-Z][\w\?\!\-]*) \s+
+    captures:
+      1: punctuation.use-trait.start.clarity
+      2: keyword.declaration.use-trait.clarity
+      3: entity.name.trait-alias.clarity variable.other.clarity
+    push:
+    - meta_scope: meta.use-trait
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.use-trait.end.clarity
+    - include: repo_literal
+  repo_user-func:
+  - match: (?x) (\() \s* (([a-zA-Z][\w\?\!\-]*)) \s*
+    captures:
+      1: punctuation.user-function.start.clarity
+      2: entity.name.function.clarity
+    push:
+    - meta_scope: meta.user-function
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.user-function.end.clarity
+    - include: repo_expression
+    - include: main

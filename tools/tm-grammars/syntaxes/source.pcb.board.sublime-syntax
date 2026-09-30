@@ -1,0 +1,120 @@
+%YAML 1.2
+---
+# KiCad Legacy Layout (source.pcb.board): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/Alhadis/language-pcb via GitHub Linguist v9.7.0 (license: isc).
+name: KiCad Legacy Layout
+scope: source.pcb.board
+file_extensions:
+- brd
+contexts:
+  main:
+  - match: \A(?=<\?xml\s+version="[\d.]+"\s)
+    push:
+    - meta_content_scope: source.eagle.pcb.board
+    - match: (?=A)B
+      pop: true
+    - include: scope:text.xml
+  - include: repo_main
+  repo_comment:
+  - match: '#'
+    captures:
+      0: punctuation.definition.comment.pcb.board
+    push:
+    - meta_scope: comment.line.number-sign.pcb.board
+    - match: $
+      pop: true
+  repo_fields:
+  - match: ^\s*(PcbPlotParams)\s+(.+)$
+    captures:
+      1: entity.name.var.pcb.board
+  - match: ^\s*(Layer)(\[)([0-9]+)(\])(?=\s)
+    captures:
+      1: entity.name.var.pcb.board
+      2: punctuation.section.begin.brace.bracket.square.pcb.board
+      3: constant.numeric.integer.decimal.pcb.board
+      4: punctuation.section.end.brace.bracket.square.pcb.board
+  - match: ^\s*(Cd)\s+(\S.*)\s*$
+    captures:
+      1: entity.name.var.pcb.board
+      2: string.unquoted.pcb.board
+  - match: ^\s*([^$\s]\S*)
+    captures:
+      1: entity.name.var.pcb.board
+  - match: (")((?:[^"\\]|\\.)*)("|(?=$))
+    scope: string.quoted.double.pcb.board
+    captures:
+      1: punctuation.definition.string.begin.pcb.board
+      3: punctuation.definition.string.end.pcb.board
+  - match: '[-+]?\d*\.\d+'
+    scope: constant.numeric.float.decimal.pcb.board
+  - include: repo_integer
+  - match: '[-+]?(?:(/)?[A-F0-9]+|0x[A-Fa-f0-9]+)(?=\s|$)'
+    scope: constant.numeric.integer.hex.pcb.board
+    captures:
+      1: punctuation.definition.constant.pcb.board
+  - match: (?<=\s|^)[A-Z]+(?=\s|$)
+    scope: constant.language.other.pcb.board
+  - match: '[^$\s]\S*'
+    scope: variable.parameter.pcb.board
+  - include: main
+  repo_header:
+  - match: ^\s*(PCBNEW-BOARD)\s+(Version)\s+([\d.]+)\s+(date)\s+(\S.*)\s*$
+    scope: meta.header.pcb.board
+    captures:
+      1: storage.type.class.pcb.board
+      2: entity.name.var.pcb.board
+      3: constant.numeric.decimal.pcb.board
+      4: entity.name.var.pcb.board
+      5: constant.numeric.date.timestamp.pcb.board
+  repo_integer:
+  - match: '[-+]?\d+(?=\s|$)'
+    scope: constant.numeric.integer.decimal.pcb.board
+  repo_main:
+  - include: repo_header
+  - include: repo_comment
+  - include: repo_sections
+  repo_sections:
+  - match: ^\s*((\$)MODULE)\s+(\S+)
+    captures:
+      1: keyword.control.section.module.pcb.board
+      2: punctuation.section.begin.pcb.board
+      3: entity.name.type.class.pcb.board
+    push:
+    - meta_scope: meta.section.module.pcb.board
+    - match: ^\s*((\$)EndMODULE)\s+(\3)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.section.module.pcb.board
+        2: punctuation.section.end.pcb.board
+        3: entity.name.type.class.pcb.board
+    - match: ^\s*(Po\s+.+\s+)([~F][~P])\s*$
+      captures:
+        2: keyword.operator.position-type.pcb.board
+    - include: repo_fields
+  - match: ^\s*((\$)POLYSCORNERS)\s*$
+    captures:
+      1: keyword.control.section.pcb.board
+      2: punctuation.section.begin.pcb.board
+    push:
+    - meta_scope: meta.section.polyscorners.pcb.board
+    - match: ^\s*((\$)endPOLYSCORNERS)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.section.pcb.board
+        2: punctuation.section.end.pcb.board
+    - include: repo_integer
+  - match: ^\s*((\$)([A-Z][A-Z0-9_]*+))(?=\s|$)
+    captures:
+      1: keyword.control.section.pcb.board
+      2: punctuation.section.begin.pcb.board
+    push:
+    - match: ^\s*((\$)[Ee]nd\3)(?=\s|$)
+      pop: true
+      captures:
+        1: keyword.control.section.pcb.board
+        2: punctuation.section.end.pcb.board
+    - include: repo_fields
+  - match: ^\s*((\$)EndBOARD)(?=\s|$)
+    captures:
+      1: keyword.control.eof.pcb.board
+      2: punctuation.section.end.pcb.board

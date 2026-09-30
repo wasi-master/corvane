@@ -1,0 +1,298 @@
+%YAML 1.2
+---
+# Bru (source.bru): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/usebruno/bruno-ide-extensions.git via GitHub Linguist v9.7.0 (license: mit).
+name: Bru
+scope: source.bru
+file_extensions:
+- bru
+contexts:
+  main:
+  - include: repo_strings
+  - include: repo_meta-block
+  - include: repo_get-block
+  - include: repo_post-block
+  - include: repo_put-block
+  - include: repo_delete-block
+  - include: repo_options-block
+  - include: repo_head-block
+  - include: repo_trace-block
+  - include: repo_connect-block
+  - include: repo_query-block
+  - include: repo_headers-block
+  - include: repo_body-block
+  - include: repo_body-json-block
+  - include: repo_body-text-block
+  - include: repo_body-xml-block
+  - include: repo_body-form-urlencoded-block
+  - include: repo_body-multipart-form-block
+  - include: repo_body-graphql-block
+  - include: repo_body-graphql-vars-block
+  - include: repo_assert-block
+  - include: repo_vars-block
+  - include: repo_vars-req-block
+  - include: repo_vars-res-block
+  - include: repo_script-req-block
+  - include: repo_script-res-block
+  - include: repo_tests-block
+  - include: repo_docs-block
+  repo_assert-block:
+  - match: ^assert\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.assert-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_body-block:
+  - match: ^body\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:source.json
+  repo_body-form-urlencoded-block:
+  - match: ^body\:form-urlencoded\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-form-urlencoded-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_body-graphql-block:
+  - match: ^body\:graphql\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-graphql-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:source.graphql
+  repo_body-graphql-vars-block:
+  - match: ^body\:graphql\:vars\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-graphql-vars-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:source.json
+  repo_body-json-block:
+  - match: ^body\:json\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-json-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:source.json
+  repo_body-multipart-form-block:
+  - match: ^body\:multipart-form\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-multipart-form-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_body-text-block:
+  - match: ^body\:text\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-text-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:text.md
+  repo_body-xml-block:
+  - match: ^body\:xml\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.body-xml-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: scope:text.xml
+  repo_connect-block:
+  - match: ^connect\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.connect-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_delete-block:
+  - match: ^delete\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.delete-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_dictionary:
+  - match: ^\s*([^\:]+)[\:]\s+([^\n]+)\s*$
+    captures:
+      1: entity.name.tag.bruno
+      2: string.bruno
+  repo_docs-block:
+  - match: ^docs\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.docs-block.bruno
+    - match: ^\}
+      pop: true
+      captures:
+        0: keyword.bruno
+    - include: scope:text.md
+  repo_get-block:
+  - match: ^get\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.get-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_head-block:
+  - match: ^head\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.head-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_headers-block:
+  - match: ^headers\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.headers-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_meta-block:
+  - match: ^meta\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.meta-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_options-block:
+  - match: ^options\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.options-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_post-block:
+  - match: ^post\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.post-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_put-block:
+  - match: ^put\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.put-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_query-block:
+  - match: ^query\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.query-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_script-req-block:
+  - match: ^script\:pre-request\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.script-req-block.bruno
+    - match: ^\}
+      pop: true
+    - include: scope:source.js
+  repo_script-res-block:
+  - match: ^script\:post-response\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.script-res-block.bruno
+    - match: ^\}
+      pop: true
+    - include: scope:source.js
+  repo_strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.bruno
+    - match: '"'
+      pop: true
+    - match: \\.
+      scope: constant.character.escape.bruno
+  repo_tests-block:
+  - match: ^tests\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.tests-block.bruno
+    - match: ^\}
+      pop: true
+      captures:
+        0: keyword.bruno
+    - include: scope:source.js
+  repo_trace-block:
+  - match: ^trace\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.trace-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_vars-block:
+  - match: ^vars\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.vars-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_vars-req-block:
+  - match: ^vars\:pre-request\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.vars-req-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary
+  repo_vars-res-block:
+  - match: ^vars\:post-response\s*\{
+    captures:
+      0: keyword.bruno
+    push:
+    - meta_scope: meta.vars-res-block.bruno
+    - match: ^\}\s*
+      pop: true
+    - include: repo_dictionary

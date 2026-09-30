@@ -1,0 +1,602 @@
+%YAML 1.2
+---
+# OverpassQL (source.overpassql): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/nickswalker/overpassql-tmlanguage.git via GitHub Linguist v9.7.0 (license: mpl-2.0).
+name: OverpassQL
+scope: source.overpassql
+file_extensions:
+- overpassql
+contexts:
+  main:
+  - include: repo_TOP
+  repo_TOP:
+  - include: repo_whitespace
+  - include: repo_comments
+  - include: repo_start-statement-context
+  repo_assign-variable:
+  - match: (->)\s*+(\.)\s*+([_a-zA-Z][_a-zA-Z0-9]*+)(?=\s*+(?:;|$))
+    scope: meta.overpassql.output-set
+    captures:
+      1: keyword.operator.assignment.overpassql
+      2: punctuation.definition.variable.overpassql
+      3: variable.other.overpassql
+  repo_bareword:
+  - match: '[a-zA-Z][a-zA-Z0-9]*+'
+    scope: meta.overpassql.bareword
+  repo_block-comment:
+  - match: \/\*
+    captures:
+      0: punctuation.definition.comment.begin.overpassql
+    push:
+    - meta_scope: comment.block.overpassql
+    - match: \*\/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.overpassql
+  repo_block-construct:
+  - match: if|else|foreach|for|complete|retro|compare
+    captures:
+      0: keyword.control.overpassql
+    push:
+    - meta_scope: meta.overpassql.statement.block
+    - match: (?<=[;)}])
+      pop: true
+    - include: repo_whitespace
+    - include: repo_parens-evaluator
+    - include: repo_block-group
+  repo_block-group:
+  - match: \{
+    captures:
+      0: punctuation.section.block.begin.overpassql punctuation.section.braces.begin
+    push:
+    - meta_scope: meta.block.overpassql
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.block.end.overpassql punctuation.section.end.begin
+    - include: repo_whitespace
+    - include: repo_start-statement-context
+  repo_builtin-evaluator-function-name:
+  - match: (\.)?+(id|type|is_tag|keys|version|timestamp|changeset|uid|user|count_tags|count_members|count_distinct_members|count_by_role|count_distinct_by_role|per_member|per_vertex|pos|mtype|ref|role|angle|is_closed|geom|length|lat|lon|lstr|poly|u|set|min|max|sum|count|gcat|number|is_number|suffix|abs|date|is_date|center|tracehull|lrs_in|lrs_isect|lrs_union|lrs_min|lrs_max)(?=\()
+    scope: meta.overpassql.evaluator.function-name
+    captures:
+      1: punctuation.accessor.overpassql
+      2: support.function.overpassql
+  repo_comments:
+  - include: repo_block-comment
+  - include: repo_line-comment
+  repo_evaluator:
+  - include: repo_whitespace
+  - include: repo_comments
+  - include: repo_extended-overpass-turbo-queries
+  - include: repo_evaluator-operator
+  - include: repo_string-literal
+  - include: repo_number-literal
+  - include: repo_evaluator-variable
+  - include: repo_evaluator-tag-value
+  - include: repo_evaluator-field-access
+  - include: repo_builtin-evaluator-function-name
+  - include: repo_evaluator-function-name
+  - include: repo_evaluator-function-params
+  repo_evaluator-field-access:
+  - match: (\.)([a-zA-Z][a-zA-Z0-9]*+)(?!\()
+    scope: meta.overpassql.evaluator.field-access
+    captures:
+      1: punctuation.accessor.overpassql
+      2: variable.other.member.overpassql
+  repo_evaluator-function-name:
+  - match: (\.)?+([a-zA-Z][a-zA-Z0-9]*+)(?=\()
+    scope: meta.overpassql.evaluator.function-name
+    captures:
+      1: punctuation.accessor.overpassql
+      2: variable.function.overpassql
+  repo_evaluator-function-params:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.group.overpassql meta.parens.overpassql meta.overpassql.function.params
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_parameter-separator
+    - include: repo_evaluator
+  repo_evaluator-operator:
+  - match: (::)|(!|\|\||&&|==|!=|<=|>=|<|>)|(\+|-|\*|/)|(\?|:)
+    captures:
+      1: keyword.other.overpassql
+      2: keyword.operator.logical.overpassql
+      3: keyword.operator.arithmetic.overpassql
+      4: keyword.operator.other.overpassql
+  repo_evaluator-tag-value:
+  - match: \[
+    captures:
+      0: punctuation.section.brackets.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.evaluator.tag-value
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.brackets.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_string-literal
+    - include: repo_bareword
+    - include: repo_evaluator
+  repo_evaluator-variable:
+  - match: ([a-zA-Z][a-zA-Z0-9]*+)(?=\.)
+    scope: variable.other.overpassql
+  repo_expression:
+  - include: repo_extended-overpass-turbo-queries
+  - include: repo_pair-expression
+  - include: repo_number-literal
+  - include: repo_string-literal
+  - include: repo_setting-special-fields
+  - include: repo_tag-expression
+  - include: repo_query-type
+  - include: repo_parens-expression
+  repo_extended-overpass-turbo-queries:
+  - match: '{{'
+    captures:
+      0: keyword.other.overpassql.turbo.begin
+    push:
+    - meta_scope: meta.overpassql.turbo.query
+    - match: '}}'
+      pop: true
+      captures:
+        0: keyword.other.overpassql.turbo.end
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_number-literal
+    - include: repo_string-literal
+    - include: repo_overpass-turbo-query-name
+    - include: repo_overpass-turbo-query-separator
+    - include: repo_overpass-turbo-query-definition
+    - include: repo_overpass-turbo-custom-query-name
+  repo_fallback:
+  - match: (?=.)
+    push:
+    - meta_scope: meta.overpassql.unknown
+    - match: (?<=[;\{|\}])
+      pop: true
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_number-literal
+    - include: repo_string-literal
+    - include: repo_query-type
+    - include: repo_assign-variable
+    - include: repo_input-set
+  repo_function-call:
+  - match: (is_in|timeline)(\()
+    captures:
+      1: support.function.overpassql
+      2: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.function-call.overpassql
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_expression
+    - include: repo_parameter-separator
+  repo_function-call-names:
+  - match: is_in|timeline
+    scope: support.function.overpassql
+  repo_function-call-statement-function-name:
+  - match: (?=(?:\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+)?+(?:is_in|timeline))
+    push:
+    - meta_scope: meta.overpassql.statement.function-call
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+    - include: repo_function-call
+    - include: repo_assign-variable
+  repo_function-word-statement-word-function-name:
+  - match: (?=(?:\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+)?+(?:local|convert|make))
+    push:
+    - meta_scope: meta.overpassql.statement.word-function
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+    - include: repo_word-function-names
+    - include: repo_word-function-param
+    - include: repo_assign-variable
+  repo_generic-function-call:
+  - match: (\w++)(\()
+    captures:
+      1: variable.function.overpassql
+      2: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.function-call.overpassql.generic
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_expression
+    - include: repo_parameter-separator
+  repo_generic-function-statement-generic-name:
+  - match: (?=(?:\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+)?+\w)
+    push:
+    - meta_scope: meta.overpassql.statement.generic-function
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+    - include: repo_generic-function-call
+    - include: repo_assign-variable
+  repo_input-set:
+  - match: (\.)\s*+([_a-zA-Z][_a-zA-Z0-9]*+)
+    captures:
+      1: punctuation.definition.variable.overpassql
+      2: variable.other.overpassql
+  repo_item-statement-dot-semicolon:
+  - match: (?=\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+;)
+    push:
+    - meta_scope: meta.overpassql.statement.item
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+  repo_line-comment:
+  - match: (//).*+$
+    scope: comment.double-slash.overpassql
+    captures:
+      1: punctuation.definition.comment.begin.overpassql
+  repo_number-literal:
+  - match: (?<!\w)(-)?+((?:[1-9][0-9]*+|0)(?:\.[0-9]++)?+)(?!\w)
+    captures:
+      1: keyword.operator.arithmetic.overpassql
+      2: constant.numeric.overpassql
+  repo_operator-names:
+  - match: <<|>>|<|>
+    scope: keyword.operator.other.overpassql
+  repo_operator-statement-operator-symbol:
+  - match: (?=(?:\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+)?+(?:<<|>>|<|>))
+    push:
+    - meta_scope: meta.overpassql.statement.operator
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+    - include: repo_operator-names
+    - include: repo_assign-variable
+  repo_out-keyword:
+  - match: out\b
+    scope: keyword.other.overpassql
+  repo_out-parameter:
+  - include: repo_out-parameter-keyword
+  - include: repo_positive-integer
+  - include: repo_parens-expression
+  repo_out-parameter-keyword:
+  - match: count|ids|skel|body|tags|meta|noids|geom|center|bb|asc|qt
+    captures:
+      0: support.constant.overpassql.out
+  repo_out-statement-keyword:
+  - match: (?=(?:\.\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+[a-zA-Z][a-zA-Z0-9]*+\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+)?+out)
+    push:
+    - meta_scope: meta.overpassql.statement.out
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_input-set
+    - include: repo_out-keyword
+    - include: repo_out-parameter
+  repo_overpass-turbo-custom-query-name:
+  - match: \b[a-zA-Z][a-zA-Z0-9]*+(?=\w*[:}=])
+    scope: variable.other.overpassql.turbo
+  repo_overpass-turbo-query-definition:
+  - match: '='
+    scope: keyword.operator.assignment.overpassql.turbo
+  repo_overpass-turbo-query-name:
+  - match: \b(bbox|center|date|geocodeId|geocodeArea|geocodeBbox|geocodeCoords|style|data)\b
+    scope: support.constant.overpassql.turbo
+  repo_overpass-turbo-query-separator:
+  - match: ':'
+    scope: punctuation.separator.delimiter.colon.overpassql.turbo
+  repo_pair-expression:
+  - match: ([a-zA-Z][a-zA-Z0-9]*+)(\()
+    captures:
+      1: entity.other.overpassql
+      2: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.pair
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_parameter-separator
+    - include: repo_expression
+    - include: repo_skip-term
+  repo_parameter-separator:
+  - match: ','
+    scope: punctuation.separator.delimiter.comma.overpassql
+  repo_parens-evaluator:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.evaluator-group
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_evaluator
+  repo_parens-expression:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_expression
+    - include: repo_parameter-separator
+  repo_positive-integer:
+  - match: (?<!\w)([1-9][0-9]*+|0)(?!\w)
+    captures:
+      0: constant.numeric.overpassql
+  repo_q-string:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.overpassql
+    push:
+    - meta_scope: string.quoted.single.overpassql meta.string.overpassql
+    - match: ''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.overpassql
+    - include: repo_string-escape
+  repo_qq-string:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.overpassql
+    push:
+    - meta_scope: string.quoted.double.overpassql meta.string.overpassql
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.overpassql
+    - include: repo_string-escape
+  repo_query-filter:
+  - include: repo_query-filter-haskv
+  - include: repo_query-filter-intersect
+  - include: repo_query-filter-paren
+  repo_query-filter-haskv:
+  - match: \[
+    captures:
+      0: punctuation.definition.brackets.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.query.filter.kv
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.brackets.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_query-filter-haskv-operators
+    - include: repo_query-filter-haskv-insensitive
+    - include: repo_string-literal
+    - include: repo_bareword
+  repo_query-filter-haskv-insensitive:
+  - match: (,)\s*+(i)\s*+(?=\])
+    scope: keyword.operator.logical.overpassql
+    captures:
+      1: punctuation.separator.delimiter.comma.overpassql
+      2: support.constant.overpassql.i
+  repo_query-filter-haskv-operators:
+  - match: =|!=|~|!~|!
+    scope: keyword.operator.logical.overpassql
+  repo_query-filter-intersect:
+  - match: (\.)\s*+([_a-zA-Z][_a-zA-Z0-9]*+)
+    scope: meta.overpassql.query.filter.intersect
+    captures:
+      1: keyword.operator.arithmetic.overpassql.intersect
+      2: variable.other.overpassql
+  repo_query-filter-keywords:
+  - match: \b(n|w|r|bn|bw|br|id|around|poly|newer|changed|user|uid|area|pivot|if)\b
+    scope: keyword.other.overpassql meta.overpassql.query.filter.parens.keyword
+  repo_query-filter-paren:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.group.overpassql meta.parens.overpassql meta.overpassql.query.filter.parens
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_query-filter-keywords
+    - include: repo_evaluator
+    - include: repo_query-filter-separator
+    - include: repo_parameter-separator
+    - include: repo_expression
+  repo_query-filter-separator:
+  - match: ':'
+    scope: punctuation.separator.delimiter.colon.overpassql
+  repo_query-statement-query-type:
+  - match: (?=(?:node|way|relation|rel|derived|area|nwr)\b)
+    push:
+    - meta_scope: meta.overpassql.statement.query
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_query-type
+    - include: repo_query-filter
+    - include: repo_assign-variable
+  repo_query-type:
+  - match: \b(node|way|relation|rel|derived|area|nwr)\b
+    scope: keyword.other.query.overpassql
+  repo_set-difference-operator:
+  - match: '-'
+    scope: keyword.operator.logical.overpassql
+  repo_setting-bracket-colon:
+  - match: (\[)(?=\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+\w++\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+:)
+    captures:
+      0: punctuation.definition.brackets.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.setting
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.brackets.end.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_setting-name
+    - include: repo_setting-param
+    - include: repo_setting-separator
+    - include: repo_parameter-separator
+  repo_setting-name:
+  - match: \b(timeout|maxsize|out|bbox|date|diff|adiff)\b
+    scope: keyword.other.setting
+  repo_setting-param:
+  - include: repo_setting-special-fields
+  - include: repo_parameter-separator
+  - include: repo_expression
+  repo_setting-separator:
+  - match: ':'
+    scope: punctuation.separator.delimiter.colon.overpassql
+  repo_setting-special-fields:
+  - match: (::)(id|type|otype|lat|lon|version|timestamp|changeset|uid|user)\b|(::)(count)(?:(:)(nodes|ways|relations|areas))?+\b
+    scope: meta.overpassql.setting.special-field
+    captures:
+      1: punctuation.accessor.overpassql
+      2: support.constant.overpassql
+      3: punctuation.accessor.overpassql
+      4: support.constant.overpassql
+      5: punctuation.accessor.overpassql
+      6: support.constant.overpassql
+  repo_settings-statement-bracket-colon:
+  - match: (?=\[\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+\w++\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+:)
+    push:
+    - meta_scope: meta.overpassql.statement.settings-declaration
+    - match: ;
+      pop: true
+      captures:
+        0: punctuation.terminator.statement.overpassql
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_setting-bracket-colon
+  repo_skip-term:
+  - match: '[a-zA-Z][a-zA-Z0-9]*+'
+    scope: meta.overpassql.term
+  repo_start-statement-context:
+  - match: (?=.)
+    push:
+    - meta_scope: meta.context.overpassql.statement
+    - match: (?<=;)
+      pop: true
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_extended-overpass-turbo-queries
+    - include: repo_settings-statement-bracket-colon
+    - include: repo_query-statement-query-type
+    - include: repo_out-statement-keyword
+    - include: repo_item-statement-dot-semicolon
+    - include: repo_operator-statement-operator-symbol
+    - include: repo_function-call-statement-function-name
+    - include: repo_function-word-statement-word-function-name
+    - include: repo_statement-grouping
+    - include: repo_block-construct
+    - include: repo_generic-function-statement-generic-name
+    - include: repo_block-group
+    - include: repo_fallback
+  repo_statement-grouping:
+  - match: \(
+    captures:
+      0: punctuation.section.group.begin.overpassql punctuation.section.parens.begin.overpassql
+    push:
+    - meta_scope: meta.overpassql.group
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.group.end.overpassql punctuation.section.parens.end.overpassql
+    - include: repo_whitespace
+    - include: repo_set-difference-operator
+    - include: repo_start-statement-context
+  repo_string-escape:
+  - match: \\[nt"'\\]|\\u[0-9a-fA-F]{4}
+    scope: constant.character.escape.overpassql
+  repo_string-literal:
+  - include: repo_qq-string
+  - include: repo_q-string
+  repo_tag-correspondance:
+  - match: '='
+    scope: keyword.operator.assignment.overpassql
+  repo_tag-expression:
+  - match: (::)(?=\s*+(?:/\*(?:[^*]|\*[^/])*+\*/\s*+)*+["'a-zA-Z])
+    captures:
+      0: punctuation.accessor.overpassql
+    push:
+    - meta_scope: meta.overpassql.tag-access
+    - match: (?=[,)])
+      pop: true
+    - include: repo_whitespace
+    - include: repo_comments
+    - include: repo_string-literal
+    - include: repo_bareword
+  repo_tag-keywords:
+  - match: (::)(id)?+
+    scope: meta.overpassql.tag-match.keyword
+    captures:
+      1: keyword.other.overpassql.key
+      2: keyword.other.overpassql.id
+  repo_tag-match:
+  - include: repo_whitespace
+  - include: repo_comments
+  - include: repo_tag-operators
+  - include: repo_tag-correspondance
+  - include: repo_tag-keywords
+  - include: repo_evaluator
+  - include: repo_string-literal
+  - include: repo_bareword
+  repo_tag-operators:
+  - match: '!'
+    scope: keyword.operator.overpassql
+  repo_whitespace:
+  - match: '[ \t]++'
+    scope: meta.overpassql.whitespace
+  repo_word-function-names:
+  - match: local|convert|make
+    scope: support.function.overpassql
+  repo_word-function-param:
+  - include: repo_query-type
+  - include: repo_tag-match
+  - include: repo_parameter-separator

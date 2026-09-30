@@ -1,0 +1,71 @@
+%YAML 1.2
+---
+# Mata (source.mata): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/pschumm/Stata.tmbundle via GitHub Linguist v9.7.0 (license: mit).
+name: Mata
+scope: source.mata
+hidden: true
+contexts:
+  main:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.mata
+    push:
+    - meta_scope: string.quoted.double.mata
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.mata
+  - match: '`"'
+    captures:
+      0: punctuation.definition.string.begin.mata
+    push:
+    - meta_scope: string.quoted.double.compound.mata
+    - match: '"'''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.mata
+    - include: repo_cdq_string_content
+  - match: /\*
+    captures:
+      0: punctuation.definition.comment.begin.mata
+    push:
+    - meta_scope: comment.block.mata
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.end.mata
+    - include: repo_cb_content
+  - match: (//).*$\n?
+    scope: comment.line.double-slash.mata
+    captures:
+      0: punctuation.definition.comment.mata
+  - match: (?<![^$\s])(version|pragma|if|else|for|while|do|break|continue|goto|return)(?=\s)
+    scope: keyword.control.mata
+  - match: \b(transmorphic|string|numeric|real|complex|(pointer(\([^)]+\))?))\s+(matrix|vector|rowvector|colvector|scalar)\b
+    scope: storage.type.mata
+    captures:
+      1: storage.type.eltype.mata
+      4: storage.type.orgtype.mata
+  - match: \b(transmorphic|string|numeric|real|complex|(pointer(\([^)]+\))?))\s
+    scope: storage.type.eltype.mata
+  - match: \b(matrix|vector|rowvector|colvector|scalar)\b
+    scope: storage.type.orgtype.mata
+  - match: \!|\+\+|\-\-|\&|\'|\?|\\|\:\:|\,|\.\.|\||\=|\=\=|\>\=|\<\=|\<|\>|\!\=|\#|\+|\-|\*|\^|\/
+    scope: keyword.operator.mata
+  - include: repo_builtin_functions
+  repo_builtin_functions:
+  - match: "(?x)(\n                abs|acos|acosh|acosr|ado_fromlchar|ado_intolchar|adosubdir|all|allof|\n\t\t\t  any|anyof|arg|args|ascii|asin|asinh|asinr|assert|asserteq|atan|atan2|\n\t\t\t  atanh|atanr\n\t\t\t)(?=\\()"
+    scope: support.function.builtin.mata
+  repo_cb_content:
+  - match: /\*
+    push:
+    - match: \*/
+      pop: true
+    - include: repo_cb_content
+  repo_cdq_string_content:
+  - match: '`"'
+    push:
+    - match: '"'''
+      pop: true
+    - include: repo_cdq_string_content

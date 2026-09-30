@@ -1,0 +1,885 @@
+%YAML 1.2
+---
+# RPGLE (source.rpgle): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/barrettotte/vscode-ibmi-languages via GitHub Linguist v9.7.0 (license: mit).
+name: RPGLE
+scope: source.rpgle
+file_extensions:
+- rpgle
+- sqlrpgle
+contexts:
+  main:
+  - match: (?i)(?=(\*\*(FREE)))
+    push:
+    - meta_scope: rpgle.free.allfree
+    - match: (E-\*-O-\*-F)
+      pop: true
+    - match: (?i)^\*\*FREE
+      scope: keyword.other.rpgle.free.precompiler.allfree
+    - include: repo_ctarrays
+    - include: repo_freeSQL
+    - include: repo_freerpglecommon
+    - include: repo_freeformat
+  - match: (?i)^.{5}.[*]
+    push:
+    - meta_scope: comment.line.rpgle.fixed
+    - match: '
+
+        '
+      pop: true
+  - include: repo_tempfreeformat
+  - include: repo_fixedSQL
+  - include: repo_fixedfreeSQL
+  - include: repo_fixedprecompiler
+  - include: repo_ctarrays
+  - include: repo_fixedcomment
+  - include: repo_fixedformat
+  - include: repo_rpglecommon
+  - include: repo_fixedfreeformat
+  repo_comments:
+  - match: (//).*
+    scope: comment.line.rpgle.free
+  repo_constants:
+  - match: (?i)[*]IN([0-9]{2}|K[A-N]|K[P-Y]|[HL][1-9]|LR|MR|RT|U[1-8]|O[A-G]|OV|1P)?(?![A-Z0-9])
+    scope: constant.language.rpgle.indicator
+  - match: '[*][a-zA-Z][a-zA-Z0-9]*'
+    scope: constant.language.rpgle
+  - match: "(?<![a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])\\d+\\.?\\d*?(?![a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])"
+    scope: constant.numeric.rpgle
+  - match: "(?i)(?<![a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])(UDATE|UMONTH|UDAY|UYEAR|PAGE[1-7]|PAGE)(?![a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])"
+    scope: constant.language.rpgle
+  repo_ctarrays:
+  - match: (?=^(\*{2})(?!free))
+    push:
+    - match: (E-\*-O-\*-F)
+      pop: true
+  repo_fixedSQL:
+  - match: (?i)(?=(^.{5}(C)(\/EXEC)\s+(SQL)\b))
+    push:
+    - match: (?i)(?=(^.{5}(C)(\/END\-EXEC)\b))
+      pop: true
+    - match: (?i)(C)(\/EXEC)\s+(sql)\b
+      scope: keyword.other.rpgle.sql
+    - include: repo_fixedcomment
+    - match: (?i)(C[\+|\/])
+      scope: keyword.other.rpgle.fixed.specs
+    - include: repo_sqlcommon
+  - match: (?i)(C\/END\-EXEC)
+    scope: keyword.other.rpgle.sql
+  repo_fixedcomment:
+  - match: (?i)^.{5}.[*]
+    push:
+    - meta_scope: comment.line.rpgle.fixed
+    - match: '
+
+        '
+      pop: true
+  - match: ^.{1,5}
+    scope: comment.gutter
+  - match: (?i)(?<=^.{5})[HFDICOP](?![+/])
+    scope: keyword.other.rpgle.fixed.specs
+  - match: (?<=^.{80})(?=.)
+    push:
+    - meta_scope: comment.block.line.rpgle.fixed
+    - match: (?=\n)
+      pop: true
+  repo_fixedformat:
+  - include: repo_fixedprecompiler
+  - include: repo_fixedcomment
+  - match: (?i)(?<=^.{5})[H|F|D|I|C|O|P]
+    scope: keyword.other.rpgle.fixed.specs
+  - match: (?i)(?<=^.{5}H)
+    push:
+    - meta_scope: rpgle.fixed.h
+    - match: (?<=\n)
+      pop: true
+    - include: repo_fixedcomment
+    - match: (?i)(?:(?<=^.{5}H)|\b)(VALIDATE|USRPRF|TRUNCNBR|TIMFMT|THREAD|TEXT|STGMDL|SRTSEQ|REQPREXP|PRFDTA|PGMINFO|OPTION|OPTIMIZE|OPENOPT|NOMAIN|MAIN|LANGID|INTPREC|INDENT|GENLVL|FTRANS|FORMSALIGN|FLTDIV|FIXNBR|EXTBININT|EXPROPTS|ENBPFRCOL|DFTNAME|DFTACTGRP|DECPREC|DECEDIT|DEBUG|DCLOPT|DATFMT|DATEYY|DATEDIT|CVTOPT|CURSYM|COPYRIGHT|COPYNEST|CHARCOUNT|CCSIDCVT|CCSID|BNDDIR|AUT|ASSERT|ALWNULL|ALTSEQ|ALLOC|ACTGRP)\b
+      scope: entity.name.function.rpgle.fixed.h.keywords
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}F)
+    push:
+    - meta_scope: rpgle.fixed.f
+    - match: (?<=\n)
+      pop: true
+    - include: repo_fixedcomment
+    - match: (?i)(?=(?<=((?<=^.{5}F).{10})))(I|O|U|C)
+      scope: constant.language.rpgle.fixed.f.type
+    - match: (?i)(?=(?<=((?<=^.{5}F).{11})).{3})(P|S|R|T|F)
+      scope: constant.language.rpgle.fixed.f.designation
+    - match: (?i)(?=(?<=((?<=^.{5}F).{12})).{2})E
+      scope: constant.language.rpgle.fixed.f.eof
+    - match: (?i)(?=(?<=((?<=^.{5}F).{13})).{2})A
+      scope: constant.language.rpgle.fixed.f.addition
+    - match: (?i)(?=(?<=((?<=^.{5}F).{14})).{2})(A|D)
+      scope: constant.language.rpgle.fixed.f.sequence
+    - match: (?i)(?=(?<=((?<=^.{5}F).{15})).{2})(E|F)
+      scope: constant.language.rpgle.fixed.f.format
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}F)([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.fi.recordlen
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}(F|E).{5})L
+      scope: constant.language.rpgle.fixed.f.limitproc
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}(F).{6})([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.fi.keyfieldlen
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}(F|E).{11})(A|D|F|G|K|P|T|Z)
+      scope: constant.language.rpgle.fixed.f.addrtype
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}F.{12})(?i)(I|T)
+      scope: constant.language.rpgle.fixed.fi.fileorg
+    - match: (?i)(?<=(?<=(?<=^.{5}F).{10}).{5}(F|E).{13})(PRINTER|DISK|WORKSTN|SPECIAL|SEQ)
+      scope: constant.language.rpgle.fixed.f.device
+    - match: \b(?i)(WORKSTN|USROPN|USAGE|TIMFMT|TEMPLATE|STATIC|SPECIAL|SLN|SFILE|SEQ|SAVEIND|SAVEDS|RENAME|RECNO|RAFDATA|QUALIFIED|PRTCTL|PRINTER|PREFIX|PLIST|PGMNAME|PASS|OFLIND|MAXDEV|LIKEFILE|KEYLOC|KEYED|INFSR|INFDS|INDDS|INCLUDE|IGNORE|HANDLER|FORMOFL|FORMLEN|EXTMBR|EXTIND|EXTFILE|EXTDESC|DISK|DEVID|DATFMT|DATA|COMMIT|CHARCOUNT|BLOCK|ALIAS)\b
+      scope: entity.name.function.rpgle.fixed.f
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}D)
+    push:
+    - meta_scope: rpgle.fixed.d
+    - match: (?<=\n)
+      pop: true
+    - match: (?i)(?<=EXTFMT\()[BCILRPSUF](?=\))
+      scope: constant.language.rpgle.fixed.d.extfmt
+    - include: repo_fixedcomment
+    - match: ''''
+      push:
+      - meta_scope: string.quoted.single.rpgle.fixed
+      - match: '''|[^-+\s]\s*$|[^-+\s]\s*(?<=^.{80})'
+        pop: true
+      - match: '[-+](?=\s*$)'
+        scope: keyword.other.rpgle.continuation
+      - match: ([-+])\s*(?<=^.{80})
+        captures:
+          1: keyword.other.rpgle.continuation
+      - match: (?i)(?<=^.{5})[H|F|D|I|C|O|P]
+        scope: keyword.other.rpgle.fixed.specs
+      - include: repo_fixedcomment
+    - match: (?i)(?<=^.{5}D).[a-zA-Z_][a-zA-Z0-9_]{1,71}[.]{3}
+      scope: variable.other.rpgle.fixed.d.extended.name
+    - match: (?i)(?<=((?<=^.{5}D).{15}))E
+      scope: constant.language.rpgle.fixed.d.external
+    - match: (?i)(?<=((?<=^.{5}D).{16}))(S|U)
+      scope: constant.language.rpgle.fixed.d.dstype
+    - match: (?i)(?<=((?<=^.{5}D).{17}))(DS|PI|PR|(S\s)|(C\s))
+      scope: constant.language.rpgle.fixed.d.dectype
+    - match: (?i)(?<=(?<=^.{5}D).{19})(?=[0-9 ]{0,6}[0-9])[0-9 ]{7}
+      scope: constant.language.rpgle.fixed.d.from
+    - match: (?i)(?<=(?<=^.{5}D).{26})([+\-][0-9 ]{6}|(?=[0-9 ]{0,6}[0-9])[0-9 ]{7})
+      scope: constant.language.rpgle.fixed.d.to
+    - match: (?i)(?<=((?<=^.{5}D).{33}))(A|B|C|D|F|G|I|N|O|P|S|T|U|Z|\*)
+      scope: constant.language.rpgle.fixed.d.datatype
+    - match: (?i)(?<=((?<=^.{5}D).{34}))([0-9]|\s){2}
+      scope: constant.language.rpgle.fixed.d.decpos
+    - match: \b(?i)(ZONED|VARYING|VARUCS2|VARGRAPH|VARCHAR|VALUE|UNS|UCS2|TOFILE|TIMFMT|TIMESTAMP|TIME|TEMPLATE|STATIC|SAMEPOS|RTNPARM|REQPROTO|QUALIFIED|PSDS|PROCPTR|PREFIX|POS|POINTER|PERRCD|PACKEVEN|PACKED|OVERLOAD|OVERLAY|OPTIONS|OPDESC|OCCURS|OBJECT|NULLIND|NOOPT|LIKEREC|LIKEFILE|LIKEDS|LIKE|LEN|INZ|INT|IND|IMPORT|GRAPH|FROMFILE|FLOAT|EXTPROC|EXTPGM|EXTNAME|EXTFMT|EXTFLD|EXT|EXPORT|DTAARA|DIM|DFT|DESCEND|DATFMT|DATE|CTDATA|CONST|CLASS|CHAR|CCSID|BINDEC|BASED|ASCEND|ALTSEQ|ALT|ALIGN|ALIAS)\b
+      scope: entity.name.function.rpgle.fixed.d.keywords
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}I)
+    push:
+    - meta_scope: rpgle.fixed.i
+    - match: (?<=\n)
+      pop: true
+    - match: (?i)(?<=^.{5}I\s{14}.{10})(\*[A-Z0-9]{3,4})
+      scope: constant.language.rpgle.fixed.i.attrs
+    - match: (?i)(?<=^.{5}I\s{14}.{14})[^ ]
+      scope: constant.language.rpgle.fixed.i.sep
+    - match: (?i)(?<=^.{5}I\s{14}.{15})(A|C|G|B|F|I|L|N|P|R|S|U|D|T|Z)
+      scope: constant.language.rpgle.fixed.i.fmt
+    - match: (?i)(?<=^.{5}I\s{14}.{16})(?=[0-9 ]{0,4}[0-9])[0-9 ]{5}
+      scope: constant.language.rpgle.fixed.i.from
+    - match: (?i)(?<=^.{5}I\s{14}.{21})(?=[0-9 ]{0,4}[0-9])[0-9 ]{5}
+      scope: constant.language.rpgle.fixed.i.to
+    - match: (?i)(?<=^.{5}I\s{14}.{26})(?=[0-9 ]?[0-9])[0-9 ]{2}
+      scope: constant.language.rpgle.fixed.i.decpos
+    - match: (?i)(?<=^.{5}I\s{14}.{42})L[1-9]
+      scope: constant.language.rpgle.fixed.i.ctrl
+    - match: (?i)(?<=^.{5}I\s{14}.{44})M[1-9]
+      scope: constant.language.rpgle.fixed.i.matching
+    - match: (?i)(?<=^.{5}I\s{14}.{46})(([0-9]{2})|((H|L)[1-9])|MR|RT|(U[1-8]))
+      scope: constant.language.rpgle.fixed.i.fldrcdrel
+    - match: (?i)(?<=^.{5}I\s{14}.{48})(([0-9]{2})|(H[1-9])|(U[1-8])|RT)
+      scope: constant.language.rpgle.fixed.i.posfld
+    - match: (?i)(?<=^.{5}I\s{14}.{50})(([0-9]{2})|(H[1-9])|(U[1-8])|RT)
+      scope: constant.language.rpgle.fixed.i.negfld
+    - match: (?i)(?<=^.{5}I\s{14}.{52})(([0-9]{2})|(H[1-9])|(U[1-8])|RT)
+      scope: constant.language.rpgle.fixed.i.zerofld
+    - include: repo_fixedcomment
+    - match: (?i)(?<=((?<=^.{5}I).{10}))[A-Za-z0-9]{2}
+      scope: constant.language.rpgle.fixed.i.seq
+    - match: (?i)(?<=(?<=^.{5}I).{12})(1|N)
+      scope: constant.language.rpgle.fixed.i.number
+    - match: (?i)(?<=((?<=^.{5}I).{13}))O
+      scope: constant.language.rpgle.fixed.i.option
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]))(([0-9]{2})|((H|L)[1-9])|LR|(RT)|((U)([1-8]))|(\*\*))
+      scope: constant.language.rpgle.fixed.i.recordid
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{2})([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.i.pos1
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{7})N
+      scope: constant.language.rpgle.fixed.i.not1
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{8})(C|Z|D)
+      scope: constant.language.rpgle.fixed.i.czd1
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{9})(.|$)
+      scope: constant.language.rpgle.fixed.i.char1
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{10})([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.i.pos2
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{15})N
+      scope: constant.language.rpgle.fixed.i.not2
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{16})(C|Z|D)
+      scope: constant.language.rpgle.fixed.i.czd2
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{17})(.|$)
+      scope: constant.language.rpgle.fixed.i.char2
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{18})([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.i.pos3
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{23})N
+      scope: constant.language.rpgle.fixed.i.not3
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{24})(C|Z|D)
+      scope: constant.language.rpgle.fixed.i.czd3
+    - match: (?i)(?<=(?<=^.{5}I)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{25})(.|$)
+      scope: constant.language.rpgle.fixed.i.char3
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}C)
+    push:
+    - meta_scope: rpgle.fixed.c
+    - match: (?<=\n)
+      pop: true
+    - include: repo_fixedcomment
+    - match: (?i)(?<=^.{5}C)((L[0-9])|LR|SR|AN|OR)
+      scope: constant.language.rpgle.fixed.c.ctrl
+    - match: (?i)(?<=((?<=^.{5}C).{2}))((N|\s)(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|(U[1-8])|(O[A-G])|OV))
+      scope: constant.language.rpgle.fixed.c.n01
+    - match: (?i)(?<=(?<=^.{5}C).{19})((\s{10})|ON\-ERROR|FOR\-EACH|WHEN\-IN|WHEN\-IS|DATA\-INTO|DATA\-GEN|XML\-INTO|XML\-SAX|CALLP|RETURN|EVAL\-CORR|EVALR|EVAL|ELSEIF|WHEN\s{2}|IF\s{2}|DOW\s{2}|DOU\s{2}|FOR)(\(\s*([ADEHMNPRTZC]{1,5})\s*\))?(?![A-Za-z\-])
+      captures:
+        4: constant.language.rpgle.fixed.c.extender
+      push:
+      - meta_scope: keyword.other.rpgle.fixed.c.extfactor2
+      - match: (?<=\n)
+        pop: true
+      - include: repo_fixedcomment
+      - include: repo_rpglecommon
+      - match: ((?i)(AND|COMP|CAB|CAS|DOU|DOW|FOR|IF|OR|WHEN)(GT|LT|EQ|NE|GE|LE|(\s{2})))
+        scope: keyword.other.rpgle.fixed.c.operation
+      - match: "((?i)[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*)|\\(|\\)|\\%"
+        scope: variable.other
+    - match: ((?i)\b(AND|COMP|CAB|CAS|DOU|DOW|IF|OR|WHEN)(GT|LT|EQ|NE|GE|LE|(\s{2})))
+      scope: keyword.other.rpgle.fixed.c.operation
+    - match: (?i)(?<=((?<=^.{5}C).{19}))(Z\-SUB|Z\-ADD|XML\-SAX|XML\-INTO|XLATE|XFOOT|WRITE|WHEN\-IS|WHEN\-IN|WHEN|UPDATE|UNLOCK|TIME|TESTZ|TESTN|TESTB|TEST|TAG|SUBST|SUBDUR|SUB|SQRT|SORTA|SND\-MSG|SHTDN|SETON|SETOFF|SETLL|SETGT|SELECT|SCAN|ROLBK|RETURN|RESET|REL|REALLOC|READPE|READP|READE|READC|READ|POST|PLIST|PARM|OUT|OTHER|OR|OPEN|ON\-EXIT|ON\-EXCP|ON\-ERROR|OCCUR|NEXT|MVR|MULT|MOVEL|MOVEA|MOVE|MONITOR|MLLZO|MLHZO|MHLZO|MHHZO|LOOKUP|LEAVESR|LEAVE|KLIST|KFLD|ITER|IN|IF|GOTO|FORCE|FOR\-EACH|FOR|FEOD|EXTRCT|EXSR|EXFMT|EXCEPT|EVALR|EVAL\-CORR|EVAL|ENDSR|ENDSL|ENDMON|ENDIF|ENDFOR|ENDDO|ENDCS|END|ELSEIF|ELSE|DUMP|DSPLY|DOW|DOU|DO|DIV|DELETE|DEFINE|DEALLOC|DATA\-INTO|DATA\-GEN|COMP|COMMIT|CLOSE|CLEAR|CHECKR|CHECK|CHAIN|CAT|CAS|CALLP|CALLB|CALL|CAB|BITON|BITOFF|BEGSR|ASSERT\-T|ASSERT\-F|AND|ALLOC|ADDDUR|ADD|ACQ)(?![A-Za-z\-])
+      scope: keyword.other.rpgle.fixed.c.operation
+    - match: (?i)(?<=((?<=^.{5}C).{57}))([0-9]|\s){5}
+      scope: constant.language.rpgle.fixed.c.len
+    - match: (?i)(?<=((?<=^.{5}C).{62}))([0-9]|\s){2}
+      scope: constant.language.rpgle.fixed.c.decpos
+    - match: (?i)(?<=(?<=^.{5}C).{64})(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|(U[1-8])|(O[A-G])|OV)
+      scope: constant.language.rpgle.fixed.c.hi
+    - match: (?i)(?<=(?<=^.{5}C).{66})(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|(U[1-8])|(O[A-G])|OV)
+      scope: constant.language.rpgle.fixed.c.lo
+    - match: (?i)(?<=(?<=^.{5}C).{68})(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|(U[1-8])|(O[A-G])|OV)
+      scope: constant.language.rpgle.fixed.c.eq
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}O)
+    push:
+    - meta_scope: rpgle.fixed.o
+    - match: (?<=\n)
+      pop: true
+    - include: repo_fixedcomment
+    - match: (?i)(?<=((?<=^.{5}O).{10}))(H|D|T|E)
+      scope: constant.language.rpgle.fixed.o.type
+    - match: (?i)(?<=((?<=^.{5}O).{11}))(ADD|DEL)
+      scope: constant.language.rpgle.fixed.o.addel
+    - match: (?i)(?<=((?<=^.{5}O).{11}))(F|R)
+      scope: constant.language.rpgle.fixed.o.fetch
+    - match: (?i)(?<=((?<=^.{5}O).{14}))((N|\s)(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|1P|(U[1-8])|(O[A-G])|OV))
+      scope: constant.language.rpgle.fixed.o.n01
+    - match: (?i)(?<=((?<=^.{5}O).{17}))((N|\s)(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|1P|(U[1-8])|(O[A-G])|OV))
+      scope: constant.language.rpgle.fixed.o.n02
+    - match: (?i)(?<=((?<=^.{5}O).{20}))((N|\s)(([0-9]{2})|(K[A-N])|(K[P-Y])|((H|L)[1-9])|LR|MR|RT|1P|(U[1-8])|(O[A-G])|OV))
+      scope: constant.language.rpgle.fixed.o.n03
+    - match: (?i)(?<=(?<=^.{5}O)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{19})(?=[0-9 ]{0,2}[0-9])[0-9 ]{3}
+      scope: constant.language.rpgle.fixed.o.spacebefore
+    - match: (?i)(?<=(?<=^.{5}O)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{22})(?=[0-9 ]{0,2}[0-9])[0-9 ]{3}
+      scope: constant.language.rpgle.fixed.o.spaceafter
+    - match: (?i)(?<=(?<=^.{5}O)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{25})(?=[0-9 ]{0,2}[0-9])[0-9 ]{3}
+      scope: constant.language.rpgle.fixed.o.skipbefore
+    - match: (?i)(?<=(?<=^.{5}O)(?:[^ ].{13}|\s{1}[^ ].{12}|\s{2}[^ ].{11}|\s{3}[^ ].{10}|\s{4}[^ ].{9}|\s{5}[^ ].{8}|\s{6}[^ ].{7}|\s{7}[^ ].{6}|\s{8}[^ ].{5}|\s{9}[^ ].{4}|\s{10}[^ ].{3}|\s{11}[^ ].{2}|\s{12}[^ ].{1}|\s{13}[^ ]).{28})(?=[0-9 ]{0,2}[0-9])[0-9 ]{3}
+      scope: constant.language.rpgle.fixed.o.skipafter
+    - match: (?i)(?<=(?<=^.{5}O)\s{14}.{31})[ACGBFILNPRSUDTZ]
+      scope: constant.language.rpgle.fixed.o.dataformat
+    - match: (?i)(?<=(?<=^.{5}O)\s{14}.{26})(?=[0-9 ]{0,4}[0-9])[0-9 ]{5}
+      scope: constant.language.rpgle.fixed.o.endpos
+    - match: (?i)(?<=(?<=^.{5}O)\s{14}.{24})B
+      scope: constant.language.rpgle.fixed.o.blankafter
+    - match: (?i)(?<=(?<=^.{5}O)\s{14}.{23})[1-9A-DJ-QXYZ]
+      scope: constant.language.rpgle.fixed.o.editcode
+    - include: repo_rpglecommon
+  - match: (?i)(?<=^.{5}P)
+    push:
+    - meta_scope: rpgle.fixed.p
+    - match: (?<=\n)
+      pop: true
+    - include: repo_fixedcomment
+    - match: (?i)(?<=^.{5}P).[a-zA-Z_][a-zA-Z0-9_]{1,71}[.]{3}
+      scope: variable.other.rpgle.fixed.p.extended.name
+    - match: (?i)(?<=((?<=^.{5}P).{17}))(B|E)
+      scope: constant.language.rpgle.fixed.p.beginend
+    - match: (?i)(?:(?<=(?<=^.{5}P).{37})|\b)(SERIALIZE|REQPROTO|PGMINFO|EXPORT)
+      scope: entity.name.function.rpgle.fixed.p.keywords
+    - include: repo_rpglecommon
+  repo_fixedfreeSQL:
+  - match: (?i)(?=(^.{5}\s*(EXEC)\s+(SQL)\b))
+    push:
+    - match: (;)
+      pop: true
+      captures:
+        1: punctuation.terminator.rpgle.sql
+    - include: repo_fixedcomment
+    - match: (?i)(EXEC)\s+(SQL)\b
+      scope: keyword.other.rpgle.sql
+    - include: repo_sqlcommon
+  repo_fixedfreeformat:
+  - match: (?i)\b(?=CTL\-OPT)\b
+    push:
+    - meta_scope: rpgle.free.control
+    - match: ;
+      pop: true
+    - include: repo_fixedstmtconditional
+    - include: repo_rpglecommon
+    - match: (?i)\b(CTL\-OPT)\b
+      scope: storage.type.rpgle.free.control
+    - match: (?i)\b(VALIDATE|USRPRF|TRUNCNBR|TIMFMT|THREAD|TEXT|STGMDL|SRTSEQ|REQPREXP|PRFDTA|PGMINFO|OPTION|OPTIMIZE|OPENOPT|NOMAIN|MAIN|LANGID|INTPREC|INDENT|GENLVL|FTRANS|FORMSALIGN|FLTDIV|FIXNBR|EXTBININT|EXPROPTS|ENBPFRCOL|DFTNAME|DFTACTGRP|DECPREC|DECEDIT|DEBUG|DATFMT|DATEYY|DATEDIT|DCLOPT|CVTOPT|CURSYM|COPYRIGHT|COPYNEST|CHARCOUNTTYPES|CHARCOUNT|CCSIDCVT|CCSID|BNDDIR|ASSERT|AUT|ALWNULL|ALTSEQ|ACTGRP|ALLOC)\b
+      scope: entity.name.function.rpgle.free.control.keywords
+  - match: (?i)\b(?=DCL\-F)\b
+    push:
+    - meta_scope: rpgle.free.file
+    - match: ;
+      pop: true
+    - include: repo_fixedstmtconditional
+    - include: repo_rpglecommon
+    - match: (?i)\b(DCL\-F)\b
+      scope: storage.type.rpgle.free.file
+    - match: (?i)\b(WORKSTN|USROPN|USAGE|TIMFMT|TEMPLATE|STATIC|SPECIAL|SLN|SFILE|SEQ|SAVEIND|SAVEDS|RENAME|RECNO|RAFDATA|QUALIFIED|PRTCTL|PRINTER|PREFIX|PLIST|PGMNAME|PASS|OFLIND|MAXDEV|LIKEFILE|KEYLOC|KEYED|INFSR|INFDS|INDDS|INCLUDE|IGNORE|HANDLER|FORMOFL|FORMLEN|EXTMBR|EXTIND|EXTFILE|EXTDESC|DISK|DEVID|DATFMT|DATA|COMMIT|CHARCOUNT|BLOCK|ALIAS)\b
+      scope: entity.name.function.rpgle.free.file.keywords
+  - match: (?i)\b(BEG|END)SR\b
+    scope: storage.type.rpgle.free.definition.subr
+  - match: (?i)(?=(\b(DCL\-)(S|C|PARM|SUBF)\b))
+    push:
+    - meta_scope: rpgle.free.definition.simple
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(DCL\-)(S|C|PARM|SUBF)\b
+      scope: storage.type.rpgle.free.definition.simple
+    - include: repo_freedefkeywords
+    - include: repo_rpglecommon
+    - include: repo_fixedfreeidentifiers
+    - match: (//).*
+      scope: comment.line.rpgle.free
+  - match: (?i)(?=(\b(DCL\-)(DS|ENUM|PROC|PR|PI)\b))
+    push:
+    - meta_scope: rpgle.free.definition.complex
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(DCL\-)(DS|ENUM|PROC|PR|PI)\b
+      scope: storage.type.rpgle.free.definition.complex.dcl
+    - match: (?i)\b(END\-)(DS|ENUM|PROC|PR|PI)\b
+      scope: storage.type.rpgle.free.definition.complex.dcl
+    - include: repo_freedefkeywords
+    - include: repo_rpglecommon
+    - match: "\\b[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*\\b"
+      scope: variable.other.rpgle.free.definition.identifier
+  - match: (?i)(?<=^.{5})(?=[ ]{2}\s*[A-Za-z#$@][A-Za-z0-9_#$@.]*(\([^()]*\))?\s*(\*\*=|\+=|\-=|\*=|/=|=(?!=))[^;]*$)
+    push:
+    - meta_scope: rpgle.fixed.calculation.continued
+    - match: ;
+      pop: true
+    - include: repo_fixedcomment
+    - include: repo_fixedstrings
+    - include: repo_comments
+    - include: repo_sqlvariables
+    - include: repo_constants
+    - include: repo_keywords
+    - include: repo_freeopcodes
+    - include: repo_freedefkeywords
+    - include: repo_fixedfreeidentifiers
+  - include: repo_freeopcodes
+  - include: repo_freedefkeywords
+  - include: repo_fixedfreeidentifiers
+  - include: repo_rpglecommon
+  repo_fixedfreeidentifiers:
+  - match: "[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*"
+    scope: variable.other.rpgle.free.definition.identifier
+  repo_fixedprecompiler:
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/TITLE)
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.title
+      2: keyword.control.rpgle.fixed.precompiler.title
+    push:
+    - meta_scope: rpgle.fixed.precompiler.title
+    - match: '
+
+        '
+      pop: true
+    - match: .*
+      scope: comment.line.rpgle.fixed.precompiler.title
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/(INCLUDE|COPY))\s+(\S+)(.*)
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.include
+      2: keyword.control.rpgle.fixed.precompiler.include
+      4: string.other.rpgle.precompiler.include
+      5: comment.other.rpgle.precompiler.include
+    push:
+    - meta_scope: rpgle.fixed.precompiler.include
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(.{5})([HFDICOP ] *)(\/IF)\b
+    captures:
+      1: comment.gutter
+      2: keyword.other.rpgle.fixed.precompiler.conditional
+      3: keyword.control.rpgle.fixed.precompiler.conditional
+    push:
+    - meta_scope: rpgle.fixed.precompiler.conditional
+    - match: (?i)^(.{5})([HFDICOP ] *)(\/ENDIF)\b
+      pop: true
+      captures:
+        1: comment.gutter
+        2: keyword.other.rpgle.fixed.precompiler.conditional
+        3: keyword.control.rpgle.fixed.precompiler.conditional
+    - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/(ELSEIF|ELSE))\b
+      captures:
+        1: keyword.other.rpgle.fixed.precompiler.conditional
+        2: keyword.control.rpgle.fixed.precompiler.conditional
+    - match: (?i)\b(NOT|UNDEFINED|DEFINED)\b
+      scope: keyword.other.rpgle.fixed.precompiler.defcheck
+    - include: repo_tempfreeformat
+    - include: repo_fixedSQL
+    - include: repo_fixedfreeSQL
+    - include: repo_fixedformat
+    - include: repo_rpglecommon
+    - include: repo_fixedfreeformat
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/CHARCOUNT)\b *(NATURAL|STDCHARSIZE)?
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.charcount
+      2: keyword.control.rpgle.fixed.precompiler.charcount
+      3: keyword.other.rpgle.fixed.precompiler.charcount.mode
+    push:
+    - meta_scope: rpgle.fixed.precompiler.charcount
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/OVERLOAD)\b *(NODETAIL|DETAIL)?
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.overload
+      2: keyword.control.rpgle.fixed.precompiler.overload
+      3: keyword.other.rpgle.fixed.precompiler.overload.mode
+    push:
+    - meta_scope: rpgle.fixed.precompiler.overload
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/EJECT)\b(.*)
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.eject
+      2: keyword.control.rpgle.fixed.precompiler.eject
+      3: comment.other.rpgle.precompiler.eject
+    push:
+    - meta_scope: rpgle.fixed.precompiler.eject
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/SPACE)\b *(\d*)(.*)
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.space
+      2: keyword.control.rpgle.fixed.precompiler.space
+      3: constant.numeric.rpgle
+      4: comment.other.rpgle.precompiler.space
+    push:
+    - meta_scope: rpgle.fixed.precompiler.space
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/(UNDEFINE|DEFINE))\b
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.define
+      2: keyword.control.rpgle.fixed.precompiler.define
+    push:
+    - meta_scope: rpgle.fixed.precompiler.define
+    - match: '
+
+        '
+      pop: true
+    - include: repo_fixedfreeidentifiers
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/(SET|RESTORE|FREE|EOF|ENDIF|END-FREE|ELSE))\b
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.misc
+      2: keyword.control.rpgle.fixed.precompiler.misc
+    push:
+    - meta_scope: rpgle.fixed.precompiler.misc
+    - match: '
+
+        '
+      pop: true
+    - match: .*
+      scope: keyword.control.rpgle.precompiler
+  repo_fixedstmtconditional:
+  - match: (?i)(?<=^.{5})([HFDICOP ] *)(\/(ELSEIF|ELSE|ENDIF|IF))\b
+    captures:
+      1: keyword.other.rpgle.fixed.precompiler.conditional
+      2: keyword.control.rpgle.fixed.precompiler.conditional
+    push:
+    - meta_scope: rpgle.fixed.precompiler.conditional
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(NOT|UNDEFINED|DEFINED)\b
+      scope: keyword.other.rpgle.fixed.precompiler.defcheck
+    - include: repo_constants
+    - include: repo_fixedfreeidentifiers
+  repo_fixedstrings:
+  - match: (?i)x'
+    push:
+    - meta_scope: string.other.rpgle.hex
+    - match: '''|[^-+\s]\s*$|[^-+\s]\s*(?<=^.{80})'
+      pop: true
+    - match: '[-+](?=\s*$)'
+      scope: keyword.other.rpgle.continuation
+    - match: ([-+])\s*(?<=^.{80})
+      captures:
+        1: keyword.other.rpgle.continuation
+    - match: ^.{5}.\s*//
+      push:
+      - meta_scope: comment.line.rpgle.free
+      - match: \n
+        pop: true
+    - include: repo_fixedcomment
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.rpgle
+    - match: '''|[^-+\s]\s*$|[^-+\s]\s*(?<=^.{80})'
+      pop: true
+    - match: '[-+](?=\s*$)'
+      scope: keyword.other.rpgle.continuation
+    - match: ([-+])\s*(?<=^.{80})
+      captures:
+        1: keyword.other.rpgle.continuation
+    - match: ^.{5}.\s*//
+      push:
+      - meta_scope: comment.line.rpgle.free
+      - match: \n
+        pop: true
+    - include: repo_fixedcomment
+  repo_freeSQL:
+  - match: (?i)(?=(^\s*(EXEC)\s+(SQL)\b))
+    push:
+    - match: (;)
+      pop: true
+      captures:
+        1: punctuation.terminator.rpgle.sql
+    - match: (?i)(EXEC)\s+(SQL)\b
+      scope: keyword.other.rpgle.sql
+    - include: repo_sqlcommon
+  repo_freedefkeywords:
+  - match: (?i)\b(ZONED|VARYING|VARUCS2|VARGRAPH|VARCHAR|VALUE|UNS|UCS2|TOFILE|TIMFMT|TIMESTAMP|TIME|TEMPLATE|STATIC|SQLTYPE|SERIALIZE|SAMEPOS|RTNPARM|REQPROTO|QUALIFIED|PSDS|PROCPTR|PREFIX|POS|POINTER|PGMINFO|PERRCD|PACKEVEN|PACKED|OVERLOAD|OVERLAY|OPTIONS|OPDESC|OCCURS|OBJECT|NULLIND|NOOPT|LIKEREC|LIKEFILE|LIKEDS|LIKE|LEN|INZ|IND|INT|IMPORT|GRAPH|FROMFILE|FLOAT|EXTPROC|EXTPGM|EXTNAME|EXTFMT|EXTFLD|EXT|EXPORT|DTAARA|DIM|DFT|DESCEND|DATFMT|DATE|CTDATA|CONST|CLASS|CHAR|CCSID|BINDEC|BASED|ASCEND|ALTSEQ|ALT|ALIGN|ALIAS)\b
+    scope: entity.name.function.rpgle.free.definition.keywords
+  repo_freeformat:
+  - match: (?i)\b(?=CTL\-OPT)\b
+    push:
+    - meta_scope: rpgle.free.control
+    - match: ;
+      pop: true
+    - include: repo_freestmtconditional
+    - match: (?i)\b(CTL\-OPT)\b
+      scope: storage.type.rpgle.free.control
+    - match: (?i)\b(VALIDATE|USRPRF|TRUNCNBR|TIMFMT|THREAD|TEXT|STGMDL|SRTSEQ|REQPREXP|PRFDTA|PGMINFO|OPTION|OPTIMIZE|OPENOPT|NOMAIN|MAIN|LANGID|INTPREC|INDENT|GENLVL|FTRANS|FORMSALIGN|FLTDIV|FIXNBR|EXTBININT|EXPROPTS|ENBPFRCOL|DFTNAME|DFTACTGRP|DECPREC|DECEDIT|DEBUG|DATFMT|DATEYY|DATEDIT|DCLOPT|CVTOPT|CURSYM|COPYRIGHT|COPYNEST|CHARCOUNTTYPES|CHARCOUNT|CCSIDCVT|CCSID|BNDDIR|ASSERT|AUT|ALWNULL|ALTSEQ|ACTGRP|ALLOC)\b
+      scope: entity.name.function.rpgle.free.control.keywords
+    - include: repo_freerpglecommon
+  - match: (?i)\b(?=DCL\-F)\b
+    push:
+    - meta_scope: rpgle.free.file
+    - match: ;
+      pop: true
+    - include: repo_freestmtconditional
+    - match: (?i)\b(DCL\-F)\b
+      scope: storage.type.rpgle.free.file
+    - match: (?i)\b(WORKSTN|USROPN|USAGE|TIMFMT|TEMPLATE|STATIC|SPECIAL|SLN|SFILE|SEQ|SAVEIND|SAVEDS|RENAME|RECNO|RAFDATA|QUALIFIED|PRTCTL|PRINTER|PREFIX|PLIST|PGMNAME|PASS|OFLIND|MAXDEV|LIKEFILE|KEYLOC|KEYED|INFSR|INFDS|INDDS|INCLUDE|IGNORE|HANDLER|FORMOFL|FORMLEN|EXTMBR|EXTIND|EXTFILE|EXTDESC|DISK|DEVID|DATFMT|DATA|COMMIT|CHARCOUNT|BLOCK|ALIAS)\b
+      scope: entity.name.function.rpgle.free.file.keywords
+    - include: repo_freerpglecommon
+  - match: (?i)\b(BEG|END)SR\b
+    scope: storage.type.rpgle.free.definition.subr
+  - match: (?i)(?=(\b(DCL\-)(S|C|PARM|SUBF)\b))
+    push:
+    - meta_scope: rpgle.free.definition.simple
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(DCL\-)(S|C|PARM|SUBF)\b
+      scope: storage.type.rpgle.free.definition.simple
+    - include: repo_freedefkeywords
+    - include: repo_freerpglecommon
+    - include: repo_freeidentifiers
+    - match: (//).*
+      scope: comment.line.rpgle.free
+  - match: (?i)(?=(\b(DCL\-)(DS|ENUM|PROC|PR|PI)\b))
+    push:
+    - meta_scope: rpgle.free.definition.complex
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(DCL\-)(DS|ENUM|PROC|PR|PI)\b
+      scope: storage.type.rpgle.free.definition.complex.dcl
+    - match: (?i)\b(END\-)(DS|ENUM|PROC|PR|PI)\b
+      scope: storage.type.rpgle.free.definition.complex.dcl
+    - include: repo_freedefkeywords
+    - include: repo_freerpglecommon
+    - match: "\\b[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*\\b"
+      scope: variable.other.rpgle.free.definition.identifier
+  - match: (?i)^(?=\s*[A-Za-z#$@][A-Za-z0-9_#$@.]*(\([^()]*\))?\s*(\*\*=|\+=|\-=|\*=|/=|=(?!=))[^;]*$)
+    push:
+    - meta_scope: rpgle.free.calculation.continued
+    - match: ;
+      pop: true
+    - include: repo_strings
+    - include: repo_comments
+    - include: repo_freedefkeywords
+    - include: repo_sqlvariables
+    - include: repo_constants
+    - include: repo_keywords
+    - include: repo_freeopcodes
+    - include: repo_freeidentifiers
+  - include: repo_freeopcodes
+  - include: repo_freeidentifiers
+  - include: repo_freerpglecommon
+  repo_freeidentifiers:
+  - match: "[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*"
+    scope: variable.other.rpgle.free.definition.identifier
+  repo_freeopcodes:
+  - match: (?i)\b(END\-)(DS|ENUM|PROC|PR|PI)\b
+    scope: storage.type.rpgle.free.definition.complex.dcl
+  - match: "(?i)(?<![A-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])(ACQ|ASSERT\\-(F|T)|BEGSR|CALLP|CHAIN|CLEAR|CLOSE|COMMIT|DATA\\-GEN|DATA\\-INTO|DEALLOC|DELETE|DOU|DOW|DSPLY|DUMP|ELSEIF|ELSE|ENDDO|ENDFOR|ENDIF|ENDMON|ENDSL|ENDSR|EVAL\\-CORR|EVALR|EVAL|EXCEPT|EXFMT|EXSR|FEOD|FOR\\-EACH|FOR|FORCE|IF|IN|ITER|LEAVESR|LEAVE|MONITOR|NEXT|ON\\-ERROR|ON\\-EXCP|ON\\-EXIT|OPEN|OTHER|OUT|POST|READC|READE|READP|READPE|READ|REL|RESET|RETURN|ROLBK|SELECT|SETGT|SETLL|SND\\-MSG|SORTA|TEST|UNLOCK|UPDATE|WHEN\\-IN|WHEN\\-IS|WHEN|WRITE|XML\\-INTO|XML\\-SAX)(?![-A-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130])(?:(\\s*\\(\\s*)([ADEHMNPRTZC]{1,5})(\\s*\\)))?"
+    captures:
+      1: keyword.other.rpgle.free
+      4: constant.language.rpgle.free.extender
+  repo_freeprecompiler:
+  - match: (?i)^(\s*)(\/TITLE)
+    captures:
+      1: keyword.other.rpgle.free.precompiler.title
+      2: keyword.control.rpgle.free.precompiler.title
+    push:
+    - meta_scope: rpgle.free.precompiler.title
+    - match: '
+
+        '
+      pop: true
+    - match: .*
+      scope: comment.line.rpgle.free.precompiler.title
+  - match: (?i)^(\s*)(\/(INCLUDE|COPY))\s+(\S+)(.*)
+    captures:
+      1: keyword.other.rpgle.free.precompiler.include
+      2: keyword.control.rpgle.free.precompiler.include
+      4: string.other.rpgle.precompiler.include
+      5: comment.other.rpgle.precompiler.include
+    push:
+    - meta_scope: rpgle.free.precompiler.include
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(\s*)(\/IF)\b
+    captures:
+      2: keyword.control.rpgle.free.precompiler.conditional
+    push:
+    - meta_scope: rpgle.free.precompiler.conditional
+    - match: (?i)^(\s*)(\/ENDIF)\b
+      pop: true
+      captures:
+        2: keyword.control.rpgle.free.precompiler.conditional
+    - match: (?i)^(\s*)(\/(ELSEIF|ELSE))\b
+      captures:
+        2: keyword.control.rpgle.free.precompiler.conditional
+    - match: (?i)\b(NOT|UNDEFINED|DEFINED)\b
+      scope: keyword.other.rpgle.free.precompiler.defcheck
+    - include: repo_freeSQL
+    - include: repo_freerpglecommon
+    - include: repo_freeformat
+  - match: (?i)^(\s*)(\/CHARCOUNT)\b *(NATURAL|STDCHARSIZE)?
+    captures:
+      1: keyword.other.rpgle.free.precompiler.charcount
+      2: keyword.control.rpgle.free.precompiler.charcount
+      3: keyword.other.rpgle.free.precompiler.charcount.mode
+    push:
+    - meta_scope: rpgle.free.precompiler.charcount
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(\s*)(\/OVERLOAD)\b *(NODETAIL|DETAIL)?
+    captures:
+      1: keyword.other.rpgle.free.precompiler.overload
+      2: keyword.control.rpgle.free.precompiler.overload
+      3: keyword.other.rpgle.free.precompiler.overload.mode
+    push:
+    - meta_scope: rpgle.free.precompiler.overload
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(\s*)(\/EJECT)\b(.*)
+    captures:
+      1: keyword.other.rpgle.free.precompiler.eject
+      2: keyword.control.rpgle.free.precompiler.eject
+      3: comment.other.rpgle.precompiler.eject
+    push:
+    - meta_scope: rpgle.free.precompiler.eject
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(\s*)(\/SPACE)\b *(\d*)(.*)
+    captures:
+      1: keyword.other.rpgle.free.precompiler.space
+      2: keyword.control.rpgle.free.precompiler.space
+      3: constant.numeric.rpgle
+      4: comment.other.rpgle.precompiler.space
+    push:
+    - meta_scope: rpgle.free.precompiler.space
+    - match: '
+
+        '
+      pop: true
+  - match: (?i)^(\s*)(\/(UNDEFINE|DEFINE))\b
+    captures:
+      1: keyword.other.rpgle.free.precompiler.define
+      2: keyword.control.rpgle.free.precompiler.define
+    push:
+    - meta_scope: rpgle.free.precompiler.define
+    - match: '
+
+        '
+      pop: true
+    - include: repo_freeidentifiers
+  - match: (?i)^(\s*)(\/(SET|RESTORE|FREE|EOF|ENDIF|END-FREE|ELSE))\b
+    captures:
+      1: keyword.other.rpgle.free.precompiler.misc
+      2: keyword.control.rpgle.free.precompiler.misc
+    push:
+    - meta_scope: rpgle.free.precompiler.misc
+    - match: '
+
+        '
+      pop: true
+    - match: .*
+      scope: keyword.control.rpgle.precompiler
+  repo_freerpglecommon:
+  - include: repo_strings
+  - include: repo_comments
+  - include: repo_freedefkeywords
+  - include: repo_sqlvariables
+  - include: repo_constants
+  - include: repo_freeprecompiler
+  - include: repo_keywords
+  repo_freestmtconditional:
+  - match: (?i)^(\s*)(\/(ELSEIF|ELSE|ENDIF|IF))\b
+    captures:
+      2: keyword.control.rpgle.free.precompiler.conditional
+    push:
+    - meta_scope: rpgle.free.precompiler.conditional
+    - match: '
+
+        '
+      pop: true
+    - match: (?i)\b(NOT|UNDEFINED|DEFINED)\b
+      scope: keyword.other.rpgle.free.precompiler.defcheck
+    - include: repo_constants
+    - include: repo_freeidentifiers
+  repo_keywords:
+  - match: \*{1,2}(=)?|=|<>|((<|>|\+|\-|\/)(=)?)
+    scope: keyword.operator.rpgle
+  - match: :|\.|\,|((\b(?i)(TO|BY|DOWNTO|IN(?!\s*\()|AND|OR|NOT)\b))
+    scope: keyword.other.rpgle
+  - match: '[%](?i)(YEARS|XML|XLATE|XFOOT|UPPER|UNSH|UNS|UCS2|TRIMR|TRIML|TRIM|TLOOKUPNE|TLOOKUPLT|TLOOKUPLE|TLOOKUPGT|TLOOKUPGE|TLOOKUP|TIMESTAMP|TIME|THIS|TARGET|SUBST|SUBDT|SUBARR|STR|STATUS|SQRT|SPLIT|SIZE|SHTDN|SECONDS|SCANRPL|SCANR|SCAN|RIGHT|REPLACE|REM|REALLOC|RANGE|PROC|PASSED|PARSER|PARMNUM|PARMS|PADDR|OPEN|OMITTED|OCCUR|NULLIND|MSG|MSECONDS|MONTHS|MINUTES|MINARR|MIN|MAXARR|MAX|LOWER|LOVAL|LOOKUPNE|LOOKUPLT|LOOKUPLE|LOOKUPGT|LOOKUPGE|LOOKUP|LIST|LEN|LEFT|KDS|INTH|INT|HOURS|HIVAL|HANDLER|GRAPH|GEN|FOUND|FLOAT|FIELDS|ERROR|EQUAL|EOF|ELEM|EDITW|EDITFLT|EDITC|DIV|DIFF|DECPOS|DECH|DEC|DAYS|DATE|DATA|CONCATARR|CONCAT|CHECKR|CHECK|CHARCOUNT|CHAR|BITXOR|BITOR|BITNOT|BITAND|ALLOC|ADDR|ABS)'
+    scope: support.function.rpgle.bif
+  repo_rpglecommon:
+  - include: repo_fixedcomment
+  - include: repo_fixedstrings
+  - include: repo_comments
+  - include: repo_sqlvariables
+  - include: repo_constants
+  - include: repo_fixedprecompiler
+  - include: repo_keywords
+  repo_sqlcommon:
+  - match: (--|//).*
+    scope: comment.line.rpgle.sql
+  - match: /\*
+    push:
+    - meta_scope: comment.block.rpgle.sql
+    - match: \*/
+      pop: true
+  - match: (?i)\b(CLIENT_HOST|CLIENT_IPADDR|CLIENT_PORT|JOB_NAME|PACKAGE_NAME|PACKAGE_SCHEMA|PACKAGE_VERSION|PROCESS_ID|ROUTINE_SCHEMA|ROUTINE_SPECIFIC_NAME|ROUTINE_TYPE|SERVER_MODE_JOB_NAME|THREAD_ID)\b
+    scope: constant.language.rpgle.sql.globals
+  - match: (?i)\b(XML|VARYING|VARGRAPHIC|VARCHAR|VARBINARY|TIMESTAMP|TIME|SMALLINT|ROWID|REAL|PRECISION|OBJECT|NVARCHAR|NUMERIC|NCLOB|NCHAR|LARGE|INTEGER|INT|GRAPHIC|FLOAT|DOUBLE|DECIMAL|DECFLOAT|DEC|DBCLOB|DATE|DATALINK|CLOB|CHARACTER|CHAR|BOOLEAN|BLOB|BINARY|BIGINT)\b
+    scope: storage.type.rpgle.sql
+  - match: "[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*(?=\\()"
+    scope: support.function.rpgle.sql
+  - match: "[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*(\\.|\\/)[a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130]*"
+    scope: constant.language.rpgle.sql.schema
+  - match: "[:][a-zA-Z_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130][a-zA-Z0-9_#@$\xA7\xC6\xD8\xC5\xC4\xD6\xA3\xD1\xA5\xE0\xD0\u015E\u0130\\.]*"
+    scope: variable.parameter.rpgle.sql
+  - match: (?i)x'[^']*'
+    scope: string.other.rpgle.sql.hex
+  - match: '''[^'']*'''
+    scope: string.quoted.single.rpgle.sql
+  - match: (?i)\*[A-Z][A-Z0-9]*
+    scope: constant.language.rpgle.sql
+  - match: (?i)\b(ZONE|YES|YEARS|YEAR|XSROBJECT|XSLTRANSFORM|XMLVALIDATE|XMLTEXT|XMLTABLE|XMLSERIALIZE|XMLROW|XMLPI|XMLPARSE|XMLNAMESPACES|XMLGROUP|XMLFOREST|XMLELEMENT|XMLDOCUMENT|XMLCONCAT|XMLCOMMENT|XMLCAST|XMLATTRIBUTES|XMLAGG|WRKSTNNAME|WRITE|WRAPPER|WRAPPED|WITHOUT|WITHIN|WITH|WHILE|WHERE|WHENEVER|WHEN|WAIT|VOLATILE|VIEW|VERSIONING|VERSION|VCAT|VARIANT|VARIABLE|VALUES|VALUE|USING|USERID|USER|USE|USAGE|URI|UPDATING|UPDATE|UNTIL|UNNEST|UNKNOWN|UNIT|UNIQUE|UNION|UNDO|TYPE|TRY_CAST|TRUNCATE|TRUE|TRIM_ARRAY|TRIM|TRIGGER|TRANSFER|TRANSACTION|TO|TIMESTAMP|TIME|THREADSAFE|THEN|TAG|TABLESPACES|TABLESPACE|TABLE|SYSTEM_USER|SYSTEM_TIME|SYNONYM|SUMMARY|SUBSTRING|STOGROUP|STATIC|STATEMENT|STARTING|START|STACKED|SQLWARNING|SQLIND_UNASSIGNED|SQLIND_DEFAULT|SQLID|SQLERROR|SQL|SPECIFIC|SOURCE|SOME|SNAN|SKIP|SIMPLE|SIGNAL|SET|SESSION_USER|SESSION|SEQUENCE|SENSITIVE|SELECT|SECURED|SECQTY|SECONDS|SECOND|SEARCH|SCROLL|SCRATCHPAD|SCHEMA|SCALAR|SBCS|SAVEPOINT|RUN|RRN|ROW_NUMBER|ROWS|ROWNUMBER|ROW|ROUTINE|ROLLUP|ROLLBACK|RIGHT|RID|REVOKE|RETURNS|RETURNING|RETURN|RESULT_SET_LOCATOR|RESULT|RESTRICT|RESTART|RESIGNAL|RESET|REPEAT|RENAME|RELEASE|REGEXP_LIKE|REFRESH|REFERENCING|REFERENCES|RECOVERY|READS|READ|RCDFMT|RATIO_TO_REPORT|RANK|RANGE|QUERY|PROGRAMID|PROGRAM|PROCEDURE|PRIVILEGES|PRIQTY|PRIOR|PRIMARY|PREVVAL|PREPARE|POSITION|PLAN|PIPE|PIECESIZE|PERMISSION|PERIOD|PERCENT_RANK|PERCENTILE_DISC|PERCENTILE_CONT|PCTFREE|PATH|PASSWORD|PASSING|PARTITIONS|PARTITIONING|PARTITIONED|PARTITION|PART|PARAMETER|PAGESIZE|PAGE|PADDED|PACKAGE|OVERRIDING|OVERLAY|OVER|OUTER|OUT|ORGANIZE|ORDINALITY|ORDER|OR|OPTION|OPTIMIZE|OPEN|ONLY|ON|OMIT|OLD_TABLE|OLD|OFFSET|OFF|OF|OBJECT|OBID|NVARCHAR|NULLS|NULL|NTILE|NTH_VALUE|NOTNULL|NOT|NORMALIZED|NOORDER|NONE|NOMINVALUE|NOMAXVALUE|NODENUMBER|NODENAME|NOCYCLE|NOCACHE|NO|NEXTVAL|NEW_TABLE|NEW|NESTED|NCLOB|NCHAR|NATIONAL|NAN|NAMESPACE|MONTHS|MONTH|MODIFIES|MODE|MIXED|MIRROR|MINVALUE|MINUTES|MINUTE|MINPCTUSED|MICROSECONDS|MICROSECOND|MERGE|MAXVALUE|MATERIALIZED|MATCHED|MASK|MAINTAINED|LOOP|LONG|LOGGED|LOG|LOCKSIZE|LOCK|LOCATOR|LOCATION|LOCALTIMESTAMP|LOCALTIME|LOCALDATE|LOCAL|LISTAGG|LINKTYPE|LIMIT|LIKE|LEVEL2|LEFT|LEAVE|LEAD|LATERAL|LAST_VALUE|LANGUAGE|LAG|LABEL|KEYS|KEY|KEEP|JSON_VALUE|JSON_TABLE|JSON_QUERY|JSON_OBJECTAGG|JSON_OBJECT|JSON_EXISTS|JSON_ARRAYAGG|JSON_ARRAY|JSON|JOIN|JAVA|ITERATE|ISOLATION|ISNULL|IS|INTO|INTERSECT|INTERPRET|INTEGRITY|INSERTING|INSERT|INSENSITIVE|INOUT|INNER|INLINE|INHERIT|INFINITY|INF|INDICATOR|INDEXBP|INDEX|INCREMENT|INCLUSIVE|INCLUDING|INCLUDE|IN|IMPLICITLY|IMMEDIATE|IGNORE|IF|IDENTITY|ID|HOURS|HOUR|HOLD|HINT|HAVING|HASH_ROW|HASHED_VALUE|HASH|HANDLER|GROUP|GRAPHIC|GRANT|GOTO|GO|GLOBAL|GET|GENERATED|GENERAL|GBPCACHE|FUNCTION|FULL|FROM|FREEPAGE|FREE|FOUND|FORMAT|FOREIGN|FOR|FIRST_VALUE|FINAL|FILE|FIELDPROC|FETCH|FENCED|FALSE|EXTRACT|EXTERNAL|EXTEND|EXIT|EXISTS|EXECUTE|EXCLUSIVE|EXCLUDING|EXCEPTION|EXCEPT|EVERY|ESCAPE|ERROR|ENFORCED|ENDING|END|ENCRYPTION|ENCODING|ENABLE|EMPTY|ELSEIF|ELSE|EACH|DYNAMIC|DROP|DOUBLE|DOCUMENT|DO|DISTINCT|DISCONNECT|DISALLOW|DISABLE|DIAGNOSTICS|DETERMINISTIC|DETACH|DESCRIPTOR|DESCRIBE|DESC|DENSE_RANK|DENSERANK|DELETING|DELETE|DEFINITION|DEFINE|DEFER|DEFAULTS|DEFAULT|DECLARE|DEALLOCATE|DEACTIVATE|DBPARTITIONNUM|DBPARTITIONNAME|DBINFO|DB2SQL|DB2GENRL|DB2GENERAL|DAYS|DAY|DATE|DATAPARTITIONNUM|DATAPARTITIONNAME|DATABASE|DATA|CYCLE|CURSOR|CURRENT_USER|CURRENT_TIMEZONE|CURRENT_TIMESTAMP|CURRENT_TIME|CURRENT_SERVER|CURRENT_SCHEMA|CURRENT_PATH|CURRENT_DATE|CURRENT|CUME_DIST|CUBE|CROSS|CREATEIN|CREATE|COUNT_BIG|COUNT|COPY|CONTINUE|CONTENT|CONTAINS|CONSTRAINT|CONSTANT|CONNECT_BY_ROOT|CONNECTION|CONNECT|CONDITION|CONCURRENT|CONCAT|COMPRESS|COMPARISONS|COMPACT|COMMIT|COMMENT|COLUMN|COLLECTION|COLLECT|CLUSTER|CLOSE|CL|CHECK|CHARACTER|CHAR|CCSID|CAST|CASE|CARDINALITY|CALLED|CALL|CACHE|BY|BUFFERPOOL|BSON|BOOLEAN|BIT|BIND|BINARY|BETWEEN|BEGIN|BEFORE|AUTONOMOUS|AUTHORIZATION|ATTRIBUTES|ATTACH|ATOMIC|AT|ASSOCIATE|ASENSITIVE|ASC|AS|ARRAY_TRIM|ARRAY_AGG|ARRAY|APPLNAME|APPEND|ANY|AND|ALTER|ALLOW|ALLOCATE|ALL|ALIAS|ADD|ACTIVATE|ACTION|ACCTNG|ACCORDING|ABSENT)\b
+    scope: keyword.operator.rpgle.sql.reserved
+  - include: repo_sqlvariables
+  - match: \b[0-9]+(\.[0-9]+)?\b
+    scope: constant.numeric.rpgle.sql
+  - match: "(\\|\\||\\*\\*|<>|<=|>=|[\xAC!][=<>]|[=<>+\\-*/])"
+    scope: keyword.operator.rpgle.sql
+  - include: scope:source.sql
+  repo_sqlvariables:
+  - match: (?i)\b(SQLWRN|SQLWNA|SQLWN9|SQLWN8|SQLWN7|SQLWN6|SQLWN5|SQLWN4|SQLWN3|SQLWN2|SQLWN1|SQLWN0|SQLWARN|SQLSTT|SQLSTATE|SQLCODE|SQLCOD|SQLERRP|SQLERRML|SQLERRMC|SQLERRD|SQLERR|SQLERP|SQLERM|SQLERL|SQLER6|SQLER5|SQLER4|SQLER3|SQLER2|SQLER1)\b
+    scope: variable.language.rpgle.sql
+  repo_strings:
+  - match: (?i)x'
+    push:
+    - meta_scope: string.other.rpgle.hex
+    - match: '''|[^-+\s]\s*$|[^-+\s]\s*(?<=^.{80})'
+      pop: true
+    - match: '[-+](?=\s*$)'
+      scope: keyword.other.rpgle.continuation
+    - match: ([-+])\s*(?<=^.{80})
+      captures:
+        1: keyword.other.rpgle.continuation
+    - match: ^\s*//.*
+      scope: comment.line.rpgle.free
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.rpgle
+    - match: '''|[^-+\s]\s*$|[^-+\s]\s*(?<=^.{80})'
+      pop: true
+    - match: '[-+](?=\s*$)'
+      scope: keyword.other.rpgle.continuation
+    - match: ([-+])\s*(?<=^.{80})
+      captures:
+        1: keyword.other.rpgle.continuation
+    - match: ^\s*//.*
+      scope: comment.line.rpgle.free
+  repo_tempfreeformat:
+  - match: (?i)(?=((\/FREE\b)))
+    push:
+    - match: (?i)(?=((\/END-FREE\b)))
+      pop: true
+    - match: (?i)^.*(\/FREE\b)
+      scope: keyword.control.rpgle.precompiler
+    - include: repo_rpglecommon
+    - include: repo_fixedfreeformat
+    - include: repo_fixedfreeSQL
+  - match: (?i)\/END-FREE\b
+    scope: keyword.control.rpgle.precompiler

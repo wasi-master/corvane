@@ -1,0 +1,1295 @@
+%YAML 1.2
+---
+# Imba (source.imba): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/imba/imba-linguist-grammar.git via GitHub Linguist v9.7.0 (license: mit).
+name: Imba
+scope: source.imba
+file_extensions:
+- imba
+contexts:
+  main:
+  - include: repo_root
+  - match: \A(#!).*(?=$)
+    scope: comment.line.shebang.imba
+    captures:
+      1: punctuation.definition.comment.imba
+  repo_array-literal:
+  - match: \s*(\[)
+    captures:
+      1: meta.brace.square.imba
+    push:
+    - meta_scope: meta.array.literal.imba
+    - match: \]
+      pop: true
+      captures:
+        0: meta.brace.square.imba
+    - include: repo_expr
+    - include: repo_punctuation-comma
+  repo_block:
+  - include: repo_style-declaration
+  - include: repo_object-keys
+  - include: repo_tag-literal
+  - include: repo_regex
+  - include: repo_keywords
+  - include: repo_comment
+  - include: repo_literal
+  - include: repo_plain-identifiers
+  - include: repo_plain-accessors
+  - include: repo_pairs
+  - include: repo_invalid-indentation
+  repo_boolean-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(true|yes)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.boolean.true.imba
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(false|no)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.boolean.false.imba
+  repo_brackets:
+  - match: '{'
+    push:
+    - match: '}|(?=\*/)'
+      pop: true
+    - include: repo_brackets
+  - match: \[
+    push:
+    - match: \]|(?=\*/)
+      pop: true
+    - include: repo_brackets
+  repo_comment:
+  - match: /\*\*(?!/)
+    captures:
+      0: punctuation.definition.comment.imba
+    push:
+    - meta_scope: comment.block.documentation.imba
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.imba
+    - include: repo_docblock
+  - match: (/\*)(?:\s*((@)internal)(?=\s|(\*/)))?
+    captures:
+      1: punctuation.definition.comment.imba
+      2: storage.type.internaldeclaration.imba
+      3: punctuation.decorator.internaldeclaration.imba
+    push:
+    - meta_scope: comment.block.imba
+    - match: \*/
+      pop: true
+      captures:
+        0: punctuation.definition.comment.imba
+  - match: (###)
+    captures:
+      1: punctuation.definition.comment.imba
+    push:
+    - meta_scope: comment.block.imba
+    - match: '###(?:[ \t]*\n)'
+      pop: true
+      captures:
+        0: punctuation.definition.comment.imba
+  - match: (^[ \t]+)?((//|\#\s)(?:\s*((@)internal)(?=\s|$))?)
+    captures:
+      1: punctuation.whitespace.comment.leading.imba
+      2: comment.line.double-slash.imba
+      3: punctuation.definition.comment.imba
+      4: storage.type.internaldeclaration.imba
+      5: punctuation.decorator.internaldeclaration.imba
+    push:
+    - meta_content_scope: comment.line.double-slash.imba
+    - match: (?=$)
+      pop: true
+  repo_css-color-keywords:
+  - match: (?i)(?<![\w-])(aqua|black|blue|fuchsia|gray|green|lime|maroon|navy|olive|orange|purple|red|silver|teal|white|yellow)(?![\w-])
+    scope: support.constant.color.w3c-standard-color-name.css
+  - match: '(?xi) (?<![\w-])
+
+      (aliceblue|antiquewhite|aquamarine|azure|beige|bisque|blanchedalmond|blueviolet|brown|burlywood
+
+      |cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan
+
+      |darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange
+
+      |darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise
+
+      |darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen
+
+      |gainsboro|ghostwhite|gold|goldenrod|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki
+
+      |lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow
+
+      |lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray
+
+      |lightslategrey|lightsteelblue|lightyellow|limegreen|linen|magenta|mediumaquamarine|mediumblue
+
+      |mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise
+
+      |mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|oldlace|olivedrab|orangered
+
+      |orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum
+
+      |powderblue|rebeccapurple|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell
+
+      |sienna|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|thistle|tomato
+
+      |transparent|turquoise|violet|wheat|whitesmoke|yellowgreen)
+
+      (?![\w-])'
+    scope: support.constant.color.w3c-extended-color-name.css
+  - match: (?i)(?<![\w-])currentColor(?![\w-])
+    scope: support.constant.color.current.css
+  repo_css-combinators:
+  - match: '>>>|>>|>|\+|~'
+    scope: punctuation.separator.combinator.css
+  - match: '&'
+    scope: keyword.other.parent-selector.css
+  repo_css-commas:
+  - match: ','
+    scope: punctuation.separator.list.comma.css
+  repo_css-comment:
+  - match: \#(\s.+)?(\n|$)
+    scope: comment.line.imba
+  - match: (^\t+)(\#(\s.+)?(\n|$))
+    scope: comment.line.imba
+  repo_css-escapes:
+  - match: \\[0-9a-fA-F]{1,6}
+    scope: constant.character.escape.codepoint.css
+  - match: \\$\s*
+    push:
+    - meta_scope: constant.character.escape.newline.css
+    - match: ^(?<!)
+      pop: true
+  - match: \\.
+    scope: constant.character.escape.css
+  repo_css-functions:
+  - match: (?i)(?<![\w-])(calc)(\()
+    captures:
+      1: support.function.calc.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.calc.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: '[*/]|(?<=\s|^)[-+](?=\s|$)'
+      scope: keyword.operator.arithmetic.css
+    - include: repo_css-property-values
+  - match: (?i)(?<![\w-])(rgba?|hsla?)(\()
+    captures:
+      1: support.function.misc.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.color.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - include: repo_css-property-values
+  - match: "(?xi) (?<![\\w-])\n(\n  (?:-webkit-|-moz-|-o-)?    # Accept prefixed/historical variants\n  (?:repeating-)?            # \"Repeating\"-type gradient\n  (?:linear|radial|conic)    # Shape\n  -gradient\n)\n(\\()"
+    captures:
+      1: support.function.gradient.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.gradient.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: (?i)(?<![\w-])(from|to|at)(?![\w-])
+      scope: keyword.operator.gradient.css
+    - include: repo_css-property-values
+  - match: (?i)(?<![\w-])(-webkit-gradient)(\()
+    captures:
+      1: invalid.deprecated.gradient.function.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.gradient.invalid.deprecated.gradient.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: (?i)(?<![\w-])(from|to|color-stop)(\()
+      captures:
+        1: invalid.deprecated.function.css
+        2: punctuation.section.function.begin.bracket.round.css
+      push:
+      - match: \)
+        pop: true
+        captures:
+          0: punctuation.section.function.end.bracket.round.css
+      - include: repo_css-property-values
+    - include: repo_css-property-values
+  - match: '(?xi) (?<![\w-])
+
+      (annotation|attr|blur|brightness|character-variant|contrast|counters?
+
+      |cross-fade|drop-shadow|element|fit-content|format|grayscale|hue-rotate
+
+      |image-set|invert|local|minmax|opacity|ornaments|repeat|saturate|sepia
+
+      |styleset|stylistic|swash|symbols)
+
+      (\()'
+    captures:
+      1: support.function.misc.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.misc.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: (?i)(?<=[,\s"]|\*/|^)\d+x(?=[\s,"')]|/\*|$)
+      scope: constant.numeric.other.density.css
+    - include: repo_css-property-values
+    - match: '[^''"),\s]+'
+      scope: variable.parameter.misc.css
+  - match: (?i)(?<![\w-])(circle|ellipse|inset|polygon|rect)(\()
+    captures:
+      1: support.function.shape.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.shape.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: (?i)(?<=\s|^|\*/)(at|round)(?=\s|/\*|$)
+      scope: keyword.operator.shape.css
+    - include: repo_css-property-values
+  - match: (?i)(?<![\w-])(cubic-bezier|steps)(\()
+    captures:
+      1: support.function.timing-function.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.timing-function.css
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - match: (?i)(?<![\w-])(start|end)(?=\s*\)|$)
+      scope: support.constant.step-direction.css
+    - include: repo_css-property-values
+  - match: '(?xi) (?<![\w-])
+
+      ( (?:translate|scale|rotate)(?:[XYZ]|3D)?
+
+      | matrix(?:3D)?
+
+      | skew[XY]?
+
+      | perspective
+
+      )
+
+      (\()'
+    captures:
+      1: support.function.transform.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.function.end.bracket.round.css
+    - include: repo_css-property-values
+  repo_css-numeric-values:
+  - match: (#)(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b
+    scope: constant.other.color.rgb-value.hex.css
+    captures:
+      1: punctuation.definition.constant.css
+  - match: "(?xi) (?<![\\w-])\n[-+]?                               # Sign indicator\n\n(?:                                 # Numerals\n    [0-9]+ (?:\\.[0-9]+)?           # Integer/float with leading digits\n  | \\.[0-9]+                       # Float without leading digits\n)\n\n(?:                                 # Scientific notation\n  (?<=[0-9])                        # Exponent must follow a digit\n  E                                 # Exponent indicator\n  [-+]?                             # Possible sign indicator\n  [0-9]+                            # Exponent value\n)?\n\n(?:                                 # Possible unit for data-type:\n  (%)                               # - Percentage\n  | ( deg|grad|rad|turn             # - Angle\n    | Hz|kHz                        # - Frequency\n    | ch|cm|em|ex|fr|in|mm|mozmm|   # - Length\n      pc|pt|px|q|rem|vh|vmax|vmin|\n      vw\n    | dpi|dpcm|dppx                 # - Resolution\n    | s|ms                          # - Time\n  \
+      \  )\n  \\b                               # Boundary checking intentionally lax to\n)?                                  # facilitate embedding in CSS-like grammars"
+    scope: constant.numeric.css
+    captures:
+      1: keyword.other.unit.percentage.css
+  repo_css-property-values:
+  - include: repo_css-commas
+  - include: repo_css-escapes
+  - include: repo_css-functions
+  - include: repo_css-numeric-values
+  - include: repo_css-size-keywords
+  - include: repo_css-color-keywords
+  - include: repo_string
+  - match: '!\s*important(?![\w-])'
+    scope: keyword.other.important.css
+  repo_css-pseudo-classes:
+  - match: "(?xi)\n(:)(:*)\n(?: active|any-link|checked|default|defined|disabled|empty|enabled|first\n  | (?:first|last|only)-(?:child|of-type)|focus|focus-visible|focus-within\n  | fullscreen|host|hover|in-range|indeterminate|invalid|left|link\n  | optional|out-of-range|placeholder-shown|read-only|read-write\n  | required|right|root|scope|target|unresolved\n  | valid|visited\n)(?![\\w-]|\\s*[;}])"
+    scope: entity.other.attribute-name.pseudo-class.css
+    captures:
+      1: punctuation.definition.entity.css
+      2: invalid.illegal.colon.css
+  repo_css-pseudo-elements:
+  - match: "(?xi)\n(?:\n  (::?)                       # Elements using both : and :: notation\n  (?: after\n    | before\n    | first-letter\n    | first-line\n    | (?:-(?:ah|apple|atsc|epub|hp|khtml|moz\n            |ms|o|rim|ro|tc|wap|webkit|xv)\n        | (?:mso|prince))\n      -[a-z-]+\n  )\n  |\n  (::)                        # Double-colon only\n  (?: backdrop\n    | content\n    | grammar-error\n    | marker\n    | placeholder\n    | selection\n    | shadow\n    | spelling-error\n  )\n)\n(?![\\w-]|\\s*[;}])"
+    scope: entity.other.attribute-name.pseudo-element.css
+    captures:
+      1: punctuation.definition.entity.css
+      2: punctuation.definition.entity.css
+  repo_css-selector:
+  - match: (?<=css\s)(?!(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:)[^\:])
+    push:
+    - meta_scope: meta.selector.css
+    - match: (\s*(?=(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:)[^\:])|\s*$|(?=\s+\#\s))
+      pop: true
+      captures:
+        0: punctuation.separator.sel-properties.css
+    - include: repo_css-selector-innards
+  repo_css-selector-innards:
+  - include: repo_css-commas
+  - include: repo_css-escapes
+  - include: repo_css-combinators
+  - match: \*
+    scope: entity.name.tag.wildcard.css
+  - match: \[
+    captures:
+      0: punctuation.definition.entity.begin.bracket.square.css
+    push:
+    - meta_scope: meta.attribute-selector.css
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.definition.entity.end.bracket.square.css
+    - include: repo_string
+    - match: (?<=["'\s]|^|\*/)\s*([iI])\s*(?=[\s\]]|/\*|$)
+      captures:
+        1: storage.modifier.ignore-case.css
+    - match: (?x)(?<==)\s*((?!/\*)(?:[^\\"'\s\]]|\\.)+)
+      captures:
+        1: string.unquoted.attribute-value.css
+    - include: repo_css-escapes
+    - match: '[~|^$*]?='
+      scope: keyword.operator.pattern.css
+    - match: \|
+      scope: punctuation.separator.css
+    - match: "(?x)\n# Qualified namespace prefix\n( -?(?!\\d)(?:[\\w-]|[^\\\\x00-\\\\x7F]|\\\\(?:[0-9a-fA-F]{1,6}|.))+\n| \\*\n)\n# Lookahead to ensure there's a valid identifier ahead\n(?=\n  \\| (?!\\s|=|$|\\])\n  (?: -?(?!\\d)\n   |   [\\\\\\w-]\n   |   [^\\\\x00-\\\\x7F]\n   )\n)"
+      captures:
+        1: entity.other.namespace-prefix.css
+    - match: '(?x)
+
+        (-?(?!\d)(?>[\w-]|[^\\x00-\\x7F]|\\(?:[0-9a-fA-F]{1,6}|.))+)
+
+        \s*
+
+        (?=[~|^\]$*=]|/\*)'
+      captures:
+        1: entity.other.attribute-name.css
+  - include: repo_css-pseudo-classes
+  - include: repo_css-pseudo-elements
+  repo_css-size-keywords:
+  - match: (x+s|sm-|md-|lg-|sm|md|lg|x+l|hg|x+h)(?![\w-])
+    scope: support.constant.size.property-value.css
+  repo_curly-braces:
+  - match: \s*(\{)
+    captures:
+      1: meta.brace.curly.imba
+    push:
+    - match: \}
+      pop: true
+      captures:
+        0: meta.brace.curly.imba
+    - include: repo_expr
+    - include: repo_punctuation-comma
+  repo_decorator:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))\@(?!\@)
+    captures:
+      0: punctuation.decorator.imba
+    push:
+    - meta_scope: meta.decorator.imba
+    - match: (?=\s)
+      pop: true
+    - include: repo_expr
+  repo_directives:
+  - match: ^(///)\s*(?=<(reference|amd-dependency|amd-module)(\s+(path|types|no-default-lib|lib|name)\s*=\s*((\'([^\'\\]|\\.)*\')|(\"([^\"\\]|\\.)*\")|(\`([^\`\\]|\\.)*\`)))+\s*/>\s*$)
+    captures:
+      1: punctuation.definition.comment.imba
+    push:
+    - meta_scope: comment.line.triple-slash.directive.imba
+    - match: (?=$)
+      pop: true
+    - match: (<)(reference|amd-dependency|amd-module)
+      captures:
+        1: punctuation.definition.tag.directive.imba
+        2: entity.name.tag.directive.imba
+      push:
+      - meta_scope: meta.tag.imba
+      - match: />
+        pop: true
+        captures:
+          0: punctuation.definition.tag.directive.imba
+      - match: path|types|no-default-lib|lib|name
+        scope: entity.other.attribute-name.directive.imba
+      - match: '='
+        scope: keyword.operator.assignment.imba
+      - include: repo_string
+  repo_docblock:
+  - match: '(?x)
+
+      ((@)(?:access|api))
+
+      \s+
+
+      (private|protected|public)
+
+      \b'
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: constant.language.access-type.jsdoc
+  - match: "(?x)\n((@)author)\n\\s+\n(\n  [^@\\s<>*/]\n  (?:[^@<>*/]|\\*[^/])*\n)\n(?:\n  \\s*\n  (<)\n  ([^>\\s]+)\n  (>)\n)?"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: entity.name.type.instance.jsdoc
+      4: punctuation.definition.bracket.angle.begin.jsdoc
+      5: constant.other.email.link.underline.jsdoc
+      6: punctuation.definition.bracket.angle.end.jsdoc
+  - match: '(?x)
+
+      ((@)borrows) \s+
+
+      ((?:[^@\s*/]|\*[^/])+)    # <that namepath>
+
+      \s+ (as) \s+              # as
+
+      ((?:[^@\s*/]|\*[^/])+)    # <this namepath>'
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: entity.name.type.instance.jsdoc
+      4: keyword.operator.control.jsdoc
+      5: entity.name.type.instance.jsdoc
+  - match: ((@)example)\s+
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+    push:
+    - meta_scope: meta.example.jsdoc
+    - match: (?=@|\*/)
+      pop: true
+    - match: ^\s\*\s+
+    - match: (<)caption(>)
+      captures:
+        0: entity.name.tag.inline.jsdoc
+        1: punctuation.definition.bracket.angle.begin.jsdoc
+        2: punctuation.definition.bracket.angle.end.jsdoc
+      push:
+      - meta_content_scope: constant.other.description.jsdoc
+      - match: (</)caption(>)|(?=\*/)
+        pop: true
+        captures:
+          0: entity.name.tag.inline.jsdoc
+          1: punctuation.definition.bracket.angle.begin.jsdoc
+          2: punctuation.definition.bracket.angle.end.jsdoc
+    - match: '[^\s@*](?:[^*]|\*[^/])*'
+      captures:
+        0: source.embedded.imba
+  - match: (?x) ((@)kind) \s+ (class|constant|event|external|file|function|member|mixin|module|namespace|typedef) \b
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: constant.language.symbol-type.jsdoc
+  - match: "(?x)\n((@)see)\n\\s+\n(?:\n  # URL\n  (\n    (?=https?://)\n    (?:[^\\s*]|\\*[^/])+\n  )\n  |\n  # JSDoc namepath\n  (\n    (?!\n      # Avoid matching bare URIs (also acceptable as links)\n      https?://\n      |\n      # Avoid matching {@inline tags}; we match those below\n      (?:\\[[^\\[\\]]*\\])? # Possible description [preceding]{@tag}\n      {@(?:link|linkcode|linkplain|tutorial)\\b\n    )\n    # Matched namepath\n    (?:[^@\\s*/]|\\*[^/])+\n  )\n)"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: variable.other.link.underline.jsdoc
+      4: entity.name.type.instance.jsdoc
+  - match: "(?x)\n((@)template)\n\\s+\n# One or more valid identifiers\n(\n  [A-Za-z_$]         # First character: non-numeric word character\n  [\\w$.\\[\\]]*        # Rest of identifier\n  (?:                # Possible list of additional identifiers\n    \\s* , \\s*\n    [A-Za-z_$]\n    [\\w$.\\[\\]]*\n  )*\n)"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: variable.other.jsdoc
+  - match: "(?x)\n(\n  (@)\n  (?:arg|argument|const|constant|member|namespace|param|var)\n)\n\\s+\n(\n  [A-Za-z_$]\n  [\\w$.\\[\\]]*\n)"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: variable.other.jsdoc
+  - match: ((@)typedef)\s+(?={)
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+    push:
+    - match: (?=\s|\*/|[^{}\[\]A-Za-z_$])
+      pop: true
+    - include: repo_jsdoctype
+    - match: (?:[^@\s*/]|\*[^/])+
+      scope: entity.name.type.instance.jsdoc
+  - match: ((@)(?:arg|argument|const|constant|member|namespace|param|prop|property|var))\s+(?={)
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+    push:
+    - match: (?=\s|\*/|[^{}\[\]A-Za-z_$])
+      pop: true
+    - include: repo_jsdoctype
+    - match: ([A-Za-z_$][\w$.\[\]]*)
+      scope: variable.other.jsdoc
+    - match: "(?x)\n(\\[)\\s*\n[\\w$]+\n(?:\n  (?:\\[\\])?                                        # Foo[ ].bar properties within an array\n  \\.                                                # Foo.Bar namespaced parameter\n  [\\w$]+\n)*\n(?:\n  \\s*\n  (=)                                                # [foo=bar] Default parameter value\n  \\s*\n  (\n    # The inner regexes are to stop the match early at */ and to not stop at escaped quotes\n    (?>\n      \"(?:(?:\\*(?!/))|(?:\\\\(?!\"))|[^*\\\\])*?\" |                      # [foo=\"bar\"] Double-quoted\n      '(?:(?:\\*(?!/))|(?:\\\\(?!'))|[^*\\\\])*?' |                      # [foo='bar'] Single-quoted\n      \\[ (?:(?:\\*(?!/))|[^*])*? \\] |                                # [foo=[1,2]] Array literal\n      (?:(?:\\*(?!/))|\\s(?!\\s*\\])|\\[.*?(?:\\]|(?=\\*/))|[^*\\s\\[\\]])*   # Everything else\n    )*\n  )\n)?\n\\s*(?:(\\])((?:[^*\\s]|\\*[^\\s/])+)?|(?=\\*/))"
+      scope: variable.other.jsdoc
+      captures:
+        1: punctuation.definition.optional-value.begin.bracket.square.jsdoc
+        2: keyword.operator.assignment.jsdoc
+        3: source.embedded.imba
+        4: punctuation.definition.optional-value.end.bracket.square.jsdoc
+        5: invalid.illegal.syntax.jsdoc
+  - match: "(?x)\n(\n  (@)\n  (?:define|enum|exception|export|extends|lends|implements|modifies\n  |namespace|private|protected|returns?|suppress|this|throws|type\n  |yields?)\n)\n\\s+(?={)"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+    push:
+    - match: (?=\s|\*/|[^{}\[\]A-Za-z_$])
+      pop: true
+    - include: repo_jsdoctype
+  - match: "(?x)\n(\n  (@)\n  (?:alias|augments|callback|constructs|emits|event|fires|exports?\n  |extends|external|function|func|host|lends|listens|interface|memberof!?\n  |method|module|mixes|mixin|name|requires|see|this|typedef|uses)\n)\n\\s+\n(\n  (?:\n    [^{}@\\s*] | \\*[^/]\n  )+\n)"
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: entity.name.type.instance.jsdoc
+  - match: ((@)(?:default(?:value)?|license|version))\s+(([''"]))
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: variable.other.jsdoc
+      4: punctuation.definition.string.begin.jsdoc
+    push:
+    - meta_content_scope: variable.other.jsdoc
+    - match: (\3)|(?=$|\*/)
+      pop: true
+      captures:
+        0: variable.other.jsdoc
+        1: punctuation.definition.string.end.jsdoc
+  - match: ((@)(?:default(?:value)?|license|tutorial|variation|version))\s+([^\s*]+)
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+      3: variable.other.jsdoc
+  - match: (?x) (@) (?:abstract|access|alias|api|arg|argument|async|attribute|augments|author|beta|borrows|bubbles |callback|chainable|class|classdesc|code|config|const|constant|constructor|constructs|copyright |default|defaultvalue|define|deprecated|desc|description|dict|emits|enum|event|example|exception |exports?|extends|extension(?:_?for)?|external|externs|file|fileoverview|final|fires|for|func |function|generator|global|hideconstructor|host|ignore|implements|implicitCast|inherit[Dd]oc |inner|instance|interface|internal|kind|lends|license|listens|main|member|memberof!?|method |mixes|mixins?|modifies|module|name|namespace|noalias|nocollapse|nocompile|nosideeffects |override|overview|package|param|polymer(?:Behavior)?|preserve|private|prop|property|protected |public|read[Oo]nly|record|require[ds]|returns?|see|since|static|struct|submodule|summary |suppress|template|this|throws|todo|tutorial|type|typedef|unrestricted|uses|var|variation |version|virtual|writeOnce|yields?) \b
+    scope: storage.type.class.jsdoc
+    captures:
+      1: punctuation.definition.block.tag.jsdoc
+  - include: repo_inline-tags
+  - match: ((@)(?:[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?))(?=\s+)
+    captures:
+      1: storage.type.class.jsdoc
+      2: punctuation.definition.block.tag.jsdoc
+  repo_expr:
+  - include: repo_style-declaration
+  - include: repo_object-keys
+  - include: repo_tag-literal
+  - include: repo_regex
+  - include: repo_keywords
+  - include: repo_comment
+  - include: repo_literal
+  - include: repo_plain-identifiers
+  - include: repo_plain-accessors
+  - include: repo_pairs
+  repo_expression:
+  - match: \(
+    captures:
+      0: meta.brace.round.imba
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.imba
+    - include: repo_expr
+  - include: repo_tag-literal
+  - include: repo_expressionWithoutIdentifiers
+  - include: repo_identifiers
+  - include: repo_expressionPunctuations
+  repo_expressionPunctuations:
+  - include: repo_punctuation-comma
+  - include: repo_punctuation-accessor
+  repo_expressionWithoutIdentifiers:
+  - include: repo_string
+  - include: repo_regex
+  - include: repo_comment
+  - include: repo_literal
+  repo_global-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(global)\b(?!\$)
+    scope: variable.language.global.imba
+  repo_identifiers:
+  - match: (?x)(?:(?:(\.)|(\.\.(?!\s*[[:digit:]]|\s+)))\s*)?([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)(?=\s*={{functionOrArrowLookup}})
+    captures:
+      1: punctuation.accessor.imba
+      2: punctuation.accessor.optional.imba
+      3: entity.name.function.property.imba
+  - match: (?:(\.)|(\.\.(?!\s*[[:digit:]]|\s+)))\s*(\#?[[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+    captures:
+      1: punctuation.accessor.imba
+      2: punctuation.accessor.optional.imba
+      3: variable.other.constant.property.imba
+  - match: (?:(\.)|(\.\.(?!\s*[[:digit:]]|\s+)))([[:upper:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\!]?)
+    captures:
+      1: punctuation.accessor.imba
+      2: punctuation.accessor.optional.imba
+      3: variable.other.class.property.imba
+  - match: (?:(\.)|(\.\.(?!\s*[[:digit:]]|\s+)))(\#?[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)
+    captures:
+      1: punctuation.accessor.imba
+      2: punctuation.accessor.optional.imba
+      3: variable.other.property.imba
+  - match: (for own|for|if|unless|when)\b
+    scope: keyword.other
+  - match: require
+    scope: support.function.require
+  - include: repo_plain-identifiers
+  - include: repo_type-literal
+  repo_inline-css-selector:
+  - match: (^\t+)(?!(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:))
+    push:
+    - meta_scope: meta.selector.css
+    - match: (\s*(?=(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:)|\)|\])|\s*$)
+      pop: true
+      captures:
+        0: punctuation.separator.sel-properties.css
+    - include: repo_css-selector-innards
+  repo_inline-styles:
+  - include: repo_style-property
+  - include: repo_css-property-values
+  - include: repo_style-expr
+  repo_inline-tags:
+  - match: (\[)[^\]]+(\])(?={@(?:link|linkcode|linkplain|tutorial))
+    scope: constant.other.description.jsdoc
+    captures:
+      1: punctuation.definition.bracket.square.begin.jsdoc
+      2: punctuation.definition.bracket.square.end.jsdoc
+  - match: ({)((@)(?:link(?:code|plain)?|tutorial))\s*
+    captures:
+      1: punctuation.definition.bracket.curly.begin.jsdoc
+      2: storage.type.class.jsdoc
+      3: punctuation.definition.inline.tag.jsdoc
+    push:
+    - meta_scope: entity.name.type.instance.jsdoc
+    - match: '}|(?=\*/)'
+      pop: true
+      captures:
+        0: punctuation.definition.bracket.curly.end.jsdoc
+    - match: ((?=https?://)(?:[^|}\s*]|\*[/])+)(\|)?
+      captures:
+        1: variable.other.link.underline.jsdoc
+        2: punctuation.separator.pipe.jsdoc
+    - match: ((?:[^{}@\s|*]|\*[^/])+)(\|)?
+      captures:
+        1: variable.other.description.jsdoc
+        2: punctuation.separator.pipe.jsdoc
+  repo_invalid-indentation:
+  - match: ^[\ ]+
+    scope: invalid.whitespace
+  - match: ^\t+\s+
+    scope: invalid.whitespace
+  repo_jsdoctype:
+  - match: '{(?:[^}*]|\*[^/}])+$'
+    scope: invalid.illegal.type.jsdoc
+  - match: ({)
+    captures:
+      0: entity.name.type.instance.jsdoc
+      1: punctuation.definition.bracket.curly.begin.jsdoc
+    push:
+    - meta_content_scope: entity.name.type.instance.jsdoc
+    - match: ((}))\s*|(?=\*/)
+      pop: true
+      captures:
+        1: entity.name.type.instance.jsdoc
+        2: punctuation.definition.bracket.curly.end.jsdoc
+    - include: repo_brackets
+  repo_keywords:
+  - match: (if|elif|else|unless|switch|when|then|do|import|export|for own|for|while|until|return|try|catch|await|finally|throw|as|continue|break|extend|augment)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: keyword.control.imba
+  - match: (?<=export)\s+(default)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: keyword.control.imba
+  - match: (?<=import)\s+(type)(?=\s+[\w\{\$\_])
+    scope: keyword.control.imba
+  - match: (extend|global)\s+(?=class|tag)
+    scope: keyword.control.imba
+  - match: (?<=[\*\}\w\$])\s+(from)(?=\s+[\"\'])
+    scope: keyword.control.imba
+  - match: (def|get|set)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: storage.type.function.imba
+  - match: (tag|class|struct)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: storage.type.class.imba
+  - match: (let|const|constructor)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: storage.type.imba
+  - match: (prop|attr)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: storage.type.imba
+  - match: (static)\s+
+    scope: storage.modifier.imba
+  - match: (declare)\s+
+    scope: storage.modifier.imba
+  - include: repo_ops
+  - match: (=|\|\|=|\?\?=|\&\&=|\+=|\-=|\*=|\^=|\%=)
+    scope: keyword.operator.assignment.imba
+  - match: (\>\=?|\<\=?)
+    scope: keyword.operator.imba
+  - match: (of|delete|\!?isa|typeof|in|new)(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: keyword.operator.imba
+  repo_literal:
+  - include: repo_number-with-unit-literal
+  - include: repo_numeric-literal
+  - include: repo_boolean-literal
+  - include: repo_null-literal
+  - include: repo_undefined-literal
+  - include: repo_numericConstant-literal
+  - include: repo_this-literal
+  - include: repo_global-literal
+  - include: repo_super-literal
+  - include: repo_type-literal
+  - include: repo_string
+  repo_nested-css-selector:
+  - match: (^\t+)(?!(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:)[^\:])
+    push:
+    - meta_scope: meta.selector.css
+    - match: (\s*(?=(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:)[^\:])|\s*$|(?=\s+\#\s))
+      pop: true
+      captures:
+        0: punctuation.separator.sel-properties.css
+    - include: repo_css-selector-innards
+  repo_nested-style-declaration:
+  - match: ^(\t+)(?=[\n^]*\&)
+    push:
+    - meta_scope: meta.style.imba
+    - match: ^(?!(\1\t|\s*$))
+      pop: true
+    - include: repo_nested-css-selector
+    - include: repo_inline-styles
+  repo_null-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))null(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.null.imba
+  repo_number-with-unit-literal:
+  - match: ([0-9]+)([a-z]+|\%)
+    captures:
+      1: constant.numeric.imba
+      2: keyword.other.unit.imba
+  - match: ([0-9]*\.[0-9]+(?:[eE][\-+]?[0-9]+)?)([a-z]+|\%)
+    captures:
+      1: constant.numeric.decimal.imba
+      2: keyword.other.unit.imba
+  repo_numeric-literal:
+  - match: \b(?<!\$)0(?:x|X)[0-9a-fA-F][0-9a-fA-F_]*(n)?\b(?!\$)
+    scope: constant.numeric.hex.imba
+    captures:
+      1: storage.type.numeric.bigint.imba
+  - match: \b(?<!\$)0(?:b|B)[01][01_]*(n)?\b(?!\$)
+    scope: constant.numeric.binary.imba
+    captures:
+      1: storage.type.numeric.bigint.imba
+  - match: \b(?<!\$)0(?:o|O)?[0-7][0-7_]*(n)?\b(?!\$)
+    scope: constant.numeric.octal.imba
+    captures:
+      1: storage.type.numeric.bigint.imba
+  - match: "(?x)\n(?<!\\$)(?:\n  (?:\\b[0-9][0-9_]*(\\.)[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*(n)?\\b)| # 1.1E+3\n  (?:\\b[0-9][0-9_]*(\\.)[eE][+-]?[0-9][0-9_]*(n)?\\b)|             # 1.E+3\n  (?:\\B(\\.)[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*(n)?\\b)|             # .1E+3\n  (?:\\b[0-9][0-9_]*[eE][+-]?[0-9][0-9_]*(n)?\\b)|                 # 1E+3\n  (?:\\b[0-9][0-9_]*(\\.)[0-9][0-9_]*(n)?\\b)|                      # 1.1\n  (?:\\b[0-9][0-9_]*(\\.)(n)?\\B)|                                  # 1.\n  (?:\\B(\\.)[0-9][0-9_]*(n)?\\b)|                                  # .1\n  (?:\\b[0-9][0-9_]*(n)?\\b)                                 # 1\n)(?!\\$)"
+    captures:
+      0: constant.numeric.decimal.imba
+      1: meta.delimiter.decimal.period.imba
+      10: meta.delimiter.decimal.period.imba
+      11: storage.type.numeric.bigint.imba
+      12: meta.delimiter.decimal.period.imba
+      13: storage.type.numeric.bigint.imba
+      14: storage.type.numeric.bigint.imba
+      2: storage.type.numeric.bigint.imba
+      3: meta.delimiter.decimal.period.imba
+      4: storage.type.numeric.bigint.imba
+      5: meta.delimiter.decimal.period.imba
+      6: storage.type.numeric.bigint.imba
+      7: storage.type.numeric.bigint.imba
+      8: meta.delimiter.decimal.period.imba
+      9: storage.type.numeric.bigint.imba
+  repo_numericConstant-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))NaN(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.nan.imba
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))Infinity(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.infinity.imba
+  repo_object-keys:
+  - match: '[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?\:'
+    scope: meta.object-literal.key
+  repo_ops:
+  - match: \.\.\.
+    scope: keyword.operator.spread.imba
+  - match: \*=|(?<!\()/=|%=|\+=|\-=|\?=|\?\?=|=\?
+    scope: keyword.operator.assignment.compound.imba
+  - match: \^=\?|\|=\?|\~=\?|\&=|\^=|<<=|>>=|>>>=|\|=
+    scope: keyword.operator.assignment.compound.bitwise.imba
+  - match: <<|>>>|>>
+    scope: keyword.operator.bitwise.shift.imba
+  - match: ===|!==|==|!=|~=
+    scope: keyword.operator.comparison.imba
+  - match: <=|>=|<>|<|>
+    scope: keyword.operator.relational.imba
+  - match: (\!)\s*(/)(?![/*])
+    captures:
+      1: keyword.operator.logical.imba
+      2: keyword.operator.arithmetic.imba
+  - match: \!|&&|\|\||\?\?|or\b(?=\s|$)|and\b(?=\s|$)|\@\b(?=\s|$)
+    scope: keyword.operator.logical.imba
+  - match: \&|~|\^|\|
+    scope: keyword.operator.bitwise.imba
+  - match: \=
+    scope: keyword.operator.assignment.imba
+  - match: --
+    scope: keyword.operator.decrement.imba
+  - match: \+\+
+    scope: keyword.operator.increment.imba
+  - match: '%|\*|/|-|\+'
+    scope: keyword.operator.arithmetic.imba
+  repo_pairs:
+  - include: repo_curly-braces
+  - include: repo_square-braces
+  - include: repo_round-braces
+  repo_plain-accessors:
+  - match: (\.\.?)([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)
+    captures:
+      1: punctuation.accessor.imba
+      2: variable.other.property.imba
+  repo_plain-identifiers:
+  - match: ([[:upper:]][_$[:digit:][:upper:]]*)(?![_$[:alnum:]])
+    scope: variable.other.constant.imba
+  - match: '[[:upper:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\!]?'
+    scope: variable.other.class.imba
+  - match: \$\d+
+    scope: variable.special.imba
+  - match: \$[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: variable.other.internal.imba
+  - match: \@\@+[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: variable.other.symbol.imba
+  - match: '[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?'
+    scope: variable.other.readwrite.imba
+  - match: \@[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: variable.other.instance.imba
+  - match: \#+[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: variable.other.private.imba
+  - match: \:[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: string.symbol.imba
+  repo_punctuation-accessor:
+  - match: (?:(\.)|(\.\.(?!\s*[[:digit:]]|\s+)))
+    captures:
+      1: punctuation.accessor.imba
+      2: punctuation.accessor.optional.imba
+  repo_punctuation-comma:
+  - match: ','
+    scope: punctuation.separator.comma.imba
+  repo_punctuation-semicolon:
+  - match: ;
+    scope: punctuation.terminator.statement.imba
+  repo_qstring-double:
+  - match: '"'
+    captures:
+      0: punctuation.definition.string.begin.imba
+    push:
+    - meta_scope: string.quoted.double.imba
+    - match: '"'
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.imba
+    - include: repo_template-substitution-element
+    - include: repo_string-character-escape
+  repo_qstring-single:
+  - match: ''''
+    captures:
+      0: punctuation.definition.string.begin.imba
+    push:
+    - meta_scope: string.quoted.single.imba
+    - match: (\')|((?:[^\\\n])$)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.imba
+        2: invalid.illegal.newline.imba
+    - include: repo_string-character-escape
+  repo_qstring-single-multi:
+  - match: ''''''''
+    captures:
+      0: punctuation.definition.string.begin.imba
+    push:
+    - meta_scope: string.quoted.single.imba
+    - match: ''''''''
+      pop: true
+      captures:
+        0: punctuation.definition.string.end.imba
+    - include: repo_string-character-escape
+  repo_regex:
+  - match: (?<!\+\+|--|})(?<=[=(:,\[?+!]|^return|[^\._$[:alnum:]]return|^case|[^\._$[:alnum:]]case|=>|&&|\|\||\*\/)\s*(\/)(?![\/*])(?=(?:[^\/\\\[\()]|\\.|\[([^\]\\]|\\.)+\]|\(([^\)\\]|\\.)+\))+\/([gimsuy]+|(?![\/\*])|(?=\/\*))(?!\s*[a-zA-Z0-9_$]))
+    captures:
+      1: punctuation.definition.string.begin.imba
+    push:
+    - meta_scope: string.regexp.imba
+    - match: (/)([gimsuy]*)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.imba
+        2: keyword.other.imba
+    - include: repo_regexp
+  - match: ((?<![_$[:alnum:])\]]|\+\+|--|}|\*\/)|((?<=^return|[^\._$[:alnum:]]return|^case|[^\._$[:alnum:]]case))\s*)\/(?![\/*])(?=(?:[^\/\\\[]|\\.|\[([^\]\\]|\\.)+\])+\/([gimsuy]+|(?![\/\*])|(?=\/\*))(?!\s*[a-zA-Z0-9_$]))
+    captures:
+      0: punctuation.definition.string.begin.imba
+    push:
+    - meta_scope: string.regexp.imba
+    - match: (/)([gimsuy]*)
+      pop: true
+      captures:
+        1: punctuation.definition.string.end.imba
+        2: keyword.other.imba
+    - include: repo_regexp
+  repo_regex-character-class:
+  - match: \\[wWsSdDtrnvf]|\.
+    scope: constant.other.character-class.regexp
+  - match: \\([0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4})
+    scope: constant.character.numeric.regexp
+  - match: \\c[A-Z]
+    scope: constant.character.control.regexp
+  - match: \\.
+    scope: constant.character.escape.backslash.regexp
+  repo_regexp:
+  - match: \\[bB]|\^|\$
+    scope: keyword.control.anchor.regexp
+  - match: \\[1-9]\d*|\\k<([a-zA-Z_$][\w$]*)>
+    captures:
+      0: keyword.other.back-reference.regexp
+      1: variable.other.regexp
+  - match: '[?+*]|\{(\d+,\d+|\d+,|,\d+|\d+)\}\??'
+    scope: keyword.operator.quantifier.regexp
+  - match: \|
+    scope: keyword.operator.or.regexp
+  - match: (\()((\?=)|(\?!)|(\?<=)|(\?<!))
+    captures:
+      1: punctuation.definition.group.regexp
+      2: punctuation.definition.group.assertion.regexp
+      3: meta.assertion.look-ahead.regexp
+      4: meta.assertion.negative-look-ahead.regexp
+      5: meta.assertion.look-behind.regexp
+      6: meta.assertion.negative-look-behind.regexp
+    push:
+    - meta_scope: meta.group.assertion.regexp
+    - match: (\))
+      pop: true
+      captures:
+        1: punctuation.definition.group.regexp
+    - include: repo_regexp
+  - match: \((?:(\?:)|(?:\?<([a-zA-Z_$][\w$]*)>))?
+    captures:
+      0: punctuation.definition.group.regexp
+      1: punctuation.definition.group.no-capture.regexp
+      2: variable.other.regexp
+    push:
+    - meta_scope: meta.group.regexp
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.definition.group.regexp
+    - include: repo_regexp
+  - match: (\[)(\^)?
+    captures:
+      1: punctuation.definition.character-class.regexp
+      2: keyword.operator.negation.regexp
+    push:
+    - meta_scope: constant.other.character-class.set.regexp
+    - match: (\])
+      pop: true
+      captures:
+        1: punctuation.definition.character-class.regexp
+    - match: (?:.|(\\(?:[0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}))|(\\c[A-Z])|(\\.))\-(?:[^\]\\]|(\\(?:[0-7]{3}|x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}))|(\\c[A-Z])|(\\.))
+      scope: constant.other.character-class.range.regexp
+      captures:
+        1: constant.character.numeric.regexp
+        2: constant.character.control.regexp
+        3: constant.character.escape.backslash.regexp
+        4: constant.character.numeric.regexp
+        5: constant.character.control.regexp
+        6: constant.character.escape.backslash.regexp
+    - include: repo_regex-character-class
+  - include: repo_regex-character-class
+  repo_root:
+  - include: repo_block
+  repo_round-braces:
+  - match: \s*(\()
+    captures:
+      1: meta.brace.round.imba
+    push:
+    - match: \)
+      pop: true
+      captures:
+        0: meta.brace.round.imba
+    - include: repo_expr
+    - include: repo_punctuation-comma
+  repo_single-line-comment-consuming-line-ending:
+  - match: (^[ \t]+)?((//|\#\s)(?:\s*((@)internal)(?=\s|$))?)
+    captures:
+      1: punctuation.whitespace.comment.leading.imba
+      2: comment.line.double-slash.imba
+      3: punctuation.definition.comment.imba
+      4: storage.type.internaldeclaration.imba
+      5: punctuation.decorator.internaldeclaration.imba
+    push:
+    - meta_content_scope: comment.line.double-slash.imba
+    - match: (?=^)
+      pop: true
+  repo_square-braces:
+  - match: \s*(\[)
+    captures:
+      1: meta.brace.square.imba
+    push:
+    - match: \]
+      pop: true
+      captures:
+        0: meta.brace.square.imba
+    - include: repo_expr
+    - include: repo_punctuation-comma
+  repo_string:
+  - include: repo_qstring-single-multi
+  - include: repo_qstring-single
+  - include: repo_qstring-double
+  - include: repo_template
+  repo_string-character-escape:
+  - match: \\(x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|u\{[0-9A-Fa-f]+\}|[0-2][0-7]{0,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.|$)
+    scope: constant.character.escape.imba
+  repo_style-declaration:
+  - match: ^(\t*)(?:(global|local|export)\s+)?(?:(scoped)\s+)?(css)\s
+    captures:
+      2: keyword.control.export.imba
+      3: storage.modifier.imba
+      4: storage.type.style.imba
+    push:
+    - meta_scope: meta.style.imba
+    - match: ^(?!(\1\t|\s*$))
+      pop: true
+    - include: repo_css-selector
+    - include: repo_css-comment
+    - include: repo_nested-css-selector
+    - include: repo_inline-styles
+  repo_style-expr:
+  - match: (\b[0-9][0-9_]*)(\w+|%)?
+    captures:
+      1: constant.numeric.integer.decimal.css
+      2: keyword.other.unit.css
+  - match: --[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?
+    scope: support.constant.property-value.var.css
+  - match: (x+s|sm-|md-|lg-|sm|md|lg|x+l|hg|x+h)(?![\w-])
+    scope: support.constant.property-value.size.css
+  - match: '[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?'
+    scope: support.constant.property-value.css
+  - match: (\()
+    captures:
+      1: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.function.css
+    - match: \)
+      pop: true
+    - include: repo_style-expr
+  repo_style-property:
+  - match: (?=(?:[\@\.]+[\!\<\>]?)?[\w\-\$]+(?:[\@\.]+[\!\<\>]?[\w\-\$]+)*(?:\s*\:))
+    captures:
+      1: support.function.calc.css
+      2: punctuation.section.function.begin.bracket.round.css
+    push:
+    - meta_scope: meta.property-name.css
+    - match: '\s*\:'
+      pop: true
+      captures:
+        0: punctuation.separator.key-value.css
+    - match: (?:--|\$)[\w\-\$]+
+      scope: support.type.property-name.variable.css
+    - match: \@[\!\<\>]?[0-9]+
+      scope: support.type.property-name.modifier.breakpoint.css
+    - match: \@[\w\-\$]+
+      scope: support.type.property-name.modifier.css
+    - match: \.\.[\w\-\$]+
+      scope: support.type.property-name.modifier.up.css
+    - match: \.[\w\-\$]+
+      scope: support.type.property-name.modifier.is.css
+    - match: '[\w\-\$]+'
+      scope: support.type.property-name.css
+  repo_super-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))super\b(?!\$)
+    scope: variable.language.super.imba
+  repo_tag-attr-name:
+  - match: ([\w$_]+(?:\-[\w$_]+)*)
+    captures:
+      0: entity.other.attribute-name.imba
+    push:
+    - meta_content_scope: entity.other.attribute-name.imba
+    - match: (?=[\s\.\[\>\=])
+      pop: true
+  repo_tag-attr-value:
+  - match: (\=)
+    captures:
+      0: keyword.operator.tag.assignment
+    push:
+    - meta_content_scope: meta.tag.attribute-value.imba
+    - match: (?=>|\s)
+      pop: true
+    - include: repo_expr
+  repo_tag-classname:
+  - match: \.
+    push:
+    - meta_content_scope: entity.other.attribute-name.class.css
+    - match: (?=[\.\[\>\s\(\=])
+      pop: true
+    - include: repo_tag-interpolated-content
+  repo_tag-content:
+  - include: repo_tag-name
+  - include: repo_tag-expr-name
+  - include: repo_tag-interpolated-content
+  - include: repo_tag-interpolated-parens
+  - include: repo_tag-interpolated-brackets
+  - include: repo_tag-event-handler
+  - include: repo_tag-classname
+  - include: repo_tag-ref
+  - include: repo_tag-attr-value
+  - include: repo_tag-attr-name
+  - include: repo_comment
+  repo_tag-event-handler:
+  - match: (\@[\w$_]+(?:\-[\w$_]+)*)
+    captures:
+      0: entity.other.event-name.imba
+    push:
+    - meta_content_scope: entity.other.tag.event
+    - match: (?=[\[\>\s\=])
+      pop: true
+    - include: repo_tag-interpolated-content
+    - include: repo_tag-interpolated-parens
+    - match: \.
+      captures:
+        0: punctuation.section.tag
+      push:
+      - meta_scope: entity.other.event-modifier.imba
+      - match: (?=[\.\[\>\s\=]|$)
+        pop: true
+      - include: repo_tag-interpolated-parens
+      - include: repo_tag-interpolated-content
+  repo_tag-expr-name:
+  - match: (?<=<)(?=[\w\{])
+    push:
+    - meta_content_scope: entity.name.tag.imba
+    - match: (?=[\.\[\>\s\(])
+      pop: true
+    - include: repo_tag-interpolated-content
+  repo_tag-interpolated-brackets:
+  - match: \[
+    captures:
+      0: punctuation.section.tag.imba
+    push:
+    - meta_scope: meta.tag.expression.imba
+    - meta_content_scope: meta.embedded.line.imba
+    - match: \]
+      pop: true
+      captures:
+        0: punctuation.section.tag.imba
+    - include: repo_inline-css-selector
+    - include: repo_inline-styles
+  repo_tag-interpolated-content:
+  - match: \{
+    captures:
+      0: punctuation.section.tag.imba
+    push:
+    - meta_scope: meta.tag.expression.imba
+    - meta_content_scope: meta.embedded.line.imba
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.section.tag.imba
+    - include: repo_expression
+  repo_tag-interpolated-parens:
+  - match: \(
+    captures:
+      0: punctuation.section.tag.imba
+    push:
+    - meta_scope: meta.tag.expression.imba
+    - meta_content_scope: meta.embedded.line.imba
+    - match: \)
+      pop: true
+      captures:
+        0: punctuation.section.tag.imba
+    - include: repo_expression
+  repo_tag-literal:
+  - match: (<)(?=[\w\{\[\.\#\$\@\(])
+    captures:
+      1: punctuation.section.tag.open.imba
+    push:
+    - meta_scope: meta.tag.imba
+    - meta_content_scope: meta.tag.attributes.imba
+    - match: (>)
+      pop: true
+      captures:
+        1: punctuation.section.tag.close.imba
+    - include: repo_tag-content
+  repo_tag-name:
+  - match: (?<=<)(self|global|slot)(?=[\.\[\>\s\(])
+    scope: entity.name.tag.special.imba
+  repo_tag-ref:
+  - match: (\$[_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)
+    scope: entity.other.attribute-name.reference.css
+  repo_template:
+  - match: (?=(([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?\s*\??\.\s*)*|(\??\.\s*)?)([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)({{typeArguments}}\s*)?`)
+    push:
+    - meta_scope: string.template.imba
+    - match: (?=`)
+      pop: true
+    - match: (?=(([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?\s*\??\.\s*)*|(\??\.\s*)?)([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?))
+      push:
+      - match: (?=({{typeArguments}}\s*)?`)
+        pop: true
+      - match: ([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)
+        scope: entity.name.function.tagged-template.imba
+  - match: ([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)\s*(?=({{typeArguments}}\s*)`)
+    captures:
+      1: entity.name.function.tagged-template.imba
+    push:
+    - meta_scope: string.template.imba
+    - match: (?=`)
+      pop: true
+  - match: ([_$[:alpha:]][_$[:alnum:]]*(?:\-[_$[:alnum:]]+)*[\?\!]?)?(`)
+    captures:
+      1: entity.name.function.tagged-template.imba
+      2: punctuation.definition.string.template.begin.imba
+    push:
+    - meta_scope: string.template.imba
+    - match: '`'
+      pop: true
+      captures:
+        0: punctuation.definition.string.template.end.imba
+    - include: repo_template-substitution-element
+    - include: repo_string-character-escape
+  repo_template-substitution-element:
+  - match: (?<!\\)\{
+    captures:
+      0: punctuation.definition.template-expression.begin.imba
+    push:
+    - meta_scope: meta.template.expression.imba
+    - meta_content_scope: meta.embedded.line.imba
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.template-expression.end.imba
+    - include: repo_expr
+  repo_this-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))(this|self)\b(?!\$)
+    scope: variable.language.this.imba
+  repo_type-annotation:
+  - include: repo_type-literal
+  repo_type-brackets:
+  - match: '{'
+    push:
+    - match: '}'
+      pop: true
+    - include: repo_type-brackets
+  - match: \[
+    push:
+    - match: \]
+      pop: true
+    - include: repo_type-brackets
+  - match: \<
+    push:
+    - match: \>
+      pop: true
+    - include: repo_type-brackets
+  - match: \(
+    push:
+    - match: \)
+      pop: true
+    - include: repo_type-brackets
+  repo_type-literal:
+  - match: (\\)
+    captures:
+      1: meta.type.annotation.open.imba
+    push:
+    - meta_scope: meta.type.annotation.imba
+    - match: (?=[\s\]\)\,\.\=\}]|$)
+      pop: true
+    - include: repo_type-brackets
+  repo_undefined-literal:
+  - match: (?<![_$[:alnum:]])(?:(?<=\.\.\.)|(?<!\.))undefined(?![\?_\-$[:alnum:]])(?:(?=\.\.\.)|(?!\.))
+    scope: constant.language.undefined.imba

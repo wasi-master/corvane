@@ -1,0 +1,60 @@
+%YAML 1.2
+---
+# BBCode (text.bbcode): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/ModiLogist/VSC-BBCode via GitHub Linguist v9.7.0 (license: mit).
+name: BBCode
+scope: text.bbcode
+file_extensions:
+- bbcode
+contexts:
+  main:
+  - include: repo_body
+  repo_body:
+  - include: repo_syn
+  - include: repo_url
+  - include: repo_bullet
+  - include: repo_bold
+  - include: repo_italic
+  - include: repo_strikethrough
+  - include: repo_underline
+  repo_bold:
+  - match: (?<=\[b\])
+    push:
+    - meta_scope: markup.bold.bbcode
+    - match: (?=\[/b\])
+      pop: true
+    - include: repo_syn
+  repo_bullet:
+  - match: \[\*\]
+    scope: variable.other.static.bbcode
+  repo_italic:
+  - match: (?<=\[i\])
+    push:
+    - meta_scope: markup.italic.bbcode
+    - match: (?=\[/i\])
+      pop: true
+    - include: repo_syn
+  repo_strikethrough:
+  - match: (?<=\[s\])
+    push:
+    - meta_scope: markup.strikethrough.bbcode
+    - match: (?=\[/s\])
+      pop: true
+    - include: repo_syn
+  repo_syn:
+  - match: \[/?b\]|\[/?i\]|\[/?s\]|\[/?u\]|/?url=?|\[\/?color(=#......)?\]|\[/?spoiler\]|\[/?list=?1?\]|\[/?quote\]|\[/?code\]|\[/?img\]|\[/?size=?.?\]
+    scope: entity.name.type.bbcode
+  repo_underline:
+  - match: (?<=\[u\])
+    push:
+    - meta_scope: markup.underline.bbcode
+    - match: (?=\[/u\])
+      pop: true
+    - include: repo_syn
+  repo_url:
+  - include: repo_url-title
+  - include: repo_url-link
+  repo_url-link:
+  - match: (?<=\[url=)[^\]]+
+    scope: string.quoted.double.bbcode
+  repo_url-title: []

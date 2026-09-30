@@ -1,0 +1,26 @@
+%YAML 1.2
+---
+# CoNLL-U (text.conllu): converted from TextMate by tools/tm-grammars/sync.py;
+# source vendor/grammars/conllu-linguist-grammar via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: CoNLL-U
+scope: text.conllu
+file_extensions:
+- conllu
+- conll
+contexts:
+  main:
+  - match: ^# .+$
+    scope: comment.line.number-sign.conllu
+  - match: "^([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)\t([^\t]+)$"
+    scope: entity.name.section.token.conllu
+    captures:
+      1: constant.numeric.id.conllu
+      10: entity.name.section.misc.conllu
+      2: storage.type.form.conllu
+      3: entity.name.section.lemma.conllu
+      4: constant.language.upostag.conllu
+      5: entity.name.section.xpostag.conllu
+      6: markup.list.unnumbered.feats.conllu
+      7: constant.numeric.head.conllu
+      8: keyword.control.deprel.conllu
+      9: markup.list.numbered.deps.conllu

@@ -1,0 +1,380 @@
+%YAML 1.2
+---
+# WDL (source.wdl): converted from TextMate by tools/tm-grammars/sync.py;
+# source https://github.com/stjude-rust-labs/sprocket-vscode.git via GitHub Linguist v9.7.0 (license: apache-2.0).
+name: WDL
+scope: source.wdl
+file_extensions:
+- wdl
+contexts:
+  main:
+  - include: repo_single-number-sign-comments
+  - include: repo_double-number-sign-comments
+  - match: (version)\s+(.*)
+    scope: entity.version.wdl
+    captures:
+      1: keyword.other.version.wdl
+      2: entity.version.number.wdl
+  - match: (struct)\s+([A-Za-z][A-Za-z0-9_]+)?
+    captures:
+      1: storage.type.struct.wdl
+      2: variable.name.struct.wdl
+    push:
+    - meta_content_scope: entity.struct.wdl
+    - match: ({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.struct-start.wdl
+    - include: repo_atom
+  - match: (enum)\s+([A-Za-z][A-Za-z0-9_]+)?
+    captures:
+      1: storage.type.enum.wdl
+      2: variable.name.enum.wdl
+    push:
+    - meta_content_scope: entity.enum.wdl
+    - match: ({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.enum-start.wdl
+    - include: repo_atom
+  - match: (task)\s+([A-Za-z][A-Za-z0-9_]+)?
+    captures:
+      1: storage.type.task.wdl
+      2: variable.name.task.wdl
+    push:
+    - meta_content_scope: entity.task.wdl
+    - match: ({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.task-start.wdl
+    - include: repo_atom
+  - match: (workflow)\s+([A-Za-z][A-Za-z0-9_]+)
+    captures:
+      1: storage.type.workflow.wdl
+      2: variable.name.workflow.wdl
+    push:
+    - match: ({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.workflow-start.wdl
+    - include: repo_atom
+  - include: repo_input-block
+  - include: repo_command-block-curly
+  - include: repo_command-block-heredoc
+  - include: repo_output-block
+  - include: repo_requirements-block
+  - include: repo_hints-block
+  - include: repo_runtime-block
+  - include: repo_meta-block
+  - include: repo_parameter_meta-block
+  - include: repo_atom
+  repo_atom:
+  - include: repo_double-number-sign-comments
+  - include: repo_single-number-sign-comments
+  - include: repo_numeric
+  - include: repo_strings
+  - include: repo_keywords
+  - include: repo_identity
+  repo_bash-arguments:
+  - match: \b[a-zA-Z0-9/._][a-zA-Z0-9/._-]*\b
+    scope: string.unquoted.argument.shell
+  repo_bash-arithmetic:
+  - match: (\(\()
+    captures:
+      1: punctuation.definition.evaluation.begin.shell
+    push:
+    - meta_scope: meta.expression.arithmetic.shell
+    - match: (\)\))
+      pop: true
+      captures:
+        1: punctuation.definition.evaluation.end.shell
+    - include: repo_bash-variables
+    - include: repo_bash-arithmetic-operators
+    - include: repo_bash-numeric
+    - include: repo_bash-arithmetic-variables
+  repo_bash-arithmetic-operators:
+  - match: \*\*|==|!=|<=|>=|&&|\|\||<<|>>|[!~+\-*/%<>&|^=]
+    scope: keyword.operator.arithmetic.shell
+  repo_bash-arithmetic-variables:
+  - match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+    scope: variable.other.shell
+  repo_bash-assignments:
+  - match: \b([a-zA-Z_][a-zA-Z0-9_]*)(=)
+    captures:
+      1: variable.other.assignment.shell
+      2: keyword.operator.assignment.shell
+  repo_bash-commands: []
+  repo_bash-comments:
+  - match: '#.*$'
+    scope: comment.line.number-sign.shell
+  repo_bash-double-quoted-strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.shell
+    - match: '"'
+      pop: true
+    - include: repo_bash-variables
+    - match: \\(["$`\\\r\n])
+      scope: constant.character.escape.shell
+  repo_bash-heredoc-generic:
+  - match: (<<-?)\s*([a-zA-Z_][a-zA-Z0-9_]*)
+    captures:
+      1: keyword.operator.heredoc.shell
+      2: entity.name.tag.heredoc.shell
+    push:
+    - meta_scope: string.unquoted.heredoc.shell
+    - match: ^\s*(\2)\s*$
+      pop: true
+      captures:
+        1: entity.name.tag.heredoc.shell
+    - include: repo_placeholder
+  repo_bash-heredoc-python:
+  - match: (<<-?)\s*([pP][yY][tT][hH][oO][nN])
+    captures:
+      1: keyword.operator.heredoc.shell
+      2: entity.name.tag.heredoc.python.shell
+    push:
+    - meta_content_scope: source.python.embedded.shell
+    - match: ^\s*(\2)\s*$
+      pop: true
+      captures:
+        1: entity.name.tag.heredoc.python.shell
+    - include: repo_placeholder
+    - include: scope:source.python
+  repo_bash-heredocs:
+  - include: repo_bash-heredoc-python
+  - include: repo_bash-heredoc-generic
+  repo_bash-in-wdl:
+  - include: repo_bash-heredocs
+  - include: repo_bash-comments
+  - include: repo_bash-strings
+  - include: repo_bash-arithmetic
+  - include: repo_bash-variables
+  - include: repo_bash-assignments
+  - include: repo_bash-options
+  - include: repo_bash-keywords
+  - include: repo_bash-commands
+  - include: repo_bash-arguments
+  repo_bash-keywords:
+  - match: \b(if|then|else|fi|for|in|while|do|done|case|esac|until|select)\b
+    scope: keyword.control.shell
+  - match: \b(echo|set|unset|export|readonly|shift|source|local|declare|getopts|read|let)\b
+    scope: support.function.builtin.shell
+  repo_bash-numeric:
+  - match: \b(0[xX][0-9a-fA-F]+|\d+)\b
+    scope: constant.numeric.shell
+  repo_bash-options:
+  - match: (?<=^|\s)(--[a-zA-Z0-9][a-zA-Z0-9-]*|-\w+)\b
+    scope: constant.other.option.shell
+  repo_bash-single-quoted-strings:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.shell
+    - match: ''''
+      pop: true
+  repo_bash-strings:
+  - include: repo_bash-single-quoted-strings
+  - include: repo_bash-double-quoted-strings
+  repo_bash-variables:
+  - match: (\$)[a-zA-Z_][a-zA-Z0-9_]*
+    scope: variable.other.shell
+    captures:
+      1: punctuation.definition.variable.shell
+  - match: \$\{
+    captures:
+      0: punctuation.definition.variable.shell
+    push:
+    - meta_scope: variable.other.shell
+    - match: \}
+      pop: true
+      captures:
+        0: punctuation.definition.variable.shell
+  - match: \$([0-9@*#?$$!_])
+    scope: variable.parameter.special.shell
+  repo_command-block-curly:
+  - match: (?:\s*)(command)\s+({)
+    captures:
+      1: storage.type.command.wdl
+      2: punctuation.bracket.curly.command-start.wdl
+    push:
+    - meta_content_scope: source.shell.embedded.wdl
+    - match: ^(?:\s*)(})(?:\s*)$
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.command-end.wdl
+    - include: repo_placeholder
+    - include: repo_bash-in-wdl
+  repo_command-block-heredoc:
+  - match: (?:\s*)(command)\s+(<<<)
+    captures:
+      1: storage.type.command.wdl
+      2: punctuation.heredoc.command-start.wdl
+    push:
+    - meta_content_scope: source.shell.embedded.wdl
+    - match: ^(?:\s*)(>>>)(?:\s*)$
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.command-end.wdl
+    - include: repo_placeholder
+    - include: repo_bash-in-wdl
+  repo_double-number-sign-comments:
+  - match: (?:\s*)(?:##) ?
+    push:
+    - meta_scope: comment.line.double-number-sign.documentation
+    - match: ^(?!(?:^|)\s*(?:##) ?)
+      pop: true
+    - include: scope:text.md
+  repo_double-quoted-strings:
+  - match: '"'
+    push:
+    - meta_scope: string.quoted.double.wdl
+    - match: '"'
+      pop: true
+    - include: repo_placeholder
+    - include: repo_escaped-character
+  repo_escaped-character:
+  - match: (\\\\)|(\\n)|(\\t)|(\\')|(\\")|(\\~)|(\\\$)|(\\[0-7]{3})|(\\x[0-9a-fA-F]{2})|(\\u[0-9a-fA-F]{4})|(\\U[0-9a-fA-F]{8})
+    scope: constant.character.escape.wdl
+    captures:
+      1: constant.character.escape.backslash.wdl
+      10: constant.character.escape.four-byte-unicode.wdl
+      11: constant.character.escape.eight-byte-unicode.wdl
+      2: constant.character.escape.newline.wdl
+      3: constant.character.escape.tab.wdl
+      4: constant.character.escape.single-quote.wdl
+      5: constant.character.escape.double-quote.wdl
+      6: constant.character.escape.tilde.wdl
+      7: constant.character.escape.dollar-sign.wdl
+      8: constant.character.escape.octal.wdl
+      9: constant.character.escape.hex.wdl
+  repo_hints-block:
+  - match: (?:\s*)(hints)\b
+    captures:
+      1: keyword.other.hints.wdl
+    push:
+    - meta_scope: entity.hints-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.hints-start.wdl
+    - include: repo_atom
+  repo_identity:
+  - match: \b[A-Za-z][A-Za-z0-9_]*\b
+    scope: variable.other.wdl
+  repo_input-block:
+  - match: (?:\s*)(input)\b
+    captures:
+      1: keyword.other.input.wdl
+    push:
+    - meta_scope: entity.input-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.input-start.wdl
+    - include: repo_atom
+  repo_keywords:
+  - match: \b(import|version)\b
+    scope: keyword.other.wdl
+  - match: \b(alias|as|in|scatter)\b
+    scope: storage.modifier.wdl
+  - match: \b(call|else|if|then)\b
+    scope: keyword.control.wdl
+  - match: \b(command|hints|inputs|meta|object|outputs|parameter_meta|requirements|runtime)\b\s*(?!:)
+    scope: storage.type
+  - match: \b(true|false|left|right|null)\b
+    scope: constant.language.wdl
+  - match: \b(after|alias|as|call|command|else|enum|env|false|hints|if|in|import|input|meta|null|object|output|parameter_meta|requirements|runtime|scatter|then|true|version)\b\s*(?!:)
+    scope: keyword.wdl
+  - match: \b(Array|Boolean|Directory|File|Float|Int|Map|None|Object|Pair|String)\b
+    scope: entity.name.type.wdl
+  repo_meta-block:
+  - match: (?:\s*)(meta)\b
+    captures:
+      1: keyword.other.meta.wdl
+    push:
+    - meta_scope: entity.meta-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.meta-start.wdl
+    - include: repo_atom
+  repo_multi-line-strings:
+  - match: <<<
+    push:
+    - meta_scope: string.unquoted.multi-line.wdl
+    - match: '>>>'
+      pop: true
+    - include: repo_placeholder
+    - include: repo_escaped-character
+  repo_numeric:
+  - match: -?(?:[0-9]+\.[0-9]*(e|E)?|[0-9]+(e|E)?|[1-9][0-9]*|0[0-7]+|0[xX][0-9a-fA-F]|0)
+    scope: constant.numeric.wdl
+  repo_output-block:
+  - match: (?:\s*)(output)\b
+    captures:
+      1: keyword.other.output.wdl
+    push:
+    - meta_scope: entity.output-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.output-start.wdl
+    - include: repo_atom
+  repo_parameter_meta-block:
+  - match: (?:\s*)(parameter_meta)\b
+    captures:
+      1: keyword.other.parameter_meta.wdl
+    push:
+    - meta_scope: entity.parameter_meta-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.parameter_meta-start.wdl
+    - include: repo_atom
+  repo_placeholder:
+  - match: '[$~]{'
+    push:
+    - meta_scope: meta.other.placeholder.wdl
+    - match: '}'
+      pop: true
+    - include: main
+  repo_requirements-block:
+  - match: (?:\s*)(requirements)\b
+    captures:
+      1: keyword.other.requirements.wdl
+    push:
+    - meta_scope: entity.requirements-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.requirements-start.wdl
+    - include: repo_atom
+  repo_runtime-block:
+  - match: (?:\s*)(runtime)\b
+    captures:
+      1: keyword.other.runtime.wdl
+    push:
+    - meta_scope: entity.runtime-block.wdl
+    - match: (?:\s*)({)
+      pop: true
+      captures:
+        1: punctuation.bracket.curly.runtime-start.wdl
+    - include: repo_atom
+  repo_single-number-sign-comments:
+  - match: (?:\s*)(?:#(?!#))
+    push:
+    - meta_scope: comment.line.number-sign.documentation
+    - match: ^(?!(?:^|)(?:\s*)(?:#(?!#)))
+      pop: true
+  repo_single-quoted-strings:
+  - match: ''''
+    push:
+    - meta_scope: string.quoted.single.wdl
+    - match: ''''
+      pop: true
+    - include: repo_placeholder
+    - include: repo_escaped-character
+  repo_strings:
+  - include: repo_single-quoted-strings
+  - include: repo_double-quoted-strings
+  - include: repo_multi-line-strings
