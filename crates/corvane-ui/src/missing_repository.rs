@@ -86,7 +86,7 @@ pub fn missing_repository_view(
 ) -> impl IntoElement {
     // `.details`: centred text, the path as `.path` and "Check again." as a
     // `LinkButton`
-    let mut parts: Vec<Inline> = vec!["It was last seen at".into()];
+    let mut parts: Vec<Inline> = vec!["It was last seen at ".into()];
     parts.extend(path_segments(&path.display().to_string(), cx));
     parts.push(". ".into());
     parts.push(Inline::Element(
@@ -154,7 +154,7 @@ pub fn unsafe_repository_view(
         .gap(SPACING())
         .child(
             paragraph(vec![
-                "The Git repository at".into(),
+                "The Git repository at ".into(),
                 Inline::Element(code_ref(path, cx).into_any_element()),
                 " appears to be owned by another user on your machine. Adding untrusted \
                  repositories may automatically execute files in the repository."

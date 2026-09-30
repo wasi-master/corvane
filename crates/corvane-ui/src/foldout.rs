@@ -30,7 +30,9 @@ pub fn foldout_layer(
     cx: &App,
 ) -> impl IntoElement {
     let t = cx.ghd();
-    let top = TITLE_BAR_HEIGHT() + TOOLBAR_HEIGHT();
+    // `#foldout-container` starts over the toolbar's 1 px bottom border: the
+    // overlay dims it and the panel covers it
+    let top = TITLE_BAR_HEIGHT() + TOOLBAR_HEIGHT() - zpx(1.);
     let viewport = window.viewport_size();
     let panel: AnyElement = match foldout {
         Foldout::Repository => panels.repository.clone().into_any_element(),

@@ -298,7 +298,7 @@ fn popup_with_priority(
                     .shadow(vec![BoxShadow {
                         color: hsla(0., 0., 0., 0.3),
                         offset: point(zpx(0.), zpx(0.)),
-                        blur_radius: zpx(8.),
+                        blur_radius: css_blur(8.),
                         spread_radius: zpx(0.),
                         inset: false,
                     }])
