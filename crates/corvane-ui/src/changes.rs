@@ -24,6 +24,8 @@
 //!   (`283-changes-filter-match`).
 //! - a "Committing as Name <email>" line can sit above the summary
 //!   (`171-commit-author-line`).
+//! - included paths Windows cannot check out get a warning
+//!   (`284-windows-invalid-names-warning`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -2516,6 +2518,44 @@ impl ChangesSidebar {
         )
     }
 
+    /// `284-windows-invalid-names-warning`: included (not deleted) files whose
+    /// path Windows rejects.
+    fn windows_names_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        if !s
+            .flags
+            .bool(corvane_core::flags::ids::WINDOWS_INVALID_NAMES_WARNING)
+        {
+            return None;
+        }
+        let files = &s.selected_state()?.status.as_ref()?.files;
+        let bad: Vec<(&str, &str)> = files
+            .iter()
+            .filter(|f| {
+                f.status.kind != FileStatusKind::Deleted
+                    && f.selection.kind() != DiffSelectionType::None
+            })
+            .filter_map(|f| {
+                corvane_core::portable_paths::windows_invalid_reason(&f.path)
+                    .map(|why| (f.path.as_str(), why))
+            })
+            .collect();
+        let (path, why) = *bad.first()?;
+        let message = match bad.len() {
+            1 => format!("\"{path}\" {why}, so it can't be checked out on Windows."),
+            n => format!(
+                "{n} files can't be checked out on Windows: \"{path}\" {why}, among others."
+            ),
+        };
+        Some(self.commit_warning(
+            Octicon::Alert,
+            t.dialog_warning,
+            div().child(message).into_any_element(),
+            cx,
+        ))
+    }
+
     /// `171-commit-author-line`: the identity the next commit is made with.
     fn author_line(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -3371,6 +3411,7 @@ impl ChangesSidebar {
                     .or_else(|| self.detached_head_warning(cx))
                     .or_else(|| self.branch_protection_warning(cx)),
             )
+            .children(self.windows_names_warning(cx))
             .children(
                 self.rule_failure_popover_open
                     .then(|| self.rule_failure_popover(window, cx))

@@ -532,6 +532,20 @@ registry! {
         upstream: &[Upstream::issue(20555)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
     },
+    /// Warn about paths Windows cannot check out.
+    WINDOWS_INVALID_NAMES_WARNING = 284 "windows-invalid-names-warning" {
+        title: "Warn about names invalid on Windows",
+        summary: "The commit form warns when an included file's path is invalid on Windows (a \
+                  reserved name like `CON` or `nul.txt`, a character such as `:` or `?`, or a name \
+                  ending in a space or a dot). Committing stays possible.",
+        ghd_behaviour: "Commits them silently; Windows clones then fail to check them out.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19292)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/portable_paths.rs"],
+    },
 
     // ---- 300 GitHub ----
 
