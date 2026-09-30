@@ -299,21 +299,26 @@ fn dialog_impl(
                                 }),
                         )
                         .child(dialog_content(kind, content, t))
-                        .child(
-                            // footer
-                            div()
-                                .flex_none()
-                                .flex()
-                                .flex_row()
-                                .justify_end()
-                                .gap(SPACING())
-                                .px(SPACING_DOUBLE())
-                                .pb(SPACING_DOUBLE())
-                                .children(buttons.into_iter().map(|b| {
-                                    let on_click = b.on_click;
-                                    let disabled = b.disabled;
-                                    if b.primary {
-                                        crate::widgets::primary_button(b.id, b.label, disabled, cx)
+                        .when(!buttons.is_empty(), |d| {
+                            d.child(
+                                // `.dialog-footer`: a top border, 20 px padding,
+                                // buttons 5 px apart (`margin-right`)
+                                div()
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .justify_end()
+                                    .gap(SPACING_HALF())
+                                    .p(SPACING_DOUBLE())
+                                    .border_t_1()
+                                    .border_color(t.box_border)
+                                    .children(buttons.into_iter().map(|b| {
+                                        let on_click = b.on_click;
+                                        let disabled = b.disabled;
+                                        if b.primary {
+                                            crate::widgets::primary_button(
+                                                b.id, b.label, disabled, cx,
+                                            )
                                             .min_w(zpx(120.))
                                             .when(!disabled, |d| {
                                                 d.on_click(move |_, window, cx| {
@@ -321,19 +326,20 @@ fn dialog_impl(
                                                 })
                                             })
                                             .into_any_element()
-                                    } else {
-                                        crate::widgets::button(b.id, b.label, cx)
-                                            .min_w(zpx(120.))
-                                            .when(disabled, |d| d.opacity(0.6).cursor_default())
-                                            .when(!disabled, |d| {
-                                                d.on_click(move |_, window, cx| {
-                                                    on_click(window, cx)
+                                        } else {
+                                            crate::widgets::button(b.id, b.label, cx)
+                                                .min_w(zpx(120.))
+                                                .when(disabled, |d| d.opacity(0.6).cursor_default())
+                                                .when(!disabled, |d| {
+                                                    d.on_click(move |_, window, cx| {
+                                                        on_click(window, cx)
+                                                    })
                                                 })
-                                            })
-                                            .into_any_element()
-                                    }
-                                })),
-                        ),
+                                                .into_any_element()
+                                        }
+                                    })),
+                            )
+                        }),
                 ),
         ),
     )
