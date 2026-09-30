@@ -46,8 +46,8 @@ pub use diff::{
 };
 pub use error::{GitError, dubious_ownership_path};
 pub use history_ops::{
-    ResetMode, checkout_commit, create_tag, delete_tag, reset_to, revert_commit,
-    revert_commits_no_commit, revert_file_in_commit,
+    ResetMode, checkout_commit, cherry_pick_no_commit, create_tag, delete_tag, format_patches,
+    reset_to, revert_commit, revert_commits_no_commit, revert_file_in_commit,
 };
 pub use ignore::{
     append_ignore_files, append_ignore_rules, escape_gitignore_pattern, read_gitignore,

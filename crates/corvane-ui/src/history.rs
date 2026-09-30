@@ -20,7 +20,9 @@
 //! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
 //! the branch tip (flag `440`); a toggle before the compare box lists first
 //! parents only (flag `142`); the compare list offers matching tags (flag
-//! `444`); pushed tags can be deleted after a confirmation (flag `445`).
+//! `444`); pushed tags can be deleted after a confirmation (flag `445`);
+//! Cherry-pick Without Committing (flag `147`); Create Patch File(s) (flag
+//! `148`).
 
 use std::rc::Rc;
 
@@ -893,11 +895,13 @@ impl HistorySidebar {
             .repo_states
             .get(&id)
             .is_some_and(|r| r.compare.is_comparing());
-        let (copy_items, revert_no_commit) = {
+        let (copy_items, revert_no_commit, pick_no_commit, patches) = {
             let flags = &self.state.read(cx).flags;
             (
                 flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
                 flags.bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CHERRY_PICK_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CREATE_PATCH_FILES),
             )
         };
         // `240`: newest first, whatever the click order
@@ -919,8 +923,9 @@ impl HistorySidebar {
             selection.clone(),
             selection.clone(),
             selection.clone(),
-            selection,
+            selection.clone(),
         );
+        let (s5, s6) = (selection.clone(), selection);
         let onto = commit.sha.clone();
         let mut items = vec![
             MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
@@ -948,6 +953,23 @@ impl HistorySidebar {
                 )
                 .enabled(!busy && !comparing),
             );
+        }
+        if pick_no_commit {
+            // `147`: onto the current branch, staged, not committed
+            items.push(
+                MenuItem::new(
+                    format!("Cherry-pick {count} Commits Without Committing"),
+                    move |_, cx| Dispatcher::cherry_pick_without_committing(id, s5.clone(), cx),
+                )
+                .enabled(!busy),
+            );
+        }
+        if patches {
+            // `148`
+            items.push(MenuItem::new(
+                format!("Create {count} Patch Files…"),
+                move |_, cx| create_patch_files(id, s6.clone(), cx),
+            ));
         }
         if copy_items {
             items.push(MenuItem::separator());
@@ -1147,6 +1169,32 @@ impl HistorySidebar {
             })
             .enabled(!busy),
         );
+        let (pick_no_commit, patches) = {
+            let flags = &self.state.read(cx).flags;
+            (
+                flags.bool(corvane_core::flags::ids::CHERRY_PICK_WITHOUT_COMMITTING),
+                flags.bool(corvane_core::flags::ids::CREATE_PATCH_FILES),
+            )
+        };
+        if pick_no_commit {
+            // `147`: onto the current branch (not the HEAD commit itself)
+            items.push(
+                MenuItem::new("Cherry-pick Commit Without Committing", {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
+                    }
+                })
+                .enabled(!busy && !is_head),
+            );
+        }
+        if patches {
+            // `148`
+            items.push(MenuItem::new("Create Patch File…", {
+                let sha = sha.clone();
+                move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
+            }));
+        }
         if let Some(unpushed) = unpushed {
             items.push(
                 MenuItem::new("Push Up to This Commit", {
@@ -2156,4 +2204,22 @@ impl Render for HistorySidebar {
             .child(body)
             .children(self.context_menu.clone())
     }
+}
+
+/// Flag `148`: ask for a folder, then write the patches there.
+fn create_patch_files(id: u64, shas: Vec<String>, cx: &mut App) {
+    let receiver = cx.prompt_for_paths(PathPromptOptions {
+        files: false,
+        directories: true,
+        multiple: false,
+        prompt: Some("Save Patches".into()),
+    });
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        if let Ok(Ok(Some(paths))) = receiver.await
+            && let Some(dir) = paths.into_iter().next()
+        {
+            cx.update(|cx| Dispatcher::create_patch_files(id, shas, dir, cx));
+        }
+    })
+    .detach();
 }

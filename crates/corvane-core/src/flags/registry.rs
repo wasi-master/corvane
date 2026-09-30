@@ -274,6 +274,34 @@ registry! {
         upstream: &[Upstream::issue(12549)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// History › Cherry-pick Without Committing.
+    CHERRY_PICK_WITHOUT_COMMITTING = 147 "cherry-pick-without-committing" {
+        title: "Cherry-pick without committing",
+        summary: "A commit's menu (and a multi-commit selection's) adds Cherry-pick Commit Without \
+                  Committing: the changes are applied to the current branch and left staged in \
+                  Changes. Needs a clean working directory; a conflict undoes everything.",
+        ghd_behaviour: "Cherry-picking always commits, onto a branch picked in a dialog.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21383)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
+    },
+    /// History › Create Patch File….
+    CREATE_PATCH_FILES = 148 "create-patch-files" {
+        title: "Create patch files from commits",
+        summary: "A commit's menu (and a multi-commit selection's) adds Create Patch File…: after \
+                  a folder is picked, git format-patch writes one numbered .patch file per commit \
+                  there and the first is shown in Finder.",
+        ghd_behaviour: "No way to export commits as patches.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20935)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
+    },
 
     // ---- 200 Repository ----
 

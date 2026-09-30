@@ -1542,6 +1542,66 @@ impl Dispatcher {
         );
     }
 
+    /// `shas` sorted oldest first by their place in the loaded history.
+    fn oldest_first(id: u64, mut shas: Vec<String>, cx: &App) -> Vec<String> {
+        if let Some(rs) = Self::state(cx).read(cx).repo_states.get(&id) {
+            shas.sort_by_key(|sha| {
+                std::cmp::Reverse(rs.commits.iter().position(|c| &c.sha == sha))
+            });
+        }
+        shas
+    }
+
+    /// Corvane addition (flag `147`): apply `shas` to the current branch
+    /// without committing (oldest first) and show Changes with the result
+    /// staged. Needs a clean working directory, so a conflict can roll back.
+    pub fn cherry_pick_without_committing(id: u64, shas: Vec<String>, cx: &mut App) {
+        const TITLE: &str = "Could not cherry-pick";
+        if Self::working_directory_dirty(id, cx) {
+            Self::show_error(
+                TITLE,
+                "Commit or stash your changes before cherry-picking without committing.",
+                cx,
+            );
+            return;
+        }
+        let any_merge = shas
+            .iter()
+            .any(|sha| Self::commit_by_sha(id, sha, cx).is_some_and(|c| c.is_merge()));
+        let shas = Self::oldest_first(id, shas, cx);
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            TITLE,
+            move |git, workdir| corvane_git::cherry_pick_no_commit(git, &workdir, &shas, any_merge),
+            cx,
+        );
+    }
+
+    /// Corvane addition (flag `148`): `git format-patch` each of `shas`
+    /// (oldest first) into `dir`, then reveal the first patch in Finder.
+    pub fn create_patch_files(id: u64, shas: Vec<String>, dir: PathBuf, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let shas = Self::oldest_first(id, shas, cx);
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::format_patches(git, &workdir, &shas, &dir) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(files) => {
+                    if let Some(first) = files.first() {
+                        cx.reveal_path(first);
+                    }
+                }
+                Err(err) => Self::show_error("Could not create patch files", err.to_string(), cx),
+            });
+        })
+        .detach();
+    }
+
     /// `Reset to Commit…`: warn first when the working directory is dirty.
     pub fn request_reset_to_commit(id: u64, sha: String, cx: &mut App) {
         if Self::working_directory_dirty(id, cx) {
