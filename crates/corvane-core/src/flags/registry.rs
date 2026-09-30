@@ -343,6 +343,21 @@ registry! {
         upstream: &[Upstream::issue(11492)],
         code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
     },
+    /// Image diff borders go around the image.
+    IMAGE_DIFF_BORDER_OUTSIDE = 178 "image-diff-border-outside" {
+        title: "Image diff borders don't shrink the image",
+        summary: "The coloured 1 px border of an image in the image diff is drawn around the \
+                  image, which keeps its natural (or fitted) size.",
+        ghd_behaviour: "The border is inside the image's box (`box-sizing: border-box`), so every \
+                        image is drawn 2 px smaller than its size, blurring small images and \
+                        pixel art.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14469)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
+    },
 
     // ---- 200 Repository ----
 
