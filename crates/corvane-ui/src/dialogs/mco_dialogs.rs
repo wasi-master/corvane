@@ -54,12 +54,23 @@ impl McoDialog {
         // `FilterList` autofocuses its filter box
         let handle = filter.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        // a rebase started onto a given branch opens with it selected
+        let selected_branch = state
+            .read(cx)
+            .repo_states
+            .get(&repo)
+            .and_then(|r| r.mco.as_ref())
+            .filter(|m| m.step == McoStep::ChooseBranch)
+            .and_then(|m| match &m.detail {
+                corvane_core::McoDetail::Rebase { base_branch, .. } => base_branch.clone(),
+                _ => None,
+            });
         Self {
             state,
             repo,
             filter,
             list_focus: cx.focus_handle(),
-            selected_branch: None,
+            selected_branch,
             dont_ask_force_push: false,
             create_branch: None,
         }
