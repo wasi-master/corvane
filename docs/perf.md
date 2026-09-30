@@ -37,7 +37,52 @@ Opt-in engine (flag `105-tree-sitter-highlighting`, `crates/corvane-highlight/sr
 | Loading a grammar | reading `index.json` at launch; per unit, gunzip + first `dlopen` of a small library (tens of ms) on the highlight thread the first time its language shows up | the old single 170 MB library took 2.3 s on first open |
 | Highlighting a 246 KB Rust file | 148 ms | debug build of the Rust side, optimised C runtime and grammars; budget is `MAX_HIGHLIGHT_BYTES` (256 KB) like the other engines |
 
+## Latency pass (2026-09-30)
+
+The actions people use most, on a synthetic worst case (`tools/perf/fixture.py big`: 50,000 files, 20,000 commits, 500 branches, 231 changes; clean clone for checkout / commit) with `tools/perf/bench.py` (profiling build, `CORVANE_CONTROL`). **Minstr** is the main thread's retired instructions (millions) for the input plus the frame after it (`thread_selfcounts`): unlike wall time it does not move with machine load (the load average swung between 15 and 43 during these runs). ms columns are medians; the baseline is 3b2ddf3 with only the bench tooling added.
+
+| Action | Before (ms) | After (ms) | Before Minstr | After Minstr |
+|---|---|---|---|---|
+| Refresh (focus / watcher), nothing changed | 1,300–2,700 | 140–240 (no frame drawn) | 24 | 8 |
+| Select a file | 42–145 (p90 2.7 s) | 5–9, same frame | 41 | 33 |
+| Next file ↓ | 35–64 | 4–5 | 34 | 27 |
+| Open a 5,000-line diff | 12–185 | 9 | 139 | 62 |
+| Next commit ↓ in History | 56–113 | 11–12 | 136 | 76 |
+| Open History | 30–63 | 8–11 | 144 | 48 |
+| Open the branch foldout (500 branches) | 43–76 | 7–8 | 178–308 | 35 |
+| Branch filter keystroke | 13–26 | 3–4 | 33–210 | 17 |
+| Scroll the diff, per frame | 9–26 | 6 | 68 | 39 |
+| Scroll the changes list, per frame | 8–24 | 4 | 53 | 27 |
+| Scroll History, per frame | 8–22 | 4 | 52 | 24 |
+| Commit summary keystroke | 11 | 4–5 | 24 | 19 |
+| Commit (⌘↩ → list empty) | 580–2,800 | 280–460 | 261 | 177 |
+| Checkout (a branch 5 commits away) | 540 | 255 | 25 | 17 |
+| Switch repository (50k files) | 356 | 207 | 203 | 96 |
+| An editor save → shown | ~700 | ~165 | — | — |
+| Status on a checkout with stale stat data | 6,000 every refresh | 6,000 once, then 175 | — | — |
+
+What changed (details in `docs/reference/deviations.md` › Performance, flags `901`–`903`):
+
+- **Git**: refresh fans its ~10 git processes out on threads and takes ahead/behind from `status --branch`; unstaged files diff index → worktree (git's `diff-index` spent 2.2 s walking a 50k index for `HEAD -- path`); blobs, `HEAD` and handles come from gitoxide in-process; a commit that includes everything skips `reset -- .`; `update-index --refresh` after a slow status (`903`).
+- **Caches**: commit changesets and diffs by SHA, working diffs by stat stamp (byte budgets), so reselection and the reload after each refresh run no git and show in the same frame; neighbour prefetch (`901`); History keeps its pages across refreshes.
+- **Invalidation**: a refresh that changed nothing notifies nothing; the watcher skips bursts a later refresh already saw and refreshes at the first change (`902`); the window's activation no longer doubles the launch refresh; History prefetch only while History shows.
+- **Rendering**: `Arc<Diff>` instead of deep copies per frame; diff views, both sidebars and the selected commit are cached GPUI views; the branch list is virtualized; FxHash for diff cache keys; ASCII fast path for grapheme snapping.
+- **Text (GPUI patches)**: sized `CTFont`s are kept (a fresh one per line rebuilt CoreText's glyph caches, a third of a new diff's frame) and shaped lines live two more 2,048-line generations after leaving the frame.
+
+Measured but left alone: launch is dominated by dyld/code signing, AppKit / LaunchServices check-in (`TISCopyCurrentKeyboardLayoutInputSource` 55 ms) and redb's open; fsmonitor + untracked cache only took status on 50k files from 175 to 143 ms (not worth a daemon); what remains of a new diff's frame is GPUI's per-row `list` layout (taffy) and shaping new text. Idle CPU unfocused: 0.0 % (`top`, 3 s samples).
+
 ## How to measure
+
+Latency (the table above):
+
+```bash
+cargo build --profile profiling -p corvane --features snapshots
+python3 tools/perf/fixture.py big target/perf/big
+python3 tools/perf/bench.py --runs 3 [case…]   # cases: refresh select-file next-file big-diff scroll-diff scroll-changes toggle history branches type-summary repo-list frames switch-repo checkout commit relaunch
+sample $(pgrep -n corvane) 4 -file out.txt && python3 tools/perf/sample_tree.py out.txt   # where a case spends its time
+```
+
+Launch, memory and idle CPU:
 
 ```bash
 cargo build --release -p corvane && packaging/bundle.sh release
