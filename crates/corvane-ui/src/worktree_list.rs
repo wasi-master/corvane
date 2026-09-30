@@ -2,6 +2,9 @@
 //! `worktree-list-item-context-menu.ts`, `styles/ui/_worktrees.scss`): filter,
 //! "New Worktree", the Main / Linked groups, and the context menus shared
 //! with the toolbar button (`ui/toolbar/worktree-dropdown.tsx`).
+//!
+//! Deviation: worktrees git reports `prunable` (directory deleted outside
+//! git) are not listed (`426-hide-prunable-worktrees`).
 
 use std::path::PathBuf;
 
@@ -70,6 +73,20 @@ pub fn worktree_menu_items(
         );
     }
     items
+}
+
+/// The worktrees the foldout lists: with `426-hide-prunable-worktrees` not
+/// those git reports `prunable` (their directory is gone; GHD lists them and
+/// selecting one fails).
+pub fn listed_worktrees(state: &AppState, worktrees: &[WorktreeEntry]) -> Vec<WorktreeEntry> {
+    let hide = state
+        .flags
+        .bool(corvane_core::flags::ids::HIDE_PRUNABLE_WORKTREES);
+    worktrees
+        .iter()
+        .filter(|w| !(hide && w.is_prunable))
+        .cloned()
+        .collect()
 }
 
 /// The worktree the repository currently points at.
@@ -274,7 +291,7 @@ impl Render for WorktreeFoldout {
             let worktrees = s
                 .repo_states
                 .get(&id)
-                .map(|rs| rs.worktrees.clone())
+                .map(|rs| listed_worktrees(s, &rs.worktrees))
                 .unwrap_or_default();
             (id, worktrees, current_worktree(s, id).map(|w| w.path))
         };

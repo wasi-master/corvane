@@ -728,6 +728,21 @@ registry! {
         code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-ui/src/repository_list.rs"],
     },
 
+    /// The worktree list leaves out prunable worktrees.
+    HIDE_PRUNABLE_WORKTREES = 426 "hide-prunable-worktrees" {
+        title: "Hide prunable worktrees",
+        summary: "The worktree list leaves out worktrees git reports as prunable (their directory \
+                  was deleted outside git), so they cannot be selected into an error.",
+        ghd_behaviour: "Lists them until `git worktree prune` runs; selecting one shows \"does not \
+                        appear to be a valid Git repository\".",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22605)],
+        code: &["crates/corvane-ui/src/worktree_list.rs", "crates/corvane-ui/src/toolbar.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
