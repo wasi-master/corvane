@@ -738,6 +738,21 @@ registry! {
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
 
+    /// Repository › Add License….
+    ADD_LICENSE = 455 "add-license" {
+        title: "Add a license to a repository",
+        summary: "Repository › Add License… writes one of the license templates Create a New \
+                  Repository offers to LICENSE in the current repository (filled in with your \
+                  Git name and the year). An existing license file is never replaced.",
+        ghd_behaviour: "Licenses can only be added when creating a repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12222)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-ui/src/dialogs/add_license.rs", "crates/corvane-core/src/templates.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

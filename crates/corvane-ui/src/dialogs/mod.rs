@@ -3,6 +3,7 @@
 
 mod acknowledgements;
 mod add_existing;
+mod add_license;
 mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod change_repository_alias;
@@ -453,6 +454,9 @@ impl DialogHost {
             Popup::ImportFromGitHubDesktop => cx
                 .new(import_github_desktop::ImportGitHubDesktopDialog::new)
                 .into(),
+            Popup::AddLicense { repo } => {
+                cx.new(|_| add_license::AddLicenseDialog::new(*repo)).into()
+            }
             Popup::CreateTutorialRepository { account, progress } => cx
                 .new(|_| {
                     tutorial_dialogs::CreateTutorialRepositoryDialog::new(

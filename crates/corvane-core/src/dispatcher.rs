@@ -2305,6 +2305,55 @@ impl Dispatcher {
 
     // ---- create / clone ----
 
+    /// `455-add-license`: write the named license template to `LICENSE` in
+    /// the repository's worktree, filled in like Create a New Repository
+    /// does. An existing license file is never replaced.
+    pub fn add_license(repo: u64, license: String, cx: &mut App) {
+        let state = Self::state(cx);
+        let (Some(git), Some(repository)) = (
+            state.read(cx).git.clone(),
+            state.read(cx).repository(repo).cloned(),
+        ) else {
+            return;
+        };
+        let Some(body) = crate::templates::licenses()
+            .into_iter()
+            .find(|l| l.name == license)
+            .map(|l| l.body)
+        else {
+            return;
+        };
+        Self::close_popup(cx);
+        let dir = repository.path.clone();
+        let project = corvane_models::dir_name(&dir);
+        let task = cx.background_executor().spawn(async move {
+            let identity = corvane_git::global_identity(git);
+            let year = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| 1970 + d.as_secs() / 31_556_952)
+                .unwrap_or(1970);
+            let text = crate::templates::render_license(
+                &body,
+                &crate::templates::LicenseFields {
+                    fullname: identity.name.unwrap_or_default(),
+                    email: identity.email.unwrap_or_default(),
+                    project,
+                    description: String::new(),
+                    year: year.to_string(),
+                },
+            );
+            crate::templates::write_license(&dir, &text)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(_) => Self::refresh_repository(repo, cx),
+                Err(message) => Self::show_error("Couldn't add the license", &message, cx),
+            })
+        })
+        .detach();
+    }
+
     /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
     pub fn create_repository(
         path: PathBuf,

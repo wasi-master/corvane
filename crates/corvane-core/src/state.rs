@@ -80,6 +80,10 @@ pub enum Popup {
     /// Corvane addition (flag 206): pick repositories from GitHub Desktop's
     /// list to add.
     ImportFromGitHubDesktop,
+    /// Corvane addition (flag 455): Repository › Add License….
+    AddLicense {
+        repo: u64,
+    },
     /// Corvane addition: crash reports left by the previous session (newest
     /// first), with "Save crash reports locally" on.
     CrashReportFound {

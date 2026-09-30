@@ -134,6 +134,7 @@ fn main() {
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                 s.flags
                     .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                s.flags.bool(corvane_core::flags::ids::ADD_LICENSE),
             );
         }
         phase(started, "theme, keymap, menus and state installed");
@@ -155,6 +156,7 @@ fn main() {
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                 s.flags
                     .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                s.flags.bool(corvane_core::flags::ids::ADD_LICENSE),
             )
         };
         let mut last_high_contrast = high_contrast;
@@ -176,6 +178,7 @@ fn main() {
                             .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                         s.flags
                             .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                        s.flags.bool(corvane_core::flags::ids::ADD_LICENSE),
                     ),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                 )
@@ -188,6 +191,7 @@ fn main() {
                     &last_menu_key.1,
                     last_menu_key.2,
                     last_menu_key.3,
+                    last_menu_key.4,
                 );
             }
             let theme_changed = theme != last_theme;
@@ -399,6 +403,15 @@ fn main() {
             let repo = s.selected_repository()?;
             Some((repo.id, repo.path.clone()))
         };
+        cx.on_action(move |_: &AddLicense, cx| {
+            let enabled = corvane_core::AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::ADD_LICENSE);
+            if enabled && let Some((id, _)) = selected_path(cx) {
+                Dispatcher::show_popup(Popup::AddLicense { repo: id }, cx);
+            }
+        });
         cx.on_action(move |_: &RepositorySettings, cx| {
             if let Some((id, _)) = selected_path(cx) {
                 Dispatcher::open_repository_settings(
