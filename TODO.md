@@ -17,7 +17,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
 - [ ] Signed-in blank slate: the account's cloneable repositories pane beside the actions (`no-repositories-view.tsx` `renderRepositoryList`: `AccountPicker` with 2+ accounts, `CloneableRepositoryFilterList`, Clone *name* button); `no_repositories.rs` shows the actions pane only
-- [ ] Welcome › Configure Git with an account: "Use my GitHub account name and email address" / "Configure manually" radios and the account-email `Select` (`lib/configure-git-user.tsx` `renderAuthorOptions`, `renderGitHubInfo`)
 
 ## Diff viewer
 

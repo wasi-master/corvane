@@ -39,6 +39,9 @@ struct ApiEmail {
     email: String,
     primary: bool,
     verified: bool,
+    /// `public` / `private`; missing on older Enterprise versions.
+    #[serde(default)]
+    visibility: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -579,15 +582,19 @@ impl Client {
     /// `GET /user` (+ `/user/emails` when the scope allows) → `Account`.
     pub fn current_user(&self, scopes: Vec<String>) -> Result<Account> {
         let user: ApiUser = self.get_json("user")?;
-        let emails = match self.get_json::<Vec<ApiEmail>>("user/emails") {
+        let (emails, private_primary_email) = match self.get_json::<Vec<ApiEmail>>("user/emails") {
             Ok(list) => {
                 let mut list: Vec<ApiEmail> = list.into_iter().filter(|e| e.verified).collect();
                 list.sort_by_key(|e| !e.primary);
-                list.into_iter().map(|e| e.email).collect()
+                // GHD `isEmailPublic`: no visibility (older Enterprise) is public
+                let private = list
+                    .first()
+                    .is_some_and(|e| e.primary && e.visibility.as_deref() == Some("private"));
+                (list.into_iter().map(|e| e.email).collect(), private)
             }
             Err(err) => {
                 debug!(?err, "could not read emails");
-                Vec::new()
+                (Vec::new(), false)
             }
         };
         Ok(Account {
@@ -599,6 +606,7 @@ impl Client {
             emails,
             scopes,
             plan: user.plan.map(|p| p.name),
+            private_primary_email,
         })
     }
 

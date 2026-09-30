@@ -62,6 +62,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 ## Welcome
 
+- Configure Git with an account follows `ConfigureGitUser`: "Use my GitHub account name and email address" (the first account's name read-only, its emails in a `Select`) or "Configure manually" (with `GitEmailNotFoundWarning`). The preferred email (`lookupPreferredEmail`) knows only whether the primary address is private, not every address's visibility, and falls back to the first address; the manual fields keep their text when Configure Git is left and entered again (GHD remounts the form and prefills it anew).
 - The Welcome flow (`crates/corvane-ui/src/welcome.rs`) matches GHD's layout at the 1.2 welcome scale. Differences: texts name Corvane (Flag: `103-product-name`); the start footer's second paragraph states that Corvane sends no usage metrics (GHD's links to its metrics page), worded to fill the same two lines so the content stays put; the scale is fixed at 1.2 instead of following GHD's viewport media queries (1.3 at ≥ 1400×725, …).
 
 ## Illustrations
