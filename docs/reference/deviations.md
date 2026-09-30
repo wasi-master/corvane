@@ -44,6 +44,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Undo Commit's "changes in progress" warning (GHD `WarnLocalChangesBeforeUndo`, shown on any local change) appears only when a locally changed path (or its rename source) is among the commit's files; when those cannot be read, it warns as GHD does. Flag: `247-undo-warns-only-on-overlap`.
 - A commit's file menu › Open with Default Program opens the file as of the (newest) selected commit: `git show <sha>:<path>` is written read-only to `$TMPDIR/corvane-history/<sha>/<path>` and opened; GHD opens the working copy. Reveal in Finder and Open in <Editor> still use the working copy. Flag: `248-open-historical-file`.
 - A commit's file that is gone from disk keeps Copy File Path / Copy Relative File Path below the disabled "File Does Not Exist on Disk" item (GHD `selected-commits.tsx` shows only that item). Flag: `249-copy-path-of-missing-file`.
+- Cherry-pick, squash and reorder need a current branch; on a detached HEAD or mid-rebase GHD returns silently, Corvane shows "Could not cherry-pick / squash / reorder" saying why (a rebase in progress, or not on a branch). Flag: `250-no-branch-explained`.
 
 ## Tutorial
 

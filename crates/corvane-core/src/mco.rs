@@ -492,6 +492,38 @@ impl Dispatcher {
         Some((branch.name.clone(), branch.tip.clone()))
     }
 
+    /// [`Self::current_branch_and_tip`] for an operation the user started:
+    /// with flag `250` a missing branch (detached HEAD, rebase in progress)
+    /// shows an error titled `title` instead of doing nothing.
+    fn current_branch_or_explain(
+        id: u64,
+        title: &str,
+        cx: &mut App,
+    ) -> Option<(String, Option<String>)> {
+        let found = Self::current_branch_and_tip(id, cx);
+        if found.is_none() {
+            let message = {
+                let s = Self::state(cx).read(cx);
+                let rs = s.repo_states.get(&id);
+                let loaded = rs.is_some_and(|r| r.info.is_some());
+                let rebasing = rs
+                    .and_then(|r| r.status.as_ref())
+                    .is_some_and(|st| st.rebase_in_progress);
+                (loaded && s.flags.bool(crate::flags::ids::NO_BRANCH_EXPLAINED)).then_some(
+                    if rebasing {
+                        "A rebase is in progress. Finish or abort it first."
+                    } else {
+                        "You are not on a branch (detached HEAD). Check out a branch first."
+                    },
+                )
+            };
+            if let Some(message) = message {
+                Self::show_error(title, message, cx);
+            }
+        }
+        found
+    }
+
     fn working_directory_files(id: u64, cx: &App) -> Vec<WorkingDirectoryFileChange> {
         Self::state(cx)
             .read(cx)
@@ -1357,7 +1389,8 @@ impl Dispatcher {
 
     /// History › Cherry-pick Commit(s)…: open the choose-target-branch step.
     pub fn start_cherry_pick_flow(id: u64, shas: Vec<String>, cx: &mut App) {
-        let Some((current, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((current, tip)) = Self::current_branch_or_explain(id, "Could not cherry-pick", cx)
+        else {
             return;
         };
         let commits = Self::commits_oldest_first(id, &shas, cx);
@@ -1712,7 +1745,8 @@ impl Dispatcher {
         ) {
             return;
         }
-        let Some((branch, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((branch, tip)) = Self::current_branch_or_explain(id, "Could not squash", cx)
+        else {
             return;
         };
         let (commits, target_commit, last_retained) = {
@@ -1873,7 +1907,8 @@ impl Dispatcher {
         ) {
             return;
         }
-        let Some((branch, tip)) = Self::current_branch_and_tip(id, cx) else {
+        let Some((branch, tip)) = Self::current_branch_or_explain(id, "Could not reorder", cx)
+        else {
             return;
         };
         let (commits, before_commit, last_retained) = {

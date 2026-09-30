@@ -402,6 +402,19 @@ registry! {
         upstream: &[Upstream::issue(18349)],
         code: &["crates/corvane-ui/src/selected_commit.rs"],
     },
+    /// Cherry-pick / squash / reorder without a branch explain themselves.
+    NO_BRANCH_EXPLAINED = 250 "no-branch-explained" {
+        title: "Explain why cherry-pick, squash and reorder cannot start",
+        summary: "Cherry-pick, squash and reorder on a detached HEAD or during a rebase show an \
+                  error saying so.",
+        ghd_behaviour: "Nothing happens.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18715), Upstream::issue(20982)],
+        code: &["crates/corvane-core/src/mco.rs"],
+    },
 
     // ---- 300 GitHub ----
 
