@@ -25,6 +25,9 @@ pub struct RepositoryFoldout {
     /// uncommitted changes / commits to push or pull.
     only_changed: bool,
     only_ahead_behind: bool,
+    /// Corvane (`313-repository-fork-filter`): only forks / only the rest.
+    only_forks: bool,
+    only_sources: bool,
     /// GHD `FilterList` keyboard selection: the row ↓ / ↑ moved to from
     /// the filter box (an index into the rows as shown, groups flattened).
     highlighted: Option<usize>,
@@ -51,6 +54,8 @@ impl RepositoryFoldout {
             add_menu_open: false,
             only_changed: false,
             only_ahead_behind: false,
+            only_forks: false,
+            only_sources: false,
             highlighted: None,
             scroll: ScrollHandle::new(),
         }
@@ -133,6 +138,11 @@ impl RepositoryFoldout {
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER)
             && (self.only_changed || self.only_ahead_behind);
+        // Corvane (`313-repository-fork-filter`)
+        let fork_filter = state
+            .flags
+            .bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER)
+            && (self.only_forks || self.only_sources);
         let matches = |r: &Repository| {
             (query.is_empty() || r.name().to_lowercase().contains(&query))
                 && (!status_filter || {
@@ -140,10 +150,14 @@ impl RepositoryFoldout {
                     (self.only_changed && has_changes)
                         || (self.only_ahead_behind && ahead_behind.is_some())
                 })
+                && (!fork_filter || {
+                    let fork = r.github.as_ref().is_some_and(|gh| gh.fork);
+                    (self.only_forks && fork) || (self.only_sources && !fork)
+                })
         };
 
         let mut groups: Vec<Group> = Vec::new();
-        if query.is_empty() && !status_filter {
+        if query.is_empty() && !status_filter && !fork_filter {
             // Corvane (`111-recent-repositories-count`; GHD shows 3)
             let shown = usize::try_from(
                 state
@@ -413,18 +427,36 @@ impl RepositoryFoldout {
                 .ok();
             }
         };
-        let items = vec![
-            MenuItem::checkbox(
-                "Uncommitted changes",
-                self.only_changed,
-                toggle(|f| &mut f.only_changed),
-            ),
-            MenuItem::checkbox(
-                "Commits to push or pull",
-                self.only_ahead_behind,
-                toggle(|f| &mut f.only_ahead_behind),
-            ),
-        ];
+        let flags = &self.state.read(cx).flags;
+        let mut items = Vec::new();
+        if flags.bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER) {
+            items.extend([
+                MenuItem::checkbox(
+                    "Uncommitted changes",
+                    self.only_changed,
+                    toggle(|f| &mut f.only_changed),
+                ),
+                MenuItem::checkbox(
+                    "Commits to push or pull",
+                    self.only_ahead_behind,
+                    toggle(|f| &mut f.only_ahead_behind),
+                ),
+            ]);
+        }
+        // Corvane (`313-repository-fork-filter`)
+        if flags.bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER) {
+            if !items.is_empty() {
+                items.push(MenuItem::separator());
+            }
+            items.extend([
+                MenuItem::checkbox("Forks", self.only_forks, toggle(|f| &mut f.only_forks)),
+                MenuItem::checkbox(
+                    "Not forks",
+                    self.only_sources,
+                    toggle(|f| &mut f.only_sources),
+                ),
+            ]);
+        }
         #[cfg(target_os = "macos")]
         crate::native_menu::show_context_menu(items, position, window, cx);
         #[cfg(not(target_os = "macos"))]
@@ -599,12 +631,18 @@ impl Render for RepositoryFoldout {
         let groups = self.groups(cx);
         let has_repos = !self.state.read(cx).repositories.is_empty();
         let add_open = self.add_menu_open;
-        let status_filter = self
-            .state
-            .read(cx)
-            .flags
-            .bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER);
-        let filtering = self.only_changed || self.only_ahead_behind;
+        // the filter button: `110-repository-status-filter` or
+        // `313-repository-fork-filter`
+        let (status_filter, filtering) = {
+            let flags = &self.state.read(cx).flags;
+            let status = flags.bool(corvane_core::flags::ids::REPOSITORY_STATUS_FILTER);
+            let fork = flags.bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER);
+            (
+                status || fork,
+                (status && (self.only_changed || self.only_ahead_behind))
+                    || (fork && (self.only_forks || self.only_sources)),
+            )
+        };
         let highlighted = self.highlighted;
         let mut row_ix = 0;
         let show_paths = self

@@ -819,6 +819,19 @@ registry! {
         upstream: &[Upstream::issue(17252)],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// The repository list filters to forks or to the rest.
+    REPOSITORY_FORK_FILTER = 313 "repository-fork-filter" {
+        title: "Repository list fork filter",
+        summary: "The repository list's filter button (added by this flag if 110 is off) offers \
+                  Forks and Not forks, from the GitHub repository's fork flag.",
+        ghd_behaviour: "The list filters by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15655)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
