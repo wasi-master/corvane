@@ -41,6 +41,8 @@ LIST_TOP = 170
 ROW = 29
 DIFF_POINT = (800, 400)
 TOOLBAR_REPOSITORY = (125, 56)
+COMMIT_SUMMARY = (140, 583)  # with the Undo bar below the form; 627 without
+FIRST_BRANCH_ROW = (300, 171)
 TOOLBAR_BRANCH = (370, 56)
 
 
@@ -157,16 +159,73 @@ class Bench:
                 for ch in "topic-4":
                     self.record("branch filter keystroke", self.bench([self.type_(ch)], "frame"))
                 self.bench([self.key("escape")], "frame")
-            if want("checkout"):
-                for name in ("feature/topic-001", "main"):
-                    self.bench([self.click(*TOOLBAR_BRANCH)], "frame")
-                    self.record("checkout branch", self.bench([self.type_(name), self.key("enter")], f"branch:{name}"))
+            if want("type-summary"):
+                self.bench([self.click(*COMMIT_SUMMARY)], "frame")
+                for ch in "Fix the parser":
+                    self.record("commit summary keystroke", self.bench([self.type_(ch)], "frame"))
+                self.bench([self.key("cmd-a"), self.key("backspace"), self.key("escape")], "frame")
             if want("repo-list"):
                 self.record("open repository list (click)", self.bench([self.click(*TOOLBAR_REPOSITORY)], "frame"))
                 self.bench([self.key("escape")], "frame")
             if want("frames"):
                 r = self.cv.cmd("frames", n=30)
                 self.record("idle frame (changes)", {"total_ms": r["max_ms"], **r})
+
+    def clean_repo(self) -> Path:
+        """A clone of the fixture without local changes (checkout, commit)."""
+        clean = self.repo.parent / f"{self.repo.name}-clean"
+        if not clean.exists():
+            subprocess.run(["git", "clone", "-q", str(self.repo), str(clean)], check=True)
+            subprocess.run(["git", "-C", str(clean), "config", "commit.gpgsign", "false"], check=True)
+            # branches a few commits from main, as feature branches usually are
+            for b, at in (("bench-near", "main~5"), ("bench-other", "main~12")):
+                subprocess.run(["git", "-C", str(clean), "branch", "-q", b, at], check=True)
+        return clean
+
+    def switch_to(self, repo: Path) -> dict:
+        self.bench([self.click(*TOOLBAR_REPOSITORY), self.key("cmd-a backspace")], "frame")
+        return self.bench([self.type_(repo.name), self.key("enter")], f"repo:{repo.name}", 25_000)
+
+    def run_clean_cases(self, cases: set[str]):
+        want = lambda c: not cases or c in cases  # noqa: E731
+        if not any(want(c) for c in ("switch-repo", "checkout", "commit")):
+            return
+        clean = self.clean_repo()
+        self.cv.hook("add-repo", str(clean))
+        self.bench([], f"repo:{clean.name}", 25_000)
+        for i in range(self.runs):
+            if want("switch-repo"):
+                self.record("switch repository (foldout, enter)", self.switch_to(self.repo))
+                self.bench([], "idle")
+                self.record("switch repository (foldout, enter)", self.switch_to(clean))
+                self.bench([], "idle")
+            if want("checkout"):
+                for name in ("bench-near", "main", "bench-other", "main"):
+                    self.bench([self.click(*TOOLBAR_BRANCH), self.key("cmd-a backspace"), self.type_(name)], "frame")
+                    # the first row under the filter (no Enter handler in the list)
+                    self.record("checkout branch", self.bench([self.click(*FIRST_BRANCH_ROW)], f"branch:{name}", 25_000))
+                    self.bench([], "idle")
+            if want("commit"):
+                target = clean / "src" / "mod01" / "sub01" / "file01050.rs"
+                target.write_text(target.read_text() + f"// bench edit {time.time()}\n")
+                self.record("external edit → shown (watcher)", self.bench([], "files:1", 10_000))
+                self.bench([], "idle")
+                y = COMMIT_SUMMARY[1] if self.cv.cmd("state").get("undo_bar") else 627
+                self.bench([self.click(COMMIT_SUMMARY[0], y)], "frame")
+                self.record("commit (⌘↩ → list empty)", self.bench([self.type_(f"Bench commit {i}"), self.key("cmd-enter")], "files:0", 25_000))
+                self.bench([self.key("escape")], "frame")
+
+    def relaunch(self):
+        """Quit and start again on the same store: spawn → repository ready."""
+        self.stop()
+        started = self.start()
+        # whichever repository was selected last
+        reply = self.bench([], "repo:", 25_000)
+        reply["total_ms"] = (time.perf_counter() - started) * 1000
+        self.record("relaunch (spawn → repo ready)", reply)
+        reply = self.bench([], "idle", 25_000)
+        reply["total_ms"] = (time.perf_counter() - started) * 1000
+        self.record("relaunch (spawn → idle, diff shown)", reply)
 
     def report(self) -> str:
         """Medians. `cpu` is main-thread CPU time of the frame (and of the
@@ -202,6 +261,9 @@ def main():
     try:
         b.setup()
         b.run_cases(set(args.cases))
+        b.run_clean_cases(set(args.cases))
+        if not args.cases or "relaunch" in args.cases:
+            b.relaunch()
     except Exception as err:  # keep what was measured
         print(f"error: {err}", file=sys.stderr)
     finally:
