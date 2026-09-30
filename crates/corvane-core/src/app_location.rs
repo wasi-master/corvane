@@ -84,7 +84,7 @@ impl Dispatcher {
         let Some(packaged) = corvane_platform::cli::packaged_path() else {
             Self::show_error(
                 "Could not install the command line tool",
-                "The command line tool is only available when Corvane runs from Corvane.app.",
+                corvane_platform::cli::NOT_PACKAGED,
                 cx,
             );
             return;
