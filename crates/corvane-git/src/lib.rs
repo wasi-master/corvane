@@ -87,7 +87,9 @@ pub use repo::{
     ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,
     top_level_working_directory,
 };
-pub use status::{get_status, map_status, parse_porcelain_v2};
+pub use status::{
+    LineStats, get_status, map_status, parse_porcelain_v2, working_directory_line_stats,
+};
 pub use worktree::{
     add_worktree, list_worktrees, move_worktree, parse_worktree_porcelain, remove_worktree,
 };

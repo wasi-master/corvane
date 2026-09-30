@@ -538,7 +538,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status) = {
+        let (path, git, previous_status, line_counts) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -547,6 +547,7 @@ impl Dispatcher {
                 repo.path.clone(),
                 s.git.clone(),
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
+                s.flags.bool(crate::flags::ids::CHANGES_LINE_COUNTS),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -624,7 +625,20 @@ impl Dispatcher {
                         .and_then(|_| {
                             corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
                         });
+                    let line_stats = status
+                        .as_ref()
+                        .filter(|st| line_counts && !st.files.is_empty())
+                        .map(|st| {
+                            corvane_git::working_directory_line_stats(
+                                git.clone(),
+                                &info.workdir,
+                                st,
+                            )
+                            .unwrap_or_default()
+                        })
+                        .unwrap_or_default();
                     RefreshExtras {
+                        line_stats,
                         recent_branches: recent,
                         default_branch,
                         stash,
@@ -687,6 +701,7 @@ impl Dispatcher {
                             repo_state.ahead_behind = ahead_behind;
                             repo_state.error = None;
                             if let Some(extras) = extras {
+                                repo_state.line_stats = Arc::new(extras.line_stats);
                                 repo_state.recent_branches = extras.recent_branches;
                                 repo_state.default_branch = extras.default_branch;
                                 repo_state.stash = extras.stash;
@@ -3173,6 +3188,7 @@ pub(crate) fn same_path(a: &Path, b: &Path) -> bool {
 
 /// Branch/stash facts gathered during `refresh_repository`.
 struct RefreshExtras {
+    line_stats: std::collections::HashMap<String, corvane_git::LineStats>,
     recent_branches: Vec<String>,
     default_branch: Option<String>,
     stash: Option<corvane_models::StashEntry>,

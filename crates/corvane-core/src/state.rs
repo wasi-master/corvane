@@ -551,6 +551,9 @@ pub struct RepositoryState {
     pub section: Section,
     /// `git status` result (`IChangesState.workingDirectory`).
     pub status: Option<WorkingDirectoryStatus>,
+    /// Lines added / deleted per changed file against HEAD (Corvane
+    /// addition, flag `changes-line-counts`; empty while the flag is off).
+    pub line_stats: Arc<HashMap<String, corvane_git::LineStats>>,
     /// Path of the file whose diff is shown (`selectedFileIDs[0]`).
     pub selected_file: Option<String>,
     /// Every selected path (`selectedFileIDs`), click order; ⌘/⇧-click extend it.
