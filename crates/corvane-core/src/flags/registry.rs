@@ -403,6 +403,20 @@ registry! {
         upstream: &[Upstream::issue(18101)],
         code: &["crates/corvane-core/src/commit_status.rs", "crates/corvane-core/src/alive.rs"],
     },
+    /// URL actions prefer the repository itself over a fork of it.
+    EXACT_REPOSITORY_URL_FIRST = 387 "exact-repository-url-first" {
+        title: "Open in Desktop prefers the repository over its forks",
+        summary: "When an x-corvane://openRepo URL (Open with Desktop, a new branch from the web) \
+                  names a repository that is added along with a fork of it, the repository \
+                  itself is opened.",
+        ghd_behaviour: "Opens whichever of them comes first in the list, often the fork.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21379)],
+        code: &["crates/corvane-core/src/app_url.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
