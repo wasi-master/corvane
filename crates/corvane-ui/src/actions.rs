@@ -32,6 +32,8 @@ gpui_kit::actions!(
         FocusDiff,
         SelectNextFileFromDiff,
         SelectPreviousFileFromDiff,
+        // View › Toggle History Review Mode (`109-history-review-mode`)
+        ToggleHistoryReviewMode,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,

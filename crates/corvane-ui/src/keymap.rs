@@ -31,6 +31,8 @@ pub struct KeymapFlags {
     /// `614-navigation-shortcuts`: ⌃⌘P pull requests, ⇧⌘] / ⇧⌘[ next /
     /// previous repository, ⌘3 the diff, ⌥↓ / ⌥↑ files from the diff.
     pub navigation_shortcuts: bool,
+    /// `109-history-review-mode`: ⌃⌘S hides History's lists.
+    pub history_review_mode: bool,
 }
 
 impl KeymapFlags {
@@ -44,6 +46,7 @@ impl KeymapFlags {
             diff_mode_shortcut: flags.bool(ids::DIFF_MODE_SHORTCUT),
             copy_path_shortcuts: flags.bool(ids::COPY_PATH_SHORTCUTS),
             navigation_shortcuts: flags.bool(ids::NAVIGATION_SHORTCUTS),
+            history_review_mode: flags.bool(ids::HISTORY_REVIEW_MODE),
         }
     }
 }
@@ -219,6 +222,9 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             KeyBinding::new("alt-down", SelectNextFileFromDiff, Some("Diff")),
             KeyBinding::new("alt-up", SelectPreviousFileFromDiff, Some("Diff")),
         ]);
+    }
+    if flags.history_review_mode {
+        bindings.push(KeyBinding::new("ctrl-cmd-s", ToggleHistoryReviewMode, None));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {
