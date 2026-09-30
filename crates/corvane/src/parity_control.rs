@@ -67,7 +67,6 @@ pub fn start(port: u16, popup: PopupHook, cx: &mut App) {
     info!(port, "parity control listening");
     // menus pop for real (screen captures compare them with GHD's) but are
     // recorded and close themselves, so this loop is only held for a moment
-    #[cfg(target_os = "macos")]
     corvane_ui::native_menu::set_auto_dismiss(Some(Duration::from_millis(
         std::env::var("CORVANE_MENU_HOLD_MS")
             .ok()
@@ -207,7 +206,6 @@ fn window_command(
         }
         "click" => {
             // a menu this click opens must not be confused with an older one
-            #[cfg(target_os = "macos")]
             if button == MouseButton::Right {
                 corvane_ui::native_menu::clear_recorded();
             }
@@ -332,9 +330,7 @@ fn window_command(
             }));
         }
         // the last native menu the app tried to show (recorded headless)
-        #[cfg(target_os = "macos")]
         "menu" => return Ok(json!({"items": corvane_ui::native_menu::recorded_menu()})),
-        #[cfg(target_os = "macos")]
         "menu-pick" => {
             let label = request["label"].as_str().unwrap_or_default();
             if !corvane_ui::native_menu::pick_recorded(label, window, cx) {
