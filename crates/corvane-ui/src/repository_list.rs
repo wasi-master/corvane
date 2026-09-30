@@ -105,7 +105,7 @@ impl RepositoryFoldout {
         };
         let id = repo.id;
         let hover_bg = t.list_item_hover_background;
-        let (ahead_behind, has_changes) = {
+        let (ahead_behind, has_changes, behind_accent) = {
             let s = self.state.read(cx);
             let indicator = s.indicators.get(&id);
             let rs = s.repo_states.get(&id);
@@ -118,7 +118,12 @@ impl RepositoryFoldout {
                 .map(|st| !st.files.is_empty())
                 .or_else(|| indicator.map(|i| i.changed_files > 0))
                 .unwrap_or(false);
-            (ab, changes)
+            (
+                ab,
+                changes,
+                s.flags
+                    .bool(corvane_core::flags::ids::REPOSITORY_LIST_BEHIND_ACCENT),
+            )
         };
         // GHD `RepositoryListItem` aria label: name, changes, ahead/behind
         let mut label = repo.name();
@@ -246,9 +251,14 @@ impl RepositoryFoldout {
                                         )
                                     })
                                     .when(ab.behind > 0, |d| {
-                                        d.child(
-                                            octicon(Octicon::ArrowDown, badge_text).size(zpx(12.)),
-                                        )
+                                        // flag `186-repository-list-behind-accent`:
+                                        // commits to pull show in the success colour
+                                        let color = if behind_accent && !selected {
+                                            t.status_success
+                                        } else {
+                                            badge_text
+                                        };
+                                        d.child(octicon(Octicon::ArrowDown, color).size(zpx(12.)))
                                     }),
                             )
                         })
