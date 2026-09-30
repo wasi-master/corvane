@@ -2778,6 +2778,35 @@ impl ChangesSidebar {
             || self.has_repo_rule_failure(cx)
     }
 
+    /// GHD `getButtonTooltip` for a disabled commit button (an enabled one
+    /// only shows its title when it overflows, which ours never does).
+    fn commit_button_tooltip(&self, cx: &App) -> Option<&'static str> {
+        if self.summary.read(cx).value().trim().is_empty() {
+            return Some("A commit summary is required to commit");
+        }
+        let s = self.state.read(cx);
+        let rs = s.selected_state()?;
+        let files = rs
+            .status
+            .as_ref()
+            .map(|st| st.files.as_slice())
+            .unwrap_or(&[]);
+        let any_included = files
+            .iter()
+            .any(|f| f.selection.kind() != DiffSelectionType::None);
+        let allow_empty = s
+            .selected
+            .and_then(|id| s.repository(id))
+            .is_some_and(|r| r.commit_options.allow_empty_commit);
+        if !any_included && !files.is_empty() && !allow_empty {
+            Some("Select one or more files to commit")
+        } else if rs.committing {
+            Some("Committing changes…")
+        } else {
+            None
+        }
+    }
+
     /// `CommitWarning` with the information icon: "Your changes will modify
     /// your most recent commit. Stop amending to make these changes as a new commit."
     fn amend_notice(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
@@ -3258,8 +3287,13 @@ impl ChangesSidebar {
                                 .child(self.branch_name(cx)),
                         )
                 };
-                primary_button("commit", label, self.commit_disabled(cx), cx)
+                let disabled = self.commit_disabled(cx);
+                primary_button("commit", label, disabled, cx)
                     .w_full()
+                    .when_some(
+                        disabled.then(|| self.commit_button_tooltip(cx)).flatten(),
+                        |d, tip| d.ghd_tooltip(tip),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| {
                         if !this.commit_disabled(cx) {
                             this.do_commit(cx)
