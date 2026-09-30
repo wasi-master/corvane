@@ -20,7 +20,7 @@ use corvane_git::ignore::IgnoreMatcher;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use tracing::{debug, warn};
 
-/// The default debounce (`203-fs-watcher-debounce-ms` sets the real one).
+/// The default debounce (`904-fs-watcher-debounce-ms` sets the real one).
 pub const DEBOUNCE: Duration = Duration::from_millis(300);
 
 pub struct RepoWatcher {
