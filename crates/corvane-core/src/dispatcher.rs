@@ -2790,6 +2790,31 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Corvane `470-assume-unchanged`: mark `paths` assume-unchanged, or with
+    /// `paths: None` clear the mark from every file that has it; then refresh.
+    pub fn set_assume_unchanged(id: u64, paths: Option<Vec<String>>, assume: bool, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx.background_executor().spawn(async move {
+            let paths = match paths {
+                Some(paths) => paths,
+                None => corvane_git::assume_unchanged_paths(git.clone(), &workdir)?,
+            };
+            corvane_git::set_assume_unchanged(git, &workdir, &paths, assume)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not update the index", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
     /// Append raw patterns (e.g. `*.log`) to the root `.gitignore`, then refresh.
     pub fn ignore_patterns(id: u64, patterns: Vec<String>, cx: &mut App) {
         let Some((_git, workdir)) = Self::repo_context(id, cx) else {

@@ -26,6 +26,8 @@
 //!   (`171-commit-author-line`).
 //! - included paths Windows cannot check out get a warning
 //!   (`284-windows-invalid-names-warning`).
+//! - the file menu can mark files assume-unchanged, the list menu clears the
+//!   marks (`470-assume-unchanged`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1635,6 +1637,7 @@ impl ChangesSidebar {
             open_many,
             ignore_counts,
             copy_diff,
+            assume_unchanged,
         ) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
@@ -1658,6 +1661,7 @@ impl ChangesSidebar {
                 s.flags.bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES),
                 s.flags.bool(corvane_core::flags::ids::IGNORE_MENU_COUNTS),
                 s.flags.bool(corvane_core::flags::ids::COPY_DIFF),
+                s.flags.bool(corvane_core::flags::ids::ASSUME_UNCHANGED),
             )
         };
         let path = file.path.clone();
@@ -1828,6 +1832,29 @@ impl ChangesSidebar {
                 Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx)
             }));
         }
+        // `470-assume-unchanged`: tracked files only (the index must know them)
+        if assume_unchanged {
+            let tracked = targets.iter().all(|f| {
+                matches!(
+                    f.status.kind,
+                    FileStatusKind::Modified | FileStatusKind::Deleted
+                )
+            });
+            let assume = paths.clone();
+            items.push(
+                MenuItem::new(
+                    if paths.len() > 1 {
+                        format!("Assume {} Selected Files Unchanged", paths.len())
+                    } else {
+                        "Assume Unchanged".to_string()
+                    },
+                    move |_, cx| {
+                        Dispatcher::set_assume_unchanged(id, Some(assume.clone()), true, cx)
+                    },
+                )
+                .enabled(tracked),
+            );
+        }
         if paths.len() > 1 {
             items.push(MenuItem::separator());
             let include = paths.clone();
@@ -1884,7 +1911,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, paths, openable) = {
+        let (id, confirm, paths, openable, assume_unchanged) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1913,7 +1940,13 @@ impl ChangesSidebar {
                         })
                         .unwrap_or_default()
                 });
-            (id, s.settings.confirm_discard_changes, paths, openable)
+            (
+                id,
+                s.settings.confirm_discard_changes,
+                paths,
+                openable,
+                s.flags.bool(corvane_core::flags::ids::ASSUME_UNCHANGED),
+            )
         };
         let has_changes = !paths.is_empty();
         let editor_label = self.state.read(cx).editor_label();
@@ -1935,6 +1968,15 @@ impl ChangesSidebar {
             items.push(open_all_in_editor_item(
                 format!("Open All in {editor_label}"),
                 files,
+            ));
+        }
+        if assume_unchanged {
+            // `470-assume-unchanged`: the way back for files the list no
+            // longer shows
+            items.push(MenuItem::separator());
+            items.push(MenuItem::new(
+                "Stop Assuming Files Unchanged",
+                move |_, cx| Dispatcher::set_assume_unchanged(id, None, false, cx),
             ));
         }
         self.open_menu(items, position, window, cx);

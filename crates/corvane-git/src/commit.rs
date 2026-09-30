@@ -75,6 +75,56 @@ pub fn stage_files(
     Ok(())
 }
 
+/// Corvane `470-assume-unchanged`: `update-index --[no-]assume-unchanged`
+/// for tracked `paths`, so git stops (or resumes) reporting their changes.
+pub fn set_assume_unchanged(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    paths: &[String],
+    assume: bool,
+) -> Result<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
+    let mut stdin: Vec<u8> = Vec::new();
+    for path in paths {
+        stdin.extend_from_slice(path.as_bytes());
+        stdin.push(0);
+    }
+    GitCommand::new(git)
+        .args([
+            "update-index",
+            if assume {
+                "--assume-unchanged"
+            } else {
+                "--no-assume-unchanged"
+            },
+            "-z",
+            "--stdin",
+        ])
+        .current_dir(workdir)
+        .stdin(stdin)
+        .run()?;
+    Ok(())
+}
+
+/// Paths marked assume-unchanged (`ls-files -v`: a lower-case tag).
+pub fn assume_unchanged_paths(git: Arc<GitBinary>, workdir: &Path) -> Result<Vec<String>> {
+    let out = GitCommand::new(git)
+        .args(["ls-files", "-v", "-z"])
+        .current_dir(workdir)
+        .run()?;
+    Ok(out
+        .stdout
+        .split(|&b| b == 0)
+        .filter_map(|entry| {
+            let (tag, path) = (entry.first()?, entry.get(2..)?);
+            tag.is_ascii_lowercase()
+                .then(|| String::from_utf8_lossy(path).into_owned())
+        })
+        .collect())
+}
+
 /// `git add -- <paths>` (the tutorial repository's README).
 pub fn add_paths(git: Arc<GitBinary>, workdir: &Path, paths: &[&str]) -> Result<()> {
     let mut args = vec!["add", "--"];
@@ -303,6 +353,32 @@ mod tests {
         let info = crate::open_repository(path).unwrap();
         assert!(matches!(info.tip, corvane_models::Tip::Unborn { .. }));
         assert!(path.join("a.txt").exists());
+    }
+
+    #[test]
+    fn assume_unchanged_round_trip() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        std::fs::write(path.join("a.txt"), "one\n").unwrap();
+        std::fs::write(path.join("b c.txt"), "two\n").unwrap();
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        stage_files(git.clone(), path, &status.files).unwrap();
+        commit(git.clone(), path, "init\n", &CommitOptions::default()).unwrap();
+        std::fs::write(path.join("a.txt"), "dirty\n").unwrap();
+        std::fs::write(path.join("b c.txt"), "dirty\n").unwrap();
+        let both = vec!["a.txt".to_string(), "b c.txt".to_string()];
+        set_assume_unchanged(git.clone(), path, &both, true).unwrap();
+        assert_eq!(assume_unchanged_paths(git.clone(), path).unwrap(), both);
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        assert!(status.files.is_empty());
+        set_assume_unchanged(git.clone(), path, &both, false).unwrap();
+        assert!(
+            assume_unchanged_paths(git.clone(), path)
+                .unwrap()
+                .is_empty()
+        );
+        let status = crate::get_status(git, path, None).unwrap();
+        assert_eq!(status.files.len(), 2);
     }
 
     #[test]

@@ -61,6 +61,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Changes filter matching (Corvane addition): a setting makes the filter text match as a substring, as the end of the path, or as the exact path or file name (case-insensitive, matches kept in list order) instead of GHD's fuzzy match. Flag: `283-changes-filter-match`.
 - Commit author line (Corvane addition, off in the Corvane preset): a line above the commit summary reads "Committing as Name <email>" with the identity git resolves for the repository (`includeIf` included), or says which of `user.name` / `user.email` is missing. GHD 3.6.6 shows only the avatar. Flag: `171-commit-author-line`.
 - Names invalid on Windows (Corvane addition, off in the Corvane preset): when an included, not deleted file's path has a reserved device name (`CON`, `nul.txt`, `COM1`), a character NTFS rejects (`<>:"\|?*`, control characters) or a component ending in a space or a dot, the commit form shows a warning naming the first one (`corvane_core::portable_paths`); committing stays possible. GHD 3.6.6 commits them silently. Flag: `284-windows-invalid-names-warning`.
+- "Assume Unchanged" (Corvane addition, off in the Corvane preset): the changes list's file menu marks the selected modified / deleted tracked files `update-index --assume-unchanged`, so they leave the list; the list's own menu has "Stop Assuming Files Unchanged", clearing the mark from every file `ls-files -v` reports with it. GHD 3.6.6 has neither. Flag: `470-assume-unchanged`.
 
 ## Diff viewer
 

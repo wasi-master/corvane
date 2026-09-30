@@ -709,6 +709,22 @@ registry! {
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
 
+    /// "Assume Unchanged" in the changes list's menus.
+    ASSUME_UNCHANGED = 470 "assume-unchanged" {
+        title: "Assume Unchanged",
+        summary: "The changes list's file menu has \"Assume Unchanged\" (`git update-index \
+                  --assume-unchanged`) for modified or deleted tracked files, which then leave \
+                  the list; the list's own menu has \"Stop Assuming Files Unchanged\" to bring \
+                  them all back.",
+        ghd_behaviour: "No such items; only ignoring (which does not affect tracked files).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22841)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
