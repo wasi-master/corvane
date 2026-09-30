@@ -1,4 +1,4 @@
-# Homebrew cask for Corvane — lives in the `wasi-master/homebrew-corvane` tap
+# Homebrew cask for Corvane. Lives in the `wasi-master/homebrew-corvane` tap
 # as `Casks/corvane.rb`. `packaging/release.sh` rewrites `version` and `sha256`.
 #
 #   brew install --cask wasi-master/corvane/corvane
