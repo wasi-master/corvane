@@ -1091,6 +1091,10 @@ impl Default for IntraLineOptions {
 /// `range` of `text` widened to the grapheme clusters it touches.
 pub fn snap_to_graphemes(text: &str, range: Range<usize>) -> Range<usize> {
     use unicode_segmentation::UnicodeSegmentation;
+    // in ASCII every byte is its own cluster, except CR LF
+    if text.is_ascii() && !text.contains('\r') {
+        return range;
+    }
     let (mut start, mut end) = (range.start, range.end);
     for (ix, grapheme) in text.grapheme_indices(true) {
         let grapheme_end = ix + grapheme.len();
