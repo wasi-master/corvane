@@ -352,6 +352,19 @@ registry! {
         upstream: &[Upstream::issue(7424)],
         code: &["crates/corvane-ui/src/branch_list.rs"],
     },
+    /// Branch › New Branch… prefills the branch filter's text.
+    NEW_BRANCH_FROM_FILTER = 261 "new-branch-from-filter" {
+        title: "New Branch shortcut uses the branch filter",
+        summary: "Branch › New Branch… (⌘⇧N) while the branch list is open prefills the name with \
+                  its filter text, like the list's New Branch button.",
+        ghd_behaviour: "The shortcut always opens Create a Branch with an empty name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5199)],
+        code: &["crates/corvane/src/main.rs", "crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/branch_list.rs"],
+    },
 
     // ---- 300 GitHub ----
 

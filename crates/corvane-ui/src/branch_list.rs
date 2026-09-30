@@ -315,6 +315,12 @@ impl BranchFoldout {
         )
     }
 
+    /// The Branches tab's filter text (`261-new-branch-from-filter`), with
+    /// an `owner:` prefix stripped as the list does.
+    pub fn filter_text(&self, cx: &App) -> String {
+        strip_owner_prefix(self.filter.read(cx).value().trim(), cx)
+    }
+
     pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // a freshly opened list selects the current branch again
         self.selected_row = None;
