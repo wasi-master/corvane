@@ -114,6 +114,21 @@ const QUICK_VIEW_WIDTHS: &[SelectOption] = &[
     },
 ];
 
+const BACKGROUND_FETCHES: &[SelectOption] = &[
+    SelectOption {
+        value: "off",
+        label: "Off",
+    },
+    SelectOption {
+        value: "github",
+        label: "GitHub repositories",
+    },
+    SelectOption {
+        value: "any",
+        label: "Any repository with a remote",
+    },
+];
+
 const SIGN_IN_FLOWS: &[SelectOption] = &[
     SelectOption {
         value: "device",
@@ -221,6 +236,21 @@ registry! {
             "crates/corvane-ui/src/diff_view.rs",
             "crates/corvane-core/src/packs.rs",
         ],
+    },
+
+    /// Relative dates in weeks and calendar months.
+    CALENDAR_RELATIVE_DATES = 123 "calendar-relative-dates" {
+        title: "Relative dates in weeks and calendar months",
+        summary: "Past a week, relative dates count weeks (\"4 weeks ago\") until two calendar \
+                  months have passed, then calendar months and years.",
+        ghd_behaviour: "Days until 30, then days ÷ 30 rounded as months: a commit on the 1st is \
+                        \"last month\" on the 31st.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20830), Upstream::issue(21903)],
+        code: &["crates/corvane-ui/src/relative_time.rs", "crates/corvane/src/main.rs"],
     },
 
     /// Taller .gitignore and squash-message text areas.
@@ -379,6 +409,264 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
+    },
+
+    /// A failed force push keeps Force Push recommended.
+    FORCE_PUSH_KEPT_ON_FAILURE = 223 "force-push-kept-on-failure" {
+        title: "Failed force push keeps Force Push",
+        summary: "After a rebase, the branch's \"Force push\" recommendation is only cleared once a \
+                  force push succeeds, so the button still offers it after a failed attempt.",
+        ghd_behaviour: "Clears the recommendation before the push runs; after a failure the button \
+                        offers a plain Push that git rejects.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(16352)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
+
+    /// Which repositories the hourly background fetch covers.
+    BACKGROUND_FETCH = 224 "background-fetch" {
+        title: "Background fetch",
+        summary: "Which selected repositories are fetched in the background every hour: none, \
+                  GitHub repositories only, or any repository with a remote.",
+        ghd_behaviour: "GitHub repositories only, with no way to turn it off.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: BACKGROUND_FETCHES },
+        corvane: Value::text("github"), ghd: Value::text("github"),
+        familiar: Value::text("github"), everything: Value::text("any"),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(10687), Upstream::issue(12474)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
+
+    /// Fetch deletes local tags the remote no longer has.
+    FETCH_PRUNE_TAGS = 225 "fetch-prune-tags" {
+        title: "Fetch prunes deleted tags",
+        summary: "Fetch (and the background fetch) passes --prune-tags, so tags deleted on the \
+                  remote disappear locally. Local tags that were never pushed are deleted too, \
+                  except while tags created in Corvane are waiting to be pushed.",
+        ghd_behaviour: "Prunes branches only; a tag deleted on the remote stays forever.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21022), Upstream::issue(22776)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// The Git LFS check reads .gitattributes instead of `git lfs track`.
+    LFS_DETECT_BY_ATTRIBUTES = 226 "lfs-detect-by-attributes" {
+        title: "Fast Git LFS detection",
+        summary: "Whether a newly added repository uses Git LFS is decided from its committed \
+                  .gitattributes files (plus the root one and info/attributes) instead of \
+                  `git lfs track`, which walks every directory, untracked ones included.",
+        ghd_behaviour: "Runs `git lfs track --json`, which can take minutes in a worktree with \
+                        many untracked files.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(5198)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// The cloning view's Cancel button.
+    CLONE_CANCEL = 227 "clone-cancel" {
+        title: "Cancel a running clone",
+        summary: "The cloning view has a Cancel button that stops `git clone`; git removes the \
+                  directory it created.",
+        ghd_behaviour: "No way to stop a clone: removing the cloning repository leaves the download \
+                        running in the background.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21866), Upstream::issue(22478)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/cloning_view.rs", "crates/corvane-git/src/process.rs"],
+    },
+
+    /// Push, pull and fetch stay available during a background fetch.
+    PUSH_DURING_BACKGROUND_FETCH = 228 "push-during-background-fetch" {
+        title: "Push during a background fetch",
+        summary: "The hourly background fetch runs without taking over the push/pull button, and a \
+                  push, pull or fetch asked for meanwhile starts as soon as it finishes.",
+        ghd_behaviour: "The button shows the background fetch's progress and is disabled; a push \
+                        from the menu is ignored until the fetch is done.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1011)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
+
+    /// The push/pull foldout's "Reset to <upstream>".
+    RESET_TO_REMOTE = 229 "reset-to-remote" {
+        title: "Reset to remote",
+        summary: "While the current branch has commits its upstream lacks, the push/pull dropdown \
+                  offers \"Reset to origin/…\": after a confirmation that names what is discarded, \
+                  the branch and working directory are reset hard to the upstream.",
+        ghd_behaviour: "No such command; resetting to the remote needs a terminal.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16673)],
+        code: &["crates/corvane-ui/src/foldout.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs"],
+    },
+
+    /// Branch context menu: fast-forward a branch that is not checked out.
+    UPDATE_BRANCH_FROM_UPSTREAM = 230 "update-branch-from-upstream" {
+        title: "Update a branch from its upstream",
+        summary: "The branch list's context menu offers \"Update from origin/…\" on local branches \
+                  that are not checked out: the branch is fast-forwarded to its upstream without \
+                  switching to it (a diverged branch is left alone with an explanation).",
+        ghd_behaviour: "No such command; the branch has to be checked out and pulled.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19837)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// "Last fetched" counts the clone.
+    CLONE_COUNTS_AS_FETCH = 231 "clone-counts-as-fetch" {
+        title: "Last fetched counts the clone",
+        summary: "A repository that was cloned and not fetched since shows the clone's time as \
+                  \"Last fetched\" (from HEAD's first reflog entry) instead of \"Never fetched\".",
+        ghd_behaviour: "Reads FETCH_HEAD only, which a clone does not write, so a fresh clone \
+                        says \"Never fetched\".",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13401)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Plain-language text for two confusing git errors.
+    PLAIN_LANGUAGE_REMOTE_ERRORS = 232 "plain-language-remote-errors" {
+        title: "Plain-language remote errors",
+        summary: "A pull whose upstream branch was deleted on the remote, and a clone into a folder \
+                  you may not write to, explain what happened in a sentence before git's message.",
+        ghd_behaviour: "Shows git's text only (\"Your configuration specifies to merge with the \
+                        ref …\", \"Permission denied\").",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1325), Upstream::issue(13187)],
+        code: &["crates/corvane-core/src/push_errors.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Repository list indicators refresh promptly.
+    PROMPT_INDICATOR_REFRESH = 233 "prompt-indicator-refresh" {
+        title: "Prompt repository indicator refresh",
+        summary: "The repository list's changes and ahead/behind indicators are refreshed right \
+                  after launch and whenever the repository list opens (at most once a minute), \
+                  not only every 15 minutes.",
+        ghd_behaviour: "The indicator updater starts on its delayed 15-minute cadence, so the list \
+                        can show stale indicators after launch.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22154)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Pull skips `remote set-head -a` when the remote HEAD is known.
+    REMOTE_HEAD_ONCE = 234 "remote-head-once" {
+        title: "Skip updating the remote HEAD",
+        summary: "After a pull, `git remote set-head -a` (which lists every ref on the server) \
+                  only runs when refs/remotes/<remote>/HEAD is missing or points at a branch that \
+                  no longer exists.",
+        ghd_behaviour: "Runs it after every pull, which takes minutes on repositories with \
+                        hundreds of thousands of refs.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22039)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Fetch passes `--write-commit-graph`.
+    FETCH_WRITES_COMMIT_GRAPH = 235 "fetch-writes-commit-graph" {
+        title: "Fetch updates the commit-graph",
+        summary: "Fetch passes --write-commit-graph, so git extends the commit-graph file that \
+                  speeds up history, ahead/behind and merge-base computations in big repositories.",
+        ghd_behaviour: "Plain fetch; the commit-graph is only written by git's own maintenance.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22045)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Fetch and pull leave submodules alone.
+    SYNC_SKIPS_SUBMODULES = 236 "sync-skips-submodules" {
+        title: "Fetch and pull skip submodules",
+        summary: "Fetch and pull pass --no-recurse-submodules, so submodules are neither fetched \
+                  nor updated; syncing them is left to you.",
+        ghd_behaviour: "Fetch recurses into submodules on demand and pull always updates them, \
+                        which fails the whole pull when a submodule has conflicts.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(15758)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// The background fetch fast-forwards the current branch.
+    BACKGROUND_FETCH_FAST_FORWARDS = 237 "background-fetch-fast-forwards" {
+        title: "Background fetch pulls when safe",
+        summary: "After a background fetch, the checked-out branch is fast-forwarded to its \
+                  upstream when it is only behind, the working directory has no changes and no \
+                  merge, rebase or cherry-pick is in progress. Anything else is left for Pull.",
+        ghd_behaviour: "Only fetches; the branch stays behind until you pull.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16586)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Force push is recommended after a rewrite outside Corvane.
+    FORCE_PUSH_AFTER_OUTSIDE_REWRITE = 238 "force-push-after-outside-rewrite" {
+        title: "Suggest force push after an outside rewrite",
+        summary: "When the branch is ahead of and behind its upstream and the upstream's tip is in \
+                  the branch's reflog (pushed commits were amended, rebased or reset in another \
+                  tool), the push/pull button recommends Force push instead of Pull.",
+        ghd_behaviour: "Recommends a force push only after its own amend or rebase; otherwise it \
+                        offers Pull, which merges the old commits back in or conflicts.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9739)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Prune stale remote refs and retry a failed fetch or pull.
+    PRUNE_STALE_REFS_AND_RETRY = 239 "prune-stale-refs-and-retry" {
+        title: "Prune stale remote refs and retry",
+        summary: "A fetch or pull that fails with \"cannot lock ref\" / \"unable to update local \
+                  ref\" runs `git remote prune` and tries once more before showing an error.",
+        ghd_behaviour: "Shows the error; the user has to run `git remote prune origin` in a \
+                        terminal.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(11391)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
 
     /// Create a Branch can start from any branch.
@@ -1126,6 +1414,94 @@ registry! {
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
 
+    /// Repository › Fetch All Repositories.
+    FETCH_ALL_REPOSITORIES = 423 "fetch-all-repositories" {
+        title: "Repository › Fetch All Repositories",
+        summary: "The Repository menu can fetch every repository in the list that has a remote, \
+                  one after another; failures are listed in one error at the end.",
+        ghd_behaviour: "Fetches the selected repository only; others wait for their background \
+                        fetch after being selected.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13700)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-core/src/remote.rs"],
+    },
+
+    /// No new merge or rebase while the repository is conflicted.
+    NO_MERGE_WHILE_CONFLICTED = 424 "no-merge-while-conflicted" {
+        title: "No merge while conflicted",
+        summary: "While a merge, rebase or cherry-pick still has conflicts, the History tab's merge \
+                  button is disabled and Branch › Merge, Squash and Merge, Rebase and Update from \
+                  Default Branch explain that it must be finished or aborted first.",
+        ghd_behaviour: "Starts the new operation, which git refuses with an error.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6429), Upstream::issue(6584)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/compare.rs", "crates/corvane/src/main.rs", "crates/corvane-ui/src/history.rs"],
+    },
+
+    /// View on GitHub opens other hosts' remotes too.
+    VIEW_ON_REMOTE = 425 "view-on-remote" {
+        title: "View on Remote for other hosts",
+        summary: "Repository › View on GitHub opens the default remote's web page (as https://host/path) \
+                  for a repository that is not on GitHub, and the repository list's context menu offers \
+                  it as \"View on Remote\".",
+        ghd_behaviour: "View on GitHub does nothing / is disabled for repositories not on GitHub.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17846), Upstream::issue(20840)],
+        code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// The worktree list leaves out prunable worktrees.
+    HIDE_PRUNABLE_WORKTREES = 426 "hide-prunable-worktrees" {
+        title: "Hide prunable worktrees",
+        summary: "The worktree list leaves out worktrees git reports as prunable (their directory \
+                  was deleted outside git), so they cannot be selected into an error.",
+        ghd_behaviour: "Lists them until `git worktree prune` runs; selecting one shows \"does not \
+                        appear to be a valid Git repository\".",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22605)],
+        code: &["crates/corvane-ui/src/worktree_list.rs", "crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// New worktrees default to the repository's own folder.
+    WORKTREE_DIR_BESIDE_REPOSITORY = 427 "worktree-dir-beside-repository" {
+        title: "New worktrees beside the repository",
+        summary: "Add Worktree's path starts in the folder that holds the repository's main \
+                  worktree, so worktrees become its siblings.",
+        ghd_behaviour: "Starts in the last clone folder, whatever repository the dialog is for.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22565)],
+        code: &["crates/corvane-ui/src/worktree_list.rs"],
+    },
+
+    /// Smaller minimum window and sidebar sizes.
+    SMALLER_MINIMUM_SIZES = 428 "smaller-minimum-sizes" {
+        title: "Smaller minimum window and sidebar",
+        summary: "The window can shrink to 600 × 400 and the repository sidebar to 120 px, for tiled \
+                  and side-by-side layouts (the toolbar and lists clip below GitHub Desktop's sizes).",
+        ghd_behaviour: "At least 960 × 660 for the window and 220 px for the sidebar.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: true, visible: true, availability: available,
+        upstream: &[Upstream::issue(14286), Upstream::issue(22492), Upstream::issue(21368)],
+        code: &["crates/corvane/src/main.rs", "crates/corvane-ui/src/workspace.rs"],
+    },
+
     /// Repository › Add License….
     ADD_LICENSE = 455 "add-license" {
         title: "Add a license to a repository",
@@ -1312,6 +1688,20 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-core/src/release_notes.rs"],
+    },
+
+    /// No automatic update checks.
+    NO_AUTOMATIC_UPDATE_CHECKS = 523 "no-automatic-update-checks" {
+        title: "No automatic update checks",
+        summary: "Corvane does not check for updates at launch or every four hours; Check for \
+                  Updates in About still checks, downloads and installs on request.",
+        ghd_behaviour: "Always checks at launch and every four hours and downloads what it finds.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3410), Upstream::issue(22468)],
+        code: &["crates/corvane-core/src/updater.rs"],
     },
     /// Editors GitHub Desktop does not detect.
     EXTRA_EDITORS = 585 "extra-editors" {

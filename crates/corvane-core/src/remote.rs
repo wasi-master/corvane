@@ -3,9 +3,37 @@
 //! the `BackgroundFetcher` (every hour, at least 5 minutes apart) and the
 //! `RepositoryIndicatorUpdater` (every 15 minutes), plus the Git LFS
 //! initialisation prompt (`InitializeLFS`).
+//!
+//! Deviations (flags): a failed force push keeps the "Force push"
+//! recommendation (`223-force-push-kept-on-failure`; GHD clears it first).
+//! The background fetch can be off or cover any remote
+//! (`224-background-fetch`; GHD: GitHub repositories only).
+//! Fetch can prune tags deleted on the remote (`225-fetch-prune-tags`).
+//! The LFS check can read `.gitattributes` instead of running
+//! `git lfs track` (`226-lfs-detect-by-attributes`).
+//! The background fetch can run without progress in the push/pull button,
+//! and a push, pull or fetch asked for meanwhile waits for it
+//! (`228-push-during-background-fetch`; GHD disables the button).
+//! A local branch that is not checked out can be fast-forwarded from its
+//! upstream (`230-update-branch-from-upstream`).
+//! Repository › Fetch All Repositories fetches every listed repository
+//! (`423-fetch-all-repositories`).
+//! Indicators refresh right after launch and on opening the repository list
+//! (`233-prompt-indicator-refresh`; GHD waits for the 15-minute updater).
+//! A pull skips `remote set-head -a` while the remote's HEAD resolves
+//! (`234-remote-head-once`; GHD runs it after every pull).
+//! Fetch can extend the commit-graph (`235-fetch-writes-commit-graph`).
+//! Fetch and pull can leave submodules alone (`236-sync-skips-submodules`).
+//! The background fetch can fast-forward a clean branch that is only behind
+//! (`237-background-fetch-fast-forwards`).
+//! Force push is also recommended after a rewrite outside Corvane
+//! (`238-force-push-after-outside-rewrite`).
+//! A fetch or pull blocked by a stale remote-tracking ref prunes the remote
+//! and retries once (`239-prune-stale-refs-and-retry`).
 
 use std::collections::HashMap;
-use std::time::{Duration, SystemTime};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant, SystemTime};
 
 use corvane_git::{AskpassEnv, RemoteFailure};
 use corvane_models::{Account, AheadBehind, Remote, Tip};
@@ -63,6 +91,13 @@ pub enum ForcePushState {
 const BACKGROUND_FETCH_INTERVAL: Duration = Duration::from_secs(60 * 60);
 const BACKGROUND_FETCH_MINIMUM: Duration = Duration::from_secs(5 * 60);
 const INDICATOR_REFRESH_INTERVAL: Duration = Duration::from_secs(15 * 60);
+const INDICATOR_REFRESH_MINIMUM: Duration = Duration::from_secs(60);
+
+thread_local! {
+    /// When [`Dispatcher::refresh_indicators`] last started (main thread).
+    static LAST_INDICATOR_REFRESH: std::cell::Cell<Option<Instant>> =
+        const { std::cell::Cell::new(None) };
+}
 
 pub(crate) fn spawn_bg<T: Send + 'static>(
     cx: &mut App,
@@ -143,7 +178,12 @@ impl Dispatcher {
             .as_ref()
             .and_then(|i| i.current_branch())
             .is_some_and(|b| rs.force_push_branches.get(b.name_without_remote()) == b.tip.as_ref());
-        if recommended {
+        // `238-force-push-after-outside-rewrite`: GHD recommends a force
+        // push only after its own amend or rebase
+        let rewritten_outside = rs.upstream_rewritten
+            && s.flags
+                .bool(crate::flags::ids::FORCE_PUSH_AFTER_OUTSIDE_REWRITE);
+        if recommended || rewritten_outside {
             ForcePushState::Recommended
         } else {
             ForcePushState::Available
@@ -170,10 +210,45 @@ impl Dispatcher {
         })
     }
 
+    /// `228-push-during-background-fetch`: a push, pull or fetch asked for
+    /// while a background fetch runs waits for it (GHD disables the button
+    /// and drops the request).
+    fn behind_background_fetch(id: u64, cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .is_some_and(|r| r.push_pull_in_progress && r.quiet_background_fetch)
+    }
+
+    /// Run `then` once the repository's network operation finished.
+    fn after_network(id: u64, cx: &mut App, then: impl FnOnce(&mut App) + 'static) {
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(200))
+                    .await;
+                let busy = cx.update(|cx| {
+                    Self::state(cx)
+                        .read(cx)
+                        .repo_states
+                        .get(&id)
+                        .is_some_and(|r| r.push_pull_in_progress)
+                });
+                if !busy {
+                    break;
+                }
+            }
+            cx.update(then);
+        })
+        .detach();
+    }
+
     fn end_network(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             let rs = s.repo_state_mut(id);
             rs.push_pull_in_progress = false;
+            rs.quiet_background_fetch = false;
             rs.push_pull_progress = None;
             cx.notify();
         });
@@ -320,14 +395,64 @@ impl Dispatcher {
                     cx,
                 );
             }
-            _ => Self::show_error(title, err.to_string(), cx),
+            _ => {
+                // `232-plain-language-remote-errors`: say what went wrong
+                // before git's message
+                let plain = Self::state(cx)
+                    .read(cx)
+                    .flags
+                    .bool(crate::flags::ids::PLAIN_LANGUAGE_REMOTE_ERRORS)
+                    .then(|| crate::push_errors::plain_remote_error(&err))
+                    .flatten();
+                Self::show_error(title, plain.unwrap_or_else(|| err.to_string()), cx)
+            }
         }
     }
 
     // ---- fetch ----
 
+    /// `239-prune-stale-refs-and-retry`: when a fetch or pull failed because
+    /// a stale remote-tracking ref blocks a new one, run `git remote prune`
+    /// and say to try once more (`retry` is cleared). GHD shows the error.
+    fn prune_before_retry<T>(
+        retry: &mut bool,
+        result: &Result<T, corvane_git::GitError>,
+        git: &std::sync::Arc<corvane_git::GitBinary>,
+        workdir: &std::path::Path,
+        remote: &str,
+        askpass: Option<&AskpassEnv>,
+    ) -> bool {
+        if !std::mem::take(retry)
+            || !result
+                .as_ref()
+                .is_err_and(corvane_git::is_stale_remote_ref_failure)
+        {
+            return false;
+        }
+        info!(remote, "stale remote-tracking ref; pruning and retrying");
+        corvane_git::prune_remote(git.clone(), workdir, remote, askpass).is_ok()
+    }
+
+    /// The Corvane additions to a fetch of repository `id`.
+    fn fetch_options(s: &crate::state::AppState, id: u64) -> corvane_git::FetchOptions {
+        corvane_git::FetchOptions {
+            // `225-fetch-prune-tags`: drop tags deleted on the remote, but
+            // never while tags created here wait to be pushed (they would
+            // be lost)
+            prune_tags: s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS)
+                && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty()),
+            // `235-fetch-writes-commit-graph`
+            write_commit_graph: s.flags.bool(crate::flags::ids::FETCH_WRITES_COMMIT_GRAPH),
+            // `236-sync-skips-submodules`
+            skip_submodules: s.flags.bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES),
+        }
+    }
+
     /// `_fetch(FetchType::UserInitiatedTask | BackgroundTask)`
     pub fn fetch(id: u64, background: bool, cx: &mut App) {
+        if !background && Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| Self::fetch(id, false, cx));
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -337,39 +462,81 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return;
         }
+        // `228-push-during-background-fetch`: the background fetch leaves the
+        // push/pull button alone
+        let quiet = background
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::PUSH_DURING_BACKGROUND_FETCH);
         Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Fetching {}", remote.name);
-        Self::set_progress(
-            id,
-            Some(PushPullProgress {
-                kind: PushPullKind::Fetch,
-                title: title.clone(),
-                description: None,
-                value: 0.,
-            }),
-            cx,
-        );
+        if quiet {
+            Self::state(cx).update(cx, |s, _| {
+                s.repo_state_mut(id).quiet_background_fetch = true;
+            });
+        } else {
+            Self::set_progress(
+                id,
+                Some(PushPullProgress {
+                    kind: PushPullKind::Fetch,
+                    title: title.clone(),
+                    description: None,
+                    value: 0.,
+                }),
+                cx,
+            );
+        }
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
+        let options = Self::fetch_options(Self::state(cx).read(cx), id);
+        let prune_retry = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PRUNE_STALE_REFS_AND_RETRY);
+        let fast_forward_current = background
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::BACKGROUND_FETCH_FAST_FORWARDS);
         Self::run_network(
             id,
             cx,
             move |report| {
-                let result = corvane_git::fetch(
-                    git.clone(),
-                    &workdir,
-                    &remote_name,
-                    askpass.as_ref(),
-                    &mut |value, text| {
-                        report(PushPullProgress {
-                            kind: PushPullKind::Fetch,
-                            title: title.clone(),
-                            description: Some(text),
-                            value: value * 0.9,
-                        })
-                    },
-                );
+                let mut report = |progress| {
+                    if !quiet {
+                        report(progress)
+                    }
+                };
+                let mut retry = prune_retry;
+                let result = loop {
+                    let result = corvane_git::fetch_with(
+                        git.clone(),
+                        &workdir,
+                        &remote_name,
+                        options,
+                        askpass.as_ref(),
+                        &mut |value, text| {
+                            report(PushPullProgress {
+                                kind: PushPullKind::Fetch,
+                                title: title.clone(),
+                                description: Some(text),
+                                value: value * 0.9,
+                            })
+                        },
+                    );
+                    if !Self::prune_before_retry(
+                        &mut retry,
+                        &result,
+                        &git,
+                        &workdir,
+                        &remote_name,
+                        askpass.as_ref(),
+                    ) {
+                        break result;
+                    }
+                };
                 if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
@@ -377,7 +544,16 @@ impl Dispatcher {
                         description: Some("Fast-forwarding branches".into()),
                         value: 0.9,
                     });
-                    let _ = corvane_git::fast_forward_branches(git, &workdir);
+                    let _ = corvane_git::fast_forward_branches(git.clone(), &workdir);
+                    // `237-background-fetch-fast-forwards`: a clean branch
+                    // that is only behind catches up (GHD leaves it for Pull)
+                    if fast_forward_current {
+                        match corvane_git::fast_forward_if_only_behind(git, &workdir) {
+                            Ok(true) => info!(id, "fast-forwarded after background fetch"),
+                            Ok(false) => {}
+                            Err(err) => warn!(id, %err, "fast-forward after fetch failed"),
+                        }
+                    }
                 }
                 result
             },
@@ -398,10 +574,100 @@ impl Dispatcher {
         );
     }
 
+    /// Repository › Fetch All Repositories (`423-fetch-all-repositories`;
+    /// GHD has none): fetch every listed repository with a remote, one at a
+    /// time on a background thread, skipping those with a network operation
+    /// running; failures are collected into one error.
+    pub fn fetch_all_repositories(cx: &mut App) {
+        static RUNNING: AtomicBool = AtomicBool::new(false);
+        let (git, repos, use_helper, github_hosts, selected) = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::FETCH_ALL_REPOSITORIES) {
+                return;
+            }
+            let Some(git) = s.git.clone() else { return };
+            let use_helper = s.settings.use_external_credential_helper;
+            let repos: Vec<_> = s
+                .repositories
+                .iter()
+                .filter(|r| !r.missing)
+                .filter(|r| {
+                    !s.repo_states
+                        .get(&r.id)
+                        .is_some_and(|rs| rs.push_pull_in_progress)
+                })
+                .map(|r| (r.name(), r.path.clone(), Self::fetch_options(s, r.id)))
+                .collect();
+            let github_hosts: Vec<String> = std::iter::once("github.com".to_string())
+                .chain(s.accounts.iter().map(|a| a.host()))
+                .collect();
+            (git, repos, use_helper, github_hosts, s.selected)
+        };
+        if RUNNING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let askpass = Self::askpass_env(cx);
+        spawn_bg(
+            cx,
+            move || {
+                let mut failures = Vec::new();
+                for (name, path, options) in repos {
+                    let Ok(info) = corvane_git::open_repository(&path) else {
+                        continue;
+                    };
+                    let upstream_remote = info
+                        .current_branch()
+                        .and_then(|b| b.upstream_remote_name().map(str::to_string));
+                    let Some(remote) = upstream_remote
+                        .and_then(|n| info.remotes.iter().find(|r| r.name == n))
+                        .or_else(|| corvane_git::find_default_remote(&info.remotes))
+                        .cloned()
+                    else {
+                        continue;
+                    };
+                    corvane_git::set_credential_helper(
+                        use_helper && !github_hosts.contains(&host_of(&remote.url)),
+                    );
+                    match corvane_git::fetch_with(
+                        git.clone(),
+                        &info.workdir,
+                        &remote.name,
+                        options,
+                        askpass.as_ref(),
+                        &mut |_, _| {},
+                    ) {
+                        Ok(()) => {
+                            let _ = corvane_git::fast_forward_branches(git.clone(), &info.workdir);
+                        }
+                        Err(err) => failures.push(format!("{name}: {err}")),
+                    }
+                }
+                failures
+            },
+            move |failures, cx| {
+                RUNNING.store(false, Ordering::SeqCst);
+                if !failures.is_empty() {
+                    Self::show_error(
+                        "Could not fetch all repositories",
+                        failures.join("\n\n"),
+                        cx,
+                    );
+                }
+                if let Some(id) = selected {
+                    Self::refresh_repository(id, cx);
+                }
+                Self::refresh_indicators(cx);
+            },
+        );
+    }
+
     // ---- pull ----
 
     /// `_pull`
     pub fn pull(id: u64, cx: &mut App) {
+        if Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| Self::pull(id, cx));
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -436,6 +702,18 @@ impl Dispatcher {
         Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Pulling {}", remote.name);
+        let keep_remote_head = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REMOTE_HEAD_ONCE);
+        let skip_submodules = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES);
+        let prune_retry = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PRUNE_STALE_REFS_AND_RETRY);
         Self::set_progress(
             id,
             Some(PushPullProgress {
@@ -452,27 +730,49 @@ impl Dispatcher {
             id,
             cx,
             move |report| {
-                let result = corvane_git::pull(
-                    git.clone(),
-                    &workdir,
-                    &remote_name,
-                    askpass.as_ref(),
-                    &mut |value, text| {
-                        report(PushPullProgress {
-                            kind: PushPullKind::Pull,
-                            title: title.clone(),
-                            description: Some(text),
-                            value: value * 0.6,
-                        })
-                    },
-                );
-                if result.is_ok() {
+                let mut retry = prune_retry;
+                let result = loop {
+                    let result = corvane_git::pull(
+                        git.clone(),
+                        &workdir,
+                        &remote_name,
+                        skip_submodules,
+                        askpass.as_ref(),
+                        &mut |value, text| {
+                            report(PushPullProgress {
+                                kind: PushPullKind::Pull,
+                                title: title.clone(),
+                                description: Some(text),
+                                value: value * 0.6,
+                            })
+                        },
+                    );
+                    if !Self::prune_before_retry(
+                        &mut retry,
+                        &result,
+                        &git,
+                        &workdir,
+                        &remote_name,
+                        askpass.as_ref(),
+                    ) {
+                        break result;
+                    }
+                };
+                // `234-remote-head-once`: `set-head -a` asks the server for
+                // every ref, which takes minutes on huge repositories; skip
+                // it while the remote's HEAD already resolves
+                if result.is_ok()
+                    && !(keep_remote_head
+                        && corvane_git::remote_head_resolves(git.clone(), &workdir, &remote_name))
+                {
                     let _ = corvane_git::update_remote_head(
                         git.clone(),
                         &workdir,
                         &remote_name,
                         askpass.as_ref(),
                     );
+                }
+                if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
                         title: "Refreshing Repository".into(),
@@ -519,6 +819,104 @@ impl Dispatcher {
         );
     }
 
+    // ---- update a branch from its upstream ----
+
+    /// The branch list's "Update from <upstream>" (`230-update-branch-from-upstream`;
+    /// GHD has none): fast-forward a local branch that is not checked out.
+    pub fn update_branch_from_upstream(id: u64, name: String, cx: &mut App) {
+        let target = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::UPDATE_BRANCH_FROM_UPSTREAM) {
+                return;
+            }
+            let info = s.repo_states.get(&id).and_then(|r| r.info.as_ref());
+            info.and_then(|info| {
+                let branch = info
+                    .branches
+                    .iter()
+                    .find(|b| b.name == name && b.kind == corvane_models::BranchKind::Local)?;
+                if info.current_branch().is_some_and(|c| c.name == name) {
+                    return None;
+                }
+                let remote = branch.upstream_remote_name()?;
+                let remote_branch = branch
+                    .upstream_short()?
+                    .strip_prefix(remote)?
+                    .strip_prefix('/')?
+                    .to_string();
+                let url = info.remotes.iter().find(|r| r.name == remote)?.url.clone();
+                Some((
+                    remote.to_string(),
+                    remote_branch,
+                    url,
+                    branch.upstream_short()?.to_string(),
+                ))
+            })
+        };
+        let Some((remote, remote_branch, remote_url, upstream)) = target else {
+            return;
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        if !Self::begin_network(id, cx) {
+            return;
+        }
+        Self::arm_credential_helper(&remote_url, cx);
+        let askpass = Self::askpass_env(cx);
+        Self::set_progress(
+            id,
+            Some(PushPullProgress {
+                kind: PushPullKind::Fetch,
+                title: format!("Updating {name} from {upstream}"),
+                description: None,
+                value: 0.,
+            }),
+            cx,
+        );
+        let local = name.clone();
+        Self::run_network(
+            id,
+            cx,
+            move |_| {
+                corvane_git::fast_forward_branch_from_remote(
+                    git,
+                    &workdir,
+                    &remote,
+                    &remote_branch,
+                    &local,
+                    askpass.as_ref(),
+                )
+            },
+            move |result, cx| {
+                if let Err(err) = result {
+                    let title = "Could not update branch";
+                    if corvane_git::remote_failure(&err) == RemoteFailure::PushNotFastForward {
+                        Self::show_error(
+                            title,
+                            format!(
+                                "{name} has commits that are not on {upstream}, so it cannot be \
+                                 fast-forwarded. Check it out and pull instead."
+                            ),
+                            cx,
+                        );
+                    } else {
+                        Self::handle_remote_error(
+                            id,
+                            title,
+                            err,
+                            remote_url,
+                            RetryAction::Fetch,
+                            false,
+                            cx,
+                        );
+                    }
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
     // ---- push ----
 
     /// `_push` (+ `performPush`): publish the branch when it has no upstream.
@@ -534,6 +932,11 @@ impl Dispatcher {
         then: impl FnOnce(PushOutcome, &mut App) + 'static,
         cx: &mut App,
     ) {
+        if Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| {
+                Self::push_then(id, force_with_lease, branch, then, cx)
+            });
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return then(PushOutcome::NotAttempted, cx);
         };
@@ -588,11 +991,19 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return then(PushOutcome::NotAttempted, cx);
         }
-        if force_with_lease {
+        // GHD clears the "force push recommended" mark before the push runs,
+        // so a failed force push leaves a plain Push button (desktop#16352);
+        // `223-force-push-kept-on-failure` clears it after success only
+        let keep_force_push_on_failure = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::FORCE_PUSH_KEPT_ON_FAILURE);
+        let force_push_branch = branch.name_without_remote().to_string();
+        if force_with_lease && !keep_force_push_on_failure {
             Self::state(cx).update(cx, |s, _| {
                 s.repo_state_mut(id)
                     .force_push_branches
-                    .remove(branch.name_without_remote());
+                    .remove(&force_push_branch);
             });
         }
         Self::arm_credential_helper(&remote.url, cx);
@@ -624,6 +1035,11 @@ impl Dispatcher {
             .map(|r| r.tags_to_push.clone())
             .unwrap_or_default();
         let pushed_tags = !tags.is_empty();
+        // GHD's plain fetch after a push, plus `235` / `236`
+        let fetch_options = corvane_git::FetchOptions {
+            prune_tags: false,
+            ..Self::fetch_options(Self::state(cx).read(cx), id)
+        };
         let retry = RetryAction::Push {
             force_with_lease,
             branch: Some(branch.name.clone()),
@@ -657,10 +1073,11 @@ impl Dispatcher {
                         description: None,
                         value: 0.65,
                     });
-                    let _ = corvane_git::fetch(
+                    let _ = corvane_git::fetch_with(
                         git.clone(),
                         &workdir,
                         &remote_name,
+                        fetch_options,
                         askpass.as_ref(),
                         &mut |value, text| {
                             report(PushPullProgress {
@@ -683,6 +1100,13 @@ impl Dispatcher {
             },
             move |result, cx| {
                 let pushed = result.is_ok();
+                if pushed && force_with_lease && keep_force_push_on_failure {
+                    Self::state(cx).update(cx, |s, _| {
+                        s.repo_state_mut(id)
+                            .force_push_branches
+                            .remove(&force_push_branch);
+                    });
+                }
                 // `clearTagsToPush` once the push went through
                 if pushed && pushed_tags {
                     Self::update_tags_to_push(id, cx, Vec::clear);
@@ -912,12 +1336,24 @@ impl Dispatcher {
             return;
         }
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).lfs_checked = true);
+        // `226-lfs-detect-by-attributes`: read the .gitattributes files instead
+        // of `git lfs track`, which walks the whole worktree
+        let by_attributes = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::LFS_DETECT_BY_ATTRIBUTES);
         spawn_bg(
             cx,
             move || {
-                corvane_git::lfs_available(git.clone())
-                    && corvane_git::is_using_lfs(git, &workdir)
-                    && !corvane_git::lfs_hooks_installed(&workdir)
+                if by_attributes {
+                    corvane_git::is_using_lfs_by_attributes(git.clone(), &workdir)
+                        && !corvane_git::lfs_hooks_installed(&workdir)
+                        && corvane_git::lfs_available(git)
+                } else {
+                    corvane_git::lfs_available(git.clone())
+                        && corvane_git::is_using_lfs(git, &workdir)
+                        && !corvane_git::lfs_hooks_installed(&workdir)
+                }
             },
             move |needs_init, cx| {
                 if needs_init && Self::state(cx).read(cx).popup.is_none() {
@@ -970,10 +1406,19 @@ impl Dispatcher {
             }
         })
         .detach();
+        // `233-prompt-indicator-refresh`: the first indicator refresh runs
+        // right after launch (GHD's updater starts on its delayed cadence)
+        let first_indicators = if Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PROMPT_INDICATOR_REFRESH)
+        {
+            Duration::from_secs(1)
+        } else {
+            Duration::from_secs(45)
+        };
         cx.spawn(async move |cx: &mut AsyncApp| {
-            cx.background_executor()
-                .timer(Duration::from_secs(45))
-                .await;
+            cx.background_executor().timer(first_indicators).await;
             loop {
                 cx.update(Self::refresh_indicators);
                 cx.background_executor()
@@ -984,14 +1429,21 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Fetch the selected GitHub repository when its last fetch is older than
-    /// the interval (`shouldBackgroundFetch`).
+    /// Fetch the selected GitHub repository (see `224-background-fetch`) when
+    /// its last fetch is older than the interval (`shouldBackgroundFetch`).
     fn background_fetch_tick(cx: &mut App) {
         let (id, last_fetched, busy) = {
             let s = Self::state(cx).read(cx);
             let Some(id) = s.selected else { return };
             let Some(repo) = s.repository(id) else { return };
-            if repo.github.is_none() {
+            // GHD fetches GitHub repositories only; `224-background-fetch`
+            // can also turn it off or extend it to any remote
+            let fetch = match s.flags.text(crate::flags::ids::BACKGROUND_FETCH) {
+                "off" => false,
+                "any" => true,
+                _ => repo.github.is_some(),
+            };
+            if !fetch {
                 return;
             }
             let rs = s.repo_states.get(&id);
@@ -1017,9 +1469,22 @@ impl Dispatcher {
         }
     }
 
+    /// [`Self::refresh_indicators`] unless indicators were refreshed less
+    /// than a minute ago (`233-prompt-indicator-refresh`, on opening the
+    /// repository list).
+    pub fn refresh_indicators_if_stale(cx: &mut App) {
+        let fresh = LAST_INDICATOR_REFRESH
+            .with(|last| last.get())
+            .is_some_and(|at| at.elapsed() < INDICATOR_REFRESH_MINIMUM);
+        if !fresh {
+            Self::refresh_indicators(cx);
+        }
+    }
+
     /// `refreshIndicatorForRepository` for every repository: changed files
     /// and ahead/behind, shown in the repository list.
     pub fn refresh_indicators(cx: &mut App) {
+        LAST_INDICATOR_REFRESH.with(|last| last.set(Some(Instant::now())));
         let enabled = Self::state(cx)
             .read(cx)
             .settings

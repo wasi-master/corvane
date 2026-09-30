@@ -234,13 +234,15 @@ pub fn parse_clone_progress(line: &str) -> CloneProgress {
 }
 
 /// `git clone --progress --recurse-submodules <url> <path>` streaming progress;
-/// `depth` adds `--depth <n>` (a shallow clone, `269-shallow-clone`).
+/// `depth` adds `--depth <n>` (a shallow clone, `269-shallow-clone`). A
+/// cancelled `cancel` token stops git, which removes what it created.
 pub fn clone(
     git: Arc<GitBinary>,
     url: &str,
     path: &Path,
     default_branch: Option<&str>,
     depth: Option<u32>,
+    cancel: Option<crate::CancelToken>,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<()> {
     if let Some(parent) = path.parent() {
@@ -252,6 +254,9 @@ pub fn clone(
     // so an empty repository starts on the right branch
     if let Some(branch) = default_branch {
         cmd = cmd.args(["-c".to_string(), format!("init.defaultBranch={branch}")]);
+    }
+    if let Some(token) = cancel {
+        cmd = cmd.cancel_token(token);
     }
     cmd = cmd.args(["clone", "--progress", "--recurse-submodules"]);
     if let Some(depth) = depth {
@@ -306,6 +311,39 @@ mod tests {
     }
 
     #[test]
+    fn cancelled_clone_stops_and_leaves_nothing() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        assert!(
+            std::process::Command::new("git")
+                .args(["init", "-q", "--bare"])
+                .arg(&bare)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let url = bare.to_str().unwrap();
+        let target = dir.path().join("clone");
+        let token = crate::CancelToken::new();
+        token.cancel();
+        let err = clone(git.clone(), url, &target, None, None, Some(token), |_| {}).unwrap_err();
+        assert!(matches!(err, crate::GitError::Cancelled(_)), "{err}");
+        assert!(!target.exists());
+        clone(
+            git,
+            url,
+            &target,
+            None,
+            None,
+            Some(crate::CancelToken::new()),
+            |_| {},
+        )
+        .unwrap();
+        assert!(target.join(".git").exists());
+    }
+
+    #[test]
     fn clone_progress_phases() {
         let p = parse_clone_progress("Receiving objects:  50% (500/1000), 1.2 MiB | 3 MiB/s");
         assert!((p.value.unwrap() - 0.4).abs() < 0.001);
@@ -357,10 +395,10 @@ mod tests {
         // `--depth` is ignored for a plain local path
         let url = format!("file://{}", source.display());
         let shallow = dir.path().join("shallow");
-        clone(git.clone(), &url, &shallow, None, Some(1), |_| {}).unwrap();
+        clone(git.clone(), &url, &shallow, None, Some(1), None, |_| {}).unwrap();
         assert_eq!(run(&shallow, &["rev-list", "--count", "HEAD"]).trim(), "1");
         let full = dir.path().join("full");
-        clone(git, &url, &full, None, None, |_| {}).unwrap();
+        clone(git, &url, &full, None, None, None, |_| {}).unwrap();
         assert_eq!(run(&full, &["rev-list", "--count", "HEAD"]).trim(), "2");
     }
 

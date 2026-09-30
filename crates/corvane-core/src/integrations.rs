@@ -3,6 +3,10 @@
 //! (`_openInExternalEditor`, `_openShell`, `_openInBrowser`, `_setRemoteURL`,
 //! `_saveGitIgnore`, `_removeRepository`) plus `preferences.tsx#onSave` and
 //! `repository-settings.tsx#onSubmit`.
+//!
+//! Deviation: View on GitHub also opens a non-GitHub repository's default
+//! remote as a web page (`remote_web_url`, `425-view-on-remote`); GHD
+//! disables it.
 
 use std::path::{Path, PathBuf};
 
@@ -42,6 +46,34 @@ pub struct RepositorySettingsSave {
 /// `openIssueCreationPage`: GitHub's issue template chooser.
 pub fn issue_creation_url(html_url: &str) -> String {
     format!("{html_url}/issues/new/choose")
+}
+
+/// The web page of a remote that is not a GitHub repository
+/// (`425-view-on-remote`): an `http(s)` URL without its credentials and
+/// `.git`, and SSH / scp-style / `git://` URLs as `https://host/path`.
+/// `None` for local paths and anything else without a host.
+pub fn remote_web_url(url: &str) -> Option<String> {
+    let url = url.trim();
+    let (scheme, host, path) = match ["https://", "http://"]
+        .into_iter()
+        .find_map(|scheme| url.strip_prefix(scheme).map(|rest| (scheme, rest)))
+    {
+        Some((scheme, rest)) => {
+            let (authority, path) = rest.split_once('/').unwrap_or((rest, ""));
+            let host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+            (scheme, host.to_string(), path.to_string())
+        }
+        None => {
+            let (host, path) = corvane_models::split_remote(url)?;
+            ("https://", host, path)
+        }
+    };
+    let path = path.trim_matches('/');
+    let path = path.strip_suffix(".git").unwrap_or(path);
+    if host.is_empty() || path.is_empty() {
+        return None;
+    }
+    Some(format!("{scheme}{host}/{path}"))
 }
 
 /// `encodeURIComponent` for branch names in GitHub URLs.
@@ -339,10 +371,13 @@ impl Dispatcher {
         Some((gh, branch))
     }
 
-    /// Repository › View on GitHub.
+    /// Repository › View on GitHub; with `425-view-on-remote` a repository
+    /// that is not on GitHub opens its default remote's web page instead.
     pub fn view_on_github(id: u64, cx: &mut App) {
         if let Some((gh, _)) = Self::github_and_branch(id, cx) {
             Self::open_url(&gh.html_url, cx);
+        } else if let Some(url) = Self::non_github_remote_web_url(id, cx) {
+            Self::open_url(&url, cx);
         }
     }
 
@@ -354,6 +389,17 @@ impl Dispatcher {
         if let Some(url) = url {
             Self::open_url(&url, cx);
         }
+    }
+
+    /// The default remote's web page (`remote_web_url`) of a loaded
+    /// repository that is not on GitHub, when `425-view-on-remote` is on.
+    pub fn non_github_remote_web_url(id: u64, cx: &App) -> Option<String> {
+        let s = Self::state(cx).read(cx);
+        if !s.flags.bool(crate::flags::ids::VIEW_ON_REMOTE) || s.repository(id)?.github.is_some() {
+            return None;
+        }
+        let info = s.repo_states.get(&id)?.info.as_ref()?;
+        remote_web_url(&corvane_git::find_default_remote(&info.remotes)?.url)
     }
 
     /// Repository › Create Issue on GitHub (`openIssueCreationPage`): the
@@ -848,6 +894,40 @@ mod tests {
             }
         } else {
             base
+        }
+    }
+
+    #[test]
+    fn remote_web_urls() {
+        for (remote, web) in [
+            (
+                "https://gitlab.com/group/sub/proj.git",
+                Some("https://gitlab.com/group/sub/proj"),
+            ),
+            (
+                "https://user:tok@git.corp:8443/team/repo/",
+                Some("https://git.corp:8443/team/repo"),
+            ),
+            (
+                "http://gitea.local/me/repo",
+                Some("http://gitea.local/me/repo"),
+            ),
+            (
+                "git@bitbucket.org:team/repo.git",
+                Some("https://bitbucket.org/team/repo"),
+            ),
+            (
+                "ssh://git@git.corp:2222/team/repo.git",
+                Some("https://git.corp/team/repo"),
+            ),
+            (
+                "git://example.org/repo.git",
+                Some("https://example.org/repo"),
+            ),
+            ("/srv/git/repo.git", None),
+            ("https://host.example/", None),
+        ] {
+            assert_eq!(remote_web_url(remote).as_deref(), web, "{remote}");
         }
     }
 

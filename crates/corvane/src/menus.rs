@@ -23,6 +23,8 @@ pub struct MenuOptions {
     pub show_main_window: bool,
     /// Flag `455-add-license`.
     pub show_add_license: bool,
+    /// Flag `423-fetch-all-repositories`.
+    pub fetch_all: bool,
 }
 
 impl MenuOptions {
@@ -36,14 +38,15 @@ impl MenuOptions {
             show_view_upstream: s.flags.bool(ids::VIEW_UPSTREAM_ON_GITHUB),
             show_main_window: s.flags.bool(ids::WINDOW_MENU_MAIN_WINDOW),
             show_add_license: s.flags.bool(ids::ADD_LICENSE),
+            fetch_all: s.flags.bool(ids::FETCH_ALL_REPOSITORIES),
         }
     }
 }
 
 /// Build (or rebuild) the menu bar.
 /// Corvane additions: "Flags…" (no GHD equivalent), File › Import
-/// Repositories from GitHub Desktop…, Repository › View Upstream on GitHub,
-/// Repository › Add License…,
+/// Repositories from GitHub Desktop…, Repository › Fetch All Repositories,
+/// Repository › View Upstream on GitHub, Repository › Add License…,
 /// Window › Corvane (shows the window hidden with ⌘W) and Help › Show
 /// Release Notes.
 pub fn install(cx: &mut App, options: &MenuOptions) {
@@ -53,10 +56,18 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
         MenuItem::action("Push", Push),
         MenuItem::action("Pull", Pull),
         MenuItem::action("Fetch", Fetch),
+    ];
+    if options.fetch_all {
+        repository.push(MenuItem::action(
+            "Fetch All Repositories",
+            FetchAllRepositories,
+        ));
+    }
+    repository.extend([
         MenuItem::action("Remove…", RemoveRepository),
         MenuItem::separator(),
         MenuItem::action("View on GitHub", ViewOnGitHub),
-    ];
+    ]);
     if options.show_view_upstream {
         repository.push(MenuItem::action(
             "View Upstream on GitHub",

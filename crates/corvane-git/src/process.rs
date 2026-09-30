@@ -5,8 +5,8 @@ use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use tracing::{debug, warn};
@@ -40,6 +40,72 @@ pub struct GitCommand {
     stdin: Option<Vec<u8>>,
     /// Variables removed from the inherited environment (`GIT_SEQUENCE_EDITOR`).
     env_removed: Vec<OsString>,
+    /// Lets another thread stop a streamed command ([`GitCommand::cancel_token`]).
+    cancel: Option<CancelToken>,
+}
+
+/// Stops a running [`GitCommand::run_streaming`] from another thread with
+/// `SIGTERM`, so git runs its own cleanup (`git clone` removes the directory
+/// it created). Cancelling before the command starts makes it stop at once.
+#[derive(Clone, Debug, Default)]
+pub struct CancelToken(Arc<CancelInner>);
+
+#[derive(Debug, Default)]
+struct CancelInner {
+    cancelled: AtomicBool,
+    /// The running git process.
+    pid: Mutex<Option<u32>>,
+}
+
+impl PartialEq for CancelToken {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl CancelToken {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn cancel(&self) {
+        self.0.cancelled.store(true, Ordering::SeqCst);
+        if let Ok(pid) = self.0.pid.lock()
+            && let Some(pid) = *pid
+        {
+            terminate(pid);
+        }
+    }
+
+    pub fn is_cancelled(&self) -> bool {
+        self.0.cancelled.load(Ordering::SeqCst)
+    }
+
+    fn attach(&self, pid: u32) {
+        if let Ok(mut slot) = self.0.pid.lock() {
+            *slot = Some(pid);
+            if self.is_cancelled() {
+                terminate(pid);
+            }
+        }
+    }
+
+    fn detach(&self) {
+        if let Ok(mut slot) = self.0.pid.lock() {
+            *slot = None;
+        }
+    }
+}
+
+fn terminate(pid: u32) {
+    let Ok(pid) = libc::pid_t::try_from(pid) else {
+        return;
+    };
+    // SAFETY: plain kill(2) with no memory access; the pid is the running
+    // child's (the token forgets it as soon as `wait` reaped the process)
+    unsafe {
+        libc::kill(pid, libc::SIGTERM);
+    }
 }
 
 /// Process-wide toggle for `-c credential.helper=manager` (set per network
@@ -60,7 +126,14 @@ impl GitCommand {
             ok_codes: vec![0],
             stdin: None,
             env_removed: Vec::new(),
+            cancel: None,
         }
+    }
+
+    /// Stop the streamed command when `token` is cancelled.
+    pub fn cancel_token(mut self, token: CancelToken) -> Self {
+        self.cancel = Some(token);
+        self
     }
 
     /// Drop an inherited environment variable for this invocation.
@@ -228,6 +301,9 @@ impl GitCommand {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(GitError::Spawn)?;
+        if let Some(token) = &self.cancel {
+            token.attach(child.id());
+        }
         if let (Some(bytes), Some(mut stdin)) = (&self.stdin, child.stdin.take()) {
             use std::io::Write;
             let _ = stdin.write_all(bytes);
@@ -271,8 +347,16 @@ impl GitCommand {
             streamed_all.push('\n');
         }
 
-        let status = child.wait().map_err(GitError::Spawn)?;
+        let status = child.wait();
+        if let Some(token) = &self.cancel {
+            token.detach();
+        }
+        let status = status.map_err(GitError::Spawn)?;
         let drained = drain_thread.join().unwrap_or_default();
+        if self.cancel.as_ref().is_some_and(CancelToken::is_cancelled) {
+            debug!(git = %args, "git cancelled");
+            return Err(GitError::Cancelled(args));
+        }
         let (stdout, stderr) = match pipe {
             StreamedPipe::Stderr => (drained, streamed_all),
             StreamedPipe::Stdout => (
@@ -289,11 +373,22 @@ impl GitCommand {
                 stderr,
             })
         } else {
-            warn!(git = %args, code, stderr = %stderr.trim(), "git failed");
+            // GHD's `GitError` shows the combined terminal output: what a
+            // pre-push hook prints to stdout (git passes it through) comes
+            // before git's own error lines
+            let mut message = stderr.trim().to_string();
+            if matches!(pipe, StreamedPipe::Stderr) {
+                let out = String::from_utf8_lossy(&stdout);
+                let out = out.trim();
+                if !out.is_empty() {
+                    message = format!("{out}\n{message}");
+                }
+            }
+            warn!(git = %args, code, stderr = %message, "git failed");
             Err(GitError::Failed {
                 args,
                 code,
-                stderr: stderr.trim().to_string(),
+                stderr: message,
             })
         }
     }

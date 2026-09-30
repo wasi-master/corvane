@@ -638,7 +638,10 @@ impl HistorySidebar {
                 ),
             }
         };
-        let disabled = behind == 0 || merge_status == Some(Mergeability::Invalid);
+        // `424-no-merge-while-conflicted`: no second merge while conflicted
+        let disabled = behind == 0
+            || merge_status == Some(Mergeability::Invalid)
+            || Dispatcher::merge_blocked_by_conflicts(id, cx);
         let label = match op {
             MultiCommitOperationKind::Squash => "Squash and merge",
             MultiCommitOperationKind::Rebase => "Rebase",

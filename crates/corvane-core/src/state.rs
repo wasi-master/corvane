@@ -201,6 +201,18 @@ pub enum Popup {
         repo: u64,
         sha: String,
     },
+    /// Corvane addition (`229-reset-to-remote`): confirm resetting the
+    /// current branch to its upstream (`reset --hard`).
+    ResetToRemote {
+        repo: u64,
+        branch: String,
+        /// Short name (`origin/main`).
+        upstream: String,
+        /// Commits on the branch but not on the upstream.
+        ahead: usize,
+        /// Uncommitted changes will be discarded too.
+        dirty: bool,
+    },
     /// `ConfirmCheckoutCommit`: detached HEAD warning.
     CheckoutCommit {
         repo: u64,
@@ -602,6 +614,8 @@ pub struct CloneState {
     pub description: String,
     /// 0..1, `None` = indeterminate.
     pub value: Option<f32>,
+    /// Stops the clone (`227-clone-cancel`, `Dispatcher::cancel_clone`).
+    pub cancel: corvane_git::CancelToken,
 }
 
 /// What deleting a branch would lose (`258-delete-branch-warnings`).
@@ -737,9 +751,16 @@ pub struct RepositoryState {
     pub conflict_state: Option<crate::mco::ConflictState>,
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.
     pub force_push_branches: HashMap<String, String>,
+    /// The current branch is ahead of and behind its upstream, and its
+    /// reflog holds the upstream's tip: commits pushed from here were
+    /// rewritten outside Corvane (`238-force-push-after-outside-rewrite`).
+    pub upstream_rewritten: bool,
 
     // ---- remote (`isPushPullFetchInProgress`, `pushPullFetchProgress`, `lastFetched`) ----
     pub push_pull_in_progress: bool,
+    /// The running network operation is a background fetch that shows no
+    /// progress (`228-push-during-background-fetch`).
+    pub quiet_background_fetch: bool,
     pub push_pull_progress: Option<crate::remote::PushPullProgress>,
     pub last_fetched: Option<std::time::SystemTime>,
     pub pull_with_rebase: bool,

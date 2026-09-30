@@ -146,6 +146,12 @@ fn main() {
         let mut last_high_contrast = high_contrast;
         let mut last_theme_variants = theme_variants;
         corvane_ui::format::sync(&state.read(cx).settings);
+        corvane_ui::relative_time::set_calendar_dates(
+            state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CALENDAR_RELATIVE_DATES),
+        );
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
@@ -153,6 +159,10 @@ fn main() {
             let (theme, welcome_done, menu_key, high_contrast, variants) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
+                corvane_ui::relative_time::set_calendar_dates(
+                    s.flags
+                        .bool(corvane_core::flags::ids::CALENDAR_RELATIVE_DATES),
+                );
                 (
                     s.settings.theme,
                     s.settings.welcome_completed,
@@ -508,7 +518,18 @@ fn main() {
                 window_size,
                 cx,
             ))),
-            window_min_size: Some(size(px(960.), px(660.))),
+            // GHD's 960 × 660; `428-smaller-minimum-sizes`: 600 × 400
+            window_min_size: Some(
+                if state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::SMALLER_MINIMUM_SIZES)
+                {
+                    size(px(600.), px(400.))
+                } else {
+                    size(px(960.), px(660.))
+                },
+            ),
             app_id: Some(corvane_platform::BUNDLE_ID.into()),
             ..Default::default()
         };
@@ -726,7 +747,9 @@ fn main() {
             }
         });
         cx.on_action(move |_: &MergeIntoCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::show_popup(
                     Popup::MergeBranch {
                         repo: id,
@@ -737,7 +760,9 @@ fn main() {
             }
         });
         cx.on_action(move |_: &SquashAndMergeIntoCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::show_popup(
                     Popup::MergeBranch {
                         repo: id,
@@ -762,6 +787,9 @@ fn main() {
                 Dispatcher::fetch(id, false, cx);
             }
         });
+        cx.on_action(move |_: &FetchAllRepositories, cx| {
+            Dispatcher::fetch_all_repositories(cx);
+        });
         Dispatcher::start_background_tasks(cx);
         Dispatcher::refresh_accounts(cx);
         // Alive subscriptions for pull request notifications (GHD AliveStore)
@@ -775,12 +803,16 @@ fn main() {
         // on-demand packs installed earlier (extended grammars)
         Dispatcher::load_installed_packs(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::start_rebase_flow(id, cx);
             }
         });
         cx.on_action(move |_: &UpdateFromDefaultBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::update_from_default_branch(id, cx);
             }
         });

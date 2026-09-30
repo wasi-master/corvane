@@ -6,6 +6,10 @@
 //! Corvane addition (flag `288-worktree-paths`): rows have a tooltip with the
 //! name and full path, and the filter also matches the path, so worktrees
 //! with the same folder name can be told apart.
+//! Deviation: worktrees git reports `prunable` (directory deleted outside
+//! git) are not listed (`426-hide-prunable-worktrees`); a new worktree's
+//! default folder is the one holding the main worktree, not the clone
+//! folder (`427-worktree-dir-beside-repository`).
 
 use std::path::PathBuf;
 
@@ -75,6 +79,20 @@ pub fn worktree_menu_items(
         );
     }
     items
+}
+
+/// The worktrees the foldout lists: with `426-hide-prunable-worktrees` not
+/// those git reports `prunable` (their directory is gone; GHD lists them and
+/// selecting one fails).
+pub fn listed_worktrees(state: &AppState, worktrees: &[WorktreeEntry]) -> Vec<WorktreeEntry> {
+    let hide = state
+        .flags
+        .bool(corvane_core::flags::ids::HIDE_PRUNABLE_WORKTREES);
+    worktrees
+        .iter()
+        .filter(|w| !(hide && w.is_prunable))
+        .cloned()
+        .collect()
 }
 
 /// The worktree the repository currently points at.
@@ -287,7 +305,7 @@ impl Render for WorktreeFoldout {
             let worktrees = s
                 .repo_states
                 .get(&id)
-                .map(|rs| rs.worktrees.clone())
+                .map(|rs| listed_worktrees(s, &rs.worktrees))
                 .unwrap_or_default();
             (id, worktrees, current_worktree(s, id).map(|w| w.path))
         };
@@ -406,9 +424,29 @@ impl Render for WorktreeFoldout {
     }
 }
 
-/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir;
-/// flag `289-worktree-location` makes it a template).
+/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir).
+/// With `427-worktree-dir-beside-repository`: the folder holding the
+/// repository's main worktree, so new worktrees become its siblings;
+/// otherwise flag `289-worktree-location`'s template.
 pub fn default_worktree_dir(state: &AppState, repo: u64) -> PathBuf {
+    let beside = state
+        .flags
+        .bool(corvane_core::flags::ids::WORKTREE_DIR_BESIDE_REPOSITORY);
+    let main = || {
+        let main = state
+            .repo_states
+            .get(&repo)
+            .and_then(|rs| rs.worktrees.iter().find(|w| w.kind == WorktreeType::Main))
+            .map(|w| w.path.clone());
+        main.or_else(|| state.repository(repo).map(|r| r.path.clone()))
+    };
+    if let Some(dir) = beside
+        .then(main)
+        .flatten()
+        .and_then(|p| p.parent().map(PathBuf::from))
+    {
+        return dir;
+    }
     let clone_dir = state
         .settings
         .clone_dir

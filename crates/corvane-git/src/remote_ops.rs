@@ -320,6 +320,43 @@ pub fn update_remote_head(
     Ok(())
 }
 
+/// `refs/remotes/<remote>/HEAD` exists and points at a branch that exists,
+/// so [`update_remote_head`] (which asks the server for every ref) can be
+/// skipped (desktop#22039).
+pub fn remote_head_resolves(git: Arc<GitBinary>, workdir: &Path, remote: &str) -> bool {
+    GitCommand::new(git)
+        .args(["rev-parse", "-q", "--verify"])
+        .arg(format!("refs/remotes/{remote}/HEAD"))
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .allow_exit_code(128)
+        .run()
+        .is_ok_and(|o| o.status.success())
+}
+
+/// git could not update a remote-tracking ref ("cannot lock ref …", "unable
+/// to update local ref"), usually because a stale ref such as
+/// `origin/feature` blocks a new `origin/feature/x`; `git remote prune`
+/// clears it (desktop#11391).
+pub fn is_stale_remote_ref_failure(err: &GitError) -> bool {
+    matches!(err, GitError::Failed { stderr, .. }
+        if stderr.contains("unable to update local ref") || stderr.contains("cannot lock ref"))
+}
+
+/// `git remote prune <remote>`: delete remote-tracking refs the remote no
+/// longer has.
+pub fn prune_remote(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    remote_command(git, workdir, askpass)
+        .args(["remote", "prune", remote])
+        .run()?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // fetch / pull / push
 // ---------------------------------------------------------------------------
@@ -332,15 +369,66 @@ pub fn fetch(
     askpass: Option<&AskpassEnv>,
     on_progress: ProgressFn<'_>,
 ) -> Result<()> {
+    fetch_with_prune_tags(git, workdir, remote, false, askpass, on_progress)
+}
+
+/// [`fetch`], plus `--prune-tags` when `prune_tags` is set: local tags the
+/// remote no longer has are deleted (Corvane addition; GHD never prunes tags,
+/// so a tag deleted on the remote stays forever).
+pub fn fetch_with_prune_tags(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    prune_tags: bool,
+    askpass: Option<&AskpassEnv>,
+    on_progress: ProgressFn<'_>,
+) -> Result<()> {
+    let options = FetchOptions {
+        prune_tags,
+        ..FetchOptions::default()
+    };
+    fetch_with(git, workdir, remote, options, askpass, on_progress)
+}
+
+/// Corvane additions to GHD's fixed `fetch` arguments; the default is GHD's
+/// command.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FetchOptions {
+    /// `--prune-tags` (see [`fetch_with_prune_tags`]).
+    pub prune_tags: bool,
+    /// `--write-commit-graph`: git extends the commit-graph file, which
+    /// speeds up history walks and ahead/behind counts (desktop#22045).
+    pub write_commit_graph: bool,
+    /// `--no-recurse-submodules` instead of `--recurse-submodules=on-demand`:
+    /// submodules are left to the user (desktop#15758).
+    pub skip_submodules: bool,
+}
+
+/// [`fetch`] with [`FetchOptions`].
+pub fn fetch_with(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    options: FetchOptions,
+    askpass: Option<&AskpassEnv>,
+    on_progress: ProgressFn<'_>,
+) -> Result<()> {
     let mut parser = ProgressParser::fetch();
+    let mut args = vec!["fetch", "--progress", "--prune"];
+    if options.prune_tags {
+        args.push("--prune-tags");
+    }
+    if options.write_commit_graph {
+        args.push("--write-commit-graph");
+    }
+    args.push(if options.skip_submodules {
+        "--no-recurse-submodules"
+    } else {
+        "--recurse-submodules=on-demand"
+    });
+    args.push(remote);
     remote_command(git, workdir, askpass)
-        .args([
-            "fetch",
-            "--progress",
-            "--prune",
-            "--recurse-submodules=on-demand",
-            remote,
-        ])
+        .args(args)
         .run_streaming(|line| {
             if let Some((percent, text)) = parser.parse(line) {
                 on_progress(percent, text);
@@ -360,6 +448,29 @@ pub fn fetch_refspec(
     remote_command(git, workdir, askpass)
         .args(["fetch", remote, refspec])
         .allow_exit_code(128)
+        .run()?;
+    Ok(())
+}
+
+/// Fast-forward the local branch `local`, which must not be checked out, to
+/// `remote`'s `remote_branch` without switching to it:
+/// `fetch <remote> refs/heads/<remote_branch>:refs/heads/<local>` (git refuses
+/// a non-fast-forward and updates the remote-tracking branch too). Corvane
+/// addition (desktop#19837).
+pub fn fast_forward_branch_from_remote(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    remote_branch: &str,
+    local: &str,
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    remote_command(git, workdir, askpass)
+        .args([
+            "fetch".to_string(),
+            remote.to_string(),
+            format!("refs/heads/{remote_branch}:refs/heads/{local}"),
+        ])
         .run()?;
     Ok(())
 }
@@ -387,11 +498,14 @@ pub fn config_value(git: Arc<GitBinary>, workdir: &Path, key: &str) -> Option<St
         .filter(|s| !s.is_empty())
 }
 
-/// GHD `pull`: `pull [--ff] --recurse-submodules --progress <remote>`.
+/// GHD `pull`: `pull [--ff] --recurse-submodules --progress <remote>`;
+/// `skip_submodules` passes `--no-recurse-submodules` instead (Corvane
+/// addition, desktop#15758).
 pub fn pull(
     git: Arc<GitBinary>,
     workdir: &Path,
     remote: &str,
+    skip_submodules: bool,
     askpass: Option<&AskpassEnv>,
     on_progress: ProgressFn<'_>,
 ) -> Result<()> {
@@ -401,7 +515,12 @@ pub fn pull(
     if pull_ff.is_none() {
         args.push("--ff");
     }
-    args.extend(["--recurse-submodules", "--progress", remote]);
+    args.push(if skip_submodules {
+        "--no-recurse-submodules"
+    } else {
+        "--recurse-submodules"
+    });
+    args.extend(["--progress", remote]);
     remote_command(git, workdir, askpass)
         .args(&args)
         .env("GIT_EDITOR", ":")
@@ -503,10 +622,88 @@ pub fn fast_forward_branches(git: Arc<GitBinary>, workdir: &Path) -> Result<usiz
     Ok(pairs.len())
 }
 
+/// Fast-forward the checked-out branch to its upstream when the working
+/// directory is clean, no merge, rebase or cherry-pick is in progress and
+/// the branch is behind but not ahead: `merge --ff-only @{upstream}`.
+/// `Ok(false)` when any of that does not hold. Corvane addition
+/// (desktop#16586: pull after a background fetch).
+pub fn fast_forward_if_only_behind(git: Arc<GitBinary>, workdir: &Path) -> Result<bool> {
+    let status = crate::get_status(git.clone(), workdir, None)?;
+    let only_behind = status
+        .ahead_behind
+        .is_some_and(|ab| ab.ahead == 0 && ab.behind > 0);
+    if !only_behind
+        || status.upstream.is_none()
+        || !status.files.is_empty()
+        || status.merge_head_found
+        || status.rebase_in_progress
+        || status.cherry_pick_head_found
+    {
+        return Ok(false);
+    }
+    GitCommand::new(git)
+        .args(["merge", "--ff-only", "@{upstream}"])
+        .env("GIT_REFLOG_ACTION", "pull")
+        .current_dir(workdir)
+        .run()?;
+    Ok(true)
+}
+
+/// The local branch `name` once pointed at `upstream`'s current tip (it is
+/// in the branch's reflog): a branch that is ahead of and behind its
+/// upstream then had the pushed commits rewritten away (amend, rebase or
+/// reset outside Corvane) rather than someone else pushing new work.
+/// Corvane addition (desktop#9739).
+pub fn upstream_tip_in_reflog(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    name: &str,
+    upstream: &str,
+) -> bool {
+    let Ok(out) = GitCommand::new(git.clone())
+        .args(["rev-parse", "-q", "--verify"])
+        .arg(format!("{upstream}^{{commit}}"))
+        .current_dir(workdir)
+        .run()
+    else {
+        return false;
+    };
+    let Ok(tip) = out.stdout_string() else {
+        return false;
+    };
+    let tip = tip.trim();
+    GitCommand::new(git)
+        .args(["reflog", "show", "--format=%H"])
+        .arg(format!("refs/heads/{name}"))
+        .arg("--")
+        .current_dir(workdir)
+        .allow_exit_code(128)
+        .run()
+        .ok()
+        .and_then(|o| o.stdout_string().ok())
+        .is_some_and(|log| !tip.is_empty() && log.lines().any(|l| l.trim() == tip))
+}
+
 /// GHD `updateLastFetched`: mtime of a non-empty `FETCH_HEAD`.
 pub fn last_fetched(workdir: &Path) -> Option<SystemTime> {
     let meta = std::fs::metadata(git_dir(workdir).join("FETCH_HEAD")).ok()?;
     (meta.len() > 0).then(|| meta.modified().ok()).flatten()
+}
+
+/// When the repository was cloned: the time of `HEAD`'s first reflog entry
+/// if it is git's "clone: from …". A clone writes no `FETCH_HEAD`, so
+/// [`last_fetched`] says "never" until the first fetch (desktop#13401);
+/// Corvane falls back to this.
+pub fn cloned_at(workdir: &Path) -> Option<SystemTime> {
+    let log = std::fs::read_to_string(git_dir(workdir).join("logs").join("HEAD")).ok()?;
+    let (head, message) = log.lines().next()?.split_once('\t')?;
+    if !message.starts_with("clone: from ") {
+        return None;
+    }
+    let mut fields = head.rsplit(' ');
+    let _tz = fields.next()?;
+    let secs: u64 = fields.next()?.parse().ok()?;
+    Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs))
 }
 
 // ---------------------------------------------------------------------------
@@ -529,6 +726,41 @@ pub fn is_using_lfs(git: Arc<GitBinary>, workdir: &Path) -> bool {
         Ok(text) => text.contains("\"tracked\": true") || text.contains("\"tracked\":true"),
         Err(_) => false,
     }
+}
+
+/// [`is_using_lfs`] without `git lfs track`, which walks every directory
+/// (untracked ones included) looking for `.gitattributes` and takes minutes in
+/// large worktrees: reads the `.gitattributes` files in the index, the root
+/// one on disk and `info/attributes`, and looks for a `filter=lfs` attribute.
+/// Corvane addition (desktop#5198).
+pub fn is_using_lfs_by_attributes(git: Arc<GitBinary>, workdir: &Path) -> bool {
+    let mut files = vec![
+        workdir.join(".gitattributes"),
+        git_dir(workdir).join("info/attributes"),
+    ];
+    if let Ok(text) = GitCommand::new(git)
+        .args(["ls-files", "-z", "--", ":(glob)**/.gitattributes"])
+        .current_dir(workdir)
+        .run()
+        .and_then(|o| o.stdout_string())
+    {
+        files.extend(
+            text.split('\0')
+                .filter(|p| !p.is_empty() && *p != ".gitattributes")
+                .map(|p| workdir.join(p)),
+        );
+    }
+    files
+        .iter()
+        .any(|path| std::fs::read_to_string(path).is_ok_and(|text| attributes_use_lfs(&text)))
+}
+
+/// A `.gitattributes` text sets `filter=lfs` on some pattern.
+fn attributes_use_lfs(text: &str) -> bool {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .any(|line| line.split_whitespace().skip(1).any(|a| a == "filter=lfs"))
 }
 
 /// The repository's `pre-push` hook was written by Git LFS.
@@ -624,6 +856,183 @@ mod tests {
     }
 
     #[test]
+    fn lfs_attributes() {
+        assert!(attributes_use_lfs(
+            "# lfs\n*.psd filter=lfs diff=lfs merge=lfs -text\n"
+        ));
+        assert!(!attributes_use_lfs(
+            "*.psd -filter\n# *.x filter=lfs\n*.md text\n"
+        ));
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        run(dir.path(), &["init", "-q"]);
+        assert!(!is_using_lfs_by_attributes(git.clone(), dir.path()));
+        std::fs::create_dir(dir.path().join("art")).unwrap();
+        std::fs::write(dir.path().join("art/.gitattributes"), "*.png filter=lfs\n").unwrap();
+        // an untracked nested file is not read (git lfs track would)
+        assert!(!is_using_lfs_by_attributes(git.clone(), dir.path()));
+        run(dir.path(), &["add", "art/.gitattributes"]);
+        assert!(is_using_lfs_by_attributes(git, dir.path()));
+    }
+
+    #[test]
+    fn fast_forwards_a_branch_that_is_not_checked_out() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        let (work, other) = (dir.path().join("work"), dir.path().join("other"));
+        run(
+            dir.path(),
+            &["init", "-q", "--bare", "-b", "main", bare.to_str().unwrap()],
+        );
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", work.to_str().unwrap()],
+        );
+        run(&work, &["config", "commit.gpgsign", "false"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        run(&work, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        run(&work, &["push", "-q", "-u", "origin", "main"]);
+        run(&work, &["checkout", "-q", "-b", "topic"]);
+        run(
+            dir.path(),
+            &[
+                "clone",
+                "-q",
+                bare.to_str().unwrap(),
+                other.to_str().unwrap(),
+            ],
+        );
+        run(&other, &["config", "commit.gpgsign", "false"]);
+        run(&other, &["commit", "-q", "--allow-empty", "-m", "second"]);
+        run(&other, &["push", "-q", "origin", "main"]);
+        fast_forward_branch_from_remote(git.clone(), &work, "origin", "main", "main", None)
+            .unwrap();
+        let rev = |r: &str| {
+            let out = std::process::Command::new("git")
+                .args(["rev-parse", r])
+                .current_dir(&work)
+                .output()
+                .unwrap();
+            String::from_utf8(out.stdout).unwrap()
+        };
+        assert_eq!(rev("main"), rev("origin/main"));
+        assert_ne!(rev("main"), rev("topic"));
+        // a diverged branch is refused
+        run(&work, &["checkout", "-q", "main"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "local"]);
+        run(&work, &["checkout", "-q", "topic"]);
+        run(&other, &["commit", "-q", "--allow-empty", "-m", "third"]);
+        run(&other, &["push", "-q", "origin", "main"]);
+        assert!(
+            fast_forward_branch_from_remote(git, &work, "origin", "main", "main", None).is_err()
+        );
+    }
+
+    #[test]
+    fn push_error_includes_hook_stdout() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        let work = dir.path().join("work");
+        run(
+            dir.path(),
+            &["init", "-q", "--bare", bare.to_str().unwrap()],
+        );
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", work.to_str().unwrap()],
+        );
+        run(&work, &["config", "commit.gpgsign", "false"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        let hook = work.join(".git/hooks/pre-push");
+        std::fs::write(
+            &hook,
+            "#!/bin/sh\necho hook-stdout\necho hook-stderr >&2\nexit 1\n",
+        )
+        .unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+        run(&work, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        let err = push(
+            git,
+            &work,
+            "origin",
+            "main",
+            None,
+            &[],
+            false,
+            None,
+            &mut |_, _| {},
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("hook-stdout\nhook-stderr"), "{err}");
+    }
+
+    #[test]
+    fn prune_remote_clears_a_ref_blocking_a_fetch() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", src.to_str().unwrap()],
+        );
+        run(&src, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(src.join("a.txt"), "one\n").unwrap();
+        run(&src, &["add", "."]);
+        run(&src, &["commit", "-q", "-m", "first"]);
+        run(&src, &["branch", "feature"]);
+        let copy = dir.path().join("copy");
+        run(
+            dir.path(),
+            &["clone", "-q", src.to_str().unwrap(), copy.to_str().unwrap()],
+        );
+        // `feature` becomes `feature/x` upstream; origin/feature blocks it
+        run(&src, &["branch", "-D", "feature"]);
+        run(&src, &["branch", "feature/x"]);
+        let fetch_no_prune = || {
+            remote_command(git.clone(), &copy, None)
+                .args(["fetch", "origin"])
+                .run()
+        };
+        let err = fetch_no_prune().unwrap_err();
+        assert!(is_stale_remote_ref_failure(&err), "{err}");
+        prune_remote(git.clone(), &copy, "origin", None).unwrap();
+        fetch_no_prune().unwrap();
+    }
+
+    #[test]
+    fn cloned_at_reads_the_clone_reflog_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", src.to_str().unwrap()],
+        );
+        run(&src, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(src.join("a.txt"), "one\n").unwrap();
+        run(&src, &["add", "."]);
+        run(&src, &["commit", "-q", "-m", "first"]);
+        assert!(cloned_at(&src).is_none());
+        let copy = dir.path().join("copy");
+        run(
+            dir.path(),
+            &["clone", "-q", src.to_str().unwrap(), copy.to_str().unwrap()],
+        );
+        assert!(last_fetched(&copy).is_none());
+        let git = Arc::new(crate::find_git().unwrap());
+        assert!(remote_head_resolves(git.clone(), &copy, "origin"));
+        assert!(!remote_head_resolves(git.clone(), &src, "origin"));
+        run(&copy, &["update-ref", "-d", "refs/remotes/origin/main"]);
+        assert!(!remote_head_resolves(git, &copy, "origin"));
+        let at = cloned_at(&copy).unwrap();
+        let age = SystemTime::now().duration_since(at).unwrap();
+        assert!(age.as_secs() < 600, "{age:?}");
+    }
+
+    #[test]
     fn fetch_pull_push_against_a_local_bare_remote() {
         let git = Arc::new(crate::find_git().unwrap());
         let dir = tempfile::tempdir().unwrap();
@@ -681,7 +1090,31 @@ mod tests {
         run(&other, &["add", "."]);
         run(&other, &["commit", "-q", "-m", "second"]);
         run(&other, &["push", "-q", "origin", "main"]);
+        // a tag deleted on the remote survives a plain fetch; --prune-tags drops it
+        run(&other, &["tag", "gone"]);
+        run(&other, &["push", "-q", "origin", "gone"]);
         fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        run(&other, &["push", "-q", "origin", ":refs/tags/gone"]);
+        fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        let has_tag = || {
+            std::process::Command::new("git")
+                .args(["rev-parse", "-q", "--verify", "refs/tags/gone"])
+                .current_dir(&work)
+                .output()
+                .unwrap()
+                .status
+                .success()
+        };
+        assert!(has_tag());
+        fetch_with_prune_tags(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
+        assert!(!has_tag());
+        let graph = FetchOptions {
+            write_commit_graph: true,
+            ..FetchOptions::default()
+        };
+        fetch_with(git.clone(), &work, "origin", graph, None, &mut |_, _| {}).unwrap();
+        let objects = git_dir(&work).join("objects").join("info");
+        assert!(objects.join("commit-graph").exists() || objects.join("commit-graphs").exists());
         assert!(last_fetched(&work).is_some());
         let ab = crate::symmetric_ahead_behind(git.clone(), &work, "main", "origin/main")
             .unwrap()
@@ -689,6 +1122,17 @@ mod tests {
         assert_eq!((ab.ahead, ab.behind), (0, 1));
         // fast-forwarding updates `mirror` but leaves the checked-out `main` alone
         assert_eq!(fast_forward_branches(git.clone(), &work).unwrap(), 1);
+        // a dirty working directory blocks the checked-out branch's fast-forward
+        std::fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        assert!(!fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        run(&work, &["checkout", "--", "a.txt"]);
+        let behind = crate::symmetric_ahead_behind(git.clone(), &work, "main", "origin/main")
+            .unwrap()
+            .unwrap();
+        assert_eq!((behind.ahead, behind.behind), (0, 1));
+        assert!(fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        assert!(!fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        run(&work, &["reset", "-q", "--hard", "HEAD~1"]);
         let ab = crate::symmetric_ahead_behind(git.clone(), &work, "mirror", "origin/main")
             .unwrap()
             .unwrap();
@@ -697,7 +1141,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!((ab.ahead, ab.behind), (0, 1));
-        pull(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        pull(git.clone(), &work, "origin", false, None, &mut |_, _| {}).unwrap();
         assert!(work.join("b.txt").exists());
         // diverge, then a plain push is rejected as non-fast-forward
         std::fs::write(other.join("c.txt"), "three\n").unwrap();
@@ -720,11 +1164,20 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(remote_failure(&err), RemoteFailure::PushNotFastForward);
+        // someone else's push is not a rewrite of ours
+        fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        let upstream = "refs/remotes/origin/main";
+        assert!(!upstream_tip_in_reflog(
+            git.clone(),
+            &work,
+            "main",
+            upstream
+        ));
         // pull merges the remote work in
-        pull(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        pull(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
         assert!(work.join("c.txt").exists());
         push(
-            git,
+            git.clone(),
             &work,
             "origin",
             "main",
@@ -735,5 +1188,8 @@ mod tests {
             &mut |_, _| {},
         )
         .unwrap();
+        // amending the pushed commit rewrites it away
+        run(&work, &["commit", "-q", "--amend", "-m", "merge, amended"]);
+        assert!(upstream_tip_in_reflog(git, &work, "main", upstream));
     }
 }

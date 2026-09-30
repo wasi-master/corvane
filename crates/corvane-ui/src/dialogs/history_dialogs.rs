@@ -63,6 +63,81 @@ impl Render for ResetToCommitDialog {
     }
 }
 
+/// Corvane addition (`229-reset-to-remote`): confirm resetting the current
+/// branch to its upstream.
+pub struct ResetToRemoteDialog {
+    repo: u64,
+    branch: String,
+    upstream: String,
+    ahead: usize,
+    dirty: bool,
+}
+
+impl ResetToRemoteDialog {
+    pub fn new(repo: u64, branch: String, upstream: String, ahead: usize, dirty: bool) -> Self {
+        Self {
+            repo,
+            branch,
+            upstream,
+            ahead,
+            dirty,
+        }
+    }
+}
+
+impl Render for ResetToRemoteDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, upstream) = (self.repo, self.upstream.clone());
+        let mut lost = Vec::new();
+        if self.ahead > 0 {
+            lost.push(if self.ahead == 1 {
+                "1 commit that is not on the remote".to_string()
+            } else {
+                format!("{} commits that are not on the remote", self.ahead)
+            });
+        }
+        if self.dirty {
+            lost.push("all uncommitted changes".to_string());
+        }
+        let mut text = format!("{} will be reset to match {}.", self.branch, self.upstream);
+        if !lost.is_empty() {
+            text.push_str(&format!(
+                " This discards {}. Do you want to continue?",
+                lost.join(" and ")
+            ));
+        }
+        dialog_with_kind(
+            "dialog-reset-to-remote",
+            DialogKind::Warning,
+            format!("Reset to {}", self.upstream),
+            div().child(text),
+            vec![
+                DialogButton {
+                    id: "reset-remote-cancel",
+                    label: "Cancel".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "reset-remote-continue",
+                    label: "Reset".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::reset_to_remote(repo, upstream.clone(), cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
 /// `ConfirmCheckoutCommit`
 pub struct CheckoutCommitDialog {
     repo: u64,

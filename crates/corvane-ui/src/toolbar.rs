@@ -132,7 +132,7 @@ pub struct PrBadge {
 pub fn worktree_button_visible(state: &AppState) -> bool {
     let has_linked = state
         .selected_state()
-        .is_some_and(|rs| rs.worktrees.len() > 1);
+        .is_some_and(|rs| crate::worktree_list::listed_worktrees(state, &rs.worktrees).len() > 1);
     state.selected.is_some() && (has_linked || state.foldout == Some(Foldout::Worktree))
 }
 

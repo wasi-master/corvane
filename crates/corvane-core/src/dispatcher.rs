@@ -229,6 +229,17 @@ impl Dispatcher {
         {
             Self::refresh_pull_requests(id, false, cx);
         }
+        // `233-prompt-indicator-refresh`: the repository list shows fresh
+        // indicators (GHD waits for the 15-minute updater)
+        if opened
+            && foldout == Foldout::Repository
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::PROMPT_INDICATOR_REFRESH)
+        {
+            Self::refresh_indicators_if_stale(cx);
+        }
     }
 
     pub fn close_foldout(cx: &mut App) {
@@ -564,7 +575,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status) = {
+        let (path, git, previous_status, clone_counts_as_fetch, detect_rewrite) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -573,6 +584,9 @@ impl Dispatcher {
                 repo.path.clone(),
                 s.git.clone(),
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
+                s.flags.bool(crate::flags::ids::CLONE_COUNTS_AS_FETCH),
+                s.flags
+                    .bool(crate::flags::ids::FORCE_PUSH_AFTER_OUTSIDE_REWRITE),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -657,10 +671,30 @@ impl Dispatcher {
                         stash_count,
                         rebase_snapshot,
                         cherry_pick_snapshot,
-                        last_fetched: corvane_git::last_fetched(&info.workdir),
+                        // `231-clone-counts-as-fetch`: a clone writes no
+                        // FETCH_HEAD, so GHD says "never fetched" until the
+                        // first fetch
+                        last_fetched: corvane_git::last_fetched(&info.workdir).or_else(|| {
+                            clone_counts_as_fetch
+                                .then(|| corvane_git::cloned_at(&info.workdir))
+                                .flatten()
+                        }),
                         pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                         worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
                             .unwrap_or_default(),
+                        // `238-force-push-after-outside-rewrite`
+                        upstream_rewritten: detect_rewrite
+                            && ahead_behind.is_some_and(|ab| ab.ahead > 0 && ab.behind > 0)
+                            && info.current_branch().is_some_and(|b| {
+                                b.upstream.as_deref().is_some_and(|upstream| {
+                                    corvane_git::upstream_tip_in_reflog(
+                                        git.clone(),
+                                        &info.workdir,
+                                        &b.name,
+                                        upstream,
+                                    )
+                                })
+                            }),
                         last_local_commit:
                             info.current_branch()
                                 .and_then(|b| {
@@ -720,6 +754,7 @@ impl Dispatcher {
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 repo_state.worktrees = extras.worktrees;
+                                repo_state.upstream_rewritten = extras.upstream_rewritten;
                                 // GHD `mostRecentLocalCommit`: the undo bar
                                 // follows the branch's unpushed commits
                                 repo_state.last_commit = extras.last_local_commit;
@@ -1478,6 +1513,55 @@ impl Dispatcher {
             "Could not reset to commit",
             move |git, workdir| {
                 corvane_git::reset_to(git, &workdir, corvane_git::ResetMode::Mixed, &sha)
+            },
+            cx,
+        );
+    }
+
+    /// The push/pull foldout's "Reset to <upstream>" (`229-reset-to-remote`;
+    /// GHD has no such command): confirm, then [`Self::reset_to_remote`].
+    pub fn request_reset_to_remote(id: u64, cx: &mut App) {
+        let popup = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::RESET_TO_REMOTE) {
+                return;
+            }
+            let rs = s.repo_states.get(&id);
+            let branch = rs
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.current_branch());
+            let Some((branch, upstream)) =
+                branch.and_then(|b| Some((b.name.clone(), b.upstream_short()?.to_string())))
+            else {
+                return;
+            };
+            Popup::ResetToRemote {
+                repo: id,
+                branch,
+                upstream,
+                ahead: rs
+                    .and_then(|r| r.ahead_behind)
+                    .map_or(0, |ab| ab.ahead as usize),
+                dirty: Self::working_directory_dirty(id, cx),
+            }
+        };
+        Self::show_popup(popup, cx);
+    }
+
+    /// `reset --hard <upstream>`: the branch matches its upstream; local
+    /// commits stay reachable through the reflog.
+    pub fn reset_to_remote(id: u64, upstream: String, cx: &mut App) {
+        Self::show_section(id, Section::Changes, cx);
+        Self::run_history_op(
+            id,
+            "Could not reset to the remote",
+            move |git, workdir| {
+                corvane_git::reset_to(
+                    git,
+                    &workdir,
+                    corvane_git::ResetMode::Hard,
+                    &format!("refs/remotes/{upstream}"),
+                )
             },
             cx,
         );
@@ -2508,12 +2592,14 @@ impl Dispatcher {
             return;
         };
         Self::close_popup(cx);
+        let cancel = corvane_git::CancelToken::new();
         state.update(cx, |s, cx| {
             s.cloning = Some(CloneState {
                 url: url.clone(),
                 path: path.clone(),
                 description: "Cloning…".into(),
                 value: None,
+                cancel: cancel.clone(),
             });
             cx.notify();
         });
@@ -2528,6 +2614,7 @@ impl Dispatcher {
                 &clone_path,
                 default_branch.as_deref(),
                 depth,
+                Some(cancel),
                 |p| {
                     let _ = tx.send(p);
                 },
@@ -2543,7 +2630,7 @@ impl Dispatcher {
                 }
                 if let Some(p) = latest {
                     let done = pump_state.update(cx, |s, cx| {
-                        if let Some(c) = s.cloning.as_mut() {
+                        if let Some(c) = s.cloning.as_mut().filter(|c| !c.cancel.is_cancelled()) {
                             c.description = p.description;
                             c.value = p.value;
                             cx.notify();
@@ -2579,27 +2666,48 @@ impl Dispatcher {
                 match result {
                     // an `openRepo` URL waiting for this clone continues
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
-                    // `361-clone-failure-keeps-input`: back to the dialog
-                    Err(err)
-                        if Self::state(cx)
-                            .read(cx)
-                            .flags
-                            .bool(crate::flags::ids::CLONE_FAILURE_KEEPS_INPUT) =>
-                    {
-                        Self::show_popup(
-                            Popup::CloneRepositoryRetry {
-                                url,
-                                path,
-                                error: err.to_string(),
-                            },
-                            cx,
-                        )
+                    // git removed what it created
+                    Err(corvane_git::GitError::Cancelled(_)) => info!("clone cancelled"),
+                    Err(err) => {
+                        let flags = &Self::state(cx).read(cx).flags;
+                        // `232-plain-language-remote-errors`
+                        let error = flags
+                            .bool(crate::flags::ids::PLAIN_LANGUAGE_REMOTE_ERRORS)
+                            .then(|| crate::push_errors::plain_clone_error(&err, &path))
+                            .flatten()
+                            .unwrap_or_else(|| err.to_string());
+                        // `361-clone-failure-keeps-input`: back to the dialog
+                        if flags.bool(crate::flags::ids::CLONE_FAILURE_KEEPS_INPUT) {
+                            Self::show_popup(Popup::CloneRepositoryRetry { url, path, error }, cx)
+                        } else {
+                            Self::show_error("Clone failed", error, cx)
+                        }
                     }
-                    Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
                 }
             });
         })
         .detach();
+    }
+
+    /// Stop the running clone (`227-clone-cancel`; GHD cannot: removing the
+    /// cloning repository leaves `git clone` running). git removes the
+    /// directory it created; the view says "Cancelling…" until it exits.
+    pub fn cancel_clone(cx: &mut App) {
+        if !Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CLONE_CANCEL)
+        {
+            return;
+        }
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(c) = s.cloning.as_mut() {
+                c.cancel.cancel();
+                c.description = "Cancelling…".into();
+                c.value = None;
+                cx.notify();
+            }
+        });
     }
 
     pub fn open_url(url: &str, cx: &mut App) {
@@ -3441,6 +3549,7 @@ struct RefreshExtras {
     last_fetched: Option<std::time::SystemTime>,
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
+    upstream_rewritten: bool,
     last_local_commit: Option<crate::state::LastCommit>,
 }
 

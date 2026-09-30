@@ -67,7 +67,7 @@ pub use patch::{
     format_patch_to_discard_changes, stage_partial_files,
 };
 pub use paths::git_dir;
-pub use process::{GitCommand, GitOutput, set_credential_helper};
+pub use process::{CancelToken, GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{
     CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
     abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,
@@ -77,11 +77,14 @@ pub use rebase_ops::{
     rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
 };
 pub use remote_ops::{
-    AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, config_value,
-    fast_forward_branches, fetch, fetch_refspec, find_default_remote, get_remotes,
-    install_lfs_hooks, is_using_lfs, last_fetched, lfs_available, lfs_hooks_installed,
-    parse_progress_line, pull, pull_with_rebase, push, remote_failure, remove_remote,
-    set_remote_url, update_remote_head,
+    AskpassEnv, FetchOptions, ProgressParser, RemoteFailure, add_remote, classify_remote_failure,
+    cloned_at, config_value, fast_forward_branch_from_remote, fast_forward_branches,
+    fast_forward_if_only_behind, fetch, fetch_refspec, fetch_with, fetch_with_prune_tags,
+    find_default_remote, get_remotes, install_lfs_hooks, is_stale_remote_ref_failure, is_using_lfs,
+    is_using_lfs_by_attributes, last_fetched, lfs_available, lfs_hooks_installed,
+    parse_progress_line, prune_remote, pull, pull_with_rebase, push, remote_failure,
+    remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
+    upstream_tip_in_reflog,
 };
 pub use repo::{
     ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,
