@@ -2,6 +2,9 @@
 //! lists the files (up to 10), the Trash hint and the "do not show again"
 //! opt-out - which Discard All Changes leaves out
 //! (`showDiscardChangesSetting: false`); then Cancel holds focus.
+//!
+//! Deviation (flag `discard-skips-trash`): discarded files are deleted
+//! instead of moved to the Trash, and the hint says they cannot be restored.
 
 use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
@@ -45,6 +48,10 @@ impl Render for DiscardChangesDialog {
         } else {
             ("Confirm Discard Changes", "Discard Changes")
         };
+        let skips_trash = corvane_core::AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::DISCARD_SKIPS_TRASH);
         let t = cx.ghd();
         let all = self.all;
         let dont_show = self.dont_show_again;
@@ -100,11 +107,11 @@ impl Render for DiscardChangesDialog {
             .flex()
             .flex_col()
             .child(file_list)
-            .child(
-                div()
-                    .when(!all, |d| d.mb(SPACING()))
-                    .child("Changes can be restored by retrieving them from the Trash."),
-            )
+            .child(div().when(!all, |d| d.mb(SPACING())).child(if skips_trash {
+                "Discarded files are deleted permanently and cannot be restored."
+            } else {
+                "Changes can be restored by retrieving them from the Trash."
+            }))
             .when(!all, |d| {
                 d.on_mouse_down(
                     MouseButton::Left,
