@@ -35,6 +35,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## History
 
 - Copy items (Corvane addition; GHD `commit-list.tsx` `getContextMenuForSingleCommit` / `getContextMenuMultipleCommits`): a commit's menu adds Copy Commit Title, Copy Commit Message (summary, blank line, body) and Copy Commit URL (GitHub repositories) after Copy SHA; a multi-commit selection adds Copy SHAs, newest first, one per line. Flag: `240-history-copy-items`.
+- The commit list scrolls back to the top when the checked-out branch (or the repository) changes; GHD keeps the list's scroll offset. Flag: `241-history-scrolls-to-top-on-branch-change`.
 
 ## Tutorial
 

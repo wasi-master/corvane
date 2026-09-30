@@ -279,6 +279,20 @@ registry! {
         upstream: &[Upstream::issue(12547), Upstream::issue(20853), Upstream::issue(7518), Upstream::issue(9791), Upstream::issue(21061)],
         code: &["crates/corvane-ui/src/history.rs"],
     },
+    /// The history list scrolls to the top when the branch changes.
+    HISTORY_SCROLLS_TO_TOP_ON_BRANCH_CHANGE = 241 "history-scrolls-to-top-on-branch-change" {
+        title: "History scrolls to the top on branch change",
+        summary: "Switching branch (or repository) scrolls the History list back to the newest \
+                  commit.",
+        ghd_behaviour: "The list keeps its scroll offset, so another branch's history opens \
+                        somewhere in the middle.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20849), Upstream::issue(6706)],
+        code: &["crates/corvane-ui/src/history.rs"],
+    },
 
     // ---- 300 GitHub ----
 
