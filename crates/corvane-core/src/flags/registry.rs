@@ -405,6 +405,22 @@ registry! {
         upstream: &[Upstream::issue(22123), Upstream::issue(22470)],
         code: &["crates/corvane-ui/src/theme/mod.rs", "crates/corvane-ui/src/title_bar.rs", "crates/corvane/src/main.rs"],
     },
+    /// Typing hides hover highlights and tooltips until the pointer moves.
+    KEYBOARD_HIDES_HOVER = 110 "keyboard-hides-hover" {
+        title: "Typing hides hover highlights",
+        summary: "A key press clears the hover highlight and tooltip under a resting pointer \
+                  until the pointer moves, so keyboard navigation isn't shadowed by the row \
+                  under the mouse.",
+        ghd_behaviour: "`:hover` and open tooltips stay on the element the pointer last moved \
+                        over while typing; an element that appears under the resting pointer \
+                        isn't hovered until it moves.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/widgets.rs", "vendor/gpui-pre/src/window.rs", "vendor/gpui-pre/src/elements/div.rs"],
+    },
 
     // ---- 200 Repository ----
 
@@ -2049,6 +2065,20 @@ registry! {
         upstream: &[Upstream::issue(21762)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Settings › Prompts leaves out the Copilot prompt.
+    COPILOT_PROMPT_OMITTED = 512 "copilot-prompt-omitted" {
+        title: "Settings › Prompts: no Copilot prompt",
+        summary: "Settings › Prompts leaves out \"Overriding commit message with generated \
+                  message\": Corvane has no Copilot commit message generation, so the \
+                  checkbox would do nothing.",
+        ghd_behaviour: "Lists the checkbox between \"Undo commit\" and \"Removing worktrees\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/dialogs/preferences.rs"],
+    },
 
     // ---- 600 Keyboard & accessibility ----
 
@@ -2068,8 +2098,8 @@ registry! {
     /// Repository Settings › Git Config always labels its email box.
     GIT_CONFIG_EMAIL_LABEL = 602 "git-config-email-label" {
         title: "Git Config's email box keeps its label",
-        summary: "Repository Settings › Git Config shows \"Email\" above the email text box \
-                  whenever it stands alone.",
+        summary: "Settings › Git › Author and Repository Settings › Git Config show \"Email\" \
+                  above the email text box whenever it stands alone.",
         ghd_behaviour: "The label disappears whenever the email isn't one of the signed-in \
                         accounts' addresses (always, when signed out), although the code means to \
                         hide it only under the account-email dropdown's \"Other\".",
@@ -2078,7 +2108,7 @@ registry! {
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: true, availability: available,
         upstream: &[],
-        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-ui/src/dialogs/preferences.rs"],
     },
 
     /// Switching to Changes or History focuses that section's list.

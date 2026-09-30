@@ -52,6 +52,11 @@ pub struct Settings {
     pub confirm_discard_stash: bool,
     /// GHD `confirmWorktreeRemoval` (Prompts › Removing worktrees).
     pub confirm_worktree_removal: bool,
+    /// GHD `confirmCommitMessageOverride` (Prompts › Overriding commit
+    /// message with generated message). Corvane generates no commit messages:
+    /// kept only for the checkbox flag `512-copilot-prompt-omitted` shows.
+    #[serde(default = "default_true")]
+    pub confirm_commit_message_override: bool,
     /// GHD `askToMoveToApplicationsFolder` ("Do not show this message again"
     /// in the Move to Applications prompt clears it).
     pub ask_to_move_to_applications_folder: bool,
@@ -283,6 +288,7 @@ impl Default for Settings {
             uncommitted_changes_strategy: UncommittedChangesStrategy::default(),
             confirm_discard_stash: true,
             confirm_worktree_removal: true,
+            confirm_commit_message_override: true,
             ask_to_move_to_applications_folder: true,
             confirm_force_push: true,
             external_editor: None,

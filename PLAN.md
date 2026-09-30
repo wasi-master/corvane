@@ -214,7 +214,7 @@ Total ≈ 12 weeks for one developer. Windows/Linux, GitHub layer: see `TODO.md`
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes. Vendored today: `vendor/gpui-pre-macos` (0.3.7 + exact variable-font weights in `src/text_system.rs`, see its `exact_weight_variant`); re-apply that diff when upgrading |
+| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes. Vendored today (every change marked "Corvane patch"; re-apply when upgrading): `vendor/gpui-pre-macos` 0.3.7 (`src/text_system.rs`: exact variable-font weights via `exact_weight_variant`, glyph dilation capped at level 3) and `vendor/gpui-pre` 0.3.7 (text paints from its unsnapped layout origin: `src/elements/text.rs`, `Window::unsnapped_layout_origin`; hover that persists through typing for flag 106: `set_hover_persists_while_typing`, `HitboxId::is_hovered`, the tooltip prepaint check in `src/elements/div.rs`) |
 | R2 | gpui-kit look leaks into GHD chrome | Own widgets for toolbar/tabs/lists/diff; gpui-kit only for form controls + infra; theme override tested by screenshot diff |
 | R3 | gix status slower than git on huge/fsmonitor repos | `status-cli` fallback path; measure in M2; keep both parsers |
 | R4 | Commit description editor (autocomplete, IME, spellcheck) | gpui-kit `Textarea` + custom autocomplete popover; spellcheck deferred (`TODO.md`) |

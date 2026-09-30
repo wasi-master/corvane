@@ -552,6 +552,7 @@ fn no_repositories(
             .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP);
     div()
         .id("no-repositories")
+        .font_features(crate::theme::css_zoom_features(z))
         .relative()
         .size_full()
         .overflow_hidden()

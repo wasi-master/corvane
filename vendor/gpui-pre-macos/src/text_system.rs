@@ -74,6 +74,9 @@ struct MacTextSystemState {
     /// Corvane patch: exact-`wght` instances of variable fonts, by (named
     /// instance, requested weight bits).
     weight_variants: HashMap<(FontId, u32), FontId>,
+    /// Corvane patch: fonts requested with the private `czom` feature (CSS
+    /// `zoom` × 100): their text is shaped at `size / zoom` and scaled back.
+    layout_zoom: HashMap<FontId, f32>,
 }
 
 impl MacTextSystem {
@@ -88,6 +91,7 @@ impl MacTextSystem {
             font_ids_by_font_key: HashMap::default(),
             postscript_names_by_font_id: HashMap::default(),
             weight_variants: HashMap::default(),
+            layout_zoom: HashMap::default(),
         }))
     }
 }
@@ -175,6 +179,9 @@ impl PlatformTextSystem for MacTextSystem {
             let font_id = lock
                 .exact_weight_variant(font_id, font.weight)
                 .unwrap_or(font_id);
+            if let Some(zoom) = css_zoom(&font.features) {
+                lock.layout_zoom.insert(font_id, zoom);
+            }
             lock.font_selections.insert(font.clone(), font_id);
             Ok(font_id)
         }
@@ -232,8 +239,26 @@ impl PlatformTextSystem for MacTextSystem {
         let rgba: Rgba = color.into();
         let luminance = 0.2126 * rgba.r + 0.7152 * rgba.g + 0.0722 * rgba.b;
         let level = ((4.0 * luminance) + 0.5).floor() as i32;
-        level.clamp(0, 4) as u8
+        // Corvane patch: at the top level (white and near-white text) CG's
+        // dilation is 4–6 % heavier than Chromium's text; level 3 matches it
+        // within ~1 % (measured against GitHub Desktop, 11–13 px SF / SF Mono)
+        level.clamp(0, 3) as u8
     }
+}
+
+/// Corvane patch: the private feature tag a view uses to say its text is
+/// under a CSS `zoom` (value: zoom × 100). Chromium lays such text out at the
+/// unzoomed size and scales it, so SF's size-dependent tracking is the
+/// unzoomed size's.
+const CSS_ZOOM_TAG: &str = "czom";
+
+fn css_zoom(features: &FontFeatures) -> Option<f32> {
+    features
+        .tag_value_list()
+        .iter()
+        .find(|(tag, _)| tag == CSS_ZOOM_TAG)
+        .map(|(_, value)| *value as f32 / 100.)
+        .filter(|zoom| *zoom > 0. && (*zoom - 1.).abs() > f32::EPSILON)
 }
 
 fn font_smoothing_allowed_by_user() -> bool {
@@ -293,6 +318,15 @@ impl MacTextSystemState {
         fallbacks: Option<&FontFallbacks>,
     ) -> Result<SmallVec<[FontId; 4]>> {
         let name = gpui::font_name_with_fallbacks(name, ".AppleSystemUIFont");
+        // Corvane patch: `czom` is not an OpenType feature
+        let features = &FontFeatures(std::sync::Arc::new(
+            features
+                .tag_value_list()
+                .iter()
+                .filter(|(tag, _)| tag != CSS_ZOOM_TAG)
+                .cloned()
+                .collect(),
+        ));
 
         let mut font_ids = SmallVec::new();
         let mut postscript_names_seen = HashSet::default();
@@ -600,6 +634,13 @@ impl MacTextSystemState {
         // Corvane patch: the fonts set on the runs, to map glyph runs back to
         // their `FontId` (exact-weight variants share a PostScript name)
         let mut run_fonts: Vec<(CTFont, FontId)> = Vec::new();
+        // Corvane patch: CSS zoom (the line is shaped at size / zoom)
+        let zoom = font_runs
+            .iter()
+            .find_map(|run| self.layout_zoom.get(&run.font_id))
+            .copied()
+            .unwrap_or(1.);
+        let shaping_size = px(f32::from(font_size) / zoom);
 
         {
             let mut text = text;
@@ -623,9 +664,9 @@ impl MacTextSystemState {
                 max_descent = max_descent.max(-font_metrics.descent * font_scale);
 
                 let font_size = if break_ligature {
-                    px(f32::from(font_size).next_up())
+                    px(f32::from(shaping_size).next_up())
                 } else {
-                    font_size
+                    shaping_size
                 };
                 let sized = font.native_font().clone_with_font_size(font_size.into());
                 unsafe {
@@ -678,7 +719,8 @@ impl MacTextSystemState {
                 ix_converter.advance_to_utf16_ix(glyph_utf16_ix);
                 glyphs.push(ShapedGlyph {
                     id: GlyphId(glyph_id as u32),
-                    position: point(position.x as f32, position.y as f32).map(px),
+                    position: point(position.x as f32 * zoom, position.y as f32 * zoom)
+                        .map(px),
                     index: ix_converter.utf8_ix,
                     is_emoji: self.is_emoji(font_id),
                 });
@@ -688,7 +730,7 @@ impl MacTextSystemState {
         LineLayout {
             runs,
             font_size,
-            width: typographic_bounds.width.into(),
+            width: (typographic_bounds.width as f32 * zoom).into(),
             ascent: max_ascent.into(),
             descent: max_descent.into(),
             len: text.len(),
