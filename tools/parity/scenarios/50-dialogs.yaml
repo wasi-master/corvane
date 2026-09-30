@@ -23,7 +23,7 @@ steps:
   - snap: notifications
   - click: {text: "Prompts", within: "dialog"}
   - dump: {name: prompts, root: dialog}
-  - snap: prompts
+  - snap: {name: prompts, note: "GHD lists the Copilot prompt (Overriding commit message with generated message); Corvane omits Copilot (deviations.md › Settings), so rows below it sit 23 px higher"}
   - click: {text: "Advanced", within: "dialog"}
   - dump: {name: advanced, root: dialog}
   - snap: advanced

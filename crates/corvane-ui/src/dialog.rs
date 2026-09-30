@@ -145,6 +145,36 @@ pub fn dialog_with_kind(
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
+        None,
+        buttons,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// A dialog whose footer shows `footer_message` above the buttons (GHD
+/// dialogs that put a `<div>` in `DialogFooter`, e.g. `#create-repo-path-msg`).
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_footer_message(
+    id: &'static str,
+    title: impl Into<SharedString>,
+    content: impl IntoElement,
+    footer_message: Option<AnyElement>,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    let title: SharedString = title.into();
+    dialog_impl(
+        id,
+        DialogKind::Normal,
+        false,
+        div().child(title.clone()).into_any_element(),
+        Some(title),
+        content,
+        footer_message,
         buttons,
         on_close,
         window,
@@ -172,6 +202,7 @@ pub fn dialog_loading(
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
+        None,
         buttons,
         on_close,
         window,
@@ -199,6 +230,7 @@ pub fn dialog_with_title_element(
         title.into_any_element(),
         Some(plain_title.into()),
         content,
+        None,
         buttons,
         on_close,
         window,
@@ -214,6 +246,7 @@ fn dialog_impl(
     title: AnyElement,
     plain_title: Option<SharedString>,
     content: impl IntoElement,
+    footer_message: Option<AnyElement>,
     buttons: Vec<DialogButton>,
     on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
     window: &Window,
@@ -231,7 +264,7 @@ fn dialog_impl(
                 .flex()
                 .items_center()
                 .justify_center()
-                .bg(t.overlay)
+                .bg(t.dialog_backdrop)
                 .on_mouse_down(MouseButton::Left, move |_, window, cx| {
                     close_for_overlay(window, cx)
                 })
@@ -302,42 +335,62 @@ fn dialog_impl(
                         .when(!buttons.is_empty(), |d| {
                             d.child(
                                 // `.dialog-footer`: a top border, 20 px padding,
-                                // buttons 5 px apart (`margin-right`)
+                                // an optional message 10 px above the buttons
+                                // (`margin: -10px 0 10px`), buttons 5 px apart
                                 div()
                                     .flex_none()
                                     .flex()
-                                    .flex_row()
-                                    .justify_end()
-                                    .gap(SPACING_HALF())
+                                    .flex_col()
                                     .p(SPACING_DOUBLE())
                                     .border_t_1()
                                     .border_color(t.box_border)
-                                    .children(buttons.into_iter().map(|b| {
-                                        let on_click = b.on_click;
-                                        let disabled = b.disabled;
-                                        if b.primary {
-                                            crate::widgets::primary_button(
-                                                b.id, b.label, disabled, cx,
-                                            )
-                                            .min_w(zpx(120.))
-                                            .when(!disabled, |d| {
-                                                d.on_click(move |_, window, cx| {
-                                                    on_click(window, cx)
-                                                })
-                                            })
-                                            .into_any_element()
-                                        } else {
-                                            crate::widgets::button(b.id, b.label, cx)
-                                                .min_w(zpx(120.))
-                                                .when(disabled, |d| d.opacity(0.6).cursor_default())
-                                                .when(!disabled, |d| {
-                                                    d.on_click(move |_, window, cx| {
-                                                        on_click(window, cx)
+                                    .text_size(FONT_SIZE())
+                                    .line_height(zpx(18.))
+                                    .children(footer_message.map(|message| {
+                                        div()
+                                            // a block takes the dialog's width
+                                            // without widening it
+                                            .w(zpx(0.))
+                                            .min_w_full()
+                                            .mt(-SPACING())
+                                            .mb(SPACING())
+                                            .child(message)
+                                    }))
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .flex_row()
+                                            .justify_end()
+                                            .gap(SPACING_HALF())
+                                            .children(buttons.into_iter().map(|b| {
+                                                let on_click = b.on_click;
+                                                let disabled = b.disabled;
+                                                if b.primary {
+                                                    crate::widgets::primary_button(
+                                                        b.id, b.label, disabled, cx,
+                                                    )
+                                                    .min_w(zpx(120.))
+                                                    .when(!disabled, |d| {
+                                                        d.on_click(move |_, window, cx| {
+                                                            on_click(window, cx)
+                                                        })
                                                     })
-                                                })
-                                                .into_any_element()
-                                        }
-                                    })),
+                                                    .into_any_element()
+                                                } else {
+                                                    crate::widgets::button(b.id, b.label, cx)
+                                                        .min_w(zpx(120.))
+                                                        .when(disabled, |d| {
+                                                            d.opacity(0.6).cursor_default()
+                                                        })
+                                                        .when(!disabled, |d| {
+                                                            d.on_click(move |_, window, cx| {
+                                                                on_click(window, cx)
+                                                            })
+                                                        })
+                                                        .into_any_element()
+                                                }
+                                            })),
+                                    ),
                             )
                         }),
                 ),

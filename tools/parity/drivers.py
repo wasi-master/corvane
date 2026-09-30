@@ -498,6 +498,9 @@ class Corvane:
                 self.file = self.sock.makefile("rw")
                 info = self.cmd("ping")
                 self.scale = info.get("scale", 2.0)
+                # CORVANE_THEME only overrides the look; store the setting too,
+                # as GHD's fixture does (Settings › Appearance shows it)
+                self.hook("theme", self.theme)
                 return
             except OSError:
                 if self.proc.poll() is not None:

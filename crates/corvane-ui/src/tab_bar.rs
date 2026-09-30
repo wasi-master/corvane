@@ -60,6 +60,8 @@ pub fn vertical_tab_bar(
                 .bg(bg)
                 .text_color(text)
                 .text_size(FONT_SIZE())
+                // the label span is 16 px tall: 36 px items
+                .line_height(zpx(16.))
                 .cursor_pointer()
                 .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
                 .on_click(move |_, window, cx| on_select(ix, window, cx))

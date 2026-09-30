@@ -59,7 +59,7 @@ pub fn split_number_format(key: &str) -> (String, String) {
     }
 }
 
-/// GHD `dateFormats` (pattern, example for 21 Jan 2025).
+/// GHD `dateFormats` (models/formatting-preferences.ts).
 pub const DATE_FORMATS: [&str; 16] = [
     "MMM d, yyyy",
     "MMMM do, yyyy",
@@ -94,14 +94,15 @@ pub const TIME_FORMATS: [&str; 8] = [
 /// GHD `numberFormats` as `"<thousands>|<decimal>"` keys.
 pub const NUMBER_FORMATS: [&str; 6] = ["|.", "|,", ",|.", ".|,", " |.", " |,"];
 
-/// The preview date GHD formats the select examples with.
+/// GHD `previewDate` (`new Date(2017, 9, 19, 14, 30, 45)`), which the
+/// select examples are formatted with.
 const PREVIEW: LocalTime = LocalTime {
-    year: 2025,
-    month: 1,
-    day: 21,
-    hour: 15,
-    minute: 4,
-    second: 5,
+    year: 2017,
+    month: 10,
+    day: 19,
+    hour: 14,
+    minute: 30,
+    second: 45,
 };
 
 pub fn date_example(pattern: &str) -> String {
@@ -309,11 +310,11 @@ mod tests {
 
     #[test]
     fn patterns_match_ghd_examples() {
-        assert_eq!(date_example("MMM d, yyyy"), "Jan 21, 2025");
-        assert_eq!(date_example("MMMM do, yyyy"), "January 21st, 2025");
-        assert_eq!(date_example("dd.MM.yy"), "21.01.25");
-        assert_eq!(time_example("h:mm aaa"), "3:04 pm");
-        assert_eq!(time_example("HH:mm:ss"), "15:04:05");
+        assert_eq!(date_example("MMM d, yyyy"), "Oct 19, 2017");
+        assert_eq!(date_example("MMMM do, yyyy"), "October 19th, 2017");
+        assert_eq!(date_example("dd.MM.yy"), "19.10.17");
+        assert_eq!(time_example("h:mm aaa"), "2:30 pm");
+        assert_eq!(time_example("HH:mm:ss"), "14:30:45");
     }
 
     #[test]

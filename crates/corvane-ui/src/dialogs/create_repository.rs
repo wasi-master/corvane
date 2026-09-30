@@ -9,7 +9,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::dialog::{DialogButton, dialog};
+use crate::dialog::{DialogButton, dialog_with_footer_message};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
@@ -230,8 +230,22 @@ impl Render for CreateRepositoryDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
         let readme = self.readme;
+        // `renderPathMessage`: "The repository will be created at <Ref>…</Ref>."
+        let path_message = full.as_ref().filter(|_| !exists_as_repo).map(|path| {
+            let path = path.display().to_string();
+            let before = "The repository will be created at ";
+            let text = format!("{before}{path}.");
+            let style = window.text_style();
+            let mut mono = style.clone();
+            mono.font_family = crate::theme::mono_font().into();
+            let mut path_run = mono.to_run(path.len());
+            path_run.background_color = Some(t.path_segment_background);
+            StyledText::new(text)
+                .with_runs(vec![style.to_run(before.len()), path_run, style.to_run(1)])
+                .into_any_element()
+        });
 
-        dialog(
+        dialog_with_footer_message(
             "create-repository",
             "Create a New Repository",
             div()
@@ -314,6 +328,7 @@ impl Render for CreateRepositoryDialog {
                 )
                 .child(labeled("Git Ignore", self.gitignore_select(cx), cx))
                 .child(labeled("License", self.license_select(cx), cx)),
+            path_message,
             vec![
                 DialogButton {
                     id: "create-cancel",
@@ -326,7 +341,8 @@ impl Render for CreateRepositoryDialog {
                     id: "create-ok",
                     label: "Create Repository".into(),
                     primary: true,
-                    disabled: false,
+                    // `fullPath === null || creating || isRepository`
+                    disabled: !can_create,
                     on_click: Box::new(move |_, cx| {
                         if can_create {
                             this.update(cx, |d, cx| d.submit(cx));

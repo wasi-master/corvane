@@ -612,7 +612,9 @@ impl Render for StashAndSwitchBranchDialog {
             )
         };
         let (repo, branch, action) = (self.repo, self.branch.clone(), self.action);
+        // `dialog#stash-changes` is 450 px wide
         let content = div()
+            .w(zpx(408.))
             .flex()
             .flex_col()
             .gap(SPACING())
@@ -632,8 +634,9 @@ impl Render for StashAndSwitchBranchDialog {
                     .flex()
                     .flex_col()
                     .child(
+                        // `legend`: 5 px padding, 3.33 px margin below
                         div()
-                            .mb(zpx(5.))
+                            .mb(zpx(5. + 10. / 3.))
                             .child("You have changes on this branch. What would you like to do with them?"),
                     )
                     .child(
