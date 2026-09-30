@@ -225,7 +225,7 @@ impl OpenPullRequestDialog {
     fn base_popover(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let anchor = self.base_button_bounds.get();
-        let viewport = crate::theme::page_size(window);
+        let viewport = window.viewport_size();
         let query = self.base_filter.read(cx).value().trim().to_string();
         let (branches, recent, default) = self.base_branches(cx);
         let groups = group_branches(
@@ -783,7 +783,7 @@ impl Render for OpenPullRequestDialog {
             if enterprise { " Enterprise" } else { "" }
         );
         let dialog = deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("open-pull-request")
                     // modal: nothing underneath takes hover, clicks or wheel

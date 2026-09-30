@@ -483,7 +483,7 @@ fn dialog_impl(
     } = frame;
     let viewport = crate::theme::page_size(window);
     deferred(
-        anchored().position(point(zpx(0.), zpx(0.))).child(
+        anchored().position(crate::theme::page_origin()).child(
             div()
                 .id(id)
                 // modal: the views underneath get no hover, clicks or wheel
