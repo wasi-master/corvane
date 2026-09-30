@@ -247,6 +247,18 @@ pub fn page_size(window: &gpui_kit::Window) -> gpui_kit::Size<gpui_kit::Pixels> 
     gpui_kit::size(viewport.width, viewport.height - page_top())
 }
 
+/// Chromium's `line-height: normal` (and an inline box's content area) for
+/// the UI font at `size`: the font's ascent plus descent, each rounded to a
+/// pixel. SF gives about 1.19 em, Noto Sans 1.36 em, so boxes GHD sizes by
+/// it (a button, an inline span) grow off macOS.
+pub fn normal_line_height(size: gpui_kit::Pixels, cx: &gpui_kit::App) -> gpui_kit::Pixels {
+    let text = cx.text_system();
+    let id = text.resolve_font(&gpui_kit::font(ui_font()));
+    let ascent = f32::from(text.ascent(id, size)).round();
+    let descent = f32::from(text.descent(id, size)).abs().round();
+    gpui_kit::px(ascent + descent)
+}
+
 /// The page's top-left corner in window coordinates: where a full-page
 /// overlay (`anchored()` positions are window coordinates) starts.
 pub fn page_origin() -> gpui_kit::Point<gpui_kit::Pixels> {

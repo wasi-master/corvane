@@ -588,6 +588,12 @@ impl SelectedCommitView {
                                 .ghd_tooltip(if expanded { "Collapse" } else { "Expand" })
                                 .ml(SPACING())
                                 .flex_none()
+                                // a `<button>` at `line-height: normal`: its
+                                // height sets `.ecs-title`'s (SF's is the
+                                // icon's 16 px on macOS)
+                                .when(!cfg!(target_os = "macos"), |d| {
+                                    d.h(crate::theme::normal_line_height(FONT_SIZE_MD(), cx))
+                                })
                                 .cursor_pointer()
                                 .on_click(move |_, _, cx| {
                                     Dispatcher::set_commit_summary_expanded(id, !expanded, cx)
