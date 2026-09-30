@@ -1,5 +1,8 @@
 //! `.gitignore` edits - GHD `lib/git/gitignore.ts` (`appendIgnoreRule`,
 //! `appendIgnoreFile`, `escapeGitSpecialCharacters`).
+//!
+//! Deviation (flag `ignore-skips-existing-rules`): patterns already in the
+//! file are not appended again.
 
 use std::path::Path;
 
@@ -18,8 +21,10 @@ pub fn escape_gitignore_pattern(path: &str) -> String {
 }
 
 /// Append raw patterns to the root `.gitignore`, creating it if needed. Keeps
-/// the file's existing line endings (GHD consults `core.autocrlf`).
-pub fn append_ignore_rules(workdir: &Path, patterns: &[String]) -> Result<()> {
+/// the file's existing line endings (GHD consults `core.autocrlf`). With
+/// `skip_existing`, patterns already in the file as a line (or earlier in
+/// `patterns`) are not added again; GHD appends them blindly.
+pub fn append_ignore_rules(workdir: &Path, patterns: &[String], skip_existing: bool) -> Result<()> {
     let path = workdir.join(".gitignore");
     let mut text = match std::fs::read_to_string(&path) {
         Ok(text) => text,
@@ -30,9 +35,21 @@ pub fn append_ignore_rules(workdir: &Path, patterns: &[String]) -> Result<()> {
     if !text.is_empty() && !text.ends_with('\n') {
         text.push_str(eol);
     }
+    let mut existing: std::collections::HashSet<String> = if skip_existing {
+        text.lines().map(|line| line.trim().to_string()).collect()
+    } else {
+        Default::default()
+    };
+    let before = text.len();
     for pattern in patterns {
+        if skip_existing && !existing.insert(pattern.trim().to_string()) {
+            continue;
+        }
         text.push_str(pattern);
         text.push_str(eol);
+    }
+    if skip_existing && text.len() == before {
+        return Ok(());
     }
     std::fs::write(&path, text)?;
     Ok(())
@@ -74,9 +91,9 @@ pub fn save_gitignore(workdir: &Path, text: &str, autocrlf: bool) -> Result<()> 
 }
 
 /// Ignore file paths (escaped first), as the "Ignore File" menu items do.
-pub fn append_ignore_files(workdir: &Path, paths: &[String]) -> Result<()> {
+pub fn append_ignore_files(workdir: &Path, paths: &[String], skip_existing: bool) -> Result<()> {
     let patterns: Vec<String> = paths.iter().map(|p| escape_gitignore_pattern(p)).collect();
-    append_ignore_rules(workdir, &patterns)
+    append_ignore_rules(workdir, &patterns, skip_existing)
 }
 
 #[cfg(test)]
@@ -95,9 +112,9 @@ mod tests {
     #[test]
     fn appends_with_trailing_newline() {
         let dir = tempfile::tempdir().unwrap();
-        append_ignore_rules(dir.path(), &["*.log".into()]).unwrap();
+        append_ignore_rules(dir.path(), &["*.log".into()], false).unwrap();
         std::fs::write(dir.path().join(".gitignore"), "*.log\nbuild").unwrap();
-        append_ignore_files(dir.path(), &["dist".into(), "we!rd".into()]).unwrap();
+        append_ignore_files(dir.path(), &["dist".into(), "we!rd".into()], false).unwrap();
         let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
         assert_eq!(text, "*.log\nbuild\ndist\nwe\\!rd\n");
     }
@@ -121,10 +138,28 @@ mod tests {
     }
 
     #[test]
+    fn skips_patterns_already_there() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".gitignore"), "*.log\r\nbuild\r\n").unwrap();
+        let patterns = ["build".into(), "dist".into(), "dist".into(), "*.log".into()];
+        append_ignore_rules(dir.path(), &patterns, true).unwrap();
+        let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert_eq!(text, "*.log\r\nbuild\r\ndist\r\n");
+        // nothing new: the file is left alone
+        append_ignore_rules(dir.path(), &["build".into()], true).unwrap();
+        let again = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert_eq!(again, text);
+        // GHD behaviour: appended again
+        append_ignore_rules(dir.path(), &["build".into()], false).unwrap();
+        let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert_eq!(text, "*.log\r\nbuild\r\ndist\r\nbuild\r\n");
+    }
+
+    #[test]
     fn keeps_crlf() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join(".gitignore"), "a\r\n").unwrap();
-        append_ignore_rules(dir.path(), &["b".into()]).unwrap();
+        append_ignore_rules(dir.path(), &["b".into()], false).unwrap();
         let text = std::fs::read_to_string(dir.path().join(".gitignore")).unwrap();
         assert_eq!(text, "a\r\nb\r\n");
     }
