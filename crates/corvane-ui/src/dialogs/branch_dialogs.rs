@@ -7,6 +7,8 @@
 //! branch…" choice (`255-create-branch-from-any-branch`) and preselects the
 //! current branch while there are uncommitted changes
 //! (`256-create-branch-with-changes-from-current`).
+//! Delete Branch warns about unmerged commits and a stash on the branch
+//! (`258-delete-branch-warnings`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -598,7 +600,15 @@ pub struct DeleteBranchDialog {
 }
 
 impl DeleteBranchDialog {
-    pub fn new(state: Entity<AppState>, repo: u64, branch: String) -> Self {
+    pub fn new(state: Entity<AppState>, repo: u64, branch: String, cx: &mut Context<Self>) -> Self {
+        if state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::DELETE_BRANCH_WARNINGS)
+        {
+            cx.observe(&state, |_, _, cx| cx.notify()).detach();
+            Dispatcher::preview_delete_branch(repo, branch.clone(), cx);
+        }
         Self {
             state,
             repo,
@@ -611,6 +621,45 @@ impl DeleteBranchDialog {
 impl Render for DeleteBranchDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let t = cx.ghd();
+        // `258-delete-branch-warnings`: what the deletion would lose
+        let warnings: Vec<String> = {
+            let s = self.state.read(cx);
+            s.repo_states
+                .get(&self.repo)
+                .and_then(|r| r.delete_branch_preview.as_ref())
+                .filter(|p| {
+                    p.branch == self.branch
+                        && s.flags
+                            .bool(corvane_core::flags::ids::DELETE_BRANCH_WARNINGS)
+                })
+                .map(|p| {
+                    let mut out = Vec::new();
+                    if p.unmerged_commits > 0 {
+                        let n = p.unmerged_commits;
+                        out.push(format!(
+                            "{n} {} on this branch {} not on {}. {} will be lost unless {} on another branch.",
+                            if n == 1 { "commit" } else { "commits" },
+                            if n == 1 { "is" } else { "are" },
+                            match p.compared_to.as_slice() {
+                                [] => String::new(),
+                                [one] => one.clone(),
+                                [rest @ .., last] => format!("{} or {last}", rest.join(", ")),
+                            },
+                            if n == 1 { "It" } else { "They" },
+                            if n == 1 { "it is" } else { "they are" },
+                        ));
+                    }
+                    if p.has_stash {
+                        out.push(
+                            "This branch has stashed changes, which will no longer be shown once the branch is deleted."
+                                .to_string(),
+                        );
+                    }
+                    out
+                })
+                .unwrap_or_default()
+        };
         let exists_on_remote = {
             let s = self.state.read(cx);
             let info = s.repo_states.get(&self.repo).and_then(|r| r.info.as_ref());
@@ -640,6 +689,16 @@ impl Render for DeleteBranchDialog {
                     .child(ref_chip(self.branch.clone(), cx))
                     .child("?"),
             )
+            .children(warnings.into_iter().map(|warning| {
+                div()
+                    .mb(SPACING())
+                    .flex()
+                    .flex_row()
+                    .items_start()
+                    .gap(SPACING_HALF())
+                    .child(octicon(Octicon::Alert, t.dialog_warning))
+                    .child(div().flex_1().min_w_0().child(warning))
+            }))
             // the last paragraph has no bottom margin
             .child(
                 div()
