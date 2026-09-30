@@ -980,7 +980,9 @@ impl Render for Workspace {
             .text_color(t.text)
             .text_size(FONT_SIZE())
             .font_family(crate::theme::UI_FONT)
-            .when(!bare, |d| d.child(title_bar(cx)))
+            .when(!bare && cfg!(target_os = "macos"), |d| {
+                d.child(title_bar(cx))
+            })
             .when_some(self.welcome.clone(), |d, welcome| {
                 d.child(div().flex_1().min_h_0().w_full().child(welcome))
             })
@@ -1051,7 +1053,9 @@ impl Render for Workspace {
                         .into_any_element()
                 })
             })
-            .when(bare, |d| d.child(light_title_bar()))
+            .when(bare && cfg!(target_os = "macos"), |d| {
+                d.child(light_title_bar())
+            })
             .when_some(foldout, |d, foldout| {
                 // the worktree button sits between the repository and branch buttons
                 let shift = if worktree_button {

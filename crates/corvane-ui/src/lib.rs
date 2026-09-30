@@ -28,6 +28,8 @@ pub mod icons;
 pub mod image_diff;
 pub mod keymap;
 pub mod markdown;
+#[cfg(not(target_os = "macos"))]
+pub mod menu_bar;
 pub mod missing_repository;
 #[cfg_attr(not(target_os = "macos"), path = "native_menu_linux.rs")]
 pub mod native_menu;
@@ -47,6 +49,8 @@ pub mod theme;
 pub mod title_bar;
 pub mod toolbar;
 pub mod tutorial_panel;
+#[cfg(not(target_os = "macos"))]
+pub mod views_menu;
 pub mod welcome;
 pub mod widgets;
 pub mod workspace;

@@ -576,15 +576,37 @@ fn main() {
             ..Default::default()
         };
 
-        let workspace = match gpui_kit::open_window(options, cx, move |window, cx| {
+        // Linux: Electron's classic menu bar over the app (`corvane_ui::menu_bar`)
+        #[cfg(not(target_os = "macos"))]
+        corvane_ui::views_menu::install(cx);
+        #[cfg(not(target_os = "macos"))]
+        let opened = {
+            let workspace_slot = std::rc::Rc::new(std::cell::RefCell::new(None));
+            let slot = workspace_slot.clone();
+            gpui_kit::open_window(options, cx, move |window, cx| {
+                let workspace = cx.new(|cx| Workspace::new(state, sidebar_width, window, cx));
+                *slot.borrow_mut() = Some(workspace.clone());
+                cx.new(|cx| corvane_ui::menu_bar::MenuBarShell::new(workspace.into(), cx))
+            })
+            .map(|_| workspace_slot.borrow_mut().take())
+        };
+        #[cfg(target_os = "macos")]
+        let opened = gpui_kit::open_window(options, cx, move |window, cx| {
             cx.new(|cx| Workspace::new(state, sidebar_width, window, cx))
-        }) {
-            Ok((_, workspace)) => {
+        })
+        .map(|(_, workspace)| Some(workspace));
+        let workspace = match opened {
+            Ok(Some(workspace)) => {
                 info!(
                     elapsed_ms = started.elapsed().as_millis(),
                     "main window opened"
                 );
                 workspace
+            }
+            Ok(None) => {
+                error!("the main window opened without a workspace");
+                cx.quit();
+                return;
             }
             Err(err) => {
                 error!(?err, "failed to open main window");

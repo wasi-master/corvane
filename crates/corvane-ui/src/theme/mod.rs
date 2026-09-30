@@ -96,9 +96,15 @@ pub mod sizes {
         next.unwrap_or(closest)
     }
 
+    /// The macOS title-bar strip; GHD has none on Linux (the menu bar sits
+    /// above the page there, outside the workspace).
     #[allow(non_snake_case)]
     pub fn TITLE_BAR_HEIGHT() -> Pixels {
-        zpx(32.)
+        if cfg!(target_os = "macos") {
+            zpx(32.)
+        } else {
+            zpx(0.)
+        }
     }
     #[allow(non_snake_case)]
     pub fn TOOLBAR_HEIGHT() -> Pixels {
