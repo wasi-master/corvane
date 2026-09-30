@@ -711,6 +711,9 @@ impl Dispatcher {
                     .map(|e| (e.rebase_snapshot.clone(), e.cherry_pick_snapshot.clone()));
                 let selected_file = Self::state(cx).update(cx, |s, cx| {
                     let slash_remotes = s.flags.bool(crate::flags::ids::REMOTE_NAMES_WITH_SLASHES);
+                    let exclude_untracked = s
+                        .flags
+                        .bool(crate::flags::ids::NEW_UNTRACKED_FILES_EXCLUDED);
                     let repo_state: &mut RepositoryState = s.repo_state_mut(id);
                     repo_state.loading = false;
                     repo_state.last_refresh = Some(Instant::now());
@@ -749,7 +752,10 @@ impl Dispatcher {
                                     repo_state.stash_diff = None;
                                 }
                             }
-                            if let Some(status) = status {
+                            if let Some(mut status) = status {
+                                if exclude_untracked {
+                                    exclude_new_untracked(&mut status, repo_state.status.as_ref());
+                                }
                                 // keep the selection if the file is still changed, else first file
                                 let keep = repo_state
                                     .selected_file
@@ -3365,6 +3371,21 @@ fn forget_remote_names(info: &mut corvane_models::RepositoryInfo) {
     }
 }
 
+/// `221-new-untracked-files-excluded`: untracked files that were not listed
+/// before start left out of the next commit (GHD includes every new file).
+fn exclude_new_untracked(
+    status: &mut corvane_models::WorkingDirectoryStatus,
+    previous: Option<&corvane_models::WorkingDirectoryStatus>,
+) {
+    for file in &mut status.files {
+        if file.status.kind == corvane_models::FileStatusKind::Untracked
+            && !previous.is_some_and(|p| p.files.iter().any(|f| f.path == file.path))
+        {
+            file.selection = corvane_models::DiffSelection::none();
+        }
+    }
+}
+
 /// Node's `path.resolve(path)`: made absolute against the current directory,
 /// with `.` and `..` components folded lexically (symlinks untouched).
 fn resolve_path(path: &std::path::Path) -> PathBuf {
@@ -3395,5 +3416,34 @@ mod resolve_path_tests {
             Path::new("/a/c/d").to_path_buf()
         );
         assert!(resolve_path(Path::new("x/../y")).is_absolute());
+    }
+}
+
+#[cfg(test)]
+mod exclude_new_untracked_tests {
+    use super::exclude_new_untracked;
+    use corvane_models::DiffSelectionType;
+
+    #[test]
+    fn only_newly_listed_untracked_files_are_excluded() {
+        let before = corvane_git::parse_porcelain_v2(b"? old.txt\0");
+        let mut after = corvane_git::parse_porcelain_v2(
+            b"1 .M N... 100644 100644 100644 aaa bbb tracked.rs\0? old.txt\0? new.txt\0",
+        );
+        exclude_new_untracked(&mut after, Some(&before));
+        let kind = |path: &str| {
+            after
+                .files
+                .iter()
+                .find(|f| f.path == path)
+                .map(|f| f.selection.kind())
+        };
+        assert_eq!(kind("tracked.rs"), Some(DiffSelectionType::All));
+        assert_eq!(kind("old.txt"), Some(DiffSelectionType::All));
+        assert_eq!(kind("new.txt"), Some(DiffSelectionType::None));
+
+        let mut first = corvane_git::parse_porcelain_v2(b"? a.txt\0");
+        exclude_new_untracked(&mut first, None);
+        assert_eq!(first.files[0].selection.kind(), DiffSelectionType::None);
     }
 }

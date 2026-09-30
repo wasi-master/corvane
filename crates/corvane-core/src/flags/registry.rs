@@ -508,6 +508,19 @@ registry! {
         upstream: &[Upstream::issue(21874), Upstream::issue(22742)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// New untracked files start unticked in the Changes list.
+    NEW_UNTRACKED_FILES_EXCLUDED = 221 "new-untracked-files-excluded" {
+        title: "New untracked files start unticked",
+        summary: "An untracked file that appears in the Changes list starts unticked, so it is \
+                  only committed once it is ticked; tracked changes are still included.",
+        ghd_behaviour: "Every new file is ticked and goes into the next commit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18774), Upstream::issue(21427)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 
