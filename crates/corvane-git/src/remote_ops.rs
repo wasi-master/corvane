@@ -692,6 +692,47 @@ mod tests {
     }
 
     #[test]
+    fn push_error_includes_hook_stdout() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        let work = dir.path().join("work");
+        run(
+            dir.path(),
+            &["init", "-q", "--bare", bare.to_str().unwrap()],
+        );
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", work.to_str().unwrap()],
+        );
+        run(&work, &["config", "commit.gpgsign", "false"]);
+        run(&work, &["commit", "-q", "--allow-empty", "-m", "first"]);
+        let hook = work.join(".git/hooks/pre-push");
+        std::fs::write(
+            &hook,
+            "#!/bin/sh\necho hook-stdout\necho hook-stderr >&2\nexit 1\n",
+        )
+        .unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&hook, std::fs::Permissions::from_mode(0o755)).unwrap();
+        run(&work, &["remote", "add", "origin", bare.to_str().unwrap()]);
+        let err = push(
+            git,
+            &work,
+            "origin",
+            "main",
+            None,
+            &[],
+            false,
+            None,
+            &mut |_, _| {},
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("hook-stdout\nhook-stderr"), "{err}");
+    }
+
+    #[test]
     fn fetch_pull_push_against_a_local_bare_remote() {
         let git = Arc::new(crate::find_git().unwrap());
         let dir = tempfile::tempdir().unwrap();
