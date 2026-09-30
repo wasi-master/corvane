@@ -942,6 +942,8 @@ struct TextTooltip {
     bold: Option<std::ops::Range<usize>>,
     /// `direction` + the target's bounds; `None` anchors to the pointer.
     anchor: Option<(Bounds<Pixels>, TooltipDirection)>,
+    /// Always the 300 px maximum wide, so changing text does not resize it.
+    fixed_width: bool,
 }
 
 /// GHD `DefaultTooltipDelay` (`ui/lib/tooltip.tsx`).
@@ -1057,10 +1059,12 @@ impl Render for TextTooltip {
                 })
             })
             .unwrap_or(size(max_text, line_height));
-        let box_size = size(
-            text_size.width.ceil() + pad_x * 2.,
-            text_size.height + pad_y * 2.,
-        );
+        let text_width = if self.fixed_width {
+            max_text
+        } else {
+            text_size.width.ceil()
+        };
+        let box_size = size(text_width + pad_x * 2., text_size.height + pad_y * 2.);
         let direction = tooltip_direction(desired, target, viewport, box_size);
         let rect = tooltip_rect(target, direction, box_size);
         let bg = t.tooltip_background;
@@ -1215,6 +1219,7 @@ pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) 
             text: text.clone(),
             bold: None,
             anchor: None,
+            fixed_width: false,
         })
         .into()
     }
@@ -1231,6 +1236,7 @@ pub fn rich_tooltip(
             text: text.clone(),
             bold: Some(bold.clone()),
             anchor: None,
+            fixed_width: false,
         })
         .into()
     }
@@ -1243,7 +1249,25 @@ pub fn with_directed_tooltip(
     text: impl Into<SharedString>,
     direction: TooltipDirection,
 ) -> Stateful<Div> {
-    let text: SharedString = text.into();
+    directed_tooltip(el, text.into(), direction, false)
+}
+
+/// [`with_directed_tooltip`] at the 300 px maximum width whatever the text,
+/// for text that changes while it is shown (push / pull progress).
+pub fn with_fixed_width_tooltip(
+    el: Stateful<Div>,
+    text: impl Into<SharedString>,
+    direction: TooltipDirection,
+) -> Stateful<Div> {
+    directed_tooltip(el, text.into(), direction, true)
+}
+
+fn directed_tooltip(
+    el: Stateful<Div>,
+    text: SharedString,
+    direction: TooltipDirection,
+    fixed_width: bool,
+) -> Stateful<Div> {
     let bounds = std::rc::Rc::new(std::cell::Cell::new(Bounds::default()));
     let probe = bounds.clone();
     el.relative()
@@ -1257,6 +1281,7 @@ pub fn with_directed_tooltip(
                 text: text.clone(),
                 bold: None,
                 anchor: Some((bounds.get(), direction)),
+                fixed_width,
             })
             .into()
         })
