@@ -302,6 +302,21 @@ registry! {
         upstream: &[Upstream::issue(20935)],
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
     },
+    /// Squash with local changes: git stashes them around it.
+    SQUASH_AUTOSTASH = 149 "squash-autostash" {
+        title: "Squash with uncommitted changes",
+        summary: "Squashing with uncommitted changes runs the rebase with --autostash: git \
+                  stashes the changes first and puts them back afterwards. If they no longer \
+                  apply, they stay in git's stash and an error says so.",
+        ghd_behaviour: "Asks to stash the changes first (Stash Changes and Continue) and leaves \
+                        them stashed.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(12759)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
 
     // ---- 200 Repository ----
 

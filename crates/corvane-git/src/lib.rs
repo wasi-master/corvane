@@ -71,12 +71,13 @@ pub use patch::{
 pub use paths::git_dir;
 pub use process::{GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{
-    CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
-    abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,
-    cherry_pick_snapshot, commits_between, commits_in_range, conflict_marker_counts,
-    continue_cherry_pick, continue_rebase, create_merge_commit, determine_mergeability,
-    merge_commits_exist_after, merge_head_set, rebase, rebase_head_set, rebase_internal_state,
-    rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
+    CherryPickResult, CherryPickSnapshot, RebaseOptions, RebaseResult, RebaseSnapshot,
+    abort_cherry_pick, abort_rebase, abort_squash_merge, binary_paths, cherry_pick,
+    cherry_pick_head_found, cherry_pick_snapshot, commits_between, commits_in_range,
+    conflict_marker_counts, continue_cherry_pick, continue_rebase, create_merge_commit,
+    determine_mergeability, merge_commits_exist_after, merge_head_set, rebase, rebase_head_set,
+    rebase_internal_state, rebase_snapshot, reorder, squash, squash_msg_set,
+    stage_manual_conflict_resolution, stash_tip,
 };
 pub use remote_ops::{
     AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, config_value,

@@ -1864,15 +1864,23 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        if Self::blocked_by_local_changes(
-            id,
-            RetryAction::Squash {
-                to_squash: to_squash.clone(),
-                onto: onto.clone(),
-                message: message.clone(),
-            },
-            cx,
-        ) {
+        // flag `149`: git stashes local changes around the squash instead
+        let autostash = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::SQUASH_AUTOSTASH)
+            && !Self::working_directory_files(id, cx).is_empty();
+        if !autostash
+            && Self::blocked_by_local_changes(
+                id,
+                RetryAction::Squash {
+                    to_squash: to_squash.clone(),
+                    onto: onto.clone(),
+                    message: message.clone(),
+                },
+                cx,
+            )
+        {
             return;
         }
         let Some((branch, tip)) = Self::current_branch_or_explain(id, "Could not squash", cx)
@@ -1927,7 +1935,10 @@ impl Dispatcher {
             });
         }
         let count = commits.len() + 1;
-        let keep_messages = Self::rebase_keeps_messages(cx);
+        let options = corvane_git::RebaseOptions {
+            keep_messages: Self::rebase_keeps_messages(cx),
+            autostash,
+        };
         let run = move |cx: &mut App| {
             let (git, workdir) = (git.clone(), workdir.clone());
             let branch = branch.clone();
@@ -1941,6 +1952,9 @@ impl Dispatcher {
                 id,
                 cx,
                 move |on_progress| {
+                    let stash_before = options
+                        .autostash
+                        .then(|| corvane_git::stash_tip(git.clone(), &workdir));
                     let result = corvane_git::squash(
                         git.clone(),
                         &workdir,
@@ -1948,13 +1962,18 @@ impl Dispatcher {
                         &target_commit,
                         last_retained.as_deref(),
                         &message,
-                        keep_messages,
+                        options,
                         on_progress,
                     );
+                    // the autostash went back into the stash: reapplying it conflicted
+                    let stash_kept = result == RebaseResult::CompletedWithoutError
+                        && stash_before.is_some_and(|before| {
+                            corvane_git::stash_tip(git.clone(), &workdir) != before
+                        });
                     let status = corvane_git::get_status(git, &workdir, None).ok();
-                    (result, status)
+                    (result, status, stash_kept)
                 },
-                move |(result, status), cx| {
+                move |(result, status, stash_kept), cx| {
                     Self::process_rebase_result(
                         id,
                         result,
@@ -1963,7 +1982,14 @@ impl Dispatcher {
                         Some(branch),
                         Some("squash commit".into()),
                         cx,
-                    )
+                    );
+                    if stash_kept {
+                        Self::show_error(
+                            "Local changes kept in the stash",
+                            "The commits were squashed, but your local changes conflicted with the result. They are kept in git's stash as \"autostash\" (git stash list).",
+                            cx,
+                        );
+                    }
                 },
             );
         };
@@ -2110,7 +2136,10 @@ impl Dispatcher {
                         &commits,
                         before_commit.as_ref(),
                         last_retained.as_deref(),
-                        keep_messages,
+                        corvane_git::RebaseOptions {
+                            keep_messages,
+                            autostash: false,
+                        },
                         on_progress,
                     );
                     let status = corvane_git::get_status(git, &workdir, None).ok();

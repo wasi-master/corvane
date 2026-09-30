@@ -9,7 +9,8 @@
 //! Deviation: with `keep_messages` (flag `448`) rebases use
 //! `commit.cleanup=scissors` so `#` message lines survive a conflict
 //! (GHD `lib/git/rebase.ts` keeps git's `strip`); cherry-picks likewise
-//! (flag `449`, GHD `lib/git/cherry-pick.ts`).
+//! (flag `449`, GHD `lib/git/cherry-pick.ts`). Squash can `--autostash`
+//! (flag `149`; GHD refuses to start with local changes).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -120,6 +121,20 @@ pub fn rebase_internal_state(workdir: &Path) -> Option<RebaseInternalState> {
         base_branch_tip,
         original_branch_tip,
     })
+}
+
+/// The stash's newest entry (`refs/stash`), to tell whether an autostash
+/// could not be reapplied and was kept there.
+pub fn stash_tip(git: Arc<GitBinary>, workdir: &Path) -> Option<String> {
+    GitCommand::new(git)
+        .args(["rev-parse", "-q", "--verify", "refs/stash"])
+        .current_dir(workdir)
+        .allow_exit_code(1)
+        .run()
+        .ok()
+        .and_then(|o| o.stdout_string().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
 }
 
 /// GHD `formatRebaseValue`: clamp to 0..=1 with two decimals.
@@ -672,6 +687,16 @@ pub fn continue_rebase(
     Ok(classify_rebase(workdir, result))
 }
 
+/// Options for the interactive rebases behind squash and reorder.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RebaseOptions {
+    /// See [`cleanup_config`] (flag `448`).
+    pub keep_messages: bool,
+    /// `--autostash`: local changes are stashed first and reapplied after
+    /// (flag `149`).
+    pub autostash: bool,
+}
+
 /// GHD `rebaseInteractive`: replay `todo` with `sequence.editor=cat todo >`.
 /// `last_retained_ref` is the commit before the first rewritten one, or
 /// `None` to rebase from the root.
@@ -683,7 +708,7 @@ pub fn rebase_interactive(
     last_retained_ref: Option<&str>,
     git_editor: Option<&str>,
     commits: &[CommitOneLine],
-    keep_messages: bool,
+    options: RebaseOptions,
     mut on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     let todo_path = todo.to_string_lossy();
@@ -692,17 +717,21 @@ pub fn rebase_interactive(
     }
     let sequence_editor = format!("sequence.editor=cat \"{todo_path}\" >");
     let base = last_retained_ref.unwrap_or("--root");
+    let mut args = vec![
+        "-c",
+        &sequence_editor,
+        "-c",
+        "rebase.backend=merge",
+        "rebase",
+        "-i",
+    ];
+    if options.autostash {
+        args.push("--autostash");
+    }
+    args.push(base);
     let result = GitCommand::new(git)
-        .args(cleanup_config(keep_messages))
-        .args([
-            "-c",
-            &sequence_editor,
-            "-c",
-            "rebase.backend=merge",
-            "rebase",
-            "-i",
-            base,
-        ])
+        .args(cleanup_config(options.keep_messages))
+        .args(args)
         .env_remove("GIT_SEQUENCE_EDITOR")
         .env("GIT_EDITOR", git_editor.unwrap_or(":"))
         .current_dir(workdir)
@@ -840,7 +869,7 @@ pub fn squash(
     squash_onto: &Commit,
     last_retained_ref: Option<&str>,
     message: &str,
-    keep_messages: bool,
+    options: RebaseOptions,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_squash.is_empty() {
@@ -884,7 +913,10 @@ pub fn squash(
         })
         .collect();
     // without a message git's own (with its `#` notes) would be kept
-    let keep_messages = keep_messages && editor.is_some();
+    let options = RebaseOptions {
+        keep_messages: options.keep_messages && editor.is_some(),
+        ..options
+    };
     let result = rebase_interactive(
         git,
         workdir,
@@ -892,7 +924,7 @@ pub fn squash(
         last_retained_ref,
         editor.as_deref(),
         &involved,
-        keep_messages,
+        options,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -909,7 +941,7 @@ pub fn reorder(
     to_move: &[Commit],
     before: Option<&Commit>,
     last_retained_ref: Option<&str>,
-    keep_messages: bool,
+    options: RebaseOptions,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_move.is_empty() {
@@ -937,7 +969,7 @@ pub fn reorder(
         last_retained_ref,
         None,
         &commits,
-        keep_messages,
+        options,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -1474,7 +1506,7 @@ mod tests {
             &full(&all[1]),
             Some(&all[0].sha),
             "combined\n\nsecond + third",
-            false,
+            RebaseOptions::default(),
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);
@@ -1495,7 +1527,7 @@ mod tests {
             &[full(&all[2])],
             Some(&full(&all[1])),
             Some(&all[0].sha),
-            false,
+            RebaseOptions::default(),
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);
@@ -1596,6 +1628,56 @@ mod tests {
             CherryPickResult::CompletedWithoutError
         );
         assert_eq!(log("-1"), "#7 edits a\n\n# body\n\n");
+    }
+
+    #[test]
+    fn squash_with_autostash_keeps_local_changes() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        commit_file(path, "b.txt", "b\n", "second");
+        commit_file(path, "c.txt", "c\n", "third");
+        let all = commits_in_range(git.clone(), path, "HEAD")
+            .unwrap()
+            .unwrap();
+        let identity = corvane_models::CommitIdentity {
+            name: "T".into(),
+            email: "t@example.com".into(),
+            seconds: 0,
+            offset: 0,
+        };
+        let full = |one: &CommitOneLine| Commit {
+            sha: one.sha.clone(),
+            summary: one.summary.clone(),
+            body: String::new(),
+            author: identity.clone(),
+            committer: identity.clone(),
+            parents: Vec::new(),
+            tags: Vec::new(),
+        };
+        std::fs::write(path.join("a.txt"), "local\n").unwrap();
+        let result = squash(
+            git.clone(),
+            path,
+            &[full(&all[2])],
+            &full(&all[1]),
+            Some(&all[0].sha),
+            "combined",
+            RebaseOptions {
+                autostash: true,
+                ..RebaseOptions::default()
+            },
+            |_| {},
+        );
+        assert_eq!(result, RebaseResult::CompletedWithoutError);
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "local\n"
+        );
+        assert_eq!(stash_tip(git.clone(), path), None);
+        assert_eq!(
+            commits_in_range(git, path, "HEAD").unwrap().unwrap().len(),
+            2
+        );
     }
 
     #[test]
