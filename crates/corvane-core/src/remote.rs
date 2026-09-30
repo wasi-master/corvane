@@ -800,10 +800,15 @@ impl Dispatcher {
             cx.notify();
         });
         let endpoint = corvane_github::Endpoint::from_api_base(&account.endpoint);
+        let error_details = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::API_ERROR_DETAILS);
         spawn_bg(
             cx,
             move || {
-                let client = corvane_github::Client::new(endpoint, token);
+                let client =
+                    corvane_github::Client::new(endpoint, token).with_error_details(error_details);
                 let repo = client
                     .create_repository(org.as_deref(), &name, &description, private)
                     .map_err(|e| e.to_string())?;

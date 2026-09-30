@@ -417,6 +417,20 @@ registry! {
         upstream: &[Upstream::issue(21379)],
         code: &["crates/corvane-core/src/app_url.rs"],
     },
+    /// Publish errors name the failed validation.
+    API_ERROR_DETAILS = 388 "api-error-details" {
+        title: "Publish errors say what GitHub rejected",
+        summary: "When publishing a repository fails validation, the error adds GitHub's reasons \
+                  (e.g. \"description is too long (maximum is 350 characters)\") to its message.",
+        ghd_behaviour: "Shows only the top-level message (\"Repository creation failed.\"), or \
+                        for an organization a hint to check its permissions.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19465)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-github/src/api.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
