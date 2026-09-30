@@ -991,17 +991,38 @@ impl Client {
     }
 
     /// `fetchRefCheckRuns`: `GET /repos/{o}/{n}/commits/{ref}/check-runs`.
+    /// GHD reads the first 100 only; `all_pages` follows `page=` until
+    /// `total_count` runs are read (at most 1,000, desktop/desktop#18101).
     pub fn ref_check_runs(
         &self,
         owner: &str,
         name: &str,
         git_ref: &str,
+        all_pages: bool,
     ) -> Result<Option<ApiRefCheckRuns>> {
         let safe = encode_path_component(git_ref);
-        self.get_json_opt(
-            &format!("repos/{owner}/{name}/commits/{safe}/check-runs?per_page=100"),
-            "application/vnd.github.antiope-preview+json",
-        )
+        let mut out: Option<ApiRefCheckRuns> = None;
+        for page in 1..=10u32 {
+            let mut path = format!("repos/{owner}/{name}/commits/{safe}/check-runs?per_page=100");
+            if page > 1 {
+                path.push_str(&format!("&page={page}"));
+            }
+            let batch: Option<ApiRefCheckRuns> =
+                self.get_json_opt(&path, "application/vnd.github.antiope-preview+json")?;
+            let Some(batch) = batch else {
+                break;
+            };
+            let short = batch.check_runs.len() < 100;
+            let runs = out.get_or_insert_with(|| ApiRefCheckRuns {
+                total_count: batch.total_count,
+                check_runs: Vec::new(),
+            });
+            runs.check_runs.extend(batch.check_runs);
+            if !all_pages || short || runs.check_runs.len() as u64 >= runs.total_count {
+                break;
+            }
+        }
+        Ok(out)
     }
 
     /// `fetchPRActionWorkflowRunByCheckSuiteId`

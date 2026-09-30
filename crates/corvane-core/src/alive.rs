@@ -354,6 +354,10 @@ impl Dispatcher {
                 };
                 let emails: Vec<String> = account.emails.iter().map(|e| e.to_lowercase()).collect();
                 let sha = commit_sha.clone();
+                let all_check_runs = state
+                    .read(cx)
+                    .flags
+                    .bool(crate::flags::ids::ALL_CHECK_RUN_PAGES);
                 spawn_bg(
                     cx,
                     move || -> ChecksLookup {
@@ -367,7 +371,11 @@ impl Dispatcher {
                             Some(email) if !emails.contains(&email) => ChecksLookup::NotTheUsers,
                             Some(_) => {
                                 match crate::commit_status::fetch_ref_checks(
-                                    &client, &owner, &name, &git_ref,
+                                    &client,
+                                    &owner,
+                                    &name,
+                                    &git_ref,
+                                    all_check_runs,
                                 ) {
                                     Some(checks) => ChecksLookup::Checks(checks),
                                     None => ChecksLookup::NoChecks,
