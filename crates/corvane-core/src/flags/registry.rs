@@ -209,6 +209,20 @@ registry! {
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
 
+    /// The push / pull progress tooltip keeps one width.
+    STEADY_PROGRESS_TOOLTIP = 187 "steady-progress-tooltip" {
+        title: "Steady push / pull progress tooltip",
+        summary: "While a push, pull or fetch runs, the push / pull button's progress tooltip is \
+                  always 300 px wide instead of resizing with every progress line.",
+        ghd_behaviour: "The tooltip fits its text, so it jumps in size as the progress text changes.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17429)],
+        code: &["crates/corvane-ui/src/toolbar.rs", "crates/corvane-ui/src/widgets.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.

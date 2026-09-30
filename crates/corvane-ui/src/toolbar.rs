@@ -50,6 +50,9 @@ pub struct ToolbarButtonModel {
     pub resize: Option<(ResizeTarget, ConstrainedWidth)>,
     /// GHD `ToolbarButton` `tooltip`, shown south of the button.
     pub tooltip: Option<SharedString>,
+    /// The tooltip keeps its maximum width while its text changes (flag
+    /// `187-steady-progress-tooltip`).
+    pub tooltip_fixed_width: bool,
 }
 
 /// Which toolbar button a resize handle belongs to.
@@ -168,6 +171,7 @@ pub fn toolbar_models(
             pr_badge: None,
             resize: Some((ResizeTarget::Worktree, widths.worktree)),
             tooltip: worktree_tooltip,
+            tooltip_fixed_width: false,
         }
     });
 
@@ -201,6 +205,7 @@ pub fn toolbar_models(
         tooltip: repo
             .filter(|_| state.foldout != Some(Foldout::Repository))
             .map(|r| r.path.to_string_lossy().into_owned().into()),
+        tooltip_fixed_width: false,
     };
 
     // `currentPullRequest`: the icon becomes the PR icon and the badge shows
@@ -268,6 +273,7 @@ pub fn toolbar_models(
         pr_badge,
         resize: Some((ResizeTarget::Branch, widths.branch)),
         tooltip: branch_tooltip,
+        tooltip_fixed_width: false,
     };
 
     // Push/Pull (`PushPullButton.renderButton`)
@@ -310,6 +316,7 @@ pub fn toolbar_models(
         pr_badge: None,
         resize: None,
         tooltip: None,
+        tooltip_fixed_width: false,
     };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
@@ -327,6 +334,9 @@ pub fn toolbar_models(
             title: p.title.clone().into(),
             // `tooltip={progress.description}`
             tooltip: p.description.clone().map(Into::into),
+            tooltip_fixed_width: state
+                .flags
+                .bool(corvane_core::flags::ids::STEADY_PROGRESS_TOOLTIP),
             disabled: true,
             progress: Some(p.value),
             spin: true,
@@ -648,6 +658,11 @@ pub fn toolbar_button(
             }))
         });
     let button = match model.tooltip {
+        Some(tip) if model.tooltip_fixed_width => crate::widgets::with_fixed_width_tooltip(
+            button,
+            tip,
+            crate::widgets::TooltipDirection::South,
+        ),
         Some(tip) => crate::widgets::with_directed_tooltip(
             button,
             tip,
