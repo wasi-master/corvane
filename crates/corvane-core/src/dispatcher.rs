@@ -2380,6 +2380,18 @@ impl Dispatcher {
         default_branch: Option<String>,
         cx: &mut App,
     ) {
+        Self::clone_repository_with(url, path, default_branch, None, cx);
+    }
+
+    /// `clone_repository`, `depth` making a shallow clone
+    /// (`269-shallow-clone`, the Clone dialog's checkbox).
+    pub fn clone_repository_with(
+        url: String,
+        path: PathBuf,
+        default_branch: Option<String>,
+        depth: Option<u32>,
+        cx: &mut App,
+    ) {
         let state = Self::state(cx);
         let Some(git) = state.read(cx).git.clone() else {
             Self::show_error("Git is not available", "Install git and retry.", cx);
@@ -2405,6 +2417,7 @@ impl Dispatcher {
                 &clone_url,
                 &clone_path,
                 default_branch.as_deref(),
+                depth,
                 |p| {
                     let _ = tx.send(p);
                 },

@@ -228,12 +228,14 @@ pub fn parse_clone_progress(line: &str) -> CloneProgress {
     }
 }
 
-/// `git clone --progress --recurse-submodules <url> <path>` streaming progress.
+/// `git clone --progress --recurse-submodules <url> <path>` streaming progress;
+/// `depth` adds `--depth <n>` (a shallow clone, `269-shallow-clone`).
 pub fn clone(
     git: Arc<GitBinary>,
     url: &str,
     path: &Path,
     default_branch: Option<&str>,
+    depth: Option<u32>,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<()> {
     if let Some(parent) = path.parent() {
@@ -246,7 +248,11 @@ pub fn clone(
     if let Some(branch) = default_branch {
         cmd = cmd.args(["-c".to_string(), format!("init.defaultBranch={branch}")]);
     }
-    cmd.args(["clone", "--progress", "--recurse-submodules", "--", url])
+    cmd = cmd.args(["clone", "--progress", "--recurse-submodules"]);
+    if let Some(depth) = depth {
+        cmd = cmd.args(["--depth".to_string(), depth.to_string()]);
+    }
+    cmd.args(["--", url])
         .arg(path)
         .run_streaming(|line| on_progress(parse_clone_progress(line)))?;
     Ok(())
@@ -310,6 +316,47 @@ mod tests {
         assert_eq!(path_status(dir.path()), PathStatus::NotARepository);
         std::fs::create_dir(dir.path().join(".git")).unwrap();
         assert_eq!(path_status(dir.path()), PathStatus::Repository);
+    }
+
+    #[test]
+    fn shallow_clone_fetches_one_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let source = dir.path().join("source");
+        let run = |cwd: &Path, args: &[&str]| {
+            let out = std::process::Command::new("git")
+                .args([
+                    "-c",
+                    "commit.gpgsign=false",
+                    "-c",
+                    "user.name=T",
+                    "-c",
+                    "user.email=t@example.com",
+                ])
+                .args(args)
+                .current_dir(cwd)
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "git {args:?}");
+            String::from_utf8(out.stdout).unwrap()
+        };
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", source.to_str().unwrap()],
+        );
+        for n in ["one", "two"] {
+            std::fs::write(source.join("a.txt"), n).unwrap();
+            run(&source, &["add", "."]);
+            run(&source, &["commit", "-q", "-m", n]);
+        }
+        // `--depth` is ignored for a plain local path
+        let url = format!("file://{}", source.display());
+        let shallow = dir.path().join("shallow");
+        clone(git.clone(), &url, &shallow, None, Some(1), |_| {}).unwrap();
+        assert_eq!(run(&shallow, &["rev-list", "--count", "HEAD"]).trim(), "1");
+        let full = dir.path().join("full");
+        clone(git, &url, &full, None, None, |_| {}).unwrap();
+        assert_eq!(run(&full, &["rev-list", "--count", "HEAD"]).trim(), "2");
     }
 
     #[test]

@@ -12,6 +12,9 @@
 //! lists repositories. The list and the picker live in
 //! `crate::cloneable_repositories` (the blank slate shows them too).
 //!
+//! Deviation (`269-shallow-clone`): a "Shallow clone" checkbox under the
+//! local path clones with `--depth 1`.
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -68,6 +71,8 @@ pub struct CloneRepositoryDialog {
     enterprise_account: Option<(String, String)>,
     /// `AccountPicker` popover.
     picker: AccountPickerState,
+    /// `269-shallow-clone`: "Shallow clone" is ticked.
+    shallow: bool,
 }
 
 impl CloneRepositoryDialog {
@@ -146,6 +151,7 @@ impl CloneRepositoryDialog {
             dotcom_account: None,
             enterprise_account: None,
             picker,
+            shallow: false,
         };
         this.ensure_loaded(cx);
         this
@@ -335,11 +341,24 @@ impl CloneRepositoryDialog {
         self.resolve_error = None;
         cx.notify();
         let weak = cx.weak_entity();
+        let shallow = self.shallow
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::SHALLOW_CLONE);
+        let depth = shallow.then_some(1);
         Dispatcher::resolve_clone_info(
             input,
             prefer_ssh,
             move |result, cx| match result {
-                Ok(info) => Dispatcher::clone_repository(info.url, path, info.default_branch, cx),
+                Ok(info) => Dispatcher::clone_repository_with(
+                    info.url,
+                    path,
+                    info.default_branch,
+                    depth,
+                    cx,
+                ),
                 Err(message) => {
                     weak.update(cx, |this, cx| {
                         this.resolving = false;
@@ -422,8 +441,38 @@ impl CloneRepositoryDialog {
             .child(self.path_row(window, cx))
     }
 
-    /// `.local-path-field`: Local Path + Choose…
+    /// `.local-path-field`: Local Path + Choose… (and, with
+    /// `269-shallow-clone`, the "Shallow clone" checkbox below it).
     fn path_row(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
+        let shallow_option = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SHALLOW_CLONE);
+        let weak = cx.weak_entity();
+        let shallow = crate::widgets::checkbox_row(
+            "clone-shallow",
+            self.shallow,
+            "Shallow clone (only the latest commit)",
+            move |checked, _, cx| {
+                weak.update(cx, |this, cx| {
+                    this.shallow = checked;
+                    cx.notify();
+                })
+                .ok();
+            },
+            cx,
+        );
+        div()
+            .flex()
+            .flex_col()
+            .child(self.path_field(window, cx))
+            .when(shallow_option, |d| {
+                d.child(div().mt(SPACING()).child(shallow))
+            })
+    }
+
+    fn path_field(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_row()

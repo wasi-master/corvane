@@ -28,6 +28,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** can clone over SSH: a repository picked from the list or an `owner/name` shorthand is resolved to its SSH URL; an `https://` URL typed on the URL tab keeps HTTPS (GHD clones over HTTPS unless an SSH URL is typed). Flag: `355-clone-prefers-ssh`.
 - **Clone dialog** and the signed-in blank slate: a repository URL pasted into the repository filter (`https://github.com/owner/name`, `git@host:owner/name.git`, a browser URL into the repository) filters as `owner/name`; GHD fuzzy-matches the whole URL and finds nothing. Flag: `356-clone-filter-accepts-urls`.
 - **Clone dialog** and the signed-in blank slate: the account picker can start on a chosen account (a list of logins; the first one signed in for the tab wins) instead of the first account signed in. Flag: `357-clone-default-account`.
+- **Clone dialog** can show a "Shallow clone (only the latest commit)" checkbox under the local path that clones with `git clone --depth 1` (GHD always clones the full history). Flag: `269-shallow-clone`.
 
 ## Repository
 

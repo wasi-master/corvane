@@ -499,6 +499,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
 
+    /// Clone a Repository's "Shallow clone" checkbox.
+    SHALLOW_CLONE = 269 "shallow-clone" {
+        title: "Shallow clone option",
+        summary: "Clone a Repository shows a \"Shallow clone\" checkbox under the local path; \
+                  ticked, only the latest commit of the default branch is fetched \
+                  (git clone --depth 1).",
+        ghd_behaviour: "Always clones the full history.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21880)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ops.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
