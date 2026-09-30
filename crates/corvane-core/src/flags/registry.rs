@@ -840,6 +840,19 @@ registry! {
         upstream: &[Upstream::issue(13994)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-ui/src/branch_list.rs"],
     },
+    /// Conflicted file menu › Copy File Path.
+    CONFLICT_MENU_COPY_PATHS = 452 "conflict-menu-copy-paths" {
+        title: "Conflicts dialog: copy file paths",
+        summary: "A conflicted file's ▾ menu in the conflicts dialog adds Copy File Path and Copy \
+                  Relative File Path, as in the changes list.",
+        ghd_behaviour: "Open with Default Program, Reveal in Finder and the resolution choices only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22399)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

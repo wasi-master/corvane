@@ -8,7 +8,8 @@
 //!
 //! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
 //! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
-//! branches with a local branch in the rebase list (flag `451`).
+//! branches with a local branch in the rebase list (flag `451`); Copy File
+//! Path items in a conflicted file's menu (flag `452`, GHD `unmerged-file.tsx`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -983,10 +984,16 @@ fn unmerged_file_row(
                         .px(SPACING_HALF())
                         .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
                         .on_click(cx.listener(
-                            move |_, ev: &ClickEvent, window, cx| {
+                            move |this, ev: &ClickEvent, window, cx| {
+                                let copy_paths = this
+                                    .state
+                                    .read(cx)
+                                    .flags
+                                    .bool(corvane_core::flags::ids::CONFLICT_MENU_COPY_PATHS);
                                 let mut menu_items = Vec::new();
                                 if let Some(p) = menu_path.clone() {
                                     let p2 = p.clone();
+                                    let absolute = p.to_string_lossy().into_owned();
                                     menu_items.push(MenuItem::new(
                                         "Open with Default Program",
                                         move |_, cx| {
@@ -999,9 +1006,29 @@ fn unmerged_file_row(
                                             cx.reveal_path(&p2);
                                         },
                                     ));
+                                    // flag `452`: the changes list's copy items
+                                    if copy_paths {
+                                        let relative = rel_path.clone();
+                                        menu_items.push(MenuItem::separator());
+                                        menu_items.push(MenuItem::new(
+                                            "Copy File Path",
+                                            move |_, cx| {
+                                                cx.write_to_clipboard(ClipboardItem::new_string(
+                                                    absolute.clone(),
+                                                ))
+                                            },
+                                        ));
+                                        menu_items.push(MenuItem::new(
+                                            "Copy Relative File Path",
+                                            move |_, cx| {
+                                                cx.write_to_clipboard(ClipboardItem::new_string(
+                                                    relative.clone(),
+                                                ))
+                                            },
+                                        ));
+                                    }
                                     menu_items.push(MenuItem::separator());
                                 }
-                                let _ = &rel_path;
                                 menu_items.extend(items.iter().cloned());
                                 let position = ev.mouse_position().unwrap_or_default();
                                 show_menu(menu_items, position, window, cx);
