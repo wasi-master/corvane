@@ -723,6 +723,20 @@ registry! {
         upstream: &[Upstream::issue(19207)],
         code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
     },
+    /// Tags in the compare list.
+    COMPARE_TAGS = 444 "compare-tags" {
+        title: "Compare to a tag",
+        summary: "Typing in \"Select Branch to Compare…\" also lists the matching tags, under Tags \
+                  after the branches; picking one compares the current branch with it as with a \
+                  branch.",
+        ghd_behaviour: "Branches only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15702)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/compare.rs", "crates/corvane-git/src/log.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

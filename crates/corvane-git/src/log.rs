@@ -29,6 +29,23 @@ fn identity(sig: gix::actor::SignatureRef<'_>) -> CommitIdentity {
     }
 }
 
+/// Every tag's short name (`refs/tags/` stripped), sorted
+/// case-insensitively. Feeds the compare list's Tags group (flag `444`).
+pub fn tag_names(workdir: &Path) -> Result<Vec<String>> {
+    let repo = gix::open(workdir)?;
+    let refs = repo
+        .references()
+        .map_err(|e| GitError::Gix(e.to_string()))?;
+    let mut names: Vec<String> = refs
+        .tags()
+        .map_err(|e| GitError::Gix(e.to_string()))?
+        .flatten()
+        .map(|r| r.name().shorten().to_string())
+        .collect();
+    names.sort_by_key(|n| n.to_lowercase());
+    Ok(names)
+}
+
 /// Commits reachable from `revision` (a ref name or sha), newest first,
 /// `skip` then at most `limit` of them.
 pub fn get_commits(
@@ -614,6 +631,7 @@ mod tests {
         assert_eq!(commits[1].author.name, "Ada");
         assert_eq!(commits[1].author.seconds, 1704164645);
         assert_eq!(commits[0].parents, vec![commits[1].sha.clone()]);
+        assert_eq!(tag_names(dir.path()).unwrap(), ["v1"]);
         let page = get_commits(dir.path(), "HEAD", 1, 10).unwrap();
         assert_eq!(page.len(), 1);
         assert_eq!(page[0].summary, "first");

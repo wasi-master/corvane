@@ -19,7 +19,8 @@
 //! summary (flag `252`); compact rows drop the author line (flag `140`); the
 //! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
 //! the branch tip (flag `440`); a toggle before the compare box lists first
-//! parents only (flag `142`).
+//! parents only (flag `142`); the compare list offers matching tags (flag
+//! `444`).
 
 use std::rc::Rc;
 
@@ -294,7 +295,31 @@ impl HistorySidebar {
             .filter(|r| Some(*r) != current.as_ref())
             .cloned()
             .collect();
-        group_branches(&branches, default, &recent, &query)
+        let mut groups = group_branches(&branches, default, &recent, &query);
+        // `444`: tags matching the filter, after the branches
+        if !query.is_empty() && s.flags.bool(corvane_core::flags::ids::COMPARE_TAGS) {
+            let tags: Vec<corvane_core::Branch> = rs
+                .compare
+                .tags
+                .iter()
+                .filter(|t| corvane_core::filter::fuzzy_score(&query, t).is_some())
+                .map(|t| corvane_core::Branch {
+                    name: t.clone(),
+                    kind: corvane_core::BranchKind::Local,
+                    full_name: format!("refs/tags/{t}"),
+                    tip: None,
+                    upstream: None,
+                    tip_time: None,
+                })
+                .collect();
+            if !tags.is_empty() {
+                groups.push(crate::branch_list::BranchGroup {
+                    title: "Tags",
+                    branches: tags,
+                });
+            }
+        }
+        groups
     }
 
     fn compare_branch_names(&self, id: u64, cx: &App) -> Vec<String> {
@@ -470,7 +495,17 @@ impl HistorySidebar {
                                 })
                                 .ok();
                             })
-                            .child(octicon(Octicon::GitBranch, t.text).mr(SPACING_HALF()))
+                            .child(
+                                octicon(
+                                    if b.full_name.starts_with("refs/tags/") {
+                                        Octicon::Tag
+                                    } else {
+                                        Octicon::GitBranch
+                                    },
+                                    t.text,
+                                )
+                                .mr(SPACING_HALF()),
+                            )
                             .child(
                                 div()
                                     .flex_1()
