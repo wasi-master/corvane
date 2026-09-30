@@ -35,6 +35,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Plain-HTTP Enterprise**: an Enterprise address typed with `http://` keeps plain HTTP for the API, the sign-in flows and web links (`Endpoint::enterprise(_, allow_http)`); off except in the Everything preset, since the token is then sent unencrypted (GHD forces HTTPS since 3.4.7). Flag: `392-enterprise-plain-http`.
 - **Pull requests from deleted forks**: open pull requests whose head repository is `null` stay in the list; checking one out fetches `refs/pull/<n>/head` from the base repository's remote into `pr/<n>` (reused when it exists) (GHD `pull-request-store` drops them). Flag: `393-pull-requests-from-deleted-forks`.
 - **Issue suggestions**: the `#` issue cache fetches every open issue again (replacing the cache) once the flag's hours have passed since the last full fetch, so deleted and transferred issues stop being suggested (GHD `IssuesStore.refreshIssues` only asks for issues updated since the newest cached one). Flag: `394-issues-full-refresh-hours`.
+- **Checks popover**: the header's summary line ends with an "Open #N on GitHub" link to the pull request (GHD `ci-check-run-popover.tsx` has none). Flag: `395-ci-popover-pull-request-link`.
 
 ## Repository
 

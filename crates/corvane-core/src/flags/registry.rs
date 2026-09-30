@@ -556,6 +556,20 @@ registry! {
         code: &["crates/corvane-core/src/autocomplete.rs"],
     },
 
+    /// The check-run popover links to the pull request.
+    CI_POPOVER_PULL_REQUEST_LINK = 395 "ci-popover-pull-request-link" {
+        title: "Checks popover links to the pull request",
+        summary: "The popover under the pull request badge ends its summary line with \
+                  \"Open #N on GitHub\".",
+        ghd_behaviour: "No way to open the pull request from the badge or its popover.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15418)],
+        code: &["crates/corvane-ui/src/ci_check_popover.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
