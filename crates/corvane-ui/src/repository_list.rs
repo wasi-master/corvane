@@ -96,7 +96,9 @@ impl RepositoryFoldout {
         let mut headers = 0;
         let mut before = 0;
         for group in &groups {
-            headers += 1;
+            if !group.title.is_empty() {
+                headers += 1;
+            }
             if ix < before + group.repos.len() {
                 break;
             }
@@ -216,6 +218,24 @@ impl RepositoryFoldout {
                 title: "Other".into(),
                 repos: other,
             });
+        }
+        // Corvane (`117-flat-repository-results`): while a query is typed,
+        // one list without group headers, best match first
+        if !query.is_empty()
+            && state
+                .flags
+                .bool(corvane_core::flags::ids::FLAT_REPOSITORY_RESULTS)
+        {
+            let mut repos: Vec<Repository> = groups.into_iter().flat_map(|g| g.repos).collect();
+            let score = |r: &Repository| {
+                corvane_core::filter::fuzzy_score(&query, &r.name()).unwrap_or(0.0)
+            };
+            // stable: equal scores keep the grouped order
+            repos.sort_by(|a, b| score(b).total_cmp(&score(a)));
+            return vec![Group {
+                title: SharedString::default(),
+                repos,
+            }];
         }
         groups
     }
@@ -800,19 +820,23 @@ impl Render for RepositoryFoldout {
                             .id(("repo-group", group_ix))
                             .flex()
                             .flex_col()
-                            .child(
-                                // `.filter-list-group-header`
-                                div()
-                                    .h(ROW_HEIGHT())
-                                    .pt(SPACING())
-                                    .px(SPACING())
-                                    .flex()
-                                    .items_center()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_size(FONT_SIZE())
-                                    .truncate()
-                                    .child(group.title),
-                            )
+                            // a flat result list (`117-flat-repository-results`)
+                            // has no header
+                            .when(!group.title.is_empty(), |d| {
+                                d.child(
+                                    // `.filter-list-group-header`
+                                    div()
+                                        .h(ROW_HEIGHT())
+                                        .pt(SPACING())
+                                        .px(SPACING())
+                                        .flex()
+                                        .items_center()
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_size(FONT_SIZE())
+                                        .truncate()
+                                        .child(group.title.clone()),
+                                )
+                            })
                             .children(group.repos.iter().enumerate().map(|(ix, repo)| {
                                 self.row(
                                     repo,

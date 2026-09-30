@@ -161,6 +161,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - Add › Clone Repository… in the repository list opens the clone dialog with the list's filter text in its GitHub tabs' filter box (GHD starts it empty). Flag: `113-clone-prefills-filter`.
 - Repositories that share a name within a repository list group show, dimmed after the name, the parent folders that tell them apart (GHD: identical rows, the path only in the tooltip). Flag: `115-duplicate-names-show-path`.
 - A repository list filter written as `/pattern/` is a case-insensitive regular expression (Corvane addition; other text, or an invalid pattern, filters as before). Flag: `116-regex-repository-filter`.
+- While the repository filter has text, the matches can form one list without owner groups, ranked by the fuzzy score best first (Corvane option; GHD keeps the groups). Flag: `117-flat-repository-results`.
 
 ## Scrolling
 

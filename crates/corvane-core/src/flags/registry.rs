@@ -336,6 +336,20 @@ registry! {
         upstream: &[Upstream::issue(20745)],
         code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/filter.rs"],
     },
+    /// Filtering the repository list shows one ranked list.
+    FLAT_REPOSITORY_RESULTS = 117 "flat-repository-results" {
+        title: "Flat repository filter results",
+        summary: "While text is typed in the repository list's filter, the matches form one list \
+                  without owner groups, the best match (closest to the start of a word, fewest \
+                  extra characters) first.",
+        ghd_behaviour: "Matches stay in their owner groups, so the best match can sit far down.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4860)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 200 Repository ----
 
