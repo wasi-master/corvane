@@ -54,6 +54,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Undo Commit on a commit that has tags first shows a warning naming them (they would stay on a commit no branch contains); Continue goes on to the usual local-changes check (History) or undoes (the Changes view's Undo button). GHD (`undoCommit`) undoes silently. Flag: `441-warn-undo-tagged-commit`.
 - Create a Tag: ⏎ in Name creates the tag (GHD's form submit), and ⌘⏎ does so from the Message field too (flag `244`'s field, where ⏎ inserts a line). Flag: `442-cmd-enter-submits-create-tag`.
 - The selected commit's title and description (GHD `RichText` in `expandable-commit-summary.tsx`) show `` `code` `` spans on one line as inline code without the backticks, link bare `http(s)` URLs, and in a GitHub repository link 7–40 character hex words mixing letters and digits to `<html_url>/commit/<sha>` (not checked against the repository). `#123` issue references, `@mentions` and emoji are not linked or replaced. Without the flag both are plain text. Flag: `141-commit-message-rich-text`.
+- First-parent History (Corvane addition): a 27 px filter button before the compare box toggles the commit list to first parents only (gitoxide's `first_parent_only` walk, as `git log --first-parent`); on, the icon takes the accent colour with a dot, as the Changes filter button. The setting (`history_first_parent`) is global and persisted; the button is disabled while comparing, whose ahead / behind lists are unchanged. Flag: `142-history-first-parent`.
 
 ## Tutorial
 

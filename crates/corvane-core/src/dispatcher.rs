@@ -1041,10 +1041,24 @@ impl Dispatcher {
 
     // ---- history (GHD `_loadHistory`, `_loadNextCommitBatch`, `_changeCommitSelection`) ----
 
+    /// Flag `142`: whether History lists first parents only.
+    pub fn history_first_parent(s: &AppState) -> bool {
+        s.settings.history_first_parent && s.flags.bool(crate::flags::ids::HISTORY_FIRST_PARENT)
+    }
+
+    /// Flag `142`: switch History to first parents only (or back) and
+    /// reload the selected repository's list.
+    pub fn set_history_first_parent(on: bool, cx: &mut App) {
+        Self::update_settings(cx, |s| s.history_first_parent = on);
+        if let Some(id) = Self::state(cx).read(cx).selected {
+            Self::load_commits(id, false, cx);
+        }
+    }
+
     /// Load the first page of HEAD's history, or the next one when `more`.
     pub fn load_commits(id: u64, more: bool, cx: &mut App) {
         let state = Self::state(cx);
-        let (workdir, skip) = {
+        let (workdir, skip, first_parent) = {
             let s = state.read(cx);
             let Some(rs) = s.repo_states.get(&id) else {
                 return;
@@ -1056,11 +1070,18 @@ impl Dispatcher {
             (
                 info.workdir.clone(),
                 if more { rs.commits.len() } else { 0 },
+                Self::history_first_parent(s),
             )
         };
         state.update(cx, |s, _| s.repo_state_mut(id).commits_loading = true);
         let task = cx.background_executor().spawn(async move {
-            corvane_git::get_commits(&workdir, "HEAD", skip, corvane_git::COMMIT_BATCH_SIZE)
+            corvane_git::get_commits_with(
+                &workdir,
+                "HEAD",
+                skip,
+                corvane_git::COMMIT_BATCH_SIZE,
+                first_parent,
+            )
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;

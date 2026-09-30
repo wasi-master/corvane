@@ -205,6 +205,20 @@ registry! {
         upstream: &[Upstream::issue(18104), Upstream::issue(7723)],
         code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/markdown.rs"],
     },
+    /// History's first-parent toggle.
+    HISTORY_FIRST_PARENT = 142 "history-first-parent" {
+        title: "First-parent History",
+        summary: "A filter button before \"Select Branch to Compare…\" switches the History list to \
+                  first parents only (git log --first-parent), hiding the commits that came in \
+                  through merges. The choice is remembered.",
+        ghd_behaviour: "History always lists every commit reachable from HEAD.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21414)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/log.rs"],
+    },
 
     // ---- 200 Repository ----
 

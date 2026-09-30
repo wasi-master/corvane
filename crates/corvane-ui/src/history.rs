@@ -18,7 +18,8 @@
 //! Commit (flag `243`); a commit with a description gets a mark after its
 //! summary (flag `252`); compact rows drop the author line (flag `140`); the
 //! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
-//! the branch tip (flag `440`).
+//! the branch tip (flag `440`); a toggle before the compare box lists first
+//! parents only (flag `142`).
 
 use std::rc::Rc;
 
@@ -42,7 +43,7 @@ use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{GhdTooltip, ListRowA11y};
+use crate::widgets::{GhdTooltip, IconButtonA11y, ListRowA11y};
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button};
 
 /// `RowHeight` in `commit-list.tsx`
@@ -1711,6 +1712,59 @@ pub(crate) fn tags_tooltip(cx: &App) -> bool {
     })
 }
 
+/// Flag `142`: a 27 px toggle before the compare box that lists first
+/// parents only; accent-coloured with a dot while on (the Changes filter
+/// button's `.active` look), disabled while comparing.
+fn first_parent_button(on: bool, comparing: bool, cx: &App) -> AnyElement {
+    let t = cx.ghd();
+    let label = if comparing {
+        "First-parent history does not apply to a comparison"
+    } else if on {
+        "Showing first-parent commits only"
+    } else {
+        "Show first-parent commits only"
+    };
+    div()
+        .id("history-first-parent")
+        .icon_button_label(label)
+        .ghd_tooltip(label)
+        .relative()
+        .size(zpx(27.))
+        .flex_none()
+        .flex()
+        .items_center()
+        .justify_center()
+        .border_1()
+        .border_color(t.secondary_button_border)
+        .rounded(BORDER_RADIUS())
+        .bg(t.secondary_button_background)
+        .when(comparing, |d| d.opacity(0.6))
+        .when(!comparing, |d| {
+            d.cursor_pointer()
+                .on_click(move |_, _, cx| Dispatcher::set_history_first_parent(!on, cx))
+        })
+        .child(octicon(
+            Octicon::Filter,
+            if on {
+                t.box_selected_active_background
+            } else {
+                t.secondary_button_text
+            },
+        ))
+        .when(on, |d| {
+            d.child(
+                div()
+                    .absolute()
+                    .top(zpx(3.))
+                    .right(zpx(3.))
+                    .size(zpx(5.))
+                    .rounded_full()
+                    .bg(t.box_selected_active_background),
+            )
+        })
+        .into_any_element()
+}
+
 /// `CommitListItem`
 #[allow(clippy::too_many_arguments)]
 fn commit_row(
@@ -1979,6 +2033,18 @@ impl Render for HistorySidebar {
             _ => self.commit_list(cx).into_any_element(),
         };
         let t = cx.ghd();
+        // `142`: the first-parent toggle before the compare box
+        let (first_parent_toggle, comparing) = {
+            let s = self.state.read(cx);
+            (
+                s.flags
+                    .bool(corvane_core::flags::ids::HISTORY_FIRST_PARENT)
+                    .then_some(s.settings.history_first_parent),
+                s.selected
+                    .and_then(|id| s.repo_states.get(&id))
+                    .is_some_and(|rs| rs.compare.is_comparing()),
+            )
+        };
         div()
             .size_full()
             .flex()
@@ -2012,21 +2078,29 @@ impl Render for HistorySidebar {
                     .bg(t.box_alt_background)
                     .border_b_1()
                     .border_color(t.box_border)
+                    .when_some(first_parent_toggle, |d, on| {
+                        d.flex()
+                            .flex_row()
+                            .gap(SPACING_HALF())
+                            .child(first_parent_button(on, comparing, cx))
+                    })
                     .child({
                         // `FancyTextBox`: 27 px, `--box-border-color` frame,
                         // a 9 px branch glyph 7 px in, the text at 27 px
                         let focused = self.compare.read(cx).focus_handle(cx).is_focused(window);
-                        crate::widgets::filter_text_box(
-                            "compare-branch",
-                            &self.compare,
-                            Some(octicon(Octicon::GitBranch, t.text).size(zpx(9.))),
-                            window,
-                            cx,
+                        div().flex_1().min_w_0().child(
+                            crate::widgets::filter_text_box(
+                                "compare-branch",
+                                &self.compare,
+                                Some(octicon(Octicon::GitBranch, t.text).size(zpx(9.))),
+                                window,
+                                cx,
+                            )
+                            .h(zpx(27.))
+                            .pl(zpx(7.))
+                            .gap(zpx(1.))
+                            .when(!focused, |d| d.border_color(t.box_border)),
                         )
-                        .h(zpx(27.))
-                        .pl(zpx(7.))
-                        .gap(zpx(1.))
-                        .when(!focused, |d| d.border_color(t.box_border))
                     }),
             )
             .child(body)
