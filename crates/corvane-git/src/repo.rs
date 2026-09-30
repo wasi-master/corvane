@@ -50,7 +50,7 @@ pub fn open_repository(path: &Path) -> Result<RepositoryInfo> {
         .unwrap_or_else(|| repo.git_dir().to_path_buf());
 
     let remotes = remotes(&repo);
-    let branches = branches(&repo)?;
+    let branches = branches(&repo, &remotes)?;
     let tip = tip(&repo, &branches)?;
     let identity = identity(&repo);
     let commit_template = crate::commit_template::read(&repo, &workdir);
@@ -93,7 +93,7 @@ fn remotes(repo: &gix::Repository) -> Vec<Remote> {
     out
 }
 
-fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
+fn branches(repo: &gix::Repository, remote_list: &[Remote]) -> Result<Vec<Branch>> {
     let mut out = Vec::new();
     let platform = repo
         .references()
@@ -119,6 +119,11 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
             .branch_remote_tracking_ref_name(reference.name(), gix::remote::Direction::Fetch)
             .and_then(|r| r.ok())
             .map(|r| r.as_bstr().to_string());
+        let remote_name = upstream
+            .as_deref()
+            .and_then(|u| u.strip_prefix("refs/remotes/"))
+            .and_then(|short| Branch::match_remote(short, remote_list))
+            .map(str::to_string);
         out.push(Branch {
             name,
             kind: BranchKind::Local,
@@ -126,6 +131,7 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
             tip,
             upstream,
             tip_time,
+            remote_name,
         });
     }
 
@@ -148,6 +154,7 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
             .and_then(|id| repo.find_commit(id).ok())
             .and_then(|c| c.time().ok())
             .map(|t| t.seconds);
+        let remote_name = Branch::match_remote(&name, remote_list).map(str::to_string);
         out.push(Branch {
             name,
             kind: BranchKind::Remote,
@@ -155,6 +162,7 @@ fn branches(repo: &gix::Repository) -> Result<Vec<Branch>> {
             tip,
             upstream: None,
             tip_time,
+            remote_name,
         });
     }
     Ok(out)
@@ -188,6 +196,7 @@ fn tip(repo: &gix::Repository, branches: &[Branch]) -> Result<Tip> {
             tip: head.id().map(|id| id.to_string()),
             upstream: None,
             tip_time: None,
+            remote_name: None,
         });
     Ok(Tip::Valid { branch })
 }

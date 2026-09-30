@@ -422,6 +422,21 @@ registry! {
         upstream: &[Upstream::issue(20484)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
     },
+    /// Remote names containing `/` are matched whole.
+    REMOTE_NAMES_WITH_SLASHES = 216 "remote-names-with-slashes" {
+        title: "Remote names with slashes",
+        summary: "A remote branch's remote is found by matching the configured remote names, so \
+                  a remote called team/fork gives team/fork/main the branch name main (checkout, \
+                  push, pull requests and the branch list use it).",
+        ghd_behaviour: "Takes everything before the first / as the remote name (team), so the \
+                        branch becomes fork/main.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3618)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/repo.rs", "crates/corvane-models/src/lib.rs"],
+    },
 
     // ---- 300 GitHub ----
 

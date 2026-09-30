@@ -502,6 +502,7 @@ eeee commit: something\n";
             tip: None,
             upstream: None,
             tip_time: None,
+            remote_name: None,
         };
         checkout_branch(git.clone(), path, &main).unwrap();
         assert_eq!(

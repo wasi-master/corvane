@@ -710,13 +710,17 @@ impl Dispatcher {
                     .and_then(|(_, _, _, extras)| extras.as_ref())
                     .map(|e| (e.rebase_snapshot.clone(), e.cherry_pick_snapshot.clone()));
                 let selected_file = Self::state(cx).update(cx, |s, cx| {
+                    let slash_remotes = s.flags.bool(crate::flags::ids::REMOTE_NAMES_WITH_SLASHES);
                     let repo_state: &mut RepositoryState = s.repo_state_mut(id);
                     repo_state.loading = false;
                     repo_state.last_refresh = Some(Instant::now());
                     let mut selected = None;
                     let mut main_worktree = None;
                     match result {
-                        Ok((info, ahead_behind, status, extras)) => {
+                        Ok((mut info, ahead_behind, status, extras)) => {
+                            if !slash_remotes {
+                                forget_remote_names(&mut info);
+                            }
                             repo_state.info = Some(info);
                             repo_state.ahead_behind = ahead_behind;
                             repo_state.error = None;
@@ -1654,6 +1658,7 @@ impl Dispatcher {
                 tip: None,
                 upstream: None,
                 tip_time: None,
+                remote_name: None,
             };
             corvane_git::checkout_branch(git, &workdir, &branch)
         });
@@ -3235,6 +3240,18 @@ struct RefreshExtras {
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
     last_local_commit: Option<crate::state::LastCommit>,
+}
+
+/// GHD parses a branch's remote name up to the first `/`
+/// (`remote-names-with-slashes` off): drop the names matched against the
+/// configured remotes so [`corvane_models::Branch`] falls back to that split.
+fn forget_remote_names(info: &mut corvane_models::RepositoryInfo) {
+    for branch in &mut info.branches {
+        branch.remote_name = None;
+    }
+    if let corvane_models::Tip::Valid { branch } = &mut info.tip {
+        branch.remote_name = None;
+    }
 }
 
 /// Node's `path.resolve(path)`: made absolute against the current directory,
