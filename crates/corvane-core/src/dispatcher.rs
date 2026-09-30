@@ -550,7 +550,13 @@ impl Dispatcher {
             s.selected = Some(id);
             s.recent.retain(|r| *r != id);
             s.recent.insert(0, id);
-            s.recent.truncate(RECENT_REPOSITORIES_LENGTH);
+            // `111-recent-repositories-count` shows up to that many; at
+            // least GHD's 3 are kept (removing the selected repository
+            // falls back to the most recent one)
+            let shown =
+                usize::try_from(s.flags.number(crate::flags::ids::RECENT_REPOSITORIES_COUNT))
+                    .unwrap_or(RECENT_REPOSITORIES_LENGTH);
+            s.recent.truncate(shown.max(RECENT_REPOSITORIES_LENGTH));
             s.foldout = None;
             let _ = s.store.save_selected_repository(Some(id));
             let _ = s.store.save_recent_repositories(&s.recent);

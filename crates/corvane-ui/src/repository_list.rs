@@ -131,9 +131,17 @@ impl RepositoryFoldout {
 
         let mut groups: Vec<Group> = Vec::new();
         if query.is_empty() && !status_filter {
+            // Corvane (`111-recent-repositories-count`; GHD shows 3)
+            let shown = usize::try_from(
+                state
+                    .flags
+                    .number(corvane_core::flags::ids::RECENT_REPOSITORIES_COUNT),
+            )
+            .unwrap_or(3);
             let recent: Vec<Repository> = state
                 .recent
                 .iter()
+                .take(shown)
                 .filter_map(|id| state.repository(*id).cloned())
                 .collect();
             if !recent.is_empty() && state.repositories.len() > 1 {

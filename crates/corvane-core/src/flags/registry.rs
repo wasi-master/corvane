@@ -252,6 +252,20 @@ registry! {
         upstream: &[Upstream::issue(18322), Upstream::issue(22693)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
+    /// How many recent repositories the repository list shows.
+    RECENT_REPOSITORIES_COUNT = 111 "recent-repositories-count" {
+        title: "Recent repositories shown",
+        summary: "How many recently opened repositories the repository list shows in its Recent \
+                  group (0 hides the group).",
+        ghd_behaviour: "Always 3.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 20, unit: None },
+        corvane: Value::Number(3), ghd: Value::Number(3),
+        familiar: Value::Number(3), everything: Value::Number(5),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15244), Upstream::issue(19828)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 200 Repository ----
 
