@@ -204,6 +204,14 @@ pub enum Popup {
     WarnLocalChangesBeforeUndo {
         repo: u64,
     },
+    /// Flag `441`: the commit being undone carries tags.
+    WarnTaggedCommitBeforeUndo {
+        repo: u64,
+        tags: Vec<String>,
+        /// History's Undo Commit goes on to the local-changes warning;
+        /// the Changes view's Undo button undoes straight away.
+        warn_local: bool,
+    },
     /// `CreateBranch`; `target_sha` when created from a commit in History.
     CreateBranch {
         repo: u64,

@@ -1589,8 +1589,57 @@ impl Dispatcher {
         });
     }
 
-    /// `Undo Commit…` from history: warn about local changes first.
+    /// `Undo Commit…` from history: warn about the commit's tags (flag
+    /// `441`), then about local changes.
     pub fn request_undo_commit(id: u64, cx: &mut App) {
+        let tags = Self::undo_warning_tags(id, cx);
+        if !tags.is_empty() {
+            return Self::show_popup(
+                Popup::WarnTaggedCommitBeforeUndo {
+                    repo: id,
+                    tags,
+                    warn_local: true,
+                },
+                cx,
+            );
+        }
+        Self::request_undo_commit_after_tags(id, cx);
+    }
+
+    /// The Changes view's Undo button: the tag warning (flag `441`) only.
+    pub fn request_undo_last_commit(id: u64, cx: &mut App) {
+        let tags = Self::undo_warning_tags(id, cx);
+        if tags.is_empty() {
+            return Self::undo_commit(id, cx);
+        }
+        Self::show_popup(
+            Popup::WarnTaggedCommitBeforeUndo {
+                repo: id,
+                tags,
+                warn_local: false,
+            },
+            cx,
+        );
+    }
+
+    /// Flag `441`: HEAD's tags, empty when the flag is off.
+    fn undo_warning_tags(id: u64, cx: &App) -> Vec<String> {
+        {
+            let s = Self::state(cx).read(cx);
+            s.flags
+                .bool(crate::flags::ids::WARN_UNDO_TAGGED_COMMIT)
+                .then(|| {
+                    // the history list starts at HEAD
+                    let commit = s.repo_states.get(&id)?.commits.first()?;
+                    Some(commit.tags.clone())
+                })
+                .flatten()
+                .unwrap_or_default()
+        }
+    }
+
+    /// The local-changes half of [`Self::request_undo_commit`].
+    pub fn request_undo_commit_after_tags(id: u64, cx: &mut App) {
         let (confirm, overlap_only) = {
             let s = Self::state(cx).read(cx);
             (

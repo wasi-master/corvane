@@ -51,6 +51,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The selected commit's meta row (GHD `expandable-commit-summary.tsx`: author, SHA, line counts, tags) adds the author date and time in the user's formats (relative time as tooltip), and in a GitHub repository the SHA is a link to `<html_url>/commit/<sha>`. The author is not linked (Corvane has no login for a commit's author). Flag: `253-commit-details-extras`.
 - A commit's tags get a tooltip listing every tag, one per line: on the History row's tag pill (GHD `renderCommitListItemTags` shows the first tag and a `.tag-indicator-more` sliver) and on the details' truncated tag list. Flag: `254-tags-tooltip`.
 - Checkout Commit is enabled on the current branch's latest commit too (GHD `commit-list.tsx` disables it with Reset to Commit for the HEAD commit), so HEAD can be detached at the branch tip; still disabled while detached. Flag: `440-checkout-head-commit`.
+- Undo Commit on a commit that has tags first shows a warning naming them (they would stay on a commit no branch contains); Continue goes on to the usual local-changes check (History) or undoes (the Changes view's Undo button). GHD (`undoCommit`) undoes silently. Flag: `441-warn-undo-tagged-commit`.
 
 ## Tutorial
 

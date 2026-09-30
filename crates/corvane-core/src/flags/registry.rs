@@ -656,6 +656,19 @@ registry! {
         upstream: &[Upstream::issue(22495)],
         code: &["crates/corvane-ui/src/history.rs"],
     },
+    /// Undo Commit warns about the commit's tags.
+    WARN_UNDO_TAGGED_COMMIT = 441 "warn-undo-tagged-commit" {
+        title: "Warn before undoing a tagged commit",
+        summary: "Undo Commit on a commit that has tags asks first: the tags would stay on a commit \
+                  that is no longer on any branch.",
+        ghd_behaviour: "Undoes silently; the tags keep pointing at the orphaned commit.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19844)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

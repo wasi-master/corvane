@@ -53,7 +53,7 @@ pub use flags::FlagsDialog;
 pub use fork_dialogs::{ChooseForkSettingsDialog, CreateForkDialog, fork_settings_description};
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
-    UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
+    UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog, WarnTaggedCommitBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use open_pull_request::OpenPullRequestDialog;
@@ -278,6 +278,13 @@ impl DialogHost {
                 .into(),
             Popup::WarnLocalChangesBeforeUndo { repo } => cx
                 .new(|_| WarnLocalChangesBeforeUndoDialog::new(*repo))
+                .into(),
+            Popup::WarnTaggedCommitBeforeUndo {
+                repo,
+                tags,
+                warn_local,
+            } => cx
+                .new(|_| WarnTaggedCommitBeforeUndoDialog::new(*repo, tags.clone(), *warn_local))
                 .into(),
             Popup::CreateBranch {
                 repo,
