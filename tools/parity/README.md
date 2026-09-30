@@ -94,6 +94,7 @@ steps:
   - type: "feature/login"
   - menu: show-preferences               # GHD menu-event name
   - popup: {ghd: test-release-notes-popup, corvane: release-notes}   # GHD test hook / CORVANE_POPUP
+  - accounts: dotcom                     # fake signed-in accounts + repository lists (accounts.py: dotcom | enterprise | two)
   - resize: [1100, 700]
   - wait: 500                            # alone: sleep; on a step: settle time after it (default 350ms)
   - ghd: {eval: "…"}                     # app-specific step (either side can be `{skip: true}`)
@@ -107,6 +108,17 @@ steps:
 
 Masks are for deliberate differences only (product name, version numbers) and
 each should carry a `note` pointing at `docs/reference/deviations.md`.
+
+## Signed-in states
+
+Neither app can sign in during a run, so `accounts: <fixture>` injects the
+accounts and repository lists of `accounts.py` into both: GHD's `AppStore`
+(found through the root component's React fiber) gets them as `accounts` and
+`ApiRepositoriesStore` state, Corvane gets them through the `fake-accounts`
+control hook. No API call is made (every list is already loaded; the tokens
+are fake), so only views that render from that state can be compared: the
+signed-in blank slate, Welcome › Configure Git after "Skip this step",
+account pickers.
 
 ## Limits
 

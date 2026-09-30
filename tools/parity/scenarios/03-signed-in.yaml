@@ -1,0 +1,71 @@
+# Signed-in surfaces with fake accounts (`accounts.py`): neither app talks to
+# GitHub, both get the same accounts and repository lists injected.
+name: signed-in-blank-slate
+description: No repositories while signed in, the account's cloneable repositories beside the actions, filter, selection and the Clone button
+setup: empty
+# the header's 50 px glyphs and the ProTip already cost ~0.6 % on the
+# signed-out page; a full list adds a few hundred row-text pixels
+threshold: 1.25
+steps:
+  - accounts: dotcom
+    wait: 800
+  - dump: {name: blank-slate, root: "#no-repositories"}
+  - snap: blank-slate
+  - hover: {text: "octocat/Spoon-Knife", within: "#no-repositories"}
+  - snap: row-hover
+  - click: {text: "octocat/Spoon-Knife", within: "#no-repositories"}
+  - dump: {name: selected, root: "#no-repositories"}
+  - snap: selected
+  - hover: {contains: "Clone octocat/Spoon-Knife"}
+  - snap: clone-hover
+  - click: {css: "#no-repositories .filter-list input"}
+  - type: "desk"
+  - snap: filtered
+  - key: cmd-a backspace
+  - type: "nothing-matches"
+  - snap: {name: no-results, threshold: 2.5, note: "GHD shrinks the section to the message's width, Corvane keeps half-width panes (deviations.md › Blank slate)"}
+---
+name: signed-in-blank-slate-two-accounts
+description: Two accounts, the AccountPicker above the list and its popover
+setup: empty
+threshold: 1.25
+steps:
+  - accounts: two
+    wait: 800
+  - dump: {name: picker, root: "#no-repositories"}
+  - snap: picker
+  - click: {css: "#no-repositories .account-picker button"}
+  - dump: {name: popover, root: "#no-repositories"}
+  - snap: popover
+  - click: {text: "@mona", within: "#no-repositories"}
+  - snap: enterprise-list
+---
+name: welcome-configure-git-account
+description: Welcome › Configure Git with an account, "Use my GitHub account name and email address" (read-only name, email select) and "Configure manually" (with the email attribution line)
+setup: welcome
+steps:
+  - wait: 600
+  - click: {text: "Skip this step", within: "#welcome"}
+    wait: 800
+  - accounts: dotcom
+    wait: 800
+  - dump: {name: account, root: "#welcome"}
+  - snap: account
+  - click: {text: "Configure manually", within: "#welcome"}
+  - dump: {name: manual, root: "#welcome"}
+  - snap: manual
+  - click: {text: "Use my GitHub account name and email address", within: "#welcome"}
+  - snap: back-to-account
+---
+name: welcome-configure-git-enterprise
+description: Welcome › Configure Git with an Enterprise account whose primary email is private
+setup: welcome
+steps:
+  - wait: 600
+  - click: {text: "Skip this step", within: "#welcome"}
+    wait: 800
+  - accounts: enterprise
+    wait: 800
+  - snap: account
+  - click: {text: "Configure manually", within: "#welcome"}
+  - snap: manual

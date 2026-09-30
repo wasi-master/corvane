@@ -37,6 +37,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 sys.path.insert(0, str(HERE))
 
+import accounts  # noqa: E402
 import fixture  # noqa: E402
 import imgdiff  # noqa: E402
 import report  # noqa: E402
@@ -276,6 +277,12 @@ class Run:
             name = p.get(drv.name) if isinstance(p, dict) else p
             if name:
                 drv.popup(name)
+        if "accounts" in action:
+            # fake signed-in accounts (`accounts.py`)
+            if drv.name == "ghd":
+                drv.eval(accounts.ghd_js(action["accounts"]))
+            else:
+                drv.hook("fake-accounts", accounts.corvane_arg(action["accounts"]))
         if "eval" in action and drv.name == "ghd":
             drv.eval(action["eval"])
         if "action" in action and drv.name == "corvane":
