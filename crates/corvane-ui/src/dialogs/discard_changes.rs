@@ -2,6 +2,9 @@
 //! lists the files (up to 10), the Trash hint and the "do not show again"
 //! opt-out — which Discard All Changes leaves out
 //! (`showDiscardChangesSetting: false`); then Cancel holds focus.
+//!
+//! Deviation: when every discarded entry is a submodule nothing goes to the
+//! Trash, so the Trash sentence is left out (`276-discard-submodule-no-trash-hint`).
 
 use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
@@ -51,6 +54,21 @@ impl Render for DiscardChangesDialog {
         let focus_visible = self.focus_visible;
         let weak = cx.weak_entity();
         let count = self.paths.len();
+        // `276-discard-submodule-no-trash-hint`
+        let only_submodules = {
+            let s = corvane_core::AppState::global(cx).read(cx);
+            s.flags
+                .bool(corvane_core::flags::ids::DISCARD_SUBMODULE_NO_TRASH_HINT)
+                && s.repo_states
+                    .get(&self.repo)
+                    .and_then(|rs| rs.status.as_ref())
+                    .is_some_and(|st| {
+                        !self.paths.is_empty()
+                            && self.paths.iter().all(|p| {
+                                st.files.iter().any(|f| &f.path == p && f.status.submodule)
+                            })
+                    })
+        };
         let file_list = if count > MAX_FILES_TO_LIST {
             div().mb(SPACING()).child(format!(
                 "Are you sure you want to discard all {count} changed files?"
@@ -100,11 +118,13 @@ impl Render for DiscardChangesDialog {
             .flex()
             .flex_col()
             .child(file_list)
-            .child(
-                div()
-                    .when(!all, |d| d.mb(SPACING()))
-                    .child("Changes can be restored by retrieving them from the Trash."),
-            )
+            .when(!only_submodules, |d| {
+                d.child(
+                    div()
+                        .when(!all, |d| d.mb(SPACING()))
+                        .child("Changes can be restored by retrieving them from the Trash."),
+                )
+            })
             .when(!all, |d| {
                 d.on_mouse_down(
                     MouseButton::Left,

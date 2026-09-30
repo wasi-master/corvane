@@ -361,6 +361,20 @@ registry! {
         upstream: &[Upstream::issue(21857)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/dialogs/confirm_commit_to_default_branch.rs"],
     },
+    /// No Trash sentence when only submodules are discarded.
+    DISCARD_SUBMODULE_NO_TRASH_HINT = 276 "discard-submodule-no-trash-hint" {
+        title: "Discarding submodules does not mention the Trash",
+        summary: "When every discarded entry is a submodule, the discard confirmation leaves out \
+                  \"Changes can be restored by retrieving them from the Trash\": nothing is moved \
+                  there.",
+        ghd_behaviour: "Always promises the Trash.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10402)],
+        code: &["crates/corvane-ui/src/dialogs/discard_changes.rs"],
+    },
 
     // ---- 300 GitHub ----
 
