@@ -5,6 +5,10 @@
 //! Outcomes are classified from the repository state after git exits
 //! (`REBASE_HEAD`, `CHERRY_PICK_HEAD`, `MERGE_HEAD`) rather than by matching
 //! dugite's stderr regexes, which is more robust across git versions.
+//!
+//! Deviation: with `keep_messages` (flag `448`) rebases use
+//! `commit.cleanup=scissors` so `#` message lines survive a conflict
+//! (GHD `lib/git/rebase.ts` keeps git's `strip`).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -480,6 +484,28 @@ fn stderr_says_unresolved(stderr: &str) -> bool {
 // rebase
 // ---------------------------------------------------------------------------
 
+/// The cut line git writes above the conflict hint in `scissors` cleanup mode.
+const SCISSORS: &str = "------------------------ >8 ------------------------";
+
+/// `-c commit.cleanup=scissors` when `keep`: commit messages are kept as
+/// written (lines starting with `#` included) and only the conflict hint git
+/// appends below a cut line is dropped. Git's default, `strip`, drops every
+/// `#` line, so a message whose summary starts with `#` ends up empty after
+/// a conflict ("Aborting commit due to empty commit message").
+fn cleanup_config(keep: bool) -> &'static [&'static str] {
+    if keep {
+        &["-c", "commit.cleanup=scissors"]
+    } else {
+        &[]
+    }
+}
+
+/// The stopped pick's message has the cut line, i.e. it was started with
+/// [`cleanup_config`]; a rebase started elsewhere keeps git's default.
+fn message_has_scissors(path: &Path) -> bool {
+    std::fs::read_to_string(path).is_ok_and(|m| m.lines().any(|l| l.contains(SCISSORS)))
+}
+
 /// GHD `GitRebaseParser`: `Rebasing (n/m)` on stderr.
 pub fn parse_rebase_progress(line: &str, commits: &[CommitOneLine]) -> Option<McoProgress> {
     let rest = line.trim().strip_prefix("Rebasing (")?;
@@ -529,15 +555,18 @@ fn classify_rebase(workdir: &Path, result: Result<crate::process::GitOutput>) ->
 }
 
 /// GHD `rebase`: `git rebase <base> <target>` with progress from stderr.
+/// `keep_messages`: see [`cleanup_config`].
 pub fn rebase(
     git: Arc<GitBinary>,
     workdir: &Path,
     base_branch: &str,
     target_branch: &str,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     let result = GitCommand::new(git)
+        .args(cleanup_config(keep_messages))
         .args([
             "-c",
             "rebase.backend=merge",
@@ -572,12 +601,15 @@ pub fn continue_rebase(
     files: &[WorkingDirectoryFileChange],
     resolutions: &BTreeMap<String, ManualConflictResolution>,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> Result<RebaseResult> {
     stage_for_continue(git.clone(), workdir, files, resolutions)?;
     if !rebase_head_set(workdir) {
         return Ok(RebaseResult::Aborted);
     }
+    let keep_messages =
+        keep_messages && message_has_scissors(&git_dir(workdir).join("rebase-merge/message"));
     let status = crate::status::get_status(git.clone(), workdir, None)?;
     let tracked_after = status
         .files
@@ -591,6 +623,7 @@ pub fn continue_rebase(
         "--continue"
     };
     let result = GitCommand::new(git)
+        .args(cleanup_config(keep_messages))
         .args(["rebase", action])
         .env("GIT_EDITOR", ":")
         .current_dir(workdir)
@@ -605,6 +638,7 @@ pub fn continue_rebase(
 /// GHD `rebaseInteractive`: replay `todo` with `sequence.editor=cat todo >`.
 /// `last_retained_ref` is the commit before the first rewritten one, or
 /// `None` to rebase from the root.
+#[allow(clippy::too_many_arguments)]
 pub fn rebase_interactive(
     git: Arc<GitBinary>,
     workdir: &Path,
@@ -612,6 +646,7 @@ pub fn rebase_interactive(
     last_retained_ref: Option<&str>,
     git_editor: Option<&str>,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     let todo_path = todo.to_string_lossy();
@@ -621,6 +656,7 @@ pub fn rebase_interactive(
     let sequence_editor = format!("sequence.editor=cat \"{todo_path}\" >");
     let base = last_retained_ref.unwrap_or("--root");
     let result = GitCommand::new(git)
+        .args(cleanup_config(keep_messages))
         .args([
             "-c",
             &sequence_editor,
@@ -759,6 +795,7 @@ fn temp_file(prefix: &str, contents: &str) -> Result<PathBuf> {
 
 /// GHD `squash`: squash `to_squash` onto `squash_onto` with `message`
 /// (summary line + body) via interactive rebase.
+#[allow(clippy::too_many_arguments)]
 pub fn squash(
     git: Arc<GitBinary>,
     workdir: &Path,
@@ -766,6 +803,7 @@ pub fn squash(
     squash_onto: &Commit,
     last_retained_ref: Option<&str>,
     message: &str,
+    keep_messages: bool,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_squash.is_empty() {
@@ -808,6 +846,8 @@ pub fn squash(
             summary: c.summary.clone(),
         })
         .collect();
+    // without a message git's own (with its `#` notes) would be kept
+    let keep_messages = keep_messages && editor.is_some();
     let result = rebase_interactive(
         git,
         workdir,
@@ -815,6 +855,7 @@ pub fn squash(
         last_retained_ref,
         editor.as_deref(),
         &involved,
+        keep_messages,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -831,6 +872,7 @@ pub fn reorder(
     to_move: &[Commit],
     before: Option<&Commit>,
     last_retained_ref: Option<&str>,
+    keep_messages: bool,
     on_progress: impl FnMut(McoProgress),
 ) -> RebaseResult {
     if to_move.is_empty() {
@@ -858,6 +900,7 @@ pub fn reorder(
         last_retained_ref,
         None,
         &commits,
+        keep_messages,
         on_progress,
     );
     let _ = std::fs::remove_file(&todo_path);
@@ -1197,14 +1240,14 @@ mod tests {
             .unwrap();
         assert_eq!(commits.len(), 1);
         let mut seen = Vec::new();
-        let result = rebase(git.clone(), path, "main", "feature", &commits, |p| {
+        let result = rebase(git.clone(), path, "main", "feature", &commits, false, |p| {
             seen.push(p)
         });
         assert_eq!(result, RebaseResult::CompletedWithoutError);
         assert!(!seen.is_empty(), "progress lines were parsed");
         assert!(path.join("m.txt").exists());
         assert_eq!(
-            rebase(git, path, "main", "feature", &commits, |_| {}),
+            rebase(git, path, "main", "feature", &commits, false, |_| {}),
             RebaseResult::AlreadyUpToDate
         );
     }
@@ -1218,7 +1261,7 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         commit_file(path, "a.txt", "main\n", "main change");
         run(path, &["checkout", "-q", "feature"]);
-        let result = rebase(git.clone(), path, "main", "feature", &[], |_| {});
+        let result = rebase(git.clone(), path, "main", "feature", &[], false, |_| {});
         assert_eq!(result, RebaseResult::ConflictsEncountered);
         let state = rebase_internal_state(path).unwrap();
         assert_eq!(state.target_branch, "feature");
@@ -1234,8 +1277,16 @@ mod tests {
         // resolve by taking our side (the base branch during a rebase)
         let mut resolutions = BTreeMap::new();
         resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
-        let result =
-            continue_rebase(git.clone(), path, &status.files, &resolutions, &[], |_| {}).unwrap();
+        let result = continue_rebase(
+            git.clone(),
+            path,
+            &status.files,
+            &resolutions,
+            &[],
+            false,
+            |_| {},
+        )
+        .unwrap();
         assert_eq!(result, RebaseResult::CompletedWithoutError);
         assert!(!rebase_head_set(path));
         assert_eq!(
@@ -1247,7 +1298,7 @@ mod tests {
         run(path, &["checkout", "-q", "-b", "other", "HEAD~1"]);
         commit_file(path, "a.txt", "other\n", "other change");
         assert_eq!(
-            rebase(git.clone(), path, "main", "other", &[], |_| {}),
+            rebase(git.clone(), path, "main", "other", &[], false, |_| {}),
             RebaseResult::ConflictsEncountered
         );
         abort_rebase(git, path).unwrap();
@@ -1256,6 +1307,48 @@ mod tests {
             std::fs::read_to_string(path.join("a.txt")).unwrap(),
             "other\n"
         );
+    }
+
+    #[test]
+    fn rebase_keeps_hash_messages_across_a_conflict() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(path.join("a.txt"), "feature\n").unwrap();
+        run(path, &["add", "."]);
+        run(
+            path,
+            &["commit", "-q", "-m", "#12 feature", "-m", "# kept too"],
+        );
+        run(path, &["checkout", "-q", "main"]);
+        commit_file(path, "a.txt", "main\n", "main change");
+        run(path, &["checkout", "-q", "feature"]);
+        assert_eq!(
+            rebase(git.clone(), path, "main", "feature", &[], true, |_| {}),
+            RebaseResult::ConflictsEncountered
+        );
+        let status = crate::status::get_status(git.clone(), path, None).unwrap();
+        let mut resolutions = BTreeMap::new();
+        resolutions.insert("a.txt".to_string(), ManualConflictResolution::Theirs);
+        let result = continue_rebase(
+            git.clone(),
+            path,
+            &status.files,
+            &resolutions,
+            &[],
+            true,
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(result, RebaseResult::CompletedWithoutError);
+        let out = GitCommand::new(git)
+            .args(["log", "-1", "--format=%B"])
+            .current_dir(path)
+            .run()
+            .unwrap()
+            .stdout_string()
+            .unwrap();
+        assert_eq!(out.trim_end(), "#12 feature\n\n# kept too");
     }
 
     #[test]
@@ -1291,6 +1384,7 @@ mod tests {
             &full(&all[1]),
             Some(&all[0].sha),
             "combined\n\nsecond + third",
+            false,
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);
@@ -1311,6 +1405,7 @@ mod tests {
             &[full(&all[2])],
             Some(&full(&all[1])),
             Some(&all[0].sha),
+            false,
             |_| {},
         );
         assert_eq!(result, RebaseResult::CompletedWithoutError);

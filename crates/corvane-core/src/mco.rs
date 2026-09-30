@@ -567,6 +567,14 @@ impl Dispatcher {
         found
     }
 
+    /// Flag `448`: rebases keep `#` lines in commit messages.
+    fn rebase_keeps_messages(cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REBASE_KEEPS_HASH_MESSAGES)
+    }
+
     fn working_directory_files(id: u64, cx: &App) -> Vec<WorkingDirectoryFileChange> {
         Self::state(cx)
             .read(cx)
@@ -1025,6 +1033,7 @@ impl Dispatcher {
         Self::set_mco_step(id, McoStep::ShowProgress, cx);
         info!(id, %base_branch, %target_branch, "starting rebase");
         let (base_for_result, target_for_result) = (base_branch.clone(), target_branch.clone());
+        let keep_messages = Self::rebase_keeps_messages(cx);
         Self::run_with_progress(
             id,
             cx,
@@ -1035,6 +1044,7 @@ impl Dispatcher {
                     &base_branch,
                     &target_branch,
                     &commits,
+                    keep_messages,
                     on_progress,
                 );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
@@ -1314,6 +1324,7 @@ impl Dispatcher {
             mco.conflicts.our_branch.clone(),
             mco.conflicts.their_branch.clone(),
         );
+        let keep_messages = Self::rebase_keeps_messages(cx);
         match mco.detail.clone() {
             McoDetail::Merge {
                 squash,
@@ -1365,6 +1376,7 @@ impl Dispatcher {
                             &files,
                             &resolutions,
                             &commits,
+                            keep_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| RebaseResult::Error(e.to_string()));
@@ -1400,6 +1412,7 @@ impl Dispatcher {
                             &files,
                             &resolutions,
                             &one_line,
+                            keep_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| RebaseResult::Error(e.to_string()));
@@ -1952,6 +1965,7 @@ impl Dispatcher {
             });
         }
         let count = commits.len() + 1;
+        let keep_messages = Self::rebase_keeps_messages(cx);
         let run = move |cx: &mut App| {
             let (git, workdir) = (git.clone(), workdir.clone());
             let branch = branch.clone();
@@ -1972,6 +1986,7 @@ impl Dispatcher {
                         &target_commit,
                         last_retained.as_deref(),
                         &message,
+                        keep_messages,
                         on_progress,
                     );
                     let status = corvane_git::get_status(git, &workdir, None).ok();
@@ -2114,6 +2129,7 @@ impl Dispatcher {
         }
         let count = commits.len();
         let last_retained_for_run = last_retained.clone();
+        let keep_messages = Self::rebase_keeps_messages(cx);
         let run = move |cx: &mut App| {
             let (git, workdir) = (git.clone(), workdir.clone());
             let branch = branch.clone();
@@ -2132,6 +2148,7 @@ impl Dispatcher {
                         &commits,
                         before_commit.as_ref(),
                         last_retained.as_deref(),
+                        keep_messages,
                         on_progress,
                     );
                     let status = corvane_git::get_status(git, &workdir, None).ok();
