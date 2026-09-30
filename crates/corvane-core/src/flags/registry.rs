@@ -390,6 +390,19 @@ registry! {
         upstream: &[Upstream::issue(19074), Upstream::issue(9490)],
         code: &["crates/corvane-core/src/forks.rs", "crates/corvane-core/src/pull_requests.rs", "crates/corvane-ui/src/dialogs/fork_dialogs.rs"],
     },
+    /// Every page of a commit's check runs.
+    ALL_CHECK_RUN_PAGES = 386 "all-check-run-pages" {
+        title: "Read every page of check runs",
+        summary: "A commit's check runs are read page by page until all of them are in (up to \
+                  1,000), so the status and the checks list count every run.",
+        ghd_behaviour: "Reads the first 100 check runs only.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(18101)],
+        code: &["crates/corvane-core/src/commit_status.rs", "crates/corvane-core/src/alive.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

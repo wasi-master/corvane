@@ -26,6 +26,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** caches the repository list in redb per endpoint and filters it locally (as GHD does); there is no server-side search.
 - **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git` (Flag: `204-clone-shorthand-not-found`). The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
 - **SSH fork remotes**: when the repository's remote is SSH (`user@host:path` or `ssh://`), Create Fork's new origin, the `upstream` remote (added, or updated from `UpstreamAlreadyExists`, whose Expected URL follows) and the `github-desktop-<owner>` remote a fork pull request checkout adds use the same SSH user and host with the API repository's path (GHD `_convertRepositoryToFork`, `addUpstreamRemoteIfNeeded`, `_findPullRequestBranch` always use the HTTPS `clone_url`). Flag: `385-fork-remotes-keep-ssh`.
+- **Check runs**: a commit's check runs are read page by page (`page=`, up to 1,000) until `total_count` are in (GHD `fetchRefCheckRuns` reads one page of 100, so repositories with more checks show a partial status). Flag: `386-all-check-run-pages`.
 
 ## Repository
 
