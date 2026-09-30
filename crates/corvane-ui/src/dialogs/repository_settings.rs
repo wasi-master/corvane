@@ -16,6 +16,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::{IS_MAC, mac_or};
 use crate::dialog::DialogButton;
 use crate::icons::Octicon;
 use crate::tab_bar::{VerticalTab, vertical_tab_bar};
@@ -309,7 +310,11 @@ impl RepositorySettingsDialog {
                     .flex_col()
                     .gap(SPACING())
                     .child(labeled(
-                        format!("Primary Remote Repository ({}) URL", remote.name),
+                        if IS_MAC {
+                            format!("Primary Remote Repository ({}) URL", remote.name)
+                        } else {
+                            format!("Primary remote repository ({}) URL", remote.name)
+                        },
                         text_box(
                             "repo-settings-remote-url",
                             &self.remote_url,
@@ -701,19 +706,19 @@ impl Render for RepositorySettingsDialog {
                 },
                 VerticalTab {
                     id: "repo-settings-tab-ignored",
-                    label: "Ignored Files".into(),
+                    label: mac_or("Ignored Files", "Ignored files").into(),
                     icon: Octicon::File,
                 },
                 VerticalTab {
                     id: "repo-settings-tab-git-config",
-                    label: "Git Config".into(),
+                    label: mac_or("Git Config", "Git config").into(),
                     icon: Octicon::GitCommit,
                 },
             ]
             .into_iter()
             .chain(is_fork.then_some(VerticalTab {
                 id: "repo-settings-tab-fork",
-                label: "Fork Behavior".into(),
+                label: mac_or("Fork Behavior", "Fork behavior").into(),
                 icon: Octicon::RepoForked,
             }))
             .collect(),
@@ -787,7 +792,7 @@ impl Render for RepositorySettingsDialog {
         );
         crate::dialog::dialog_with_frame(
             "dialog-repository-settings",
-            "Repository Settings",
+            mac_or("Repository Settings", "Repository settings"),
             content,
             vec![
                 DialogButton {

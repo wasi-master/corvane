@@ -277,8 +277,12 @@ pub struct HistorySidebar {
 impl HistorySidebar {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        let compare =
-            cx.new(|cx| InputState::new(window, cx).placeholder("Select Branch to Compare…"));
+        let compare = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(mac_or(
+                "Select Branch to Compare…",
+                "Select branch to compare…",
+            ))
+        });
         Self {
             state,
             compare,
@@ -1177,7 +1181,7 @@ impl HistorySidebar {
                     }
                 },
             ),
-            MenuItem::new("Create Tag…", {
+            MenuItem::new(mac_or("Create Tag…", "Create tag…"), {
                 let sha = sha.clone();
                 move |_, cx| {
                     Dispatcher::show_popup(
@@ -1465,7 +1469,7 @@ impl HistorySidebar {
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child("Reorder Commits"),
+                    .child(mac_or("Reorder Commits", "Reorder commits")),
             )
             .child(
                 div()

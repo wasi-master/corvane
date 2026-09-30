@@ -23,11 +23,16 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{IconButtonA11y, avatar_image, avatar_lookup_url, button, link_button};
+
+/// GHD `cloneable-repository-filter-list.tsx` group title for the
+/// signed-in user's own repositories.
+const YOUR_REPOSITORIES: &str = mac_or("Your Repositories", "Your repositories");
 
 /// `RowHeight` of the cloneable repository list.
 #[allow(non_snake_case)]
@@ -119,7 +124,7 @@ pub fn group_rows(repos: &[GitHubRepository], login: &str, query: &str) -> Vec<C
                 .map(|(_, r, positions)| CloneRow::Item(r.clone(), positions)),
         );
     };
-    push_group("Your Repositories".to_string(), mine);
+    push_group(YOUR_REPOSITORIES.to_string(), mine);
     for (owner, items) in others {
         push_group(owner, items);
     }
@@ -784,10 +789,11 @@ mod tests {
             repo("octocat", "Hello"),
             repo("Desktop", "dugite"),
         ];
+        let yours = format!("# {YOUR_REPOSITORIES}");
         assert_eq!(
             labels(&group_rows(&repos, "octocat", "")),
             [
-                "# Your Repositories",
+                yours.as_str(),
                 "octocat/Hello",
                 "octocat/git",
                 "Octocat/spoon",

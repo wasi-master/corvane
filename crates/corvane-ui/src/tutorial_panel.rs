@@ -21,6 +21,7 @@ use corvane_core::{AppState, Dispatcher, Popup, PreferencesTab};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
@@ -266,7 +267,7 @@ impl Render for TutorialPanel {
                         .into_any_element()
                         .into(),
                     ". You can change your preferred editor in ".into(),
-                    link_button("tutorial-settings", "Settings", cx)
+                    link_button("tutorial-settings", mac_or("Settings", "options"), cx)
                         .on_click(|_, _, cx| {
                             Dispatcher::open_preferences(PreferencesTab::Integrations, cx)
                         })
@@ -287,9 +288,13 @@ impl Render for TutorialPanel {
             editor.as_ref().map(|_| {
                 let readme = readme.clone().unwrap_or_else(PathBuf::new);
                 action_row(vec![
-                    button("tutorial-open-editor", "Open Editor", cx)
-                        .on_click(move |_, _, cx| Dispatcher::open_in_editor(readme.clone(), cx))
-                        .into_any_element(),
+                    button(
+                        "tutorial-open-editor",
+                        mac_or("Open Editor", "Open editor"),
+                        cx,
+                    )
+                    .on_click(move |_, _, cx| Dispatcher::open_in_editor(readme.clone(), cx))
+                    .into_any_element(),
                     kbd_group(&["⌘", "⇧", "A"], cx).into_any_element(),
                 ])
             }),
@@ -311,11 +316,12 @@ impl Render for TutorialPanel {
                 None,
                 contents(
                     div()
-                        .child(
+                        .child(format!(
                             "A branch allows you to work on different versions of a repository at \
                              one time. Create a branch by going into the branch menu in the top \
-                             bar and clicking \"New Branch\".",
-                        )
+                             bar and clicking \"{}\".",
+                            mac_or("New Branch", "New branch")
+                        ))
                         .into_any_element(),
                     Some(action_row(vec![
                         kbd_group(&["⌘", "⇧", "N"], cx).into_any_element(),
@@ -382,8 +388,8 @@ impl Render for TutorialPanel {
                         button("tutorial-open-pr", "", cx)
                             .gap(SPACING())
                             .role(Role::Link)
-                            .aria_label("Open Pull Request")
-                            .child("Open Pull Request")
+                            .aria_label(mac_or("Open Pull Request", "Open pull request"))
+                            .child(mac_or("Open Pull Request", "Open pull request"))
                             .child(octicon(Octicon::LinkExternal, t.text_secondary).size(zpx(14.)))
                             .on_click(|_, _, cx| {
                                 // `openPullRequest`: close the step first, then open
@@ -457,8 +463,12 @@ impl Render for TutorialPanel {
                     .flex()
                     .justify_center()
                     .child(
-                        button("tutorial-exit", "Exit Tutorial", cx)
-                            .on_click(|_, _, cx| Dispatcher::exit_tutorial(cx)),
+                        button(
+                            "tutorial-exit",
+                            mac_or("Exit Tutorial", "Exit tutorial"),
+                            cx,
+                        )
+                        .on_click(|_, _, cx| Dispatcher::exit_tutorial(cx)),
                     ),
             )
             // `.tutorial-panel-component { overflow-y: scroll }`
@@ -661,7 +671,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             Octicon::Telescope,
                             "Explore projects on GitHub",
                             "Contribute to a project that interests you".into(),
-                            "Open in Browser",
+                            mac_or("Open in Browser", "Open in browser"),
                             |cx| Dispatcher::open_url("https://github.com/explore", cx),
                             cx,
                         ))
@@ -670,7 +680,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             Octicon::Plus,
                             "Create a new repository",
                             "Get started on a brand new project".into(),
-                            "Create Repository",
+                            mac_or("Create Repository", "Create repository"),
                             |cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
                             cx,
                         ))
@@ -679,7 +689,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             Octicon::FileDirectory,
                             "Add a local repository",
                             format!("Work on an existing project in {name}").into(),
-                            "Add Repository",
+                            mac_or("Add Repository", "Add repository"),
                             |cx| {
                                 Dispatcher::show_popup(
                                     Popup::AddExistingRepository { path: None },

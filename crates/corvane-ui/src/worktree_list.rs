@@ -462,7 +462,7 @@ impl Render for WorktreeFoldout {
                         cx,
                     ))
                     .child(
-                        button("new-worktree", "New Worktree", cx)
+                        button("new-worktree", mac_or("New Worktree", "New worktree"), cx)
                             .flex_none()
                             .on_click(move |_, _, cx| {
                                 Dispatcher::close_foldout(cx);

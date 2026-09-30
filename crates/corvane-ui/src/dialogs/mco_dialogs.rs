@@ -364,7 +364,7 @@ impl McoDialog {
             "commit"
         };
         let ok_label: String = if no_results {
-            "Cherry-pick to New Branch".to_string()
+            mac_or("Cherry-pick to New Branch", "Cherry-pick to new branch").to_string()
         } else {
             match &selected {
                 Some(branch) => format!("Cherry-pick {commit_count} {plural} to {branch}…"),
@@ -454,7 +454,11 @@ impl McoDialog {
         dialog_with_kind(
             "dialog-warn-force-push",
             DialogKind::Warning,
-            format!("{label} Will Require Force Push"),
+            if IS_MAC {
+                format!("{label} Will Require Force Push")
+            } else {
+                format!("{label} will require force push")
+            },
             content,
             vec![
                 DialogButton {
@@ -816,7 +820,11 @@ impl McoDialog {
         dialog_with_kind(
             "dialog-confirm-abort",
             DialogKind::Warning,
-            format!("Confirm Abort {}", kind.label()),
+            if IS_MAC {
+                format!("Confirm Abort {}", kind.label())
+            } else {
+                format!("Confirm abort {}", kind.label().to_lowercase())
+            },
             content,
             vec![
                 DialogButton {
@@ -828,7 +836,12 @@ impl McoDialog {
                 },
                 DialogButton {
                     id: "abort-ok",
-                    label: format!("Abort {}", kind.label()).into(),
+                    label: if IS_MAC {
+                        format!("Abort {}", kind.label())
+                    } else {
+                        format!("Abort {}", kind.label().to_lowercase())
+                    }
+                    .into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(move |_, cx| Dispatcher::abort_mco(repo, cx)),
@@ -1297,7 +1310,7 @@ impl Render for LocalChangesOverwrittenDialog {
         if !has_stash {
             buttons.push(DialogButton {
                 id: "overwritten-stash",
-                label: "Stash Changes and Continue".into(),
+                label: mac_or("Stash Changes and Continue", "Stash changes and continue").into(),
                 primary: true,
                 disabled: false,
                 on_click: Box::new(move |_, cx| {

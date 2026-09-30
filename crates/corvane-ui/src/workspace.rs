@@ -7,6 +7,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use corvane_core::{AppState, Dispatcher, Section};
+use corvane_platform::editors::SETTINGS_LABEL;
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
 };
@@ -576,7 +577,7 @@ impl Workspace {
                             move |_, cx| Dispatcher::open_in_editor(path.clone(), cx)
                         }),
                         title: format!("Open the repository in {editor_label}").into(),
-                        description: Some("Select your editor in Settings".into()),
+                        description: Some(format!("Select your editor in {SETTINGS_LABEL}").into()),
                         hint: "Repository menu or".into(),
                         keys: &["⌘", "⇧", "A"],
                         button_label: format!("Open in {editor_label}").into(),
@@ -613,7 +614,7 @@ impl Workspace {
                             move |_, cx| Dispatcher::open_in_shell(&path, cx)
                         }),
                         title: format!("Open the repository in {shell}").into(),
-                        description: Some("Select your shell in Settings".into()),
+                        description: Some(format!("Select your shell in {SETTINGS_LABEL}").into()),
                         hint: "Repository menu or".into(),
                         keys: &["⌃", "`"],
                         button_label: format!("Open in {shell}").into(),
@@ -645,7 +646,11 @@ impl Workspace {
                             description: Some(pr.title.into()),
                             hint: "Branch menu or".into(),
                             keys: &["⌘", "R"],
-                            button_label: "View Pull Request".into(),
+                            button_label: crate::context_menu::mac_or(
+                                "View Pull Request",
+                                "View pull request",
+                            )
+                            .into(),
                             primary: true,
                         },
                     );

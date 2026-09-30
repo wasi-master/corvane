@@ -3364,7 +3364,14 @@ impl Dispatcher {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some("Add Repository".into()),
+            prompt: Some(
+                if cfg!(target_os = "macos") {
+                    "Add Repository"
+                } else {
+                    "Add repository"
+                }
+                .into(),
+            ),
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let picked = match receiver.await {

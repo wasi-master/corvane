@@ -9,6 +9,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -596,15 +597,19 @@ impl RepositoryFoldout {
             .rounded(BORDER_RADIUS())
             .shadow_md()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .child(item("add-clone", "Clone Repository…", |_, cx| {
-                Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
-            }))
-            .child(item("add-create", "Create New Repository…", |_, cx| {
-                Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
-            }))
+            .child(item(
+                "add-clone",
+                mac_or("Clone Repository…", "Clone repository…"),
+                |_, cx| Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx),
+            ))
+            .child(item(
+                "add-create",
+                mac_or("Create New Repository…", "Create new repository…"),
+                |_, cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
+            ))
             .child(item(
                 "add-existing",
-                "Add Existing Repository…",
+                mac_or("Add Existing Repository…", "Add existing repository…"),
                 |_, cx| {
                     Dispatcher::close_foldout(cx);
                     Dispatcher::prompt_add_repository(cx);

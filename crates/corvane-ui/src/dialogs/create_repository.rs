@@ -22,6 +22,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog_with_footer_message};
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
@@ -139,7 +140,7 @@ impl CreateRepositoryDialog {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some("Create Repository".into()),
+            prompt: Some(mac_or("Create Repository", "Create repository").into()),
         });
         cx.spawn_in(window, async move |this, cx| {
             if let Ok(Ok(Some(paths))) = receiver.await
@@ -302,7 +303,7 @@ impl Render for CreateRepositoryDialog {
 
         dialog_with_footer_message(
             "create-repository",
-            "Create a New Repository",
+            mac_or("Create a New Repository", "Create a new repository"),
             div()
                 .flex()
                 .flex_col()
@@ -321,7 +322,7 @@ impl Render for CreateRepositoryDialog {
                         .items_end()
                         .gap(SPACING())
                         .child(labeled(
-                            "Local Path",
+                            mac_or("Local Path", "Local path"),
                             text_box("create-path", &self.path, None, window, cx),
                             cx,
                         ))
@@ -431,7 +432,11 @@ impl Render for CreateRepositoryDialog {
                             ),
                     )
                 })
-                .child(labeled("Git Ignore", self.gitignore_select(cx), cx))
+                .child(labeled(
+                    mac_or("Git Ignore", "Git ignore"),
+                    self.gitignore_select(cx),
+                    cx,
+                ))
                 .child(labeled("License", self.license_select(cx), cx)),
             path_message,
             vec![
@@ -444,7 +449,7 @@ impl Render for CreateRepositoryDialog {
                 },
                 DialogButton {
                     id: "create-ok",
-                    label: "Create Repository".into(),
+                    label: mac_or("Create Repository", "Create repository").into(),
                     primary: true,
                     // `fullPath === null || creating || isRepository`
                     disabled: !can_create,

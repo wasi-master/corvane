@@ -14,6 +14,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogFrame, DialogKind, dialog_with_kind_framed};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -51,9 +52,15 @@ impl Render for DiscardChangesDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let (title, ok_label) = if self.all {
-            ("Confirm Discard All Changes", "Discard All Changes")
+            (
+                mac_or("Confirm Discard All Changes", "Confirm discard all changes"),
+                mac_or("Discard All Changes", "Discard all changes"),
+            )
         } else {
-            ("Confirm Discard Changes", "Discard Changes")
+            (
+                mac_or("Confirm Discard Changes", "Confirm discard changes"),
+                mac_or("Discard Changes", "Discard changes"),
+            )
         };
         let skips_trash = corvane_core::AppState::global(cx)
             .read(cx)

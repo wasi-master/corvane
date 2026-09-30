@@ -19,6 +19,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::widgets::GhdTooltip;
 use crate::widgets::{IconButtonA11y, ListRowA11y};
 
@@ -772,9 +773,9 @@ impl Render for OpenPullRequestDialog {
         let close = cx.listener(|this, _, _, cx| this.close(cx));
         let preview_for_submit = preview.clone();
         let ok_label = if has_pr {
-            "View Pull Request"
+            mac_or("View Pull Request", "View pull request")
         } else {
-            "Create Pull Request"
+            mac_or("Create Pull Request", "Create pull request")
         };
         let ok_title = format!(
             "{} pull request on GitHub{}.",
@@ -801,8 +802,11 @@ impl Render for OpenPullRequestDialog {
                         div()
                             .id("open-pull-request-box")
                             .role(Role::Dialog)
-                            .aria_label("Open a Pull Request")
-                            .child(crate::dialog::window_title("Open a Pull Request"))
+                            .aria_label(mac_or("Open a Pull Request", "Open a pull request"))
+                            .child(crate::dialog::window_title(mac_or(
+                                "Open a Pull Request",
+                                "Open a pull request",
+                            )))
                             .w(viewport.width - DIALOG_MARGIN())
                             .h(viewport.height - DIALOG_MARGIN())
                             .flex()
@@ -841,7 +845,10 @@ impl Render for OpenPullRequestDialog {
                                                     .flex_1()
                                                     .text_size(FONT_SIZE_MD())
                                                     .font_weight(FontWeight::SEMIBOLD)
-                                                    .child("Open a Pull Request"),
+                                                    .child(mac_or(
+                                                        "Open a Pull Request",
+                                                        "Open a pull request",
+                                                    )),
                                             )
                                             .child(
                                                 div()

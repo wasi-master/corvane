@@ -167,7 +167,7 @@ pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElemen
     div()
         .id("diff-options-button")
         .group("diff-options-button")
-        .icon_button_label("Diff Settings")
+        .icon_button_label(mac_or("Diff Settings", "Diff Options"))
         .relative()
         .h(zpx(19.))
         .flex()
@@ -1453,7 +1453,7 @@ impl DiffView {
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_size(FONT_SIZE_MD())
                                 .mb(zpx(8.))
-                                .child("Diff Settings"),
+                                .child(mac_or("Diff Settings", "Diff Options")),
                         )
                         .child(
                             div()
@@ -1464,7 +1464,7 @@ impl DiffView {
                                 .child(checkbox_row(
                                     "diff-hide-whitespace",
                                     hide,
-                                    "Hide Whitespace Changes",
+                                    mac_or("Hide Whitespace Changes", "Hide whitespace changes"),
                                     move |checked, _, cx| set_hide_whitespace(source, checked, cx),
                                     cx,
                                 ))
@@ -1679,12 +1679,12 @@ impl DiffView {
                 "You can try to show it anyway, but performance may be negatively impacted.",
             ))
             .child(
-                button("show-large-diff", "Show Diff", cx).on_click(cx.listener(
-                    |this, _, _, cx| {
+                button("show-large-diff", mac_or("Show Diff", "Show diff"), cx).on_click(
+                    cx.listener(|this, _, _, cx| {
                         this.show_large = true;
                         cx.notify();
-                    },
-                )),
+                    }),
+                ),
             )
             .into_any_element()
     }
@@ -1844,7 +1844,7 @@ impl DiffView {
                     ),
                     hint: "".into(),
                     keys: &[],
-                    button_label: "Open Repository".into(),
+                    button_label: mac_or("Open Repository", "Open repository").into(),
                     primary: true,
                 },
                 cx,

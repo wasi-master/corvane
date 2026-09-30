@@ -892,7 +892,12 @@ impl Dispatcher {
             },
             move |errors, cx| {
                 if !errors.is_empty() {
-                    Self::show_error("Repository Settings", errors.join("\n"), cx);
+                    let title = if cfg!(target_os = "macos") {
+                        "Repository Settings"
+                    } else {
+                        "Repository settings"
+                    };
+                    Self::show_error(title, errors.join("\n"), cx);
                 }
                 Self::refresh_repository(id, cx);
             },

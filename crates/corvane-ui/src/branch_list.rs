@@ -40,6 +40,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
+use crate::context_menu::mac_or;
 use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 
@@ -222,7 +223,7 @@ pub fn group_branches(
         && matches(default)
     {
         groups.push(BranchGroup {
-            title: "Default Branch",
+            title: mac_or("Default Branch", "Default branch"),
             branches: vec![default.clone()],
         });
     }
@@ -238,7 +239,7 @@ pub fn group_branches(
         .collect();
     if !recent_branches.is_empty() {
         groups.push(BranchGroup {
-            title: "Recent Branches",
+            title: mac_or("Recent Branches", "Recent branches"),
             branches: recent_branches,
         });
     }
@@ -255,7 +256,7 @@ pub fn group_branches(
     }
     if !other.is_empty() {
         groups.push(BranchGroup {
-            title: "Other Branches",
+            title: mac_or("Other Branches", "Other branches"),
             branches: other,
         });
     }
@@ -1169,7 +1170,7 @@ impl BranchFoldout {
             .child(
                 crate::widgets::primary_button(
                     "no-branches-create",
-                    "Create New Branch",
+                    mac_or("Create New Branch", "Create new branch"),
                     false,
                     cx,
                 )
@@ -1351,19 +1352,21 @@ impl Render for BranchFoldout {
                                 .child(octicon(Octicon::Server, t.secondary_button_text)),
                         )
                     })
-                    .child(button("new-branch", "New Branch", cx).flex_none().on_click(
-                        move |_, _, cx| {
-                            Dispatcher::close_foldout(cx);
-                            Dispatcher::show_popup(
-                                Popup::CreateBranch {
-                                    repo: id,
-                                    target_sha: None,
-                                    initial_name: query_for_new.clone(),
-                                },
-                                cx,
-                            )
-                        },
-                    )),
+                    .child(
+                        button("new-branch", mac_or("New Branch", "New branch"), cx)
+                            .flex_none()
+                            .on_click(move |_, _, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::CreateBranch {
+                                        repo: id,
+                                        target_sha: None,
+                                        initial_name: query_for_new.clone(),
+                                    },
+                                    cx,
+                                )
+                            }),
+                    ),
             )
             .child(if groups.is_empty() {
                 // the filter list keeps growing; `.no-branches` sits at its top
@@ -1468,7 +1471,7 @@ impl BranchFoldout {
                     TabModel {
                         dot: false,
                         id: "pull-requests-tab",
-                        label: "Pull Requests".into(),
+                        label: mac_or("Pull Requests", "Pull requests").into(),
                         count: (open_prs > 0).then_some(open_prs),
                     },
                 ],

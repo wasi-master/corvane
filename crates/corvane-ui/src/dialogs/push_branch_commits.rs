@@ -10,6 +10,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog_loading};
 use crate::widgets::{Inline, code_ref, paragraph};
 
@@ -41,7 +42,7 @@ impl Render for PushBranchCommitsDialog {
         let branch_ref = || Inline::Element(code_ref(self.branch.clone(), cx).into_any_element());
         let (title, first, second) = match self.unpushed {
             None => (
-                "Publish Branch?",
+                mac_or("Publish Branch?", "Publish branch?"),
                 paragraph(vec![
                     "Your branch must be published before opening a pull request.".into(),
                 ]),
@@ -52,7 +53,7 @@ impl Render for PushBranchCommitsDialog {
                 ]),
             ),
             Some(count) => (
-                "Push Local Changes?",
+                mac_or("Push Local Changes?", "Push local changes?"),
                 paragraph(vec![
                     format!(
                         "You have {count} local commit{} that haven't been pushed to the remote yet.",
@@ -86,7 +87,7 @@ impl Render for PushBranchCommitsDialog {
                 let base = base.clone();
                 DialogButton {
                     id: "push-branch-commits-create",
-                    label: "Create Without Pushing".into(),
+                    label: mac_or("Create Without Pushing", "Create without pushing").into(),
                     primary: false,
                     disabled: pushing,
                     on_click: Box::new(move |_, cx| {
@@ -100,9 +101,9 @@ impl Render for PushBranchCommitsDialog {
         let ok = DialogButton {
             id: "push-branch-commits-ok",
             label: if self.unpushed.is_none() {
-                "Publish Branch"
+                mac_or("Publish Branch", "Publish branch")
             } else {
-                "Push Commits"
+                mac_or("Push Commits", "Push commits")
             }
             .into(),
             primary: true,

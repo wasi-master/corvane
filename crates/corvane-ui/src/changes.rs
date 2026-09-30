@@ -1039,9 +1039,9 @@ impl ChangesSidebar {
                     let committing = rs.is_some_and(|rs| rs.committing);
                     co_authors = Some((
                         if show {
-                            "Remove Co-Authors"
+                            mac_or("Remove Co-Authors", "Remove co-authors")
                         } else {
-                            "Add Co-Authors"
+                            mac_or("Add Co-Authors", "Add co-authors")
                         },
                         !committing,
                     ));
@@ -1107,9 +1107,9 @@ impl ChangesSidebar {
                 .separator()
                 .menu(
                     if enabled {
-                        "Disable Commit Spellcheck"
+                        mac_or("Disable Commit Spellcheck", "Disable commit spellcheck")
                     } else {
-                        "Enable Commit Spellcheck"
+                        mac_or("Enable Commit Spellcheck", "Enable commit spellcheck")
                     },
                     Box::new(ToggleCommitSpellcheck),
                 )
@@ -3226,7 +3226,7 @@ impl ChangesSidebar {
                     .child(
                         div()
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child(format!("{label} Rules:")),
+                            .child(format!("{label} {}:", mac_or("Rules", "rules"))),
                     )
                     .children(items.iter().enumerate().map(|(ix, f)| {
                         let url = format!("{html_url}/rules/{}", f.ruleset_id);
@@ -3294,7 +3294,10 @@ impl ChangesSidebar {
                                     div()
                                         .text_size(FONT_SIZE_MD())
                                         .font_weight(FontWeight::SEMIBOLD)
-                                        .child("Commit Message Rule Failures"),
+                                        .child(mac_or(
+                                            "Commit Message Rule Failures",
+                                            "Commit message rule failures",
+                                        )),
                                 )
                                 .child(
                                     div()
@@ -3472,7 +3475,7 @@ impl ChangesSidebar {
                 Dispatcher::request_undo_commit(id, cx)
             }),
             MenuItem::separator(),
-            MenuItem::new("Create Tag…", {
+            MenuItem::new(mac_or("Create Tag…", "Create tag…"), {
                 let sha = sha.clone();
                 move |_, cx| {
                     Dispatcher::show_popup(
@@ -3826,9 +3829,9 @@ impl ChangesSidebar {
                             .when(is_github, |d| {
                                 // `.co-authors-toggle`
                                 let toggle_label = if co_authors_visible {
-                                    "Remove Co-Authors"
+                                    mac_or("Remove Co-Authors", "Remove co-authors")
                                 } else {
-                                    "Add Co-Authors"
+                                    mac_or("Add Co-Authors", "Add co-authors")
                                 };
                                 let color = if co_authors_visible {
                                     t.link
