@@ -5,6 +5,8 @@
 //! status icon and the header the totals (GHD `changes-list.tsx` has none).
 //! Deviation (flag `ignore-file-targets`): a single file's menu adds "Ignore
 //! File In" (a nearer `.gitignore`, `info/exclude`, the global excludes file).
+//! Deviation (flag `416-changes-busy-indicator`): the "N changed files" row
+//! ends in a spinner while Discard Changes runs or a status refresh is slow.
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -75,6 +77,9 @@ struct PendingSpell {
     suggestions: Vec<String>,
 }
 
+/// How long a status refresh runs before the header shows a spinner.
+const BUSY_INDICATOR_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
+
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
     summary: Entity<InputState>,
@@ -119,6 +124,8 @@ pub struct ChangesSidebar {
     /// `isRuleFailurePopoverOpen`: the commit-message rule failures popover.
     rule_failure_popover_open: bool,
     rule_hint_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// When the running status refresh started (`416-changes-busy-indicator`).
+    refresh_since: Cell<Option<std::time::Instant>>,
 }
 
 /// What the repository rules say about the commit being written
@@ -256,6 +263,7 @@ impl ChangesSidebar {
             pending_author: None,
             rule_failure_popover_open: false,
             rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
+            refresh_since: Cell::new(None),
         }
     }
 
@@ -1921,8 +1929,48 @@ impl ChangesSidebar {
                         );
                         d.child(div().flex_1())
                             .child(line_stats_label(totals, None, t))
-                    }),
+                    })
+                    .children(
+                        self.busy_indicator(cx)
+                            .map(|spinner| div().ml_auto().flex_none().child(spinner)),
+                    ),
             )
+    }
+
+    /// `416-changes-busy-indicator`: a spinner at the end of the "N changed
+    /// files" row while Discard Changes runs, or once a status refresh has
+    /// taken [`BUSY_INDICATOR_DELAY`] (GHD shows neither).
+    fn busy_indicator(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let s = self.state.read(cx);
+        let (discarding, loading) = s
+            .selected_state()
+            .filter(|_| {
+                s.flags
+                    .bool(corvane_core::flags::ids::CHANGES_BUSY_INDICATOR)
+            })
+            .map_or((false, false), |rs| (rs.discarding, rs.loading));
+        if !loading {
+            self.refresh_since.set(None);
+        }
+        let color = cx.ghd().text_secondary;
+        if discarding {
+            return Some(crate::icons::loading("changes-busy-spinner", color));
+        }
+        if !loading {
+            return None;
+        }
+        let since = self.refresh_since.get().unwrap_or_else(|| {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(BUSY_INDICATOR_DELAY).await;
+                let _ = this.update(cx, |_, cx| cx.notify());
+            })
+            .detach();
+            let now = std::time::Instant::now();
+            self.refresh_since.set(Some(now));
+            now
+        });
+        (since.elapsed() >= BUSY_INDICATOR_DELAY)
+            .then(|| crate::icons::loading("changes-busy-spinner", color))
     }
 
     /// Per-file line counts while flag `changes-line-counts` is on.

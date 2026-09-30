@@ -2888,12 +2888,20 @@ impl Dispatcher {
         let flags = &Self::state(cx).read(cx).flags;
         let clean_submodules = flags.bool(crate::flags::ids::DISCARD_SUBMODULE_CHANGES);
         let move_to_trash = !flags.bool(crate::flags::ids::DISCARD_SKIPS_TRASH);
+        Self::state(cx).update(cx, |s, cx| {
+            s.repo_state_mut(id).discarding = true;
+            cx.notify();
+        });
         let task = cx.background_executor().spawn(async move {
             corvane_git::discard_changes(git, &workdir, &files, move_to_trash, clean_submodules)
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).discarding = false;
+                    cx.notify();
+                });
                 if let Err(err) = result {
                     Self::show_error("Could not discard changes", err.to_string(), cx);
                 }

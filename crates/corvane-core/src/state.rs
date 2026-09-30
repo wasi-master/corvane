@@ -576,6 +576,8 @@ pub struct RepositoryState {
     pub show_co_authored_by: bool,
     pub co_authors: Vec<corvane_models::Author>,
     pub committing: bool,
+    /// Discard Changes is running (`416-changes-busy-indicator`).
+    pub discarding: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,
     /// Filter Options popover state (`IFileListFilterState` minus the text).

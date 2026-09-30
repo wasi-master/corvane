@@ -797,6 +797,20 @@ registry! {
         upstream: &[Upstream::issue(22569)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/error.rs"],
     },
+    /// A spinner in the Changes header while discarding or refreshing.
+    CHANGES_BUSY_INDICATOR = 416 "changes-busy-indicator" {
+        title: "Changes list busy indicator",
+        summary: "The \"N changed files\" row ends in a spinner while Discard Changes runs and \
+                  while a status refresh has been running for more than 300 ms, so a slow \
+                  discard or git status is visibly in progress.",
+        ghd_behaviour: "Nothing shows that a discard or status refresh is still running.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15297), Upstream::issue(1914)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
