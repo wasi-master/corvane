@@ -262,8 +262,8 @@ impl IntoElement for InlineShift {
 }
 
 impl Element for InlineShift {
-    /// A word's shaped line and line height.
-    type RequestLayoutState = Option<(ShapedLine, Pixels)>;
+    /// A word's shaped line, line height and layout node.
+    type RequestLayoutState = Option<(ShapedLine, Pixels, LayoutId)>;
     /// A word's paint origin.
     type PrepaintState = Point<Pixels>;
 
@@ -295,7 +295,7 @@ impl Element for InlineShift {
                 let box_size = size(line.width, line_height);
                 let layout_id =
                     window.request_measured_layout(Style::default(), move |_, _, _, _| box_size);
-                (layout_id, Some((line, line_height)))
+                (layout_id, Some((line, line_height, layout_id)))
             }
             InlineChild::Element(el) => (el.request_layout(window, cx), None),
         }
@@ -322,8 +322,14 @@ impl Element for InlineShift {
         }
         let offset = point(-flow.drift, px(0.));
         match (&mut self.child, word) {
-            (InlineChild::Word(_), Some((line, _))) => {
+            (InlineChild::Word(_), Some((line, _, layout_id))) => {
                 flow.drift += bounds.size.width - line.width;
+                // the fraction of a device pixel layout snapping took off
+                // the box, as text elements paint (vendored gpui-pre)
+                let unsnapped = window.unsnapped_layout_origin(*layout_id)
+                    - window.layout_bounds(*layout_id).origin;
+                self.flow.set(flow);
+                return bounds.origin + offset + unsnapped;
             }
             (InlineChild::Element(el), _) => {
                 window.with_element_offset(offset, |window| el.prepaint(window, cx));
@@ -345,7 +351,7 @@ impl Element for InlineShift {
         cx: &mut App,
     ) {
         match (&mut self.child, word) {
-            (InlineChild::Word(_), Some((line, line_height))) => {
+            (InlineChild::Word(_), Some((line, line_height, _))) => {
                 // a failed glyph raster leaves the word blank, like `StyledText`
                 let _ = line.paint(*origin, *line_height, TextAlign::Left, None, window, cx);
             }
@@ -1564,6 +1570,20 @@ pub fn selection_keeps_colour_on_hover(cx: &App) -> bool {
             .flags
             .bool(corvane_core::flags::ids::SELECTION_KEEPS_COLOUR_ON_HOVER)
     })
+}
+
+/// Flag `106-keyboard-hides-hover` off: hover styles and tooltips survive
+/// typing for the elements the pointer hovered before, like Chromium's
+/// `:hover` (vendored gpui-pre: in keyboard modality GPUI otherwise treats
+/// every hitbox as unhovered). Corvane's widgets track `:focus-visible`
+/// themselves, so nothing else reads the keyboard modality.
+pub fn sync_hover_while_typing(cx: &App) {
+    let hides = corvane_core::AppState::try_global(cx).is_none_or(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::KEYBOARD_HIDES_HOVER)
+    });
+    set_hover_persists_while_typing(!hides);
 }
 
 /// An inline `<Ref>` that wraps anywhere (`word-break: break-all`), drawn as

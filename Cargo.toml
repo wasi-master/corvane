@@ -85,8 +85,9 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
-# gpui-pre-macos with one change in src/text_system.rs: a font asked for at a
-# weight between its named instances gets the variable `wght` axis set to that
-# weight, like Chromium (PLAN.md › R1).
+# gpui-pre-macos: variable-font weights and glyph dilation like Chromium
+# (src/text_system.rs); gpui-pre: text paints from its unsnapped layout origin
+# (src/elements/text.rs). Both marked "Corvane patch" (PLAN.md › R1).
 [patch.crates-io]
 gpui-pre-macos = { path = "vendor/gpui-pre-macos" }
+gpui-pre = { path = "vendor/gpui-pre" }

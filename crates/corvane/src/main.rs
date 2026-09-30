@@ -159,7 +159,9 @@ fn main() {
         };
         let mut last_high_contrast = high_contrast;
         corvane_ui::format::sync(&state.read(cx).settings);
+        corvane_ui::widgets::sync_hover_while_typing(cx);
         cx.observe(&state, move |state, cx| {
+            corvane_ui::widgets::sync_hover_while_typing(cx);
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);

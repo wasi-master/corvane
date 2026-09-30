@@ -167,6 +167,21 @@ registry! {
             "crates/corvane-core/src/packs.rs",
         ],
     },
+    /// Typing hides hover highlights and tooltips until the pointer moves.
+    KEYBOARD_HIDES_HOVER = 106 "keyboard-hides-hover" {
+        title: "Typing hides hover highlights",
+        summary: "A key press clears the hover highlight and tooltip under a resting pointer \
+                  until the pointer moves, so keyboard navigation isn't shadowed by the row \
+                  under the mouse.",
+        ghd_behaviour: "`:hover` and open tooltips stay on the element the pointer last moved \
+                        over while typing; an element that appears under the resting pointer \
+                        isn't hovered until it moves.",
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/widgets.rs", "vendor/gpui-pre/src/window.rs", "vendor/gpui-pre/src/elements/div.rs"],
+    },
 
     // ---- 200 Repository ----
 

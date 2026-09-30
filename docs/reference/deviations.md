@@ -106,6 +106,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Lists
 
 - A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
+- A key press hides the hover highlight and tooltip under a resting pointer until the pointer moves (GPUI's keyboard modality), so keyboard navigation in a list isn't shadowed by the row under the mouse. Chromium keeps `:hover` and open tooltips on the element the pointer last moved over while typing (and doesn't hover elements that appear under a resting pointer); with the flag off the vendored gpui-pre does the same. Flag: `106-keyboard-hides-hover`.
 
 ## Scrolling
 
