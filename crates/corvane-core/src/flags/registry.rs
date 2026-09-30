@@ -645,6 +645,21 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/commit_status.rs"],
     },
+    /// Force push is recommended after an amend only when the amended commit was pushed.
+    AMEND_FORCE_PUSH_IF_PUSHED = 309 "amend-force-push-if-pushed" {
+        title: "Force push only after amending a pushed commit",
+        summary: "After amending, the toolbar recommends Force push only when the amended commit \
+                  is on the branch's upstream; amending a commit that was never pushed on a branch \
+                  that is also behind offers Pull, as before the amend.",
+        ghd_behaviour: "Every amend makes Force push the recommended action once the branch has \
+                        diverged, even when the amended commit was never pushed.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20526)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

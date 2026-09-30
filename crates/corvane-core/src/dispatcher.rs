@@ -2592,9 +2592,32 @@ impl Dispatcher {
                 .read(cx)
                 .flags
                 .bool(crate::flags::ids::COMMIT_AND_PUSH);
+        // `309-amend-force-push-if-pushed`: the amended commit and the
+        // upstream, to check that the rewritten commit had been pushed
+        let pushed_check = {
+            let s = Self::state(cx).read(cx);
+            (amend && s.flags.bool(crate::flags::ids::AMEND_FORCE_PUSH_IF_PUSHED)).then(|| {
+                let rs = s.repo_states.get(&id)?;
+                let old = rs.commit_to_amend.as_ref()?.sha.clone();
+                let upstream = rs.info.as_ref()?.current_branch()?.upstream.clone();
+                Some((old, upstream))
+            })
+        };
         let summary_for_bar = summary.trim().to_string();
         let task = cx.background_executor().spawn(async move {
             corvane_git::hook_env::reload_if_uncached();
+            // GHD recommends a force push after every amend; the flag only
+            // does when the amended commit is on the upstream
+            let rewrites_pushed = match &pushed_check {
+                None => true,
+                Some(None) | Some(Some((_, None))) => false,
+                Some(Some((old, Some(upstream)))) => {
+                    corvane_git::merge_base(git.clone(), &workdir, old, upstream)
+                        .ok()
+                        .flatten()
+                        .is_some_and(|base| base == *old)
+                }
+            };
             let message = corvane_git::merge_trailers(git.clone(), &workdir, &message, &trailers)?;
             corvane_git::unstage_all(git.clone(), &workdir)?;
             corvane_git::stage_files(git.clone(), &workdir, &files)?;
@@ -2610,6 +2633,7 @@ impl Dispatcher {
                     allow_empty: options.allow_empty_commit,
                 },
             )
+            .map(|sha| (sha, rewrites_pushed))
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
@@ -2617,10 +2641,10 @@ impl Dispatcher {
                 Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
                     rs.committing = false;
-                    if let Ok(sha) = &result {
+                    if let Ok((sha, rewrites_pushed)) = &result {
                         // GHD `_addBranchToForcePushList`: an amended tip
                         // makes "Force push" the recommended action.
-                        if amend {
+                        if amend && *rewrites_pushed {
                             let branch = rs
                                 .info
                                 .as_ref()
