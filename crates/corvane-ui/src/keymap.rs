@@ -24,6 +24,8 @@ pub struct KeymapFlags {
     pub open_in_shell_alt_shortcut: bool,
     /// `611-emacs-list-keys`: ⌃N / ⌃P move through the changes and history lists.
     pub emacs_list_keys: bool,
+    /// `612-diff-mode-shortcut`: ⌥⌘S switches between unified and split diffs.
+    pub diff_mode_shortcut: bool,
 }
 
 impl KeymapFlags {
@@ -34,6 +36,7 @@ impl KeymapFlags {
             no_push_shortcut: flags.bool(ids::NO_PUSH_SHORTCUT),
             open_in_shell_alt_shortcut: flags.bool(ids::OPEN_IN_SHELL_ALT_SHORTCUT),
             emacs_list_keys: flags.bool(ids::EMACS_LIST_KEYS),
+            diff_mode_shortcut: flags.bool(ids::DIFF_MODE_SHORTCUT),
         }
     }
 }
@@ -183,6 +186,9 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
                 KeyBinding::new("ctrl-p", SelectPreviousFile, Some(context)),
             ]);
         }
+    }
+    if flags.diff_mode_shortcut {
+        bindings.push(KeyBinding::new("alt-cmd-s", ToggleDiffDisplayMode, None));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

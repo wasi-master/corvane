@@ -20,6 +20,8 @@ gpui_kit::actions!(
         // ⇧⌘A / ⌥⌘O in a file list (`608-open-file-shortcuts`)
         OpenSelectedFileInEditor,
         OpenSelectedFileWithDefaultProgram,
+        // ⌥⌘S: unified ⇄ split diff (`612-diff-mode-shortcut`)
+        ToggleDiffDisplayMode,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
