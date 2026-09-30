@@ -260,6 +260,17 @@ pub enum Banner {
     ReorderUndone {
         count: usize,
     },
+    /// Corvane (`311-undo-delete-branch`): "Deleted branch **{branch}**" +
+    /// Undo, which recreates it at `sha`.
+    BranchDeleted {
+        repo: u64,
+        branch: String,
+        sha: String,
+    },
+    /// Corvane (`311-undo-delete-branch`): after that Undo.
+    BranchRestored {
+        branch: String,
+    },
     /// "Resolve conflicts to continue {description} **{branch}**."
     ConflictsFound {
         repo: u64,
@@ -277,10 +288,12 @@ impl Banner {
             | Banner::BranchAlreadyUpToDate { .. }
             | Banner::CherryPickUndone { .. }
             | Banner::SquashUndone { .. }
-            | Banner::ReorderUndone { .. } => Some(Duration::from_secs(5)),
+            | Banner::ReorderUndone { .. }
+            | Banner::BranchRestored { .. } => Some(Duration::from_secs(5)),
             Banner::SuccessfulCherryPick { .. }
             | Banner::SuccessfulSquash { .. }
-            | Banner::SuccessfulReorder { .. } => Some(Duration::from_secs(15)),
+            | Banner::SuccessfulReorder { .. }
+            | Banner::BranchDeleted { .. } => Some(Duration::from_secs(15)),
             Banner::ConflictsFound { .. } => None,
         }
     }

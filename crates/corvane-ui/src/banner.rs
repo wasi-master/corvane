@@ -4,6 +4,10 @@
 //! or an alert icon (conflicts), the message with bold branch names, an
 //! optional "Undo" / "View conflicts" link and, when dismissable, an ✕.
 //! `update_banner` is GHD's `UpdateAvailable` banner.
+//!
+//! Deviation (`311-undo-delete-branch`): "Deleted branch" / "Restored
+//! branch" banners, with an Undo that recreates the deleted branch, are
+//! Corvane's (GHD deletes branches without a way back).
 
 use corvane_core::{AvailableUpdate, Banner, Dispatcher};
 use gpui_kit::prelude::*;
@@ -111,6 +115,8 @@ fn parts(banner: &Banner) -> Vec<(String, bool)> {
             format!("Reorder of {count} {} undone.", plural(*count)),
             false,
         )],
+        Banner::BranchDeleted { branch, .. } => vec![t("Deleted branch\u{a0}"), b(branch)],
+        Banner::BranchRestored { branch } => vec![t("Restored branch\u{a0}"), b(branch)],
         Banner::ConflictsFound {
             description,
             branch,
@@ -177,6 +183,18 @@ pub fn banner_bar(banner: &Banner, cx: &App) -> impl IntoElement {
                     .on_click(move |_, _, cx| {
                         Dispatcher::clear_banner(cx);
                         Dispatcher::undo_mco(repo, cx);
+                    })
+                    .into_any_element(),
+            )
+        }
+        Banner::BranchDeleted { repo, branch, sha } => {
+            let (repo, branch, sha) = (*repo, branch.clone(), sha.clone());
+            Some(
+                link_button("banner-undo", "Undo", cx)
+                    .ml(SPACING_HALF())
+                    .on_click(move |_, _, cx| {
+                        Dispatcher::clear_banner(cx);
+                        Dispatcher::restore_deleted_branch(repo, branch.clone(), sha.clone(), cx);
                     })
                     .into_any_element(),
             )
