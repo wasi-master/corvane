@@ -1,0 +1,44 @@
+1: 0+30=Comment
+2: 0+55=Comment
+4: 0+3=Keyword 4+10=AltVariable
+5: 0+3=Keyword 4+10=AltVariable 15+13=String
+7: 0+4=Keyword 14+10=Atom 33+2=Keyword
+8: 0+7=Keyword
+9: 0+3=Keyword 4+11=AltVariable
+10: 4+4=AltVariable
+11: 4+7=AltVariable 12+25=String
+12: 0+4=Keyword
+13: 0+3=Keyword
+14: 4+2=Variable 7+3=AltVariable 11+8=AltVariable
+15: 0+8=AltVariable
+16: 0+6=AltVariable 7+5=AltVariable 13+8=AltVariable 22+23=String 47+7=Atom 56+3=String 60+1=String 62+2=AltVariable 65+11=AltVariable 77+12=AltVariable
+17: 4+4=Variable 9+7=String 17+18=Comment
+18: 0+29=Comment
+19: 0+29=Comment
+20: 0+60=Comment
+21: 0+45=Comment
+22: 0+40=Comment
+24: 0+18=Comment
+25: 0+21=Comment
+26: 0+11=Comment
+27: 0+25=Comment
+28: 0+4=Comment
+29: 0+47=Comment
+30: 0+61=Comment
+31: 0+30=Comment
+32: 0+11=Comment
+33: 0+24=Comment
+34: 0+16=Comment
+35: 0+12=Comment
+36: 0+18=Comment
+37: 0+25=Comment
+38: 0+51=Comment
+39: 0+41=Comment
+40: 0+41=Comment
+41: 0+16=Comment 16+28=String 44+10=Comment
+42: 0+18=Comment
+43: 0+23=Comment
+44: 0+26=Comment
+45: 0+10=Keyword
+46: 0+3=Keyword
+47: 0+3=Keyword

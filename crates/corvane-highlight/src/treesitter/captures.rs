@@ -113,7 +113,6 @@ pub const STYLES: &[(&str, Style)] = &[
     ("operator", Plain),
     ("punctuation", Plain),
     ("embedded", Plain),
-    ("none", Plain),
     ("emphasis", Plain),
     ("markup.italic", Plain),
     ("markup.strong", Plain),
@@ -130,7 +129,9 @@ pub const STYLES: &[(&str, Style)] = &[
     ("entity.name", Class(Variable)),
     ("meta.attribute", Class(Attribute)),
     ("storage", Class(Keyword)),
-    // no colour of their own
+    // no colour of their own (nvim's `@none` is an empty group: an injected
+    // HTML layer's `(text) @none` must not wipe the comment it sits in)
+    ("none", Inherit),
     ("spell", Inherit),
     ("nospell", Inherit),
     ("conceal", Inherit),

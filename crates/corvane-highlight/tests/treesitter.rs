@@ -190,7 +190,8 @@ fn render(lines: &[&str], spans: &[Vec<corvane_highlight::Span>]) -> String {
 
 #[test]
 fn golden_spans() {
-    let grammars = grammars();
+    grammars();
+    let entries = treesitter::library::entries();
     let update = std::env::var_os("UPDATE_TS_GOLDEN").is_some();
     let expected_dir = root().join("tests/ts/expected");
     if update {
@@ -210,7 +211,7 @@ fn golden_spans() {
         let text = text.replace("\r\n", "\n");
         let lines: Vec<&str> = text.lines().collect();
         let first = lines.first().copied().unwrap_or("");
-        if treesitter::detect::for_path(&grammars, &name, first).is_none() {
+        if treesitter::detect::for_path(&entries, &name, first).is_none() {
             continue;
         }
         let spans = treesitter::highlight(&name, &lines, corvane_highlight::MAX_HIGHLIGHT_BYTES)

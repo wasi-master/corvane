@@ -65,7 +65,7 @@
 112: 0+4=Comment
 114: 0+3=Comment 3+4=AltVariable
 115: 0+4=Tag 4+1=Comment 5+5=Attribute 11+6=String 17+1=Tag
-116: 0+2=Comment 2+3=Tag 10+1=Comment 11+3=Tag 19+8=Tag
+116: 0+2=Comment 2+3=Tag 5+6=Comment 11+3=Tag 19+8=Tag
 117: 0+6=Tag
 118: 0+3=Comment
 120: 0+3=Comment 3+3=AltVariable

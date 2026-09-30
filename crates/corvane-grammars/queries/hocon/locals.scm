@@ -1,0 +1,2 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/hocon/).
+; Source: nvim-treesitter@728e031f6b11 queries/hocon (Apache-2.0)

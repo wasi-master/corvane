@@ -80,18 +80,13 @@ pub enum PackKind {
     TreeSitterRest,
 }
 
-/// The grammar library inside a tree-sitter pack.
-#[cfg(target_os = "macos")]
-const GRAMMAR_LIBRARY: &str = "libcorvane_grammars.dylib";
-#[cfg(target_os = "windows")]
-const GRAMMAR_LIBRARY: &str = "corvane_grammars.dll";
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-const GRAMMAR_LIBRARY: &str = "libcorvane_grammars.so";
+/// The index of a tree-sitter pack: its grammars and the gzipped library
+/// (`grammars/<unit>.dylib.gz`) each one is in.
+const GRAMMAR_INDEX: &str = "index.json";
 
 /// The `target` of manifest entries for native packs this build can load:
 /// `<os>-<arch>` (`macos-aarch64`, `linux-x86_64`). Native packs are per
-/// architecture rather than universal: the grammar tables alone are ~170 MB
-/// per architecture.
+/// architecture rather than universal: the grammar tables are large.
 pub fn pack_target() -> &'static str {
     if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
         "macos-aarch64"
@@ -137,7 +132,7 @@ impl PackKind {
             PackKind::SyntaxExtended => "syntaxes.packdump",
             PackKind::GitPortable => "bin/git",
             PackKind::GitLfs => "bin/git-lfs",
-            PackKind::TreeSitterAll | PackKind::TreeSitterRest => GRAMMAR_LIBRARY,
+            PackKind::TreeSitterAll | PackKind::TreeSitterRest => GRAMMAR_INDEX,
         }
     }
 }
