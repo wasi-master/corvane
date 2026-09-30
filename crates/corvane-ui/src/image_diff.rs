@@ -4,6 +4,10 @@
 //! their dimensions; "Difference" is a CPU blend (GPUI has no `mix-blend-mode`)
 //! of the two images at their on-screen relative scale, recomputed when that
 //! scale changes.
+//!
+//! Deviation (`178-image-diff-border-outside`): the image's 1 px border sits
+//! outside its fitted size (GHD's `border-box` shrinks the image by 2 px,
+//! which blurs small images).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -70,6 +74,9 @@ pub struct ImageDiff {
     /// Display scales of (previous, current) the blend was computed for.
     difference_scales: Option<(f32, f32)>,
     difference_pending: bool,
+    /// `178-image-diff-border-outside`: the 1 px border is drawn around the
+    /// fitted image instead of inside it (`box-sizing: content-box`).
+    border_outside: bool,
 }
 
 impl ImageDiff {
@@ -108,6 +115,11 @@ impl ImageDiff {
             difference: None,
             difference_scales: None,
             difference_pending: false,
+            border_outside: corvane_core::AppState::try_global(cx).is_some_and(|s| {
+                s.read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::IMAGE_DIFF_BORDER_OUTSIDE)
+            }),
         }
     }
 
@@ -154,15 +166,27 @@ impl ImageDiff {
         .into_any_element()
     }
 
-    fn image_element(side: &Side, box_size: Size<Pixels>, border: Hsla) -> AnyElement {
+    /// What a 1 px border adds around an image of the fitted size: nothing
+    /// in GHD (`border-box`, the border eats into the image), 2 px with
+    /// `178-image-diff-border-outside`.
+    fn border_extra(&self) -> Pixels {
+        if self.border_outside { px(2.) } else { px(0.) }
+    }
+
+    fn image_element(
+        side: &Side,
+        box_size: Size<Pixels>,
+        border: Hsla,
+        extra: Pixels,
+    ) -> AnyElement {
         let fit = side
             .size
             .map(|s| Self::aspect_fit(s, box_size))
             .unwrap_or(box_size);
         div()
             .relative()
-            .w(fit.width)
-            .h(fit.height)
+            .w(fit.width + extra)
+            .h(fit.height + extra)
             .child(checkerboard())
             .child(
                 img(side.image.clone())
@@ -179,7 +203,12 @@ impl ImageDiff {
     /// An overlaid image (`.image-diff-previous` / `.image-diff-current` inside
     /// `.image-container`): absolutely positioned over the whole box, centered,
     /// at most the box size (`maxSize`), transparent background.
-    fn overlay_image(side: &Side, box_size: Size<Pixels>, border: Option<Hsla>) -> AnyElement {
+    fn overlay_image(
+        side: &Side,
+        box_size: Size<Pixels>,
+        border: Option<Hsla>,
+        extra: Pixels,
+    ) -> AnyElement {
         let fit = side
             .size
             .map(|s| Self::aspect_fit(s, box_size))
@@ -196,8 +225,8 @@ impl ImageDiff {
             .child(
                 img(side.image.clone())
                     .flex_none()
-                    .w(fit.width)
-                    .h(fit.height)
+                    .w(fit.width + if border.is_some() { extra } else { px(0.) })
+                    .h(fit.height + if border.is_some() { extra } else { px(0.) })
                     .object_fit(ObjectFit::Contain)
                     .when_some(border, |d, color| d.border_1().border_color(color)),
             )
@@ -236,6 +265,7 @@ impl ImageDiff {
     /// `TwoUp`
     fn two_up(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let extra = self.border_extra();
         let container = self.container.get();
         // room for the headers / footers / summary rows
         let image_box = size(
@@ -260,7 +290,7 @@ impl ImageDiff {
                         .pb(zpx(10.))
                         .child(label.to_string()),
                 )
-                .child(Self::image_element(side, image_box, color))
+                .child(Self::image_element(side, image_box, color, extra))
                 .child(Self::footer(side, cx))
         };
         let diff_bytes = current.bytes as i64 - previous.bytes as i64;
@@ -330,6 +360,7 @@ impl ImageDiff {
     /// `Swipe`: the slider reveals the new image from the right.
     fn swipe(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let extra = self.border_extra();
         let box_size = self.overlay_box(cx);
         let percentage = self.swipe.read(cx).value().start();
         let swiper_width = (box_size.width * (1. - percentage / 100.)).floor();
@@ -378,6 +409,7 @@ impl ImageDiff {
                                         previous,
                                         box_size,
                                         Some(t.color_deleted),
+                                        extra,
                                     )),
                             )
                             .child(
@@ -400,6 +432,7 @@ impl ImageDiff {
                                                 current,
                                                 box_size,
                                                 Some(t.color_new),
+                                                extra,
                                             )),
                                     ),
                             ),
@@ -411,6 +444,7 @@ impl ImageDiff {
     /// `OnionSkin`: the slider cross-fades the new image over the old one.
     fn onion_skin(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let extra = self.border_extra();
         let box_size = self.overlay_box(cx);
         let crossfade = self.onion.read(cx).value().start() / 100.;
         div()
@@ -448,12 +482,11 @@ impl ImageDiff {
                                 previous,
                                 box_size,
                                 Some(t.color_deleted),
+                                extra,
                             ))
-                            .child(
-                                div().absolute().inset_0().opacity(crossfade).child(
-                                    Self::overlay_image(current, box_size, Some(t.color_new)),
-                                ),
-                            ),
+                            .child(div().absolute().inset_0().opacity(crossfade).child(
+                                Self::overlay_image(current, box_size, Some(t.color_new), extra),
+                            )),
                     ),
             )
             .into_any_element()
@@ -517,6 +550,7 @@ impl ImageDiff {
 
     /// `NewImageDiff` / `DeletedImageDiff`: one image with its header.
     fn single(&self, side: &Side, label: &str, color: Hsla, cx: &Context<Self>) -> AnyElement {
+        let extra = self.border_extra();
         let container = self.container.get();
         let image_box = size(
             (container.width - SPACING_DOUBLE()).max(zpx(0.)),
@@ -538,7 +572,7 @@ impl ImageDiff {
                     .pb(zpx(10.))
                     .child(label.to_string()),
             )
-            .child(Self::image_element(side, image_box, color))
+            .child(Self::image_element(side, image_box, color, extra))
             .into_any_element()
     }
 }
