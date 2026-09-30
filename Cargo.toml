@@ -19,9 +19,14 @@ gpui-pre-apple = "=0.3.7"
 corvane-core = { path = "crates/corvane-core" }
 corvane-git = { path = "crates/corvane-git" }
 corvane-github = { path = "crates/corvane-github" }
+corvane-grammars = { path = "crates/corvane-grammars" }
 corvane-highlight = { path = "crates/corvane-highlight" }
 syntect = { version = "5.3", default-features = false, features = ["parsing", "regex-fancy", "dump-load", "default-syntaxes"] }
 two-face = { version = "0.4", default-features = false, features = ["syntect-fancy"] }
+# Opt-in tree-sitter highlighting (grammars live in corvane-grammars / the tree-sitter packs)
+tree-sitter = "0.27"
+tree-sitter-language = "0.1"
+libloading = "0.8"
 corvane-models = { path = "crates/corvane-models" }
 corvane-packs = { path = "crates/corvane-packs" }
 corvane-platform = { path = "crates/corvane-platform" }

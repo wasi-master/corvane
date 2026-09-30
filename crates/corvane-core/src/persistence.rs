@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use corvane_store::{Result, Store};
 use serde::{Deserialize, Serialize};
 
-use corvane_models::{Account, Repository, ThemeSetting};
+use corvane_models::{Account, Repository, SyntaxHighlighter, ThemeSetting};
 
 /// User settings persisted across launches (subset of GHD's preferences).
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -110,6 +110,10 @@ pub struct Settings {
     /// GHD `tabSize` for diffs (Appearance › Diff).
     #[serde(default = "default_tab_size")]
     pub tab_size: u32,
+    /// Appearance › Syntax highlighting (Corvane addition, flag
+    /// `105-tree-sitter-highlighting`).
+    #[serde(default)]
+    pub syntax_highlighter: SyntaxHighlighter,
     /// Appearance › Formatting (`dateFormat`, date-fns pattern).
     #[serde(default = "default_date_format")]
     pub date_format: String,
@@ -293,6 +297,7 @@ impl Default for Settings {
             show_side_by_side_diff: false,
             image_diff_type: corvane_models::ImageDiffType::TwoUp,
             tab_size: TAB_SIZE_DEFAULT,
+            syntax_highlighter: SyntaxHighlighter::GitHubDesktop,
             date_format: default_date_format(),
             time_format: default_time_format(),
             number_format: default_number_format(),
@@ -443,6 +448,26 @@ mod tests {
         assert_eq!(back.sidebar_width, 300.0);
         assert_eq!(back.external_editor.as_deref(), Some("Zed"));
         assert!(back.show_diff_check_marks && back.repository_indicators_enabled);
+    }
+
+    #[test]
+    fn syntax_highlighter_spelling() {
+        let json = serde_json::to_value(SyntaxHighlighter::GitHubDesktop).unwrap();
+        assert_eq!(json, "github-desktop");
+        let s = Settings {
+            syntax_highlighter: SyntaxHighlighter::TreeSitterFallback,
+            ..Settings::default()
+        };
+        let text = serde_json::to_string(&s).unwrap();
+        assert!(
+            text.contains(r#""syntax_highlighter":"tree-sitter-fallback""#),
+            "{text}"
+        );
+        // settings saved before the field existed read as GitHub Desktop
+        let mut old = serde_json::to_value(Settings::default()).unwrap();
+        old.as_object_mut().unwrap().remove("syntax_highlighter");
+        let back: Settings = serde_json::from_value(old).unwrap();
+        assert_eq!(back.syntax_highlighter, SyntaxHighlighter::GitHubDesktop);
     }
 
     #[test]

@@ -26,7 +26,7 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
 
-use corvane_models::ThemeSetting;
+use corvane_models::{SyntaxHighlighter, ThemeSetting};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
@@ -565,6 +565,19 @@ pub fn effective_theme(setting: ThemeSetting, high_contrast_allowed: bool) -> Th
     }
 }
 
+/// With `105-tree-sitter-highlighting` off every file uses GitHub Desktop's
+/// highlighter (the saved choice is kept for when the flag comes back on).
+pub fn effective_syntax_highlighter(
+    setting: SyntaxHighlighter,
+    tree_sitter_allowed: bool,
+) -> SyntaxHighlighter {
+    if tree_sitter_allowed {
+        setting
+    } else {
+        SyntaxHighlighter::GitHubDesktop
+    }
+}
+
 /// GHD `InitialReadmeContents` with the product name (`103-product-name`).
 pub fn initial_readme(product_name: &str) -> String {
     format!(
@@ -737,6 +750,18 @@ mod tests {
         assert_eq!(
             effective_theme(ThemeSetting::System, false),
             ThemeSetting::System
+        );
+    }
+
+    #[test]
+    fn effective_syntax_highlighter_needs_the_flag() {
+        assert_eq!(
+            effective_syntax_highlighter(SyntaxHighlighter::TreeSitter, false),
+            SyntaxHighlighter::GitHubDesktop
+        );
+        assert_eq!(
+            effective_syntax_highlighter(SyntaxHighlighter::TreeSitterFallback, true),
+            SyntaxHighlighter::TreeSitterFallback
         );
     }
 

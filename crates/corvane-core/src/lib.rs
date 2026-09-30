@@ -58,7 +58,7 @@ pub use mco::{
     Banner, ConflictKind, ConflictState, McoConflicts, McoDetail, McoStep, McoUndo, MergePreview,
     MultiCommitOperation, RebasePreview, conflicted_files, resolved_files, unmerged_files,
 };
-pub use packs::{OFFERED_PACKS, PackProgress, PacksState};
+pub use packs::{OFFERED_PACKS, PackProgress, PacksState, offered_packs};
 pub use persistence::{
     CustomIntegration, DEFAULT_DATE_FORMAT, DEFAULT_NUMBER_FORMAT, DEFAULT_TIME_FORMAT, Settings,
     StoreExt, TAB_SIZE_DEFAULT, UncommittedChangesStrategy,

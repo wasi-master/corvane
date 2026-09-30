@@ -1,0 +1,41 @@
+# Query source per grammar in crates/corvane-grammars (tools/ts-queries/README.md).
+#
+#   package = "<cargo package providing the grammar>"
+#   source  = "upstream" | "nvim" | "helix" | "corvane"
+#   grammar = "<entry in the package's tree-sitter.json>"   (default: the key)
+#   highlights / injections / locals = ["<path in the package>", …]   (upstream only;
+#             default: tree-sitter.json, else queries/<kind>.scm)
+#   nvim / helix = "<directory name there>"                  (default: the key)
+#
+# Rule for `source`: upstream when it compiles and classifies at least 80 % of
+# what the best source does on the samples (`ts-coverage`), else nvim, else
+# helix, else a hand-written corvane query.
+
+[haskell]
+package = "tree-sitter-haskell"
+source = "upstream"
+
+[javascript]
+package = "tree-sitter-javascript"
+source = "upstream"
+
+[lua]
+package = "tree-sitter-lua"
+source = "upstream"
+
+[markdown]
+package = "tree-sitter-md"
+source = "upstream"
+highlights = ["tree-sitter-markdown/queries/highlights.scm"]
+injections = ["tree-sitter-markdown/queries/injections.scm"]
+
+[markdown_inline]
+package = "tree-sitter-md"
+source = "upstream"
+highlights = ["tree-sitter-markdown-inline/queries/highlights.scm"]
+injections = ["tree-sitter-markdown-inline/queries/injections.scm"]
+nvim = "markdown_inline"
+
+[rust]
+package = "tree-sitter-rust"
+source = "upstream"
