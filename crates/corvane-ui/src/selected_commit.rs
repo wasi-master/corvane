@@ -3,6 +3,9 @@
 //! (`styles/ui/history/_expandable-commit-summary.scss`, `_commit-details.scss`):
 //! title + expander, description, meta row (author, sha + copy, +adds −dels,
 //! tags), then a resizable 250 px file list next to the commit's diff.
+//!
+//! Deviation: a file's context menu adds "Open All Files of Commit in <editor>"
+//! (`271-open-multiple-files`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -492,7 +495,24 @@ fn open_commit_file_menu(
         .and_then(|r| r.last_commit.as_ref())
         .is_some_and(|c| selected.first() == Some(&c.sha));
     let github = repo.github.clone();
-    let items = if !full.exists() {
+    // `271-open-multiple-files`: every file of the commit still on disk
+    let open_all = state
+        .flags
+        .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
+        .then(|| {
+            let files: Vec<std::path::PathBuf> = rs
+                .and_then(|r| r.changeset.as_ref())
+                .map(|c| c.files.iter().map(|f| repo.path.join(&f.path)).collect())
+                .unwrap_or_default();
+            // past the cap the item is disabled anyway: skip the disk checks
+            if files.len() > crate::changes::MAX_BULK_OPEN {
+                files
+            } else {
+                files.into_iter().filter(|f| f.exists()).collect()
+            }
+        })
+        .filter(|files| files.len() > 1);
+    let mut items = if !full.exists() {
         vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)]
     } else {
         let (reveal, editor, default, copy_full) =
@@ -534,6 +554,13 @@ fn open_commit_file_menu(
             .enabled(selected.len() == 1 && !local && github.is_some()),
         ]
     };
+    if let Some(files) = open_all {
+        items.push(MenuItem::separator());
+        items.push(crate::changes::open_all_in_editor_item(
+            format!("Open All Files of Commit in {editor_label}"),
+            files,
+        ));
+    }
     #[cfg(target_os = "macos")]
     crate::native_menu::show_context_menu(items, position, window, cx);
     #[cfg(not(target_os = "macos"))]
