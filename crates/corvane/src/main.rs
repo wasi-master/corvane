@@ -581,6 +581,13 @@ fn main() {
             ..Default::default()
         };
 
+        // Chromium's text antialiasing follows the desktop's (grayscale
+        // unless it asks for subpixel order); GPUI would use subpixel
+        // wherever the GPU can
+        #[cfg(not(target_os = "macos"))]
+        if !corvane_platform::fonts::subpixel_antialiasing() {
+            cx.set_text_rendering_mode(TextRenderingMode::Grayscale);
+        }
         // Linux: Electron's classic menu bar over the app (`corvane_ui::menu_bar`)
         #[cfg(not(target_os = "macos"))]
         corvane_ui::views_menu::install(cx);

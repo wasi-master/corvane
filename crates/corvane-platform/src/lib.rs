@@ -173,6 +173,40 @@ pub mod fonts {
             .unwrap_or_else(|| "DejaVu Sans".to_string())
     }
 
+    /// Whether Chromium would draw text with subpixel antialiasing: its
+    /// Linux font render params come from GTK, whose `gtk-xft-rgba` is the
+    /// desktop's XSETTINGS (GNOME: `font-antialiasing` 'rgba') or the
+    /// `Xft.rgba` X resource, and "none" (grayscale) otherwise. fontconfig's
+    /// own `rgba` is not consulted.
+    #[cfg(not(target_os = "macos"))]
+    pub fn subpixel_antialiasing() -> bool {
+        let gnome = std::process::Command::new("gsettings")
+            .args(["get", "org.gnome.desktop.interface", "font-antialiasing"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| {
+                String::from_utf8_lossy(&o.stdout)
+                    .trim()
+                    .trim_matches('\'')
+                    .to_string()
+            });
+        if let Some(mode) = gnome {
+            return mode == "rgba";
+        }
+        std::process::Command::new("xrdb")
+            .arg("-query")
+            .output()
+            .ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .is_some_and(|resources| {
+                resources.lines().any(|line| {
+                    line.strip_prefix("Xft.rgba:")
+                        .is_some_and(|v| matches!(v.trim(), "rgb" | "bgr" | "vrgb" | "vbgr"))
+                })
+            })
+    }
+
     /// `fc-match -f '%{family[0]}' <pattern>`: the family fontconfig picks.
     #[cfg(not(target_os = "macos"))]
     fn fc_match(pattern: &str) -> Option<String> {
