@@ -269,10 +269,27 @@ fn main() {
                 cx.background_executor()
                     .timer(std::time::Duration::from_millis(delay))
                     .await;
+                // an unfocused window only renders when drawn: draw once so
+                // views start their background work (diff highlighting), give
+                // it time, then draw the frame that is saved
                 cx.update(|cx| {
                     for handle in cx.windows() {
-                        let image = handle.update(cx, |_, window, _| {
+                        let _ = handle.update(cx, |_, window, cx| {
                             window.refresh();
+                            window.draw(cx).clear(cx);
+                        });
+                    }
+                });
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(1500))
+                    .await;
+                cx.update(|cx| {
+                    for handle in cx.windows() {
+                        let image = handle.update(cx, |_, window, cx| {
+                            // draw now: an unfocused window gets no display-link
+                            // frames, and render_to_image uses the last scene
+                            window.refresh();
+                            window.draw(cx).clear(cx);
                             window.render_to_image()
                         });
                         match image {
