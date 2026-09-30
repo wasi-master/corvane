@@ -4,6 +4,7 @@
 //!
 //! Deviation (`.docs/deviations.md` › History): Create a Tag has an
 //! optional Message field (flag `244`); GHD always tags with an empty message.
+//! Undoing a tagged commit warns first (flag `441`).
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
 use gpui_kit::component::input::{InputState, Textarea, TextareaState};
@@ -410,6 +411,77 @@ impl Render for WarnLocalChangesBeforeUndoDialog {
                         }
                         Dispatcher::close_popup(cx);
                         Dispatcher::undo_commit(repo, cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+/// Flag `441`: the commit being undone carries tags, which would be left on
+/// a commit no branch contains (Corvane addition; GHD undoes silently).
+pub struct WarnTaggedCommitBeforeUndoDialog {
+    repo: u64,
+    tags: Vec<String>,
+    warn_local: bool,
+}
+
+impl WarnTaggedCommitBeforeUndoDialog {
+    pub fn new(repo: u64, tags: Vec<String>, warn_local: bool) -> Self {
+        Self {
+            repo,
+            tags,
+            warn_local,
+        }
+    }
+}
+
+impl Render for WarnTaggedCommitBeforeUndoDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, warn_local) = (self.repo, self.warn_local);
+        let (noun, pronoun) = if self.tags.len() == 1 {
+            ("tag", "It stays")
+        } else {
+            ("tags", "They stay")
+        };
+        let text = format!(
+            "This commit has the {noun} {}. {pronoun} on the commit after it is undone, and \
+             that commit will no longer be on any branch. Do you want to continue anyway?",
+            self.tags
+                .iter()
+                .map(|t| format!("\u{201c}{t}\u{201d}"))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+        dialog_with_kind(
+            "dialog-warn-undo-tagged",
+            DialogKind::Warning,
+            "Undo Commit",
+            div().child(text),
+            vec![
+                DialogButton {
+                    id: "undo-tagged-cancel",
+                    label: "Cancel".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "undo-tagged-continue",
+                    label: "Continue".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        if warn_local {
+                            Dispatcher::request_undo_commit_after_tags(repo, cx);
+                        } else {
+                            Dispatcher::undo_commit(repo, cx);
+                        }
                     }),
                 },
             ],
