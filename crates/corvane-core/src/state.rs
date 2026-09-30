@@ -679,6 +679,9 @@ pub struct RepositoryState {
     /// Flag `145`: the message of a squash that failed, keyed by its commits
     /// (onto, then the squashed ones), offered again by the next squash of them.
     pub squash_draft: Option<(Vec<String>, String)>,
+    /// Flag `146`: commits (summary, author time) a squash / reorder just
+    /// rewrote; the next history load selects their new shas.
+    pub rewritten_selection: Vec<(String, Option<i64>)>,
     /// `changesState.conflictState`
     pub conflict_state: Option<crate::mco::ConflictState>,
     /// `forcePushBranches`: branch → tip after a rewrite that needs a force push.

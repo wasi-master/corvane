@@ -73,6 +73,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The Rebase dialog (GHD `rebase-choose-branch-dialog.tsx`) opens with the repository's default branch selected and previewed, unless it is the current branch. Flag: `143-rebase-preselects-default-branch`.
 - The squash message dialog (GHD `CommitMessageDialog` for squash, prefilled by `getSquashedCommitDescription`) has a "Use only the target commit's message" link under the description that puts back the target commit's summary and sets the description to its own body. Flag: `144-squash-keep-target-message`.
 - A squash that fails with an error (GHD `squash` in `app-store.ts` drops the message) keeps its message per repository, keyed by the target and the squashed commits; squashing the same commits again prefills the dialog with it (summary and description), and a successful squash forgets it. In memory only. Flag: `145-squash-keeps-draft`.
+- After a squash or reorder, when the History selection is gone (rewritten), the next history load selects the rewritten commits instead of the newest one (GHD `updateOrSelectFirstCommit`): the squashed commit by its new summary, the moved commits by summary and author time, newest match first; nothing matched, GHD's behaviour. Flag: `146-select-rewritten-commits`.
 
 ## Tutorial
 

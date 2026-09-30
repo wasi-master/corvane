@@ -689,6 +689,24 @@ impl Dispatcher {
         if matches!(mco.detail, McoDetail::Squash { .. }) {
             Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).squash_draft = None);
         }
+        // flag `146`: find the rewritten commits again once history reloads
+        let rewritten: Vec<(String, Option<i64>)> = match &mco.detail {
+            McoDetail::Squash { message, .. } => {
+                vec![(
+                    message.lines().next().unwrap_or("").trim().to_string(),
+                    None,
+                )]
+            }
+            McoDetail::Reorder { commits, .. } => commits
+                .iter()
+                .map(|c| (c.summary.clone(), Some(c.author.seconds)))
+                .collect(),
+            _ => Vec::new(),
+        };
+        Self::state(cx).update(cx, |s, _| {
+            let on = s.flags.bool(crate::flags::ids::SELECT_REWRITTEN_COMMITS);
+            s.repo_state_mut(id).rewritten_selection = if on { rewritten } else { Vec::new() };
+        });
         let banner = match &mco.detail {
             McoDetail::Squash { .. } => Banner::SuccessfulSquash { repo: id, count },
             McoDetail::Reorder { .. } => Banner::SuccessfulReorder { repo: id, count },
@@ -2335,6 +2353,25 @@ impl Dispatcher {
     }
 }
 
+/// Flag `146`: the newest commit matching each (summary, author time) pair,
+/// in the given order; empty unless every one is found.
+pub(crate) fn find_rewritten(commits: &[Commit], wanted: &[(String, Option<i64>)]) -> Vec<String> {
+    let found: Vec<String> = wanted
+        .iter()
+        .filter_map(|(summary, seconds)| {
+            commits
+                .iter()
+                .find(|c| &c.summary == summary && seconds.is_none_or(|t| c.author.seconds == t))
+                .map(|c| c.sha.clone())
+        })
+        .collect();
+    if found.len() == wanted.len() {
+        found
+    } else {
+        Vec::new()
+    }
+}
+
 /// Flag `145`: the commits of a squash, order-independent.
 fn squash_draft_key<'a>(onto: &str, squashed: impl Iterator<Item = &'a String>) -> Vec<String> {
     let mut key: Vec<String> = squashed.cloned().collect();
@@ -2364,6 +2401,35 @@ fn last_retained_for_warn(mco: &Option<MultiCommitOperation>) -> Option<String> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rewritten_commits_are_found_by_summary_and_time() {
+        let commit = |sha: &str, summary: &str, seconds: i64| {
+            let who = corvane_models::CommitIdentity {
+                name: "T".into(),
+                email: "t@example.com".into(),
+                seconds,
+                offset: 0,
+            };
+            Commit {
+                sha: sha.into(),
+                summary: summary.into(),
+                body: String::new(),
+                author: who.clone(),
+                committer: who,
+                parents: Vec::new(),
+                tags: Vec::new(),
+            }
+        };
+        let log = [
+            commit("n2", "b", 2),
+            commit("n1", "a", 1),
+            commit("old", "a", 5),
+        ];
+        let wanted = vec![("a".to_string(), Some(1)), ("b".to_string(), None)];
+        assert_eq!(find_rewritten(&log, &wanted), ["n1", "n2"]);
+        assert!(find_rewritten(&log, &[("c".to_string(), None)]).is_empty());
+    }
 
     #[test]
     fn squash_drafts_match_the_same_commits() {

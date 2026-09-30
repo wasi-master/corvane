@@ -1086,6 +1086,7 @@ impl Dispatcher {
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {
+                let mut rewritten = Vec::new();
                 let reselect = Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
                     rs.commits_loading = false;
@@ -1102,6 +1103,14 @@ impl Dispatcher {
                                     .selected_commits
                                     .iter()
                                     .any(|sha| !rs.commits.iter().any(|c| &c.sha == sha));
+                            // flag `146`: a squash / reorder rewrote the
+                            // selection; pick the new commits instead
+                            if !more {
+                                let wanted = std::mem::take(&mut rs.rewritten_selection);
+                                if missing {
+                                    rewritten = crate::mco::find_rewritten(&rs.commits, &wanted);
+                                }
+                            }
                             if missing {
                                 rs.selected_commit = None;
                                 rs.selected_commits.clear();
@@ -1123,6 +1132,10 @@ impl Dispatcher {
                         Ok(!more && !rs.selected_commits.is_empty() && !comparing)
                     }
                 });
+                if !rewritten.is_empty() {
+                    Self::select_commits(id, rewritten, cx);
+                    return;
+                }
                 match reselect {
                     Err(Some(first)) => Self::select_commits(id, vec![first], cx),
                     Ok(true) => Self::load_changeset(id, cx),

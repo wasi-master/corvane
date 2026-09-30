@@ -261,6 +261,19 @@ registry! {
         upstream: &[Upstream::issue(20764)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/state.rs"],
     },
+    /// Squash / reorder keep the History selection.
+    SELECT_REWRITTEN_COMMITS = 146 "select-rewritten-commits" {
+        title: "History keeps the selection through squash and reorder",
+        summary: "After a squash or reorder that rewrote the selected commits, History selects \
+                  the squashed commit (or the moved commits) under their new SHAs.",
+        ghd_behaviour: "The selection jumps to the newest commit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12549)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 200 Repository ----
 
