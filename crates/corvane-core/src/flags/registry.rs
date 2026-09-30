@@ -308,6 +308,20 @@ registry! {
         upstream: &[Upstream::issue(17278), Upstream::issue(9967)],
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/history_ops.rs"],
     },
+    /// History "Push Up to This Commit".
+    PUSH_UP_TO_COMMIT = 243 "push-up-to-commit" {
+        title: "Push up to a commit",
+        summary: "A commit's context menu adds Push Up to This Commit, enabled on the current \
+                  branch's unpushed commits: it pushes that commit (and the ones before it) to the \
+                  upstream branch and keeps the newer ones local. Unpushed tags stay behind.",
+        ghd_behaviour: "Push always pushes the whole branch.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19238), Upstream::issue(20670)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 300 GitHub ----
 

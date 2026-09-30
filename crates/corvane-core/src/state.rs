@@ -459,6 +459,8 @@ pub enum RetryAction {
     Push {
         force_with_lease: bool,
         branch: Option<String>,
+        /// Push only up to this commit (flag `243`).
+        up_to: Option<String>,
     },
     Pull,
     Fetch,

@@ -589,6 +589,12 @@ impl Dispatcher {
             RetryAction::Push {
                 force_with_lease,
                 branch,
+                up_to: Some(sha),
+            } => Self::push_inner(id, force_with_lease, branch, Some(sha), |_, _| {}, cx),
+            RetryAction::Push {
+                force_with_lease,
+                branch,
+                up_to: None,
             } => Self::push(id, force_with_lease, branch, cx),
             RetryAction::Pull => Self::pull(id, cx),
             RetryAction::Fetch => Self::fetch(id, false, cx),
