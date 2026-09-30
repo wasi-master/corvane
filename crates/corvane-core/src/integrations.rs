@@ -118,6 +118,31 @@ impl Dispatcher {
         );
     }
 
+    /// Flag `248`: History › Open with Default Program opens `path` as it
+    /// is at `sha`, written to a read-only file under the temporary
+    /// directory, rather than today's working copy.
+    pub fn open_commit_file_with_default_program(id: u64, sha: String, path: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        spawn_bg(
+            cx,
+            move || -> Result<PathBuf, String> {
+                let bytes = corvane_git::blob_bytes(git, &workdir, &sha, &path)
+                    .map_err(|e| e.to_string())?;
+                let short = &sha[..sha.len().min(12)];
+                let file = historical_file_path(&std::env::temp_dir(), short, &path)
+                    .ok_or_else(|| format!("Invalid path {path}"))?;
+                write_read_only(&file, &bytes).map_err(|e| e.to_string())?;
+                Ok(file)
+            },
+            |result, cx| match result {
+                Ok(file) => cx.open_with_system(&file),
+                Err(err) => Self::show_error("Could not open file", err, cx),
+            },
+        );
+    }
+
     /// Repository › Open in <Editor> (`_openInExternalEditor`).
     pub fn open_in_editor(path: PathBuf, cx: &mut App) {
         let (editors, selected, custom) = {
@@ -791,6 +816,39 @@ fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
 }
 
+/// Where a file as of commit `short_sha` is written (flag `248`):
+/// `<tmp>/corvane-history/<short sha>/<repository-relative path>`. `None` for
+/// a path that would leave that directory.
+fn historical_file_path(tmp: &Path, short_sha: &str, path: &str) -> Option<PathBuf> {
+    use std::path::Component;
+    let relative = Path::new(path);
+    if path.is_empty()
+        || !relative
+            .components()
+            .all(|c| matches!(c, Component::Normal(_)))
+    {
+        return None;
+    }
+    Some(tmp.join("corvane-history").join(short_sha).join(relative))
+}
+
+/// Write `bytes` to `file` (replacing an earlier copy) and make it read-only.
+fn write_read_only(file: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    if let Some(dir) = file.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    if let Ok(meta) = std::fs::metadata(file) {
+        let mut perms = meta.permissions();
+        #[allow(clippy::permissions_set_readonly_false)]
+        perms.set_readonly(false);
+        std::fs::set_permissions(file, perms)?;
+    }
+    std::fs::write(file, bytes)?;
+    let mut perms = std::fs::metadata(file)?.permissions();
+    perms.set_readonly(true);
+    std::fs::set_permissions(file, perms)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -871,5 +929,33 @@ mod tests {
             pull_request_url(&gh(true), "feat", None, false),
             "https://github.com/me/hello/pull/new/feat"
         );
+    }
+}
+
+#[cfg(test)]
+mod historical_file_tests {
+    use super::*;
+
+    #[test]
+    fn stays_inside_the_temporary_directory() {
+        let tmp = Path::new("/tmp");
+        assert_eq!(
+            historical_file_path(tmp, "abc", "src/a.png"),
+            Some(PathBuf::from("/tmp/corvane-history/abc/src/a.png"))
+        );
+        assert_eq!(historical_file_path(tmp, "abc", "../x"), None);
+        assert_eq!(historical_file_path(tmp, "abc", "/etc/x"), None);
+        assert_eq!(historical_file_path(tmp, "abc", ""), None);
+    }
+
+    #[test]
+    fn rewrites_a_read_only_copy() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("a/b.txt");
+        write_read_only(&file, b"one").unwrap();
+        assert!(std::fs::metadata(&file).unwrap().permissions().readonly());
+        write_read_only(&file, b"two").unwrap();
+        assert_eq!(std::fs::read(&file).unwrap(), b"two");
+        assert!(std::fs::metadata(&file).unwrap().permissions().readonly());
     }
 }
