@@ -110,7 +110,11 @@ fn main() {
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
         corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
         info!(zoom, "window zoom factor");
-        corvane_ui::init(cx, resolve_theme_with(shown_theme, high_contrast, cx));
+        let theme_variants = corvane_ui::theme::ThemeVariants::of(&launch_flags);
+        corvane_ui::init(
+            cx,
+            resolve_theme_with(shown_theme, high_contrast, theme_variants, cx),
+        );
         let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, flag_overrides, flags_env, cx);
         Dispatcher::load_custom_emoji(cx);
@@ -140,12 +144,13 @@ fn main() {
         // the menu bar and the theme also depend on flags (401, 101)
         let mut last_menu_key = menus::MenuOptions::of(state.read(cx));
         let mut last_high_contrast = high_contrast;
+        let mut last_theme_variants = theme_variants;
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, welcome_done, menu_key, high_contrast) = {
+            let (theme, welcome_done, menu_key, high_contrast, variants) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
                 (
@@ -153,6 +158,7 @@ fn main() {
                     s.settings.welcome_completed,
                     menus::MenuOptions::of(s),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
+                    corvane_ui::theme::ThemeVariants::of(&s.flags),
                 )
             };
             if menu_key != last_menu_key {
@@ -164,8 +170,10 @@ fn main() {
                 last_theme = theme;
                 chosen_theme = theme;
             }
-            let high_contrast_changed = high_contrast != last_high_contrast;
+            let high_contrast_changed =
+                high_contrast != last_high_contrast || variants != last_theme_variants;
             last_high_contrast = high_contrast;
+            last_theme_variants = variants;
             if theme_changed || high_contrast_changed || welcome_done != last_welcome_done {
                 last_welcome_done = welcome_done;
                 apply_theme(
@@ -835,12 +843,16 @@ thread_local! {
 /// Accessibility › Display › "Increase contrast" and the
 /// `101-high-contrast-theme` flag (read from the app state).
 fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme {
-    let high_contrast = corvane_core::AppState::try_global(cx).is_none_or(|s| {
+    let state = corvane_core::AppState::try_global(cx);
+    let high_contrast = state.as_ref().is_none_or(|s| {
         s.read(cx)
             .flags
             .bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME)
     });
-    resolve_theme_with(setting, high_contrast, cx)
+    let variants = state
+        .map(|s| corvane_ui::theme::ThemeVariants::of(&s.read(cx).flags))
+        .unwrap_or_default();
+    resolve_theme_with(setting, high_contrast, variants, cx)
 }
 
 /// `resolve_theme` before the app state exists: with `high_contrast` off a
@@ -848,6 +860,7 @@ fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme
 fn resolve_theme_with(
     setting: ThemeSetting,
     high_contrast: bool,
+    variants: corvane_ui::theme::ThemeVariants,
     cx: &App,
 ) -> corvane_ui::theme::GhdTheme {
     let system_dark = matches!(
@@ -859,6 +872,7 @@ fn resolve_theme_with(
         system_dark,
         high_contrast && corvane_platform::accessibility::increase_contrast(),
     )
+    .with_variants(variants)
 }
 
 /// GHD `focusWindow`: bring Corvane forward and show its window, even when

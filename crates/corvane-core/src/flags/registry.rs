@@ -223,6 +223,21 @@ registry! {
         code: &["crates/corvane-ui/src/toolbar.rs", "crates/corvane-ui/src/widgets.rs"],
     },
 
+    /// Blue / orange diff colours for red-green colour blindness.
+    COLOUR_BLIND_DIFF = 188 "colour-blind-diff" {
+        title: "Colour-blind friendly diff colours",
+        summary: "Diffs show added lines in blue and deleted lines in orange (after Primer's \
+                  protanopia / deuteranopia themes) in the Light and Dark themes.",
+        ghd_behaviour: "Pale green and pale red, which are hard to tell apart with red-green \
+                        colour blindness.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6795)],
+        code: &["crates/corvane-ui/src/theme/mod.rs", "crates/corvane/src/main.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.
