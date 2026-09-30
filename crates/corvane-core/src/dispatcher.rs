@@ -2310,12 +2310,14 @@ impl Dispatcher {
             return;
         };
         Self::close_popup(cx);
+        let cancel = corvane_git::CancelToken::new();
         state.update(cx, |s, cx| {
             s.cloning = Some(CloneState {
                 url: url.clone(),
                 path: path.clone(),
                 description: "Cloning…".into(),
                 value: None,
+                cancel: cancel.clone(),
             });
             cx.notify();
         });
@@ -2329,6 +2331,7 @@ impl Dispatcher {
                 &clone_url,
                 &clone_path,
                 default_branch.as_deref(),
+                Some(cancel),
                 |p| {
                     let _ = tx.send(p);
                 },
@@ -2344,7 +2347,7 @@ impl Dispatcher {
                 }
                 if let Some(p) = latest {
                     let done = pump_state.update(cx, |s, cx| {
-                        if let Some(c) = s.cloning.as_mut() {
+                        if let Some(c) = s.cloning.as_mut().filter(|c| !c.cancel.is_cancelled()) {
                             c.description = p.description;
                             c.value = p.value;
                             cx.notify();
@@ -2377,11 +2380,34 @@ impl Dispatcher {
                 match result {
                     // an `openRepo` URL waiting for this clone continues
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
+                    // git removed what it created
+                    Err(corvane_git::GitError::Cancelled(_)) => info!("clone cancelled"),
                     Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
                 }
             });
         })
         .detach();
+    }
+
+    /// Stop the running clone (`227-clone-cancel`; GHD cannot: removing the
+    /// cloning repository leaves `git clone` running). git removes the
+    /// directory it created; the view says "Cancelling…" until it exits.
+    pub fn cancel_clone(cx: &mut App) {
+        if !Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CLONE_CANCEL)
+        {
+            return;
+        }
+        Self::state(cx).update(cx, |s, cx| {
+            if let Some(c) = s.cloning.as_mut() {
+                c.cancel.cancel();
+                c.description = "Cancelling…".into();
+                c.value = None;
+                cx.notify();
+            }
+        });
     }
 
     pub fn open_url(url: &str, cx: &mut App) {

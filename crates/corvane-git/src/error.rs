@@ -24,6 +24,9 @@ pub enum GitError {
     Open(#[from] Box<gix::Error>),
     #[error("{0}")]
     Gix(String),
+    /// The command was stopped through its [`crate::CancelToken`].
+    #[error("git {0} was cancelled")]
+    Cancelled(String),
 }
 
 impl From<gix::Error> for GitError {

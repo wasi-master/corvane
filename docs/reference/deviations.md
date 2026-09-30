@@ -35,6 +35,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Background fetch (`Dispatcher::background_fetch_tick`; GHD `BackgroundFetcher`, GitHub repositories only): can be turned off, or extended to any repository with a remote (the GitHub Desktop value stays the default). Flag: `224-background-fetch`.
 - Fetch can prune tags (`corvane_git::fetch_with_prune_tags`, `--prune-tags`; GHD's `fetch` prunes branches only, so a tag deleted on the remote stays): off by default because it also deletes local tags that were never pushed; skipped while tags created in Corvane wait to be pushed. Flag: `225-fetch-prune-tags`.
 - Git LFS detection for the `InitializeLFS` prompt (`corvane_git::is_using_lfs_by_attributes`): reads the `.gitattributes` files in the index, the root one on disk and `info/attributes` for `filter=lfs`; GHD's `isUsingLFS` runs `git lfs track --json`, which walks every directory including untracked ones. A `.gitattributes` in an untracked subdirectory no longer counts. Flag: `226-lfs-detect-by-attributes`.
+- The cloning view has a Cancel button (`Dispatcher::cancel_clone`, `corvane_git::CancelToken`): it sends `git clone` SIGTERM, so git removes the directory it created, and no error is shown. GHD (`cloning-repository.tsx`) has no way to stop a clone, and removing the cloning repository leaves git downloading. Corvane never lists the cloning repository in the sidebar, so there is nothing to remove. Flag: `227-clone-cancel`.
 
 ## Tutorial
 

@@ -229,11 +229,13 @@ pub fn parse_clone_progress(line: &str) -> CloneProgress {
 }
 
 /// `git clone --progress --recurse-submodules <url> <path>` streaming progress.
+/// A cancelled `cancel` token stops git, which removes what it created.
 pub fn clone(
     git: Arc<GitBinary>,
     url: &str,
     path: &Path,
     default_branch: Option<&str>,
+    cancel: Option<crate::CancelToken>,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<()> {
     if let Some(parent) = path.parent() {
@@ -245,6 +247,9 @@ pub fn clone(
     // so an empty repository starts on the right branch
     if let Some(branch) = default_branch {
         cmd = cmd.args(["-c".to_string(), format!("init.defaultBranch={branch}")]);
+    }
+    if let Some(token) = cancel {
+        cmd = cmd.cancel_token(token);
     }
     cmd.args(["clone", "--progress", "--recurse-submodules", "--", url])
         .arg(path)
@@ -292,6 +297,38 @@ mod tests {
             repository_name_from_url("https://x/y/").as_deref(),
             Some("y")
         );
+    }
+
+    #[test]
+    fn cancelled_clone_stops_and_leaves_nothing() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let bare = dir.path().join("remote.git");
+        assert!(
+            std::process::Command::new("git")
+                .args(["init", "-q", "--bare"])
+                .arg(&bare)
+                .status()
+                .unwrap()
+                .success()
+        );
+        let url = bare.to_str().unwrap();
+        let target = dir.path().join("clone");
+        let token = crate::CancelToken::new();
+        token.cancel();
+        let err = clone(git.clone(), url, &target, None, Some(token), |_| {}).unwrap_err();
+        assert!(matches!(err, crate::GitError::Cancelled(_)), "{err}");
+        assert!(!target.exists());
+        clone(
+            git,
+            url,
+            &target,
+            None,
+            Some(crate::CancelToken::new()),
+            |_| {},
+        )
+        .unwrap();
+        assert!(target.join(".git").exists());
     }
 
     #[test]

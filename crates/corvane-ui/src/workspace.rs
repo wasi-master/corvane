@@ -666,6 +666,11 @@ impl Render for Workspace {
         // paused tutorial): no toolbar (`renderToolbar`) and, like the welcome
         // flow, the transparent `light-title-bar` laid over the content
         let blank_slate = tutorial_paused || (!has_repos && cloning.is_none());
+        let clone_cancel = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_CANCEL);
         let bare = self.welcome.is_some() || blank_slate;
         div()
             .id("workspace")
@@ -703,7 +708,7 @@ impl Render for Workspace {
                         .w_full()
                         .border_t_1()
                         .border_color(t.box_border)
-                        .child(cloning_view(clone, cx))
+                        .child(cloning_view(clone, clone_cancel, cx))
                         .into_any_element()
                 } else if let Some(missing) = missing_repository.as_ref() {
                     // GHD `SelectionType.MissingRepository` replaces the

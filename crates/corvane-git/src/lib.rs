@@ -67,7 +67,7 @@ pub use patch::{
     format_patch_to_discard_changes, stage_partial_files,
 };
 pub use paths::git_dir;
-pub use process::{GitCommand, GitOutput, set_credential_helper};
+pub use process::{CancelToken, GitCommand, GitOutput, set_credential_helper};
 pub use rebase_ops::{
     CherryPickResult, CherryPickSnapshot, RebaseResult, RebaseSnapshot, abort_cherry_pick,
     abort_rebase, abort_squash_merge, binary_paths, cherry_pick, cherry_pick_head_found,

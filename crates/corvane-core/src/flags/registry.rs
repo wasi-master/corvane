@@ -337,6 +337,20 @@ registry! {
         upstream: &[Upstream::issue(5198)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// The cloning view's Cancel button.
+    CLONE_CANCEL = 227 "clone-cancel" {
+        title: "Cancel a running clone",
+        summary: "The cloning view has a Cancel button that stops `git clone`; git removes the \
+                  directory it created.",
+        ghd_behaviour: "No way to stop a clone: removing the cloning repository leaves the download \
+                        running in the background.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21866), Upstream::issue(22478)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/cloning_view.rs", "crates/corvane-git/src/process.rs"],
+    },
 
     // ---- 300 GitHub ----
 
