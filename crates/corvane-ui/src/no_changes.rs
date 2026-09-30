@@ -1,6 +1,10 @@
 //! `NoChanges` blankslate (`.changes-interstitial`): "No local changes" header
 //! with the paper-stack illustration, then suggested-action groups.
 //! `styles/ui/changes/_changes-interstitial.scss`, `ui/suggested-actions/*.scss`.
+//!
+//! Deviation (`419-restore-stash-suggestion`): with a stash on the branch the
+//! first card is "Restore your stashed changes" with a primary Restore button
+//! (built in `workspace.rs`; GHD `no-changes.tsx` offers only "View stash").
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;

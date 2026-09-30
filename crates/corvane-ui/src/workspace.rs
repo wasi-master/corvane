@@ -330,6 +330,16 @@ impl Workspace {
                 .cloned()
         });
         let showing_stash = rs.is_some_and(|r| r.showing_stash);
+        // `419-restore-stash-suggestion`
+        let restore_stash = state
+            .flags
+            .bool(corvane_core::flags::ids::RESTORE_STASH_SUGGESTION)
+            && rs.is_some_and(|r| {
+                r.stash.is_some()
+                    && r.info
+                        .as_ref()
+                        .is_some_and(|i| matches!(i.tip, corvane_core::Tip::Valid { .. }))
+            });
         let multi_selected = rs.map(|r| r.selected_files.len()).unwrap_or(0);
         match self.section {
             Section::Changes if showing_stash => self.stash_view.clone().into_any_element(),
@@ -429,6 +439,28 @@ impl Workspace {
                         button_label: "View on GitHub".into(),
                         primary: false,
                     });
+                }
+                // Corvane (`419-restore-stash-suggestion`): the branch's
+                // stash can be restored from here, first and highlighted
+                if restore_stash && let Some(id) = repo_id {
+                    actions.insert(
+                        0,
+                        SuggestedAction {
+                            id: "suggested-restore-stash",
+                            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::pop_stash(id, cx)),
+                            title: "Restore your stashed changes".into(),
+                            description: Some(
+                                "This branch has stashed changes that you have not yet committed."
+                                    .into(),
+                            ),
+                            hint: "When a stash exists, access it at the bottom of the Changes \
+                                   tab to the left."
+                                .into(),
+                            keys: &[],
+                            button_label: "Restore".into(),
+                            primary: true,
+                        },
+                    );
                 }
                 no_changes(actions, cx).into_any_element()
             }

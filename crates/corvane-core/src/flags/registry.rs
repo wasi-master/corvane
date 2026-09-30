@@ -839,6 +839,20 @@ registry! {
         upstream: &[Upstream::issue(17198)],
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+    /// "No local changes" offers restoring the branch's stash.
+    RESTORE_STASH_SUGGESTION = 419 "restore-stash-suggestion" {
+        title: "Restore stash from No local changes",
+        summary: "When the branch has stashed changes and nothing else is changed, the \"No local \
+                  changes\" view starts with a \"Restore your stashed changes\" card whose Restore \
+                  button brings them back in one click.",
+        ghd_behaviour: "The stash has to be opened from the bottom of the Changes tab first.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12864)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
