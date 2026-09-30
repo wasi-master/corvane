@@ -28,6 +28,9 @@ pub struct KeymapFlags {
     pub diff_mode_shortcut: bool,
     /// `613-copy-path-shortcuts`: ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
     pub copy_path_shortcuts: bool,
+    /// `614-navigation-shortcuts`: ⌃⌘P pull requests, ⇧⌘] / ⇧⌘[ next /
+    /// previous repository, ⌘3 the diff, ⌥↓ / ⌥↑ files from the diff.
+    pub navigation_shortcuts: bool,
 }
 
 impl KeymapFlags {
@@ -40,6 +43,7 @@ impl KeymapFlags {
             emacs_list_keys: flags.bool(ids::EMACS_LIST_KEYS),
             diff_mode_shortcut: flags.bool(ids::DIFF_MODE_SHORTCUT),
             copy_path_shortcuts: flags.bool(ids::COPY_PATH_SHORTCUTS),
+            navigation_shortcuts: flags.bool(ids::NAVIGATION_SHORTCUTS),
         }
     }
 }
@@ -204,6 +208,17 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
                 ),
             ]);
         }
+    }
+    if flags.navigation_shortcuts {
+        bindings.extend([
+            KeyBinding::new("ctrl-cmd-p", ShowPullRequestsList, None),
+            // ⇧⌘] / ⇧⌘[: macOS delivers the shifted character
+            KeyBinding::new("cmd-}", NextRepository, None),
+            KeyBinding::new("cmd-{", PreviousRepository, None),
+            KeyBinding::new("cmd-3", FocusDiff, None),
+            KeyBinding::new("alt-down", SelectNextFileFromDiff, Some("Diff")),
+            KeyBinding::new("alt-up", SelectPreviousFileFromDiff, Some("Diff")),
+        ]);
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

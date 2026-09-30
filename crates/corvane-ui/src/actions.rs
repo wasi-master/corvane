@@ -25,6 +25,13 @@ gpui_kit::actions!(
         // ⌥⌘C / ⇧⌥⌘C in a file list (`613-copy-path-shortcuts`)
         CopySelectedFilePaths,
         CopySelectedRelativeFilePaths,
+        // `614-navigation-shortcuts`
+        ShowPullRequestsList,
+        NextRepository,
+        PreviousRepository,
+        FocusDiff,
+        SelectNextFileFromDiff,
+        SelectPreviousFileFromDiff,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
