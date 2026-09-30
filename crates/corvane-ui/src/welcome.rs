@@ -3,6 +3,11 @@
 //! × scale, the two graphics pinned behind it), right pane 40 % on `#28373b`
 //! with the illustration cropped from the left; scale 1.2 at ≥ 1366×700.
 //!
+//! Configure Git (`ui/welcome/configure-git.tsx`, `lib/configure-git-user.tsx`):
+//! signed in, "Use my GitHub account name and email address" (the first
+//! account's name read-only, its emails in a `Select`) or "Configure
+//! manually" (name + email text boxes and `GitEmailNotFoundWarning`).
+//!
 //! Deviations: the product name reads Corvane, and the start footer's
 //! second paragraph says Corvane sends no usage metrics where GHD links to
 //! its metrics page (see `.docs/deviations.md`).
@@ -16,7 +21,9 @@ use gpui_kit::*;
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{Inline, avatar_image, avatar_lookup, link_button, paragraph};
+use crate::widgets::{
+    Inline, SelectHandler, avatar_image, avatar_lookup, link_button, paragraph, select_button,
+};
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::Input;
 
@@ -31,8 +38,16 @@ enum Step {
 pub struct WelcomeView {
     state: Entity<AppState>,
     step: Step,
+    /// "Configure manually" name and email.
     name: Entity<InputState>,
     email: Entity<InputState>,
+    /// `useGitHubAuthorInfo`: the account's name and email are used.
+    use_github: bool,
+    /// `gitHubName` (shown read-only) and `gitHubEmail`.
+    github_name: Entity<InputState>,
+    github_email: String,
+    /// `accounts[0]` as `(endpoint, login)`, to notice a new first account.
+    account_key: Option<(String, String)>,
     prefilled: bool,
     had_account: bool,
     /// "Sign in to GitHub.com" (`autoFocus`); its focus ring shows until a
@@ -47,6 +62,8 @@ impl WelcomeView {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx).placeholder("Your Name"));
         let email = cx.new(|cx| InputState::new(window, cx).placeholder("your-email@example.com"));
+        let github_name = cx.new(|cx| InputState::new(window, cx).placeholder("Your Name"));
+        cx.observe(&email, |_, _, cx| cx.notify()).detach();
         let had_account = !state.read(cx).accounts.is_empty();
         let sign_in_focus = cx.focus_handle();
         // A successful sign-in advances to Configure Git (GHD `Welcome.componentWillReceiveProps`).
@@ -54,6 +71,8 @@ impl WelcomeView {
             let has_account = !state.read(cx).accounts.is_empty();
             if has_account && !this.had_account && this.step == Step::Start {
                 this.advance(window, cx);
+            } else if this.prefilled {
+                this.sync_account(window, cx);
             }
             this.had_account = has_account;
             cx.notify();
@@ -64,6 +83,10 @@ impl WelcomeView {
             step: Step::Start,
             name,
             email,
+            use_github: false,
+            github_name,
+            github_email: String::new(),
+            account_key: None,
             prefilled: false,
             had_account,
             sign_in_focus,
@@ -87,34 +110,175 @@ impl WelcomeView {
             self.prefilled = true;
             let (git, account) = {
                 let s = self.state.read(cx);
-                (s.git.clone(), s.dotcom_account().cloned())
+                (s.git.clone(), s.accounts.first().cloned())
             };
             let identity = git.map(corvane_git::global_identity).unwrap_or_default();
+            // `ConfigureGitUser` constructor: the global config first, then
+            // the account's name / login and preferred email
             let name = identity
                 .name
                 .clone()
+                .filter(|n| !n.is_empty())
                 .or_else(|| account.as_ref().and_then(|a| a.name.clone()))
+                .filter(|n| !n.is_empty())
                 .or_else(|| account.as_ref().map(|a| a.login.clone()))
                 .unwrap_or_default();
             let email = identity
                 .email
                 .clone()
-                .or_else(|| account.as_ref().and_then(|a| a.emails.first().cloned()))
+                .filter(|e| !e.is_empty())
+                .or_else(|| account.as_ref().map(|a| a.preferred_email()))
                 .unwrap_or_default();
             self.name.update(cx, |s, cx| s.set_value(name, window, cx));
             self.email
                 .update(cx, |s, cx| s.set_value(email, window, cx));
+            self.use_github = account.is_some();
+            if let Some(account) = &account {
+                self.set_github_info(account, window, cx);
+            }
         }
         let handle = self.name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
         cx.notify();
     }
 
+    /// `gitHubName` / `gitHubEmail` from `account`.
+    fn set_github_info(
+        &mut self,
+        account: &corvane_core::Account,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.account_key = Some((account.endpoint.clone(), account.login.clone()));
+        let name = account
+            .name
+            .clone()
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| account.login.clone());
+        self.github_name
+            .update(cx, |s, cx| s.set_value(name, window, cx));
+        self.github_email = account.preferred_email();
+    }
+
+    /// `componentDidUpdate`: a new first account selects the account option
+    /// and fills the manual fields that are still empty.
+    fn sync_account(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(account) = self.state.read(cx).accounts.first().cloned() else {
+            return;
+        };
+        if self.account_key.as_ref() == Some(&(account.endpoint.clone(), account.login.clone())) {
+            return;
+        }
+        self.set_github_info(&account, window, cx);
+        self.use_github = true;
+        if self.name.read(cx).value().is_empty() {
+            let name = self.github_name.read(cx).value().to_string();
+            self.name.update(cx, |s, cx| s.set_value(name, window, cx));
+        }
+        if self.email.read(cx).value().is_empty() {
+            let email = self.github_email.clone();
+            self.email
+                .update(cx, |s, cx| s.set_value(email, window, cx));
+        }
+        cx.notify();
+    }
+
+    fn set_use_github(&mut self, use_github: bool, cx: &mut Context<Self>) {
+        self.use_github = use_github;
+        cx.notify();
+    }
+
+    /// The name and email the example commit shows and Finish saves.
+    fn author(&self, cx: &App) -> (String, String) {
+        if self.use_github {
+            (
+                self.github_name.read(cx).value().to_string(),
+                self.github_email.clone(),
+            )
+        } else {
+            (
+                self.name.read(cx).value().to_string(),
+                self.email.read(cx).value().to_string(),
+            )
+        }
+    }
+
     fn finish(&mut self, cx: &mut Context<Self>) {
-        let name = self.name.read(cx).value().to_string();
-        let email = self.email.read(cx).value().to_string();
+        let (name, email) = self.author(cx);
         Dispatcher::set_global_identity(name, email, cx);
         Dispatcher::complete_welcome(cx);
+    }
+
+    /// `renderAuthorOptions`: the two `RadioButton`s, 5 px apart.
+    fn author_options(
+        &self,
+        account: &corvane_core::Account,
+        use_github: bool,
+        cx: &Context<Self>,
+    ) -> Div {
+        let suffix = if account.is_dotcom() {
+            ""
+        } else {
+            " Enterprise"
+        };
+        let github = cx.listener(|this, _, _, cx| this.set_use_github(true, cx));
+        let manual = cx.listener(|this, _, _, cx| this.set_use_github(false, cx));
+        div()
+            .flex()
+            .flex_col()
+            .child(
+                welcome_radio_row("welcome-use-github", use_github, cx)
+                    .on_click(github)
+                    .child(format!(
+                        "Use my GitHub{suffix} account name and email address"
+                    )),
+            )
+            .child(
+                welcome_radio_row("welcome-configure-manually", !use_github, cx)
+                    .mt(px(5.))
+                    .on_click(manual)
+                    .child("Configure manually"),
+            )
+    }
+
+    /// `renderGitHubInfo`: the account's emails in a `Select`.
+    fn github_email_select(&self, account: &corvane_core::Account, cx: &Context<Self>) -> Div {
+        let t = cx.ghd();
+        let mut emails = account.emails.clone();
+        if emails.is_empty() {
+            emails.push(self.github_email.clone());
+        }
+        let selected = emails.iter().position(|e| *e == self.github_email);
+        let weak = cx.weak_entity();
+        let choices = emails.clone();
+        let on_select: SelectHandler = std::rc::Rc::new(move |ix, _, cx| {
+            if let Some(email) = choices.get(ix).cloned() {
+                weak.update(cx, |this, cx| {
+                    this.github_email = email;
+                    cx.notify();
+                })
+                .ok();
+            }
+        });
+        welcome_field(
+            "Email",
+            // `#welcome select`: `--text-field-height`, 16.8 px text
+            select_button(
+                "welcome-github-email",
+                self.github_email.clone(),
+                emails.into_iter().map(SharedString::from).collect(),
+                selected,
+                false,
+                on_select,
+                cx,
+            )
+            .h(px(29. * SCALE))
+            .rounded(BORDER_RADIUS())
+            .bg(t.box_background)
+            .text_size(px(WELCOME_FONT_MD)),
+            cx,
+        )
+        .mt(px(10.))
     }
 
     fn start(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
@@ -283,8 +447,9 @@ impl WelcomeView {
         let t = cx.ghd();
         let finish = cx.entity();
         let cancel = cx.entity();
-        let name = self.name.read(cx).value().to_string();
-        let email = self.email.read(cx).value().to_string();
+        let account = self.state.read(cx).accounts.first().cloned();
+        let use_github = self.use_github && account.is_some();
+        let (name, email) = self.author(cx);
         let when = std::time::SystemTime::now() - std::time::Duration::from_secs(30 * 60);
         div()
             .flex()
@@ -295,35 +460,72 @@ impl WelcomeView {
                  this information if you publish commits.",
             ))
             .child(
-                // `#configure-git-user`: the form (20 px margins), then the example commit
+                // `#configure-git-user`: the author options, the form (20 px
+                // margins), then the example commit
                 div()
                     .pb(px(10.))
                     .flex()
                     .flex_col()
+                    .when_some(account.as_ref(), |d, account| {
+                        d.child(self.author_options(account, use_github, cx))
+                    })
                     .child(
                         div()
-                            .mt(px(10.))
+                            // after the options the form's 20 px top margin;
+                            // after the text it collapses into its 10 px
+                            .mt(px(if account.is_some() { 20. } else { 10. }))
                             .mb(px(20.))
                             .flex()
                             .flex_col()
-                            .child(welcome_field(
-                                "Name",
-                                welcome_text_box("welcome-name", &self.name, window, cx),
-                                cx,
-                            ))
                             .child(
-                                welcome_field(
-                                    "Email",
-                                    welcome_text_box("welcome-email", &self.email, window, cx),
-                                    cx,
-                                )
-                                .mt(px(10.)),
+                                // `.sign-in-form-inputs { min-height: 150px }`
+                                div()
+                                    .min_h(px(150.))
+                                    .flex()
+                                    .flex_col()
+                                    .child(welcome_field(
+                                        "Name",
+                                        if use_github {
+                                            welcome_read_only_box(
+                                                "welcome-github-name",
+                                                &self.github_name,
+                                                cx,
+                                            )
+                                        } else {
+                                            welcome_text_box("welcome-name", &self.name, window, cx)
+                                        },
+                                        cx,
+                                    ))
+                                    .map(|d| match (&account, use_github) {
+                                        (Some(account), true) => {
+                                            d.child(self.github_email_select(account, cx))
+                                        }
+                                        _ => d
+                                            .child(
+                                                welcome_field(
+                                                    "Email",
+                                                    welcome_text_box(
+                                                        "welcome-email",
+                                                        &self.email,
+                                                        window,
+                                                        cx,
+                                                    ),
+                                                    cx,
+                                                )
+                                                .mt(px(10.)),
+                                            )
+                                            .when_some(account.as_ref(), |d, account| {
+                                                d.children(email_not_found_warning(
+                                                    account, &email, cx,
+                                                ))
+                                            }),
+                                    }),
                             )
                             .child(
-                                // `Row`: Finish (submit) and Cancel, 33.36 px under
-                                // the email field as GHD lays it out
+                                // `Row`: Finish (submit) and Cancel; the inputs'
+                                // 10 px bottom margin + the row's 10 px top one
                                 div()
-                                    .mt(px(33.36))
+                                    .mt(px(20.))
                                     .flex()
                                     .flex_row()
                                     .child(
@@ -517,6 +719,127 @@ fn welcome_text_box(
                     .text_size(px(WELCOME_FONT_MD)),
             ),
         )
+}
+
+/// `.text-box-component input[readonly]`: the account's name, not editable.
+fn welcome_read_only_box(id: &'static str, state: &Entity<InputState>, cx: &App) -> Stateful<Div> {
+    let t = cx.ghd();
+    div()
+        .id(id)
+        .h(px(29. * SCALE))
+        .w_full()
+        .flex()
+        .items_center()
+        .px(px(1.))
+        .border_1()
+        .rounded(BORDER_RADIUS())
+        .bg(t.box_alt_background)
+        .border_color(t.box_border_contrast)
+        .text_color(t.text_secondary)
+        .child(
+            div().flex_1().min_w_0().child(
+                Input::new(state)
+                    .appearance(false)
+                    .xsmall()
+                    .readonly(true)
+                    .text_color(t.text_secondary)
+                    .text_size(px(WELCOME_FONT_MD)),
+            ),
+        )
+}
+
+/// `RadioButton` in the welcome: Chromium's radio at `--radio-control-radius`
+/// (13 px × scale): a 1 px ring, grey when off; on, an accent ring around a
+/// 2 px white gap and an accent dot. The label follows 5 px later.
+fn welcome_radio_row(id: &'static str, selected: bool, cx: &App) -> Stateful<Div> {
+    let t = cx.ghd();
+    div()
+        .id(id)
+        .flex()
+        .flex_row()
+        .items_center()
+        .h(px(WELCOME_FONT_MD * 1.5))
+        .cursor_pointer()
+        .child(
+            div()
+                .size(px(15.))
+                .mr(px(5.6))
+                .flex_none()
+                .rounded_full()
+                .border_1()
+                .border_color(if selected {
+                    t.accent
+                } else {
+                    rgb(0x767676).into()
+                })
+                .bg(t.box_background)
+                .flex()
+                .items_center()
+                .justify_center()
+                .when(selected, |d| {
+                    d.child(div().size(px(9.)).rounded_full().bg(t.accent))
+                }),
+        )
+}
+
+/// `GitEmailNotFoundWarning` in the welcome: 10 px under the email box,
+/// ⚠️ and "Learn more." when commits with `email` would not be linked to the
+/// account, a green check when they would; nothing for an empty email.
+fn email_not_found_warning(account: &corvane_core::Account, email: &str, cx: &App) -> Option<Div> {
+    let email = email.trim();
+    if email.is_empty() {
+        return None;
+    }
+    let t = cx.ghd();
+    let kind = if account.is_dotcom() {
+        "GitHub"
+    } else {
+        "GitHub Enterprise"
+    };
+    let attributable = account.is_attributable_email(email);
+    let mut parts: Vec<Inline> = Vec::new();
+    if attributable {
+        parts.push(
+            div()
+                .size(px(12.))
+                .mr(px(5.))
+                .rounded_full()
+                .bg(t.color_new)
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(octicon(Octicon::Check, t.background).size(px(10.)))
+                .into_any_element()
+                .into(),
+        );
+        parts.push(format!("This email address matches your {kind} account.").into());
+    } else {
+        parts.push(
+            format!(
+                "⚠️This email address does not match your {kind} account. Your commits \
+                 will be wrongly attributed."
+            )
+            .into(),
+        );
+        parts.push(
+            link_button("welcome-email-learn-more", "Learn more.", cx)
+                .text_size(px(WELCOME_FONT_MD))
+                .on_click(|_, _, cx| {
+                    cx.open_url(
+                        "https://docs.github.com/en/github/committing-changes-to-your-project/\
+                         why-are-my-commits-linked-to-the-wrong-user",
+                    )
+                })
+                .into_any_element()
+                .into(),
+        );
+    }
+    Some(
+        paragraph(parts)
+            .mt(px(10.))
+            .gap_x(px(4.5))
+            .line_height(px(WELCOME_FONT_MD * 1.5)),
+    )
 }
 
 /// `#welcome button`: `--button-height`, 5 px vertical padding, 16.8 px text;

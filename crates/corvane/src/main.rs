@@ -228,6 +228,7 @@ fn main() {
                             emails: Vec::new(),
                             scopes: Vec::new(),
                             plan: None,
+                            private_primary_email: false,
                         });
                     }
                 }

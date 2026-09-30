@@ -248,11 +248,43 @@ pub struct Account {
     /// has been read from the API since this field was added.
     #[serde(default)]
     pub plan: Option<String>,
+    /// The primary address (`emails[0]`) is set to private on GitHub
+    /// (`visibility: "private"` in `/user/emails`).
+    #[serde(default)]
+    pub private_primary_email: bool,
 }
 
 impl Account {
     pub fn is_dotcom(&self) -> bool {
         self.endpoint == "https://api.github.com"
+    }
+
+    /// GHD `lookupPreferredEmail`: the primary address when it is public,
+    /// else the account's no-reply address when it is listed, else the first
+    /// address; the no-reply address when the account has none.
+    pub fn preferred_email(&self) -> String {
+        let Some(first) = self.emails.first() else {
+            return stealth_email(self.id, &self.login, &self.endpoint);
+        };
+        if !self.private_primary_email {
+            return first.clone();
+        }
+        let legacy = legacy_stealth_email(&self.login, &self.endpoint);
+        let suffix = &legacy[legacy.find('@').unwrap_or(0)..];
+        self.emails
+            .iter()
+            .find(|e| e.to_lowercase().ends_with(suffix))
+            .unwrap_or(first)
+            .clone()
+    }
+
+    /// GHD `isAttributableEmailFor`: commits with `email` are linked to this
+    /// account (a verified address or either no-reply form).
+    pub fn is_attributable_email(&self, email: &str) -> bool {
+        let needle = email.to_lowercase();
+        self.emails.iter().any(|e| e.to_lowercase() == needle)
+            || stealth_email(self.id, &self.login, &self.endpoint).to_lowercase() == needle
+            || legacy_stealth_email(&self.login, &self.endpoint).to_lowercase() == needle
     }
 
     /// Host for keychain keys and remote matching (`github.com`, `ghe.corp`).
@@ -378,6 +410,47 @@ pub fn split_remote(url: &str) -> Option<(String, String)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn account(emails: &[&str], private_primary_email: bool) -> Account {
+        Account {
+            endpoint: "https://api.github.com".into(),
+            id: 583231,
+            login: "octocat".into(),
+            name: None,
+            avatar_url: None,
+            emails: emails.iter().map(|e| e.to_string()).collect(),
+            scopes: Vec::new(),
+            plan: None,
+            private_primary_email,
+        }
+    }
+
+    #[test]
+    fn preferred_email_follows_lookup_preferred_email() {
+        let noreply = "583231+octocat@users.noreply.github.com";
+        assert_eq!(account(&[], false).preferred_email(), noreply);
+        assert_eq!(
+            account(&["mona@example.com", noreply], false).preferred_email(),
+            "mona@example.com"
+        );
+        assert_eq!(
+            account(&["mona@example.com", noreply], true).preferred_email(),
+            noreply
+        );
+        assert_eq!(
+            account(&["mona@example.com", "other@example.com"], true).preferred_email(),
+            "mona@example.com"
+        );
+    }
+
+    #[test]
+    fn attributable_emails_include_both_noreply_forms() {
+        let a = account(&["Mona@Example.com"], false);
+        assert!(a.is_attributable_email("mona@example.com"));
+        assert!(a.is_attributable_email("583231+octocat@users.noreply.github.com"));
+        assert!(a.is_attributable_email("octocat@users.noreply.github.com"));
+        assert!(!a.is_attributable_email("someone@example.com"));
+    }
 
     #[test]
     fn parses_github_remotes() {
