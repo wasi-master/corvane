@@ -808,6 +808,7 @@ mod tests {
             parent: None,
             archived: false,
             permissions: None,
+            allow_forking: None,
         };
         if parent {
             GitHubRepository {

@@ -107,6 +107,9 @@ pub struct GitHubRepository {
     /// `GET /repos/{owner}/{name}`; `None` when unknown.
     #[serde(default)]
     pub permissions: Option<RepositoryPermission>,
+    /// The API's `allow_forking`; `None` when unknown (not in GHD's model).
+    #[serde(default)]
+    pub allow_forking: Option<bool>,
 }
 
 /// GHD `GitHubRepositoryPermission`
@@ -121,6 +124,11 @@ pub enum RepositoryPermission {
 impl GitHubRepository {
     pub fn full_name(&self) -> String {
         format!("{}/{}", self.owner, self.name)
+    }
+
+    /// The owner turned forking off (`allow_forking: false`).
+    pub fn forking_disabled(&self) -> bool {
+        self.allow_forking == Some(false)
     }
 
     /// `hasWritePermission`: can the user push? Unknown permissions count
@@ -393,6 +401,7 @@ pub fn github_from_remote(url: &str, ghes_hosts: &[String]) -> Option<GitHubRepo
         parent: None,
         archived: false,
         permissions: None,
+        allow_forking: None,
     })
 }
 

@@ -2167,7 +2167,10 @@ impl ChangesSidebar {
             let repo = s.repository(id)?;
             let github = repo.github.as_ref()?;
             let files = s.selected_state()?.status.as_ref()?.files.len();
-            if github.has_write_permission() || files == 0 {
+            if github.has_write_permission()
+                || files == 0
+                || Dispatcher::fork_offer_blocked(s, github)
+            {
                 return None;
             }
             (id, repo.name())

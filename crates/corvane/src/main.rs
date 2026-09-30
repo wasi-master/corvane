@@ -931,6 +931,7 @@ fn open_dev_popup(popup: &str, cx: &mut App) {
                 parent: None,
                 archived: false,
                 permissions: None,
+                allow_forking: None,
             };
             corvane_core::AppState::global(cx).update(cx, |s, _| {
                 if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {

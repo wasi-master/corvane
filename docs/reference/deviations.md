@@ -29,6 +29,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Check runs**: a commit's check runs are read page by page (`page=`, up to 1,000) until `total_count` are in (GHD `fetchRefCheckRuns` reads one page of 100, so repositories with more checks show a partial status). Flag: `386-all-check-run-pages`.
 - **URL actions** (`x-corvane://openRepo`, `crates/corvane-core/src/app_url.rs`): a repository whose GitHub repository is the URL wins over a fork that matches through its parent (GHD `doesRepositoryMatchUrl` takes the first match in list order). Flag: `387-exact-repository-url-first`.
 - **Publish errors**: a failed Publish Repository shows GitHub's validation `errors[].message` in parentheses after the top-level message (`corvane_github::Client::with_error_details`; GHD's `APIError` keeps `message` only, so a too-long description reads "Repository creation failed."). Flag: `388-api-error-details`.
+- **Forking disabled**: the repository's API `allow_forking` is stored with its record; when it is `false` the commit form's "create a fork" warning, `CreateFork` before a push and the fork offer after a refused push are skipped, and the push runs or fails as usual (GHD `showNoWriteAccess` / `insufficientGitHubRepoPermissions` ignore it and the fork request fails). Flag: `389-fork-offer-respects-allow-forking`.
 
 ## Repository
 

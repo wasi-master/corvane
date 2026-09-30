@@ -431,6 +431,19 @@ registry! {
         upstream: &[Upstream::issue(19465)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-github/src/api.rs"],
     },
+    /// No fork offers where the owner disabled forking.
+    FORK_OFFER_RESPECTS_ALLOW_FORKING = 389 "fork-offer-respects-allow-forking" {
+        title: "No fork offer when forking is disabled",
+        summary: "A read-only repository whose owner disabled forking gets no \"create a fork\" \
+                  suggestion in the commit form and no Create Fork dialog around a push.",
+        ghd_behaviour: "Offers the fork anyway; creating it then fails.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22156)],
+        code: &["crates/corvane-core/src/forks.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
