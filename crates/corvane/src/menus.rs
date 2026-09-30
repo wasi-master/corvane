@@ -8,10 +8,17 @@ use gpui_kit::*;
 
 /// Build (or rebuild) the menu bar. `editor` / `shell` are the labels for
 /// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`);
-/// `show_release_notes` is the `401-release-notes-menu-item` flag.
-/// Corvane additions: "Flags…" (no GHD equivalent) and Help › Show Release
-/// Notes.
-pub fn install(cx: &mut App, editor: &str, shell: &str, show_release_notes: bool) {
+/// `show_release_notes` is the `401-release-notes-menu-item` flag and
+/// `show_import` the `206-import-from-github-desktop` one.
+/// Corvane additions: "Flags…" (no GHD equivalent), File › Import
+/// Repositories from GitHub Desktop… and Help › Show Release Notes.
+pub fn install(
+    cx: &mut App,
+    editor: &str,
+    shell: &str,
+    show_release_notes: bool,
+    show_import: bool,
+) {
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
@@ -28,12 +35,21 @@ pub fn install(cx: &mut App, editor: &str, shell: &str, show_release_notes: bool
             MenuItem::separator(),
             MenuItem::action("Quit Corvane", Quit),
         ]),
-        Menu::new("File").items([
-            MenuItem::action("New Repository…", NewRepository),
-            MenuItem::separator(),
-            MenuItem::action("Add Local Repository…", AddLocalRepository),
-            MenuItem::action("Clone Repository…", CloneRepository),
-        ]),
+        Menu::new("File").items(
+            [
+                MenuItem::action("New Repository…", NewRepository),
+                MenuItem::separator(),
+                MenuItem::action("Add Local Repository…", AddLocalRepository),
+                MenuItem::action("Clone Repository…", CloneRepository),
+            ]
+            .into_iter()
+            .chain(show_import.then(|| {
+                MenuItem::action(
+                    "Import Repositories from GitHub Desktop…",
+                    ImportFromGitHubDesktop,
+                )
+            })),
+        ),
         Menu::new("Edit").items([
             MenuItem::os_action("Undo", Undo, OsAction::Undo),
             MenuItem::os_action("Redo", Redo, OsAction::Redo),
