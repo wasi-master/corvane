@@ -753,6 +753,21 @@ registry! {
         code: &["crates/corvane-ui/src/changes.rs"],
     },
 
+    /// Context menu on the "Committed … Undo" bar.
+    UNDO_BAR_MENU = 472 "undo-bar-menu" {
+        title: "Context menu on the undo bar",
+        summary: "Right-clicking the \"Committed just now … Undo\" bar under the commit button \
+                  offers Amend Commit…, Undo Commit…, Create Tag…, Copy SHA and View on GitHub \
+                  for that commit.",
+        ghd_behaviour: "No context menu there; those items live in History.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(12561), Upstream::issue(19938)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

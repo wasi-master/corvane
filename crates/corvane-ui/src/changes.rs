@@ -30,6 +30,7 @@
 //!   marks (`470-assume-unchanged`).
 //! - a commit made outside Corvane with the drafted summary clears the draft
 //!   (`471-clear-message-after-outside-commit`).
+//! - the undo bar has a commit context menu (`472-undo-bar-menu`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -3125,13 +3126,76 @@ impl ChangesSidebar {
     }
 
     /// `#undo-commit`: "Committed N ago / summary" + Undo, after a commit.
+    /// `472-undo-bar-menu`: the History commit menu's items for HEAD that
+    /// make sense here.
+    fn open_undo_bar_menu(
+        &mut self,
+        id: u64,
+        sha: String,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let html_url = self
+            .state
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.github.as_ref())
+            .map(|g| format!("{}/commit/{sha}", g.html_url));
+        let mut items = vec![
+            MenuItem::new("Amend Commit…", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
+            }),
+            MenuItem::new("Undo Commit…", move |_, cx| {
+                Dispatcher::request_undo_commit(id, cx)
+            }),
+            MenuItem::separator(),
+            MenuItem::new("Create Tag…", {
+                let sha = sha.clone();
+                move |_, cx| {
+                    Dispatcher::show_popup(
+                        Popup::CreateTag {
+                            repo: id,
+                            sha: sha.clone(),
+                        },
+                        cx,
+                    )
+                }
+            }),
+            MenuItem::separator(),
+            MenuItem::new("Copy SHA", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
+            }),
+        ];
+        if let Some(url) = html_url {
+            items.push(MenuItem::new("View on GitHub", move |_, cx| {
+                Dispatcher::open_url(&url, cx)
+            }));
+        }
+        self.open_menu(items, position, window, cx);
+    }
+
     fn undo_bar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
         let t = cx.ghd();
         let s = self.state.read(cx);
         let id = s.selected?;
         let last = s.selected_state()?.last_commit.clone()?;
+        let menu = s.flags.bool(corvane_core::flags::ids::UNDO_BAR_MENU);
+        let sha = last.sha.clone();
         Some(
             div()
+                .id("undo-commit-bar")
+                // `472-undo-bar-menu`
+                .when(menu, |d| {
+                    d.on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(move |this, ev: &MouseDownEvent, window, cx| {
+                            cx.stop_propagation();
+                            this.open_undo_bar_menu(id, sha.clone(), ev.position, window, cx)
+                        }),
+                    )
+                })
                 .flex_none()
                 .flex()
                 .flex_row()

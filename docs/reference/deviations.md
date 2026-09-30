@@ -63,6 +63,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Names invalid on Windows (Corvane addition, off in the Corvane preset): when an included, not deleted file's path has a reserved device name (`CON`, `nul.txt`, `COM1`), a character NTFS rejects (`<>:"\|?*`, control characters) or a component ending in a space or a dot, the commit form shows a warning naming the first one (`corvane_core::portable_paths`); committing stays possible. GHD 3.6.6 commits them silently. Flag: `284-windows-invalid-names-warning`.
 - "Assume Unchanged" (Corvane addition, off in the Corvane preset): the changes list's file menu marks the selected modified / deleted tracked files `update-index --assume-unchanged`, so they leave the list; the list's own menu has "Stop Assuming Files Unchanged", clearing the mark from every file `ls-files -v` reports with it. GHD 3.6.6 has neither. Flag: `470-assume-unchanged`.
 - A drafted commit message is cleared when a new newest commit of the branch, made outside Corvane, has the drafted summary (trimmed, exact); GHD 3.6.6 keeps the draft. Flag: `471-clear-message-after-outside-commit`.
+- The "Committed … Undo" bar has a context menu (Corvane addition) with the History commit menu's HEAD items that fit there: Amend Commit…, Undo Commit…, Create Tag…, Copy SHA, View on GitHub. GHD 3.6.6 has none. Flag: `472-undo-bar-menu`.
 
 ## Diff viewer
 
