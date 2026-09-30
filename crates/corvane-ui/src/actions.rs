@@ -78,6 +78,7 @@ gpui_kit::actions!(
         Fetch,
         RemoveRepository,
         ViewOnGitHub,
+        ViewUpstreamOnGitHub,
         OpenInShell,
         ShowInFinder,
         OpenInEditor,
@@ -104,6 +105,7 @@ gpui_kit::actions!(
         Zoom,
         CloseWindow,
         BringAllToFront,
+        ShowMainWindow,
         // Help
         ReportIssue,
         ContactSupport,

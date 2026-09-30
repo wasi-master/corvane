@@ -359,6 +359,58 @@ pub enum Popup {
     },
 }
 
+impl Popup {
+    /// The repository a repository-bound dialog acts on.
+    pub fn repository(&self) -> Option<u64> {
+        match self {
+            Self::DiscardChanges { repo, .. }
+            | Self::StartPullRequest { repo, .. }
+            | Self::CreateFork { repo, .. }
+            | Self::UpstreamAlreadyExists { repo, .. }
+            | Self::ChooseForkSettings { repo, .. }
+            | Self::PushProtectionError { repo, .. }
+            | Self::BypassPushProtection { repo, .. }
+            | Self::PushRejectedDueToMissingWorkflowScope { repo, .. }
+            | Self::SAMLReauthRequired { repo, .. }
+            | Self::TestNotifications { repo, .. }
+            | Self::CICheckRunRerun { repo, .. }
+            | Self::PullRequestReview { repo, .. }
+            | Self::PullRequestComment { repo, .. }
+            | Self::PullRequestChecksFailed { repo, .. }
+            | Self::UnknownAuthors { repo, .. }
+            | Self::ConfirmDiscardSelection { repo, .. }
+            | Self::ResetToCommit { repo, .. }
+            | Self::CheckoutCommit { repo, .. }
+            | Self::CreateTag { repo, .. }
+            | Self::WarnLocalChangesBeforeUndo { repo, .. }
+            | Self::CreateBranch { repo, .. }
+            | Self::RenameBranch { repo, .. }
+            | Self::ChangeRepositoryAlias { repo, .. }
+            | Self::AddWorktree { repo, .. }
+            | Self::RenameWorktree { repo, .. }
+            | Self::DeleteWorktree { repo, .. }
+            | Self::DeleteWorktreeFailed { repo, .. }
+            | Self::DeleteBranch { repo, .. }
+            | Self::StashAndSwitchBranch { repo, .. }
+            | Self::ConfirmOverwriteStash { repo, .. }
+            | Self::MergeBranch { repo, .. }
+            | Self::ConfirmDiscardStash { repo, .. }
+            | Self::MultiCommitOperation { repo, .. }
+            | Self::LocalChangesOverwritten { repo, .. }
+            | Self::PushBranchCommits { repo, .. }
+            | Self::PublishRepository { repo, .. }
+            | Self::PushNeedsPull { repo, .. }
+            | Self::ConfirmForcePush { repo, .. }
+            | Self::GenericGitAuthentication { repo, .. }
+            | Self::SquashCommitMessage { repo, .. }
+            | Self::RepositorySettings { repo, .. }
+            | Self::ConfirmRemoveRepository { repo, .. }
+            | Self::UnreachableCommits { repo, .. } => Some(*repo),
+            _ => None,
+        }
+    }
+}
+
 /// GHD `UnreachableCommitsTab`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum UnreachableCommitsTab {
@@ -867,7 +919,13 @@ impl AppState {
     /// The editor "Open in …" menu items name: the selected editor, else the
     /// first installed one, else GHD's generic "External Editor".
     pub fn editor_label(&self) -> String {
-        if self.settings.use_custom_editor && self.settings.custom_editor.is_some() {
+        if self.settings.use_custom_editor
+            && let Some(custom) = &self.settings.custom_editor
+        {
+            let name = custom.name.trim();
+            if !name.is_empty() && self.flags.bool(crate::flags::ids::CUSTOM_EDITOR_NAME) {
+                return name.to_string();
+            }
             return "Custom Editor".to_string();
         }
         self.settings
@@ -875,6 +933,21 @@ impl AppState {
             .clone()
             .or_else(|| self.editors.first().map(|e| e.name.clone()))
             .unwrap_or_else(|| "External Editor".to_string())
+    }
+
+    /// The editor "Open in …" opens can jump to a line
+    /// (`corvane_platform::editors::launch_at_line`; never a custom editor).
+    pub fn editor_supports_line(&self) -> bool {
+        if self.settings.use_custom_editor && self.settings.custom_editor.is_some() {
+            return false;
+        }
+        corvane_platform::editors::find_editor_or_default(
+            &self.editors,
+            self.settings.external_editor.as_deref(),
+        )
+        .ok()
+        .flatten()
+        .is_some_and(corvane_platform::editors::supports_line)
     }
 
     /// The shell "Open in …" menu items name (`Terminal` by default).
@@ -917,5 +990,20 @@ impl AppState {
         let mut v: Vec<&Repository> = self.repositories.iter().collect();
         v.sort_by_key(|r| r.name().to_lowercase());
         v
+    }
+}
+
+#[cfg(test)]
+mod popup_tests {
+    use super::Popup;
+
+    #[test]
+    fn repository_bound_popups_name_their_repository() {
+        let rename = Popup::RenameBranch {
+            repo: 7,
+            name: "main".into(),
+        };
+        assert_eq!(rename.repository(), Some(7));
+        assert_eq!(Popup::Acknowledgements.repository(), None);
     }
 }

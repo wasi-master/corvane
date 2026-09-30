@@ -73,9 +73,10 @@ fn fetch_ref_checks_inner(
     owner: &str,
     name: &str,
     git_ref: &str,
+    all_check_runs: bool,
 ) -> (Option<Vec<RefCheck>>, bool) {
     let statuses = client.combined_ref_status(owner, name, git_ref);
-    let check_runs = client.ref_check_runs(owner, name, git_ref);
+    let check_runs = client.ref_check_runs(owner, name, git_ref, all_check_runs);
     let auth_failed = matches!(&statuses, Err(corvane_github::GitHubError::Auth(_)))
         || matches!(&check_runs, Err(corvane_github::GitHubError::Auth(_)));
     let statuses = statuses.ok().flatten();
@@ -103,8 +104,9 @@ pub(crate) fn fetch_ref_checks(
     owner: &str,
     name: &str,
     git_ref: &str,
+    all_check_runs: bool,
 ) -> Option<Vec<RefCheck>> {
-    fetch_ref_checks_inner(client, owner, name, git_ref).0
+    fetch_ref_checks_inner(client, owner, name, git_ref, all_check_runs).0
 }
 
 /// `apiStatusToRefCheck`
@@ -435,6 +437,7 @@ impl Dispatcher {
             parent: None,
             archived: false,
             permissions: None,
+            allow_forking: None,
         };
         let Some((endpoint, token, _)) = Self::api_for(&gh, cx) else {
             Self::state(cx).update(cx, |s, _| {
@@ -451,12 +454,17 @@ impl Dispatcher {
             .map(|c| c.checks.clone())
             .unwrap_or_default();
         let api_base = sub.api_base.clone();
+        let all_check_runs = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::ALL_CHECK_RUN_PAGES);
         spawn_bg(
             cx,
             move || {
                 let client = Client::new(endpoint, token);
                 let (owner, name, git_ref) = (&sub.owner, &sub.name, &sub.git_ref);
-                let (checks, auth_failed) = fetch_ref_checks_inner(&client, owner, name, git_ref);
+                let (checks, auth_failed) =
+                    fetch_ref_checks_inner(&client, owner, name, git_ref, all_check_runs);
                 let Some(mut checks) = checks else {
                     return (None, auth_failed, false);
                 };

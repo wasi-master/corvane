@@ -291,8 +291,10 @@ impl Dispatcher {
             RemoteFailure::PermissionDenied
                 if matches!(retry, RetryAction::Push { .. })
                     && github.as_ref().is_some_and(|gh| {
+                        let s = Self::state(cx).read(cx);
                         (gh.permissions.is_none() || !gh.has_write_permission())
-                            && Self::state(cx).read(cx).account_for(&gh.endpoint).is_some()
+                            && s.account_for(&gh.endpoint).is_some()
+                            && !Self::fork_offer_blocked(s, gh)
                     }) =>
             {
                 Self::show_create_fork_dialog(id, cx);
@@ -548,7 +550,9 @@ impl Dispatcher {
                 && s.repository(id)
                     .and_then(|r| r.github.as_ref())
                     .is_some_and(|gh| {
-                        !gh.has_write_permission() && s.account_for(&gh.endpoint).is_some()
+                        !gh.has_write_permission()
+                            && s.account_for(&gh.endpoint).is_some()
+                            && !Self::fork_offer_blocked(s, gh)
                     })
         };
         if read_only {
@@ -800,10 +804,15 @@ impl Dispatcher {
             cx.notify();
         });
         let endpoint = corvane_github::Endpoint::from_api_base(&account.endpoint);
+        let error_details = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::API_ERROR_DETAILS);
         spawn_bg(
             cx,
             move || {
-                let client = corvane_github::Client::new(endpoint, token);
+                let client =
+                    corvane_github::Client::new(endpoint, token).with_error_details(error_details);
                 let repo = client
                     .create_repository(org.as_deref(), &name, &description, private)
                     .map_err(|e| e.to_string())?;

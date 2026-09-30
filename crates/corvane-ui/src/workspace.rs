@@ -380,13 +380,18 @@ impl Workspace {
                 }
             }
             Section::Changes => {
-                let (repo_id, repo_path, editor_label) = {
+                let (repo_id, repo_path, editor_label, shell_label) = {
                     let s = self.state.read(cx);
                     let repo = s.selected_repository();
                     (
                         repo.map(|r| r.id),
                         repo.map(|r| r.path.clone()),
                         s.editor_label(),
+                        // flag `285-no-changes-open-in-shell` (Corvane
+                        // addition; GHD `NoChanges` has no shell action)
+                        s.flags
+                            .bool(corvane_core::flags::ids::NO_CHANGES_OPEN_IN_SHELL)
+                            .then(|| s.shell_label()),
                     )
                 };
                 let path = repo_path.clone().unwrap_or_default();
@@ -418,6 +423,21 @@ impl Workspace {
                         primary: false,
                     },
                 ];
+                if let Some(shell) = shell_label {
+                    actions.push(SuggestedAction {
+                        id: "suggested-shell",
+                        on_click: std::rc::Rc::new({
+                            let path = path.clone();
+                            move |_, cx| Dispatcher::open_in_shell(&path, cx)
+                        }),
+                        title: format!("Open the repository in {shell}").into(),
+                        description: Some("Select your shell in Settings".into()),
+                        hint: "Repository menu or".into(),
+                        keys: &["⌃", "`"],
+                        button_label: format!("Open in {shell}").into(),
+                        primary: false,
+                    });
+                }
                 if has_github && let Some(id) = repo_id {
                     actions.push(SuggestedAction {
                         id: "suggested-github",

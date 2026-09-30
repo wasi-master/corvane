@@ -13,9 +13,20 @@
 //! `insufficientGitHubRepoPermissions`). Repositories whose permissions are
 //! still unknown fall back to offering the fork after a push refused with
 //! "Permission denied".
+//!
+//! Deviation (flag `fork-remotes-keep-ssh`): when the repository's remote is
+//! SSH, the fork's origin and the `upstream` remote are set over SSH too
+//! (GHD always uses the API's HTTPS `clone_url`).
+//!
+//! Deviation (flag `fork-offer-respects-allow-forking`): a repository whose
+//! API record says `allow_forking: false` gets no fork suggestion, no
+//! `CreateFork` before a push and no fork offer after a refused push; the
+//! push runs (or fails) as usual.
 
 use corvane_github::Client;
-use corvane_models::{ForkContributionTarget, GitHubRepository, url_matches_remote};
+use corvane_models::{
+    ForkContributionTarget, GitHubRepository, clone_url_like_remote, url_matches_remote,
+};
 use gpui_kit::App;
 use tracing::{info, warn};
 
@@ -75,13 +86,24 @@ impl Dispatcher {
         );
     }
 
+    /// With `fork-offer-respects-allow-forking`, a repository whose owner
+    /// disabled forking is never offered a fork (GHD offers it and the fork
+    /// request fails).
+    pub fn fork_offer_blocked(s: &crate::state::AppState, gh: &GitHubRepository) -> bool {
+        gh.forking_disabled()
+            && s.flags
+                .bool(crate::flags::ids::FORK_OFFER_RESPECTS_ALLOW_FORKING)
+    }
+
     /// `_showCreateForkDialog`: only with an account for the repository.
     pub fn show_create_fork_dialog(id: u64, cx: &mut App) {
         let ok = {
             let s = Self::state(cx).read(cx);
             s.repository(id)
                 .and_then(|r| r.github.as_ref())
-                .is_some_and(|gh| s.account_for(&gh.endpoint).is_some())
+                .is_some_and(|gh| {
+                    s.account_for(&gh.endpoint).is_some() && !Self::fork_offer_blocked(s, gh)
+                })
         };
         if ok {
             Self::show_popup(Popup::CreateFork { repo: id }, cx);
@@ -116,6 +138,10 @@ impl Dispatcher {
             return;
         };
         let original = github.clone();
+        let keep_ssh = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::FORK_REMOTES_KEEP_SSH);
         spawn_bg(
             cx,
             move || -> Result<GitHubRepository, String> {
@@ -128,7 +154,12 @@ impl Dispatcher {
                 }
                 // `setRemoteURL(defaultRemote, fork.clone_url)` then
                 // `ensureUpstreamRemoteURL(originalUrl)`
-                corvane_git::set_remote_url(git.clone(), &workdir, &remote.name, &fork.clone_url)
+                let fork_url = if keep_ssh {
+                    clone_url_like_remote(&fork.clone_url, &remote.url)
+                } else {
+                    fork.clone_url.clone()
+                };
+                corvane_git::set_remote_url(git.clone(), &workdir, &remote.name, &fork_url)
                     .map_err(|err| err.to_string())?;
                 if let Err(err) = corvane_git::add_remote(
                     git.clone(),
@@ -214,7 +245,7 @@ impl Dispatcher {
                 return;
             }
             (
-                parent.clone_url.clone(),
+                Self::parent_remote_url(s, id, parent),
                 rs.info
                     .as_ref()
                     .map(|i| i.remotes.clone())
@@ -255,13 +286,14 @@ impl Dispatcher {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        let Some(parent_url) = Self::state(cx)
-            .read(cx)
-            .repository(id)
-            .and_then(|r| r.github.as_ref())
-            .and_then(|gh| gh.parent.as_ref())
-            .map(|p| p.clone_url.clone())
-        else {
+        let parent_url = {
+            let s = Self::state(cx).read(cx);
+            s.repository(id)
+                .and_then(|r| r.github.as_ref())
+                .and_then(|gh| gh.parent.as_ref())
+                .map(|p| Self::parent_remote_url(s, id, p))
+        };
+        let Some(parent_url) = parent_url else {
             return;
         };
         spawn_bg(
@@ -274,6 +306,22 @@ impl Dispatcher {
                 Self::refresh_repository(id, cx);
             },
         );
+    }
+
+    /// The URL the `upstream` remote gets for `parent`: its `clone_url`, or,
+    /// with `fork-remotes-keep-ssh`, the same repository over the current
+    /// remote's SSH host when that remote is SSH.
+    pub fn parent_remote_url(
+        s: &crate::state::AppState,
+        id: u64,
+        parent: &GitHubRepository,
+    ) -> String {
+        match Self::current_remote_in(s, id) {
+            Some(remote) if s.flags.bool(crate::flags::ids::FORK_REMOTES_KEEP_SSH) => {
+                clone_url_like_remote(&parent.clone_url, &remote.url)
+            }
+            _ => parent.clone_url.clone(),
+        }
     }
 
     /// `UpstreamAlreadyExists` › Ignore: never check this repository again.

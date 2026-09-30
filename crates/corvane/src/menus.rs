@@ -6,19 +6,71 @@
 use corvane_ui::actions::*;
 use gpui_kit::*;
 
-/// Build (or rebuild) the menu bar. `editor` / `shell` are the labels for
-/// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`);
-/// `show_release_notes` is the `401-release-notes-menu-item` flag and
-/// `show_import` the `206-import-from-github-desktop` one.
+/// What the menu bar depends on; a change rebuilds it.
+#[derive(Clone, PartialEq, Eq)]
+pub struct MenuOptions {
+    /// Labels for the dynamic "Open in …" items (GHD `editorLabel` /
+    /// `shellLabel`).
+    pub editor: String,
+    pub shell: String,
+    /// Flag `401-release-notes-menu-item`.
+    pub show_release_notes: bool,
+    /// Flag `206-import-from-github-desktop`.
+    pub show_import: bool,
+    /// Flag `396-view-upstream-on-github`.
+    pub show_view_upstream: bool,
+    /// Flag `486-window-menu-main-window`.
+    pub show_main_window: bool,
+}
+
+impl MenuOptions {
+    pub fn of(s: &corvane_core::AppState) -> Self {
+        use corvane_core::flags::ids;
+        Self {
+            editor: s.editor_label(),
+            shell: s.shell_label(),
+            show_release_notes: s.flags.bool(ids::RELEASE_NOTES_MENU_ITEM),
+            show_import: s.flags.bool(ids::IMPORT_FROM_GITHUB_DESKTOP),
+            show_view_upstream: s.flags.bool(ids::VIEW_UPSTREAM_ON_GITHUB),
+            show_main_window: s.flags.bool(ids::WINDOW_MENU_MAIN_WINDOW),
+        }
+    }
+}
+
+/// Build (or rebuild) the menu bar.
 /// Corvane additions: "Flags…" (no GHD equivalent), File › Import
-/// Repositories from GitHub Desktop… and Help › Show Release Notes.
-pub fn install(
-    cx: &mut App,
-    editor: &str,
-    shell: &str,
-    show_release_notes: bool,
-    show_import: bool,
-) {
+/// Repositories from GitHub Desktop…, Repository › View Upstream on GitHub,
+/// Window › Corvane (shows the window hidden with ⌘W) and Help › Show
+/// Release Notes.
+pub fn install(cx: &mut App, options: &MenuOptions) {
+    let (editor, shell) = (&options.editor, &options.shell);
+    let (show_release_notes, show_import) = (options.show_release_notes, options.show_import);
+    let mut repository = vec![
+        MenuItem::action("Push", Push),
+        MenuItem::action("Pull", Pull),
+        MenuItem::action("Fetch", Fetch),
+        MenuItem::action("Remove…", RemoveRepository),
+        MenuItem::separator(),
+        MenuItem::action("View on GitHub", ViewOnGitHub),
+    ];
+    if options.show_view_upstream {
+        repository.push(MenuItem::action(
+            "View Upstream on GitHub",
+            ViewUpstreamOnGitHub,
+        ));
+    }
+    repository.extend([
+        MenuItem::action(format!("Open in {shell}"), OpenInShell),
+        MenuItem::action("Show in Finder", ShowInFinder),
+        MenuItem::action(format!("Open in {editor}"), OpenInEditor),
+        MenuItem::action("Open With…", OpenWith),
+        MenuItem::separator(),
+        MenuItem::action("Create Issue on GitHub", CreateIssue),
+        MenuItem::separator(),
+        MenuItem::action("New Worktree…", NewWorktree),
+        MenuItem::separator(),
+        MenuItem::action("Repository Settings…", RepositorySettings),
+    ]);
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
@@ -80,24 +132,7 @@ pub fn install(
             MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
             MenuItem::action("Contract Active Resizable", ContractActiveResizable),
         ]),
-        Menu::new("Repository").items([
-            MenuItem::action("Push", Push),
-            MenuItem::action("Pull", Pull),
-            MenuItem::action("Fetch", Fetch),
-            MenuItem::action("Remove…", RemoveRepository),
-            MenuItem::separator(),
-            MenuItem::action("View on GitHub", ViewOnGitHub),
-            MenuItem::action(format!("Open in {shell}"), OpenInShell),
-            MenuItem::action("Show in Finder", ShowInFinder),
-            MenuItem::action(format!("Open in {editor}"), OpenInEditor),
-            MenuItem::action("Open With…", OpenWith),
-            MenuItem::separator(),
-            MenuItem::action("Create Issue on GitHub", CreateIssue),
-            MenuItem::separator(),
-            MenuItem::action("New Worktree…", NewWorktree),
-            MenuItem::separator(),
-            MenuItem::action("Repository Settings…", RepositorySettings),
-        ]),
+        Menu::new("Repository").items(repository),
         Menu::new("Branch").items([
             MenuItem::action("New Branch…", NewBranch),
             MenuItem::action("Rename…", RenameBranch),
@@ -121,15 +156,28 @@ pub fn install(
             MenuItem::action("Preview Pull Request", PreviewPullRequest),
             MenuItem::action("Create Pull Request", CreatePullRequest),
         ]),
-        Menu::new("Window").items([
-            MenuItem::action("Minimize", Minimize),
-            MenuItem::action("Zoom", Zoom),
-            MenuItem::action("Close Window", CloseWindow),
-            MenuItem::separator(),
-            MenuItem::action("Bring All to Front", BringAllToFront),
-        ]),
+        Menu::new("Window").items(window_items(options.show_main_window)),
         Menu::new("Help").items(help_items(show_release_notes)),
     ]);
+}
+
+/// Window menu; flag `486-window-menu-main-window` appends "Corvane", which
+/// shows the main window again after ⌘W or the red close button.
+fn window_items(show_main_window: bool) -> Vec<MenuItem> {
+    let mut items = vec![
+        MenuItem::action("Minimize", Minimize),
+        MenuItem::action("Zoom", Zoom),
+        MenuItem::action("Close Window", CloseWindow),
+        MenuItem::separator(),
+        MenuItem::action("Bring All to Front", BringAllToFront),
+    ];
+    if show_main_window {
+        items.extend([
+            MenuItem::separator(),
+            MenuItem::action("Corvane", ShowMainWindow),
+        ]);
+    }
+    items
 }
 
 /// Help menu; debug builds append GHD's test items (`buildTestMenu`, only

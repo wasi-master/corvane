@@ -2,6 +2,10 @@
 //! `worktree-list-item-context-menu.ts`, `styles/ui/_worktrees.scss`): filter,
 //! "New Worktree", the Main / Linked groups, and the context menus shared
 //! with the toolbar button (`ui/toolbar/worktree-dropdown.tsx`).
+//!
+//! Corvane addition (flag `288-worktree-paths`): rows have a tooltip with the
+//! name and full path, and the filter also matches the path, so worktrees
+//! with the same folder name can be told apart.
 
 use std::path::PathBuf;
 
@@ -15,6 +19,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::GhdTooltip;
 use crate::widgets::ListRowA11y;
 use crate::widgets::button;
 
@@ -182,6 +187,11 @@ impl WorktreeFoldout {
         // `.list-item:hover`: `--list-item-hover-background-color`, text unchanged
         let list_hover = t.list_item_hover_background;
         let path = worktree.path.clone();
+        let show_path = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::WORKTREE_PATHS);
         let for_menu = worktree.clone();
         let title: AnyElement = match (!query.is_empty())
             .then(|| name.to_lowercase().find(&query.to_lowercase()))
@@ -207,6 +217,9 @@ impl WorktreeFoldout {
         div()
             .id(SharedString::from(format!("worktree-{}", path.display())))
             .a11y_row(format!("{name}, {description}"), current)
+            .when(show_path, |d| {
+                d.ghd_tooltip(format!("{name}\n{}", path.display()))
+            })
             .h(WORKTREE_ROW_HEIGHT())
             .w_full()
             .flex()
@@ -278,11 +291,16 @@ impl Render for WorktreeFoldout {
                 .unwrap_or_default();
             (id, worktrees, current_worktree(s, id).map(|w| w.path))
         };
+        let match_path = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::WORKTREE_PATHS);
         let matches = |w: &WorktreeEntry| {
+            let query = query.to_lowercase();
             query.is_empty()
-                || w.display_name()
-                    .to_lowercase()
-                    .contains(&query.to_lowercase())
+                || w.display_name().to_lowercase().contains(&query)
+                || (match_path && w.path.to_string_lossy().to_lowercase().contains(&query))
         };
         let main: Vec<&WorktreeEntry> = worktrees
             .iter()
@@ -388,11 +406,34 @@ impl Render for WorktreeFoldout {
     }
 }
 
-/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir).
-pub fn default_worktree_dir(state: &AppState) -> PathBuf {
-    state
+/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir;
+/// flag `289-worktree-location` makes it a template).
+pub fn default_worktree_dir(state: &AppState, repo: u64) -> PathBuf {
+    let clone_dir = state
         .settings
         .clone_dir
         .clone()
-        .unwrap_or_else(corvane_platform::paths::default_clone_dir)
+        .unwrap_or_else(corvane_platform::paths::default_clone_dir);
+    let name = state
+        .repository(repo)
+        .map(|r| match &r.github {
+            Some(gh) => gh.name.clone(),
+            None => r
+                .main_worktree_path
+                .as_ref()
+                .unwrap_or(&r.path)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+        })
+        .unwrap_or_default();
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    corvane_core::worktrees::worktree_location(
+        state
+            .flags
+            .text(corvane_core::flags::ids::WORKTREE_LOCATION),
+        &clone_dir,
+        &name,
+        home.as_deref(),
+    )
 }

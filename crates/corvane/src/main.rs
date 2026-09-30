@@ -110,7 +110,11 @@ fn main() {
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
         corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
         info!(zoom, "window zoom factor");
-        corvane_ui::init(cx, resolve_theme_with(shown_theme, high_contrast, cx));
+        let theme_variants = corvane_ui::theme::ThemeVariants::of(&launch_flags);
+        corvane_ui::init(
+            cx,
+            resolve_theme_with(shown_theme, high_contrast, theme_variants, cx),
+        );
         let sidebar_width = corvane_ui::theme::sizes::zpx(settings.sidebar_width);
         let state = Dispatcher::init(store, settings, flag_overrides, flags_env, cx);
         Dispatcher::load_custom_emoji(cx);
@@ -125,16 +129,8 @@ fn main() {
         });
         Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
         {
-            let s = state.read(cx);
-            menus::install(
-                cx,
-                &s.editor_label(),
-                &s.shell_label(),
-                s.flags
-                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                s.flags
-                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-            );
+            let options = menus::MenuOptions::of(state.read(cx));
+            menus::install(cx, &options);
         }
         phase(started, "theme, keymap, menus and state installed");
 
@@ -146,57 +142,38 @@ fn main() {
         let mut chosen_theme = theme_setting;
         let mut last_welcome_done = welcome_done;
         // the menu bar and the theme also depend on flags (401, 101)
-        let mut last_menu_key = {
-            let s = state.read(cx);
-            (
-                s.editor_label(),
-                s.shell_label(),
-                s.flags
-                    .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                s.flags
-                    .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-            )
-        };
+        let mut last_menu_key = menus::MenuOptions::of(state.read(cx));
         let mut last_high_contrast = high_contrast;
+        let mut last_theme_variants = theme_variants;
         corvane_ui::format::sync(&state.read(cx).settings);
         cx.observe(&state, move |state, cx| {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, welcome_done, menu_key, high_contrast) = {
+            let (theme, welcome_done, menu_key, high_contrast, variants) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
                 (
                     s.settings.theme,
                     s.settings.welcome_completed,
-                    (
-                        s.editor_label(),
-                        s.shell_label(),
-                        s.flags
-                            .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
-                        s.flags
-                            .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
-                    ),
+                    menus::MenuOptions::of(s),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
+                    corvane_ui::theme::ThemeVariants::of(&s.flags),
                 )
             };
             if menu_key != last_menu_key {
                 last_menu_key = menu_key;
-                menus::install(
-                    cx,
-                    &last_menu_key.0,
-                    &last_menu_key.1,
-                    last_menu_key.2,
-                    last_menu_key.3,
-                );
+                menus::install(cx, &last_menu_key);
             }
             let theme_changed = theme != last_theme;
             if theme_changed {
                 last_theme = theme;
                 chosen_theme = theme;
             }
-            let high_contrast_changed = high_contrast != last_high_contrast;
+            let high_contrast_changed =
+                high_contrast != last_high_contrast || variants != last_theme_variants;
             last_high_contrast = high_contrast;
+            last_theme_variants = variants;
             if theme_changed || high_contrast_changed || welcome_done != last_welcome_done {
                 last_welcome_done = welcome_done;
                 apply_theme(
@@ -433,6 +410,11 @@ fn main() {
                 Dispatcher::view_on_github(id, cx);
             }
         });
+        cx.on_action(move |_: &ViewUpstreamOnGitHub, cx| {
+            if let Some((id, _)) = selected_path(cx) {
+                Dispatcher::view_upstream_on_github(id, cx);
+            }
+        });
         cx.on_action(move |_: &CreateIssue, cx| {
             if let Some((id, _)) = selected_path(cx) {
                 Dispatcher::create_issue(id, cx);
@@ -502,6 +484,7 @@ fn main() {
             cx.hide();
         });
         cx.on_action(|_: &BringAllToFront, cx| cx.activate(true));
+        cx.on_action(|_: &ShowMainWindow, cx| focus_main_window(cx));
 
         // Same size as the GitHub Desktop reference captures in docs/reference.
         let window_size = size(px(1367.), px(814.));
@@ -825,7 +808,28 @@ fn main() {
                     .ok();
             }
         });
-        cx.activate(true);
+        // `--hidden` (flag `487-launch-hidden`, Corvane addition): start with
+        // the window ordered out, as after ⌘W; the Dock icon shows it
+        let launch_hidden = hidden_argument(std::env::args())
+            && corvane_core::AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::LAUNCH_HIDDEN);
+        if launch_hidden {
+            info!("--hidden: the main window starts hidden");
+            #[cfg(target_os = "macos")]
+            for handle in cx.windows() {
+                handle
+                    .update(cx, |_, window, cx| {
+                        corvane_ui::native_window::hide_window(window, cx)
+                    })
+                    .ok();
+            }
+            #[cfg(not(target_os = "macos"))]
+            cx.hide();
+        } else {
+            cx.activate(true);
+        }
     });
 }
 
@@ -839,12 +843,16 @@ thread_local! {
 /// Accessibility › Display › "Increase contrast" and the
 /// `101-high-contrast-theme` flag (read from the app state).
 fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme {
-    let high_contrast = corvane_core::AppState::try_global(cx).is_none_or(|s| {
+    let state = corvane_core::AppState::try_global(cx);
+    let high_contrast = state.as_ref().is_none_or(|s| {
         s.read(cx)
             .flags
             .bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME)
     });
-    resolve_theme_with(setting, high_contrast, cx)
+    let variants = state
+        .map(|s| corvane_ui::theme::ThemeVariants::of(&s.read(cx).flags))
+        .unwrap_or_default();
+    resolve_theme_with(setting, high_contrast, variants, cx)
 }
 
 /// `resolve_theme` before the app state exists: with `high_contrast` off a
@@ -852,6 +860,7 @@ fn resolve_theme(setting: ThemeSetting, cx: &App) -> corvane_ui::theme::GhdTheme
 fn resolve_theme_with(
     setting: ThemeSetting,
     high_contrast: bool,
+    variants: corvane_ui::theme::ThemeVariants,
     cx: &App,
 ) -> corvane_ui::theme::GhdTheme {
     let system_dark = matches!(
@@ -863,6 +872,7 @@ fn resolve_theme_with(
         system_dark,
         high_contrast && corvane_platform::accessibility::increase_contrast(),
     )
+    .with_variants(variants)
 }
 
 /// GHD `focusWindow`: bring Corvane forward and show its window, even when
@@ -931,6 +941,7 @@ fn open_dev_popup(popup: &str, cx: &mut App) {
                 parent: None,
                 archived: false,
                 permissions: None,
+                allow_forking: None,
             };
             corvane_core::AppState::global(cx).update(cx, |s, _| {
                 if let Some(r) = s.repositories.iter_mut().find(|r| r.id == id) {
@@ -1129,9 +1140,21 @@ fn open_repo_argument(args: impl IntoIterator<Item = String>) -> Option<std::pat
     None
 }
 
+/// `--hidden`: launch without showing the main window.
+fn hidden_argument(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter().any(|arg| arg == "--hidden")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::open_repo_argument;
+    use super::{hidden_argument, open_repo_argument};
+
+    #[::core::prelude::v1::test]
+    fn hidden_argument_forms() {
+        let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(hidden_argument(args(&["corvane", "--hidden"])));
+        assert!(!hidden_argument(args(&["corvane", "--open-repo", "/tmp"])));
+    }
 
     // `gpui_kit::*` brings GPUI's `test` macro into scope; use the std one.
     #[::core::prelude::v1::test]

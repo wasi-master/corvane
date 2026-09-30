@@ -1,5 +1,10 @@
 //! External editor detection — GHD `lib/editors/darwin.ts` (the bundle
 //! identifier table is copied verbatim) and `lib/editors/launch.ts`.
+//!
+//! `launch_at_line` is Corvane's (flag `diff-open-in-editor-at-line`): VS Code
+//! and its forks, Sublime Text and Zed open a file at a line through the
+//! command line tool in their bundle; other editors just open the file.
+//! `EXTRA_EDITORS` (flag `extra-editors`) adds editors GHD does not list.
 
 use std::path::{Path, PathBuf};
 
@@ -96,6 +101,13 @@ const EDITORS: &[(&str, &[&str])] = &[
     ("Windsurf", &["com.exafunction.windsurf"]),
 ];
 
+/// Editors GHD 3.6.6 does not know, in the same shape; detected only with
+/// flag `extra-editors` and listed after GHD's.
+const EXTRA_EDITORS: &[(&str, &[&str])] = &[
+    // desktop/desktop#22922, bundle id from desktop/desktop#21417
+    ("Antigravity", &["com.google.antigravity"]),
+];
+
 /// GHD `suggestedExternalEditor`.
 pub const SUGGESTED_EDITOR_NAME: &str = "Visual Studio Code";
 pub const SUGGESTED_EDITOR_URL: &str = "https://code.visualstudio.com";
@@ -108,11 +120,14 @@ pub struct FoundEditor {
     pub path: PathBuf,
 }
 
-/// Every known editor installed on this machine, in table order. Costs one
-/// LaunchServices lookup per identifier; run it off the main thread.
-pub fn available_editors() -> Vec<FoundEditor> {
+/// Every known editor installed on this machine, in table order (then
+/// [`EXTRA_EDITORS`] when `extras`). Costs one LaunchServices lookup per
+/// identifier; run it off the main thread.
+pub fn available_editors(extras: bool) -> Vec<FoundEditor> {
+    let extra: &[(&str, &[&str])] = if extras { EXTRA_EDITORS } else { &[] };
     EDITORS
         .iter()
+        .chain(extra)
         .filter_map(|(name, ids)| {
             apps::first_installed(ids).map(|(bundle_id, path)| FoundEditor {
                 name: (*name).to_string(),
@@ -187,6 +202,74 @@ pub fn launch(editor: &FoundEditor, target: &Path) -> Result<(), EditorError> {
     })
 }
 
+/// How an editor's bundled command line tool opens a file at a line (not in
+/// GHD, which only opens files; desktop/desktop#14476).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum LineArgs {
+    /// `-g <file>:<line>` (VS Code and its forks)
+    Goto,
+    /// `<file>:<line>` (Sublime Text's `subl`, Zed's `cli`)
+    Suffix,
+}
+
+/// The command line tool inside an editor's bundle (relative candidates,
+/// first existing wins) and its line syntax, for the editors that ship one.
+fn line_tool(bundle_id: &str) -> Option<(&'static [&'static str], LineArgs)> {
+    Some(match bundle_id {
+        "com.microsoft.VSCode" => (&["Contents/Resources/app/bin/code"], LineArgs::Goto),
+        "com.microsoft.VSCodeInsiders" => (
+            &[
+                "Contents/Resources/app/bin/code-insiders",
+                "Contents/Resources/app/bin/code",
+            ],
+            LineArgs::Goto,
+        ),
+        "com.visualstudio.code.oss" | "com.vscodium" => {
+            (&["Contents/Resources/app/bin/codium"], LineArgs::Goto)
+        }
+        "com.todesktop.230313mzl4w4u92" => (&["Contents/Resources/app/bin/cursor"], LineArgs::Goto),
+        "com.exafunction.windsurf" => (&["Contents/Resources/app/bin/windsurf"], LineArgs::Goto),
+        "com.sublimetext.4" | "com.sublimetext.3" | "com.sublimetext.2" => {
+            (&["Contents/SharedSupport/bin/subl"], LineArgs::Suffix)
+        }
+        "dev.zed.Zed" | "dev.zed.Zed-Preview" => (&["Contents/MacOS/cli"], LineArgs::Suffix),
+        _ => return None,
+    })
+}
+
+/// The program and arguments that open `target` at `line` (1-based) in
+/// `editor`, when its bundle has a command line tool that can.
+fn line_command(editor: &FoundEditor, target: &Path, line: u32) -> Option<(PathBuf, Vec<String>)> {
+    let (candidates, syntax) = line_tool(&editor.bundle_id)?;
+    let program = candidates
+        .iter()
+        .map(|rel| editor.path.join(rel))
+        .find(|p| p.is_file())?;
+    let at = format!("{}:{line}", target.display());
+    let args = match syntax {
+        LineArgs::Goto => vec!["-g".to_string(), at],
+        LineArgs::Suffix => vec![at],
+    };
+    Some((program, args))
+}
+
+/// Whether `editor` can open a file at a line (see [`launch_at_line`]).
+pub fn supports_line(editor: &FoundEditor) -> bool {
+    line_tool(&editor.bundle_id).is_some()
+}
+
+/// Open `target` at `line` through the editor's command line tool; editors
+/// without one (or a missing tool) open the file as [`launch`] does.
+pub fn launch_at_line(editor: &FoundEditor, target: &Path, line: u32) -> Result<(), EditorError> {
+    match line_command(editor, target, line) {
+        Some((program, args)) => {
+            let args: Vec<&str> = args.iter().map(String::as_str).collect();
+            apps::spawn_detached(&program, &args).or_else(|_| launch(editor, target))
+        }
+        None => launch(editor, target),
+    }
+}
+
 /// GHD `openInExternalEditor` when nothing is installed.
 pub fn no_editor_error() -> EditorError {
     EditorError {
@@ -237,8 +320,44 @@ mod tests {
     }
 
     #[test]
+    fn line_commands_per_editor() {
+        let dir = std::env::temp_dir().join(format!("corvane-editors-{}", std::process::id()));
+        let app = dir.join("Code.app");
+        let bin = app.join("Contents/Resources/app/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("code"), "").unwrap();
+        let code = FoundEditor {
+            name: "Visual Studio Code".into(),
+            bundle_id: "com.microsoft.VSCode".into(),
+            path: app.clone(),
+        };
+        let (program, args) = line_command(&code, Path::new("/r/src/a.rs"), 12).unwrap();
+        assert_eq!(program, bin.join("code"));
+        assert_eq!(args, ["-g", "/r/src/a.rs:12"]);
+        // the bundle lacks the tool: no line command
+        let zed = FoundEditor {
+            name: "Zed".into(),
+            bundle_id: "dev.zed.Zed".into(),
+            path: app,
+        };
+        assert!(supports_line(&zed));
+        assert!(line_command(&zed, Path::new("/r/a"), 1).is_none());
+        let bbedit = FoundEditor {
+            name: "BBEdit".into(),
+            bundle_id: "com.barebones.bbedit".into(),
+            path: "/Applications/BBEdit.app".into(),
+        };
+        assert!(!supports_line(&bbedit));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn table_has_no_duplicate_names() {
-        let mut names: Vec<&str> = EDITORS.iter().map(|(n, _)| *n).collect();
+        let mut names: Vec<&str> = EDITORS
+            .iter()
+            .chain(EXTRA_EDITORS)
+            .map(|(n, _)| *n)
+            .collect();
         let before = names.len();
         names.sort_unstable();
         names.dedup();

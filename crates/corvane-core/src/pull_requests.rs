@@ -8,6 +8,10 @@
 //! Deviation: GHD keeps the pull requests in IndexedDB keyed by the GitHub
 //! repository's database id; Corvane keys the redb entry by endpoint +
 //! `owner/name` and embeds the head/base repositories in each record.
+//!
+//! Deviation (flag `pull-requests-from-deleted-forks`): open pull requests
+//! whose head repository was deleted stay in the list (GHD drops them) and
+//! check out from the base repository's `refs/pull/<n>/head` into `pr/<n>`.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -15,7 +19,8 @@ use std::time::{Duration, Instant};
 
 use corvane_github::{ApiPullRequest, Client, GitHubError};
 use corvane_models::{
-    Branch, BranchKind, GitHubRepository, PullRequest, PullRequestRef, Remote, url_matches_remote,
+    Branch, BranchKind, GitHubRepository, PullRequest, PullRequestRef, Remote,
+    clone_url_like_remote, url_matches_remote,
 };
 use gpui_kit::{App, AsyncApp};
 use serde::{Deserialize, Serialize};
@@ -287,6 +292,9 @@ impl Dispatcher {
             move |result, cx| {
                 let auth_failed = Self::state(cx).update(cx, |s, cx| {
                     let store = s.store.clone();
+                    let keep_headless = s
+                        .flags
+                        .bool(crate::flags::ids::PULL_REQUESTS_FROM_DELETED_FORKS);
                     let cache = s.pull_requests.entry(key.clone()).or_default();
                     cache.loading = false;
                     let mut auth_failed = false;
@@ -301,7 +309,7 @@ impl Dispatcher {
                                     newest = Some(pr.updated_at.clone());
                                 }
                                 cache.pull_requests.retain(|p| p.number != pr.number);
-                                if open && pr.head.repository.is_some() {
+                                if open && (keep_headless || pr.head.repository.is_some()) {
                                     cache.pull_requests.push(pr);
                                 }
                             }
@@ -511,28 +519,43 @@ impl Dispatcher {
             return;
         };
         let Some(head_repo) = pr.head.repository.clone() else {
-            on_found(
-                Err("The pull request's head repository no longer exists.".to_string()),
-                cx,
-            );
+            let headless = Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::PULL_REQUESTS_FROM_DELETED_FORKS);
+            if headless {
+                Self::find_headless_pull_request_branch(id, pr, cx, on_found);
+            } else {
+                on_found(
+                    Err("The pull request's head repository no longer exists.".to_string()),
+                    cx,
+                );
+            }
             return;
         };
-        let (remotes, branches, default_remote, has_parent) = {
+        let (remotes, branches, default_remote, has_parent, ssh_like) = {
             let s = Self::state(cx).read(cx);
             let info = s.repo_states.get(&id).and_then(|rs| rs.info.as_ref());
+            let current = Self::current_remote_in(s, id);
             (
                 info.map(|i| i.remotes.clone()).unwrap_or_default(),
                 info.map(|i| i.branches.clone()).unwrap_or_default(),
-                Self::current_remote_in(s, id).map(|r| r.name),
+                current.as_ref().map(|r| r.name.clone()),
                 s.repository(id)
                     .and_then(|r| r.github.as_ref())
                     .is_some_and(|gh| gh.parent.is_some()),
+                current
+                    .filter(|_| s.flags.bool(crate::flags::ids::FORK_REMOTES_KEEP_SSH))
+                    .map(|r| r.url),
             )
         };
         let askpass = Self::askpass_env(cx);
         let number = pr.number;
         let head_ref = pr.head.ref_name.clone();
-        let head_url = head_repo.clone_url.clone();
+        let head_url = match &ssh_like {
+            Some(like) => clone_url_like_remote(&head_repo.clone_url, like),
+            None => head_repo.clone_url.clone(),
+        };
         let head_owner = head_repo.owner.clone();
         spawn_bg(
             cx,
@@ -630,6 +653,90 @@ impl Dispatcher {
         );
     }
 
+    /// `pull-requests-from-deleted-forks`: a pull request whose head
+    /// repository was deleted is checked out from the base repository's
+    /// `refs/pull/<n>/head` into `pr/<n>` (an existing `pr/<n>` is reused).
+    fn find_headless_pull_request_branch(
+        id: u64,
+        pr: PullRequest,
+        cx: &mut App,
+        on_found: impl FnOnce(Result<Branch, String>, &mut App) + 'static,
+    ) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let (remote, branches) = {
+            let s = Self::state(cx).read(cx);
+            let info = s.repo_states.get(&id).and_then(|rs| rs.info.as_ref());
+            let base_url = pr.base.repository.as_ref().map(|r| r.clone_url.as_str());
+            let remote = info
+                .and_then(|i| {
+                    i.remotes
+                        .iter()
+                        .find(|r| base_url.is_some_and(|u| url_matches_remote(u, &r.url)))
+                        .cloned()
+                })
+                .or_else(|| Self::current_remote_in(s, id));
+            (remote, info.map(|i| i.branches.clone()).unwrap_or_default())
+        };
+        let Some(remote) = remote else {
+            on_found(Err("The repository has no remote.".to_string()), cx);
+            return;
+        };
+        let askpass = Self::askpass_env(cx);
+        let name = format!("pr/{}", pr.number);
+        let number = pr.number;
+        let find_local = move |branches: &[Branch], name: &str| {
+            branches
+                .iter()
+                .find(|b| b.kind == BranchKind::Local && b.name == name)
+                .cloned()
+        };
+        spawn_bg(
+            cx,
+            move || -> Result<Branch, String> {
+                if let Some(local) = find_local(&branches, &name) {
+                    return Ok(local);
+                }
+                corvane_git::fetch_refspec(
+                    git,
+                    &workdir,
+                    &remote.name,
+                    &format!("refs/pull/{number}/head:refs/heads/{name}"),
+                    askpass.as_ref(),
+                )
+                .map_err(|err| err.to_string())?;
+                corvane_git::open_repository(&workdir)
+                    .ok()
+                    .and_then(|info| find_local(&info.branches, &name))
+                    .ok_or_else(|| {
+                        format!(
+                            "Couldn't fetch pull request #{number} from '{}'. Its head \
+                             repository was deleted.",
+                            remote.name
+                        )
+                    })
+            },
+            move |result, cx| match result {
+                Ok(branch) => {
+                    Self::state(cx).update(cx, |s, cx| {
+                        if let Some(info) = s.repo_state_mut(id).info.as_mut()
+                            && !info
+                                .branches
+                                .iter()
+                                .any(|b| b.name == branch.name && b.kind == branch.kind)
+                        {
+                            info.branches.push(branch.clone());
+                            cx.notify();
+                        }
+                    });
+                    on_found(Ok(branch), cx);
+                }
+                Err(message) => on_found(Err(message), cx),
+            },
+        );
+    }
+
     /// `pruneForkedRemotes`: drop Desktop-added fork remotes nothing uses.
     fn prune_forked_remotes(id: u64, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
@@ -688,6 +795,7 @@ mod tests {
             parent: None,
             archived: false,
             permissions: None,
+            allow_forking: None,
         }
     }
 

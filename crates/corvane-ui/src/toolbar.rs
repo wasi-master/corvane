@@ -50,6 +50,9 @@ pub struct ToolbarButtonModel {
     pub resize: Option<(ResizeTarget, ConstrainedWidth)>,
     /// GHD `ToolbarButton` `tooltip`, shown south of the button.
     pub tooltip: Option<SharedString>,
+    /// The tooltip keeps its maximum width while its text changes (flag
+    /// `187-steady-progress-tooltip`).
+    pub tooltip_fixed_width: bool,
 }
 
 /// Which toolbar button a resize handle belongs to.
@@ -168,6 +171,7 @@ pub fn toolbar_models(
             pr_badge: None,
             resize: Some((ResizeTarget::Worktree, widths.worktree)),
             tooltip: worktree_tooltip,
+            tooltip_fixed_width: false,
         }
     });
 
@@ -201,6 +205,7 @@ pub fn toolbar_models(
         tooltip: repo
             .filter(|_| state.foldout != Some(Foldout::Repository))
             .map(|r| r.path.to_string_lossy().into_owned().into()),
+        tooltip_fixed_width: false,
     };
 
     // `currentPullRequest`: the icon becomes the PR icon and the badge shows
@@ -268,6 +273,7 @@ pub fn toolbar_models(
         pr_badge,
         resize: Some((ResizeTarget::Branch, widths.branch)),
         tooltip: branch_tooltip,
+        tooltip_fixed_width: false,
     };
 
     // Push/Pull (`PushPullButton.renderButton`)
@@ -310,6 +316,7 @@ pub fn toolbar_models(
         pr_badge: None,
         resize: None,
         tooltip: None,
+        tooltip_fixed_width: false,
     };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
@@ -327,6 +334,9 @@ pub fn toolbar_models(
             title: p.title.clone().into(),
             // `tooltip={progress.description}`
             tooltip: p.description.clone().map(Into::into),
+            tooltip_fixed_width: state
+                .flags
+                .bool(corvane_core::flags::ids::STEADY_PROGRESS_TOOLTIP),
             disabled: true,
             progress: Some(p.value),
             spin: true,
@@ -648,6 +658,11 @@ pub fn toolbar_button(
             }))
         });
     let button = match model.tooltip {
+        Some(tip) if model.tooltip_fixed_width => crate::widgets::with_fixed_width_tooltip(
+            button,
+            tip,
+            crate::widgets::TooltipDirection::South,
+        ),
         Some(tip) => crate::widgets::with_directed_tooltip(
             button,
             tip,
@@ -733,6 +748,63 @@ pub fn toolbar_button(
         .into_any_element()
 }
 
+/// Flag `488-toolbar-open-buttons` (Corvane addition, desktop/desktop#21171):
+/// icon buttons after Push / Pull that open the repository in the external
+/// editor and the shell, like Repository › Open in … (GHD has no such
+/// toolbar buttons).
+fn open_in_buttons(cx: &App) -> Vec<AnyElement> {
+    let s = corvane_core::AppState::global(cx).read(cx);
+    if !s.flags.bool(corvane_core::flags::ids::TOOLBAR_OPEN_BUTTONS) {
+        return Vec::new();
+    }
+    let Some(path) = s.selected_repository().map(|r| r.path.clone()) else {
+        return Vec::new();
+    };
+    let (editor, shell) = (s.editor_label(), s.shell_label());
+    let t = cx.ghd();
+    let (hover_bg, hover_text) = (
+        t.toolbar_button_hover_background,
+        t.toolbar_button_hover_text,
+    );
+    let button = |id: &'static str, icon: Octicon, label: String| {
+        crate::widgets::with_directed_tooltip(
+            div()
+                .id(id)
+                .h(TOOLBAR_BUTTON_HEIGHT())
+                .w(TOOLBAR_BUTTON_HEIGHT())
+                .flex_none()
+                .flex()
+                .items_center()
+                .justify_center()
+                .border_r_1()
+                .border_color(t.toolbar_button_border)
+                .text_color(t.toolbar_text)
+                .cursor_pointer()
+                .hover(move |s| s.bg(hover_bg).text_color(hover_text))
+                .child(octicon(icon, t.toolbar_text)),
+            label,
+            crate::widgets::TooltipDirection::South,
+        )
+    };
+    let editor_path = path.clone();
+    vec![
+        button(
+            "toolbar-open-in-editor",
+            Octicon::FileCode,
+            format!("Open in {editor}"),
+        )
+        .on_click(move |_, _, cx| Dispatcher::open_in_editor(editor_path.clone(), cx))
+        .into_any_element(),
+        button(
+            "toolbar-open-in-shell",
+            Octicon::Terminal,
+            format!("Open in {shell}"),
+        )
+        .on_click(move |_, _, cx| Dispatcher::open_in_shell(&path, cx))
+        .into_any_element(),
+    ]
+}
+
 /// The toolbar row: 50 px tall including its 1 px bottom border.
 pub fn toolbar(
     buttons: Vec<ToolbarButtonModel>,
@@ -755,6 +827,7 @@ pub fn toolbar(
         .border_color(t.toolbar_border)
         .text_color(t.toolbar_text)
         .children(buttons.into_iter().map(|b| toolbar_button(b, resize, cx)))
+        .children(open_in_buttons(cx))
         .when(dragging, |d| {
             // `handleDragMove` / `handleDragStop` on the document
             d.child(

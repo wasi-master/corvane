@@ -4,7 +4,7 @@
 
 use std::fmt::Write;
 
-use super::{Category, Kind, Preset, REGISTRY, Value};
+use super::{Category, Kind, Nature, Preset, REGISTRY, Value};
 
 /// Deviations that stay fixed (engine or platform level); listed at the end
 /// of the generated page.
@@ -62,6 +62,13 @@ pub fn render_markdown() -> String {
          `201-commit-templates`. \"on\" always means Corvane's deviation is active. Open the \
          dialog with **Corvane › Flags…** (⌘⇧,), `x-corvane://flags?q=<search>` or \
          `CORVANE_POPUP=flags[:<search>]`."
+    );
+    let _ = writeln!(out);
+    let _ = writeln!(
+        out,
+        "Flags tagged **Bug fix** fix behaviour GitHub Desktop plainly gets wrong; the dialog hides \
+         them unless **Show bug fixes** is ticked (display only: presets and `CORVANE_FLAGS` still \
+         apply). The rest are features: new capabilities, options or looks."
     );
     let _ = writeln!(out);
     let _ = writeln!(out, "## Presets");
@@ -138,8 +145,12 @@ pub fn render_markdown() -> String {
             };
             let _ = writeln!(
                 out,
-                "| **`{}`** {}<br>{}<br>*GitHub Desktop: {}* | {} | {} | {} | {} | {} | {} | {} | {} |",
+                "| **`{}`**{} {}<br>{}<br>*GitHub Desktop: {}* | {} | {} | {} | {} | {} | {} | {} | {} |",
                 def.ident(),
+                match def.nature {
+                    Nature::BugFix => " · **Bug fix**",
+                    Nature::Feature => "",
+                },
                 escape(def.title),
                 escape(def.summary),
                 escape(def.ghd_behaviour),

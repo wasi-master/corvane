@@ -100,9 +100,18 @@ impl Dispatcher {
     /// Probe LaunchServices for every known editor and shell (background),
     /// then remember them for the menus and Settings › Integrations.
     pub fn detect_integrations(cx: &mut App) {
+        let extras = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::EXTRA_EDITORS);
         spawn_bg(
             cx,
-            || (editors::available_editors(), shells::available_shells()),
+            move || {
+                (
+                    editors::available_editors(extras),
+                    shells::available_shells(),
+                )
+            },
             |(editors, shells), cx| {
                 info!(
                     editors = editors.len(),
@@ -120,6 +129,13 @@ impl Dispatcher {
 
     /// Repository › Open in <Editor> (`_openInExternalEditor`).
     pub fn open_in_editor(path: PathBuf, cx: &mut App) {
+        Self::open_in_editor_at(path, None, cx);
+    }
+
+    /// `open_in_editor` at a 1-based line where the editor supports it
+    /// (the diff's "Open in <Editor> at Line N", flag
+    /// `diff-open-in-editor-at-line`); a custom editor opens the file.
+    pub fn open_in_editor_at(path: PathBuf, line: Option<u32>, cx: &mut App) {
         let (editors, selected, custom) = {
             let s = Self::state(cx).read(cx);
             (
@@ -172,7 +188,10 @@ impl Dispatcher {
         };
         spawn_bg(
             cx,
-            move || editors::launch(&editor, &path),
+            move || match line {
+                Some(line) => editors::launch_at_line(&editor, &path, line),
+                None => editors::launch(&editor, &path),
+            },
             |result, cx| {
                 if let Err(err) = result {
                     Self::show_editor_error(err, cx);
@@ -324,6 +343,16 @@ impl Dispatcher {
     pub fn view_on_github(id: u64, cx: &mut App) {
         if let Some((gh, _)) = Self::github_and_branch(id, cx) {
             Self::open_url(&gh.html_url, cx);
+        }
+    }
+
+    /// Repository › View Upstream on GitHub (Corvane addition, flag
+    /// `396-view-upstream-on-github`): the parent of a fork. Nothing happens
+    /// for a repository that is not a fork.
+    pub fn view_upstream_on_github(id: u64, cx: &mut App) {
+        let url = Self::github_and_branch(id, cx).and_then(|(gh, _)| gh.parent.map(|p| p.html_url));
+        if let Some(url) = url {
+            Self::open_url(&url, cx);
         }
     }
 
@@ -808,6 +837,7 @@ mod tests {
             parent: None,
             archived: false,
             permissions: None,
+            allow_forking: None,
         };
         if parent {
             GitHubRepository {

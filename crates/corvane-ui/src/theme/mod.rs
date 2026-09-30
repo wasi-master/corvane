@@ -242,6 +242,9 @@ pub fn set_mono_font(family: &'static str) {
 pub struct GhdTheme {
     pub name: &'static str,
     pub appearance: Appearance,
+    /// The title bar is drawn light (flag `189-light-toolbar`); GHD's is
+    /// always the dark gradient.
+    pub light_title_bar: bool,
 
     // Text + surfaces
     pub text: Hsla,
@@ -474,7 +477,104 @@ pub struct GhdTheme {
 
 impl Global for GhdTheme {}
 
+/// Flag-driven changes to a palette, applied by [`GhdTheme::with_variants`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ThemeVariants {
+    /// Flag `188-colour-blind-diff`: blue additions, orange deletions.
+    pub colour_blind_diff: bool,
+    /// Flag `189-light-toolbar`: the Light theme's title bar and toolbar
+    /// are light too.
+    pub light_toolbar: bool,
+}
+
+impl ThemeVariants {
+    pub fn of(flags: &corvane_core::Flags) -> Self {
+        Self {
+            colour_blind_diff: flags.bool(corvane_core::flags::ids::COLOUR_BLIND_DIFF),
+            light_toolbar: flags.bool(corvane_core::flags::ids::LIGHT_TOOLBAR),
+        }
+    }
+}
+
 impl GhdTheme {
+    /// The palette with the flagged variants applied. High Contrast keeps
+    /// its own diff colours.
+    pub fn with_variants(mut self, variants: ThemeVariants) -> Self {
+        if variants.colour_blind_diff && self.name != "High Contrast" {
+            self.colour_blind_diff();
+        }
+        if variants.light_toolbar && !self.is_dark() {
+            self.light_toolbar();
+        }
+        self
+    }
+
+    /// Corvane addition (desktop/desktop#22123, #22470): Primer light greys
+    /// for the title bar and toolbar instead of GHD's dark chrome
+    /// (`app/styles/themes/_light.scss` `--toolbar-*`).
+    fn light_toolbar(&mut self) {
+        self.light_title_bar = true;
+        self.toolbar_background = c(0xf6f8fa);
+        self.toolbar_border = c(0xd0d7de);
+        self.toolbar_text = c(0x24292e);
+        self.toolbar_text_secondary = c(0x586069);
+        self.toolbar_button_border = c(0xd0d7de);
+        self.toolbar_button_hover_background = c(0xeaeef2);
+        self.toolbar_button_hover_text = c(0x24292e);
+        self.toolbar_button_active_background = c(0xffffff);
+        self.toolbar_button_active_text = c(0x24292e);
+        self.toolbar_button_progress = c(0xdde3ea);
+        self.toolbar_badge_background = c(0xd1d5da);
+        self.toolbar_badge_active_background = c(0xe1e4e8);
+    }
+
+    /// Corvane addition (desktop/desktop#6795): additions in blue and
+    /// deletions in orange, after Primer's protanopia / deuteranopia themes,
+    /// so the two differ in hue and lightness for red-green colour blindness.
+    fn colour_blind_diff(&mut self) {
+        // (background, gutter background, border / gutter, inner, hover
+        // background, hover border / gutter, text)
+        let (add, delete) = if self.is_dark() {
+            (
+                (
+                    0x0f2b47, 0x0b2139, 0x1f4b7a, 0x1f6feb, 0x0c2d6b, 0x1158c7, 0xe1e4e8,
+                ),
+                (
+                    0x3a2211, 0x2e1b0c, 0x5c3316, 0xbd561d, 0x762d0a, 0x9b4215, 0xe1e4e8,
+                ),
+            )
+        } else {
+            (
+                (
+                    0xddf4ff, 0xb6e3ff, 0x9cd7ff, 0x9fd4ff, 0xb6e3ff, 0x80ccff, 0x24292e,
+                ),
+                (
+                    0xfff1e5, 0xffd8b5, 0xffc799, 0xffc796, 0xffd8b5, 0xffb77c, 0x24292e,
+                ),
+            )
+        };
+        self.diff_add_background = c(add.0);
+        self.diff_add_gutter_background = c(add.1);
+        self.diff_add_border = c(add.2);
+        self.diff_add_gutter = c(add.2);
+        self.diff_add_inner_background = c(add.3);
+        self.diff_add_hover_background = c(add.4);
+        self.diff_add_hover_border = c(add.5);
+        self.diff_add_hover_gutter = c(add.5);
+        self.diff_add_text = c(add.6);
+        self.diff_add_hover_text = c(add.6);
+        self.diff_delete_background = c(delete.0);
+        self.diff_delete_gutter_background = c(delete.1);
+        self.diff_delete_border = c(delete.2);
+        self.diff_delete_gutter = c(delete.2);
+        self.diff_delete_inner_background = c(delete.3);
+        self.diff_delete_hover_background = c(delete.4);
+        self.diff_delete_hover_border = c(delete.5);
+        self.diff_delete_hover_gutter = c(delete.5);
+        self.diff_delete_text = c(delete.6);
+        self.diff_delete_hover_text = c(delete.6);
+    }
+
     pub fn light() -> Self {
         ghd_light::theme()
     }

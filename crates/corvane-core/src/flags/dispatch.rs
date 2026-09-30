@@ -166,6 +166,9 @@ impl Dispatcher {
             Self::restart_watcher(cx);
         }
         Self::sync_crash_reports_setting(cx);
+        if now.bool(ids::EXTRA_EDITORS) != previous.bool(ids::EXTRA_EDITORS) {
+            Self::detect_integrations(cx);
+        }
         if now.bool(ids::TREE_SITTER_HIGHLIGHTING) && !previous.bool(ids::TREE_SITTER_HIGHLIGHTING)
         {
             Self::load_tree_sitter_packs(cx);

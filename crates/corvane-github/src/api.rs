@@ -17,6 +17,8 @@ pub struct Client {
     agent: ureq::Agent,
     endpoint: Endpoint,
     token: String,
+    /// Append the body's `errors[].message` to an error's message.
+    error_details: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -65,6 +67,9 @@ pub struct ApiRepository {
     /// Only on `GET /repos/{owner}/{name}` with a token (`IAPIRepositoryPermissions`).
     #[serde(default)]
     pub permissions: Option<ApiRepositoryPermissions>,
+    /// `false` when the owner disabled forking.
+    #[serde(default)]
+    pub allow_forking: Option<bool>,
 }
 
 /// `IAPIRepositoryPermissions`
@@ -520,6 +525,45 @@ pub fn encode_path_component(s: &str) -> String {
 #[derive(Debug, Deserialize)]
 struct ApiError {
     message: Option<String>,
+    #[serde(default)]
+    errors: Vec<ApiErrorItem>,
+}
+
+/// One of an error body's `errors` (validation failures).
+#[derive(Debug, Deserialize)]
+struct ApiErrorItem {
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    field: Option<String>,
+    #[serde(default)]
+    code: Option<String>,
+}
+
+impl ApiError {
+    /// The top-level `message`; with `details`, followed by the
+    /// `errors[].message`s (or `field code`) in parentheses, e.g.
+    /// "Repository creation failed. (description is too long (maximum is
+    /// 350 characters))" (desktop/desktop#19465).
+    fn into_message(self, details: bool) -> Option<String> {
+        let items: Vec<String> = if details {
+            self.errors
+                .into_iter()
+                .filter_map(|e| match (e.message, e.field, e.code) {
+                    (Some(message), _, _) if !message.is_empty() => Some(message),
+                    (_, Some(field), Some(code)) => Some(format!("{field} {code}")),
+                    _ => None,
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        match (self.message, items.is_empty()) {
+            (message, true) => message,
+            (Some(message), false) => Some(format!("{message} ({})", items.join(", "))),
+            (None, false) => Some(items.join(", ")),
+        }
+    }
 }
 
 impl Client {
@@ -534,7 +578,15 @@ impl Client {
             agent,
             endpoint,
             token: token.into(),
+            error_details: false,
         }
+    }
+
+    /// Error messages include the body's validation `errors` (flag
+    /// `api-error-details`; GHD shows the top-level message only).
+    pub fn with_error_details(mut self, on: bool) -> Self {
+        self.error_details = on;
+        self
     }
 
     pub fn endpoint(&self) -> &Endpoint {
@@ -572,7 +624,7 @@ impl Client {
                 .body_mut()
                 .read_json::<ApiError>()
                 .ok()
-                .and_then(|e| e.message)
+                .and_then(|e| e.into_message(self.error_details))
                 .unwrap_or_else(|| "request failed".into());
             return Err(GitHubError::Api { status, message });
         }
@@ -668,7 +720,7 @@ impl Client {
                 .body_mut()
                 .read_json::<ApiError>()
                 .ok()
-                .and_then(|e| e.message)
+                .and_then(|e| e.into_message(self.error_details))
                 .unwrap_or_else(|| "request failed".into());
             return Err(GitHubError::Api { status, message });
         }
@@ -991,17 +1043,38 @@ impl Client {
     }
 
     /// `fetchRefCheckRuns`: `GET /repos/{o}/{n}/commits/{ref}/check-runs`.
+    /// GHD reads the first 100 only; `all_pages` follows `page=` until
+    /// `total_count` runs are read (at most 1,000, desktop/desktop#18101).
     pub fn ref_check_runs(
         &self,
         owner: &str,
         name: &str,
         git_ref: &str,
+        all_pages: bool,
     ) -> Result<Option<ApiRefCheckRuns>> {
         let safe = encode_path_component(git_ref);
-        self.get_json_opt(
-            &format!("repos/{owner}/{name}/commits/{safe}/check-runs?per_page=100"),
-            "application/vnd.github.antiope-preview+json",
-        )
+        let mut out: Option<ApiRefCheckRuns> = None;
+        for page in 1..=10u32 {
+            let mut path = format!("repos/{owner}/{name}/commits/{safe}/check-runs?per_page=100");
+            if page > 1 {
+                path.push_str(&format!("&page={page}"));
+            }
+            let batch: Option<ApiRefCheckRuns> =
+                self.get_json_opt(&path, "application/vnd.github.antiope-preview+json")?;
+            let Some(batch) = batch else {
+                break;
+            };
+            let short = batch.check_runs.len() < 100;
+            let runs = out.get_or_insert_with(|| ApiRefCheckRuns {
+                total_count: batch.total_count,
+                check_runs: Vec::new(),
+            });
+            runs.check_runs.extend(batch.check_runs);
+            if !all_pages || short || runs.check_runs.len() as u64 >= runs.total_count {
+                break;
+            }
+        }
+        Ok(out)
     }
 
     /// `fetchPRActionWorkflowRunByCheckSuiteId`
@@ -1165,6 +1238,7 @@ impl Client {
             parent: repo.parent.map(|p| Box::new(self.convert(*p))),
             archived: repo.archived,
             permissions: repo.permissions.and_then(|p| p.permission()),
+            allow_forking: repo.allow_forking,
         }
     }
 }
@@ -1172,6 +1246,25 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn error_details_follow_the_message() {
+        let body = r#"{"message":"Repository creation failed.","errors":[{"resource":"Repository","code":"custom","field":"description","message":"description is too long (maximum is 350 characters)"},{"resource":"Repository","code":"invalid","field":"name"}]}"#;
+        let parse = || serde_json::from_str::<ApiError>(body).unwrap();
+        assert_eq!(
+            parse().into_message(false).as_deref(),
+            Some("Repository creation failed.")
+        );
+        assert_eq!(
+            parse().into_message(true).as_deref(),
+            Some(
+                "Repository creation failed. (description is too long (maximum is 350 \
+                 characters), name invalid)"
+            )
+        );
+        let bare: ApiError = serde_json::from_str(r#"{"message":"Not Found"}"#).unwrap();
+        assert_eq!(bare.into_message(true).as_deref(), Some("Not Found"));
+    }
 
     #[test]
     fn pull_request_review_deserializes() {

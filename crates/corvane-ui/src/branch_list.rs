@@ -28,7 +28,7 @@ use crate::widgets::IconButtonA11y;
 use crate::icons::{Octicon, octicon, spin};
 use crate::pull_request_list::{
     QUICK_VIEW_MAX_HEIGHT, matches_filter, no_pull_requests, pull_request_row, quick_view,
-    quick_view_top,
+    quick_view_top, signed_out_pull_requests,
 };
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
@@ -311,6 +311,17 @@ impl BranchFoldout {
             .and_then(|r| r.non_fork_github())
             .map(|gh| gh.full_name())
             .unwrap_or_default();
+        // `pull-requests-signed-out`: no account for the endpoint, so the
+        // list cannot load (GHD shows "You're all set!" and a refresh
+        // button that does nothing)
+        let signed_out_endpoint = s
+            .flags
+            .bool(corvane_core::flags::ids::PULL_REQUESTS_SIGNED_OUT)
+            .then(|| s.repository(id).and_then(|r| r.non_fork_github()))
+            .flatten()
+            .filter(|gh| s.account_for(&gh.endpoint).is_none())
+            .map(|gh| gh.endpoint.clone());
+        let signed_out = signed_out_endpoint.is_some();
         let current = s.current_pull_request(id).map(|pr| pr.number);
         let rs = s.repo_states.get(&id);
         let on_default_branch = rs.is_some_and(|rs| {
@@ -393,9 +404,10 @@ impl BranchFoldout {
                             .flex_none()
                             .px(SPACING_HALF())
                             .when(loading, |d| d.opacity(0.6))
+                            .when(signed_out, |d| d.opacity(0.6).cursor_default())
                             .icon_button_label("Refresh the list of pull requests")
                             .on_click(move |_, _, cx| {
-                                if !loading {
+                                if !loading && !signed_out {
                                     Dispatcher::refresh_pull_requests(id, true, cx)
                                 }
                             })
@@ -409,42 +421,46 @@ impl BranchFoldout {
                             }),
                     ),
             )
-            .child(if rows.is_empty() {
-                no_pull_requests(
-                    id,
-                    repository_name,
-                    !query.is_empty(),
-                    loading && all.is_empty(),
-                    on_default_branch,
-                    cx,
-                )
-            } else {
-                div()
-                    .id("pull-request-rows")
-                    .role(Role::List)
-                    .aria_label("Pull requests")
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
-                    .child(
-                        // `.filter-list-group-header`
-                        div()
-                            .h(ROW_HEIGHT())
-                            .pt(SPACING())
-                            .px(SPACING())
-                            .flex()
-                            .items_center()
-                            .font_weight(FontWeight::SEMIBOLD)
-                            .text_size(FONT_SIZE())
-                            .truncate()
-                            .child(format!("Pull requests in {repository_name}")),
+            .child(
+                if let Some(endpoint) = signed_out_endpoint.filter(|_| rows.is_empty()) {
+                    signed_out_pull_requests(repository_name, endpoint, cx)
+                } else if rows.is_empty() {
+                    no_pull_requests(
+                        id,
+                        repository_name,
+                        !query.is_empty(),
+                        loading && all.is_empty(),
+                        on_default_branch,
+                        cx,
                     )
-                    .children(rows)
-                    .with_scrollbar()
-                    .into_any_element()
-            })
+                } else {
+                    div()
+                        .id("pull-request-rows")
+                        .role(Role::List)
+                        .aria_label("Pull requests")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .flex()
+                        .flex_col()
+                        .child(
+                            // `.filter-list-group-header`
+                            div()
+                                .h(ROW_HEIGHT())
+                                .pt(SPACING())
+                                .px(SPACING())
+                                .flex()
+                                .items_center()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_size(FONT_SIZE())
+                                .truncate()
+                                .child(format!("Pull requests in {repository_name}")),
+                        )
+                        .children(rows)
+                        .with_scrollbar()
+                        .into_any_element()
+                },
+            )
             .into_any_element()
     }
 

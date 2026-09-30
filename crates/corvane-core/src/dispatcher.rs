@@ -491,6 +491,23 @@ impl Dispatcher {
             s.recent.insert(0, id);
             s.recent.truncate(RECENT_REPOSITORIES_LENGTH);
             s.foldout = None;
+            // flag `290-close-dialogs-on-repository-switch` (Corvane addition,
+            // desktop/desktop#9847): a dialog bound to another repository
+            // closes; an operation in progress (conflicts, a credentials
+            // prompt) keeps its dialog
+            if s.flags
+                .bool(crate::flags::ids::CLOSE_DIALOGS_ON_REPOSITORY_SWITCH)
+                && s.popup.as_ref().is_some_and(|p| {
+                    p.repository().is_some_and(|repo| repo != id)
+                        && !matches!(
+                            p,
+                            Popup::MultiCommitOperation { .. }
+                                | Popup::GenericGitAuthentication { .. }
+                        )
+                })
+            {
+                s.popup = None;
+            }
             let _ = s.store.save_selected_repository(Some(id));
             let _ = s.store.save_recent_repositories(&s.recent);
             cx.notify();
