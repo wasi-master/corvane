@@ -1009,6 +1009,32 @@ impl Commit {
     }
 }
 
+/// Corvane `273-recall-commit-messages`: up to `limit` (summary, description)
+/// pairs of `commits` (newest first) for recalling into the commit form.
+/// Merge commits and repeated summaries are skipped; `Co-authored-by`
+/// trailers are dropped from the description.
+pub fn recent_commit_messages(commits: &[Commit], limit: usize) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for c in commits.iter().filter(|c| !c.is_merge()) {
+        if out.len() >= limit {
+            break;
+        }
+        if c.summary.trim().is_empty() || out.iter().any(|(s, _)| *s == c.summary) {
+            continue;
+        }
+        let body = c
+            .body
+            .lines()
+            .filter(|l| !l.to_ascii_lowercase().starts_with("co-authored-by:"))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+            .to_string();
+        out.push((c.summary.clone(), body));
+    }
+    out
+}
+
 /// `CommittedFileChange`
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommittedFileChange {
@@ -1854,6 +1880,41 @@ impl BypassReason {
 #[cfg(test)]
 mod github_layer_tests {
     use super::*;
+
+    #[test]
+    fn recent_commit_messages_skip_merges_and_repeats() {
+        let id = CommitIdentity {
+            name: String::new(),
+            email: String::new(),
+            seconds: 0,
+            offset: 0,
+        };
+        let commit = |summary: &str, body: &str, parents: usize| Commit {
+            sha: String::new(),
+            summary: summary.to_string(),
+            body: body.to_string(),
+            author: id.clone(),
+            committer: id.clone(),
+            parents: vec![String::new(); parents],
+            tags: Vec::new(),
+        };
+        let commits = [
+            commit("Fix a", "Details\n\nCo-authored-by: X <x@y.z>", 1),
+            commit("Merge b", "", 2),
+            commit("Fix a", "older", 1),
+            commit("Add c", "", 1),
+            commit("Add d", "", 0),
+        ];
+        let got = recent_commit_messages(&commits, 2);
+        assert_eq!(
+            got,
+            [
+                ("Fix a".to_string(), "Details".to_string()),
+                ("Add c".to_string(), String::new())
+            ]
+        );
+        assert_eq!(recent_commit_messages(&commits, 10).len(), 3);
+    }
 
     #[test]
     fn parses_iso_timestamps() {

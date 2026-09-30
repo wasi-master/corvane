@@ -7,6 +7,8 @@
 //!   list menu has "Open All in <editor>" (`271-open-multiple-files`).
 //! - files matching the `272-changes-hide-globs` patterns are left out of the
 //!   list (they are still committed).
+//! - ↑ / ↓ in an empty summary recall recent commit messages
+//!   (`273-recall-commit-messages`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -124,6 +126,9 @@ pub struct ChangesSidebar {
     /// `isRuleFailurePopoverOpen`: the commit-message rule failures popover.
     rule_failure_popover_open: bool,
     rule_hint_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// `273-recall-commit-messages`: index into the recent messages the form
+    /// shows; `None` once the user edits it.
+    recalled: Option<usize>,
 }
 
 /// What the repository rules say about the commit being written
@@ -160,6 +165,7 @@ impl ChangesSidebar {
                 this.summary_misspelled.clear();
                 this.description_misspelled.clear();
                 this.autocomplete = None;
+                this.recalled = None;
                 // the next commit starts from the template again
                 let template = this.seen_template.1.clone();
                 this.apply_commit_template(None, template, window, cx);
@@ -261,12 +267,16 @@ impl ChangesSidebar {
             pending_author: None,
             rule_failure_popover_open: false,
             rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
+            recalled: None,
         }
     }
 
     // ---- autocompletion + spellcheck (GHD `AutocompletingTextInput`) ----
 
     fn on_input_event(&mut self, field: CommitField, ev: &InputEvent, cx: &mut Context<Self>) {
+        if matches!(ev, InputEvent::Change) && field != CommitField::CoAuthors {
+            self.recalled = None;
+        }
         match ev {
             InputEvent::Change if field == CommitField::CoAuthors => {
                 self.sync_co_authors(cx);
@@ -989,6 +999,68 @@ impl ChangesSidebar {
         });
         self.refresh_spelling(CommitField::Summary, cx);
         self.refresh_spelling(CommitField::Description, cx);
+    }
+
+    /// `273-recall-commit-messages`: ↑ (`delta` 1, older) / ↓ (-1, newer) in
+    /// the summary field, shell-history style. Starts only from an untouched
+    /// form (summary empty, description empty or the commit template); ↓ past
+    /// the newest message restores the untouched form. Returns whether the
+    /// key was used.
+    fn recall_message(
+        &mut self,
+        delta: isize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let messages = {
+            let s = self.state.read(cx);
+            if !s
+                .flags
+                .bool(corvane_core::flags::ids::RECALL_COMMIT_MESSAGES)
+            {
+                return false;
+            }
+            let Some(rs) = s.selected_state() else {
+                return false;
+            };
+            if rs.commit_to_amend.is_some() {
+                return false;
+            }
+            corvane_core::recent_commit_messages(&rs.commits, 50)
+        };
+        let template = self.seen_template.1.clone().unwrap_or_default();
+        let next = match self.recalled {
+            Some(ix) => ix as isize + delta,
+            None => {
+                let untouched = self.summary.read(cx).value().is_empty() && {
+                    let d = self.description.read(cx).value();
+                    d.is_empty() || AsRef::<str>::as_ref(&d) == template
+                };
+                if delta < 0 || !untouched {
+                    return false;
+                }
+                0
+            }
+        };
+        let (summary, description) = if next < 0 {
+            self.recalled = None;
+            (String::new(), template)
+        } else {
+            let Some(message) = messages.get(next as usize) else {
+                // past the oldest: stay, but keep the key
+                return self.recalled.is_some();
+            };
+            self.recalled = Some(next as usize);
+            message.clone()
+        };
+        self.summary
+            .update(cx, |s, cx| s.set_value(summary, window, cx));
+        self.description
+            .update(cx, |s, cx| s.set_value(description, window, cx));
+        self.refresh_spelling(CommitField::Summary, cx);
+        self.refresh_spelling(CommitField::Description, cx);
+        cx.notify();
+        true
     }
 
     /// View › Go to Summary.
@@ -2897,13 +2969,18 @@ impl ChangesSidebar {
                 }
             }))
             // Popup keys win over the field's own bindings (GHD `onKeyDown`).
-            .capture_action(cx.listener(|this, _: &MoveUp, _, cx| {
-                if this.autocomplete_move(-1, cx) {
+            .capture_action(cx.listener(|this, _: &MoveUp, window, cx| {
+                if this.autocomplete_move(-1, cx)
+                    || (this.summary_focus.is_focused(window) && this.recall_message(1, window, cx))
+                {
                     cx.stop_propagation();
                 }
             }))
-            .capture_action(cx.listener(|this, _: &MoveDown, _, cx| {
-                if this.autocomplete_move(1, cx) {
+            .capture_action(cx.listener(|this, _: &MoveDown, window, cx| {
+                if this.autocomplete_move(1, cx)
+                    || (this.summary_focus.is_focused(window)
+                        && this.recall_message(-1, window, cx))
+                {
                     cx.stop_propagation();
                 }
             }))

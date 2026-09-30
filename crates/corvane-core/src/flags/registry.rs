@@ -318,6 +318,21 @@ registry! {
         upstream: &[Upstream::issue(10093), Upstream::issue(20615), Upstream::issue(21242)],
         code: &["crates/corvane-core/src/filter.rs", "crates/corvane-ui/src/changes.rs"],
     },
+    /// ↑ / ↓ in an empty commit summary recall recent commit messages.
+    RECALL_COMMIT_MESSAGES = 273 "recall-commit-messages" {
+        title: "Recall recent commit messages with ↑ / ↓",
+        summary: "In an empty commit form, ↑ in the summary fills in the summary and description \
+                  of the latest commit on the branch; more ↑ go further back (merges and repeated \
+                  summaries skipped), ↓ comes forward and past the newest empties the form again. \
+                  Editing the text keeps it.",
+        ghd_behaviour: "↑ / ↓ only move the caret.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12927), Upstream::issue(20559), Upstream::issue(17525)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-models/src/lib.rs"],
+    },
 
     // ---- 300 GitHub ----
 
