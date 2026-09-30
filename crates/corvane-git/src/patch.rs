@@ -204,11 +204,21 @@ pub fn apply_patch_to_index(
     file: &WorkingDirectoryFileChange,
     diff: &Diff,
 ) -> Result<()> {
+    recreate_rename_in_index(git.clone(), workdir, file)?;
+    apply_hunks_to_index(git, workdir, file, diff)
+}
+
+/// Recreate a renamed file's rename in the (just reset) index: `git mv` by
+/// hand, so HEAD's blob of the old path sits at the new path and the partial
+/// patch applies against it. A no-op for other files.
+fn recreate_rename_in_index(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    file: &WorkingDirectoryFileChange,
+) -> Result<()> {
     if file.status.kind == FileStatusKind::Renamed
         && let Some(old_path) = &file.old_path
     {
-        // Recreate the rename in the index (the index was just reset):
-        // `git mv` by hand, then apply the patch against the new path.
         GitCommand::new(git.clone())
             .args(["add", "--update", "--", old_path])
             .current_dir(workdir)
@@ -237,6 +247,16 @@ pub fn apply_patch_to_index(
             .current_dir(workdir)
             .run()?;
     }
+    Ok(())
+}
+
+/// `git apply --cached` with the selected lines of `diff`.
+fn apply_hunks_to_index(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    file: &WorkingDirectoryFileChange,
+    diff: &Diff,
+) -> Result<()> {
     let hunks = match diff {
         Diff::Text { hunks, .. } | Diff::LargeText { hunks, .. } => hunks,
         Diff::Binary | Diff::Image { .. } | Diff::Submodule(_) => {
@@ -280,8 +300,13 @@ pub fn stage_partial_files(
         .iter()
         .filter(|f| f.selection.kind() == DiffSelectionType::Partial)
     {
-        let diff = crate::diff::working_directory_diff(git.clone(), workdir, file, false)?;
-        apply_patch_to_index(git.clone(), workdir, file, &diff)?;
+        // GHD `applyPatchToIndex`: the rename goes back into the index before
+        // the diff is taken, so a renamed file diffs HEAD's old blob (now at
+        // the new path) against the working copy (after the reset the new
+        // path is untracked and `diff -- path` would be empty).
+        recreate_rename_in_index(git.clone(), workdir, file)?;
+        let diff = crate::diff::working_directory_diff(git.clone(), workdir, file, false, false)?;
+        apply_hunks_to_index(git.clone(), workdir, file, &diff)?;
     }
     Ok(())
 }
@@ -380,7 +405,7 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let mut status = crate::get_status(git.clone(), path, None).unwrap();
         let file = &mut status.files[0];
-        let diff = crate::working_directory_diff(git.clone(), path, file, false).unwrap();
+        let diff = crate::working_directory_diff(git.clone(), path, file, false, false).unwrap();
         // select only the first change (lines: 0 hunk, 1 del ONE, 2 add ONE, 3 ctx, 4 del, 5 add)
         file.selection = DiffSelection::none().with_range(1, 2, true);
         assert_eq!(file.selection.kind(), DiffSelectionType::Partial);
@@ -395,6 +420,83 @@ mod tests {
             .output()
             .unwrap();
         assert_eq!(String::from_utf8_lossy(&shown.stdout), "ONE\ntwo\nthree\n");
+        let after = crate::get_status(git, path, None).unwrap();
+        assert_eq!(after.files.len(), 1, "the other change stays unstaged");
+    }
+
+    #[test]
+    fn renamed_file_diff_and_partial_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
+        let body = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\n";
+        std::fs::write(path.join("old.txt"), body).unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "init"]);
+        // rename, stage an edit, then edit the working copy again
+        run(&["mv", "old.txt", "new.txt"]);
+        std::fs::write(path.join("new.txt"), body.replace("a\n", "A\n")).unwrap();
+        run(&["add", "new.txt"]);
+        std::fs::write(
+            path.join("new.txt"),
+            body.replace("a\n", "A\n").replace("j\n", "J\n"),
+        )
+        .unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let mut status = crate::get_status(git.clone(), path, None).unwrap();
+        assert_eq!(status.files.len(), 1);
+        let file = &mut status.files[0];
+        assert_eq!(file.status.kind, FileStatusKind::Renamed);
+        let changed = |diff: &Diff| -> Vec<String> {
+            diff.hunks()
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|h| h.lines.iter())
+                .filter(|l| matches!(l.kind, DiffLineKind::Add | DiffLineKind::Delete))
+                .map(|l| l.text.clone())
+                .collect()
+        };
+        // GHD: index to working tree, the staged edit is missing
+        let ghd = crate::working_directory_diff(git.clone(), path, file, false, false).unwrap();
+        assert_eq!(changed(&ghd), ["j", "J"]);
+        // `174-renamed-diff-against-head`: HEAD's old blob to the working copy
+        let diff = crate::working_directory_diff(git.clone(), path, file, false, true).unwrap();
+        assert_eq!(changed(&diff), ["a", "A", "j", "J"]);
+        // commit only the first change (lines: 0 hunk, 1 del a, 2 add A, …)
+        file.selection = DiffSelection::none().with_range(1, 2, true);
+        assert_eq!(file.selection.kind(), DiffSelectionType::Partial);
+        crate::unstage_all(git.clone(), path).unwrap();
+        crate::stage_files(git.clone(), path, &status.files).unwrap();
+        stage_partial_files(git.clone(), path, &status.files).unwrap();
+        crate::commit(git.clone(), path, "partial\n", &Default::default()).unwrap();
+        let show = |spec: &str| {
+            Command::new("git")
+                .args(["show", spec])
+                .current_dir(path)
+                .output()
+                .unwrap()
+        };
+        assert!(
+            !show("HEAD:old.txt").status.success(),
+            "the rename is committed"
+        );
+        assert_eq!(
+            String::from_utf8_lossy(&show("HEAD:new.txt").stdout),
+            body.replace("a\n", "A\n")
+        );
         let after = crate::get_status(git, path, None).unwrap();
         assert_eq!(after.files.len(), 1, "the other change stays unstaged");
     }

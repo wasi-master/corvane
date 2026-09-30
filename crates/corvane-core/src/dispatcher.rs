@@ -934,7 +934,7 @@ impl Dispatcher {
 
     pub fn load_diff(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (git, workdir, file, hide_whitespace) = {
+        let (git, workdir, file, hide_whitespace, renamed_against_head) = {
             let s = state.read(cx);
             let Some(git) = s.git.clone() else { return };
             let Some(rs) = s.repo_states.get(&id) else {
@@ -957,6 +957,7 @@ impl Dispatcher {
                 info.workdir.clone(),
                 file,
                 s.settings.hide_whitespace_in_changes_diff,
+                s.flags.bool(crate::flags::ids::RENAMED_DIFF_AGAINST_HEAD),
             )
         };
         let path = file.path.clone();
@@ -966,7 +967,13 @@ impl Dispatcher {
         });
         let git_for_old = git.clone();
         let work = cx.background_executor().spawn(async move {
-            let diff = corvane_git::working_directory_diff(git, &workdir, &file, hide_whitespace);
+            let diff = corvane_git::working_directory_diff(
+                git,
+                &workdir,
+                &file,
+                hide_whitespace,
+                renamed_against_head,
+            );
             // GHD `fileContents.newContents`: the working copy, for hunk expansion.
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
                 .then(|| corvane_git::working_file_lines(&workdir, &file.path))

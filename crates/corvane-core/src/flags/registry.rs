@@ -285,6 +285,20 @@ registry! {
         upstream: &[Upstream::issue(11685), Upstream::issue(557)],
         code: &["crates/corvane-git/src/diff.rs", "crates/corvane-ui/src/diff_view.rs"],
     },
+    /// A renamed file's diff starts from HEAD.
+    RENAMED_DIFF_AGAINST_HEAD = 174 "renamed-diff-against-head" {
+        title: "Renamed files diff against the last commit",
+        summary: "A renamed file's diff compares the old path in the last commit with the \
+                  working copy, so edits staged outside Corvane show up too.",
+        ghd_behaviour: "Compares the index with the working copy: a renamed file whose edits \
+                        were staged (e.g. by `git add`) shows no changes.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19142), Upstream::issue(5575)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
 
     // ---- 200 Repository ----
 
