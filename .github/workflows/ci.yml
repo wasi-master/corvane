@@ -27,6 +27,12 @@ jobs:
         run: cargo test --workspace
       - name: build (release, precompiled Metal shaders)
         run: cargo build --release --no-default-features -p corvane
+      - name: code-signing certificate (absent on fork PRs → ad-hoc)
+        env:
+          MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGNING_P12 }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -n "$MACOS_SIGNING_P12" ]; then packaging/signing-cert.sh ci; else echo "no MACOS_SIGNING_P12 secret: ad-hoc"; fi
       - name: bundle (Liquid Glass icon needs Xcode 26 actool)
         run: |
           export DEVELOPER_DIR="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)/Contents/Developer"

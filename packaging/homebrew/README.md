@@ -26,8 +26,8 @@ cp packaging/homebrew/README.md ../homebrew-corvane/README.md
 brew install --cask wasi-master/corvane/corvane --no-quarantine
 ```
 
-`--no-quarantine` is required: Corvane is ad-hoc signed (a hobby project
-without an Apple Developer ID), and macOS 15 blocks a quarantined,
+`--no-quarantine` is required: Corvane is signed with a self-signed
+certificate (a hobby project without an Apple Developer ID), and macOS 15 blocks a quarantined,
 unnotarized app on first launch. Without the flag, open it once through
 System Settings › Privacy & Security › Open Anyway, or run
 `xattr -d com.apple.quarantine /Applications/Corvane.app`.

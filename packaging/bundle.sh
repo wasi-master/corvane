@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Assemble Corvane.app from a cargo build. Ad-hoc signed (no Developer ID).
+# Assemble Corvane.app from a cargo build. Signed with the self-signed
+# "Corvane Self-Signed" certificate when the keychain has it
+# (packaging/signing-cert.sh), else ad-hoc; never with a Developer ID.
 #
 #   packaging/bundle.sh            # debug build  -> target/bundle/Corvane.app
 #   packaging/bundle.sh release    # release build -> target/bundle/Corvane.app
 #   OPEN=1 packaging/bundle.sh     # also launch it
+#   CORVANE_SIGN_IDENTITY=- …      # ad-hoc even when the certificate is there
 set -euo pipefail
 
 PROFILE="${1:-debug}"
@@ -52,10 +55,20 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 # Command line tool (Install Command Line Tool… symlinks it into /usr/local/bin)
 install -m 755 "$ROOT/packaging/corvane.sh" "$APP/Contents/Resources/corvane"
 
-# Ad-hoc signature so the bundle launches locally; Gatekeeper still quarantines downloads.
-codesign --force --sign - --timestamp=none "$APP" >/dev/null
+# A certificate keeps the designated requirement (identifier + certificate)
+# the same from build to build, so Keychain items and privacy permissions
+# granted to one build carry over; an ad-hoc one is the binary's hash and
+# changes with every build. Either way Gatekeeper still quarantines downloads.
+IDENTITY="${CORVANE_SIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" ]]; then
+  IDENTITY="-"
+  if security find-identity -p codesigning 2>/dev/null | grep -q '"Corvane Self-Signed"'; then
+    IDENTITY="Corvane Self-Signed"
+  fi
+fi
+codesign --force --sign "$IDENTITY" --timestamp=none "$APP" >/dev/null
 
-echo "built $APP (v$VERSION build $BUILD)"
+echo "built $APP (v$VERSION build $BUILD, signed: ${IDENTITY/#-/ad-hoc})"
 if [[ "${OPEN:-0}" == "1" ]]; then
   open -n "$APP"
 fi

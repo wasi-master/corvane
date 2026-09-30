@@ -6,6 +6,7 @@
 #   SKIP_BUILD=1 packaging/release.sh    # reuse target/release/corvane
 #   UPDATE_CASK=1 packaging/release.sh   # also rewrite packaging/homebrew/Casks/corvane.rb
 #   SECRET_KEY=~/.minisign/corvane-release.key packaging/release.sh   # sign here
+#   ALLOW_ADHOC=1 packaging/release.sh   # without the code-signing certificate (testing)
 #
 # Output: Corvane[-Full]-<version>-macos-<universal|arch>.zip (+ .dmg), a
 # .minisig for every asset when a secret key is given, the packs manifest and
@@ -63,6 +64,12 @@ fi
 
 "$ROOT/packaging/bundle.sh" release
 APP="$ROOT/target/bundle/Corvane.app"
+# An ad-hoc release has a new designated requirement, so every install would
+# ask for its Keychain items again (packaging/signing-cert.sh)
+if ! codesign -dvv "$APP" 2>&1 | grep -q '^Authority=Corvane Self-Signed$' && [[ "${ALLOW_ADHOC:-0}" != "1" ]]; then
+  echo "Corvane.app is not signed with \"Corvane Self-Signed\": run packaging/signing-cert.sh import <p12>, or ALLOW_ADHOC=1" >&2
+  exit 1
+fi
 mkdir -p "$OUT"
 
 # --- assets -----------------------------------------------------------------
