@@ -296,6 +296,19 @@ registry! {
             "crates/corvane-ui/src/dialogs/clone_repository.rs",
         ],
     },
+    /// An aliased repository's name is italic in the toolbar too.
+    ALIAS_ITALIC_IN_TOOLBAR = 114 "alias-italic-in-toolbar" {
+        title: "Aliases are italic in the toolbar",
+        summary: "The Current Repository button shows an aliased repository's name in italics, \
+                  as the repository list does.",
+        ghd_behaviour: "Italic in the repository list, upright in the toolbar.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17770)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
 
     // ---- 200 Repository ----
 

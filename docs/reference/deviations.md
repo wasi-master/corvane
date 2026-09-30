@@ -128,6 +128,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Worktree toolbar button appears only with linked worktrees (or while its foldout is open), as in GHD.
 - Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move (Flag: `404-toolbar-width-save`).
 - View › Toggle History Review Mode (⌃⌘S, Corvane addition) hides the repository sidebar and the selected commit's file list in History so the diff takes the whole width. Flag: `109-history-review-mode`.
+- The Current Repository toolbar button shows an aliased repository's name in italics, as the repository list does (GHD: upright in the toolbar). Flag: `114-alias-italic-in-toolbar`.
 
 ## Keyboard
 
