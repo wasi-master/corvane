@@ -62,6 +62,35 @@ pub enum DialogKind {
     Error,
 }
 
+/// Per-dialog chrome variations.
+pub struct DialogFrame {
+    /// `.dialog-header`'s bottom border (`#choose-branch` has none).
+    pub header_border: bool,
+    /// `.dialog-content`'s 20 px padding (off for list dialogs whose content
+    /// runs edge to edge).
+    pub content_padding: bool,
+    /// A footer drawn by the dialog itself instead of the button row.
+    pub footer: Option<AnyElement>,
+    /// GHD renders no `.dialog-header` for an untitled `Dialog` (About).
+    pub show_header: bool,
+    /// The primary button holds focus as the dialog opens (GHD focuses the
+    /// submit button when nothing else asks for focus): its focus ring and
+    /// `:focus` background show.
+    pub focus_primary: bool,
+}
+
+impl Default for DialogFrame {
+    fn default() -> Self {
+        Self {
+            header_border: true,
+            content_padding: true,
+            footer: None,
+            show_header: true,
+            focus_primary: false,
+        }
+    }
+}
+
 pub struct DialogButton {
     pub id: &'static str,
     pub label: SharedString,
@@ -69,6 +98,36 @@ pub struct DialogButton {
     /// GHD `okButtonDisabled`: 60 % opacity, clicks ignored.
     pub disabled: bool,
     pub on_click: ClickHandler,
+}
+
+/// GHD's per-dialog `width` rules (`dialog#<id> { width }` in the
+/// stylesheets), by Corvane dialog id; other dialogs size to their content
+/// between 400 and 600 px.
+fn ghd_dialog_width(id: &str) -> Option<f32> {
+    Some(match id {
+        "dialog-conflicts" | "create-fork" | "clone-repository" => 500.,
+        "dialog-confirm-abort"
+        | "dialog-push-needs-pull"
+        | "dialog-stash-and-switch"
+        | "create-tutorial-repository-dialog"
+        | "dialog-merge-branch"
+        | "dialog-rebase-branch"
+        | "dialog-cherry-pick"
+        | "dialog-about"
+        | "push-branch-commits"
+        | "dialog-generic-git-auth"
+        | "dialog-change-repository-alias"
+        | "dialog-confirm-remove-repository" => 450.,
+        "create-repository"
+        | "dialog-create-branch"
+        | "dialog-rename-branch"
+        | "dialog-create-tag"
+        | "sign-in"
+        | "add-existing-repository"
+        | "dialog-initialize-lfs" => 400.,
+        "dialog-preferences" => 600.,
+        _ => return None,
+    })
 }
 
 pub fn dialog(
@@ -94,13 +153,18 @@ pub fn dialog(
 
 /// `.dialog.warning` / `.dialog.error`: content gets `margin-left: 20px` and
 /// `padding-left: 20px + 24px icon`, so the text starts 64 px from the edge.
-fn dialog_content(kind: DialogKind, content: impl IntoElement, t: &GhdTheme) -> Stateful<Div> {
+fn dialog_content(
+    kind: DialogKind,
+    content: impl IntoElement,
+    padding: bool,
+    t: &GhdTheme,
+) -> Stateful<Div> {
     let base = div()
         .id("dialog-content")
         .flex_1()
         .min_h_0()
         .overflow_y_scroll()
-        .p(SPACING_DOUBLE())
+        .when(padding, |d| d.p(SPACING_DOUBLE()))
         .text_size(FONT_SIZE())
         .line_height(zpx(18.));
     match kind {
@@ -147,6 +211,7 @@ pub fn dialog_with_kind(
         content,
         None,
         buttons,
+        DialogFrame::default(),
         on_close,
         window,
         cx,
@@ -176,6 +241,83 @@ pub fn dialog_with_footer_message(
         content,
         footer_message,
         buttons,
+        DialogFrame::default(),
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// [`dialog`] with chrome variations (`DialogFrame`).
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_frame(
+    id: &'static str,
+    title: impl Into<SharedString>,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    frame: DialogFrame,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    dialog_loading_framed(
+        id, title, false, content, buttons, frame, on_close, window, cx,
+    )
+}
+
+/// [`dialog_loading`] with chrome variations (`DialogFrame`).
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_loading_framed(
+    id: &'static str,
+    title: impl Into<SharedString>,
+    loading: bool,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    frame: DialogFrame,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    let title: SharedString = title.into();
+    dialog_impl(
+        id,
+        DialogKind::Normal,
+        loading,
+        div().child(title.clone()).into_any_element(),
+        Some(title),
+        content,
+        None,
+        buttons,
+        frame,
+        on_close,
+        window,
+        cx,
+    )
+}
+
+/// A dialog with an element title and its own footer (`DialogFrame`), e.g.
+/// `#choose-branch`.
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_framed(
+    id: &'static str,
+    title: impl IntoElement,
+    plain_title: impl Into<SharedString>,
+    content: impl IntoElement,
+    frame: DialogFrame,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
+    dialog_impl(
+        id,
+        DialogKind::Normal,
+        false,
+        title.into_any_element(),
+        Some(plain_title.into()),
+        content,
+        None,
+        Vec::new(),
+        frame,
         on_close,
         window,
         cx,
@@ -204,6 +346,7 @@ pub fn dialog_loading(
         content,
         None,
         buttons,
+        DialogFrame::default(),
         on_close,
         window,
         cx,
@@ -232,6 +375,7 @@ pub fn dialog_with_title_element(
         content,
         None,
         buttons,
+        DialogFrame::default(),
         on_close,
         window,
         cx,
@@ -248,12 +392,20 @@ fn dialog_impl(
     content: impl IntoElement,
     footer_message: Option<AnyElement>,
     buttons: Vec<DialogButton>,
+    frame: DialogFrame,
     on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
     let t = cx.ghd();
     let close_for_overlay = on_close.clone();
+    let DialogFrame {
+        header_border,
+        content_padding,
+        footer,
+        show_header,
+        focus_primary,
+    } = frame;
     let viewport = window.viewport_size();
     deferred(
         anchored().position(point(zpx(0.), zpx(0.))).child(
@@ -276,6 +428,7 @@ fn dialog_impl(
                         .children(plain_title.map(window_title))
                         .min_w(zpx(400.))
                         .max_w(zpx(600.))
+                        .when_some(ghd_dialog_width(id), |d, w| d.w(zpx(w)))
                         // a `<dialog>` never outgrows the viewport; the content scrolls
                         .max_h(viewport.height)
                         .flex()
@@ -293,45 +446,46 @@ fn dialog_impl(
                             inset: false,
                         }])
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                        .child(
-                            // header
-                            div()
-                                .h(zpx(50.))
-                                .flex_none()
-                                .flex()
-                                .flex_row()
-                                .items_center()
-                                .px(SPACING_DOUBLE())
-                                .border_b_1()
-                                .border_color(t.box_border)
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_size(FONT_SIZE_MD())
-                                        .font_weight(FontWeight::SEMIBOLD)
-                                        .child(title),
-                                )
-                                // `loading`: a spinning `syncClockwise` before the close button
-                                .when(loading, |d| {
-                                    d.child(
-                                        div().flex_none().mr(SPACING()).child(loading_icon(
-                                            "dialog-loading",
-                                            t.text_secondary,
-                                        )),
+                        .when(show_header, |d| {
+                            d.child(
+                                // header
+                                div()
+                                    .h(zpx(50.))
+                                    .flex_none()
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .px(SPACING_DOUBLE())
+                                    .when(header_border, |d| {
+                                        d.border_b_1().border_color(t.box_border)
+                                    })
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .text_size(FONT_SIZE_MD())
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .child(title),
                                     )
-                                })
-                                .child({
-                                    let on_close = on_close.clone();
-                                    div()
-                                        .id("dialog-close")
-                                        .icon_button_label("Close")
-                                        .size(zpx(16.))
-                                        .cursor_pointer()
-                                        .on_click(move |_, window, cx| on_close(window, cx))
-                                        .child(octicon(Octicon::X, t.text_secondary))
-                                }),
-                        )
-                        .child(dialog_content(kind, content, t))
+                                    // `loading`: a spinning `syncClockwise` before the close button
+                                    .when(loading, |d| {
+                                        d.child(div().flex_none().mr(SPACING()).child(
+                                            loading_icon("dialog-loading", t.text_secondary),
+                                        ))
+                                    })
+                                    .child({
+                                        let on_close = on_close.clone();
+                                        div()
+                                            .id("dialog-close")
+                                            .icon_button_label("Close")
+                                            .size(zpx(16.))
+                                            .cursor_pointer()
+                                            .on_click(move |_, window, cx| on_close(window, cx))
+                                            .child(octicon(Octicon::X, t.text_secondary))
+                                    }),
+                            )
+                        })
+                        .child(dialog_content(kind, content, content_padding, t))
+                        .children(footer)
                         .when(!buttons.is_empty(), |d| {
                             d.child(
                                 // `.dialog-footer`: a top border, 20 px padding,
@@ -366,16 +520,25 @@ fn dialog_impl(
                                                 let on_click = b.on_click;
                                                 let disabled = b.disabled;
                                                 if b.primary {
-                                                    crate::widgets::primary_button(
+                                                    let button = crate::widgets::primary_button(
                                                         b.id, b.label, disabled, cx,
                                                     )
                                                     .min_w(zpx(120.))
+                                                    .when(focus_primary, |d| {
+                                                        d.bg(t.button_hover_background)
+                                                    })
                                                     .when(!disabled, |d| {
                                                         d.on_click(move |_, window, cx| {
                                                             on_click(window, cx)
                                                         })
-                                                    })
-                                                    .into_any_element()
+                                                    });
+                                                    div()
+                                                        .relative()
+                                                        .when(focus_primary, |d| {
+                                                            d.child(crate::widgets::focus_ring(cx))
+                                                        })
+                                                        .child(button)
+                                                        .into_any_element()
                                                 } else {
                                                     crate::widgets::button(b.id, b.label, cx)
                                                         .min_w(zpx(120.))

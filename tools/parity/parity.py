@@ -118,7 +118,7 @@ class Run:
         repo_g = fixture.build(work / "ghd-repo") if setup == "repo" else None
         repo_c = fixture.build(work / "corvane-repo") if setup == "repo" else None
 
-        ghd = Ghd(work / "ghd-profile", work / "logs" / "ghd.log")
+        ghd = Ghd(work / "ghd-profile", work / "logs" / "ghd.log", sc.get("ghd_env"))
         cv = Absent() if self.args.ghd_only else Corvane(self.binary, work / "corvane-data", work / "logs" / "corvane.log", theme)
         result = {"name": sc["name"], "theme": theme, "file": sc["_file"], "description": sc.get("description", ""), "snaps": [], "error": None, "notes": []}
         started = time.time()

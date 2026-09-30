@@ -22,15 +22,14 @@ use gpui_kit::*;
 
 use crate::widgets::IconButtonA11y;
 
-use crate::dialog::{DialogButton, dialog_loading};
+use crate::dialog::{DialogButton, DialogFrame, dialog_loading_framed};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
-    avatar_image, avatar_lookup_url, button, dialog_error_banner, labeled, link_button,
-    primary_button, text_box,
+    avatar_image, avatar_lookup_url, button, dialog_error_banner, labeled, link_button, text_box,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -415,11 +414,10 @@ impl CloneRepositoryDialog {
     }
 
     fn url_tab(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
-        let t = cx.ghd();
+        // `dialog.clone-repository .dialog-content .row-component { margin-bottom: 0 }`
         div()
             .flex()
             .flex_col()
-            .gap(SPACING())
             .child(
                 div()
                     .flex()
@@ -435,14 +433,7 @@ impl CloneRepositoryDialog {
                                     .flex()
                                     .flex_row()
                                     .child("(")
-                                    .child(
-                                        div()
-                                            .font_family(crate::theme::mono_font())
-                                            .px(zpx(3.))
-                                            .rounded(zpx(3.))
-                                            .bg(t.box_alt_background)
-                                            .child("hubot/cool-repo"),
-                                    )
+                                    .child(crate::widgets::code_ref("hubot/cool-repo", cx))
                                     .child(")"),
                             ),
                     )
@@ -727,28 +718,22 @@ impl CloneRepositoryDialog {
         };
         let Some(account) = self.account(cx) else {
             let enterprise_flag = enterprise;
-            return div()
-                .flex()
-                .flex_col()
-                .items_start()
-                .gap(SPACING())
-                .py(SPACING())
-                .child(format!(
-                    "Sign in to your {host} account to access your repositories."
-                ))
-                .child(
-                    primary_button("clone-sign-in", "Sign In", false, cx).on_click(
-                        move |_, _, cx| {
-                            Dispatcher::show_popup(
-                                Popup::SignIn {
-                                    enterprise: enterprise_flag,
-                                },
-                                cx,
-                            )
+            // `CallToAction`: the text beside a 120 px Sign In button
+            return crate::widgets::call_to_action(
+                "clone-sign-in",
+                format!("Sign in to your {host} account to access your repositories."),
+                "Sign In",
+                move |_, cx| {
+                    Dispatcher::show_popup(
+                        Popup::SignIn {
+                            enterprise: enterprise_flag,
                         },
-                    ),
-                )
-                .into_any_element();
+                        cx,
+                    )
+                },
+                cx,
+            )
+            .into_any_element();
         };
         let loading = self
             .state
@@ -1028,19 +1013,26 @@ impl Render for CloneRepositoryDialog {
             Tab::Url => self.url_tab(window, cx).into_any_element(),
         };
         let error = self.resolve_error.or(self.path_error);
+        // signed out, the account tabs are only a call to action: no footer
+        let has_footer = self.tab == Tab::Url || self.account(cx).is_some();
 
-        dialog_loading(
+        dialog_loading_framed(
             "clone-repository",
             "Clone a Repository",
             self.resolving,
             div()
                 .flex()
                 .flex_col()
-                .w(zpx(560.))
                 .when_some(error, |d, message| {
-                    d.child(dialog_error_banner(message, cx))
+                    d.child(
+                        dialog_error_banner(message, cx)
+                            .mx(zpx(0.))
+                            .mt(zpx(0.))
+                            .mb(zpx(0.)),
+                    )
                 })
-                .child(div().mb(SPACING()).child(tab_bar(
+                // the tab bar runs edge to edge above the padded tab content
+                .child(div().child(tab_bar(
                     vec![
                         TabModel {
                             id: "clone-tab-dotcom",
@@ -1071,27 +1063,35 @@ impl Render for CloneRepositoryDialog {
                     },
                     cx,
                 )))
-                .child(body),
-            vec![
-                DialogButton {
-                    id: "clone-cancel",
-                    label: "Cancel".into(),
-                    primary: false,
-                    disabled: false,
-                    on_click: Box::new(close),
-                },
-                DialogButton {
-                    id: "clone-ok",
-                    label: "Clone".into(),
-                    primary: true,
-                    disabled: !can_clone,
-                    on_click: Box::new(move |_, cx| {
-                        if can_clone {
-                            this.update(cx, |d, cx| d.submit(cx));
-                        }
-                    }),
-                },
-            ],
+                .child(div().p(SPACING_DOUBLE()).child(body)),
+            if !has_footer {
+                Vec::new()
+            } else {
+                vec![
+                    DialogButton {
+                        id: "clone-cancel",
+                        label: "Cancel".into(),
+                        primary: false,
+                        disabled: false,
+                        on_click: Box::new(close),
+                    },
+                    DialogButton {
+                        id: "clone-ok",
+                        label: "Clone".into(),
+                        primary: true,
+                        disabled: !can_clone,
+                        on_click: Box::new(move |_, cx| {
+                            if can_clone {
+                                this.update(cx, |d, cx| d.submit(cx));
+                            }
+                        }),
+                    },
+                ]
+            },
+            DialogFrame {
+                content_padding: false,
+                ..DialogFrame::default()
+            },
             close,
             window,
             cx,

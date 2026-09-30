@@ -16,8 +16,10 @@ use gpui_kit::*;
 
 use crate::branch_list::group_branches;
 use crate::context_menu::MenuItem;
-use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
-use crate::dialogs::branch_dialogs::{CreateBranchDialog, branch_picker};
+use crate::dialog::{
+    DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
+};
+use crate::dialogs::branch_dialogs::{CreateBranchDialog, branch_picker, split_button};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -29,6 +31,8 @@ pub struct McoDialog {
     state: Entity<AppState>,
     repo: u64,
     filter: Entity<InputState>,
+    /// The ChooseBranch list takes focus when a row is pressed.
+    list_focus: FocusHandle,
     /// ChooseBranch step selection.
     selected_branch: Option<String>,
     /// WarnForcePush "Do not show this message again".
@@ -47,10 +51,14 @@ impl McoDialog {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&filter, |_, _, cx| cx.notify()).detach();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
+        // `FilterList` autofocuses its filter box
+        let handle = filter.read(cx).focus_handle(cx);
+        window.focus(&handle, cx);
         Self {
             state,
             repo,
             filter,
+            list_focus: cx.focus_handle(),
             selected_branch: None,
             dont_ask_force_push: false,
             create_branch: None,
@@ -101,6 +109,7 @@ impl McoDialog {
         let list = branch_picker(
             "rebase",
             &self.filter,
+            &self.list_focus,
             groups,
             &current,
             selected.as_deref(),
@@ -109,7 +118,7 @@ impl McoDialog {
             cx,
         );
         // `renderStatusPreview`
-        let status: Option<AnyElement> = selected.as_ref().map(|base| {
+        let status: Option<AnyElement> = selected.as_ref().filter(|b| **b != current).map(|base| {
             let (icon, color, message): (Octicon, Hsla, AnyElement) = match &preview {
                 None => (
                     Octicon::DotFill,
@@ -133,38 +142,66 @@ impl McoDialog {
                         row.child("This will fast-forward\u{a0}")
                             .child(
                                 div()
-                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
                                     .child(current.clone()),
                             )
                             .child("\u{a0}by\u{a0}")
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(format!(
-                                "{behind} {}",
-                                if behind == 1 { "commit" } else { "commits" }
-                            )))
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
+                                    .child(format!(
+                                        "{behind} {}",
+                                        if behind == 1 { "commit" } else { "commits" }
+                                    )),
+                            )
                             .child("\u{a0}to match\u{a0}")
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(base.clone()))
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
+                                    .child(base.clone()),
+                            )
                     } else if behind > 0 && ahead > 0 {
                         row.child("This will update\u{a0}")
                             .child(
                                 div()
-                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
                                     .child(current.clone()),
                             )
                             .child("\u{a0}by applying its\u{a0}")
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(format!(
-                                "{ahead} {}",
-                                if ahead == 1 { "commit" } else { "commits" }
-                            )))
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
+                                    .child(format!(
+                                        "{ahead} {}",
+                                        if ahead == 1 { "commit" } else { "commits" }
+                                    )),
+                            )
                             .child("\u{a0}on top of\u{a0}")
-                            .child(div().font_weight(FontWeight::SEMIBOLD).child(base.clone()))
+                            .child(
+                                div()
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(t.text)
+                                    .child(base.clone()),
+                            )
                     } else {
                         row.child(
                             div()
-                                .font_weight(FontWeight::SEMIBOLD)
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(t.text)
                                 .child(current.clone()),
                         )
                         .child("\u{a0}is already up to date with\u{a0}")
-                        .child(div().font_weight(FontWeight::SEMIBOLD).child(base.clone()))
+                        .child(
+                            div()
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(t.text)
+                                .child(base.clone()),
+                        )
                     };
                     (Octicon::Check, t.color_new, msg.into_any_element())
                 }
@@ -174,39 +211,49 @@ impl McoDialog {
         let can_start = preview.as_ref().is_some_and(|p| p.valid && p.behind > 0)
             && selected.as_deref() != Some(current.as_str());
         let base_for_ok = selected.clone();
-        let content = div()
-            .w(zpx(450.))
-            .mx(zpx(-20.))
-            .mt(zpx(-20.))
+        let content = div().flex().flex_col().child(list);
+        // `getDialogTitle`: light "Rebase" with the branch in <strong>
+        let title = div()
+            .flex()
+            .flex_row()
+            .font_weight(FontWeight::LIGHT)
+            .child("Rebase\u{a0}")
+            .child(div().font_weight(FontWeight::NORMAL).child(current.clone()));
+        // `DialogFooter`: the status preview over the `DropdownSelectButton`
+        // (its checked option, Rebase)
+        let footer = div()
             .flex()
             .flex_col()
-            .child(list)
-            .children(status);
-        let title = div().flex().flex_row().child("Rebase\u{a0}").child(
-            div()
-                .font_weight(FontWeight::SEMIBOLD)
-                .child(current.clone()),
-        );
-        dialog_with_title(
+            .pt(SPACING())
+            .px(SPACING_DOUBLE())
+            .pb(SPACING_DOUBLE())
+            .border_t_1()
+            .border_color(t.box_border)
+            .children(status)
+            .child(split_button(
+                "rebase-start",
+                "Rebase",
+                !can_start,
+                move |_, cx| {
+                    let Some(base) = base_for_ok.clone() else {
+                        return;
+                    };
+                    Dispatcher::start_rebase(repo, base, false, cx);
+                },
+                cx,
+            ))
+            .into_any_element();
+        dialog_framed(
             "dialog-rebase-branch",
             title,
             format!("Rebase {current}"),
             content,
-            vec![DialogButton {
-                id: "rebase-start",
-                label: "Start rebase".into(),
-                primary: true,
-                disabled: !can_start,
-                on_click: Box::new(move |_, cx| {
-                    let Some(base) = base_for_ok.clone() else {
-                        return;
-                    };
-                    if !can_start {
-                        return;
-                    }
-                    Dispatcher::start_rebase(repo, base, false, cx);
-                }),
-            }],
+            DialogFrame {
+                header_border: false,
+                content_padding: false,
+                footer: Some(footer),
+                ..DialogFrame::default()
+            },
             close,
             window,
             cx,
@@ -249,6 +296,7 @@ impl McoDialog {
         let list = branch_picker(
             "cherry-pick",
             &self.filter,
+            &self.list_focus,
             groups,
             &current,
             selected.as_deref(),
@@ -691,39 +739,25 @@ fn green_circle(cx: &App) -> Div {
 
 /// `ActionStatusIcon` + `.merge-info` below the branch list.
 fn status_preview(icon: Octicon, color: Hsla, message: AnyElement, cx: &App) -> AnyElement {
+    // `.merge-status-component` in `#choose-branch`: the 20 px icon row
+    // without its rule, then `.merge-info` (5 px above, 10 below)
     let t = cx.ghd();
     div()
         .flex()
         .flex_col()
         .items_center()
-        .px(SPACING_DOUBLE())
-        .pt(SPACING_HALF())
-        .pb(SPACING())
         .child(
             div()
-                .relative()
                 .w_full()
                 .h(zpx(20.))
                 .flex()
                 .justify_center()
-                .child(
-                    div()
-                        .absolute()
-                        .left_0()
-                        .right_0()
-                        .top(zpx(10.))
-                        .h(zpx(1.))
-                        .bg(t.box_border),
-                )
-                .child(
-                    div()
-                        .px(SPACING_HALF())
-                        .bg(t.background)
-                        .child(octicon(icon, color)),
-                ),
+                .child(octicon(icon, color)),
         )
         .child(
             div()
+                .mt(SPACING_HALF())
+                .mb(SPACING())
                 .text_size(FONT_SIZE())
                 .text_color(t.text_secondary)
                 .text_center()

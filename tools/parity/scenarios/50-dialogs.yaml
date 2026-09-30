@@ -85,6 +85,10 @@ steps:
     wait: 900
   - dump: {name: not-a-repository, root: dialog}
   - snap: not-a-repository
+  - click: {text: "Add Repository", within: "dialog"}
+    wait: 600
+  - dump: {name: not-a-repository-submitted, root: dialog}
+  - snap: not-a-repository-submitted
 ---
 name: branch-dialogs
 description: New Branch (typing an existing name), Rename and Delete branch

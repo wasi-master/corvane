@@ -3,15 +3,12 @@
 name: move-to-applications
 description: Move to Applications folder dialog
 setup: repo
+# GHD only honours test-* menu events with preview features on
+ghd_env: {GITHUB_DESKTOP_PREVIEW_FEATURES: 1}
 steps:
   - popup: {ghd: test-move-to-application-folder, corvane: move-to-applications}
     wait: 700
   - snap: open
----
-name: upstream-already-exists
-description: Upstream already exists dialog (fake fork)
-setup: repo
-steps:
-  - popup: {ghd: test-upstream-already-exists, corvane: upstream-already-exists}
-    wait: 700
-  - snap: open
+# test-upstream-already-exists is not compared: GHD only shows it for a
+# repository with a GitHub remote, which the fixture does not have (it shows
+# "No GitHub repository to test with" instead).

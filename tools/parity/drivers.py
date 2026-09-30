@@ -119,10 +119,13 @@ class Ghd:
 
     name = "ghd"
 
-    def __init__(self, profile: Path, log: Path):
+    def __init__(self, profile: Path, log: Path, env: dict | None = None):
         self.profile = profile
         self.port = free_port()
         self.log = log
+        # scenario `ghd_env`, e.g. GITHUB_DESKTOP_PREVIEW_FEATURES=1 for the
+        # `test-*` popups (enableTestMenuItems)
+        self.env = env or {}
         self.proc: subprocess.Popen | None = None
         self.ws = None
         self._id = 0
@@ -144,6 +147,7 @@ class Ghd:
                 stdout=log,
                 stderr=log,
                 start_new_session=True,
+                env={**os.environ, **{k: str(v) for k, v in self.env.items()}},
             )
         deadline = time.time() + timeout
         while time.time() < deadline:
