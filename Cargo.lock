@@ -1354,6 +1354,7 @@ dependencies = [
  "gpui-pre-apple",
  "gpui-pre-macos",
  "image",
+ "libc",
  "rust-embed",
  "serde_json",
  "tracing",
