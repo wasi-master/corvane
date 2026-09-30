@@ -8,16 +8,19 @@ use gpui_kit::*;
 
 /// Build (or rebuild) the menu bar. `editor` / `shell` are the labels for
 /// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`);
-/// `show_release_notes` is the `401-release-notes-menu-item` flag and
-/// `show_import` the `206-import-from-github-desktop` one.
+/// `show_release_notes` is the `401-release-notes-menu-item` flag,
+/// `show_import` the `206-import-from-github-desktop` one and `fetch_all`
+/// the `423-fetch-all-repositories` one.
 /// Corvane additions: "Flags…" (no GHD equivalent), File › Import
-/// Repositories from GitHub Desktop… and Help › Show Release Notes.
+/// Repositories from GitHub Desktop…, Repository › Fetch All Repositories
+/// and Help › Show Release Notes.
 pub fn install(
     cx: &mut App,
     editor: &str,
     shell: &str,
     show_release_notes: bool,
     show_import: bool,
+    fetch_all: bool,
 ) {
     cx.set_menus(vec![
         Menu::new("Corvane").items([
@@ -80,24 +83,32 @@ pub fn install(
             MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
             MenuItem::action("Contract Active Resizable", ContractActiveResizable),
         ]),
-        Menu::new("Repository").items([
-            MenuItem::action("Push", Push),
-            MenuItem::action("Pull", Pull),
-            MenuItem::action("Fetch", Fetch),
-            MenuItem::action("Remove…", RemoveRepository),
-            MenuItem::separator(),
-            MenuItem::action("View on GitHub", ViewOnGitHub),
-            MenuItem::action(format!("Open in {shell}"), OpenInShell),
-            MenuItem::action("Show in Finder", ShowInFinder),
-            MenuItem::action(format!("Open in {editor}"), OpenInEditor),
-            MenuItem::action("Open With…", OpenWith),
-            MenuItem::separator(),
-            MenuItem::action("Create Issue on GitHub", CreateIssue),
-            MenuItem::separator(),
-            MenuItem::action("New Worktree…", NewWorktree),
-            MenuItem::separator(),
-            MenuItem::action("Repository Settings…", RepositorySettings),
-        ]),
+        Menu::new("Repository").items(
+            [
+                MenuItem::action("Push", Push),
+                MenuItem::action("Pull", Pull),
+                MenuItem::action("Fetch", Fetch),
+            ]
+            .into_iter()
+            .chain(
+                fetch_all.then(|| MenuItem::action("Fetch All Repositories", FetchAllRepositories)),
+            )
+            .chain([
+                MenuItem::action("Remove…", RemoveRepository),
+                MenuItem::separator(),
+                MenuItem::action("View on GitHub", ViewOnGitHub),
+                MenuItem::action(format!("Open in {shell}"), OpenInShell),
+                MenuItem::action("Show in Finder", ShowInFinder),
+                MenuItem::action(format!("Open in {editor}"), OpenInEditor),
+                MenuItem::action("Open With…", OpenWith),
+                MenuItem::separator(),
+                MenuItem::action("Create Issue on GitHub", CreateIssue),
+                MenuItem::separator(),
+                MenuItem::action("New Worktree…", NewWorktree),
+                MenuItem::separator(),
+                MenuItem::action("Repository Settings…", RepositorySettings),
+            ]),
+        ),
         Menu::new("Branch").items([
             MenuItem::action("New Branch…", NewBranch),
             MenuItem::action("Rename…", RenameBranch),

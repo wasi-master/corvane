@@ -555,6 +555,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// Repository › Fetch All Repositories.
+    FETCH_ALL_REPOSITORIES = 423 "fetch-all-repositories" {
+        title: "Repository › Fetch All Repositories",
+        summary: "The Repository menu can fetch every repository in the list that has a remote, \
+                  one after another; failures are listed in one error at the end.",
+        ghd_behaviour: "Fetches the selected repository only; others wait for their background \
+                        fetch after being selected.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13700)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

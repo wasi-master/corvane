@@ -76,6 +76,7 @@ gpui_kit::actions!(
         Push,
         Pull,
         Fetch,
+        FetchAllRepositories,
         RemoveRepository,
         ViewOnGitHub,
         OpenInShell,

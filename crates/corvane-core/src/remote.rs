@@ -16,8 +16,11 @@
 //! (`228-push-during-background-fetch`; GHD disables the button).
 //! A local branch that is not checked out can be fast-forwarded from its
 //! upstream (`230-update-branch-from-upstream`).
+//! Repository › Fetch All Repositories fetches every listed repository
+//! (`423-fetch-all-repositories`).
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, SystemTime};
 
 use corvane_git::{AskpassEnv, RemoteFailure};
@@ -469,6 +472,100 @@ impl Dispatcher {
                     );
                 }
                 Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
+    /// Repository › Fetch All Repositories (`423-fetch-all-repositories`;
+    /// GHD has none): fetch every listed repository with a remote, one at a
+    /// time on a background thread, skipping those with a network operation
+    /// running; failures are collected into one error.
+    pub fn fetch_all_repositories(cx: &mut App) {
+        static RUNNING: AtomicBool = AtomicBool::new(false);
+        let (git, repos, use_helper, github_hosts, selected) = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::FETCH_ALL_REPOSITORIES) {
+                return;
+            }
+            let Some(git) = s.git.clone() else { return };
+            let prune_tags = s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS);
+            let use_helper = s.settings.use_external_credential_helper;
+            let repos: Vec<_> = s
+                .repositories
+                .iter()
+                .filter(|r| !r.missing)
+                .filter(|r| {
+                    !s.repo_states
+                        .get(&r.id)
+                        .is_some_and(|rs| rs.push_pull_in_progress)
+                })
+                .map(|r| {
+                    (
+                        r.name(),
+                        r.path.clone(),
+                        prune_tags && r.tags_to_push.is_empty(),
+                    )
+                })
+                .collect();
+            let github_hosts: Vec<String> = std::iter::once("github.com".to_string())
+                .chain(s.accounts.iter().map(|a| a.host()))
+                .collect();
+            (git, repos, use_helper, github_hosts, s.selected)
+        };
+        if RUNNING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let askpass = Self::askpass_env(cx);
+        spawn_bg(
+            cx,
+            move || {
+                let mut failures = Vec::new();
+                for (name, path, prune_tags) in repos {
+                    let Ok(info) = corvane_git::open_repository(&path) else {
+                        continue;
+                    };
+                    let upstream_remote = info
+                        .current_branch()
+                        .and_then(|b| b.upstream_remote_name().map(str::to_string));
+                    let Some(remote) = upstream_remote
+                        .and_then(|n| info.remotes.iter().find(|r| r.name == n))
+                        .or_else(|| corvane_git::find_default_remote(&info.remotes))
+                        .cloned()
+                    else {
+                        continue;
+                    };
+                    corvane_git::set_credential_helper(
+                        use_helper && !github_hosts.contains(&host_of(&remote.url)),
+                    );
+                    match corvane_git::fetch_with_prune_tags(
+                        git.clone(),
+                        &info.workdir,
+                        &remote.name,
+                        prune_tags,
+                        askpass.as_ref(),
+                        &mut |_, _| {},
+                    ) {
+                        Ok(()) => {
+                            let _ = corvane_git::fast_forward_branches(git.clone(), &info.workdir);
+                        }
+                        Err(err) => failures.push(format!("{name}: {err}")),
+                    }
+                }
+                failures
+            },
+            move |failures, cx| {
+                RUNNING.store(false, Ordering::SeqCst);
+                if !failures.is_empty() {
+                    Self::show_error(
+                        "Could not fetch all repositories",
+                        failures.join("\n\n"),
+                        cx,
+                    );
+                }
+                if let Some(id) = selected {
+                    Self::refresh_repository(id, cx);
+                }
+                Self::refresh_indicators(cx);
             },
         );
     }

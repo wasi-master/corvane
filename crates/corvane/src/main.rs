@@ -134,6 +134,8 @@ fn main() {
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                 s.flags
                     .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                s.flags
+                    .bool(corvane_core::flags::ids::FETCH_ALL_REPOSITORIES),
             );
         }
         phase(started, "theme, keymap, menus and state installed");
@@ -155,6 +157,8 @@ fn main() {
                     .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                 s.flags
                     .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                s.flags
+                    .bool(corvane_core::flags::ids::FETCH_ALL_REPOSITORIES),
             )
         };
         let mut last_high_contrast = high_contrast;
@@ -176,6 +180,8 @@ fn main() {
                             .bool(corvane_core::flags::ids::RELEASE_NOTES_MENU_ITEM),
                         s.flags
                             .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
+                        s.flags
+                            .bool(corvane_core::flags::ids::FETCH_ALL_REPOSITORIES),
                     ),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                 )
@@ -188,6 +194,7 @@ fn main() {
                     &last_menu_key.1,
                     last_menu_key.2,
                     last_menu_key.3,
+                    last_menu_key.4,
                 );
             }
             let theme_changed = theme != last_theme;
@@ -757,6 +764,9 @@ fn main() {
             if let Some(id) = selected(cx) {
                 Dispatcher::fetch(id, false, cx);
             }
+        });
+        cx.on_action(move |_: &FetchAllRepositories, cx| {
+            Dispatcher::fetch_all_repositories(cx);
         });
         Dispatcher::start_background_tasks(cx);
         Dispatcher::refresh_accounts(cx);
