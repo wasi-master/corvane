@@ -65,6 +65,16 @@ const ANIMATION: Duration = Duration::from_millis(250);
 const PIXELS_PER_TICK: f32 = 40.;
 /// `kMinFractionToStepWhenPaging`.
 const PAGE_FRACTION: f32 = 0.875;
+
+/// `102-smooth-wheel-scrolling`: off jumps like Electron on macOS without
+/// `NSScrollAnimationEnabled` (widgets outside the app state keep animating).
+fn smooth_scrolling(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_none_or(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SMOOTH_WHEEL_SCROLLING)
+    })
+}
 /// `kInitialAutoscrollTimerDelay`, `kAutoscrollTimerDelay`: holding the
 /// mouse on the track keeps paging.
 const AUTOSCROLL_DELAY: Duration = Duration::from_millis(250);
@@ -970,7 +980,7 @@ fn paint_bar(
                 let ticks = lines.along(axis);
                 let current = f32::from(handle.offset().along(axis));
                 let now = Instant::now();
-                if cx.reduce_motion() {
+                if cx.reduce_motion() || !smooth_scrolling(cx) {
                     let target = (current + ticks * PIXELS_PER_TICK).clamp(-max, 0.);
                     set_offset(&*handle, axis, target);
                     cx.notify(view);
@@ -1215,7 +1225,7 @@ fn page(
     };
     let target = (from + direction * viewport_len * PAGE_FRACTION).clamp(-max, 0.);
     let now = Instant::now();
-    if cx.reduce_motion() {
+    if cx.reduce_motion() || !smooth_scrolling(cx) {
         set_offset(&**handle, axis, target);
         cx.notify(view);
         return true;

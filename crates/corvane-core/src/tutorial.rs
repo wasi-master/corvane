@@ -136,12 +136,6 @@ pub fn assess(i: &TutorialInput) -> TutorialStep {
     }
 }
 
-/// `InitialReadmeContents`, with Corvane's name.
-pub const INITIAL_README: &str = "# Welcome to Corvane!\n\n\
-     This is your README. READMEs are where you can communicate what your project is and how to \
-     use it.\n\n\
-     Write your name on line 6, save it, and then head back to Corvane.\n";
-
 /// GHD's tutorial repository name.
 pub const TUTORIAL_REPOSITORY_NAME: &str = "desktop-tutorial";
 
@@ -261,6 +255,8 @@ impl Dispatcher {
         let friendly = account.host();
         let endpoint = corvane_github::Endpoint::from_api_base(&account.endpoint);
         let work_path = path.clone();
+        // `InitialReadmeContents` with `103-product-name`
+        let readme = crate::flags::initial_readme(Self::state(cx).read(cx).product_name());
         let task = cx.background_executor().spawn(async move {
             let progress = |title: &str, value: f32, detail: Option<String>| {
                 let _ = tx.send_blocking((title.to_string(), (value * 100.) as u8, detail));
@@ -270,6 +266,7 @@ impl Dispatcher {
                 Client::new(endpoint, token),
                 &friendly,
                 &work_path,
+                &readme,
                 askpass.as_ref(),
                 &progress,
             )
@@ -424,6 +421,7 @@ fn create_tutorial_repository(
     client: Client,
     friendly_endpoint: &str,
     path: &Path,
+    readme: &str,
     askpass: Option<&corvane_git::remote_ops::AskpassEnv>,
     progress: &dyn Fn(&str, f32, Option<String>),
 ) -> Result<corvane_models::GitHubRepository, String> {
@@ -475,7 +473,7 @@ fn create_tutorial_repository(
         },
     )
     .map_err(|e| e.to_string())?;
-    std::fs::write(path.join("README.md"), INITIAL_README).map_err(|e| e.to_string())?;
+    std::fs::write(path.join("README.md"), readme).map_err(|e| e.to_string())?;
     corvane_git::add_paths(git.clone(), path, &["README.md"]).map_err(|e| e.to_string())?;
     corvane_git::commit(
         git.clone(),

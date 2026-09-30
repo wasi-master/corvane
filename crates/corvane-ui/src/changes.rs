@@ -161,7 +161,9 @@ impl ChangesSidebar {
                     s.selected,
                     s.selected_state()
                         .and_then(|rs| rs.info.as_ref())
-                        .and_then(|i| i.commit_template.clone()),
+                        .and_then(|i| i.commit_template.clone())
+                        // `201-commit-templates` off: as if there were none
+                        .filter(|_| s.flags.bool(corvane_core::flags::ids::COMMIT_TEMPLATES)),
                 )
             };
             if template != this.seen_template {

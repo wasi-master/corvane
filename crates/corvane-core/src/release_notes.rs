@@ -100,8 +100,16 @@ fn parse_tagged(text: &str) -> Option<ReleaseNote> {
     })
 }
 
-/// A Markdown release body → entries (see the module doc).
+/// A Markdown release body → entries (see the module doc), untagged items
+/// classified by their heading and the leading paragraph kept.
 pub fn parse_release_body(body: &str) -> Vec<ReleaseNote> {
+    parse_release_body_with(body, true)
+}
+
+/// `parse_release_body`; with `heading_kinds` off (the GHD value of
+/// `504-release-notes-heading-kinds`) untagged items and the leading
+/// paragraph are dropped, as GHD's `parseReleaseEntries` does.
+pub fn parse_release_body_with(body: &str, heading_kinds: bool) -> Vec<ReleaseNote> {
     let mut entries = Vec::new();
     let mut heading: Option<String> = None;
     let mut pretext: Vec<String> = Vec::new();
@@ -121,20 +129,22 @@ pub fn parse_release_body(body: &str) -> Vec<ReleaseNote> {
             if item.is_empty() {
                 continue;
             }
-            entries.push(parse_tagged(item).unwrap_or_else(|| {
-                ReleaseNote {
+            match parse_tagged(item) {
+                Some(note) => entries.push(note),
+                None if heading_kinds => entries.push(ReleaseNote {
                     kind: heading
                         .as_deref()
                         .map(kind_for_heading)
                         .unwrap_or(ReleaseNoteKind::Other),
                     message: item.to_string(),
-                }
-            }));
+                }),
+                None => {}
+            }
         } else if !seen_list && heading.is_none() && !trimmed.is_empty() {
             pretext.push(trimmed.to_string());
         }
     }
-    if !pretext.is_empty() {
+    if heading_kinds && !pretext.is_empty() {
         entries.insert(
             0,
             ReleaseNote {
@@ -196,7 +206,14 @@ impl Dispatcher {
                         .published_at
                         .as_deref()
                         .and_then(corvane_models::parse_iso8601);
-                    let entries = parse_release_body(release.body.as_deref().unwrap_or_default());
+                    let heading_kinds = Self::state(cx)
+                        .read(cx)
+                        .flags
+                        .bool(crate::flags::ids::RELEASE_NOTES_HEADING_KINDS);
+                    let entries = parse_release_body_with(
+                        release.body.as_deref().unwrap_or_default(),
+                        heading_kinds,
+                    );
                     Self::show_popup(
                         Popup::ReleaseNotes {
                             summary: release_summary(&version, published, entries),

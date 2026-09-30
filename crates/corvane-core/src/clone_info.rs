@@ -93,6 +93,18 @@ pub fn resolve(
     candidates: &[Candidate],
     lookup: &mut Lookup<'_>,
 ) -> Result<CloneInfo, &'static str> {
+    resolve_with(input, candidates, lookup, true)
+}
+
+/// `resolve`; with `strict_shorthand` off (the GHD value of
+/// `204-clone-shorthand-not-found`) an `owner/name` every account answers
+/// 404 for is handed to git as typed instead of failing here.
+pub fn resolve_with(
+    input: &str,
+    candidates: &[Candidate],
+    lookup: &mut Lookup<'_>,
+    strict_shorthand: bool,
+) -> Result<CloneInfo, &'static str> {
     let input = input.trim();
     let as_is = || CloneInfo {
         url: input.to_string(),
@@ -159,7 +171,7 @@ pub fn resolve(
     }
     // every account answered 404: not found (see the module doc); a lookup
     // that failed otherwise (offline, rate limit) leaves it to git
-    if id.hostname.is_none() && !lookup_failed {
+    if id.hostname.is_none() && !lookup_failed && strict_shorthand {
         return Err(REPOSITORY_NOT_FOUND);
     }
     Ok(as_is())
@@ -201,6 +213,10 @@ impl Dispatcher {
             },
             Client::new(anonymous, ""),
         ));
+        let strict_shorthand = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CLONE_SHORTHAND_NOT_FOUND);
         spawn_bg(
             cx,
             move || {
@@ -212,7 +228,7 @@ impl Dispatcher {
                         .map_err(|err| err.to_string())
                 };
                 // `owner/name` passed through as typed becomes a GitHub.com URL
-                resolve(&input, &candidates, &mut lookup).map(|mut info| {
+                resolve_with(&input, &candidates, &mut lookup, strict_shorthand).map(|mut info| {
                     info.url = corvane_git::normalize_clone_url(&info.url).unwrap_or(info.url);
                     info
                 })

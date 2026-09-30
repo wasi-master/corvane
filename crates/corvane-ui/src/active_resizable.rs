@@ -77,12 +77,19 @@ fn nudge(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let width = resizable.update(cx, |state, cx| {
-        let width = state.sizes().first().copied()?;
-        state.resize_panel(0, width + delta, window, cx);
-        state.sizes().first().copied()
+    let widths = resizable.update(cx, |state, cx| {
+        let before = state.sizes().first().copied()?;
+        state.resize_panel(0, before + delta, window, cx);
+        state.sizes().first().copied().map(|after| (before, after))
     });
-    if let Some(width) = width {
+    if let Some((before, after)) = widths {
+        // `601-resizable-announces-new-width`: GHD reads the width before
+        // applying the step, so its number lags one step behind
+        let new_width = corvane_core::AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::RESIZABLE_ANNOUNCES_NEW_WIDTH);
+        let width = if new_width { after } else { before };
         let message: SharedString = about.message(delta > zpx(0.), width).into();
         MESSAGES.with(|m| m.borrow_mut().insert(resizable.entity_id(), message));
         window.refresh();

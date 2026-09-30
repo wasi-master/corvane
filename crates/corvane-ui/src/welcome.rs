@@ -119,6 +119,8 @@ impl WelcomeView {
 
     fn start(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        // `103-product-name`: "GitHub Desktop" under the GitHub Desktop preset
+        let name = self.state.read(cx).product_name().to_string();
         let this = cx.entity();
         let press = cx.entity();
         let ring = self.sign_in_focus_visible && self.sign_in_focus.is_focused(window);
@@ -137,13 +139,13 @@ impl WelcomeView {
                     .flex()
                     .flex_col()
                     .justify_center()
-                    .child(welcome_title("Welcome to Corvane"))
+                    .child(welcome_title(format!("Welcome to {name}")))
                     .child(
-                        welcome_text(
-                            "Corvane is a seamless way to contribute to projects on GitHub and \
-                         GitHub Enterprise. Sign in below to get started with your existing \
-                         projects.",
-                        )
+                        welcome_text(format!(
+                            "{name} is a seamless way to contribute to projects on GitHub and \
+                             GitHub Enterprise. Sign in below to get started with your existing \
+                             projects."
+                        ))
                         .mt(px(10.)),
                     )
                     .child(
@@ -179,7 +181,7 @@ impl WelcomeView {
                                                     Popup::SignIn { enterprise: false },
                                                     cx,
                                                 );
-                                                Dispatcher::sign_in_device_flow(
+                                                Dispatcher::begin_sign_in(
                                                     Endpoint::github_com(),
                                                     cx,
                                                 );
@@ -270,10 +272,10 @@ impl WelcomeView {
                         ])
                         .line_height(px(WELCOME_FONT_SM * 1.5)),
                     )
-                    .child(div().child(
-                        "Corvane does not send usage metrics. Nothing about how you use the \
-                             app is collected or shared with anyone.",
-                    )),
+                    .child(div().child(format!(
+                        "{name} does not send usage metrics. Nothing about how you use the \
+                         app is collected or shared with anyone."
+                    ))),
             )
     }
 
@@ -427,7 +429,8 @@ const WELCOME_FONT_SM: f32 = 11. * SCALE;
 const WELCOME_FONT_MD: f32 = 14. * SCALE;
 
 /// `.welcome-title`: 42 px × scale, light, line-height 1.25, 10 px below.
-fn welcome_title(text: &'static str) -> Div {
+fn welcome_title(text: impl Into<SharedString>) -> Div {
+    let text: SharedString = text.into();
     div()
         .text_size(px(42. * SCALE))
         .line_height(px(42. * SCALE * 1.25))
@@ -439,7 +442,8 @@ fn welcome_title(text: &'static str) -> Div {
 /// `.welcome-text`: 10 px vertical margins. In `.start-content` (a flex
 /// column) they add to the title's; in `#configure-git` the top one
 /// collapses into it, so callers add `mt` where it applies.
-fn welcome_text(text: &'static str) -> Div {
+fn welcome_text(text: impl Into<SharedString>) -> Div {
+    let text: SharedString = text.into();
     div()
         .mb(px(10.))
         .text_size(px(WELCOME_FONT_MD))

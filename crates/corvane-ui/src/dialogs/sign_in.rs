@@ -97,21 +97,30 @@ impl SignInDialog {
         let t = cx.ghd();
         let sign_in = self.state.read(cx).sign_in.clone();
         let this = cx.entity();
+        // `307-sign-in-flow`: which flow the primary button starts; the
+        // other one stays a link away
+        let browser_first = self
+            .state
+            .read(cx)
+            .flags
+            .text(corvane_core::flags::ids::SIGN_IN_FLOW)
+            == "browser";
         match sign_in.map(|s| s.step) {
             None => div()
                 .flex()
                 .flex_col()
                 .items_start()
                 .gap(SPACING())
-                .child(
+                .child(if browser_first {
+                    "Corvane will open GitHub in your browser. Authorise this app there to \
+                     sign in."
+                } else {
                     "Corvane will show you a one-time code and open GitHub in your browser. \
-                     Enter the code there to authorise this app.",
-                )
+                     Enter the code there to authorise this app."
+                })
                 .child(
                     primary_button("sign-in-browser", "Sign in using your browser", false, cx)
-                        .on_click(|_, _, cx| {
-                            Dispatcher::sign_in_device_flow(Endpoint::github_com(), cx)
-                        }),
+                        .on_click(|_, _, cx| Dispatcher::begin_sign_in(Endpoint::github_com(), cx)),
                 )
                 .child(
                     div()
@@ -128,13 +137,22 @@ impl SignInDialog {
                 )
                 .child(
                     // GHD's `authenticateWithBrowser` (web application flow)
+                    // or the device flow, whichever is not the default
                     div()
                         .id("sign-in-web-flow-link")
                         .text_color(t.link)
                         .cursor_pointer()
-                        .child("Use the browser flow instead (no code to type)")
-                        .on_click(|_, _, cx| {
-                            Dispatcher::sign_in_web_flow(Endpoint::github_com(), cx)
+                        .child(if browser_first {
+                            "Use a one-time code instead"
+                        } else {
+                            "Use the browser flow instead (no code to type)"
+                        })
+                        .on_click(move |_, _, cx| {
+                            if browser_first {
+                                Dispatcher::sign_in_device_flow(Endpoint::github_com(), cx)
+                            } else {
+                                Dispatcher::sign_in_web_flow(Endpoint::github_com(), cx)
+                            }
                         }),
                 )
                 .into_any_element(),
@@ -237,7 +255,7 @@ impl SignInDialog {
                 .child(
                     primary_button("sign-in-retry", "Try again", false, cx).on_click(|_, _, cx| {
                         Dispatcher::cancel_sign_in(cx);
-                        Dispatcher::sign_in_device_flow(Endpoint::github_com(), cx)
+                        Dispatcher::begin_sign_in(Endpoint::github_com(), cx)
                     }),
                 )
                 .into_any_element(),

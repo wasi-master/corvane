@@ -76,8 +76,17 @@ fn deactivate(kind: PackKind) {
 }
 
 impl Dispatcher {
-    /// At launch: find installed packs on disk and activate them.
+    /// At launch: find installed packs on disk and activate them (unless
+    /// `502-optional-components` is off).
     pub fn load_installed_packs(cx: &mut App) {
+        if !Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::OPTIONAL_COMPONENTS)
+        {
+            info!("optional components are off: installed packs stay inactive");
+            return;
+        }
         spawn_bg(
             cx,
             || {
