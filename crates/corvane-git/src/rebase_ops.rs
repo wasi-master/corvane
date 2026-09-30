@@ -8,7 +8,8 @@
 //!
 //! Deviation: with `keep_messages` (flag `448`) rebases use
 //! `commit.cleanup=scissors` so `#` message lines survive a conflict
-//! (GHD `lib/git/rebase.ts` keeps git's `strip`).
+//! (GHD `lib/git/rebase.ts` keeps git's `strip`); cherry-picks likewise
+//! (flag `449`, GHD `lib/git/cherry-pick.ts`).
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -955,10 +956,13 @@ fn classify_cherry_pick(
 }
 
 /// GHD `cherryPick`: `cherry-pick <shas> --empty=keep -m 1` (oldest first).
+/// `keep_messages` adds `--cleanup=scissors` (see [`cleanup_config`]; the
+/// sequencer remembers it for the later picks).
 pub fn cherry_pick(
     git: Arc<GitBinary>,
     workdir: &Path,
     commits: &[CommitOneLine],
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> CherryPickResult {
     if commits.is_empty() {
@@ -976,6 +980,9 @@ pub fn cherry_pick(
     }
     args.push("-m".into());
     args.push("1".into());
+    if keep_messages {
+        args.push("--cleanup=scissors".into());
+    }
     let mut count = 0;
     let result = GitCommand::new(git)
         .args(&args)
@@ -1078,12 +1085,17 @@ pub fn cherry_pick_snapshot(git: Arc<GitBinary>, workdir: &Path) -> Option<Cherr
     }
 }
 
-/// GHD `continueCherryPick`
+/// GHD `continueCherryPick`. With `keep_messages` and a stopped pick started
+/// that way (its `MERGE_MSG` has the cut line), the pick is committed here
+/// with `--cleanup=scissors` and the sequencer, if any, continued after it:
+/// `cherry-pick --continue` itself commits a single pick with `strip`,
+/// dropping `#` lines, and `commit --no-edit` keeps git's conflict note.
 pub fn continue_cherry_pick(
     git: Arc<GitBinary>,
     workdir: &Path,
     files: &[WorkingDirectoryFileChange],
     resolutions: &BTreeMap<String, ManualConflictResolution>,
+    keep_messages: bool,
     mut on_progress: impl FnMut(McoProgress),
 ) -> Result<CherryPickResult> {
     stage_for_continue(git.clone(), workdir, files, resolutions)?;
@@ -1100,6 +1112,39 @@ pub fn continue_cherry_pick(
         .iter()
         .filter(|f| f.status.kind != FileStatusKind::Untracked)
         .count();
+    let dir = git_dir(workdir);
+    if keep_messages && message_has_scissors(&dir.join("MERGE_MSG")) {
+        // the editor "runs" (`:`), so `scissors` cuts at the line
+        let committed = GitCommand::new(git.clone())
+            .args(["commit", "--allow-empty", "--cleanup=scissors"])
+            .env("GIT_EDITOR", ":")
+            .current_dir(workdir)
+            .run();
+        match committed {
+            Ok(out) => {
+                for line in out.stdout_string().unwrap_or_default().lines() {
+                    if let Some(p) = parse_cherry_pick_progress(line, &commits, &mut count) {
+                        on_progress(p);
+                    }
+                }
+            }
+            Err(GitError::Failed { stderr, .. }) => return Ok(CherryPickResult::Error(stderr)),
+            Err(err) => return Err(err),
+        }
+        if !dir.join("sequencer").join("todo").exists() {
+            return Ok(CherryPickResult::CompletedWithoutError);
+        }
+        let result = GitCommand::new(git)
+            .args(["cherry-pick", "--continue"])
+            .env("GIT_EDITOR", ":")
+            .current_dir(workdir)
+            .run_streaming_stdout(|line| {
+                if let Some(p) = parse_cherry_pick_progress(line, &commits, &mut count) {
+                    on_progress(p);
+                }
+            });
+        return Ok(classify_cherry_pick(workdir, result));
+    }
     let result = if tracked_after == 0 {
         warn!("no tracked changes to commit; continuing cherry-pick with an empty commit");
         GitCommand::new(git)
@@ -1426,7 +1471,7 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         let mut progress = Vec::new();
         assert_eq!(
-            cherry_pick(git.clone(), path, &feature, |p| progress.push(p)),
+            cherry_pick(git.clone(), path, &feature, false, |p| progress.push(p)),
             CherryPickResult::CompletedWithoutError
         );
         assert!(path.join("f.txt").exists());
@@ -1440,7 +1485,7 @@ mod tests {
         run(path, &["checkout", "-q", "main"]);
         commit_file(path, "a.txt", "main\n", "main edits a");
         assert_eq!(
-            cherry_pick(git.clone(), path, &picks, |_| {}),
+            cherry_pick(git.clone(), path, &picks, false, |_| {}),
             CherryPickResult::ConflictsEncountered
         );
         assert!(cherry_pick_head_found(path));
@@ -1452,6 +1497,60 @@ mod tests {
         );
         abort_cherry_pick(git, path).unwrap();
         assert!(!cherry_pick_head_found(path));
+    }
+
+    #[test]
+    fn cherry_pick_keeps_hash_messages_across_a_conflict() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        run(path, &["checkout", "-q", "-b", "feature"]);
+        std::fs::write(path.join("a.txt"), "feature\n").unwrap();
+        run(path, &["add", "."]);
+        run(path, &["commit", "-q", "-m", "#7 edits a", "-m", "# body"]);
+        commit_file(path, "b.txt", "b\n", "#8 adds b");
+        let picks = commits_in_range(git.clone(), path, "main..feature")
+            .unwrap()
+            .unwrap();
+        run(path, &["checkout", "-q", "main"]);
+        commit_file(path, "a.txt", "main\n", "main edits a");
+        let log = |n: &str| {
+            GitCommand::new(git.clone())
+                .args(["log", n, "--format=%B"])
+                .current_dir(path)
+                .run()
+                .unwrap()
+                .stdout_string()
+                .unwrap()
+        };
+        let resolve = |side: ManualConflictResolution| {
+            let status = crate::status::get_status(git.clone(), path, None).unwrap();
+            let mut resolutions = BTreeMap::new();
+            resolutions.insert("a.txt".to_string(), side);
+            continue_cherry_pick(git.clone(), path, &status.files, &resolutions, true, |_| {})
+                .unwrap()
+        };
+        // two picks, the first conflicts: the sequencer goes on afterwards
+        assert_eq!(
+            cherry_pick(git.clone(), path, &picks, true, |_| {}),
+            CherryPickResult::ConflictsEncountered
+        );
+        assert_eq!(
+            resolve(ManualConflictResolution::Theirs),
+            CherryPickResult::CompletedWithoutError
+        );
+        assert!(!cherry_pick_head_found(path));
+        assert_eq!(log("-2"), "#8 adds b\n\n#7 edits a\n\n# body\n\n");
+        // one pick resolved to our side: an empty commit, same message
+        run(path, &["reset", "-q", "--hard", "HEAD~2"]);
+        assert_eq!(
+            cherry_pick(git.clone(), path, &picks[..1], true, |_| {}),
+            CherryPickResult::ConflictsEncountered
+        );
+        assert_eq!(
+            resolve(ManualConflictResolution::Ours),
+            CherryPickResult::CompletedWithoutError
+        );
+        assert_eq!(log("-1"), "#7 edits a\n\n# body\n\n");
     }
 
     #[test]
