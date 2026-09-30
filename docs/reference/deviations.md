@@ -133,6 +133,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 
 - ⌘⌫ with the changes list focused discards the highlighted files (confirming as the context menu's Discard Changes does); elsewhere it removes the repository as in GHD, where it is Repository › Remove… everywhere. Flag bindings are rebuilt with the keymap when a flag changes (`keymap::sync`). Flag: `607-cmd-backspace-discards-files`.
 - With the changes list or a commit's file list focused, ⇧⌘A opens the selected file in the external editor and ⌥⌘O opens it with its default program (Corvane addition; GHD only offers both in the file context menu, and ⇧⌘A always opens the repository). Flag: `608-open-file-shortcuts`.
+- Push can lose its ⌘P shortcut (Corvane option), so a stray ⌘P does not push; GHD always binds it. Flag: `609-no-push-shortcut`.
 
 ## Accessibility
 

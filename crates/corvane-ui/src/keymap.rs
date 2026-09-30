@@ -18,6 +18,8 @@ pub struct KeymapFlags {
     /// `608-open-file-shortcuts`: ⇧⌘A / ⌥⌘O in the changes and commit file
     /// lists open the selected file in the editor / default program.
     pub open_file_shortcuts: bool,
+    /// `609-no-push-shortcut`: ⌘P does not push.
+    pub no_push_shortcut: bool,
 }
 
 impl KeymapFlags {
@@ -25,6 +27,7 @@ impl KeymapFlags {
         Self {
             discard_selected_files: flags.bool(ids::CMD_BACKSPACE_DISCARDS_FILES),
             open_file_shortcuts: flags.bool(ids::OPEN_FILE_SHORTCUTS),
+            no_push_shortcut: flags.bool(ids::NO_PUSH_SHORTCUT),
         }
     }
 }
@@ -120,7 +123,6 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("cmd-8", ContractActiveResizable, None),
         KeyBinding::new("ctrl-tab", ToggleSection, None),
         // Repository
-        KeyBinding::new("cmd-p", Push, None),
         KeyBinding::new("shift-cmd-p", Pull, None),
         KeyBinding::new("shift-cmd-t", Fetch, None),
         KeyBinding::new("cmd-backspace", RemoveRepository, None),
@@ -161,6 +163,9 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             DiscardSelectedFiles,
             Some("ChangesList"),
         ));
+    }
+    if !flags.no_push_shortcut {
+        bindings.push(KeyBinding::new("cmd-p", Push, None));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

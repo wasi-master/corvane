@@ -1057,6 +1057,19 @@ registry! {
             "crates/corvane-ui/src/selected_commit.rs",
         ],
     },
+    /// Repository › Push has no ⌘P shortcut.
+    NO_PUSH_SHORTCUT = 609 "no-push-shortcut" {
+        title: "No ⌘P shortcut for Push",
+        summary: "⌘P does nothing and Repository › Push shows no shortcut, so a stray ⌘P (print, \
+                  quick open in an editor) cannot push.",
+        ghd_behaviour: "⌘P pushes (or opens Force Push… after a rebase or amend).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14604)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.
