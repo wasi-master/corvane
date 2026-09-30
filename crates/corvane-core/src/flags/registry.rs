@@ -407,7 +407,20 @@ registry! {
         upstream: &[Upstream::issue(13401)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
-
+    /// Plain-language text for two confusing git errors.
+    PLAIN_LANGUAGE_REMOTE_ERRORS = 232 "plain-language-remote-errors" {
+        title: "Plain-language remote errors",
+        summary: "A pull whose upstream branch was deleted on the remote, and a clone into a folder \
+                  you may not write to, explain what happened in a sentence before git's message.",
+        ghd_behaviour: "Shows git's text only (\"Your configuration specifies to merge with the \
+                        ref …\", \"Permission denied\").",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1325), Upstream::issue(13187)],
+        code: &["crates/corvane-core/src/push_errors.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 

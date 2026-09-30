@@ -369,7 +369,17 @@ impl Dispatcher {
                     cx,
                 );
             }
-            _ => Self::show_error(title, err.to_string(), cx),
+            _ => {
+                // `232-plain-language-remote-errors`: say what went wrong
+                // before git's message
+                let plain = Self::state(cx)
+                    .read(cx)
+                    .flags
+                    .bool(crate::flags::ids::PLAIN_LANGUAGE_REMOTE_ERRORS)
+                    .then(|| crate::push_errors::plain_remote_error(&err))
+                    .flatten();
+                Self::show_error(title, plain.unwrap_or_else(|| err.to_string()), cx)
+            }
         }
     }
 

@@ -3,6 +3,12 @@
 //! (`extractSecretScanningResults`), workflow files refused for a token
 //! without the `workflow` scope (`refusedWorkflowUpdate`) and SAML SSO
 //! re-authorization (`samlReauthRequired`).
+//!
+//! Corvane addition (`232-plain-language-remote-errors`): a pull from an
+//! upstream branch that was deleted, and a clone into a folder the user may
+//! not write to, get a plain-language sentence before git's own message
+//! ([`plain_remote_error`], [`plain_clone_error`]); GHD shows git's text
+//! (desktop#1325, desktop#13187).
 
 use corvane_models::{BypassReason, SecretLocation, SecretScanResult};
 use gpui_kit::App;
@@ -75,6 +81,63 @@ impl Dispatcher {
             },
         );
     }
+}
+
+/// The upstream branch a pull or fetch could not find on the remote: git's
+/// "Your configuration specifies to merge with the ref 'refs/heads/<b>' …
+/// but no such ref was fetched" or "couldn't find remote ref <b>".
+pub fn missing_remote_branch(stderr: &str) -> Option<String> {
+    let name = if let Some(rest) = stderr.split_once("to merge with the ref '") {
+        rest.1.split('\'').next()?
+    } else {
+        stderr
+            .split_once("couldn't find remote ref ")?
+            .1
+            .lines()
+            .next()?
+            .trim()
+    };
+    let name = name.strip_prefix("refs/heads/").unwrap_or(name);
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+/// A plain-language explanation for a failed pull or fetch, followed by
+/// git's message; `None` when there is nothing better to say.
+pub fn plain_remote_error(err: &corvane_git::GitError) -> Option<String> {
+    let corvane_git::GitError::Failed { stderr, .. } = err else {
+        return None;
+    };
+    let branch = missing_remote_branch(stderr)?;
+    Some(format!(
+        "The branch \"{branch}\" no longer exists on the remote, so there is nothing to pull. \
+         It may have been deleted after a merge. Push to publish it again, or switch to \
+         another branch.\n\n{err}"
+    ))
+}
+
+/// A plain-language explanation for a clone into `path` that failed because
+/// the folder (or its parent) is not writable, followed by the error.
+pub fn plain_clone_error(err: &corvane_git::GitError, path: &std::path::Path) -> Option<String> {
+    let denied = match err {
+        corvane_git::GitError::Spawn(io) | corvane_git::GitError::Io(io) => {
+            io.kind() == std::io::ErrorKind::PermissionDenied
+        }
+        corvane_git::GitError::Failed { stderr, .. } => {
+            (stderr.contains("could not create work tree dir")
+                || stderr.contains("could not create leading directories")
+                || stderr.contains("could not create directory"))
+                && stderr.contains("Permission denied")
+        }
+        _ => false,
+    };
+    denied.then(|| {
+        let folder = path.parent().unwrap_or(path);
+        format!(
+            "You do not have permission to create a folder in \"{}\". Choose a location you \
+             can write to, such as a folder in your home directory.\n\n{err}",
+            folder.display()
+        )
+    })
 }
 
 /// `getRemoteMessage`: the `remote: ` lines of a push's stderr, unprefixed.
@@ -242,6 +305,50 @@ error: failed to push some refs to 'https://github.com/octocat/hello.git'
             secrets[1].bypass_url,
             "https://github.com/octocat/hello/security/secret-scanning/unblock-secret/3def"
         );
+    }
+
+    #[test]
+    fn explains_missing_upstream_and_clone_permission() {
+        let stderr = "Your configuration specifies to merge with the ref 'refs/heads/patch-1'\nfrom the remote, but no such ref was fetched.\n";
+        assert_eq!(missing_remote_branch(stderr).as_deref(), Some("patch-1"));
+        assert_eq!(
+            missing_remote_branch("fatal: couldn't find remote ref feature/x\n").as_deref(),
+            Some("feature/x")
+        );
+        assert!(missing_remote_branch("fatal: unable to access").is_none());
+        let err = corvane_git::GitError::Failed {
+            args: "pull".into(),
+            code: Some(1),
+            stderr: stderr.into(),
+        };
+        let text = plain_remote_error(&err).unwrap();
+        assert!(
+            text.starts_with("The branch \"patch-1\" no longer exists"),
+            "{text}"
+        );
+        assert!(text.contains("no such ref was fetched"));
+
+        let path = std::path::Path::new("/Applications/repo");
+        let denied = corvane_git::GitError::Spawn(std::io::Error::from(
+            std::io::ErrorKind::PermissionDenied,
+        ));
+        assert!(
+            plain_clone_error(&denied, path)
+                .unwrap()
+                .contains("\"/Applications\"")
+        );
+        let git_denied = corvane_git::GitError::Failed {
+            args: "clone".into(),
+            code: Some(128),
+            stderr: "fatal: could not create work tree dir 'repo': Permission denied\n".into(),
+        };
+        assert!(plain_clone_error(&git_denied, path).is_some());
+        let other = corvane_git::GitError::Failed {
+            args: "clone".into(),
+            code: Some(128),
+            stderr: "fatal: repository not found\n".into(),
+        };
+        assert!(plain_clone_error(&other, path).is_none());
     }
 
     #[test]

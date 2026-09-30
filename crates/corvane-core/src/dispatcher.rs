@@ -2439,7 +2439,20 @@ impl Dispatcher {
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
                     // git removed what it created
                     Err(corvane_git::GitError::Cancelled(_)) => info!("clone cancelled"),
-                    Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
+                    Err(err) => {
+                        // `232-plain-language-remote-errors`
+                        let plain = Self::state(cx)
+                            .read(cx)
+                            .flags
+                            .bool(crate::flags::ids::PLAIN_LANGUAGE_REMOTE_ERRORS)
+                            .then(|| crate::push_errors::plain_clone_error(&err, &path))
+                            .flatten();
+                        Self::show_error(
+                            "Clone failed",
+                            plain.unwrap_or_else(|| err.to_string()),
+                            cx,
+                        )
+                    }
                 }
             });
         })
