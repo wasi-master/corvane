@@ -351,6 +351,8 @@ pub struct RenameBranchDialog {
     repo: u64,
     branch: String,
     name: Entity<InputState>,
+    /// The close button's focus ring, until a mouse press.
+    close_focus_visible: bool,
 }
 
 impl RenameBranchDialog {
@@ -364,14 +366,12 @@ impl RenameBranchDialog {
         let name = cx.new(|cx| InputState::new(window, cx));
         name.update(cx, |s, cx| s.set_value(branch.clone(), window, cx));
         cx.observe(&name, |_, _, cx| cx.notify()).detach();
-        // `RefNameTextBox` autoFocus
-        let handle = name.read(cx).focus_handle(cx);
-        window.focus(&handle, cx);
         Self {
             state,
             repo,
             branch,
             name,
+            close_focus_visible: true,
         }
     }
 }
@@ -398,9 +398,20 @@ impl Render for RenameBranchDialog {
             )
         };
         let exists = new_name != self.branch && existing.contains(&new_name);
-        let disabled = new_name.is_empty() || new_name == self.branch || exists;
+        // GHD: disabled only while the name is empty or invalid (renaming to
+        // the same name is allowed)
+        let disabled = new_name.is_empty() || exists;
         let (repo, old) = (self.repo, self.branch.clone());
         let content = div()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    if this.close_focus_visible {
+                        this.close_focus_visible = false;
+                        cx.notify();
+                    }
+                }),
+            )
             .flex()
             .flex_col()
             .gap(SPACING())
@@ -448,7 +459,8 @@ impl Render for RenameBranchDialog {
                 )
             });
         let name_for_ok = new_name.clone();
-        dialog(
+        // `focusCloseButtonOnOpen`: the close button, not the name, has focus
+        crate::dialog::dialog_with_frame(
             "dialog-rename-branch",
             "Rename Branch",
             content,
@@ -474,6 +486,10 @@ impl Render for RenameBranchDialog {
                     }),
                 },
             ],
+            DialogFrame {
+                focus_close: self.close_focus_visible,
+                ..DialogFrame::default()
+            },
             close,
             window,
             cx,
@@ -564,7 +580,9 @@ impl Render for DeleteBranchDialog {
                         .child("Yes, delete this branch on the remote"),
                 )
             });
-        dialog_with_kind(
+        // destructive: Cancel is the submit button, which gets the focus
+        // (`focusFirstSuitableChild`)
+        crate::dialog::dialog_with_kind_framed(
             "dialog-delete-branch",
             DialogKind::Warning,
             "Delete Branch",
@@ -588,6 +606,10 @@ impl Render for DeleteBranchDialog {
                     }),
                 },
             ],
+            DialogFrame {
+                focus_primary: !exists_on_remote,
+                ..DialogFrame::default()
+            },
             close,
             window,
             cx,
@@ -1205,12 +1227,20 @@ pub fn split_button(
     cx: &App,
 ) -> Div {
     let t = cx.ghd();
-    let (bg, hover) = (t.button_background, t.button_hover_background);
+    let hover = t.button_hover_background;
+    // disabled: the group at 60 % (`crate::widgets::faded`)
+    let (bg, text) = if disabled {
+        (
+            crate::widgets::faded(t.button_background, t.background),
+            crate::widgets::faded(t.button_text, t.background),
+        )
+    } else {
+        (t.button_background, t.button_text)
+    };
     div()
         .flex()
         .flex_row()
         .h(zpx(30.))
-        .when(disabled, |d| d.opacity(0.6))
         .child(
             div()
                 .id(id)
@@ -1223,7 +1253,7 @@ pub fn split_button(
                 .border_color(bg)
                 .rounded_l(BORDER_RADIUS())
                 .bg(bg)
-                .text_color(t.button_text)
+                .text_color(text)
                 .text_size(FONT_SIZE())
                 .when(!disabled, move |d| {
                     d.cursor_pointer()
@@ -1243,6 +1273,6 @@ pub fn split_button(
                 .border_color(bg)
                 .rounded_r(BORDER_RADIUS())
                 .bg(bg)
-                .child(octicon(Octicon::TriangleDown, t.button_text)),
+                .child(octicon(Octicon::TriangleDown, text)),
         )
 }

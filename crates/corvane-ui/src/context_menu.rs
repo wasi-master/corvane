@@ -165,7 +165,7 @@ impl ContextMenu {
             .shadow(vec![BoxShadow {
                 color: t.shadow,
                 offset: point(zpx(0.), zpx(8.)),
-                blur_radius: zpx(24.),
+                blur_radius: crate::theme::sizes::css_blur(24.),
                 spread_radius: zpx(0.),
                 inset: false,
             }])

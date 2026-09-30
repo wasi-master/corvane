@@ -1087,7 +1087,7 @@ impl Render for FlagsDialog {
                             .shadow(vec![BoxShadow {
                                 color: t.shadow,
                                 offset: point(zpx(0.), zpx(2.)),
-                                blur_radius: zpx(7.),
+                                blur_radius: css_blur(7.),
                                 spread_radius: zpx(0.),
                                 inset: false,
                             }])

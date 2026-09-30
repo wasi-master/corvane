@@ -87,6 +87,9 @@ pub struct ChangesSidebar {
     filter_button_bounds: Rc<Cell<Bounds<Pixels>>>,
     /// Focus target for arrow-key navigation of the list.
     list_focus: FocusHandle,
+    /// The include-all checkbox takes focus when pressed (it is outside the
+    /// list, so the list's selection turns inactive, as in GHD).
+    check_all_focus: FocusHandle,
     /// Keeps the row an arrow key moved to in view (`scrollRowToVisible`).
     list_scroll: UniformListScrollHandle,
     /// View › Hide Changes Filter (`isChangesFilterVisible`).
@@ -236,6 +239,7 @@ impl ChangesSidebar {
             filter_popover_open: false,
             filter_button_bounds: Rc::new(Cell::new(Bounds::default())),
             list_focus: cx.focus_handle(),
+            check_all_focus: cx.focus_handle(),
             list_scroll: UniformListScrollHandle::new(),
             filter_visible: true,
             autocomplete: None,
@@ -1365,7 +1369,7 @@ impl ChangesSidebar {
                                 .shadow(vec![BoxShadow {
                                     color: t.shadow,
                                     offset: point(zpx(0.), zpx(2.)),
-                                    blur_radius: zpx(7.),
+                                    blur_radius: css_blur(7.),
                                     spread_radius: zpx(0.),
                                     inset: false,
                                 }])
@@ -1841,14 +1845,17 @@ impl ChangesSidebar {
                         let paths: Vec<String> = visible.iter().map(|f| f.path.clone()).collect();
                         let disabled = total == 0 || visible.is_empty();
                         let include = include_all != Some(true);
-                        checkbox_tristate("check-all", include_all, disabled, cx).when_some(
-                            repo_id.filter(|_| !disabled),
-                            |d, id| {
+                        let focus = self.check_all_focus.clone();
+                        checkbox_tristate("check-all", include_all, disabled, cx)
+                            .track_focus(&self.check_all_focus)
+                            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                                window.focus(&focus, cx)
+                            })
+                            .when_some(repo_id.filter(|_| !disabled), |d, id| {
                                 d.on_click(move |_, _, cx| {
                                     Dispatcher::set_files_included(id, paths.clone(), include, cx)
                                 })
-                            },
-                        )
+                            })
                     })
                     .child({
                         let (visible, total, _, _) = self.header_state(cx);
@@ -2564,6 +2571,33 @@ impl ChangesSidebar {
             || self.has_repo_rule_failure(cx)
     }
 
+    /// GHD `getButtonTooltip` for a disabled commit button.
+    fn commit_disabled_tooltip(&self, cx: &App) -> Option<&'static str> {
+        let s = self.state.read(cx);
+        let rs = s.selected_state();
+        let files = rs
+            .and_then(|r| r.status.as_ref())
+            .map(|st| st.files.as_slice());
+        let any_available = files.is_some_and(|f| !f.is_empty());
+        let any_included = files.is_some_and(|f| {
+            f.iter()
+                .any(|f| f.selection.kind() != DiffSelectionType::None)
+        });
+        let allow_empty = s
+            .selected
+            .and_then(|id| s.repository(id))
+            .is_some_and(|r| r.commit_options.allow_empty_commit);
+        if self.summary.read(cx).value().trim().is_empty() {
+            Some("A commit summary is required to commit")
+        } else if !any_included && any_available && !allow_empty {
+            Some("Select one or more files to commit")
+        } else if rs.is_some_and(|r| r.committing) {
+            Some("Committing changes…")
+        } else {
+            None
+        }
+    }
+
     /// `CommitWarning` with the information icon: "Your changes will modify
     /// your most recent commit. Stop amending to make these changes as a new commit."
     fn amend_notice(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
@@ -3038,13 +3072,24 @@ impl ChangesSidebar {
                                 .child(self.branch_name(cx)),
                         )
                 };
-                primary_button("commit", label, self.commit_disabled(cx), cx)
+                let disabled = self.commit_disabled(cx);
+                let button = primary_button("commit", label, disabled, cx)
                     .w_full()
                     .on_click(cx.listener(|this, _, _, cx| {
                         if !this.commit_disabled(cx) {
                             this.do_commit(cx)
                         }
-                    }))
+                    }));
+                // `Button tooltip`: north of the button, at once while disabled
+                match disabled.then(|| self.commit_disabled_tooltip(cx)).flatten() {
+                    Some(tip) => crate::widgets::with_directed_tooltip_delay(
+                        button,
+                        tip,
+                        crate::widgets::TooltipDirection::North,
+                        std::time::Duration::ZERO,
+                    ),
+                    None => button,
+                }
             })
             .when_some(self.undo_bar(cx), |d, bar| d.child(bar))
     }

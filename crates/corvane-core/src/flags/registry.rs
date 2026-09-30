@@ -115,16 +115,16 @@ registry! {
     },
     /// The name the Welcome flow and the tutorial README call the app.
     PRODUCT_NAME = 103 "product-name" {
-        title: "Product name in Welcome, blank slate and tutorial copy",
-        summary: "The name the Welcome flow, the no-repositories blank slate and the tutorial \
-                  README use for the app.",
+        title: "Product name in Welcome, blank slate, tutorial and Move to Applications copy",
+        summary: "The name the Welcome flow, the no-repositories blank slate, the tutorial \
+                  README and the Move to Applications dialog use for the app.",
         ghd_behaviour: "\"GitHub Desktop\".",
         kind: Kind::Text { placeholder: "Corvane", validate: product_name },
         corvane: Value::text("Corvane"), ghd: Value::text("GitHub Desktop"),
         familiar: Value::text("Corvane"), everything: Value::text("Corvane"),
         restart: false, visible: true, availability: available,
         upstream: &[],
-        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/no_repositories.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs"],
+        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/no_repositories.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs", "crates/corvane-ui/src/dialogs/move_to_applications_folder.rs"],
     },
 
     /// A hovered selected list row keeps its selection colour.

@@ -26,7 +26,7 @@ use crate::cloneable_repositories::{
 };
 use crate::dialog::{DialogButton, DialogFrame, dialog_loading_framed};
 use crate::icons::{Octicon, octicon};
-use crate::tab_bar::{TabModel, tab_bar};
+use crate::tab_bar::TabModel;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{button, dialog_error_banner, labeled, text_box};
@@ -54,6 +54,8 @@ pub struct CloneRepositoryDialog {
     initial_path: String,
     /// `clone_url` of the list item picked on an account tab.
     selected_repo: Option<String>,
+    /// The selected tab's focus ring while it holds the dialog's first focus.
+    tab_focus_visible: bool,
     /// `validateEmptyFolder` result for the current path.
     path_error: Option<&'static str>,
     /// `resolveCloneInfo` is running (GHD `loading`).
@@ -137,6 +139,7 @@ impl CloneRepositoryDialog {
             last_derived: initial_path.clone(),
             initial_path,
             selected_repo: None,
+            tab_focus_visible: true,
             path_error: None,
             resolving: false,
             resolve_error: None,
@@ -617,6 +620,7 @@ impl Render for CloneRepositoryDialog {
         let error = self.resolve_error.or(self.path_error);
         // signed out, the account tabs are only a call to action: no footer
         let has_footer = self.tab == Tab::Url || self.account(cx).is_some();
+        let tab_ring = self.tab_focus_visible && !has_footer;
 
         dialog_loading_framed(
             "clone-repository",
@@ -633,8 +637,19 @@ impl Render for CloneRepositoryDialog {
                             .mb(zpx(0.)),
                     )
                 })
-                // the tab bar runs edge to edge above the padded tab content
-                .child(div().child(tab_bar(
+                // the tab bar runs edge to edge above the padded tab content;
+                // signed out, nothing precedes the selected tab (tabIndex 0) so
+                // it takes the dialog's first focus
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(|this, _, _, cx| {
+                        if this.tab_focus_visible {
+                            this.tab_focus_visible = false;
+                            cx.notify();
+                        }
+                    }),
+                )
+                .child(div().child(crate::tab_bar::tab_bar_focus(
                     vec![
                         TabModel {
                             id: "clone-tab-dotcom",
@@ -653,6 +668,7 @@ impl Render for CloneRepositoryDialog {
                         },
                     ],
                     selected,
+                    tab_ring,
                     move |ix, window, cx| {
                         tabs_entity.update(cx, |d, cx| {
                             let tab = match ix {

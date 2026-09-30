@@ -1,5 +1,8 @@
 //! Small GHD-styled primitives: buttons, checkbox, counter badge, avatar, text box, kbd.
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gpui_kit::component::Sizable;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::native_menu::NativeMenu;
@@ -35,7 +38,16 @@ pub fn small_button(
         .text_size(FONT_SIZE_SM())
 }
 
-/// `.button-component-primary` — blue primary button. Disabled = 60 % opacity.
+/// CSS `opacity: .6` on a button composites the whole button over what is
+/// behind it; GPUI's `opacity` fades each primitive on its own, so a label
+/// would blend with the already-faded fill. Disabled buttons therefore draw
+/// each colour pre-blended over the page background.
+pub fn faded(color: Hsla, backdrop: Hsla) -> Hsla {
+    backdrop.blend(color.opacity(0.6))
+}
+
+/// `.button-component-primary` — blue primary button. Disabled = 60 % opacity
+/// (`[aria-disabled=true]`), as a group.
 pub fn primary_button(
     id: impl Into<ElementId>,
     label: impl IntoElement,
@@ -44,13 +56,36 @@ pub fn primary_button(
 ) -> Stateful<Div> {
     let t = cx.ghd();
     let hover_bg = t.button_hover_background;
+    let (bg, text) = if disabled {
+        (
+            faded(t.button_background, t.background),
+            faded(t.button_text, t.background),
+        )
+    } else {
+        (t.button_background, t.button_text)
+    };
     base_button(id, t)
-        .bg(t.button_background)
-        .border_color(t.button_background)
-        .text_color(t.button_text)
-        .when(disabled, |d| d.opacity(0.6).cursor_default())
+        .bg(bg)
+        .border_color(bg)
+        .text_color(text)
+        .when(disabled, |d| d.cursor_default())
         .when(!disabled, move |d| d.hover(move |s| s.bg(hover_bg)))
         .child(label)
+}
+
+/// [`button`] drawn disabled: its colours at 60 % over the page, no hover.
+pub fn button_disabled(
+    id: impl Into<ElementId>,
+    label: impl Into<SharedString>,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    base_button(id, t)
+        .bg(faded(t.secondary_button_background, t.background))
+        .border_color(faded(t.secondary_button_border, t.background))
+        .text_color(faded(t.secondary_button_text, t.background))
+        .cursor_default()
+        .child(label.into())
 }
 
 fn base_button(id: impl Into<ElementId>, _t: &GhdTheme) -> Stateful<Div> {
@@ -126,44 +161,198 @@ impl From<AnyElement> for Inline {
 /// GHD `<p>` mixing text with `<LinkButton>` / `<Ref>` children. A flex-row
 /// text child never shrinks in GPUI, so long sentences would overflow;
 /// splitting the text into words gives real line wrapping around the inline
-/// elements. Text that touches an element with no space (`"(" + chip`,
-/// `chip + "."`) stays attached.
+/// elements. Each word keeps the whitespace after it (and a part's leading
+/// whitespace stays on its first word), so the gaps are the font's own space
+/// advance at the inherited size, and text that touches an element with no
+/// space (`"(" + chip`, `chip + "."`) stays attached. Words and elements are
+/// [`InlineShift`]s sharing one [`InlineFlow`], which puts every word at its
+/// exact advance like Chromium's inline layout.
 pub fn paragraph(parts: Vec<Inline>) -> Div {
-    const GAP: f32 = 3.;
     let mut row = div()
         .flex()
         .flex_row()
         .flex_wrap()
         .items_center()
-        .gap_x(zpx(GAP))
         .line_height(zpx(18.));
-    let mut attach_next = false;
+    let flow = Rc::new(Cell::new(InlineFlow::default()));
+    let mut first = true;
+    let mut push = |row: Div, child: InlineChild| {
+        row.child(InlineShift::new(child, &flow, std::mem::take(&mut first)))
+    };
     for part in parts {
         match part {
             Inline::Text(text) => {
-                let starts_attached = !text.starts_with(char::is_whitespace);
-                let ends_attached = !text.ends_with(char::is_whitespace);
-                let mut first = true;
-                for word in text.split_whitespace() {
-                    let attach = first && starts_attached && attach_next;
-                    row = row.child(
-                        div()
-                            .when(attach, |d| d.ml(zpx(-GAP)))
-                            .child(SharedString::from(word.to_string())),
-                    );
-                    first = false;
+                let mut start = 0;
+                let mut in_word = false;
+                let mut seen_word = false;
+                for (i, ch) in text.char_indices() {
+                    if ch.is_whitespace() {
+                        if in_word {
+                            in_word = false;
+                        }
+                    } else if !in_word {
+                        // a new word: flush the previous word and its spaces
+                        if seen_word {
+                            let word = SharedString::from(text[start..i].to_string());
+                            row = push(row, InlineChild::Word(word));
+                            start = i;
+                        }
+                        in_word = true;
+                        seen_word = true;
+                    }
                 }
-                if !first {
-                    attach_next = ends_attached;
+                if start < text.len() {
+                    let word = SharedString::from(text[start..].to_string());
+                    row = push(row, InlineChild::Word(word));
                 }
             }
             Inline::Element(el) => {
-                row = row.child(div().when(attach_next, |d| d.ml(zpx(-GAP))).child(el));
-                attach_next = true;
+                row = push(row, InlineChild::Element(el));
             }
         }
     }
     row
+}
+
+/// The layout engine rounds every measured leaf up to a whole device pixel
+/// (and text up to a whole point), so a row of word boxes drifts right by up
+/// to a pixel per word. The flow carries that drift along a line: each
+/// element is moved left by the drift of the words before it on its line.
+#[derive(Clone, Copy, Default)]
+struct InlineFlow {
+    /// Bottom of the line the previous element sat on.
+    line_bottom: Pixels,
+    /// Rounding accumulated by the words before on this line.
+    drift: Pixels,
+}
+
+/// A [`paragraph`] child: a word (with its trailing spaces) shaped with the
+/// inherited text style, its box its exact advance rounded up by the layout
+/// engine only; or an element. Either is moved left by its line's
+/// [`InlineFlow`] drift (at prepaint, so hit boxes move with it), and a word
+/// adds its own rounding to the drift.
+struct InlineShift {
+    child: InlineChild,
+    flow: Rc<Cell<InlineFlow>>,
+    /// The paragraph's first child starts the flow afresh on every frame.
+    first: bool,
+}
+
+enum InlineChild {
+    Word(SharedString),
+    Element(AnyElement),
+}
+
+impl InlineShift {
+    fn new(child: InlineChild, flow: &Rc<Cell<InlineFlow>>, first: bool) -> Self {
+        Self {
+            child,
+            flow: flow.clone(),
+            first,
+        }
+    }
+}
+
+impl IntoElement for InlineShift {
+    type Element = Self;
+
+    fn into_element(self) -> Self::Element {
+        self
+    }
+}
+
+impl Element for InlineShift {
+    /// A word's shaped line and line height.
+    type RequestLayoutState = Option<(ShapedLine, Pixels)>;
+    /// A word's paint origin.
+    type PrepaintState = Point<Pixels>;
+
+    fn id(&self) -> Option<ElementId> {
+        None
+    }
+
+    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
+        None
+    }
+
+    fn request_layout(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> (LayoutId, Self::RequestLayoutState) {
+        match &mut self.child {
+            InlineChild::Word(text) => {
+                let style = window.text_style();
+                let rem = window.rem_size();
+                let font_size = style.font_size.to_pixels(rem);
+                let line_height = style.line_height_in_pixels(rem);
+                let run = style.to_run(text.len());
+                let line = window
+                    .text_system()
+                    .shape_line(text.clone(), font_size, &[run], None);
+                let box_size = size(line.width, line_height);
+                let layout_id =
+                    window.request_measured_layout(Style::default(), move |_, _, _, _| box_size);
+                (layout_id, Some((line, line_height)))
+            }
+            InlineChild::Element(el) => (el.request_layout(window, cx), None),
+        }
+    }
+
+    fn prepaint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        bounds: Bounds<Pixels>,
+        word: &mut Self::RequestLayoutState,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Point<Pixels> {
+        let mut flow = self.flow.get();
+        // a box starting below the previous boxes of its line starts a new one
+        if self.first || bounds.top() >= flow.line_bottom - px(0.5) {
+            flow = InlineFlow {
+                line_bottom: bounds.bottom(),
+                drift: px(0.),
+            };
+        } else {
+            flow.line_bottom = flow.line_bottom.max(bounds.bottom());
+        }
+        let offset = point(-flow.drift, px(0.));
+        match (&mut self.child, word) {
+            (InlineChild::Word(_), Some((line, _))) => {
+                flow.drift += bounds.size.width - line.width;
+            }
+            (InlineChild::Element(el), _) => {
+                window.with_element_offset(offset, |window| el.prepaint(window, cx));
+            }
+            _ => {}
+        }
+        self.flow.set(flow);
+        bounds.origin + offset
+    }
+
+    fn paint(
+        &mut self,
+        _: Option<&GlobalElementId>,
+        _: Option<&InspectorElementId>,
+        _: Bounds<Pixels>,
+        word: &mut Self::RequestLayoutState,
+        origin: &mut Point<Pixels>,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        match (&mut self.child, word) {
+            (InlineChild::Word(_), Some((line, line_height))) => {
+                // a failed glyph raster leaves the word blank, like `StyledText`
+                let _ = line.paint(*origin, *line_height, TextAlign::Left, None, window, cx);
+            }
+            (InlineChild::Element(el), _) => el.paint(window, cx),
+            _ => {}
+        }
+    }
 }
 
 /// `<Ref>`: inline monospace code on the alt background.
@@ -1045,18 +1234,29 @@ impl Render for TextTooltip {
         let max_text = zpx(300.) - pad_x * 2.;
         let mut style = window.text_style();
         style.font_size = font_size.into();
-        let run = style.to_run(self.text.len());
-        let text_size = window
-            .text_system()
-            .shape_text(self.text.clone(), font_size, &[run], Some(max_text), None)
-            .ok()
-            .map(|lines| {
-                lines.iter().fold(size(px(0.), px(0.)), |acc, line| {
-                    let s = line.size(line_height);
-                    size(acc.width.max(s.width), acc.height + s.height)
-                })
-            })
-            .unwrap_or(size(max_text, line_height));
+        // Chromium's line breaking (`word-break: break-word`), not GPUI's
+        let measure = |t: &str| -> Pixels {
+            window
+                .text_system()
+                .shape_line(
+                    SharedString::from(t.to_string()),
+                    font_size,
+                    &[style.to_run(t.len())],
+                    None,
+                )
+                .width
+        };
+        let (display, breaks) = break_word_lines(&self.text, max_text, &measure);
+        let widest = display
+            .split('\n')
+            .map(measure)
+            .fold(px(0.), |a, b| a.max(b));
+        let line_count = display.split('\n').count();
+        let text_size = size(widest.min(max_text), line_height * line_count as f32);
+        // the bold range moves right by the line breaks inserted before it
+        let shift = |i: usize| i + breaks.iter().filter(|b| **b < i).count();
+        let bold = self.bold.clone().map(|r| shift(r.start)..shift(r.end));
+        let display: SharedString = display.into();
         let box_size = size(
             text_size.width.ceil() + pad_x * 2.,
             text_size.height + pad_y * 2.,
@@ -1113,26 +1313,78 @@ impl Render for TextTooltip {
                 .shadow(vec![BoxShadow {
                     color: t.tooltip_shadow,
                     offset: point(zpx(0.), zpx(8.)),
-                    blur_radius: zpx(24.),
+                    blur_radius: css_blur(24.),
                     spread_radius: zpx(0.),
                     inset: false,
                 }])
                 .child(arrow)
-                .child(
-                    StyledText::new(self.text.clone()).with_highlights(self.bold.clone().map(
-                        |range| {
-                            (
-                                range,
-                                HighlightStyle {
-                                    font_weight: Some(FontWeight::BOLD),
-                                    ..Default::default()
-                                },
-                            )
+                .child(StyledText::new(display).with_highlights(bold.map(|range| {
+                    (
+                        range,
+                        HighlightStyle {
+                            font_weight: Some(FontWeight::BOLD),
+                            ..Default::default()
                         },
-                    )),
-                ),
+                    )
+                }))),
         )
     }
+}
+
+/// Chromium's line breaking for tooltip text (`word-break: break-word` over
+/// ICU's rules as they apply to paths and sentences): lines break after a
+/// space or a hyphen, never after `/`, and a word that still overflows breaks
+/// at the character that crosses `max`. Returns the text with `\n` at each
+/// inserted break (trailing spaces dropped) and the byte offsets, in the
+/// original text, where breaks were inserted.
+fn break_word_lines(
+    text: &str,
+    max: Pixels,
+    measure: &dyn Fn(&str) -> Pixels,
+) -> (String, Vec<usize>) {
+    let mut out = String::new();
+    let mut breaks = Vec::new();
+    let mut offset = 0;
+    for (n, hard) in text.split('\n').enumerate() {
+        if n > 0 {
+            out.push('\n');
+            offset += 1;
+        }
+        let mut start = 0;
+        let mut last_break: Option<usize> = None;
+        let chars: Vec<(usize, char)> = hard.char_indices().collect();
+        let mut k = 0;
+        while k < chars.len() {
+            let (i, ch) = chars[k];
+            let end = i + ch.len_utf8();
+            if measure(&hard[start..end]) > max && end - start > ch.len_utf8() {
+                let at = match last_break {
+                    Some(b) if b > start => b,
+                    _ => i,
+                };
+                out.push_str(hard[start..at].trim_end());
+                out.push('\n');
+                breaks.push(offset + at);
+                start = at;
+                while hard[start..].starts_with(' ') {
+                    start += 1;
+                }
+                last_break = None;
+                k = chars
+                    .iter()
+                    .position(|(j, _)| *j >= start)
+                    .unwrap_or(chars.len());
+                continue;
+            }
+            if ch == ' ' || ch == '-' {
+                last_break = Some(end);
+            }
+            k += 1;
+        }
+        out.push_str(&hard[start..]);
+        offset += hard.len();
+    }
+    (out, breaks)
 }
 
 /// GHD tooltips on any element: the caption tooltip after
@@ -1243,6 +1495,17 @@ pub fn with_directed_tooltip(
     text: impl Into<SharedString>,
     direction: TooltipDirection,
 ) -> Stateful<Div> {
+    with_directed_tooltip_delay(el, text, direction, TOOLTIP_DELAY)
+}
+
+/// [`with_directed_tooltip`] with its own delay (GHD shows a disabled
+/// button's tooltip at once: `delay={disabled ? 0 : undefined}`).
+pub fn with_directed_tooltip_delay(
+    el: Stateful<Div>,
+    text: impl Into<SharedString>,
+    direction: TooltipDirection,
+    delay: std::time::Duration,
+) -> Stateful<Div> {
     let text: SharedString = text.into();
     let bounds = std::rc::Rc::new(std::cell::Cell::new(Bounds::default()));
     let probe = bounds.clone();
@@ -1260,7 +1523,7 @@ pub fn with_directed_tooltip(
             })
             .into()
         })
-        .tooltip_show_delay(TOOLTIP_DELAY)
+        .tooltip_show_delay(delay)
 }
 
 /// GHD `.blankslate-image`: an `illustrations/<name>` picture, drawn in the
@@ -1301,4 +1564,74 @@ pub fn selection_keeps_colour_on_hover(cx: &App) -> bool {
             .flags
             .bool(corvane_core::flags::ids::SELECTION_KEEPS_COLOUR_ON_HOVER)
     })
+}
+
+/// An inline `<Ref>` that wraps anywhere (`word-break: break-all`), drawn as
+/// Chromium slices it: one chip per line fragment on the path-segment
+/// background, 3.33 px padding and rounded corners only at the start of the
+/// first fragment and the end of the last, each fragment's box (content area
+/// plus padding) overhanging the line without growing it.
+pub fn wrapped_ref(
+    text: &str,
+    font_size: Pixels,
+    line_height: Pixels,
+    max_width: Pixels,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let t = cx.ghd();
+    let pad = SPACING_THIRD();
+    let mut style = window.text_style();
+    style.font_family = crate::theme::mono_font().into();
+    style.font_size = font_size.into();
+    let measure = |s: &str| -> Pixels {
+        window
+            .text_system()
+            .shape_line(
+                SharedString::from(s.to_string()),
+                font_size,
+                &[style.to_run(s.len())],
+                None,
+            )
+            .width
+    };
+    // greedy break-all, the first fragment carrying the left padding
+    let mut lines: Vec<String> = Vec::new();
+    let mut current = String::new();
+    for ch in text.chars() {
+        let lead = if lines.is_empty() { pad } else { px(0.) };
+        let mut next = current.clone();
+        next.push(ch);
+        if !current.is_empty() && measure(&next) + lead > max_width {
+            lines.push(std::mem::take(&mut current));
+            current.push(ch);
+        } else {
+            current = next;
+        }
+    }
+    lines.push(current);
+    let last = lines.len() - 1;
+    // the fragment box: the font's content area (~1.2 em) plus padding
+    let box_h = font_size * 1.2 + pad * 2.;
+    let overhang = (box_h - line_height) / 2.;
+    div()
+        .flex()
+        .flex_col()
+        .items_start()
+        .font_family(crate::theme::mono_font())
+        .text_size(font_size)
+        .line_height(line_height)
+        .children(lines.into_iter().enumerate().map(move |(i, line)| {
+            div().h(line_height).flex().items_center().child(
+                div()
+                    .h(box_h)
+                    .my(-overhang)
+                    .flex()
+                    .items_center()
+                    .bg(t.path_segment_background)
+                    .when(i == 0, |d| d.pl(pad).rounded_l(BORDER_RADIUS()))
+                    .when(i == last, |d| d.pr(pad).rounded_r(BORDER_RADIUS()))
+                    .child(line),
+            )
+        }))
 }

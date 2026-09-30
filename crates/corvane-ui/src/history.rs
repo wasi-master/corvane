@@ -109,7 +109,7 @@ impl CommitDragElement {
                 .shadow(vec![BoxShadow {
                     color: t.shadow,
                     offset: point(zpx(0.), zpx(1.)),
-                    blur_radius: zpx(3.),
+                    blur_radius: css_blur(3.),
                     spread_radius: zpx(0.),
                     inset: false,
                 }])
@@ -141,7 +141,7 @@ impl Render for CommitDragElement {
                     .shadow(vec![BoxShadow {
                         color: t.box_border,
                         offset: point(zpx(2.), zpx(1.)),
-                        blur_radius: zpx(1.),
+                        blur_radius: css_blur(1.),
                         spread_radius: zpx(0.),
                         inset: false,
                     }])
@@ -1111,7 +1111,7 @@ impl HistorySidebar {
             .shadow(vec![BoxShadow {
                 color: t.shadow,
                 offset: point(zpx(0.), zpx(2.)),
-                blur_radius: zpx(7.),
+                blur_radius: css_blur(7.),
                 spread_radius: zpx(0.),
                 inset: false,
             }])
