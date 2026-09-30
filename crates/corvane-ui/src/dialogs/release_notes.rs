@@ -255,7 +255,14 @@ impl Render for ReleaseNotesDialog {
                                             "View all release notes",
                                             cx,
                                         )
-                                        .on_click(|_, _, cx| cx.open_url(RELEASE_NOTES_URL)),
+                                        .on_click(
+                                            |_, _, cx| {
+                                                corvane_core::Dispatcher::open_url(
+                                                    RELEASE_NOTES_URL,
+                                                    cx,
+                                                )
+                                            },
+                                        ),
                                     )
                                     .child(
                                         div()
