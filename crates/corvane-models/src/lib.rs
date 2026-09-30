@@ -158,6 +158,12 @@ pub struct Branch {
     /// relative dates in the branch list.
     #[serde(default)]
     pub tip_time: Option<i64>,
+    /// The configured remote a remote branch belongs to (or, for a local
+    /// branch, its upstream's), matched against the remote names so a name
+    /// with slashes (`team/fork`) is kept whole. `None` falls back to GHD's
+    /// split at the first `/` (flag `remote-names-with-slashes` off).
+    #[serde(default)]
+    pub remote_name: Option<String>,
 }
 
 impl Branch {
@@ -166,9 +172,10 @@ impl Branch {
         match self.kind {
             BranchKind::Local => &self.name,
             BranchKind::Remote => self
-                .name
-                .split_once('/')
-                .map(|(_, n)| n)
+                .remote_name
+                .as_deref()
+                .and_then(|remote| self.name.strip_prefix(remote)?.strip_prefix('/'))
+                .or_else(|| self.name.split_once('/').map(|(_, n)| n))
                 .unwrap_or(&self.name),
         }
     }
@@ -177,7 +184,28 @@ impl Branch {
     pub fn upstream_remote_name(&self) -> Option<&str> {
         let upstream = self.upstream.as_deref()?;
         let rest = upstream.strip_prefix("refs/remotes/").unwrap_or(upstream);
+        if let Some(remote) = self.remote_name.as_deref()
+            && rest
+                .strip_prefix(remote)
+                .is_some_and(|r| r.starts_with('/'))
+        {
+            return Some(remote);
+        }
         rest.split_once('/').map(|(remote, _)| remote)
+    }
+
+    /// The longest of `remotes` that `short` (`<remote>/<branch>`) starts
+    /// with, for [`Branch::remote_name`].
+    pub fn match_remote<'a>(short: &str, remotes: &'a [Remote]) -> Option<&'a str> {
+        remotes
+            .iter()
+            .map(|r| r.name.as_str())
+            .filter(|name| {
+                short
+                    .strip_prefix(name)
+                    .is_some_and(|rest| rest.starts_with('/'))
+            })
+            .max_by_key(|name| name.len())
     }
 
     /// Short upstream name (`origin/main`).
@@ -490,6 +518,51 @@ mod tests {
         assert!(github_from_remote("git@ghe.corp:a/b.git", &[]).is_none());
         let gh = github_from_remote("git@ghe.corp:a/b.git", &["ghe.corp".into()]).unwrap();
         assert_eq!(gh.endpoint, "https://ghe.corp/api/v3");
+    }
+
+    #[test]
+    fn remote_names_with_slashes() {
+        let remotes = vec![
+            Remote {
+                name: "team".into(),
+                url: String::new(),
+            },
+            Remote {
+                name: "team/fork".into(),
+                url: String::new(),
+            },
+        ];
+        assert_eq!(
+            Branch::match_remote("team/fork/main", &remotes),
+            Some("team/fork")
+        );
+        assert_eq!(Branch::match_remote("team/main", &remotes), Some("team"));
+        assert_eq!(Branch::match_remote("other/main", &remotes), None);
+        let mut remote = Branch {
+            name: "team/fork/feature/x".into(),
+            kind: BranchKind::Remote,
+            full_name: "refs/remotes/team/fork/feature/x".into(),
+            tip: None,
+            upstream: None,
+            tip_time: None,
+            remote_name: None,
+        };
+        // GHD: split at the first slash
+        assert_eq!(remote.name_without_remote(), "fork/feature/x");
+        remote.remote_name = Some("team/fork".into());
+        assert_eq!(remote.name_without_remote(), "feature/x");
+        let mut local = Branch {
+            name: "feature/x".into(),
+            kind: BranchKind::Local,
+            full_name: "refs/heads/feature/x".into(),
+            tip: None,
+            upstream: Some("refs/remotes/team/fork/feature/x".into()),
+            tip_time: None,
+            remote_name: None,
+        };
+        assert_eq!(local.upstream_remote_name(), Some("team"));
+        local.remote_name = Some("team/fork".into());
+        assert_eq!(local.upstream_remote_name(), Some("team/fork"));
     }
 
     #[test]
