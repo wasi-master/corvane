@@ -135,9 +135,18 @@ pub fn find_git() -> Result<GitBinary> {
     }
 }
 
+/// macOS: `/usr/bin/git` is a stub that asks to install the Command Line
+/// Tools unless they (or Xcode) are there. Linux has no such stub: a
+/// distribution's `/usr/bin/git` is the real thing.
+#[cfg(target_os = "macos")]
 fn command_line_tools_present() -> bool {
     Path::new("/Library/Developer/CommandLineTools/usr/bin/git").exists()
         || Path::new("/Applications/Xcode.app/Contents/Developer/usr/bin/git").exists()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn command_line_tools_present() -> bool {
+    true
 }
 
 fn probe(path: &Path) -> Option<GitVersion> {

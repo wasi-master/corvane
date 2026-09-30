@@ -29,8 +29,9 @@ pub mod image_diff;
 pub mod keymap;
 pub mod markdown;
 pub mod missing_repository;
-#[cfg(target_os = "macos")]
+#[cfg_attr(not(target_os = "macos"), path = "native_menu_linux.rs")]
 pub mod native_menu;
+mod native_menu_common;
 #[cfg(target_os = "macos")]
 pub mod native_window;
 pub mod no_changes;

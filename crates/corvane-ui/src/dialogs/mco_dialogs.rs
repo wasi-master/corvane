@@ -1167,14 +1167,7 @@ fn unmerged_file_row(
 }
 
 fn show_menu(items: Vec<MenuItem>, position: Point<Pixels>, window: &mut Window, cx: &mut App) {
-    #[cfg(target_os = "macos")]
-    {
-        crate::native_menu::show_context_menu(items, position, window, cx);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (items, position, window, cx);
-    }
+    crate::native_menu::show_context_menu(items, position, window, cx);
 }
 
 impl Render for McoDialog {

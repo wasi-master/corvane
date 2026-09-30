@@ -111,7 +111,7 @@ fn main() {
             .and_then(|z| z.parse::<f32>().ok())
             .unwrap_or(settings.window_zoom_factor);
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
-        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
+        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family().leak());
         info!(zoom, "window zoom factor");
         let theme_variants = corvane_ui::theme::ThemeVariants::of(&launch_flags);
         corvane_ui::init(

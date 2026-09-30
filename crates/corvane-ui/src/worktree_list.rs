@@ -136,14 +136,7 @@ pub fn toolbar_button_menu(position: Point<Pixels>, window: &mut Window, cx: &mu
 }
 
 fn show_menu(items: Vec<MenuItem>, position: Point<Pixels>, window: &mut Window, cx: &mut App) {
-    #[cfg(target_os = "macos")]
-    {
-        crate::native_menu::show_context_menu(items, position, window, cx);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (items, position, window, cx);
-    }
+    crate::native_menu::show_context_menu(items, position, window, cx);
 }
 
 pub struct WorktreeFoldout {
@@ -263,16 +256,7 @@ impl WorktreeFoldout {
         cx: &mut Context<Self>,
     ) {
         let items = worktree_menu_items(repo, worktree, true, true);
-        #[cfg(target_os = "macos")]
-        {
-            crate::native_menu::show_context_menu(items, position, window, cx);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let menu = cx.new(|cx| ContextMenu::new(items, position, window, cx));
-            self.context_menu = Some(menu);
-            cx.notify();
-        }
+        crate::native_menu::show_context_menu(items, position, window, cx);
     }
 
     /// `.worktrees-list-item`: icon, name (match in bold), branch / sha.

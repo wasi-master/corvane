@@ -615,10 +615,7 @@ pub fn select_button_items(
                         })
                         .collect();
                     let position = ev.mouse_position().unwrap_or_default();
-                    #[cfg(target_os = "macos")]
                     crate::native_menu::show_context_menu(menu_items, position, window, cx);
-                    #[cfg(not(target_os = "macos"))]
-                    let _ = (menu_items, position, window, cx);
                 })
         })
         .child(div().flex_1().min_w_0().truncate().child(value.into()))

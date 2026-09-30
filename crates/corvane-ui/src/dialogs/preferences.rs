@@ -34,6 +34,17 @@ use crate::widgets::{
     paragraph, radio, radio_row, section_heading, select_button, settings_description, text_box,
 };
 
+/// Settings › Advanced › "Save crash reports locally" (where
+/// `corvane_platform::crash_reports` writes and looks).
+#[cfg(target_os = "macos")]
+const CRASH_REPORTS_DESCRIPTION: &str = "When Corvane crashes, a report is saved in \
+     ~/Library/Logs/Corvane/crashes and pointed out at the next launch, together with macOS's \
+     own crash reports. Reports never leave this Mac.";
+#[cfg(not(target_os = "macos"))]
+const CRASH_REPORTS_DESCRIPTION: &str = "When Corvane crashes, a report is saved in \
+     ~/.local/state/corvane/crashes and pointed out at the next launch, together with the \
+     system's own crash reports. Reports never leave this computer.";
+
 /// Error messages start lowercase (they follow "could not …"); a sentence
 /// of their own starts with a capital.
 fn capitalize(text: &str) -> String {
@@ -1668,12 +1679,7 @@ impl PreferencesDialog {
                         cx,
                     ))
                     .child(
-                        settings_description(cx).child(
-                            "When Corvane crashes, a report is saved in \
-                             ~/Library/Logs/Corvane/crashes and pointed out at the next launch, \
-                             together with macOS's own crash reports. Reports never leave this \
-                             Mac.",
-                        ),
+                        settings_description(cx).child(CRASH_REPORTS_DESCRIPTION),
                     )
             })
             // Corvane addition: on-demand packs;

@@ -1893,8 +1893,8 @@ registry! {
     CRASH_REPORTS = 501 "crash-reports" {
         title: "Save crash reports locally",
         summary: "Settings › Advanced offers \"Save crash reports locally\": a panic hook writes \
-                  ~/Library/Logs/Corvane/crashes/ and the next launch lists new reports. Nothing \
-                  is uploaded.",
+                  ~/Library/Logs/Corvane/crashes/ (Linux: ~/.local/state/corvane/crashes/) and \
+                  the next launch lists new reports. Nothing is uploaded.",
         ghd_behaviour: "No local crash reports (GHD's crash reporter uploads to GitHub instead).",
         nature: Nature::Feature,
         kind: Kind::Bool,

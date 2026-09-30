@@ -87,12 +87,11 @@ pub fn open_with_bundle(bundle_id: &str, target: &Path) -> std::io::Result<()> {
     )
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(target_os = "macos")]
     fn finds_finder_and_misses_nonsense() {
         let finder = app_path_for_bundle_id("com.apple.finder");
         assert!(finder.is_some_and(|p| p.ends_with("Finder.app")));

@@ -371,15 +371,12 @@ impl RepositoryFoldout {
                 let repo = repo.clone();
                 move |ev: &MouseDownEvent, window, cx| {
                     cx.stop_propagation();
-                    #[cfg(target_os = "macos")]
                     crate::native_menu::show_context_menu(
                         repository_menu_items(&repo, cx),
                         ev.position,
                         window,
                         cx,
                     );
-                    #[cfg(not(target_os = "macos"))]
-                    let _ = (ev, window, &repo);
                 }
             })
             .child(octicon(icon, t.text).mr(SPACING_HALF()))
@@ -553,10 +550,7 @@ impl RepositoryFoldout {
                 ),
             ]);
         }
-        #[cfg(target_os = "macos")]
         crate::native_menu::show_context_menu(items, position, window, cx);
-        #[cfg(not(target_os = "macos"))]
-        let _ = (items, position, window);
     }
 
     /// Corvane (`225-clone-prefills-filter`): the filter text that Add ›
@@ -619,7 +613,6 @@ impl RepositoryFoldout {
 }
 
 /// GHD `generateRepositoryListContextMenu`.
-#[cfg(target_os = "macos")]
 fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu::MenuItem> {
     use crate::context_menu::MenuItem;
     let state = AppState::global(cx).read(cx);
@@ -734,7 +727,6 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
 }
 
 /// The Add button's items (`onNewRepositoryButtonClick`).
-#[cfg(target_os = "macos")]
 fn add_menu_items(clone_filter: Option<String>) -> Vec<crate::context_menu::MenuItem> {
     use crate::context_menu::MenuItem;
     vec![
@@ -857,22 +849,13 @@ impl Render for RepositoryFoldout {
                                 cx.stop_propagation();
                                 // GHD `onNewRepositoryButtonClick`: a native
                                 // contextual menu at the pointer
-                                #[cfg(target_os = "macos")]
-                                {
-                                    let clone_filter = this.clone_filter(cx);
-                                    crate::native_menu::show_context_menu(
-                                        add_menu_items(clone_filter),
-                                        ev.position(),
-                                        window,
-                                        cx,
-                                    );
-                                }
-                                #[cfg(not(target_os = "macos"))]
-                                {
-                                    let _ = (ev, window);
-                                    this.add_menu_open = !this.add_menu_open;
-                                    cx.notify();
-                                }
+                                let clone_filter = this.clone_filter(cx);
+                                crate::native_menu::show_context_menu(
+                                    add_menu_items(clone_filter),
+                                    ev.position(),
+                                    window,
+                                    cx,
+                                );
                             })),
                     ),
             )

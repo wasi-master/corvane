@@ -903,10 +903,7 @@ fn open_commit_file_menu(
                 cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
             }),
         ];
-        #[cfg(target_os = "macos")]
         crate::native_menu::show_context_menu(items, position, window, cx);
-        #[cfg(not(target_os = "macos"))]
-        let _ = (items, position, window);
         return;
     }
     let full = repo.path.join(path);
@@ -1055,10 +1052,7 @@ fn open_commit_file_menu(
             files,
         ));
     }
-    #[cfg(target_os = "macos")]
     crate::native_menu::show_context_menu(items, position, window, cx);
-    #[cfg(not(target_os = "macos"))]
-    let _ = (items, position, window);
 }
 
 #[allow(clippy::too_many_arguments)]

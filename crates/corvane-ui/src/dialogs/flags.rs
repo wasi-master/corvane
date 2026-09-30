@@ -1580,12 +1580,7 @@ impl Render for FlagsDialog {
                     }),
                 ];
                 let position = ev.mouse_position().unwrap_or_default();
-                #[cfg(target_os = "macos")]
                 crate::native_menu::show_context_menu(items, position, window, cx);
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let _ = (items, position, window, cx);
-                }
             });
         let modified_label = (modified > 0 || hidden_modified > 0).then(|| {
             let mut label = format!("{modified} modified");

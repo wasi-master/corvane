@@ -1123,16 +1123,7 @@ impl DiffView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(target_os = "macos")]
-        {
-            crate::native_menu::show_context_menu(items, position, window, cx);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let menu = cx.new(|cx| ContextMenu::new(items, position, window, cx));
-            self.context_menu = Some(menu);
-            cx.notify();
-        }
+        crate::native_menu::show_context_menu(items, position, window, cx);
     }
 
     /// GHD `buildExpandMenuItem`.

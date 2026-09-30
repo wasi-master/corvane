@@ -440,16 +440,25 @@ fn download_archive(
     Ok(archive)
 }
 
-/// `.zip` through `ditto` (keeps executable bits and signatures),
-/// `.tar.gz` / `.tgz` through `tar`.
+/// `.zip` through `ditto` on macOS (keeps executable bits and signatures),
+/// `unzip` elsewhere; `.tar.gz` / `.tgz` through `tar`.
 fn unpack(archive: &Path, into: &Path) -> Result<(), PackError> {
     let name = archive.to_string_lossy();
     let status = if name.ends_with(".zip") {
-        std::process::Command::new("/usr/bin/ditto")
+        #[cfg(target_os = "macos")]
+        let status = std::process::Command::new("/usr/bin/ditto")
             .args(["-x", "-k"])
             .arg(archive)
             .arg(into)
-            .status()
+            .status();
+        #[cfg(not(target_os = "macos"))]
+        let status = std::process::Command::new("unzip")
+            .args(["-q", "-o"])
+            .arg(archive)
+            .arg("-d")
+            .arg(into)
+            .status();
+        status
     } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
         std::process::Command::new("/usr/bin/tar")
             .arg("-xzf")
@@ -604,10 +613,19 @@ mod tests {
         std::fs::create_dir_all(dir.join("src")).unwrap();
         std::fs::write(dir.join("src/syntaxes.packdump"), b"not really a dump").unwrap();
         let zip = dir.join("syntax-extended-1.0.0.zip");
+        #[cfg(target_os = "macos")]
         let status = std::process::Command::new("/usr/bin/ditto")
             .args(["-c", "-k"])
             .arg(dir.join("src"))
             .arg(&zip)
+            .status()
+            .unwrap();
+        #[cfg(not(target_os = "macos"))]
+        let status = std::process::Command::new("zip")
+            .args(["-q", "-r"])
+            .arg(&zip)
+            .arg(".")
+            .current_dir(dir.join("src"))
             .status()
             .unwrap();
         assert!(status.success());
