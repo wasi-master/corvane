@@ -474,7 +474,78 @@ pub struct GhdTheme {
 
 impl Global for GhdTheme {}
 
+/// Flag-driven changes to a palette, applied by [`GhdTheme::with_variants`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ThemeVariants {
+    /// Flag `188-colour-blind-diff`: blue additions, orange deletions.
+    pub colour_blind_diff: bool,
+}
+
+impl ThemeVariants {
+    pub fn of(flags: &corvane_core::Flags) -> Self {
+        Self {
+            colour_blind_diff: flags.bool(corvane_core::flags::ids::COLOUR_BLIND_DIFF),
+        }
+    }
+}
+
 impl GhdTheme {
+    /// The palette with the flagged variants applied. High Contrast keeps
+    /// its own diff colours.
+    pub fn with_variants(mut self, variants: ThemeVariants) -> Self {
+        if variants.colour_blind_diff && self.name != "High Contrast" {
+            self.colour_blind_diff();
+        }
+        self
+    }
+
+    /// Corvane addition (desktop/desktop#6795): additions in blue and
+    /// deletions in orange, after Primer's protanopia / deuteranopia themes,
+    /// so the two differ in hue and lightness for red-green colour blindness.
+    fn colour_blind_diff(&mut self) {
+        // (background, gutter background, border / gutter, inner, hover
+        // background, hover border / gutter, text)
+        let (add, delete) = if self.is_dark() {
+            (
+                (
+                    0x0f2b47, 0x0b2139, 0x1f4b7a, 0x1f6feb, 0x0c2d6b, 0x1158c7, 0xe1e4e8,
+                ),
+                (
+                    0x3a2211, 0x2e1b0c, 0x5c3316, 0xbd561d, 0x762d0a, 0x9b4215, 0xe1e4e8,
+                ),
+            )
+        } else {
+            (
+                (
+                    0xddf4ff, 0xb6e3ff, 0x9cd7ff, 0x9fd4ff, 0xb6e3ff, 0x80ccff, 0x24292e,
+                ),
+                (
+                    0xfff1e5, 0xffd8b5, 0xffc799, 0xffc796, 0xffd8b5, 0xffb77c, 0x24292e,
+                ),
+            )
+        };
+        self.diff_add_background = c(add.0);
+        self.diff_add_gutter_background = c(add.1);
+        self.diff_add_border = c(add.2);
+        self.diff_add_gutter = c(add.2);
+        self.diff_add_inner_background = c(add.3);
+        self.diff_add_hover_background = c(add.4);
+        self.diff_add_hover_border = c(add.5);
+        self.diff_add_hover_gutter = c(add.5);
+        self.diff_add_text = c(add.6);
+        self.diff_add_hover_text = c(add.6);
+        self.diff_delete_background = c(delete.0);
+        self.diff_delete_gutter_background = c(delete.1);
+        self.diff_delete_border = c(delete.2);
+        self.diff_delete_gutter = c(delete.2);
+        self.diff_delete_inner_background = c(delete.3);
+        self.diff_delete_hover_background = c(delete.4);
+        self.diff_delete_hover_border = c(delete.5);
+        self.diff_delete_hover_gutter = c(delete.5);
+        self.diff_delete_text = c(delete.6);
+        self.diff_delete_hover_text = c(delete.6);
+    }
+
     pub fn light() -> Self {
         ghd_light::theme()
     }
