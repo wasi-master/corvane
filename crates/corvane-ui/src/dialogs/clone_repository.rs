@@ -9,9 +9,9 @@
 //! the default branch and the "couldn't find that repository" error. With
 //! several accounts for a tab, the `AccountPicker` (`ui/account-picker.tsx`,
 //! `styles/ui/_account-picker.scss`, a `PopoverDropdown`) picks which one
-//! lists repositories.
+//! lists repositories. The list and the picker live in
+//! `crate::cloneable_repositories` (the blank slate shows them too).
 
-use std::cell::Cell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -20,17 +20,16 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::widgets::IconButtonA11y;
-
+use crate::cloneable_repositories::{
+    AccountPickerState, ListStyle, account_picker, account_popover, group_rows, no_items,
+    refresh_button, repository_list,
+};
 use crate::dialog::{DialogButton, DialogFrame, dialog_loading_framed};
 use crate::icons::{Octicon, octicon};
-use crate::scrollbar::ScrollbarExt;
 use crate::tab_bar::{TabModel, tab_bar};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{
-    avatar_image, avatar_lookup_url, button, dialog_error_banner, labeled, link_button, text_box,
-};
+use crate::widgets::{button, dialog_error_banner, labeled, text_box};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
@@ -39,28 +38,10 @@ enum Tab {
     Url,
 }
 
-/// `RowHeight` of the cloneable repository list.
-#[allow(non_snake_case)]
-fn LIST_ROW_HEIGHT() -> Pixels {
-    zpx(31.)
-}
 #[allow(non_snake_case)]
 fn LIST_HEIGHT() -> Pixels {
     zpx(290.)
 }
-/// `AccountPicker` `rowHeight`.
-#[allow(non_snake_case)]
-fn ACCOUNT_ROW_HEIGHT() -> Pixels {
-    zpx(47.)
-}
-
-/// One row of the flattened, filtered repository list.
-#[derive(Clone)]
-enum CloneRow {
-    Header(String),
-    Item(GitHubRepository),
-}
-
 pub struct CloneRepositoryDialog {
     state: Entity<AppState>,
     tab: Tab,
@@ -83,9 +64,7 @@ pub struct CloneRepositoryDialog {
     dotcom_account: Option<(String, String)>,
     enterprise_account: Option<(String, String)>,
     /// `AccountPicker` popover.
-    account_picker_open: bool,
-    account_filter: Entity<InputState>,
-    account_button_bounds: Rc<Cell<Bounds<Pixels>>>,
+    picker: AccountPickerState,
 }
 
 impl CloneRepositoryDialog {
@@ -115,8 +94,8 @@ impl CloneRepositoryDialog {
         });
         let filter =
             cx.new(|cx| InputState::new(window, cx).placeholder("Filter your repositories"));
-        let account_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
-        cx.observe(&account_filter, |_, _, cx| cx.notify()).detach();
+        let picker = AccountPickerState::new(window, cx);
+        cx.observe(&picker.filter, |_, _, cx| cx.notify()).detach();
         cx.observe_in(&url, window, |this, _, window, cx| {
             this.resolve_error = None;
             this.derive_path(window, cx);
@@ -130,7 +109,11 @@ impl CloneRepositoryDialog {
             cx.notify()
         })
         .detach();
-        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
+        cx.observe_in(&filter, window, |this, _, window, cx| {
+            this.filter_changed(window, cx);
+            cx.notify()
+        })
+        .detach();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let tab = if initial_url.is_some() {
             Tab::Url
@@ -159,9 +142,7 @@ impl CloneRepositoryDialog {
             resolve_error: None,
             dotcom_account: None,
             enterprise_account: None,
-            account_picker_open: false,
-            account_filter,
-            account_button_bounds: Rc::new(Cell::new(Bounds::default())),
+            picker,
         };
         this.ensure_loaded(cx);
         this
@@ -214,7 +195,7 @@ impl CloneRepositoryDialog {
             Tab::Enterprise => self.enterprise_account = key,
             Tab::Url => {}
         }
-        self.account_picker_open = false;
+        self.picker.open = false;
         self.selected_repo = None;
         self.ensure_loaded(cx);
         cx.notify();
@@ -238,7 +219,7 @@ impl CloneRepositoryDialog {
     fn set_tab(&mut self, tab: Tab, window: &mut Window, cx: &mut Context<Self>) {
         self.tab = tab;
         self.resolve_error = None;
-        self.account_picker_open = false;
+        self.picker.open = false;
         let handle = if tab == Tab::Url {
             self.url.read(cx).focus_handle(cx)
         } else {
@@ -358,6 +339,28 @@ impl CloneRepositoryDialog {
         );
     }
 
+    /// `onSelectionChanged { kind: 'filter' }`: a filter that hides the
+    /// selection selects the first match instead.
+    fn filter_changed(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(account) = self.account(cx) else {
+            return;
+        };
+        let query = self.filter.read(cx).value().to_string();
+        let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
+            Some(repos) => group_rows(repos, &account.login, &query),
+            None => return,
+        };
+        match crate::cloneable_repositories::filtered_selection(
+            &rows,
+            &query,
+            self.selected_repo.as_deref(),
+        ) {
+            Some(Some(repo)) => self.select_repository(&repo, window, cx),
+            Some(None) => self.selected_repo = None,
+            None => {}
+        }
+    }
+
     /// `onSelectionChanged` on the repository list: the clone URL drives the
     /// path like a typed URL would.
     fn select_repository(
@@ -370,47 +373,6 @@ impl CloneRepositoryDialog {
         let url = repo.clone_url.clone();
         self.url.update(cx, |s, cx| s.set_value(url, window, cx));
         cx.notify();
-    }
-
-    /// `groupRepositories` + the filter: "Your Repositories" first, then the
-    /// other owners alphabetically, items by name.
-    fn rows(&self, account: &Account, cx: &App) -> Vec<CloneRow> {
-        let s = self.state.read(cx);
-        let Some(repos) = s.api_repositories.get(&account.endpoint) else {
-            return Vec::new();
-        };
-        let query = self.filter.read(cx).value().trim().to_lowercase();
-        let mut mine: Vec<&GitHubRepository> = Vec::new();
-        let mut others: std::collections::BTreeMap<String, Vec<&GitHubRepository>> =
-            std::collections::BTreeMap::new();
-        for repo in repos {
-            if !query.is_empty() && !repo.full_name().to_lowercase().contains(&query) {
-                continue;
-            }
-            if repo.owner.eq_ignore_ascii_case(&account.login) {
-                mine.push(repo);
-            } else {
-                others
-                    .entry(repo.owner.to_lowercase())
-                    .or_default()
-                    .push(repo);
-            }
-        }
-        let mut rows = Vec::new();
-        let mut push_group = |title: String, mut items: Vec<&GitHubRepository>| {
-            if items.is_empty() {
-                return;
-            }
-            items.sort_by_key(|r| r.name.to_lowercase());
-            rows.push(CloneRow::Header(title));
-            rows.extend(items.into_iter().map(|r| CloneRow::Item(r.clone())));
-        };
-        push_group("Your Repositories".to_string(), mine);
-        for (_, items) in others {
-            let owner = items.first().map(|r| r.owner.clone()).unwrap_or_default();
-            push_group(owner, items);
-        }
-        rows
     }
 
     fn url_tab(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
@@ -461,254 +423,6 @@ impl CloneRepositoryDialog {
             )
     }
 
-    /// `.account-picker-row`: the `PopoverDropdown` button, "@login - host".
-    fn account_picker(&self, account: &Account, cx: &Context<Self>) -> AnyElement {
-        let t = cx.ghd();
-        let bounds = self.account_button_bounds.clone();
-        let hover_bg = t.secondary_button_hover_background;
-        div()
-            .flex()
-            .flex_col()
-            .w_full()
-            .child(
-                div()
-                    .mb(SPACING_THIRD())
-                    .text_size(FONT_SIZE())
-                    .child("Account"),
-            )
-            .child(
-                div()
-                    .id("clone-account-picker")
-                    .relative()
-                    .w_full()
-                    .flex()
-                    .flex_row()
-                    .items_center()
-                    .gap(SPACING_HALF())
-                    .h(zpx(25.))
-                    .px(SPACING_HALF())
-                    .rounded(BORDER_RADIUS())
-                    .border_1()
-                    .border_color(t.secondary_button_border)
-                    .bg(t.secondary_button_background)
-                    .text_color(t.secondary_button_text)
-                    .text_size(FONT_SIZE())
-                    .cursor_pointer()
-                    .hover(move |s| s.bg(hover_bg))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.account_picker_open = !this.account_picker_open;
-                        cx.notify();
-                    }))
-                    .child(
-                        canvas(move |b, _, _| bounds.set(b), |_, _, _, _| {})
-                            .absolute()
-                            .inset_0(),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .truncate()
-                            .flex()
-                            .flex_row()
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .child(format!("@{}", account.login)),
-                            )
-                            .child(format!("\u{a0}-\u{a0}{}", account.host())),
-                    )
-                    .child(octicon(Octicon::TriangleDown, t.secondary_button_text)),
-            )
-            .into_any_element()
-    }
-
-    /// `.popover-dropdown-popover` with the account `SectionFilterList`.
-    fn account_popover(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
-        let t = cx.ghd();
-        let anchor = self.account_button_bounds.get();
-        let viewport = window.viewport_size();
-        let width = zpx(365.);
-        let x = anchor
-            .origin
-            .x
-            .min(viewport.width - width - zpx(8.))
-            .max(zpx(8.));
-        let y = anchor.origin.y + anchor.size.height + zpx(4.);
-        let query = self.account_filter.read(cx).value().trim().to_lowercase();
-        let current = self.account(cx);
-        let accounts: Vec<Account> = self
-            .accounts_for_tab(cx)
-            .into_iter()
-            .filter(|a| {
-                query.is_empty()
-                    || corvane_core::filter::fuzzy_score(&query, &a.login).is_some()
-                    || corvane_core::filter::fuzzy_score(&query, &a.endpoint).is_some()
-            })
-            .collect();
-        let selected_bg = t.box_selected_active_background;
-        let selected_text = t.box_selected_active_text;
-        let hover_bg = t.list_item_hover_background;
-        let close = cx.listener(|this, _, _, cx| {
-            this.account_picker_open = false;
-            cx.notify();
-        });
-        deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
-                div()
-                    .id("clone-account-layer")
-                    .relative()
-                    .w(viewport.width)
-                    .h(viewport.height)
-                    .child(
-                        div()
-                            .id("clone-account-overlay")
-                            .absolute()
-                            .inset_0()
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, cx| {
-                                    this.account_picker_open = false;
-                                    cx.notify();
-                                }),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id("clone-account-popover")
-                            .absolute()
-                            .left(x)
-                            .top(y)
-                            .w(width)
-                            .min_h(zpx(200.))
-                            .max_h(zpx(500.))
-                            .flex()
-                            .flex_col()
-                            .bg(t.box_background)
-                            .text_color(t.text)
-                            .text_size(FONT_SIZE())
-                            .border_1()
-                            .border_color(t.box_border)
-                            .rounded(BORDER_RADIUS())
-                            .shadow_lg()
-                            .overflow_hidden()
-                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                            // `.popover-dropdown-header`
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .flex()
-                                    .flex_row()
-                                    .items_center()
-                                    .gap(SPACING())
-                                    .p(SPACING())
-                                    .border_b_1()
-                                    .border_color(t.box_border)
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .font_weight(FontWeight::SEMIBOLD)
-                                            .child("Choose an account"),
-                                    )
-                                    .child(
-                                        div()
-                                            .id("clone-account-close")
-                                            .cursor_pointer()
-                                            .icon_button_label("Close")
-                                            .on_click(close)
-                                            .child(octicon(Octicon::X, t.text_secondary)),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .flex_none()
-                                    .mt(SPACING())
-                                    .mx(SPACING())
-                                    .mb(SPACING_HALF())
-                                    .child(crate::widgets::filter_text_box(
-                                        "clone-account-filter",
-                                        &self.account_filter,
-                                        Some(octicon(Octicon::Search, t.text_secondary)),
-                                        window,
-                                        cx,
-                                    )),
-                            )
-                            .child(
-                                div()
-                                    .id("clone-account-list")
-                                    .flex_1()
-                                    .min_h_0()
-                                    .overflow_y_scroll()
-                                    .flex()
-                                    .flex_col()
-                                    .children(accounts.into_iter().map(|account| {
-                                        let is_selected = current.as_ref().is_some_and(|c| {
-                                            c.endpoint == account.endpoint
-                                                && c.login == account.login
-                                        });
-                                        let avatar = account
-                                            .avatar_url
-                                            .as_deref()
-                                            .and_then(|url| avatar_lookup_url(url, cx));
-                                        let (fg, secondary) = if is_selected {
-                                            (selected_text, selected_text)
-                                        } else {
-                                            (t.text, t.text_secondary)
-                                        };
-                                        let picked = account.clone();
-                                        div()
-                                            .id(SharedString::from(format!(
-                                                "clone-account-{}@{}",
-                                                account.login, account.endpoint
-                                            )))
-                                            .h(ACCOUNT_ROW_HEIGHT())
-                                            .flex_none()
-                                            .flex()
-                                            .flex_row()
-                                            .items_center()
-                                            .px(SPACING())
-                                            .cursor_pointer()
-                                            .text_color(fg)
-                                            .when(is_selected, |d| d.bg(selected_bg))
-                                            .when(!is_selected, move |d| {
-                                                d.hover(move |s| s.bg(hover_bg))
-                                            })
-                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                this.pick_account(&picked, cx)
-                                            }))
-                                            .child(avatar_image(avatar, zpx(32.), cx))
-                                            .child(
-                                                div()
-                                                    .flex_1()
-                                                    .min_w_0()
-                                                    .mx(SPACING())
-                                                    .flex()
-                                                    .flex_col()
-                                                    .child(
-                                                        div()
-                                                            .truncate()
-                                                            .font_weight(FontWeight::SEMIBOLD)
-                                                            .child(format!("@{}", account.login)),
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .truncate()
-                                                            .font_weight(FontWeight::LIGHT)
-                                                            .text_size(FONT_SIZE_SM())
-                                                            .text_color(secondary)
-                                                            .child(account.host()),
-                                                    ),
-                                            )
-                                    }))
-                                    .with_scrollbar(),
-                            ),
-                    ),
-            ),
-        )
-        .with_priority(25)
-        .into_any_element()
-    }
-
     fn account_tab(&self, enterprise: bool, window: &Window, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let host = if enterprise {
@@ -735,173 +449,96 @@ impl CloneRepositoryDialog {
             )
             .into_any_element();
         };
-        let loading = self
-            .state
-            .read(cx)
-            .api_repositories_loading
-            .contains(&account.endpoint);
-        let loaded = self
-            .state
-            .read(cx)
-            .api_repositories
-            .contains_key(&account.endpoint);
+        let (loading, loaded, rows) = {
+            let s = self.state.read(cx);
+            let repos = s.api_repositories.get(&account.endpoint);
+            (
+                s.api_repositories_loading.contains(&account.endpoint),
+                repos.is_some(),
+                repos
+                    .map(|r| group_rows(r, &account.login, &self.filter.read(cx).value()))
+                    .unwrap_or_default(),
+            )
+        };
         let query = self.filter.read(cx).value().trim().to_string();
-        let rows = Rc::new(self.rows(&account, cx));
-        let friendly = account.host();
-        let refresh_account = account.clone();
         let list: AnyElement = if rows.is_empty() {
-            // `renderNoItems`
-            let message: AnyElement = if loading && !loaded {
-                div()
-                    .text_color(t.text_secondary)
-                    .child(format!("Loading repositories from {friendly}…"))
-                    .into_any_element()
-            } else if !query.is_empty() {
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .justify_center()
-                    .child("Sorry, I can't find any repository matching\u{a0}")
-                    .child(
-                        div()
-                            .font_family(crate::theme::mono_font())
-                            .px(zpx(3.))
-                            .rounded(zpx(3.))
-                            .bg(t.box_alt_background)
-                            .child(query.clone()),
-                    )
-                    .into_any_element()
-            } else {
-                let account_for_link = account.clone();
-                crate::widgets::paragraph(vec![
-                    "Looks like there are no repositories for ".into(),
-                    div()
-                        .font_family(crate::theme::mono_font())
-                        .px(zpx(3.))
-                        .rounded(zpx(3.))
-                        .bg(t.box_alt_background)
-                        .child(account.login.clone())
-                        .into_any_element()
-                        .into(),
-                    format!(" on {friendly}. ").into(),
-                    link_button("clone-refresh-link", "Refresh this list", cx)
-                        .on_click(move |_, _, cx| {
-                            Dispatcher::load_api_repositories(account_for_link.clone(), cx)
-                        })
-                        .into_any_element()
-                        .into(),
-                    " if you've created a repository recently.".into(),
-                ])
-                .justify_center()
-                .into_any_element()
-            };
-            div()
-                .size_full()
-                .flex()
-                .items_center()
-                .justify_center()
-                .p(SPACING_DOUBLE())
-                .text_size(FONT_SIZE())
-                .text_align(TextAlign::Center)
-                .child(message)
-                .into_any_element()
+            no_items(
+                "clone-refresh-link",
+                &account,
+                loading,
+                loaded,
+                &query,
+                true,
+                cx,
+            )
         } else {
             let weak = cx.weak_entity();
-            let selected = self.selected_repo.clone();
-            let query_lower = query.to_lowercase();
-            uniform_list(
+            repository_list(
                 "clone-repository-list",
-                rows.len(),
-                move |range, _window, cx| {
-                    let t = cx.ghd();
-                    range
-                        .map(|ix| match &rows[ix] {
-                            CloneRow::Header(title) => div()
-                                .id(ix)
-                                .h(LIST_ROW_HEIGHT())
-                                .px(SPACING())
-                                .flex()
-                                .items_center()
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_size(FONT_SIZE_SM())
-                                .text_color(t.text_secondary)
-                                .child(title.clone())
-                                .into_any_element(),
-                            CloneRow::Item(repo) => {
-                                let is_selected =
-                                    selected.as_deref() == Some(repo.clone_url.as_str());
-                                let icon = if repo.private {
-                                    Octicon::Lock
-                                } else if repo.fork {
-                                    Octicon::RepoForked
-                                } else {
-                                    Octicon::Repo
-                                };
-                                let weak = weak.clone();
-                                let repo_for_click = repo.clone();
-                                let hover_bg = t.list_item_hover_background;
-                                let text = repo.full_name();
-                                div()
-                                    .id(ix)
-                                    .h(LIST_ROW_HEIGHT())
-                                    .px(SPACING())
-                                    .flex()
-                                    .flex_row()
-                                    .items_center()
-                                    .gap(SPACING_HALF())
-                                    .cursor_pointer()
-                                    .text_size(FONT_SIZE())
-                                    .when(is_selected, |d| {
-                                        d.bg(t.box_selected_active_background)
-                                            .text_color(t.box_selected_active_text)
-                                    })
-                                    .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
-                                    .on_click(move |_, window, cx| {
-                                        let repo = repo_for_click.clone();
-                                        weak.update(cx, |this, cx| {
-                                            this.select_repository(&repo, window, cx)
-                                        })
-                                        .ok();
-                                    })
-                                    .child(octicon(
-                                        icon,
-                                        if is_selected {
-                                            t.box_selected_active_text
-                                        } else {
-                                            t.text
-                                        },
-                                    ))
-                                    .child(highlighted(&text, &query_lower))
-                                    .when(repo.archived, |d| {
-                                        // `.archived` badge
-                                        d.child(
-                                            div()
-                                                .flex_none()
-                                                .ml(SPACING_HALF())
-                                                .px(zpx(3.))
-                                                .py(zpx(1.))
-                                                .rounded(BORDER_RADIUS())
-                                                .border_1()
-                                                .border_color(t.box_border_contrast)
-                                                .text_size(FONT_SIZE_XS())
-                                                .child("ARCHIVED"),
-                                        )
-                                    })
-                                    .into_any_element()
-                            }
-                        })
-                        .collect()
+                Rc::new(rows),
+                self.selected_repo.clone(),
+                ListStyle {
+                    inset: 10.,
+                    small_headers: true,
+                    zoom: 1.,
+                    focused: true,
                 },
+                Rc::new(move |repo, window, cx| {
+                    weak.update(cx, |this, cx| this.select_repository(repo, window, cx))
+                        .ok();
+                }),
             )
-            .size_full()
-            .with_scrollbar()
-            .into_any_element()
         };
-        let picker =
-            (self.accounts_for_tab(cx).len() > 1).then(|| self.account_picker(&account, cx));
-        let popover = (picker.is_some() && self.account_picker_open)
-            .then(|| self.account_popover(window, cx));
+        let picker = (self.accounts_for_tab(cx).len() > 1).then(|| {
+            let weak = cx.weak_entity();
+            account_picker(
+                "clone-account-picker",
+                &account,
+                &self.picker,
+                move |window, cx| {
+                    weak.update(cx, |this, cx| {
+                        this.picker.open = !this.picker.open;
+                        // the popover's filter box has `autoFocus`
+                        if this.picker.open {
+                            let handle = this.picker.filter.read(cx).focus_handle(cx);
+                            window.focus(&handle, cx);
+                        }
+                        cx.notify();
+                    })
+                    .ok();
+                },
+                cx,
+            )
+        });
+        let popover = (picker.is_some() && self.picker.open).then(|| {
+            let pick = cx.weak_entity();
+            let close = cx.weak_entity();
+            account_popover(
+                "clone-account",
+                &self.picker,
+                crate::cloneable_repositories::PopoverPlacement {
+                    scale: 1.,
+                    gap: 4.,
+                    fixed_height: false,
+                },
+                self.accounts_for_tab(cx),
+                Some(&account),
+                Rc::new(move |account, _, cx| {
+                    pick.update(cx, |this, cx| this.pick_account(account, cx))
+                        .ok();
+                }),
+                Rc::new(move |_, cx| {
+                    close
+                        .update(cx, |this, cx| {
+                            this.picker.open = false;
+                            cx.notify();
+                        })
+                        .ok();
+                }),
+                window,
+                cx,
+            )
+        });
         div()
             .flex()
             .flex_col()
@@ -922,19 +559,7 @@ impl CloneRepositoryDialog {
                         window,
                         cx,
                     ))
-                    .child(
-                        button("clone-refresh", "", cx)
-                            .icon_button_label("Refresh the list of repositories")
-                            .flex_none()
-                            .px(SPACING_HALF())
-                            .when(loading, |d| d.opacity(0.6))
-                            .on_click(move |_, _, cx| {
-                                if !loading {
-                                    Dispatcher::load_api_repositories(refresh_account.clone(), cx)
-                                }
-                            })
-                            .child(octicon(Octicon::Sync, t.secondary_button_text)),
-                    ),
+                    .child(refresh_button("clone-refresh", &account, loading, cx)),
             )
             .child(
                 div()
@@ -969,29 +594,6 @@ fn validate_empty_folder(path: &Path) -> Option<&'static str> {
             Some("There is already a file with this name. Git can only clone to a folder.")
         }
         Err(_) => Some("Unable to read path on disk. Please check the path and try again."),
-    }
-}
-
-/// `HighlightText`: the matched part of the name in bold.
-fn highlighted(text: &str, query_lower: &str) -> Div {
-    let row = div().flex_1().min_w_0().truncate().flex().flex_row();
-    if query_lower.is_empty() {
-        return row.child(text.to_string());
-    }
-    match text.to_lowercase().find(query_lower) {
-        Some(start)
-            if text.is_char_boundary(start) && text.is_char_boundary(start + query_lower.len()) =>
-        {
-            let end = start + query_lower.len();
-            row.child(text[..start].to_string())
-                .child(
-                    div()
-                        .font_weight(FontWeight::BOLD)
-                        .child(text[start..end].to_string()),
-                )
-                .child(text[end..].to_string())
-        }
-        _ => row.child(text.to_string()),
     }
 }
 

@@ -259,6 +259,15 @@ impl Account {
         self.endpoint == "https://api.github.com"
     }
 
+    /// GHD `Account.friendlyEndpoint`: "GitHub.com", else the Enterprise host.
+    pub fn friendly_endpoint(&self) -> String {
+        if self.is_dotcom() {
+            "GitHub.com".to_string()
+        } else {
+            self.host()
+        }
+    }
+
     /// GHD `lookupPreferredEmail`: the primary address when it is public,
     /// else the account's no-reply address when it is listed, else the first
     /// address; the no-reply address when the account has none.

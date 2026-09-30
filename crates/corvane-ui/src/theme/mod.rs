@@ -45,6 +45,23 @@ pub mod sizes {
         ZOOM.with(|z| z.set(factor.clamp(0.25, 5.)));
     }
 
+    /// Build `f` with the zoom factor multiplied by `extra`: a CSS `zoom` on
+    /// one subtree (`#no-repositories { zoom: 1.2 }`). Sizes are resolved
+    /// when elements are built, so deferred builders (a `uniform_list`'s row
+    /// closure) wrap their own body too.
+    pub fn with_zoom<R>(extra: f32, f: impl FnOnce() -> R) -> R {
+        struct Restore(f32);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                let previous = self.0;
+                ZOOM.with(|z| z.set(previous));
+            }
+        }
+        let _restore = Restore(zoom_factor());
+        ZOOM.with(|z| z.set(z.get() * extra));
+        f()
+    }
+
     /// `v` CSS pixels at the current zoom.
     #[inline]
     pub fn zpx(v: f32) -> Pixels {

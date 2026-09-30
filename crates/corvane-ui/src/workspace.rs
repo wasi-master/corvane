@@ -20,7 +20,7 @@ use crate::diff_view::{DiffSource, DiffView, diff_header};
 use crate::foldout::{FoldoutPanels, foldout_layer};
 use crate::history::HistorySidebar;
 use crate::no_changes::{SuggestedAction, no_changes};
-use crate::no_repositories::no_repositories;
+use crate::no_repositories::NoRepositoriesView;
 use crate::repository_list::RepositoryFoldout;
 use crate::selected_commit::SelectedCommitView;
 use crate::stash_view::StashDiffViewer;
@@ -73,6 +73,7 @@ pub struct Workspace {
     dialogs: Entity<DialogHost>,
     diff_view: Entity<DiffView>,
     welcome: Option<Entity<WelcomeView>>,
+    no_repositories: Entity<NoRepositoriesView>,
     /// The branch button's PR badge rectangle (anchor of the CI popover).
     pr_badge_bounds: Rc<Cell<Bounds<Pixels>>>,
     /// Resize handles of the worktree and branch buttons.
@@ -160,6 +161,7 @@ impl Workspace {
             cx.new(|cx| CiCheckPopover::new(state.clone(), pr_badge_bounds.clone(), cx));
         let welcome = (!state.read(cx).settings.welcome_completed)
             .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
+        let no_repositories = cx.new(|cx| NoRepositoriesView::new(state.clone(), window, cx));
         window.focus(&focus_handle, cx);
 
         Self {
@@ -185,6 +187,7 @@ impl Workspace {
             dialogs,
             diff_view,
             welcome,
+            no_repositories,
         }
     }
 
@@ -743,7 +746,7 @@ impl Render for Workspace {
                         .flex_1()
                         .min_h_0()
                         .w_full()
-                        .child(no_repositories(window, cx))
+                        .child(self.no_repositories.clone())
                         .into_any_element()
                 })
             })
