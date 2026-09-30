@@ -326,6 +326,7 @@ pub fn parse_unified(patch: &str) -> Diff {
     let mut new_no = 0u32;
     let mut total_lines = 0usize;
     let mut truncated = false;
+    let (mut old_mode, mut new_mode) = (None, None);
 
     for line in patch.split_inclusive('\n') {
         let line = line.strip_suffix('\n').unwrap_or(line);
@@ -354,7 +355,13 @@ pub fn parse_unified(patch: &str) -> Diff {
             continue;
         }
         let Some(hunk) = current.as_mut() else {
-            continue; // file header lines before the first hunk
+            // file header lines before the first hunk
+            if let Some(mode) = line.strip_prefix("old mode ") {
+                old_mode = Some(mode.to_string());
+            } else if let Some(mode) = line.strip_prefix("new mode ") {
+                new_mode = Some(mode.to_string());
+            }
+            continue;
         };
         if line.starts_with("\\ No newline at end of file") {
             if let Some(last) = hunk.lines.last_mut() {
@@ -403,7 +410,8 @@ pub fn parse_unified(patch: &str) -> Diff {
     if let Some(h) = current.take() {
         hunks.push(h);
     }
-    if hunks.is_empty() {
+    let mode_change = old_mode.zip(new_mode);
+    if hunks.is_empty() && mode_change.is_none() {
         return Diff::Empty;
     }
     let warnings = DiffWarnings {
@@ -412,6 +420,7 @@ pub fn parse_unified(patch: &str) -> Diff {
             .flat_map(|h| h.lines.iter())
             .any(|l| has_hidden_bidi_chars(&l.text)),
         line_endings: None,
+        mode_change,
     };
     if truncated {
         Diff::LargeText { hunks, warnings }
@@ -548,6 +557,29 @@ mod tests {
                 assert_eq!(file.status.kind, corvane_models::FileStatusKind::Untracked);
             }
         }
+    }
+
+    #[test]
+    fn mode_only_change_is_a_text_diff_without_hunks() {
+        let raw = ":100644 100755 aaa aaa M\0a.sh\0\ndiff --git a/a.sh b/a.sh\nold mode 100644\nnew mode 100755\n";
+        let Diff::Text { hunks, warnings } = parse_raw_diff(raw.as_bytes()) else {
+            panic!("text diff expected")
+        };
+        assert!(hunks.is_empty());
+        assert_eq!(
+            warnings.mode_change,
+            Some(("100644".to_string(), "100755".to_string()))
+        );
+        let with_hunks = SAMPLE.replacen(
+            "index 1..2 100644\n",
+            "old mode 100644\nnew mode 100755\n",
+            1,
+        );
+        let Diff::Text { hunks, warnings } = parse_unified(&with_hunks) else {
+            panic!("text diff expected")
+        };
+        assert_eq!(hunks.len(), 1);
+        assert!(warnings.mode_change.is_some());
     }
 
     #[test]
