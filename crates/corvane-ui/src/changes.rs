@@ -2752,7 +2752,7 @@ impl ChangesSidebar {
                 corvane_core::integrations::encode_component(&format!("refs/heads/{branch}"))
             );
             crate::widgets::link_button("commit-warning-rulesets", label, cx)
-                .on_click(move |_, _, cx| cx.open_url(&url))
+                .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx))
                 .into_any_element()
         };
         let message = |parts: Vec<AnyElement>| {
@@ -2866,9 +2866,7 @@ impl ChangesSidebar {
                     cx,
                 )
                 .on_click(|_, _, cx| {
-                    cx.open_url(
-                        "https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits",
-                    )
+                    corvane_core::Dispatcher::open_url("https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits", cx)
                 })
                 .into_any_element(),
             ],
@@ -2989,7 +2987,9 @@ impl ChangesSidebar {
                                     f.description.clone(),
                                     cx,
                                 )
-                                .on_click(move |_, _, cx| cx.open_url(&url)),
+                                .on_click(move |_, _, cx| {
+                                    corvane_core::Dispatcher::open_url(&url, cx)
+                                }),
                             )
                     })),
             )
@@ -3057,7 +3057,11 @@ impl ChangesSidebar {
                                                 "View all rulesets for this branch.",
                                                 cx,
                                             )
-                                            .on_click(move |_, _, cx| cx.open_url(&all_url)),
+                                            .on_click(
+                                                move |_, _, cx| {
+                                                    corvane_core::Dispatcher::open_url(&all_url, cx)
+                                                },
+                                            ),
                                         ),
                                 )
                                 .children(list("Failed", &failures.failed))

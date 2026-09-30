@@ -68,6 +68,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - "Open With…" (Corvane addition) in the changes list's file menu for a single file (after "Open with Default Program"; not with several selected under `271-open-multiple-files`): the Repository › Open With… application picker, applied to the file. GHD 3.6.6 offers only the editor and the default program. Flag: `474-open-file-with`.
 - Opening a folder in Visual Studio Code (Insiders), VSCodium, Cursor or Windsurf opens the folder's `*.code-workspace` file instead when there is exactly one at its top (`editors::code_workspace_file`); off in the Corvane preset. GHD 3.6.6 always opens the folder. Flag: `475-vscode-workspace-file`.
 - A file manager other than Finder (Corvane addition): with an application set (name or path), Show in Finder and every Reveal in Finder item open the folder, or a file's parent folder, with `open -a <app>`; the labels keep "Finder". GHD 3.6.6 always reveals in Finder. Flag: `570-file-manager`.
+- A browser other than the default (Corvane addition): with an application set (name or path), http(s) links open with `open -a <app> <url>` (every link goes through `Dispatcher::open_url`); other schemes, and a failed launch, fall back to the system handler. GHD 3.6.6 always uses the default browser. Flag: `571-browser`.
 
 ## Diff viewer
 

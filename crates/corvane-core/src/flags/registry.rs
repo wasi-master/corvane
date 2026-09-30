@@ -893,6 +893,22 @@ registry! {
         code: &["crates/corvane-core/src/integrations.rs"],
     },
 
+    /// Open web links in a chosen browser.
+    BROWSER = 571 "browser" {
+        title: "Browser",
+        summary: "Application that web links open in (GitHub pages, pull requests, sign-in, help \
+                  links), by name or path: `Firefox`, `/Applications/Safari.app`. Empty uses the \
+                  system's default browser.",
+        ghd_behaviour: "Always the default browser.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "Firefox", validate: app_name },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21762)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
     // ---- 600 Accessibility ----
 
     /// ⌘9 / ⌘8 announce the width after the step.

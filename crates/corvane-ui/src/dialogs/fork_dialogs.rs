@@ -156,7 +156,7 @@ impl Render for CreateForkDialog {
                         )
                         .on_click({
                             let url = github.html_url.clone();
-                            move |_, _, cx| cx.open_url(&url)
+                            move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx)
                         })
                         .into_any_element(),
                     ),

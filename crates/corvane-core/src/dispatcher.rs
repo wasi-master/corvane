@@ -2401,8 +2401,25 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Open a link. With a `571-browser` application set, web links open in
+    /// it (`open -a <app> <url>`); other schemes keep the system handler.
     pub fn open_url(url: &str, cx: &mut App) {
-        cx.open_url(url);
+        let browser = Self::state(cx)
+            .read(cx)
+            .flags
+            .text(crate::flags::ids::BROWSER)
+            .trim()
+            .to_string();
+        let web = url.starts_with("https://") || url.starts_with("http://");
+        if browser.is_empty() || !web {
+            cx.open_url(url);
+            return;
+        }
+        if let Err(err) = corvane_platform::apps::open_with_app(Path::new(&browser), Path::new(url))
+        {
+            warn!(%browser, %err, "opening a link in the chosen browser failed");
+            cx.open_url(url);
+        }
     }
 
     /// Native folder picker → `Some(path)` on the foreground.
@@ -2965,7 +2982,7 @@ impl Dispatcher {
                                     },
                                     cx,
                                 );
-                                cx.open_url(&uri);
+                                Self::open_url(&uri, cx);
                             });
                         }
                         Msg::Token { token, scopes } => {

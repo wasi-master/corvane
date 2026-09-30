@@ -100,7 +100,12 @@ impl Render for AcknowledgementsDialog {
                                     .child(paragraph(vec![
                                         Inline::Element(
                                             link_button("ack-website", "Corvane", cx)
-                                                .on_click(|_, _, cx| cx.open_url(WEBSITE_URL))
+                                                .on_click(|_, _, cx| {
+                                                    corvane_core::Dispatcher::open_url(
+                                                        WEBSITE_URL,
+                                                        cx,
+                                                    )
+                                                })
                                                 .into_any_element(),
                                         ),
                                         " is an open source project published under the MIT \
@@ -109,7 +114,12 @@ impl Render for AcknowledgementsDialog {
                                             .into(),
                                         Inline::Element(
                                             link_button("ack-repository", "GitHub", cx)
-                                                .on_click(|_, _, cx| cx.open_url(REPOSITORY_URL))
+                                                .on_click(|_, _, cx| {
+                                                    corvane_core::Dispatcher::open_url(
+                                                        REPOSITORY_URL,
+                                                        cx,
+                                                    )
+                                                })
                                                 .into_any_element(),
                                         ),
                                         ".".into(),
@@ -134,7 +144,9 @@ impl Render for AcknowledgementsDialog {
                                             title,
                                             cx,
                                         )
-                                        .on_click(move |_, _, cx| cx.open_url(&url))
+                                        .on_click(move |_, _, cx| {
+                                            corvane_core::Dispatcher::open_url(&url, cx)
+                                        })
                                         .into_any_element(),
                                         None => div().child(title).into_any_element(),
                                     };

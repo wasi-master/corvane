@@ -284,7 +284,9 @@ impl SignInDialog {
                                         octicon(Octicon::LinkExternal, t.secondary_button_text)
                                             .ml(SPACING_HALF()),
                                     )
-                                    .on_click(move |_, _, cx| cx.open_url(&uri)),
+                                    .on_click(move |_, _, cx| {
+                                        corvane_core::Dispatcher::open_url(&uri, cx)
+                                    }),
                             ),
                     )
                     .child(
@@ -314,7 +316,7 @@ impl SignInDialog {
                                 octicon(Octicon::LinkExternal, t.secondary_button_text)
                                     .ml(SPACING_HALF()),
                             )
-                            .on_click(move |_, _, cx| cx.open_url(&url)),
+                            .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx)),
                     )
                     .child(
                         div()

@@ -582,7 +582,7 @@ impl FlagsDialog {
                 .items_center()
                 .gap(zpx(2.))
                 .child(octicon(Octicon::LinkExternal, t.link).size(zpx(12.)))
-                .on_click(move |_, _, cx| cx.open_url(&url)),
+                .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx)),
             );
         }
 

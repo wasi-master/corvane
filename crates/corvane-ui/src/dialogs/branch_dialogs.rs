@@ -247,9 +247,7 @@ impl Render for CreateBranchDialog {
                                         cx,
                                     )
                                     .on_click(|_, _, cx| {
-                                        cx.open_url(
-                                            "https://help.github.com/articles/setting-the-default-branch/",
-                                        )
+                                        corvane_core::Dispatcher::open_url("https://help.github.com/articles/setting-the-default-branch/", cx)
                                     })
                                     .into_any_element()
                                     .into(),

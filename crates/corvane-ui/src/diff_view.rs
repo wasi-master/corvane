@@ -1508,7 +1508,9 @@ impl DiffView {
                         "This is a submodule based on the repository".into(),
                         Inline::Element(
                             link_button("submodule-repo-link", label, cx)
-                                .on_click(move |_, _, cx| cx.open_url(&html_url))
+                                .on_click(move |_, _, cx| {
+                                    corvane_core::Dispatcher::open_url(&html_url, cx)
+                                })
                                 .into_any_element(),
                         ),
                         ".".into(),
@@ -1777,7 +1779,9 @@ impl DiffView {
                             "Learn more about bidirectional Unicode characters",
                             cx,
                         )
-                        .on_click(|_, _, cx| cx.open_url("https://github.co/hiddenchars"))
+                        .on_click(|_, _, cx| {
+                            corvane_core::Dispatcher::open_url("https://github.co/hiddenchars", cx)
+                        })
                         .into_any_element(),
                     ),
                 ])
@@ -1791,9 +1795,7 @@ impl DiffView {
                     Inline::Element(
                         link_button("line-endings-docs", "Git is configured to convert them", cx)
                             .on_click(|_, _, cx| {
-                                cx.open_url(
-                                    "https://docs.github.com/get-started/git-basics/configuring-git-to-handle-line-endings",
-                                )
+                                corvane_core::Dispatcher::open_url("https://docs.github.com/get-started/git-basics/configuring-git-to-handle-line-endings", cx)
                             })
                             .into_any_element(),
                     ),

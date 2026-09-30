@@ -514,7 +514,9 @@ pub(crate) fn check_run_steps(
                                 format!("View {} on GitHub", check.name),
                                 cx,
                             )
-                            .on_click(move |_, _, cx| cx.open_url(&header_url)),
+                            .on_click(move |_, _, cx| {
+                                corvane_core::Dispatcher::open_url(&header_url, cx)
+                            }),
                         ),
                 )
                 .children(steps.iter().map(|step| {
@@ -565,7 +567,9 @@ pub(crate) fn check_run_steps(
                                 format!("View {} on GitHub", step.name),
                                 cx,
                             )
-                            .on_click(move |_, _, cx| cx.open_url(&step_url)),
+                            .on_click(move |_, _, cx| {
+                                corvane_core::Dispatcher::open_url(&step_url, cx)
+                            }),
                         )
                 }))
                 .into_any_element()
@@ -589,7 +593,9 @@ pub(crate) fn check_run_steps(
                             .gap(SPACING_HALF())
                             .child("View check details")
                             .child(octicon(Octicon::LinkExternal, t.secondary_button_text))
-                            .on_click(move |_, _, cx| cx.open_url(&view_url)),
+                            .on_click(move |_, _, cx| {
+                                corvane_core::Dispatcher::open_url(&view_url, cx)
+                            }),
                     ),
             )
             .child(
