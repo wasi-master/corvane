@@ -46,6 +46,14 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 - [ ] **[INFRA]** Screenshot-regression CI job on `macos-15` runner (`cargo build --features snapshots` + `CORVANE_SNAPSHOT=<png>` renders a window offscreen)
 - [ ] **[INFRA]** `cargo vendor` snapshot of `gpui-pre`/`gpui-kit` in release builds
 
+## Flags (`docs/reference/flags.md`)
+
+New Corvane-only extras land behind a flag that is off in the Corvane preset and on in Everything (`everything: ON` in `crates/corvane-core/src/flags/registry.rs`). Candidates:
+
+- [ ] Opt out of update checks (desktop/desktop#3410; `corvane_core::updater::updates_enabled`), `5xx`
+- [ ] Tree-sitter highlighter as a `1xx` select once the Diff viewer item above lands
+- [ ] Flags dialog: ↑ / ↓ row navigation, a "Reset to preset" per category, a link that opens the flag's deviations.md entry
+
 ## Accessibility
 
 - [ ] Keyboard navigation leftovers (audit 2026-09-29, `deviations.md` › Keyboard): arrow / Enter navigation from the filter box into the repository, branch, pull request and worktree lists (GHD `FilterList`), PageUp / PageDown in lists, Enter submitting a dialog's default button when no text box has focus, Shift+F10 opening the selected row's context menu, Tab traversal through toolbar buttons and list rows

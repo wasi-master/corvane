@@ -25,6 +25,7 @@ the run can gate a change.
 |---|---|---|
 | Instance | private copy: `--user-data-dir=<scratch>` (your GHD and its settings are untouched) | `CORVANE_DATA_DIR=<scratch>` (your store is untouched) |
 | Control | Chrome DevTools Protocol (`--remote-debugging-port`) | `CORVANE_CONTROL=<port>` socket (`crates/corvane/src/parity_control.rs`, `--features snapshots`) |
+| Flags | — | `CORVANE_FLAGS=preset=github-desktop`: every deviation at its GHD value (`docs/reference/flags.md`); `PARITY_CORVANE_FLAGS=<spec>` overrides |
 | Input | `Input.dispatchMouseEvent` / `dispatchKeyEvent` / `insertText` into the renderer | synthetic `PlatformInput` into GPUI's window dispatch |
 | Menus | `menu-event` IPC emitted in the renderer (accelerators live in the main process) | the mapped action (`drivers.MENU_ACTIONS`) |
 | Capture | `Page.captureScreenshot` | `Window::draw` + `render_to_image` |

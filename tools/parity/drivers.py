@@ -491,6 +491,9 @@ class Corvane:
             CORVANE_CONTROL=str(self.port),
             CORVANE_THEME=self.theme,
             CORVANE_LOG=env.get("PARITY_CORVANE_LOG", "info"),
+            # every flag at its GHD value, so the diff measures true parity
+            # (docs/reference/flags.md); PARITY_CORVANE_FLAGS overrides
+            CORVANE_FLAGS=env.get("PARITY_CORVANE_FLAGS", "preset=github-desktop"),
         )
         env.update(extra_env or {})
         with open(self.log, "ab") as log:
