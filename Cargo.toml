@@ -112,7 +112,9 @@ incremental = false
 
 # gpui-pre-macos: variable-font weights and glyph dilation like Chromium
 # (src/text_system.rs); gpui-pre: text paints from its unsnapped layout origin
-# (src/elements/text.rs). Both marked "Corvane patch".
+# (src/elements/text.rs); gpui-pre-linux: anchored popups on X11 (the context
+# and menu bar menus; src/linux/x11). All marked "Corvane patch".
 [patch.crates-io]
 gpui-pre-macos = { path = "vendor/gpui-pre-macos" }
 gpui-pre = { path = "vendor/gpui-pre" }
+gpui-pre-linux = { path = "vendor/gpui-pre-linux" }
