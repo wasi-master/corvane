@@ -452,6 +452,20 @@ registry! {
         upstream: &[Upstream::issue(12171), Upstream::issue(16028)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
     },
+    /// Repository Settings › Ignored Files › Edit global ignore file.
+    EDIT_GLOBAL_IGNORE_FILE = 218 "edit-global-ignore-file" {
+        title: "Edit the global ignore file",
+        summary: "Repository Settings › Ignored Files has an \"Edit global ignore file\" link that \
+                  opens git's excludes file (core.excludesFile, else ~/.config/git/ignore, created \
+                  when missing) in the external editor.",
+        ghd_behaviour: "Only the repository's root .gitignore can be edited.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21951)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 300 GitHub ----
 

@@ -2843,6 +2843,34 @@ impl Dispatcher {
         .detach();
     }
 
+    /// Repository Settings › Ignored Files › "Edit global ignore file" (flag
+    /// `edit-global-ignore-file`): create the excludes file if needed and
+    /// open it in the external editor.
+    pub fn edit_global_ignore_file(id: u64, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx.background_executor().spawn(async move {
+            let path = corvane_git::excludes_file(git, &workdir)
+                .ok_or_else(|| "core.excludesFile is unset and HOME is unknown".to_string())?;
+            if !path.exists() {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                std::fs::write(&path, "").map_err(|e| e.to_string())?;
+            }
+            Ok::<_, String>(path)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(path) => Self::open_in_editor(path, cx),
+                Err(err) => Self::show_error("Could not open the global ignore file", err, cx),
+            });
+        })
+        .detach();
+    }
+
     // ---- sign-in (GHD `SignInStore`) ----
 
     pub(crate) fn set_sign_in_step(step: SignInStep, cx: &mut App) {
