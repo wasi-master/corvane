@@ -192,6 +192,19 @@ registry! {
         upstream: &[Upstream::issue(15956)],
         code: &["crates/corvane-ui/src/history.rs"],
     },
+    /// Inline code and autolinks in commit messages.
+    COMMIT_MESSAGE_RICH_TEXT = 141 "commit-message-rich-text" {
+        title: "Inline code and links in commit messages",
+        summary: "The selected commit's title and description show `backtick` spans as inline code \
+                  and link bare URLs and, in a GitHub repository, commit SHAs.",
+        ghd_behaviour: "Backticks show literally; SHAs are plain text.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18104), Upstream::issue(7723)],
+        code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/markdown.rs"],
+    },
 
     // ---- 200 Repository ----
 

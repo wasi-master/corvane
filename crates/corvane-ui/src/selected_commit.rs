@@ -12,7 +12,9 @@
 //! `249`). A multi-commit selection's summary shows the range's +added
 //! -deleted line totals (flag `251`). The meta row adds the author date and
 //! links the SHA to the commit on GitHub (flag `253`); the tags' tooltip
-//! lists every tag (flag `254`).
+//! lists every tag (flag `254`). The title and description show `code`
+//! spans and link URLs and SHAs (flag `141`), where GHD's `RichText` links
+//! only URLs, issues and mentions.
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -346,6 +348,15 @@ impl SelectedCommitView {
             .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
             .flatten()
             .map(|g| format!("{}/commit/{}", g.html_url, commit.sha));
+        // `141`: `code` spans, URLs and (GitHub repositories) SHAs
+        let rich = s
+            .flags
+            .bool(corvane_core::flags::ids::COMMIT_MESSAGE_RICH_TEXT)
+            .then(|| {
+                s.repository(id)
+                    .and_then(|r| r.github.as_ref())
+                    .map(|g| g.html_url.clone())
+            });
         let empty = commit.summary.is_empty();
         let title = if empty {
             "Empty commit message".to_string()
@@ -388,7 +399,17 @@ impl SelectedCommitView {
                         .line_height(zpx(16.))
                         .when(empty, |d| d.text_color(t.text_secondary))
                         // the expander follows the title (`margin-left: 10px`)
-                        .child(div().min_w_0().child(title))
+                        .child(div().min_w_0().child(match &rich {
+                            Some(base) if !empty => crate::markdown::rich_text(
+                                "commit-title",
+                                &corvane_core::markdown::commit_message_rich_text(
+                                    &title,
+                                    base.as_deref(),
+                                ),
+                                cx,
+                            ),
+                            _ => title.into_any_element(),
+                        }))
                         .child(
                             div()
                                 .id("commit-summary-expander")
@@ -442,7 +463,17 @@ impl SelectedCommitView {
                                                 .font_family(mono_font())
                                                 .text_size(FONT_SIZE_SM())
                                                 .line_height(zpx(16.5))
-                                                .child(description),
+                                                .child(match &rich {
+                                                    Some(base) => crate::markdown::rich_text(
+                                                        "commit-description",
+                                                        &corvane_core::markdown::commit_message_rich_text(
+                                                            &description,
+                                                            base.as_deref(),
+                                                        ),
+                                                        cx,
+                                                    ),
+                                                    None => description.into_any_element(),
+                                                }),
                                         ),
                                 ),
                             )
