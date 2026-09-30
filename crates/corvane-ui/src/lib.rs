@@ -12,6 +12,7 @@ pub mod branch_list;
 pub mod changes;
 pub mod ci_check_popover;
 pub mod ci_status;
+pub mod cloneable_repositories;
 pub mod cloning_view;
 pub mod context_menu;
 pub mod dialog;
