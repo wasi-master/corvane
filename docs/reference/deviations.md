@@ -71,6 +71,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Spellcheck language follows `NSSpellChecker`'s automatic identification; there is no per-language picker and no Chromium-style "Ignore" item.
 - Commit message templates (Corvane addition; GHD 3.6.6 ignores `commit.template`): the repository's resolved `commit.template` file, comment lines (`core.commentChar`) and outer blank lines stripped, prefills the description while the summary is empty and the description is empty or still the template; it comes back after every commit (`corvane_git::commit_template`). Flag: `201-commit-templates`.
 - Push after committing (Corvane addition, off in the Corvane preset): the commit form's gear menu gains a Push After Committing checkbox, saved with the repository's other commit options; while ticked the commit button reads "Commit N files and push to main" and a successful commit (after its hooks) runs the toolbar's push, publishing a branch without an upstream; its errors show as usual. An amend is never pushed, since its rewritten tip may need a force push. Flag: `220-commit-and-push`.
+- Co-authors without a GitHub account (Corvane addition, off in the Corvane preset): "Name <email>" typed (or pasted) in the co-authors box becomes a token showing the name and a `Co-Authored-By: Name <email>` trailer, keyed by the email. So names can hold spaces, Space turns a typed word into a handle only when it starts with @ (GHD: any word); picking from the suggestions is unchanged. Flag: `422-free-form-co-authors`.
 
 ## Diff viewer
 

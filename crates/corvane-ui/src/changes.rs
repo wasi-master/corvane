@@ -5,6 +5,8 @@
 //! status icon and the header the totals (GHD `changes-list.tsx` has none).
 //! Deviation (flag `ignore-file-targets`): a single file's menu adds "Ignore
 //! File In" (a nearer `.gitignore`, `info/exclude`, the global excludes file).
+//! Deviation (flag `422-free-form-co-authors`): "Name <email>" in the
+//! co-authors box adds a co-author without a GitHub account.
 //! Deviation (flag `416-changes-busy-indicator`): the "N changed files" row
 //! ends in a spinner while Discard Changes runs or a status refresh is slow.
 
@@ -75,6 +77,19 @@ struct PendingSpell {
     range: Range<usize>,
     word: String,
     suggestions: Vec<String>,
+}
+
+/// A co-author's token id: the lower-cased login, or the lower-cased email
+/// of a `422-free-form-co-authors` author without one.
+fn co_author_id(author: &Author) -> Option<String> {
+    match author {
+        Author::Known {
+            username: None,
+            email,
+            ..
+        } => Some(email.to_lowercase()),
+        _ => author.username().map(str::to_lowercase),
+    }
 }
 
 /// How long a status refresh runs before the header shows a spinner.
@@ -399,12 +414,7 @@ impl ChangesSidebar {
         self.state
             .read(cx)
             .selected_state()
-            .map(|rs| {
-                rs.co_authors
-                    .iter()
-                    .filter_map(|a| a.username().map(|u| u.to_string()))
-                    .collect()
-            })
+            .map(|rs| rs.co_authors.iter().filter_map(co_author_id).collect())
             .unwrap_or_default()
     }
 
@@ -432,7 +442,7 @@ impl ChangesSidebar {
             .filter_map(|id| {
                 current
                     .iter()
-                    .find(|a| a.username().is_some_and(|u| u.to_lowercase() == *id))
+                    .find(|a| co_author_id(a).as_ref() == Some(id))
                     .cloned()
             })
             .collect();
@@ -443,7 +453,32 @@ impl ChangesSidebar {
         let (text, caret) = self.field_text_and_caret(CommitField::CoAuthors, cx);
         let free_start = self.co_author_free_start(cx).min(text.len());
         let free = &text[free_start..];
-        if caret == text.len() && free.ends_with(' ') {
+        // Corvane (`422-free-form-co-authors`): "Name <email>" becomes a
+        // co-author without a GitHub account, and Space only turns a word
+        // typed with @ into a handle, so a name can be typed with spaces
+        let free_form = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::FREE_FORM_CO_AUTHORS);
+        if free_form
+            && caret == text.len()
+            && free.trim_end().ends_with('>')
+            && let Some((name, email)) = corvane_core::autocomplete::parse_co_author_address(free)
+        {
+            self.pending_author = Some((
+                free_start..text.len(),
+                Author::Known {
+                    name,
+                    email,
+                    username: None,
+                },
+            ));
+            cx.notify();
+        } else if caret == text.len()
+            && free.ends_with(' ')
+            && (!free_form || free.trim_start().starts_with('@'))
+        {
             let handle = free.trim().trim_start_matches('@').to_string();
             if !handle.is_empty() && !handle.contains(char::is_whitespace) {
                 let author = Author::Unknown {
@@ -467,7 +502,7 @@ impl ChangesSidebar {
         let Some(id) = self.state.read(cx).selected else {
             return;
         };
-        let Some(login) = author.username().map(|u| u.to_lowercase()) else {
+        let Some(login) = co_author_id(&author) else {
             return;
         };
         let already = self
@@ -603,7 +638,7 @@ impl ChangesSidebar {
                             let id = ctx.token().id().to_string();
                             let author = authors
                                 .iter()
-                                .find(|a| a.username().is_some_and(|u| u.to_lowercase() == id));
+                                .find(|a| co_author_id(a).as_deref() == Some(id.as_str()));
                             let unknown = match author {
                                 Some(Author::Unknown { state, .. }) => Some(*state),
                                 _ => None,

@@ -883,6 +883,21 @@ registry! {
         upstream: &[Upstream::issue(5230)],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/integrations.rs"],
     },
+    /// "Name <email>" co-authors without a GitHub account.
+    FREE_FORM_CO_AUTHORS = 422 "free-form-co-authors" {
+        title: "Co-authors without a GitHub account",
+        summary: "Typing \"Name <email>\" in the co-authors box adds that person as a co-author \
+                  (a Co-Authored-By trailer) without looking them up on GitHub. To allow spaces \
+                  in names, Space turns a typed word into a GitHub handle only when it starts \
+                  with @; the suggestions list works as before.",
+        ghd_behaviour: "Only GitHub users can be added; every word becomes a handle on Space.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4308)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/autocomplete.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
