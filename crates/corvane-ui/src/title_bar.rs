@@ -5,9 +5,16 @@
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::TITLE_BAR_HEIGHT;
 
-pub fn title_bar(_cx: &App) -> impl IntoElement {
+pub fn title_bar(cx: &App) -> impl IntoElement {
+    // flag `189-light-toolbar`: a light gradient in the Light theme
+    let (top, bottom, border) = if cx.ghd().light_title_bar {
+        (0xf6f8fa, 0xeaeef2, 0xd0d7de)
+    } else {
+        (0x3b3f46, 0x2b2e33, 0x000000)
+    };
     div()
         .id("title-bar")
         .w_full()
@@ -15,11 +22,11 @@ pub fn title_bar(_cx: &App) -> impl IntoElement {
         .flex_none()
         .bg(linear_gradient(
             180.,
-            linear_color_stop(rgb(0x3b3f46), 0.),
-            linear_color_stop(rgb(0x2b2e33), 1.),
+            linear_color_stop(rgb(top), 0.),
+            linear_color_stop(rgb(bottom), 1.),
         ))
         .border_b_1()
-        .border_color(rgb(0x000000))
+        .border_color(rgb(border))
         .on_mouse_down(MouseButton::Left, |_, window, _| window.start_window_move())
         .on_click(|event, window, _| {
             if event.click_count() == 2 {
