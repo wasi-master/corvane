@@ -57,6 +57,23 @@ fn product_name(s: &str) -> Result<(), &'static str> {
     }
 }
 
+/// A comma-separated list of GitHub logins (`314-hidden-clone-owners`).
+fn owner_list(s: &str) -> Result<(), &'static str> {
+    if s.contains(['\n', '\r']) {
+        Err("One line only")
+    } else if s.chars().count() > 500 {
+        Err("At most 500 characters")
+    } else if s
+        .split(',')
+        .map(str::trim)
+        .any(|o| o.contains(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_')))
+    {
+        Err("Logins separated by commas")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -873,6 +890,24 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(15655)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+    /// Owners whose repositories the clone lists leave out.
+    HIDDEN_CLONE_OWNERS = 314 "hidden-clone-owners" {
+        title: "Owners hidden from the clone list",
+        summary: "GitHub users or organizations (comma-separated logins) whose repositories the \
+                  clone dialog and the blank slate's repository list leave out.",
+        ghd_behaviour: "Every repository the account can access is listed.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "org-a, org-b", validate: owner_list },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11908)],
+        code: &[
+            "crates/corvane-ui/src/cloneable_repositories.rs",
+            "crates/corvane-ui/src/dialogs/clone_repository.rs",
+            "crates/corvane-ui/src/no_repositories.rs",
+        ],
     },
 
     // ---- 400 Window & menus ----

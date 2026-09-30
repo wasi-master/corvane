@@ -27,6 +27,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git` (Flag: `204-clone-shorthand-not-found`). The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
 - The Current Repository toolbar button can show a GitHub repository's owner in place of "Current Repository" (Corvane option), so same-named forks are told apart. Flag: `312-owner-in-repository-button`.
 - The repository list's filter button can offer Forks / Not forks (GitHub's fork flag; local repositories count as not forks); the Recent group is left out while one is on. Flag: `313-repository-fork-filter`.
+- The clone dialog and the blank slate's repository list can leave out the repositories of chosen owners (comma-separated logins; empty by default, Corvane addition). Flag: `314-hidden-clone-owners`.
 
 ## Repository
 

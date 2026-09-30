@@ -272,7 +272,14 @@ impl NoRepositoriesView {
         };
         let query = self.filter.read(cx).value().to_string();
         let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
-            Some(repos) => group_rows(repos, &account.login, &query),
+            Some(repos) => group_rows(
+                &crate::cloneable_repositories::without_hidden_owners(
+                    repos,
+                    &crate::cloneable_repositories::hidden_owners(cx),
+                ),
+                &account.login,
+                &query,
+            ),
             None => return,
         };
         let selected = self.selected.as_ref().map(|r| r.clone_url.clone());
@@ -315,7 +322,16 @@ impl NoRepositoriesView {
                 s.api_repositories_loading.contains(&account.endpoint),
                 repos.is_some(),
                 repos
-                    .map(|r| group_rows(r, &account.login, &self.filter.read(cx).value()))
+                    .map(|r| {
+                        group_rows(
+                            &crate::cloneable_repositories::without_hidden_owners(
+                                r,
+                                &crate::cloneable_repositories::hidden_owners(cx),
+                            ),
+                            &account.login,
+                            &self.filter.read(cx).value(),
+                        )
+                    })
                     .unwrap_or_default(),
             )
         };
