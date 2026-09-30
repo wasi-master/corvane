@@ -6,15 +6,23 @@
 //!
 //! Deviation (`457-add-local-multiple`): Choose… can pick several folders;
 //! more than one adds every picked repository at once.
+//!
+//! Deviation (`458-add-local-path-completion`): the Local Path box
+//! autocompletes folder names (↑/↓, Enter/Tab, Esc) like the Add Worktree
+//! branch box.
 
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use corvane_core::{AppState, Dispatcher, Popup};
 use corvane_git::PathStatus;
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{
+    Enter, Escape, IndentInline, InputEvent, InputState, MoveDown, MoveUp,
+};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::autocompletion::{self, Autocompletion, PickHandler};
 use crate::dialog::{DialogButton, dialog};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -26,6 +34,8 @@ pub struct AddExistingRepositoryDialog {
     /// The last `validatePath` result that warrants a warning
     /// (`showNonGitRepositoryWarning` / `isRepositoryBare`).
     warning: Option<PathStatus>,
+    /// `458-add-local-path-completion` popup.
+    autocomplete: Option<Autocompletion>,
 }
 
 impl AddExistingRepositoryDialog {
@@ -43,13 +53,72 @@ impl AddExistingRepositoryDialog {
             s
         });
         cx.observe(&path, |_, _, cx| cx.notify()).detach();
+        cx.subscribe(&path, |this, _, ev: &InputEvent, cx| match ev {
+            InputEvent::Change => this.open_autocomplete(cx),
+            InputEvent::Blur => {
+                this.autocomplete = None;
+                cx.notify();
+            }
+            _ => {}
+        })
+        .detach();
         let handle = path.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
         Self {
             state,
             path,
             warning: None,
+            autocomplete: None,
         }
+    }
+
+    fn open_autocomplete(&mut self, cx: &mut Context<Self>) {
+        let on = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ADD_LOCAL_PATH_COMPLETION);
+        let text = self.path.read(cx).value().to_string();
+        self.autocomplete = on.then(|| autocompletion::attempt_path(&text)).flatten();
+        cx.notify();
+    }
+
+    fn autocomplete_move(&mut self, delta: i64, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_mut() {
+            Some(ac) => {
+                ac.move_selection(delta);
+                cx.notify();
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn autocomplete_accept(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        match self.autocomplete.as_ref().and_then(|ac| ac.selected) {
+            Some(ix) => {
+                self.autocomplete_insert(ix, window, cx);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// The folder's path replaces the text; its own sub-folders are then
+    /// offered.
+    fn autocomplete_insert(&mut self, ix: usize, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(hit) = self
+            .autocomplete
+            .take()
+            .and_then(|ac| ac.hits.get(ix).cloned())
+        else {
+            return;
+        };
+        self.path
+            .update(cx, |s, cx| s.set_value(hit.completion_text(), window, cx));
+        let handle = self.path.read(cx).focus_handle(cx);
+        window.focus(&handle, cx);
+        cx.notify();
     }
 
     fn resolved_path(&self, cx: &App) -> Option<PathBuf> {
@@ -196,6 +265,16 @@ impl Render for AddExistingRepositoryDialog {
 
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
+        let popup = self.autocomplete.as_ref().and_then(|ac| {
+            let (bounds, line_height) = self.path.read(cx).cursor_layout()?;
+            let anchor = point(bounds.origin.x, bounds.origin.y + line_height);
+            let weak = cx.weak_entity();
+            let on_pick: PickHandler = Rc::new(move |ix, window, cx| {
+                weak.update(cx, |this, cx| this.autocomplete_insert(ix, window, cx))
+                    .ok();
+            });
+            Some(autocompletion::dialog_popup(ac, anchor, on_pick, cx))
+        });
         dialog(
             "add-existing-repository",
             "Add Local Repository",
@@ -204,8 +283,37 @@ impl Render for AddExistingRepositoryDialog {
                 .flex_col()
                 .gap(SPACING())
                 .child(
-                    // `Row`: [Local Path text box][Choose…]
+                    // `Row`: [Local Path text box][Choose…]; the popup's keys
+                    // win over the field's own bindings
                     div()
+                        .key_context("AutocompletingTextInput")
+                        .capture_action(cx.listener(|this, _: &MoveUp, _, cx| {
+                            if this.autocomplete_move(-1, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &MoveDown, _, cx| {
+                            if this.autocomplete_move(1, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &Enter, window, cx| {
+                            if this.autocomplete_accept(window, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &IndentInline, window, cx| {
+                            if this.autocomplete_accept(window, cx) {
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .capture_action(cx.listener(|this, _: &Escape, _, cx| {
+                            if this.autocomplete.take().is_some() {
+                                cx.notify();
+                                cx.stop_propagation();
+                            }
+                        }))
+                        .children(popup)
                         .flex()
                         .flex_row()
                         .items_end()

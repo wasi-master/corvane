@@ -33,6 +33,9 @@ pub enum TriggerKind {
     /// GHD `BranchAutocompletionProvider`: the whole input is the filter
     /// (`/^(.*)$/`), so there is no trigger character.
     Branch,
+    /// Corvane addition (`458-add-local-path-completion`): folders for a
+    /// typed path, see [`folder_completions`].
+    Path,
 }
 
 impl TriggerKind {
@@ -41,7 +44,7 @@ impl TriggerKind {
             TriggerKind::Emoji => Some(b':'),
             TriggerKind::Issue => Some(b'#'),
             TriggerKind::User => Some(b'@'),
-            TriggerKind::Branch => None,
+            TriggerKind::Branch | TriggerKind::Path => None,
         }
     }
 }
@@ -529,6 +532,44 @@ impl Dispatcher {
     }
 }
 
+/// `458-add-local-path-completion`: the folders completing a typed path,
+/// as `(completion, folder name)`: the text up to the last `/` plus each
+/// sub-folder whose name starts with the rest (case-insensitive; hidden
+/// ones only when the rest starts with `.`), sorted, at most `max`. `~/`
+/// is listed from `$HOME` but kept in the completion.
+pub fn folder_completions(text: &str, max: usize) -> Vec<(String, String)> {
+    let Some(slash) = text.rfind('/') else {
+        return Vec::new();
+    };
+    let (dir, prefix) = (&text[..=slash], &text[slash + 1..]);
+    let listed = match dir.strip_prefix("~/") {
+        Some(rest) => match std::env::var_os("HOME") {
+            Some(home) => std::path::PathBuf::from(home).join(rest),
+            None => return Vec::new(),
+        },
+        None if dir.starts_with('/') => std::path::PathBuf::from(dir),
+        None => return Vec::new(),
+    };
+    let Ok(entries) = std::fs::read_dir(&listed) else {
+        return Vec::new();
+    };
+    let lower = prefix.to_lowercase();
+    let mut names: Vec<String> = entries
+        .flatten()
+        .filter(|e| e.path().is_dir())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|n| {
+            (!n.starts_with('.') || prefix.starts_with('.')) && n.to_lowercase().starts_with(&lower)
+        })
+        .collect();
+    names.sort_by_key(|n| n.to_lowercase());
+    names.truncate(max);
+    names
+        .into_iter()
+        .map(|n| (format!("{dir}{n}/"), n))
+        .collect()
+}
+
 /// Per-repository caches keyed by [`cache_key`].
 pub type IssueCaches = HashMap<String, IssueCache>;
 pub type MentionableCaches = HashMap<String, MentionableCache>;
@@ -536,6 +577,31 @@ pub type MentionableCaches = HashMap<String, MentionableCache>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn folder_completions_list_matching_sub_folders() {
+        let dir = tempfile::tempdir().unwrap();
+        for name in ["alpha", "Apple", "beta", ".hidden"] {
+            std::fs::create_dir(dir.path().join(name)).unwrap();
+        }
+        std::fs::write(dir.path().join("afile"), "").unwrap();
+        let base = format!("{}/", dir.path().display());
+        let names = |text: &str| -> Vec<String> {
+            folder_completions(text, 25)
+                .into_iter()
+                .map(|(_, n)| n)
+                .collect()
+        };
+        assert_eq!(names(&format!("{base}a")), ["alpha", "Apple"]);
+        assert_eq!(names(&base), ["alpha", "Apple", "beta"]);
+        assert_eq!(names(&format!("{base}.")), [".hidden"]);
+        assert_eq!(
+            folder_completions(&format!("{base}b"), 25)[0].0,
+            format!("{base}beta/")
+        );
+        assert!(folder_completions("relative/a", 25).is_empty());
+        assert!(folder_completions("nothing", 25).is_empty());
+    }
 
     #[test]
     fn trigger_at_caret_only() {

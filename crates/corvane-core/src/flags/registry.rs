@@ -828,6 +828,20 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/add_existing.rs"],
     },
 
+    /// Add Local Repository autocompletes folders.
+    ADD_LOCAL_PATH_COMPLETION = 458 "add-local-path-completion" {
+        title: "Folder completion in Add Local Repository",
+        summary: "Typing a path (/… or ~/…) in Add Local Repository's Local Path lists the \
+                  matching folders; ↑/↓ pick one, Enter or Tab completes it, Esc closes the list.",
+        ghd_behaviour: "A plain text box.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18303)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/autocompletion.rs", "crates/corvane-core/src/autocomplete.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
