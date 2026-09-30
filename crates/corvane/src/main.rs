@@ -23,6 +23,9 @@ fn main() {
         askpass::run();
     }
     let started = Instant::now();
+    // the `git --version` probes run while the store, GPUI and the window
+    // come up (`Dispatcher::init` collects the result)
+    Dispatcher::prefetch_git();
     let _log_guard = logging::init();
     info!(version = env!("CARGO_PKG_VERSION"), "starting corvane");
     // writes a local report only while "Save crash reports locally" is on

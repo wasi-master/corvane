@@ -60,6 +60,28 @@ pub struct GitBinary {
     pub version: GitVersion,
 }
 
+/// [`find_git`] started on a thread at launch ([`prefetch_git`]).
+static PREFETCHED: std::sync::Mutex<Option<std::thread::JoinHandle<Result<GitBinary>>>> =
+    std::sync::Mutex::new(None);
+
+/// Start [`find_git`] on a thread (first thing at launch), so its `git
+/// --version` probes overlap the app's own start-up.
+pub fn prefetch_git() {
+    if let Ok(mut slot) = PREFETCHED.lock() {
+        *slot = Some(std::thread::spawn(find_git));
+    }
+}
+
+/// The result of [`prefetch_git`], or [`find_git`] when none was started
+/// (or it was already taken: a later detection probes again).
+pub fn find_git_prefetched() -> Result<GitBinary> {
+    let handle = PREFETCHED.lock().ok().and_then(|mut slot| slot.take());
+    match handle.map(|h| h.join()) {
+        Some(Ok(result)) => result,
+        _ => find_git(),
+    }
+}
+
 /// Find git: `$CORVANE_GIT`, then `$PATH`, then well-known locations.
 /// `/usr/bin/git` is only tried when the Xcode Command Line Tools are present,
 /// because Apple's shim otherwise pops an install dialog.

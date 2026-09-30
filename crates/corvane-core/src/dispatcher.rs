@@ -59,9 +59,10 @@ impl Dispatcher {
         let generic_logins = store.generic_logins().unwrap_or_default();
         let enterprise_oauth_apps = store.enterprise_oauth_apps().unwrap_or_default();
 
-        // Synchronous: a few `git --version` probes (~10 ms). Avoids racing
-        // launch-time operations against an async detection.
-        let (git, git_error, popup) = match find_git() {
+        // Synchronous: a few `git --version` probes (~10 ms), started on a
+        // thread at the top of `main`. Avoids racing launch-time operations
+        // against an async detection.
+        let (git, git_error, popup) = match corvane_git::find_git_prefetched() {
             Ok(bin) => (Some(Arc::new(bin)), None, None),
             Err(err) => {
                 warn!(%err, "git not usable");
@@ -190,6 +191,12 @@ impl Dispatcher {
             }
             Err(err) => warn!(?err, path = %path.display(), "could not watch repository"),
         }
+    }
+
+    /// Start looking for git on a thread; the first thing `main` does
+    /// ([`corvane_git::prefetch_git`]).
+    pub fn prefetch_git() {
+        corvane_git::prefetch_git();
     }
 
     /// Window focus (GHD `focus` IPC). A refresh that started a moment ago
@@ -1857,7 +1864,9 @@ impl Dispatcher {
         let Some(workdir) = rs.info.as_ref().map(|i| i.workdir.clone()) else {
             return;
         };
-        if rs.selected_commits.len() != 1 {
+        // only while History shows (a refresh reselects the newest commit
+        // behind the Changes tab too)
+        if rs.selected_commits.len() != 1 || rs.section != Section::History {
             return;
         }
         let commits = rs.visible_commits();
@@ -2419,6 +2428,9 @@ impl Dispatcher {
                 cx.notify();
             }
         });
+        if section == Section::History {
+            Self::prefetch_commit_diffs(id, cx);
+        }
     }
 
     // ---- branches (`_createBranch`, `_checkoutBranch`, rename/delete, merge, stash) ----
