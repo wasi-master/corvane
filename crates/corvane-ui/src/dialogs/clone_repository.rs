@@ -11,6 +11,30 @@
 //! `styles/ui/_account-picker.scss`, a `PopoverDropdown`) picks which one
 //! lists repositories. The list and the picker live in
 //! `crate::cloneable_repositories` (the blank slate shows them too).
+//!
+//! Deviation (`269-shallow-clone`): a "Shallow clone" checkbox under the
+//! local path clones with `--depth 1`.
+//!
+//! Deviation (`358-clone-path-includes-owner`): the path derived from the
+//! URL can be `<clone dir>/<owner>/<name>` rather than `<clone dir>/<name>`.
+//!
+//! Deviation (`359-clone-offer-add-existing`): when the local path is
+//! already a Git repository, "Add this repository instead?" adds it (GHD
+//! only says the folder contains files).
+//!
+//! Deviation (`360-clone-local-sources`): the URL tab takes a local
+//! folder (`/path`, `~/path`) or `file://` URL, see `corvane_core::clone_info`.
+//!
+//! Deviation (`361-clone-failure-keeps-input`): a failed clone reopens
+//! this dialog on the URL tab with its URL and local path, git's error in
+//! the banner (GHD closes it and shows an error dialog, so both are typed
+//! again).
+//!
+//! Deviation (`459-alias-when-adding`): an optional Alias field under the
+//! local path names the clone in the repository list.
+//!
+//! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
+//! and `owner/name` shorthands can clone over SSH.
 
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -60,11 +84,22 @@ pub struct CloneRepositoryDialog {
     resolving: bool,
     /// `resolveCloneInfo` failed: the repository was not found.
     resolve_error: Option<&'static str>,
+    /// `361-clone-failure-keeps-input`: git's error from the failed clone
+    /// this dialog reopened after, with that clone's URL and path; shown
+    /// until either field differs.
+    clone_error: Option<(SharedString, String, String)>,
+    /// `459-alias-when-adding`.
+    alias: Entity<InputState>,
     /// `selectedAccount` per GitHub tab, as `(endpoint, login)`.
     dotcom_account: Option<(String, String)>,
     enterprise_account: Option<(String, String)>,
     /// `AccountPicker` popover.
     picker: AccountPickerState,
+    /// `269-shallow-clone`: "Shallow clone" is ticked.
+    shallow: bool,
+    /// `359-clone-offer-add-existing`: the local path is already a
+    /// repository, offered to be added instead.
+    existing_repo: Option<PathBuf>,
 }
 
 impl CloneRepositoryDialog {
@@ -98,6 +133,7 @@ impl CloneRepositoryDialog {
         cx.observe(&picker.filter, |_, _, cx| cx.notify()).detach();
         cx.observe_in(&url, window, |this, _, window, cx| {
             this.resolve_error = None;
+            this.forget_stale_clone_error(cx);
             this.derive_path(window, cx);
             this.validate(cx);
             cx.notify()
@@ -105,6 +141,7 @@ impl CloneRepositoryDialog {
         .detach();
         cx.observe(&path, |this, _, cx| {
             this.resolve_error = None;
+            this.forget_stale_clone_error(cx);
             this.validate(cx);
             cx.notify()
         })
@@ -143,9 +180,45 @@ impl CloneRepositoryDialog {
             dotcom_account: None,
             enterprise_account: None,
             picker,
+            shallow: false,
+            existing_repo: None,
+            clone_error: None,
+            alias: cx.new(|cx| InputState::new(window, cx).placeholder("optional")),
         };
         this.ensure_loaded(cx);
         this
+    }
+
+    /// `361-clone-failure-keeps-input`: the URL tab with the failed clone's
+    /// URL and local path, and git's error above.
+    pub fn retry(
+        state: Entity<AppState>,
+        url: String,
+        path: PathBuf,
+        error: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let url_value = url.clone();
+        let mut this = Self::new(state, Some(url), window, cx);
+        let path = path.display().to_string();
+        this.path_edited = true;
+        this.path
+            .update(cx, |s, cx| s.set_value(path.clone(), window, cx));
+        this.clone_error = Some((error.into(), url_value, path));
+        this
+    }
+
+    fn forget_stale_clone_error(&mut self, cx: &App) {
+        let url = self.url.read(cx).value();
+        let path = self.path.read(cx).value();
+        if self
+            .clone_error
+            .as_ref()
+            .is_some_and(|(_, u, p)| u.as_str() != url.as_ref() || p.as_str() != path.as_ref())
+        {
+            self.clone_error = None;
+        }
     }
 
     /// GHD `getAccountsForTab`.
@@ -169,7 +242,8 @@ impl CloneRepositoryDialog {
     }
 
     /// GHD `getAccountForTab`: the picked account while it is still signed
-    /// in, else the tab's first account.
+    /// in, else the tab's first account (`357-clone-default-account`: the
+    /// default account).
     fn account(&self, cx: &App) -> Option<Account> {
         let accounts = self.accounts_for_tab(cx);
         let picked = match self.tab {
@@ -183,7 +257,7 @@ impl CloneRepositoryDialog {
                     .iter()
                     .find(|a| a.endpoint == *endpoint && a.login == *login)
             })
-            .or_else(|| accounts.first())
+            .or_else(|| crate::cloneable_repositories::default_account(&accounts, cx))
             .cloned()
     }
 
@@ -247,14 +321,19 @@ impl CloneRepositoryDialog {
             .clone()
             .unwrap_or_else(corvane_platform::paths::default_clone_dir);
         let url = self.url.read(cx).value().to_string();
-        let derived = match corvane_git::normalize_clone_url(&url)
-            .and_then(|u| corvane_git::repository_name_from_url(&u))
-        {
-            Some(name) => base.join(name),
-            None => base,
-        }
-        .display()
-        .to_string();
+        let with_owner = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_PATH_INCLUDES_OWNER);
+        let local_ok = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_LOCAL_SOURCES);
+        let derived = derived_path(&base, &url, with_owner, local_ok)
+            .display()
+            .to_string();
         if derived != current {
             self.last_derived = derived.clone();
             self.path
@@ -272,6 +351,15 @@ impl CloneRepositoryDialog {
         } else {
             validate_empty_folder(Path::new(&path))
         };
+        let offer_add = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_OFFER_ADD_EXISTING);
+        self.existing_repo = (offer_add
+            && self.path_error.is_some()
+            && corvane_git::path_status(Path::new(&path)) == corvane_git::PathStatus::Repository)
+            .then(|| PathBuf::from(&path));
     }
 
     fn choose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -301,7 +389,12 @@ impl CloneRepositoryDialog {
         if self.tab != Tab::Url && self.selected_repo.is_none() {
             return None;
         }
-        let url = corvane_git::normalize_clone_url(&self.url.read(cx).value())?;
+        let local_ok = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_LOCAL_SOURCES);
+        let url = clone_source(&self.url.read(cx).value(), local_ok)?;
         let path = self.path.read(cx).value().trim().to_string();
         if path.is_empty() {
             return None;
@@ -318,14 +411,46 @@ impl CloneRepositoryDialog {
             return;
         };
         let input = self.url.read(cx).value().trim().to_string();
+        // `355-clone-prefers-ssh`: list picks and shorthands clone over SSH;
+        // an http(s) URL typed on the URL tab keeps its protocol
+        let prefer_ssh = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CLONE_PREFERS_SSH)
+            && (self.tab != Tab::Url
+                || !(input.starts_with("https://") || input.starts_with("http://")));
         self.resolving = true;
         self.resolve_error = None;
         cx.notify();
         let weak = cx.weak_entity();
+        let shallow = self.shallow
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::SHALLOW_CLONE);
+        let depth = shallow.then_some(1);
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING)
+        {
+            let alias = self.alias.read(cx).value().to_string();
+            Dispatcher::alias_when_added(&path, alias, cx);
+        }
         Dispatcher::resolve_clone_info(
             input,
+            prefer_ssh,
             move |result, cx| match result {
-                Ok(info) => Dispatcher::clone_repository(info.url, path, info.default_branch, cx),
+                Ok(info) => Dispatcher::clone_repository_with(
+                    info.url,
+                    path,
+                    info.default_branch,
+                    depth,
+                    cx,
+                ),
                 Err(message) => {
                     weak.update(cx, |this, cx| {
                         this.resolving = false;
@@ -347,7 +472,11 @@ impl CloneRepositoryDialog {
         };
         let query = self.filter.read(cx).value().to_string();
         let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
-            Some(repos) => group_rows(repos, &account.login, &query),
+            Some(repos) => group_rows(
+                repos,
+                &account.login,
+                &crate::cloneable_repositories::filter_query(&query, cx),
+            ),
             None => return,
         };
         match crate::cloneable_repositories::filtered_selection(
@@ -404,8 +533,74 @@ impl CloneRepositoryDialog {
             .child(self.path_row(window, cx))
     }
 
-    /// `.local-path-field`: Local Path + Choose…
+    /// `.local-path-field`: Local Path + Choose… (and, with
+    /// `269-shallow-clone`, the "Shallow clone" checkbox below it).
     fn path_row(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
+        let shallow_option = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SHALLOW_CLONE);
+        let weak = cx.weak_entity();
+        let shallow = crate::widgets::checkbox_row(
+            "clone-shallow",
+            self.shallow,
+            "Shallow clone (only the latest commit)",
+            move |checked, _, cx| {
+                weak.update(cx, |this, cx| {
+                    this.shallow = checked;
+                    cx.notify();
+                })
+                .ok();
+            },
+            cx,
+        );
+        let add_existing = self.existing_repo.clone().map(|path| {
+            let t = cx.ghd();
+            div()
+                .mt(SPACING())
+                .flex()
+                .flex_row()
+                .flex_wrap()
+                .gap(zpx(4.))
+                .text_color(t.text_secondary)
+                .child("This folder is already a Git repository.")
+                .child(
+                    div()
+                        .id("clone-add-existing")
+                        .text_color(t.link)
+                        .cursor_pointer()
+                        .child("Add this repository instead?")
+                        .on_click(move |_, _, cx| {
+                            Dispatcher::close_popup(cx);
+                            Dispatcher::add_repository(path.clone(), cx);
+                        }),
+                )
+        });
+        div()
+            .flex()
+            .flex_col()
+            .child(self.path_field(window, cx))
+            .children(add_existing)
+            .when(
+                self.state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING),
+                |d| {
+                    d.child(div().mt(SPACING()).child(labeled(
+                        "Alias",
+                        text_box("clone-alias", &self.alias, None, window, cx),
+                        cx,
+                    )))
+                },
+            )
+            .when(shallow_option, |d| {
+                d.child(div().mt(SPACING()).child(shallow))
+            })
+    }
+
+    fn path_field(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         div()
             .flex()
             .flex_row()
@@ -456,7 +651,16 @@ impl CloneRepositoryDialog {
                 s.api_repositories_loading.contains(&account.endpoint),
                 repos.is_some(),
                 repos
-                    .map(|r| group_rows(r, &account.login, &self.filter.read(cx).value()))
+                    .map(|r| {
+                        group_rows(
+                            r,
+                            &account.login,
+                            &crate::cloneable_repositories::filter_query(
+                                &self.filter.read(cx).value(),
+                                cx,
+                            ),
+                        )
+                    })
                     .unwrap_or_default(),
             )
         };
@@ -576,6 +780,36 @@ impl CloneRepositoryDialog {
     }
 }
 
+/// What the URL field clones: `normalizeCloneUrl`'s URL, or with
+/// `360-clone-local-sources` a local folder / `file://` URL as typed.
+fn clone_source(input: &str, local_ok: bool) -> Option<String> {
+    if local_ok && corvane_core::clone_info::local_source(input).is_some() {
+        return Some(input.trim().to_string());
+    }
+    corvane_git::normalize_clone_url(input)
+}
+
+/// `<clone dir>/<name>` for a clone URL (`<clone dir>/<owner>/<name>` with
+/// `358-clone-path-includes-owner` when the URL has an owner), the clone
+/// dir itself when the input is not a URL yet.
+fn derived_path(base: &Path, url: &str, with_owner: bool, local_ok: bool) -> PathBuf {
+    let Some(url) = clone_source(url, local_ok) else {
+        return base.to_path_buf();
+    };
+    let Some(name) = corvane_git::repository_name_from_url(&url) else {
+        return base.to_path_buf();
+    };
+    let owner = with_owner
+        .then(|| corvane_core::clone_info::parse_repository_identifier(&url))
+        .flatten()
+        .map(|id| id.owner)
+        .filter(|owner| !owner.contains(['/', '\\']) && owner != ".." && owner != ".");
+    match owner {
+        Some(owner) => base.join(owner).join(name),
+        None => base.join(name),
+    }
+}
+
 /// `validateEmptyFolder`: the destination must be missing or an empty folder.
 fn validate_empty_folder(path: &Path) -> Option<&'static str> {
     if path.as_os_str().is_empty() {
@@ -614,7 +848,11 @@ impl Render for CloneRepositoryDialog {
             Tab::Enterprise => self.account_tab(true, window, cx),
             Tab::Url => self.url_tab(window, cx).into_any_element(),
         };
-        let error = self.resolve_error.or(self.path_error);
+        let error: Option<SharedString> = self
+            .resolve_error
+            .map(SharedString::from)
+            .or_else(|| self.clone_error.as_ref().map(|(e, _, _)| e.clone()))
+            .or_else(|| self.path_error.map(SharedString::from));
         // signed out, the account tabs are only a call to action: no footer
         let has_footer = self.tab == Tab::Url || self.account(cx).is_some();
 
@@ -698,5 +936,39 @@ impl Render for CloneRepositoryDialog {
             window,
             cx,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[::core::prelude::v1::test]
+    fn derived_path_can_include_the_owner() {
+        let base = Path::new("/c");
+        let url = "https://github.com/octocat/Hello.git";
+        assert_eq!(derived_path(base, url, false, false), Path::new("/c/Hello"));
+        assert_eq!(
+            derived_path(base, url, true, false),
+            Path::new("/c/octocat/Hello")
+        );
+        assert_eq!(
+            derived_path(base, "octocat/Hello", true, false),
+            Path::new("/c/octocat/Hello")
+        );
+        assert_eq!(
+            derived_path(base, "git@ghe.corp:team/app.git", true, false),
+            Path::new("/c/team/app")
+        );
+        assert_eq!(derived_path(base, "nope", true, false), Path::new("/c"));
+        // `360-clone-local-sources`: a local folder names the clone after itself
+        assert_eq!(
+            derived_path(base, "/src/a/tool.git", true, true),
+            Path::new("/c/tool")
+        );
+        assert_eq!(
+            derived_path(base, "file:///src/my-app", true, true),
+            Path::new("/c/my-app")
+        );
     }
 }

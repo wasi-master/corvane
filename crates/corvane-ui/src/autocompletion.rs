@@ -49,6 +49,11 @@ pub enum Hit {
         name: String,
         highlight: Vec<usize>,
     },
+    /// `458-add-local-path-completion`: a folder completing a typed path.
+    Folder {
+        completion: String,
+        name: String,
+    },
 }
 
 impl Hit {
@@ -60,6 +65,7 @@ impl Hit {
             Hit::User(u) => format!("@{}", u.login),
             Hit::UnknownUser(name) => format!("@{name}"),
             Hit::Branch { name, .. } => name.clone(),
+            Hit::Folder { completion, .. } => completion.clone(),
         }
     }
 }
@@ -149,6 +155,25 @@ pub fn attempt_branch(text: &str, branches: &[String]) -> Option<Autocompletion>
     })
 }
 
+/// `458-add-local-path-completion`: the whole of `text` is a path whose
+/// last segment filters the folders next to it. `None` when nothing matches.
+pub fn attempt_path(text: &str) -> Option<Autocompletion> {
+    let hits: Vec<Hit> = corvane_core::folder_completions(text, DEFAULT_MAX_HITS)
+        .into_iter()
+        .map(|(completion, name)| Hit::Folder { completion, name })
+        .collect();
+    if hits.is_empty() {
+        return None;
+    }
+    Some(Autocompletion {
+        kind: TriggerKind::Path,
+        range: 0..text.len(),
+        hits,
+        selected: None,
+        scroll: UniformListScrollHandle::new(),
+    })
+}
+
 /// GHD `attemptAutocompletion` over the commit-message providers. Issue and
 /// user lookups also kick off the throttled cache refreshes.
 pub fn attempt(
@@ -180,7 +205,7 @@ pub fn attempt(
                 .collect()
         }
         // never produced by `find_trigger` (see `attempt_branch`)
-        TriggerKind::Branch => return None,
+        TriggerKind::Branch | TriggerKind::Path => return None,
         TriggerKind::User => {
             let gh = github?;
             Dispatcher::refresh_mentionables(gh, cx);
@@ -249,7 +274,7 @@ fn popup_with_priority(
         TriggerKind::User => zpx(220.),
         TriggerKind::Issue => zpx(300.),
         // `.autocompletion-popup` default
-        TriggerKind::Branch => zpx(250.),
+        TriggerKind::Branch | TriggerKind::Path => zpx(250.),
     };
     let n = ac.hits.len();
     let height = (ROW_HEIGHT() * n as f32).min(MAX_HEIGHT());
@@ -410,6 +435,13 @@ fn row(ix: usize, hit: &Hit, selected: bool, on_pick: PickHandler, cx: &mut App)
                     .truncate()
                     .child(highlighted(name, highlight)),
             ),
+        Hit::Folder { name, .. } => d
+            .child(
+                crate::icons::octicon(crate::icons::Octicon::FileDirectory, fg)
+                    .flex_none()
+                    .mr(SPACING_HALF()),
+            )
+            .child(div().flex_1().min_w_0().truncate().child(name.clone())),
         Hit::Issue(i) => d
             .gap(zpx(4.))
             .child(

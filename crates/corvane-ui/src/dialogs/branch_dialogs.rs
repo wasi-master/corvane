@@ -2,6 +2,17 @@
 //! `ui/rename-branch/rename-branch-dialog.tsx`, `ui/delete-branch/delete-branch-dialog.tsx`,
 //! `ui/stash-changes/{stash-and-switch-branch,overwrite-stashed-changes}-dialog.tsx`
 //! and the merge `ChooseBranch` step (`merge-choose-branch-dialog.tsx`).
+//!
+//! Deviations: Create a Branch can start from any branch through an "Other
+//! branch…" choice (`255-create-branch-from-any-branch`) and preselects the
+//! current branch while there are uncommitted changes
+//! (`256-create-branch-with-changes-from-current`).
+//! Delete Branch warns about unmerged commits and a stash on the branch
+//! (`258-delete-branch-warnings`).
+//! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
+//! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
+//! `ConfirmSwitchBranchDialog` is a Corvane addition (`266-confirm-branch-switch`).
+//! Switch Branch can discard the changes instead (`268-switch-branch-discard`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -44,6 +55,21 @@ pub fn sanitize_ref_name(input: &str) -> String {
     out.replace("..", "-").replace("@{", "-").replace("//", "/")
 }
 
+/// Flag `259-reject-head-branch-name`: `head` in any case names `HEAD`
+/// on a case-insensitive file system, so the new branch detaches HEAD.
+fn reserved_head_name(name: &str, cx: &App) -> bool {
+    name.eq_ignore_ascii_case("head")
+        && AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::REJECT_HEAD_BRANCH_NAME)
+}
+
+/// The message shown for a name `reserved_head_name` rejects.
+fn reserved_head_message(name: &str) -> String {
+    format!("{name} is reserved by Git (HEAD); choose another name.")
+}
+
 pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
     crate::widgets::code_ref(name, cx)
 }
@@ -54,6 +80,8 @@ pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
 enum StartPoint {
     DefaultBranch,
     CurrentBranch,
+    /// `255-create-branch-from-any-branch`: a branch picked from a list.
+    Other,
 }
 
 pub struct CreateBranchDialog {
@@ -62,6 +90,10 @@ pub struct CreateBranchDialog {
     target_sha: Option<String>,
     name: Entity<InputState>,
     start_point: StartPoint,
+    /// `255-create-branch-from-any-branch`: the "Other branch…" picker.
+    other_filter: Entity<InputState>,
+    other_focus: FocusHandle,
+    other_branch: Option<String>,
     /// Cherry-pick › New Branch: "Cherry-pick to New Branch" / "Create Branch and Cherry-pick".
     cherry_pick: bool,
 }
@@ -76,6 +108,17 @@ impl CreateBranchDialog {
         cx: &mut Context<Self>,
     ) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx));
+        // `264-branch-name-prefix`
+        let prefix = state
+            .read(cx)
+            .flags
+            .text(corvane_core::flags::ids::BRANCH_NAME_PREFIX)
+            .to_string();
+        let initial_name = if initial_name.starts_with(&prefix) {
+            initial_name
+        } else {
+            format!("{prefix}{initial_name}")
+        };
         if !initial_name.is_empty() {
             name.update(cx, |s, cx| s.set_value(initial_name, window, cx));
         }
@@ -84,12 +127,35 @@ impl CreateBranchDialog {
         // `RefNameTextBox` autoFocus
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
+        let other_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
+        cx.observe(&other_filter, |_, _, cx| cx.notify()).detach();
+        // `256-create-branch-with-changes-from-current`: uncommitted changes
+        // come along, so start where they were written
+        let start_point = {
+            let s = state.read(cx);
+            let has_changes = s
+                .repo_states
+                .get(&repo)
+                .and_then(|r| r.status.as_ref())
+                .is_some_and(|st| !st.files.is_empty());
+            if has_changes
+                && s.flags
+                    .bool(corvane_core::flags::ids::CREATE_BRANCH_WITH_CHANGES_FROM_CURRENT)
+            {
+                StartPoint::CurrentBranch
+            } else {
+                StartPoint::DefaultBranch
+            }
+        };
         Self {
             state,
             repo,
             target_sha,
             name,
-            start_point: StartPoint::DefaultBranch,
+            start_point,
+            other_filter,
+            other_focus: cx.focus_handle(),
+            other_branch: None,
             cherry_pick: false,
         }
     }
@@ -146,8 +212,15 @@ impl Render for CreateBranchDialog {
             )
         };
         let exists = existing.contains(&name);
-        let disabled = name.is_empty() || exists;
+        let reserved = reserved_head_name(&name, cx);
         let current = tip.branch_name().map(|s| s.to_string());
+        let from_any = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CREATE_BRANCH_FROM_ANY_BRANCH);
+        // "Other branch…" chosen but no branch picked yet
+        let mut needs_pick = false;
 
         // Where the branch starts from (`renderBranchDescription`).
         let mut description: Vec<AnyElement> = Vec::new();
@@ -178,92 +251,159 @@ impl Render for CreateBranchDialog {
                 ),
                 Tip::Valid { branch } => {
                     let current_name = branch.name.clone();
-                    match &default_branch {
-                        Some(default) if *default != current_name => {
-                            let selected = self.start_point;
-                            start_point = Some(if selected == StartPoint::DefaultBranch {
-                                default.clone()
-                            } else {
-                                current_name.clone()
-                            });
-                            description.push(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .child(div().mb(zpx(5.)).child("Create branch based on…"))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .flex_col()
-                                            .child(
-                                                segmented_option(
-                                                    "start-default",
-                                                    default.clone(),
-                                                    "The default branch in your repository. Pick this to start on something new that's not dependent on your current branch.",
-                                                    selected == StartPoint::DefaultBranch,
-                                                    true,
-                                                    false,
-                                                    cx,
-                                                )
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.start_point = StartPoint::DefaultBranch;
-                                                    cx.notify();
-                                                })),
-                                            )
-                                            .child(
-                                                segmented_option(
-                                                    "start-current",
-                                                    current_name.clone(),
-                                                    "The currently checked out branch. Pick this if you need to build on work done on this branch.",
-                                                    selected == StartPoint::CurrentBranch,
-                                                    false,
-                                                    true,
-                                                    cx,
-                                                )
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.start_point = StartPoint::CurrentBranch;
-                                                    cx.notify();
-                                                })),
-                                            ),
-                                    )
-                                    .into_any_element(),
-                            );
-                        }
-                        _ => {
-                            let is_default = default_branch.as_deref() == Some(current_name.as_str());
-                            let mut parts: Vec<Inline> = vec![
-                                "Your new branch will be based on your currently checked out branch (".into(),
-                                ref_chip(current_name.clone(), cx).into_any_element().into(),
-                                "). ".into(),
-                            ];
-                            if is_default {
-                                parts.push(ref_chip(current_name.clone(), cx).into_any_element().into());
-                                // `defaultBranchLink`
-                                parts.push(" is the ".into());
-                                parts.push(
-                                    crate::widgets::link_button(
-                                        "create-branch-default-link",
-                                        "default branch",
-                                        cx,
-                                    )
-                                    .on_click(|_, _, cx| {
-                                        cx.open_url(
-                                            "https://help.github.com/articles/setting-the-default-branch/",
-                                        )
-                                    })
-                                    .into_any_element()
-                                    .into(),
-                                );
-                                parts.push(" for your repository.".into());
+                    let other_default =
+                        default_branch.clone().filter(|d| *d != current_name);
+                    if other_default.is_some() || from_any {
+                        // without a separate default branch, "default"
+                        // means the current one
+                        let selected = match self.start_point {
+                            StartPoint::DefaultBranch if other_default.is_none() => {
+                                StartPoint::CurrentBranch
                             }
-                            description.push(paragraph(parts).into_any_element());
+                            s => s,
+                        };
+                        start_point = match selected {
+                            StartPoint::DefaultBranch => other_default.clone(),
+                            StartPoint::CurrentBranch => Some(current_name.clone()),
+                            StartPoint::Other => {
+                                needs_pick = self.other_branch.is_none();
+                                self.other_branch.clone()
+                            }
+                        };
+                        let mut options: Vec<(&'static str, String, &'static str, StartPoint)> =
+                            Vec::new();
+                        if let Some(default) = &other_default {
+                            options.push((
+                                "start-default",
+                                default.clone(),
+                                "The default branch in your repository. Pick this to start on something new that's not dependent on your current branch.",
+                                StartPoint::DefaultBranch,
+                            ));
                         }
+                        options.push((
+                            "start-current",
+                            current_name.clone(),
+                            "The currently checked out branch. Pick this if you need to build on work done on this branch.",
+                            StartPoint::CurrentBranch,
+                        ));
+                        if from_any {
+                            options.push((
+                                "start-other",
+                                match (&self.other_branch, selected) {
+                                    (Some(other), StartPoint::Other) => {
+                                        format!("Other branch: {other}")
+                                    }
+                                    _ => "Other branch…".to_string(),
+                                },
+                                "Any local or remote branch, picked from the list below.",
+                                StartPoint::Other,
+                            ));
+                        }
+                        let last = options.len() - 1;
+                        let picker = (selected == StartPoint::Other).then(|| {
+                            let groups = {
+                                let s = self.state.read(cx);
+                                let query = self.other_filter.read(cx).value().trim().to_string();
+                                match s.repo_states.get(&self.repo) {
+                                    Some(rs) => rs
+                                        .info
+                                        .as_ref()
+                                        .map(|info| {
+                                            group_branches(
+                                                &info.branches,
+                                                rs.default_branch.as_deref(),
+                                                &rs.recent_branches,
+                                                &query,
+crate::branch_list::sort_by_date(cx),
+                                            )
+                                        })
+                                        .unwrap_or_default(),
+                                    None => Vec::new(),
+                                }
+                            };
+                            let on_select = cx.listener(|this, name: &String, _, cx| {
+                                this.other_branch = Some(name.clone());
+                                cx.notify();
+                            });
+                            branch_picker(
+                                "create-branch-other",
+                                &self.other_filter,
+                                &self.other_focus,
+                                groups,
+                                "",
+                                self.other_branch.as_deref(),
+                                std::rc::Rc::new(on_select),
+                                window,
+                                cx,
+                            )
+                            .mt(SPACING())
+                            .border_1()
+                            .border_color(cx.ghd().box_border)
+                            .rounded(BORDER_RADIUS())
+                            .pt(SPACING())
+                        });
+                        description.push(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .child(div().mb(zpx(5.)).child("Create branch based on…"))
+                                .child(div().flex().flex_col().children(
+                                    options.into_iter().enumerate().map(
+                                        |(ix, (id, title, detail, point))| {
+                                            segmented_option(
+                                                id,
+                                                title,
+                                                detail,
+                                                selected == point,
+                                                ix == 0,
+                                                ix == last,
+                                                cx,
+                                            )
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.start_point = point;
+                                                cx.notify();
+                                            }))
+                                        },
+                                    ),
+                                ))
+                                .children(picker)
+                                .into_any_element(),
+                        );
+                    } else {
+                        let is_default = default_branch.as_deref() == Some(current_name.as_str());
+                        let mut parts: Vec<Inline> = vec![
+                            "Your new branch will be based on your currently checked out branch (".into(),
+                            ref_chip(current_name.clone(), cx).into_any_element().into(),
+                            "). ".into(),
+                        ];
+                        if is_default {
+                            parts.push(ref_chip(current_name.clone(), cx).into_any_element().into());
+                            // `defaultBranchLink`
+                            parts.push(" is the ".into());
+                            parts.push(
+                                crate::widgets::link_button(
+                                    "create-branch-default-link",
+                                    "default branch",
+                                    cx,
+                                )
+                                .on_click(|_, _, cx| {
+                                    cx.open_url(
+                                        "https://help.github.com/articles/setting-the-default-branch/",
+                                    )
+                                })
+                                .into_any_element()
+                                .into(),
+                            );
+                            parts.push(" for your repository.".into());
+                        }
+                        description.push(paragraph(parts).into_any_element());
                     }
                 }
                 Tip::Unknown => {}
             }
         }
         let _ = current;
+        let disabled = name.is_empty() || exists || reserved || needs_pick;
 
         let repo = self.repo;
         let unborn = matches!(tip, Tip::Unborn { .. });
@@ -283,6 +423,12 @@ impl Render for CreateBranchDialog {
             .when(exists, |d| {
                 d.child(crate::widgets::input_error(
                     format!("A branch named {name} already exists."),
+                    cx,
+                ))
+            })
+            .when(reserved, |d| {
+                d.child(crate::widgets::input_error(
+                    reserved_head_message(&name),
                     cx,
                 ))
             })
@@ -398,7 +544,8 @@ impl Render for RenameBranchDialog {
             )
         };
         let exists = new_name != self.branch && existing.contains(&new_name);
-        let disabled = new_name.is_empty() || new_name == self.branch || exists;
+        let reserved = reserved_head_name(&new_name, cx);
+        let disabled = new_name.is_empty() || new_name == self.branch || exists || reserved;
         let (repo, old) = (self.repo, self.branch.clone());
         let content = div()
             .flex()
@@ -446,6 +593,13 @@ impl Render for RenameBranchDialog {
                         .child(ref_chip(new_name.clone(), cx))
                         .child("already exists"),
                 )
+            })
+            .when(reserved, |d| {
+                d.child(
+                    div()
+                        .text_color(t.form_error_text)
+                        .child(reserved_head_message(&new_name)),
+                )
             });
         let name_for_ok = new_name.clone();
         dialog(
@@ -491,7 +645,15 @@ pub struct DeleteBranchDialog {
 }
 
 impl DeleteBranchDialog {
-    pub fn new(state: Entity<AppState>, repo: u64, branch: String) -> Self {
+    pub fn new(state: Entity<AppState>, repo: u64, branch: String, cx: &mut Context<Self>) -> Self {
+        if state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::DELETE_BRANCH_WARNINGS)
+        {
+            cx.observe(&state, |_, _, cx| cx.notify()).detach();
+            Dispatcher::preview_delete_branch(repo, branch.clone(), cx);
+        }
         Self {
             state,
             repo,
@@ -504,6 +666,45 @@ impl DeleteBranchDialog {
 impl Render for DeleteBranchDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let t = cx.ghd();
+        // `258-delete-branch-warnings`: what the deletion would lose
+        let warnings: Vec<String> = {
+            let s = self.state.read(cx);
+            s.repo_states
+                .get(&self.repo)
+                .and_then(|r| r.delete_branch_preview.as_ref())
+                .filter(|p| {
+                    p.branch == self.branch
+                        && s.flags
+                            .bool(corvane_core::flags::ids::DELETE_BRANCH_WARNINGS)
+                })
+                .map(|p| {
+                    let mut out = Vec::new();
+                    if p.unmerged_commits > 0 {
+                        let n = p.unmerged_commits;
+                        out.push(format!(
+                            "{n} {} on this branch {} not on {}. {} will be lost unless {} on another branch.",
+                            if n == 1 { "commit" } else { "commits" },
+                            if n == 1 { "is" } else { "are" },
+                            match p.compared_to.as_slice() {
+                                [] => String::new(),
+                                [one] => one.clone(),
+                                [rest @ .., last] => format!("{} or {last}", rest.join(", ")),
+                            },
+                            if n == 1 { "It" } else { "They" },
+                            if n == 1 { "it is" } else { "they are" },
+                        ));
+                    }
+                    if p.has_stash {
+                        out.push(
+                            "This branch has stashed changes, which will no longer be shown once the branch is deleted."
+                                .to_string(),
+                        );
+                    }
+                    out
+                })
+                .unwrap_or_default()
+        };
         let exists_on_remote = {
             let s = self.state.read(cx);
             let info = s.repo_states.get(&self.repo).and_then(|r| r.info.as_ref());
@@ -533,6 +734,16 @@ impl Render for DeleteBranchDialog {
                     .child(ref_chip(self.branch.clone(), cx))
                     .child("?"),
             )
+            .children(warnings.into_iter().map(|warning| {
+                div()
+                    .mb(SPACING())
+                    .flex()
+                    .flex_row()
+                    .items_start()
+                    .gap(SPACING_HALF())
+                    .child(octicon(Octicon::Alert, t.dialog_warning))
+                    .child(div().flex_1().min_w_0().child(warning))
+            }))
             // the last paragraph has no bottom margin
             .child(
                 div()
@@ -602,6 +813,9 @@ pub struct StashAndSwitchBranchDialog {
     repo: u64,
     branch: String,
     action: UncommittedChangesStrategy,
+    /// `268-switch-branch-discard`: "Discard my changes" is chosen
+    /// (overrides `action`).
+    discard: bool,
 }
 
 impl StashAndSwitchBranchDialog {
@@ -611,6 +825,7 @@ impl StashAndSwitchBranchDialog {
             repo,
             branch,
             action: UncommittedChangesStrategy::StashOnCurrentBranch,
+            discard: false,
         }
     }
 }
@@ -631,13 +846,19 @@ impl Render for StashAndSwitchBranchDialog {
             )
         };
         let (repo, branch, action) = (self.repo, self.branch.clone(), self.action);
+        let offer_discard = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SWITCH_BRANCH_DISCARD);
+        let discard = offer_discard && self.discard;
         // `dialog#stash-changes` is 450 px wide
         let content = div()
             .w(zpx(408.))
             .flex()
             .flex_col()
             .gap(SPACING())
-            .when(has_stash && action == UncommittedChangesStrategy::StashOnCurrentBranch, |d| {
+            .when(has_stash && !discard && action == UncommittedChangesStrategy::StashOnCurrentBranch, |d| {
                 d.child(
                     div()
                         .flex()
@@ -646,6 +867,17 @@ impl Render for StashAndSwitchBranchDialog {
                         .gap(SPACING_HALF())
                         .child(octicon(Octicon::Alert, t.dialog_warning))
                         .child("Your current stash will be overwritten by creating a new stash"),
+                )
+            })
+            .when(discard, |d| {
+                d.child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(SPACING_HALF())
+                        .child(octicon(Octicon::Alert, t.dialog_warning))
+                        .child("Changes to tracked files can't be recovered once discarded"),
                 )
             })
             .child(
@@ -667,13 +899,14 @@ impl Render for StashAndSwitchBranchDialog {
                                     "stash-leave",
                                     format!("Leave my changes on {current}"),
                                     "Your in-progress work will be stashed on this branch for you to return to later",
-                                    action == UncommittedChangesStrategy::StashOnCurrentBranch,
+                                    !discard && action == UncommittedChangesStrategy::StashOnCurrentBranch,
                                     true,
                                     false,
                                     cx,
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.action = UncommittedChangesStrategy::StashOnCurrentBranch;
+                                    this.discard = false;
                                     cx.notify();
                                 })),
                             )
@@ -682,16 +915,34 @@ impl Render for StashAndSwitchBranchDialog {
                                     "stash-bring",
                                     format!("Bring my changes to {}", self.branch),
                                     "Your in-progress work will follow you to the new branch",
-                                    action == UncommittedChangesStrategy::MoveToNewBranch,
+                                    !discard && action == UncommittedChangesStrategy::MoveToNewBranch,
                                     false,
-                                    true,
+                                    !offer_discard,
                                     cx,
                                 )
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.action = UncommittedChangesStrategy::MoveToNewBranch;
+                                    this.discard = false;
                                     cx.notify();
                                 })),
-                            ),
+                            )
+                            .when(offer_discard, |d| {
+                                d.child(
+                                    segmented_option(
+                                        "stash-discard",
+                                        "Discard my changes",
+                                        "Your in-progress work will be thrown away (new files go to the Trash)",
+                                        discard,
+                                        false,
+                                        true,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.discard = true;
+                                        cx.notify();
+                                    })),
+                                )
+                            }),
                     ),
             );
         dialog(
@@ -708,12 +959,20 @@ impl Render for StashAndSwitchBranchDialog {
                 },
                 DialogButton {
                     id: "switch-ok",
-                    label: "Switch Branch".into(),
+                    label: if discard {
+                        "Discard Changes and Switch".into()
+                    } else {
+                        "Switch Branch".into()
+                    },
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {
                         Dispatcher::close_popup(cx);
-                        Dispatcher::checkout_branch(repo, branch.clone(), Some(action), cx);
+                        if discard {
+                            Dispatcher::discard_all_and_checkout(repo, branch.clone(), cx);
+                        } else {
+                            Dispatcher::checkout_branch(repo, branch.clone(), Some(action), cx);
+                        }
                     }),
                 },
             ],
@@ -781,6 +1040,59 @@ impl Render for ConfirmOverwriteStashDialog {
 
 // ---------------------------------------------------------------------------
 
+/// Corvane addition (`266-confirm-branch-switch`): "Switch to <branch>?"
+/// before a checkout started from the branch list.
+pub struct ConfirmSwitchBranchDialog {
+    repo: u64,
+    branch: String,
+}
+
+impl ConfirmSwitchBranchDialog {
+    pub fn new(repo: u64, branch: String) -> Self {
+        Self { repo, branch }
+    }
+}
+
+impl Render for ConfirmSwitchBranchDialog {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
+        let (repo, branch) = (self.repo, self.branch.clone());
+        dialog(
+            "dialog-confirm-switch-branch",
+            "Switch Branch?",
+            paragraph(vec![
+                "Switch to ".into(),
+                ref_chip(self.branch.clone(), cx).into_any_element().into(),
+                "?".into(),
+            ]),
+            vec![
+                DialogButton {
+                    id: "confirm-switch-cancel",
+                    label: "Cancel".into(),
+                    primary: false,
+                    disabled: false,
+                    on_click: Box::new(close),
+                },
+                DialogButton {
+                    id: "confirm-switch-ok",
+                    label: "Switch Branch".into(),
+                    primary: true,
+                    disabled: false,
+                    on_click: Box::new(move |_, cx| {
+                        Dispatcher::close_popup(cx);
+                        Dispatcher::checkout_branch(repo, branch.clone(), None, cx);
+                    }),
+                },
+            ],
+            close,
+            window,
+            cx,
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+
 /// `MergeChooseBranchDialog`: pick a branch, preview the commit count, merge.
 pub struct MergeBranchDialog {
     state: Entity<AppState>,
@@ -836,6 +1148,7 @@ impl Render for MergeBranchDialog {
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             };

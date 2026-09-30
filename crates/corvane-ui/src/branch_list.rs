@@ -11,6 +11,15 @@
 //! (`onMouseEnterPullRequestListItem`); leaving the row hides it after 500 ms
 //! unless the pointer reaches the quick view, and leaving the quick view
 //! hides it at once (`onMouseLeavePullRequestQuickView`).
+//!
+//! Deviations: dates are the tip's committer date (GHD: author date); Other
+//! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
+//! The filter ignores an `owner:` prefix (`260-branch-filter-strips-owner`).
+//! Rows can tell local-only, tracked and remote-only branches apart by icon
+//! (`262-branch-list-local-remote-icons`), and a filter-row toggle can
+//! narrow the list to remote branches (`263-branch-list-remote-only`).
+//! The context menu can start a rebase onto the branch
+//! (`267-branch-menu-rebase-onto`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -67,6 +76,8 @@ pub struct BranchFoldout {
     selected_row: Option<String>,
     list_focus: FocusHandle,
     list_focused: bool,
+    /// `263-branch-list-remote-only`: the list shows remote branches only.
+    remote_only: bool,
 }
 
 /// The pull request whose quick view is shown, its parsed body, and the
@@ -86,12 +97,66 @@ pub struct BranchGroup {
     pub branches: Vec<Branch>,
 }
 
+/// Flag `260-branch-filter-strips-owner`: `owner:branch` (GitHub's
+/// copy-branch-name format) filters by `branch`. `:` can't appear in a ref
+/// name, so nothing that could match is lost.
+fn strip_owner_prefix(query: &str, cx: &App) -> String {
+    match query.split_once(':') {
+        Some((owner, branch))
+            if !owner.is_empty()
+                && !branch.trim().is_empty()
+                && AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::BRANCH_FILTER_STRIPS_OWNER) =>
+        {
+            branch.trim().to_string()
+        }
+        _ => query.to_string(),
+    }
+}
+
+/// Flag `263-branch-list-remote-only`: every remote branch matching `query`
+/// (those with a local counterpart too), in one "Remote Branches" group.
+fn remote_group(branches: &[Branch], query: &str, cx: &App) -> Vec<BranchGroup> {
+    let mut remote: Vec<Branch> = branches
+        .iter()
+        .filter(|b| b.kind == BranchKind::Remote)
+        .filter(|b| query.is_empty() || fuzzy_score(query, &b.name).is_some())
+        .cloned()
+        .collect();
+    remote.sort_by_key(|b| b.name.to_lowercase());
+    if sort_by_date(cx) {
+        remote.sort_by_key(|b| std::cmp::Reverse(b.tip_time.unwrap_or(0)));
+    }
+    if remote.is_empty() {
+        Vec::new()
+    } else {
+        vec![BranchGroup {
+            title: "Remote Branches",
+            branches: remote,
+        }]
+    }
+}
+
+/// Flag `257-branch-list-sort-by-date`: Other Branches newest first.
+pub fn sort_by_date(cx: &App) -> bool {
+    AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_SORT_BY_DATE)
+    })
+}
+
 /// GHD `groupBranches` over the merged local + remote-only branch list.
+/// `newest_first` orders Other Branches by the tip's committer date (newest
+/// first, then by name) instead of by name alone.
 pub fn group_branches(
     branches: &[Branch],
     default_branch: Option<&str>,
     recent: &[String],
     query: &str,
+    newest_first: bool,
 ) -> Vec<BranchGroup> {
     let query = query.trim();
     let matches = |b: &Branch| query.is_empty() || fuzzy_score(query, &b.name).is_some();
@@ -133,13 +198,17 @@ pub fn group_branches(
             branches: recent_branches,
         });
     }
-    let other: Vec<Branch> = all
+    let mut other: Vec<Branch> = all
         .iter()
         .filter(|b| Some(b.name.as_str()) != default_branch)
         .filter(|b| !recent.contains(&b.name) || b.kind == BranchKind::Remote)
         .filter(|b| matches(b))
         .cloned()
         .collect();
+    if newest_first {
+        // stable: equal dates keep the name order
+        other.sort_by_key(|b| std::cmp::Reverse(b.tip_time.unwrap_or(0)));
+    }
     if !other.is_empty() {
         groups.push(BranchGroup {
             title: "Other Branches",
@@ -169,6 +238,7 @@ impl BranchFoldout {
             selected_row: None,
             list_focus: cx.focus_handle(),
             list_focused: false,
+            remote_only: false,
         }
     }
 
@@ -274,6 +344,12 @@ impl BranchFoldout {
                 )
                 .into_any_element(),
         )
+    }
+
+    /// The Branches tab's filter text (`261-new-branch-from-filter`), with
+    /// an `owner:` prefix stripped as the list does.
+    pub fn filter_text(&self, cx: &App) -> String {
+        strip_owner_prefix(self.filter.read(cx).value().trim(), cx)
     }
 
     pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -480,6 +556,11 @@ impl BranchFoldout {
         let hover_bg = t.box_selected_active_background;
         let hover_text = t.box_selected_active_text;
         let branch_name_for_target = branch.name.clone();
+        let distinguish_remote = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_LOCAL_REMOTE_ICONS);
         div()
             .id(SharedString::from(format!("branch-{}", branch.full_name)))
             .a11y_row(
@@ -536,6 +617,22 @@ impl BranchFoldout {
             })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
+                // `266-confirm-branch-switch`
+                if AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::CONFIRM_BRANCH_SWITCH)
+                    && !current
+                {
+                    Dispatcher::show_popup(
+                        Popup::ConfirmSwitchBranch {
+                            repo: id,
+                            branch: name.clone(),
+                        },
+                        cx,
+                    );
+                    return;
+                }
                 Dispatcher::checkout_branch(id, name.clone(), None, cx)
             })
             // GHD `generateBranchContextMenuItems`
@@ -552,13 +649,28 @@ impl BranchFoldout {
                     {
                         use crate::context_menu::MenuItem;
                         let local = branch.kind == BranchKind::Local;
+                        // `267-branch-menu-rebase-onto`
+                        let rebase_onto = AppState::global(cx)
+                            .read(cx)
+                            .flags
+                            .bool(corvane_core::flags::ids::BRANCH_MENU_REBASE_ONTO)
+                            .then(|| branch.name.clone());
+                        let can_rebase = !current && {
+                            let s = AppState::global(cx).read(cx);
+                            s.repo_states.get(&id).is_some_and(|r| {
+                                r.mco.is_none()
+                                    && r.info
+                                        .as_ref()
+                                        .is_some_and(|i| matches!(i.tip, Tip::Valid { .. }))
+                            })
+                        };
                         let (rename, copy, worktree, delete) = (
                             branch.name.clone(),
                             branch.name.clone(),
                             branch.name.clone(),
                             branch.name.clone(),
                         );
-                        let items = vec![
+                        let mut items = vec![
                             MenuItem::new("Rename…", move |_, cx| {
                                 Dispatcher::close_foldout(cx);
                                 Dispatcher::show_popup(
@@ -585,17 +697,34 @@ impl BranchFoldout {
                                 )
                             }),
                             MenuItem::separator(),
-                            MenuItem::new("Delete…", move |_, cx| {
-                                Dispatcher::close_foldout(cx);
-                                Dispatcher::show_popup(
-                                    Popup::DeleteBranch {
-                                        repo: id,
-                                        name: delete.clone(),
-                                    },
-                                    cx,
-                                )
-                            }),
                         ];
+                        if let Some(base) = rebase_onto {
+                            items.push(
+                                MenuItem::new(
+                                    format!("Rebase Current Branch onto {base}…"),
+                                    move |_, cx| {
+                                        Dispatcher::close_foldout(cx);
+                                        Dispatcher::start_rebase_flow_onto(
+                                            id,
+                                            Some(base.clone()),
+                                            cx,
+                                        );
+                                    },
+                                )
+                                .enabled(can_rebase),
+                            );
+                            items.push(MenuItem::separator());
+                        }
+                        items.extend([MenuItem::new("Delete…", move |_, cx| {
+                            Dispatcher::close_foldout(cx);
+                            Dispatcher::show_popup(
+                                Popup::DeleteBranch {
+                                    repo: id,
+                                    name: delete.clone(),
+                                },
+                                cx,
+                            )
+                        })]);
                         crate::native_menu::show_context_menu(items, ev.position, window, cx);
                     }
                     #[cfg(not(target_os = "macos"))]
@@ -619,6 +748,13 @@ impl BranchFoldout {
                 octicon(
                     if current {
                         Octicon::Check
+                    } else if distinguish_remote {
+                        // `262-branch-list-local-remote-icons`
+                        match (branch.kind, branch.upstream.is_some()) {
+                            (BranchKind::Remote, _) => Octicon::Server,
+                            (BranchKind::Local, false) => Octicon::DeviceDesktop,
+                            (BranchKind::Local, true) => Octicon::GitBranch,
+                        }
                     } else {
                         Octicon::GitBranch
                     },
@@ -742,7 +878,13 @@ impl Render for BranchFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         self.list_focused = self.list_focus.is_focused(window);
-        let query = self.filter.read(cx).value().trim().to_string();
+        let query = strip_owner_prefix(self.filter.read(cx).value().trim(), cx);
+        let remote_toggle = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_REMOTE_ONLY);
+        let remote_only = remote_toggle && self.remote_only;
         let (id, groups, current, tip_valid) = {
             let s = self.state.read(cx);
             let id = s.selected;
@@ -753,11 +895,13 @@ impl Render for BranchFoldout {
                 .map(|b| b.name.clone());
             let tip_valid = info.is_some_and(|i| matches!(i.tip, Tip::Valid { .. }));
             let groups = match (info, rs) {
+                (Some(info), _) if remote_only => remote_group(&info.branches, &query, cx),
                 (Some(info), Some(rs)) => group_branches(
                     &info.branches,
                     rs.default_branch.as_deref(),
                     &rs.recent_branches,
                     &query,
+                    crate::branch_list::sort_by_date(cx),
                 ),
                 _ => Vec::new(),
             };
@@ -831,6 +975,24 @@ impl Render for BranchFoldout {
                         window,
                         cx,
                     ))
+                    .when(remote_toggle, |d| {
+                        d.child(
+                            button("branch-remote-only", "", cx)
+                                .flex_none()
+                                .px(SPACING_HALF())
+                                .when(remote_only, |d| d.bg(t.box_selected_background))
+                                .icon_button_label(if remote_only {
+                                    "Show all branches"
+                                } else {
+                                    "Show only remote branches"
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.remote_only = !this.remote_only;
+                                    cx.notify();
+                                }))
+                                .child(octicon(Octicon::Server, t.secondary_button_text)),
+                        )
+                    })
                     .child(button("new-branch", "New Branch", cx).flex_none().on_click(
                         move |_, _, cx| {
                             Dispatcher::close_foldout(cx);

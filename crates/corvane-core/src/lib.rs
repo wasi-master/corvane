@@ -43,7 +43,7 @@ pub mod worktrees;
 pub use alive::{AliveEventData, AliveState};
 pub use autocomplete::{
     DEFAULT_MAX_HITS, Issue, IssueCache, IssueHit, MentionableCache, MentionableUser, Trigger,
-    TriggerKind, find_trigger, issues_matching, users_matching,
+    TriggerKind, find_trigger, folder_completions, issues_matching, users_matching,
 };
 pub use avatars::{AvatarEntry, avatar_for_email, avatar_for_url};
 pub use commit_status::{CommitStatusStore, combined_status_summary, group_check_runs, status_key};

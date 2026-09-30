@@ -21,6 +21,8 @@ pub struct MenuOptions {
     pub show_view_upstream: bool,
     /// Flag `486-window-menu-main-window`.
     pub show_main_window: bool,
+    /// Flag `455-add-license`.
+    pub show_add_license: bool,
 }
 
 impl MenuOptions {
@@ -33,6 +35,7 @@ impl MenuOptions {
             show_import: s.flags.bool(ids::IMPORT_FROM_GITHUB_DESKTOP),
             show_view_upstream: s.flags.bool(ids::VIEW_UPSTREAM_ON_GITHUB),
             show_main_window: s.flags.bool(ids::WINDOW_MENU_MAIN_WINDOW),
+            show_add_license: s.flags.bool(ids::ADD_LICENSE),
         }
     }
 }
@@ -40,6 +43,7 @@ impl MenuOptions {
 /// Build (or rebuild) the menu bar.
 /// Corvane additions: "Flags…" (no GHD equivalent), File › Import
 /// Repositories from GitHub Desktop…, Repository › View Upstream on GitHub,
+/// Repository › Add License…,
 /// Window › Corvane (shows the window hidden with ⌘W) and Help › Show
 /// Release Notes.
 pub fn install(cx: &mut App, options: &MenuOptions) {
@@ -69,8 +73,11 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
         MenuItem::separator(),
         MenuItem::action("New Worktree…", NewWorktree),
         MenuItem::separator(),
-        MenuItem::action("Repository Settings…", RepositorySettings),
     ]);
+    if options.show_add_license {
+        repository.push(MenuItem::action("Add License…", AddLicense));
+    }
+    repository.push(MenuItem::action("Repository Settings…", RepositorySettings));
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),

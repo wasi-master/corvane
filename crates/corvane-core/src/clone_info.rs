@@ -14,6 +14,17 @@
 //! exist"); Corvane shows GHD's "We couldn't find that repository" error
 //! instead. When a lookup fails otherwise (offline, rate limit) the shorthand
 //! is cloned as `https://github.com/owner/name.git`.
+//!
+//! Deviation (`360-clone-local-sources`): a local folder (`/path`, `~/path`)
+//! or `file://` URL is cloned as typed once [`resolve_local`] finds a
+//! repository there, and "no Git repository at that path" is reported
+//! before git runs (GHD turns `/a/b` into `https://github.com/a/b.git` and
+//! rejects longer paths).
+//!
+//! Deviation (`355-clone-prefers-ssh`): the SSH URL can be preferred for
+//! every lookup, not only for a typed SSH URL (GHD has no protocol setting).
+
+use std::path::PathBuf;
 
 use corvane_github::{Client, Endpoint, RepositoryCloneInfo};
 use corvane_models::split_remote;
@@ -24,6 +35,51 @@ use crate::remote::spawn_bg;
 
 /// The `DialogError` GHD shows when the repository can't be found.
 pub const REPOSITORY_NOT_FOUND: &str = "We couldn't find that repository. Check that you are logged in, the network is accessible, and the URL or repository alias are spelled correctly.";
+
+/// `360-clone-local-sources`: the source is not a repository on disk.
+pub const LOCAL_SOURCE_NOT_FOUND: &str =
+    "There's no Git repository at that path. Check the path and try again.";
+
+/// `360-clone-local-sources`: the folder a local clone source names: an
+/// absolute path, `~/…`, or a `file://` URL (`file:///abs`,
+/// `file://localhost/abs`, `%20` for spaces).
+pub fn local_source(input: &str) -> Option<PathBuf> {
+    let input = input.trim();
+    if let Some(rest) = input.strip_prefix("file://") {
+        let rest = rest.strip_prefix("localhost").unwrap_or(rest);
+        return rest
+            .starts_with('/')
+            .then(|| PathBuf::from(rest.replace("%20", " ")));
+    }
+    if let Some(rest) = input.strip_prefix("~/") {
+        return std::env::var_os("HOME").map(|home| PathBuf::from(home).join(rest));
+    }
+    input.starts_with('/').then(|| PathBuf::from(input))
+}
+
+/// `360-clone-local-sources`: `None` when `input` is not a local source,
+/// else what to clone (a `file://` URL as typed, a path expanded) or
+/// [`LOCAL_SOURCE_NOT_FOUND`].
+pub fn resolve_local(input: &str) -> Option<Result<CloneInfo, &'static str>> {
+    let path = local_source(input)?;
+    let found = matches!(
+        corvane_git::path_status(&path),
+        corvane_git::PathStatus::Repository | corvane_git::PathStatus::Bare
+    );
+    Some(if !found {
+        Err(LOCAL_SOURCE_NOT_FOUND)
+    } else {
+        let input = input.trim();
+        Ok(CloneInfo {
+            url: if input.starts_with("file://") {
+                input.to_string()
+            } else {
+                path.display().to_string()
+            },
+            default_branch: None,
+        })
+    })
+}
 
 /// GHD `IRepositoryIdentifier`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,17 +149,20 @@ pub fn resolve(
     candidates: &[Candidate],
     lookup: &mut Lookup<'_>,
 ) -> Result<CloneInfo, &'static str> {
-    resolve_with(input, candidates, lookup, true)
+    resolve_with(input, candidates, lookup, true, false)
 }
 
 /// `resolve`; with `strict_shorthand` off (the GHD value of
 /// `204-clone-shorthand-not-found`) an `owner/name` every account answers
-/// 404 for is handed to git as typed instead of failing here.
+/// 404 for is handed to git as typed instead of failing here. `prefer_ssh`
+/// (`355-clone-prefers-ssh`) asks the API for the SSH URL even when the
+/// input is not an SSH URL.
 pub fn resolve_with(
     input: &str,
     candidates: &[Candidate],
     lookup: &mut Lookup<'_>,
     strict_shorthand: bool,
+    prefer_ssh: bool,
 ) -> Result<CloneInfo, &'static str> {
     let input = input.trim();
     let as_is = || CloneInfo {
@@ -115,7 +174,7 @@ pub fn resolve_with(
     }
     let identifier = parse_repository_identifier(input);
     // "Respect the user's preference if they provided an SSH URL"
-    let ssh = input.starts_with("git@") || input.starts_with("ssh://");
+    let ssh = prefer_ssh || input.starts_with("git@") || input.starts_with("ssh://");
 
     // 1. an account for the URL's host
     if let Some((host, _)) = split_remote(input)
@@ -179,9 +238,11 @@ pub fn resolve_with(
 
 impl Dispatcher {
     /// Resolve what the Clone dialog should clone (GHD `resolveCloneInfo`)
-    /// on a background thread.
+    /// on a background thread. `prefer_ssh` asks for the SSH clone URL
+    /// (`355-clone-prefers-ssh`, decided by the dialog).
     pub fn resolve_clone_info(
         input: String,
+        prefer_ssh: bool,
         then: impl FnOnce(Result<CloneInfo, &'static str>, &mut App) + 'static,
         cx: &mut App,
     ) {
@@ -217,9 +278,16 @@ impl Dispatcher {
             .read(cx)
             .flags
             .bool(crate::flags::ids::CLONE_SHORTHAND_NOT_FOUND);
+        let local_sources = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CLONE_LOCAL_SOURCES);
         spawn_bg(
             cx,
             move || {
+                if local_sources && let Some(local) = resolve_local(&input) {
+                    return local;
+                }
                 let candidates: Vec<Candidate> = clients.iter().map(|(c, _)| c.clone()).collect();
                 let mut lookup = |ix: usize, owner: &str, name: &str, ssh: bool| {
                     clients[ix]
@@ -228,7 +296,14 @@ impl Dispatcher {
                         .map_err(|err| err.to_string())
                 };
                 // `owner/name` passed through as typed becomes a GitHub.com URL
-                resolve_with(&input, &candidates, &mut lookup, strict_shorthand).map(|mut info| {
+                resolve_with(
+                    &input,
+                    &candidates,
+                    &mut lookup,
+                    strict_shorthand,
+                    prefer_ssh,
+                )
+                .map(|mut info| {
                     info.url = corvane_git::normalize_clone_url(&info.url).unwrap_or(info.url);
                     info
                 })
@@ -327,6 +402,37 @@ mod tests {
             resolve("https://github.com/o/private", &candidates, &mut not_found),
             Err(REPOSITORY_NOT_FOUND)
         );
+    }
+
+    #[test]
+    fn local_sources_are_checked_and_cloned_as_typed() {
+        assert_eq!(local_source("hubot/cool"), None);
+        assert_eq!(local_source("https://github.com/a/b"), None);
+        assert_eq!(local_source(" /a/b/c "), Some(PathBuf::from("/a/b/c")));
+        assert_eq!(
+            local_source("file://localhost/a/my%20repo"),
+            Some(PathBuf::from("/a/my repo"))
+        );
+        assert!(resolve_local("owner/name").is_none());
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().display().to_string();
+        assert_eq!(resolve_local(&path), Some(Err(LOCAL_SOURCE_NOT_FOUND)));
+        std::fs::create_dir(dir.path().join(".git")).unwrap();
+        assert_eq!(resolve_local(&path).unwrap().unwrap().url, path);
+        let url = format!("file://{path}");
+        assert_eq!(resolve_local(&url).unwrap().unwrap().url, url);
+    }
+
+    #[test]
+    fn prefer_ssh_asks_for_the_ssh_url() {
+        let mut seen = None;
+        let mut lookup = |_: usize, _: &str, _: &str, ssh: bool| {
+            seen = Some(ssh);
+            Ok(info("git@github.com:o/n.git"))
+        };
+        let got = resolve_with("o/n", &[dotcom(true)], &mut lookup, true, true).unwrap();
+        assert_eq!(got.url, "git@github.com:o/n.git");
+        assert_eq!(seen, Some(true));
     }
 
     #[test]

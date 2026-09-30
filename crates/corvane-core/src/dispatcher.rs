@@ -82,6 +82,7 @@ impl Dispatcher {
             foldout: None,
             popup,
             cloning: None,
+            pending_aliases: Vec::new(),
             sign_in: None,
             retry_after_sign_in: None,
             watcher: None,
@@ -427,6 +428,14 @@ impl Dispatcher {
         // GHD stores `Path.resolve(path)`: absolute, `.`/`..` folded lexically
         let path = resolve_path(&path);
         let state = Self::state(cx);
+        // `459-alias-when-adding`
+        let alias = Self::take_pending_alias(&path, cx);
+        let then = move |id: u64, cx: &mut App| {
+            if let Some(alias) = alias {
+                Self::change_repository_alias(id, Some(alias), cx);
+            }
+            then(id, cx);
+        };
         if let Some(existing) = state
             .read(cx)
             .repositories
@@ -1530,6 +1539,32 @@ impl Dispatcher {
         );
     }
 
+    /// `459-alias-when-adding`: give the repository at `path` this alias once
+    /// it is added (by New / Add / Clone); an empty alias does nothing.
+    pub fn alias_when_added(path: &Path, alias: String, cx: &mut App) {
+        let alias = alias.trim().to_string();
+        if alias.is_empty() {
+            return;
+        }
+        let path = resolve_path(path);
+        Self::state(cx).update(cx, |s, _| {
+            s.pending_aliases.retain(|(p, _)| !same_path(p, &path));
+            s.pending_aliases.push((path, alias));
+        });
+    }
+
+    /// Remove and return the alias waiting for `path` (see
+    /// [`Dispatcher::alias_when_added`]).
+    fn take_pending_alias(path: &Path, cx: &mut App) -> Option<String> {
+        Self::state(cx).update(cx, |s, _| {
+            let ix = s
+                .pending_aliases
+                .iter()
+                .position(|(p, _)| same_path(p, path))?;
+            Some(s.pending_aliases.remove(ix).1)
+        })
+    }
+
     /// GHD `changeRepositoryAlias` / `removeRepositoryAlias` (`None`).
     pub fn change_repository_alias(id: u64, alias: Option<String>, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
@@ -1845,6 +1880,82 @@ impl Dispatcher {
             },
             cx,
         );
+    }
+
+    /// Delete Branch dialog warnings (`258-delete-branch-warnings`): commits
+    /// only this branch has, and a stash recorded for it.
+    pub fn preview_delete_branch(id: u64, name: String, cx: &mut App) {
+        let Some(branch) = Self::branch_by_name(id, &name, cx) else {
+            return;
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        // the default branch (local and upstream) and the branch's upstream,
+        // where those refs exist
+        let bases: Vec<(String, String)> = {
+            let s = Self::state(cx).read(cx);
+            let rs = s.repo_states.get(&id);
+            let branches = rs
+                .and_then(|r| r.info.as_ref())
+                .map(|i| i.branches.as_slice())
+                .unwrap_or_default();
+            let default = rs.and_then(|r| r.default_branch.as_deref()).and_then(|d| {
+                branches
+                    .iter()
+                    .find(|b| b.name == d && b.kind == corvane_models::BranchKind::Local)
+            });
+            let mut full_names: Vec<&str> = Vec::new();
+            if let Some(default) = default {
+                full_names.push(&default.full_name);
+                full_names.extend(default.upstream.as_deref());
+            }
+            full_names.extend(branch.upstream.as_deref());
+            full_names.dedup();
+            full_names
+                .into_iter()
+                .filter(|f| *f != branch.full_name)
+                .filter_map(|f| {
+                    branches
+                        .iter()
+                        .find(|b| b.full_name == f)
+                        .map(|b| (b.full_name.clone(), b.name.clone()))
+                })
+                .collect()
+        };
+        let local = branch.kind == corvane_models::BranchKind::Local;
+        let task = cx.background_executor().spawn(async move {
+            let unmerged = if bases.is_empty() {
+                0
+            } else {
+                let refs: Vec<String> = bases.iter().map(|(f, _)| f.clone()).collect();
+                corvane_git::commits_not_in(git.clone(), &workdir, &branch.full_name, &refs)
+                    .unwrap_or(0)
+            };
+            let has_stash = local
+                && corvane_git::get_stashes(git, &workdir).is_ok_and(|(stashes, _)| {
+                    stashes
+                        .iter()
+                        .any(|s| s.branch.as_deref() == Some(branch.name.as_str()))
+                });
+            crate::state::DeleteBranchPreview {
+                branch: branch.name,
+                unmerged_commits: unmerged,
+                compared_to: bases.into_iter().map(|(_, short)| short).collect(),
+                has_stash,
+            }
+        });
+        Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).delete_branch_preview = None);
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let preview = task.await;
+            cx.update(|cx| {
+                Self::state(cx).update(cx, |s, cx| {
+                    s.repo_state_mut(id).delete_branch_preview = Some(preview);
+                    cx.notify();
+                });
+            });
+        })
+        .detach();
     }
 
     /// Merge dialog preview: how many commits `branch` would bring in.
@@ -2246,7 +2357,59 @@ impl Dispatcher {
 
     // ---- create / clone ----
 
+    /// `455-add-license`: write the named license template to `LICENSE` in
+    /// the repository's worktree, filled in like Create a New Repository
+    /// does. An existing license file is never replaced.
+    pub fn add_license(repo: u64, license: String, cx: &mut App) {
+        let state = Self::state(cx);
+        let (Some(git), Some(repository)) = (
+            state.read(cx).git.clone(),
+            state.read(cx).repository(repo).cloned(),
+        ) else {
+            return;
+        };
+        let Some(body) = crate::templates::licenses()
+            .into_iter()
+            .find(|l| l.name == license)
+            .map(|l| l.body)
+        else {
+            return;
+        };
+        Self::close_popup(cx);
+        let dir = repository.path.clone();
+        let project = corvane_models::dir_name(&dir);
+        let task = cx.background_executor().spawn(async move {
+            let identity = corvane_git::global_identity(git);
+            let year = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| 1970 + d.as_secs() / 31_556_952)
+                .unwrap_or(1970);
+            let text = crate::templates::render_license(
+                &body,
+                &crate::templates::LicenseFields {
+                    fullname: identity.name.unwrap_or_default(),
+                    email: identity.email.unwrap_or_default(),
+                    project,
+                    description: String::new(),
+                    year: year.to_string(),
+                },
+            );
+            crate::templates::write_license(&dir, &text)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(_) => Self::refresh_repository(repo, cx),
+                Err(message) => Self::show_error("Couldn't add the license", &message, cx),
+            })
+        })
+        .detach();
+    }
+
     /// GHD `CreateRepository` dialog submit: `git init` (+ README commit), then add.
+    /// `keep_existing` leaves files already in the folder alone
+    /// (`456-create-repository-in-folder`).
+    #[allow(clippy::too_many_arguments)]
     pub fn create_repository(
         path: PathBuf,
         name: String,
@@ -2254,6 +2417,7 @@ impl Dispatcher {
         readme: bool,
         gitignore: Option<String>,
         license: Option<String>,
+        keep_existing: bool,
         cx: &mut App,
     ) {
         let state = Self::state(cx);
@@ -2271,6 +2435,7 @@ impl Dispatcher {
                 .find(|l| l.name == name)
                 .map(|l| l.body)
         });
+        let failed_path = path.clone();
         let task = cx.background_executor().spawn(async move {
             let default_branch = corvane_git::configured_default_branch(git.clone());
             let license_text = license_body.map(|body| {
@@ -2300,6 +2465,7 @@ impl Dispatcher {
                     gitignore: gitignore_text,
                     license: license_text,
                     git_attributes: Some(crate::templates::GIT_ATTRIBUTES.to_string()),
+                    keep_existing,
                 },
             )
         });
@@ -2307,7 +2473,10 @@ impl Dispatcher {
             let result = task.await;
             cx.update(|cx| match result {
                 Ok(path) => Self::add_repository(path, cx),
-                Err(err) => Self::show_error("Could not create repository", err.to_string(), cx),
+                Err(err) => {
+                    Self::take_pending_alias(&failed_path, cx);
+                    Self::show_error("Could not create repository", err.to_string(), cx)
+                }
             });
         })
         .detach();
@@ -2319,6 +2488,18 @@ impl Dispatcher {
         url: String,
         path: PathBuf,
         default_branch: Option<String>,
+        cx: &mut App,
+    ) {
+        Self::clone_repository_with(url, path, default_branch, None, cx);
+    }
+
+    /// `clone_repository`, `depth` making a shallow clone
+    /// (`269-shallow-clone`, the Clone dialog's checkbox).
+    pub fn clone_repository_with(
+        url: String,
+        path: PathBuf,
+        default_branch: Option<String>,
+        depth: Option<u32>,
         cx: &mut App,
     ) {
         let state = Self::state(cx);
@@ -2346,6 +2527,7 @@ impl Dispatcher {
                 &clone_url,
                 &clone_path,
                 default_branch.as_deref(),
+                depth,
                 |p| {
                     let _ = tx.send(p);
                 },
@@ -2391,9 +2573,28 @@ impl Dispatcher {
                     s.cloning = None;
                     cx.notify();
                 });
+                if result.is_err() {
+                    Self::take_pending_alias(&path, cx);
+                }
                 match result {
                     // an `openRepo` URL waiting for this clone continues
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
+                    // `361-clone-failure-keeps-input`: back to the dialog
+                    Err(err)
+                        if Self::state(cx)
+                            .read(cx)
+                            .flags
+                            .bool(crate::flags::ids::CLONE_FAILURE_KEEPS_INPUT) =>
+                    {
+                        Self::show_popup(
+                            Popup::CloneRepositoryRetry {
+                                url,
+                                path,
+                                error: err.to_string(),
+                            },
+                            cx,
+                        )
+                    }
                     Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
                 }
             });
@@ -2617,6 +2818,47 @@ impl Dispatcher {
                     Self::show_error("Could not discard changes", err.to_string(), cx);
                 }
                 Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
+    }
+
+    /// Switch Branch › "Discard my changes" (`268-switch-branch-discard`):
+    /// discard every change (new files to the Trash), then check `branch`
+    /// out. A failed discard stops before the checkout.
+    pub fn discard_all_and_checkout(id: u64, branch: String, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let files: Vec<_> = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .map(|st| st.files.clone())
+            .unwrap_or_default();
+        let task = cx.background_executor().spawn(async move {
+            if files.is_empty() {
+                Ok(())
+            } else {
+                corvane_git::discard_changes(git, &workdir, &files, true)
+            }
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Err(err) => {
+                    Self::show_error("Could not discard changes", err.to_string(), cx);
+                    Self::refresh_repository(id, cx);
+                }
+                // nothing is left to stash, and `MoveToNewBranch` never
+                // touches the existing stash
+                Ok(()) => Self::checkout_branch(
+                    id,
+                    branch,
+                    Some(UncommittedChangesStrategy::MoveToNewBranch),
+                    cx,
+                ),
             });
         })
         .detach();

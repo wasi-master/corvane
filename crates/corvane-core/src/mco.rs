@@ -749,14 +749,24 @@ impl Dispatcher {
 
     /// Branch › Rebase Current Branch…: open the choose-branch step.
     pub fn start_rebase_flow(id: u64, cx: &mut App) {
+        Self::start_rebase_flow_onto(id, None, cx);
+    }
+
+    /// The choose-branch step with `base_branch` already selected (the
+    /// branch list's "Rebase Current Branch onto…",
+    /// `267-branch-menu-rebase-onto`).
+    pub fn start_rebase_flow_onto(id: u64, base_branch: Option<String>, cx: &mut App) {
         let Some((current, tip)) = Self::current_branch_and_tip(id, cx) else {
             return;
         };
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).rebase_preview = None);
+        if let Some(base) = &base_branch {
+            Self::preview_rebase(id, base.clone(), cx);
+        }
         Self::init_mco(
             id,
             McoDetail::Rebase {
-                base_branch: None,
+                base_branch,
                 commits: Vec::new(),
             },
             Some(current),

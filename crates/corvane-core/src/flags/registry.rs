@@ -70,6 +70,36 @@ fn worktree_location(s: &str) -> Result<(), &'static str> {
     }
 }
 
+/// `264-branch-name-prefix`: empty (off) or a ref-name-safe prefix.
+fn branch_name_prefix(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 60 {
+        Err("At most 60 characters")
+    } else if s
+        .chars()
+        .any(|c| c.is_whitespace() || c.is_control() || "~^:?*[\\\"'".contains(c))
+    {
+        Err("No spaces or ~ ^ : ? * [ \\ quotes")
+    } else if s.starts_with(['.', '/', '-']) || s.contains("..") || s.contains("//") {
+        Err("Not a valid start of a branch name")
+    } else {
+        Ok(())
+    }
+}
+
+/// `357-clone-default-account`: logins separated by commas or spaces.
+fn account_logins(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 200 {
+        Err("At most 200 characters")
+    } else if s
+        .chars()
+        .any(|c| !(c.is_ascii_alphanumeric() || "-_, ".contains(c)))
+    {
+        Err("Logins separated by commas or spaces")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -351,6 +381,226 @@ registry! {
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
 
+    /// Create a Branch can start from any branch.
+    CREATE_BRANCH_FROM_ANY_BRANCH = 255 "create-branch-from-any-branch" {
+        title: "Create a branch from any branch",
+        summary: "Create a Branch offers \"Other branch…\" next to the default and current \
+                  branches, with a filterable list of every local and remote branch to start from.",
+        ghd_behaviour: "Only the default branch or the current branch (and no choice at all while \
+                        the default branch is checked out).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12459), Upstream::issue(20083)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
+    /// Create a Branch starts from the current branch while there are changes.
+    CREATE_BRANCH_WITH_CHANGES_FROM_CURRENT = 256 "create-branch-with-changes-from-current" {
+        title: "New branch with uncommitted changes starts from the current branch",
+        summary: "While the working directory has uncommitted changes, Create a Branch preselects \
+                  the current branch as the starting point, so the changes brought along apply \
+                  to the code they were written against.",
+        ghd_behaviour: "Always preselects the default branch; bringing the changes onto it can \
+                        conflict or appear to lose work.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9670)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
+    /// Other Branches sorted by last update.
+    BRANCH_LIST_SORT_BY_DATE = 257 "branch-list-sort-by-date" {
+        title: "Branch lists sort other branches by date",
+        summary: "Other Branches in the branch list and the branch pickers (merge, rebase, \
+                  compare, pull request base, new branch) are ordered by the tip commit's date, \
+                  most recently updated first.",
+        ghd_behaviour: "Sorted by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19903), Upstream::issue(21358), Upstream::issue(5155)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Delete Branch warns about unmerged commits and a stash.
+    DELETE_BRANCH_WARNINGS = 258 "delete-branch-warnings" {
+        title: "Delete Branch warns about unmerged commits and stashes",
+        summary: "Delete Branch warns when the branch has commits that neither the default branch \
+                  nor the branch's upstream contain, and when changes are stashed on it.",
+        ghd_behaviour: "Only \"This action cannot be undone.\"",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4214), Upstream::issue(13714)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
+    },
+
+    /// Create / Rename Branch refuse `head` in any case.
+    REJECT_HEAD_BRANCH_NAME = 259 "reject-head-branch-name" {
+        title: "Branches can't be named \"head\"",
+        summary: "Create a Branch and Rename Branch refuse \"head\" in any letter case, which on \
+                  a case-insensitive file system names HEAD itself.",
+        ghd_behaviour: "Creates the branch; HEAD ends up detached and the branch can't be published.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13638)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
+    /// The branch filter ignores an `owner:` prefix.
+    BRANCH_FILTER_STRIPS_OWNER = 260 "branch-filter-strips-owner" {
+        title: "Branch filter understands owner:branch",
+        summary: "Pasting GitHub's owner:branch form of a branch name into the branch list's filter \
+                  finds the branch (the owner: part is ignored).",
+        ghd_behaviour: "Filters for the whole text, so the branch is not found.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(7424)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Branch › New Branch… prefills the branch filter's text.
+    NEW_BRANCH_FROM_FILTER = 261 "new-branch-from-filter" {
+        title: "New Branch shortcut uses the branch filter",
+        summary: "Branch › New Branch… (⌘⇧N) while the branch list is open prefills the name with \
+                  its filter text, like the list's New Branch button.",
+        ghd_behaviour: "The shortcut always opens Create a Branch with an empty name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5199)],
+        code: &["crates/corvane/src/main.rs", "crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Branch rows show where the branch lives.
+    BRANCH_LIST_LOCAL_REMOTE_ICONS = 262 "branch-list-local-remote-icons" {
+        title: "Branch list icons for local-only and remote branches",
+        summary: "In the branch list a branch with no upstream (only on this computer) shows a \
+                  desktop icon and a branch that exists only on the remote shows a server icon; \
+                  tracked local branches keep the branch icon.",
+        ghd_behaviour: "Every branch shows the same branch icon.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17012), Upstream::issue(22019)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Branch list toggle: remote branches only.
+    BRANCH_LIST_REMOTE_ONLY = 263 "branch-list-remote-only" {
+        title: "Branch list can show only remote branches",
+        summary: "A server button beside the branch list's filter narrows the list to the remote \
+                  branches (including those checked out locally), in one Remote Branches group.",
+        ghd_behaviour: "Remote branches are only listed, under Other Branches, when there is no \
+                        local branch of the same name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14134)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Create a Branch prefills a prefix.
+    BRANCH_NAME_PREFIX = 264 "branch-name-prefix" {
+        title: "Branch name prefix",
+        summary: "Text Create a Branch puts in front of the suggested name (for example \
+                  \"feature/\" or \"yourname/\"); empty for none.",
+        ghd_behaviour: "No prefix.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "feature/", validate: branch_name_prefix },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14004)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
+    /// The branch button shows a running merge.
+    MERGE_PROGRESS_IN_BRANCH_BUTTON = 265 "merge-progress-in-branch-button" {
+        title: "Branch button shows a running merge",
+        summary: "While a merge runs (Merge into…, Update from Default Branch) the toolbar's \
+                  branch button spins and reads \"Merging <branch>\", as it does while \
+                  switching branches.",
+        ghd_behaviour: "The merge dialog closes and nothing shows until the merge finishes.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6120), Upstream::issue(15996)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// Confirm before switching branch from the branch list.
+    CONFIRM_BRANCH_SWITCH = 266 "confirm-branch-switch" {
+        title: "Confirm before switching branches",
+        summary: "Clicking a branch in the branch list asks \"Switch to <branch>?\" before \
+                  checking it out.",
+        ghd_behaviour: "Checks the branch out at once.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20410)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
+    /// Branch context menu: Rebase Current Branch onto <branch>….
+    BRANCH_MENU_REBASE_ONTO = 267 "branch-menu-rebase-onto" {
+        title: "Rebase onto a branch from the branch list",
+        summary: "A branch's context menu in the branch list offers \"Rebase Current Branch onto \
+                  <branch>…\", which opens the rebase dialog with that branch selected.",
+        ghd_behaviour: "Rebasing starts from Branch › Rebase Current Branch… only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21657)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
+
+    /// Switch Branch › Discard my changes.
+    SWITCH_BRANCH_DISCARD = 268 "switch-branch-discard" {
+        title: "Switch Branch can discard changes",
+        summary: "The Switch Branch dialog (shown for uncommitted changes) offers a third choice, \
+                  \"Discard my changes\": its \"Discard Changes and Switch\" button discards \
+                  every change (new files go to the Trash) and then switches.",
+        ghd_behaviour: "Leave the changes in a stash or bring them along only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11491)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Clone a Repository's "Shallow clone" checkbox.
+    SHALLOW_CLONE = 269 "shallow-clone" {
+        title: "Shallow clone option",
+        summary: "Clone a Repository shows a \"Shallow clone\" checkbox under the local path; \
+                  ticked, only the latest commit of the default branch is fetched \
+                  (git clone --depth 1).",
+        ghd_behaviour: "Always clones the full history.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21880)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ops.rs"],
+    },
+
     /// "No local changes" offers Open in <Shell>.
     NO_CHANGES_OPEN_IN_SHELL = 285 "no-changes-open-in-shell" {
         title: "No local changes: Open in shell",
@@ -548,6 +798,114 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-core/src/commit_status.rs"],
+    },
+
+    /// Clone over SSH by default.
+    CLONE_PREFERS_SSH = 355 "clone-prefers-ssh" {
+        title: "Clone over SSH",
+        summary: "Clone a Repository clones repositories picked from the list and owner/name \
+                  shorthands with their SSH URL (git@host:owner/name.git). An https:// URL typed \
+                  on the URL tab is still cloned over HTTPS.",
+        ghd_behaviour: "Clones over HTTPS unless an SSH URL is typed.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(19824)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/clone_info.rs"],
+    },
+
+    /// The clone list's filter accepts repository URLs.
+    CLONE_FILTER_ACCEPTS_URLS = 356 "clone-filter-accepts-urls" {
+        title: "Clone: repository URLs in the list filter",
+        summary: "A repository URL pasted into the repository filter of Clone a Repository (or \
+                  the \"Let's get started!\" page) filters by its owner/name, so \
+                  https://github.com/owner/name finds owner/name.",
+        ghd_behaviour: "Fuzzy-matches the whole URL and finds no repository.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20942)],
+        code: &["crates/corvane-ui/src/cloneable_repositories.rs"],
+    },
+
+    /// The clone account picker's default account.
+    CLONE_DEFAULT_ACCOUNT = 357 "clone-default-account" {
+        title: "Default account for cloning",
+        summary: "With several accounts signed in, Clone a Repository (and the \"Let's get \
+                  started!\" page) start on the first account whose login is in this list \
+                  (comma-separated) instead of the first account signed in; empty for GitHub \
+                  Desktop's order.",
+        ghd_behaviour: "The account signed in first, every time the dialog opens.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "your-login", validate: account_logins },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21743)],
+        code: &["crates/corvane-ui/src/cloneable_repositories.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-ui/src/no_repositories.rs"],
+    },
+
+    /// Clone paths mirror owner/name.
+    CLONE_PATH_INCLUDES_OWNER = 358 "clone-path-includes-owner" {
+        title: "Clone into an owner folder",
+        summary: "The local path Clone a Repository suggests is <clone folder>/<owner>/<name> \
+                  (for example GitHub/desktop/desktop), so repositories with the same name from \
+                  different owners don't collide.",
+        ghd_behaviour: "Suggests <clone folder>/<name>.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21293), Upstream::issue(5449)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
+    /// Clone offers to add a repository already at the local path.
+    CLONE_OFFER_ADD_EXISTING = 359 "clone-offer-add-existing" {
+        title: "Clone: add a repository already at the destination",
+        summary: "When Clone a Repository's local path is already a Git repository (usually an \
+                  earlier clone), \"Add this repository instead?\" under the path adds it.",
+        ghd_behaviour: "Only says the folder contains files; the repository has to be added \
+                        through Add Local Repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(2956), Upstream::issue(3540)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
+    /// Clone from a local folder.
+    CLONE_LOCAL_SOURCES = 360 "clone-local-sources" {
+        title: "Clone from a local folder",
+        summary: "Clone a Repository's URL tab takes a local repository (/path, ~/path or a \
+                  file:// URL): the local path is named after the folder, and a path without a \
+                  Git repository is reported before cloning.",
+        ghd_behaviour: "A path like /a/b is taken for the GitHub repository a/b; longer paths \
+                        can't be cloned.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2995)],
+        code: &["crates/corvane-core/src/clone_info.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
+    /// A failed clone reopens the clone dialog.
+    CLONE_FAILURE_KEEPS_INPUT = 361 "clone-failure-keeps-input" {
+        title: "Failed clone keeps the dialog's input",
+        summary: "When a clone fails, Clone a Repository opens again with the same URL and \
+                  local path and git's error at the top, ready to fix and retry.",
+        ghd_behaviour: "Shows a \"Clone failed\" error dialog; the URL and path have to be \
+                        entered again.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8720)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs"],
     },
     /// Fork and pull-request remotes follow an SSH origin.
     FORK_REMOTES_KEEP_SSH = 385 "fork-remotes-keep-ssh" {
@@ -766,6 +1124,80 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// Repository › Add License….
+    ADD_LICENSE = 455 "add-license" {
+        title: "Add a license to a repository",
+        summary: "Repository › Add License… writes one of the license templates Create a New \
+                  Repository offers to LICENSE in the current repository (filled in with your \
+                  Git name and the year). An existing license file is never replaced.",
+        ghd_behaviour: "Licenses can only be added when creating a repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12222)],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-ui/src/dialogs/add_license.rs", "crates/corvane-core/src/templates.rs"],
+    },
+
+    /// Create a New Repository in the chosen folder itself.
+    CREATE_REPOSITORY_IN_FOLDER = 456 "create-repository-in-folder" {
+        title: "Create a repository in an existing folder",
+        summary: "Create a New Repository shows \"Create the repository in this folder (no \
+                  subfolder)\" under the local path: ticked, the Local Path folder itself becomes \
+                  the repository, and a README.md, .gitignore or LICENSE already there is kept.",
+        ghd_behaviour: "Always creates a <name> subfolder of the local path.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11413)],
+        code: &["crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-git/src/ops.rs"],
+    },
+
+    /// Add Local Repository › Choose… picks several folders.
+    ADD_LOCAL_MULTIPLE = 457 "add-local-multiple" {
+        title: "Add several local repositories at once",
+        summary: "Add Local Repository's Choose… can select several folders; picking more than \
+                  one adds every one that is a Git repository and lists the others.",
+        ghd_behaviour: "One folder at a time.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2978)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs"],
+    },
+
+    /// Add Local Repository autocompletes folders.
+    ADD_LOCAL_PATH_COMPLETION = 458 "add-local-path-completion" {
+        title: "Folder completion in Add Local Repository",
+        summary: "Typing a path (/… or ~/…) in Add Local Repository's Local Path lists the \
+                  matching folders; ↑/↓ pick one, Enter or Tab completes it, Esc closes the list.",
+        ghd_behaviour: "A plain text box.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18303)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/autocompletion.rs", "crates/corvane-core/src/autocomplete.rs"],
+    },
+
+    /// An Alias field in New / Add / Clone.
+    ALIAS_WHEN_ADDING = 459 "alias-when-adding" {
+        title: "Alias field when adding a repository",
+        summary: "Create a New Repository, Add Local Repository and Clone a Repository have an \
+                  optional Alias field; the repository shows under that name in the list once \
+                  it is added.",
+        ghd_behaviour: "An alias can only be set afterwards (Create Alias in the repository \
+                        list).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22505)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
     /// The diff's "Open in <Editor> at Line N".
     DIFF_OPEN_IN_EDITOR_AT_LINE = 485 "diff-open-in-editor-at-line" {
@@ -1072,5 +1504,15 @@ mod tests {
         assert_eq!(def.label_for(&Value::text("min-400")), "At least 400 px");
         assert_eq!(def.label_for(&Value::text("other")), "other");
         assert_eq!(def.label_for(&Value::Bool(true)), "on");
+    }
+
+    #[test]
+    fn branch_name_prefix_accepts_ref_safe_text() {
+        for ok in ["", "feature/", "wasi-", "team/wasi/"] {
+            assert!(branch_name_prefix(ok).is_ok(), "{ok}");
+        }
+        for bad in ["my feature/", "a:b", "/x", ".x", "a..b", "a//b", "x~"] {
+            assert!(branch_name_prefix(bad).is_err(), "{bad}");
+        }
     }
 }

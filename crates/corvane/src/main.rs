@@ -376,6 +376,15 @@ fn main() {
             let repo = s.selected_repository()?;
             Some((repo.id, repo.path.clone()))
         };
+        cx.on_action(move |_: &AddLicense, cx| {
+            let enabled = corvane_core::AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::ADD_LICENSE);
+            if enabled && let Some((id, _)) = selected_path(cx) {
+                Dispatcher::show_popup(Popup::AddLicense { repo: id }, cx);
+            }
+        });
         cx.on_action(move |_: &RepositorySettings, cx| {
             if let Some((id, _)) = selected_path(cx) {
                 Dispatcher::open_repository_settings(
@@ -657,13 +666,25 @@ fn main() {
         });
         // Branch menu
         let selected = |cx: &App| corvane_core::AppState::global(cx).read(cx).selected;
+        let ws = workspace.clone();
         cx.on_action(move |_: &NewBranch, cx| {
             if let Some(id) = selected(cx) {
+                // `261-new-branch-from-filter`: like the foldout's New Branch
+                // button, start from the branch filter's text
+                let from_filter = corvane_core::AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::NEW_BRANCH_FROM_FILTER)
+                    .then(|| ws.read(cx).open_branch_filter(cx))
+                    .flatten();
+                if from_filter.is_some() {
+                    Dispatcher::close_foldout(cx);
+                }
                 Dispatcher::show_popup(
                     Popup::CreateBranch {
                         repo: id,
                         target_sha: None,
-                        initial_name: String::new(),
+                        initial_name: from_filter.unwrap_or_default(),
                     },
                     cx,
                 );

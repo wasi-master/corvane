@@ -1,6 +1,14 @@
 //! "Create a New Repository" (`ui/add-repository/create-repository.tsx`):
 //! name, description, path, README, and the bundled Git Ignore / License
 //! templates (`corvane_core::templates`).
+//!
+//! Deviation (`459-alias-when-adding`): an optional Alias field names the
+//! new repository in the list (GHD: Create Alias afterwards).
+//!
+//! Deviation (`456-create-repository-in-folder`): an "in this folder"
+//! checkbox creates the repository in the Local Path folder itself (GHD
+//! always adds a `<name>` subfolder); files already there (README.md,
+//! .gitignore, LICENSE) are kept rather than replaced.
 
 use std::path::PathBuf;
 
@@ -17,7 +25,6 @@ use crate::widgets::{
 };
 
 pub struct CreateRepositoryDialog {
-    #[allow(dead_code)]
     state: Entity<AppState>,
     name: Entity<InputState>,
     description: Entity<InputState>,
@@ -29,6 +36,10 @@ pub struct CreateRepositoryDialog {
     license: Option<String>,
     gitignore_names: Vec<String>,
     licenses: Vec<corvane_core::templates::License>,
+    /// `456-create-repository-in-folder`: create in Local Path itself.
+    in_folder: bool,
+    /// `459-alias-when-adding`.
+    alias: Entity<InputState>,
 }
 
 impl CreateRepositoryDialog {
@@ -79,7 +90,19 @@ impl CreateRepositoryDialog {
             license: None,
             gitignore_names: corvane_core::templates::gitignore_names(),
             licenses: corvane_core::templates::licenses(),
+            in_folder: false,
+            alias: cx.new(|cx| InputState::new(window, cx).placeholder("optional")),
         }
+    }
+
+    /// The "in this folder" checkbox is ticked and the flag is on.
+    fn in_folder(&self, cx: &App) -> bool {
+        self.in_folder
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CREATE_REPOSITORY_IN_FOLDER)
     }
 
     fn full_path(&self, cx: &App) -> Option<PathBuf> {
@@ -87,6 +110,9 @@ impl CreateRepositoryDialog {
         let dir = self.path.read(cx).value().trim().to_string();
         if name.is_empty() || dir.is_empty() {
             return None;
+        }
+        if self.in_folder(cx) {
+            return Some(PathBuf::from(dir));
         }
         // GHD sanitises the folder name (`sanitizedRepositoryName`)
         let folder: String = name
@@ -130,6 +156,15 @@ impl CreateRepositoryDialog {
         };
         let description = self.description.read(cx).value().trim().to_string();
         let name = self.name.read(cx).value().trim().to_string();
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING)
+        {
+            let alias = self.alias.read(cx).value().to_string();
+            Dispatcher::alias_when_added(&path, alias, cx);
+        }
         Dispatcher::create_repository(
             path,
             name,
@@ -137,6 +172,7 @@ impl CreateRepositoryDialog {
             self.readme,
             self.gitignore.clone(),
             self.license.clone(),
+            self.in_folder(cx),
             cx,
         );
     }
@@ -230,6 +266,11 @@ impl Render for CreateRepositoryDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
         let readme = self.readme;
+        let in_folder_option = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CREATE_REPOSITORY_IN_FOLDER);
         // `renderPathMessage`: "The repository will be created at <Ref>…</Ref>."
         let path_message = full.as_ref().filter(|_| !exists_as_repo).map(|path| {
             let path = path.display().to_string();
@@ -276,6 +317,22 @@ impl Render for CreateRepositoryDialog {
                             ),
                         ),
                 )
+                .when(in_folder_option, |d| {
+                    let weak = cx.weak_entity();
+                    d.child(crate::widgets::checkbox_row(
+                        "create-in-folder",
+                        self.in_folder,
+                        "Create the repository in this folder (no subfolder)",
+                        move |checked, _, cx| {
+                            weak.update(cx, |this, cx| {
+                                this.in_folder = checked;
+                                cx.notify();
+                            })
+                            .ok();
+                        },
+                        cx,
+                    ))
+                })
                 .when(exists_as_repo, |d| {
                     let path = full.clone();
                     d.child(
@@ -306,6 +363,19 @@ impl Render for CreateRepositoryDialog {
                             ),
                     )
                 })
+                .when(
+                    self.state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::ALIAS_WHEN_ADDING),
+                    |d| {
+                        d.child(labeled(
+                            "Alias",
+                            text_box("create-alias", &self.alias, None, window, cx),
+                            cx,
+                        ))
+                    },
+                )
                 .child(labeled(
                     "Description",
                     text_box("create-description", &self.description, None, window, cx),

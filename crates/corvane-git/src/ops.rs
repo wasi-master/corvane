@@ -89,6 +89,10 @@ pub struct InitOptions {
     pub license: Option<String>,
     /// `.gitattributes` contents; GHD always writes one when missing.
     pub git_attributes: Option<String>,
+    /// Leave an existing README.md / .gitignore / LICENSE alone instead of
+    /// replacing it (`456-create-repository-in-folder`, where the folder
+    /// usually has files already).
+    pub keep_existing: bool,
 }
 
 /// `git init` (+ README + initial commit when requested). Returns the workdir.
@@ -107,7 +111,8 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
         let _ = std::fs::write(opts.path.join(".git/description"), format!("{desc}\n"));
     }
     let mut wrote_files = false;
-    if opts.readme {
+    let writable = |name: &str| !(opts.keep_existing && opts.path.join(name).exists());
+    if opts.readme && writable("README.md") {
         let name = opts
             .path
             .file_name()
@@ -121,12 +126,12 @@ pub fn init_repository(git: Arc<GitBinary>, opts: InitOptions) -> Result<PathBuf
             .map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
-    if let Some(text) = &opts.gitignore {
+    if let Some(text) = opts.gitignore.as_ref().filter(|_| writable(".gitignore")) {
         std::fs::write(opts.path.join(".gitignore"), text)
             .map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
-    if let Some(text) = &opts.license {
+    if let Some(text) = opts.license.as_ref().filter(|_| writable("LICENSE")) {
         std::fs::write(opts.path.join("LICENSE"), text).map_err(crate::error::GitError::Spawn)?;
         wrote_files = true;
     }
@@ -228,12 +233,14 @@ pub fn parse_clone_progress(line: &str) -> CloneProgress {
     }
 }
 
-/// `git clone --progress --recurse-submodules <url> <path>` streaming progress.
+/// `git clone --progress --recurse-submodules <url> <path>` streaming progress;
+/// `depth` adds `--depth <n>` (a shallow clone, `269-shallow-clone`).
 pub fn clone(
     git: Arc<GitBinary>,
     url: &str,
     path: &Path,
     default_branch: Option<&str>,
+    depth: Option<u32>,
     mut on_progress: impl FnMut(CloneProgress),
 ) -> Result<()> {
     if let Some(parent) = path.parent() {
@@ -246,7 +253,11 @@ pub fn clone(
     if let Some(branch) = default_branch {
         cmd = cmd.args(["-c".to_string(), format!("init.defaultBranch={branch}")]);
     }
-    cmd.args(["clone", "--progress", "--recurse-submodules", "--", url])
+    cmd = cmd.args(["clone", "--progress", "--recurse-submodules"]);
+    if let Some(depth) = depth {
+        cmd = cmd.args(["--depth".to_string(), depth.to_string()]);
+    }
+    cmd.args(["--", url])
         .arg(path)
         .run_streaming(|line| on_progress(parse_clone_progress(line)))?;
     Ok(())
@@ -313,6 +324,47 @@ mod tests {
     }
 
     #[test]
+    fn shallow_clone_fetches_one_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let source = dir.path().join("source");
+        let run = |cwd: &Path, args: &[&str]| {
+            let out = std::process::Command::new("git")
+                .args([
+                    "-c",
+                    "commit.gpgsign=false",
+                    "-c",
+                    "user.name=T",
+                    "-c",
+                    "user.email=t@example.com",
+                ])
+                .args(args)
+                .current_dir(cwd)
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "git {args:?}");
+            String::from_utf8(out.stdout).unwrap()
+        };
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", source.to_str().unwrap()],
+        );
+        for n in ["one", "two"] {
+            std::fs::write(source.join("a.txt"), n).unwrap();
+            run(&source, &["add", "."]);
+            run(&source, &["commit", "-q", "-m", n]);
+        }
+        // `--depth` is ignored for a plain local path
+        let url = format!("file://{}", source.display());
+        let shallow = dir.path().join("shallow");
+        clone(git.clone(), &url, &shallow, None, Some(1), |_| {}).unwrap();
+        assert_eq!(run(&shallow, &["rev-list", "--count", "HEAD"]).trim(), "1");
+        let full = dir.path().join("full");
+        clone(git, &url, &full, None, None, |_| {}).unwrap();
+        assert_eq!(run(&full, &["rev-list", "--count", "HEAD"]).trim(), "2");
+    }
+
+    #[test]
     fn init_with_readme_commits() {
         // the user's global commit.gpgsign must not reach the test repo
         unsafe { std::env::set_var("GIT_CONFIG_PARAMETERS", "'commit.gpgsign=false'") };
@@ -336,11 +388,36 @@ mod tests {
                 gitignore: None,
                 license: None,
                 git_attributes: None,
+                keep_existing: false,
             },
         )
         .unwrap();
         let info = crate::open_repository(&path).unwrap();
         assert_eq!(info.current_branch().unwrap().name, "main");
         assert!(path.join("README.md").exists());
+
+        // an existing folder keeps its README
+        let existing = dir.path().join("existing");
+        std::fs::create_dir(&existing).unwrap();
+        std::fs::write(existing.join("README.md"), "mine\n").unwrap();
+        init_repository(
+            Arc::new(crate::find_git().unwrap()),
+            InitOptions {
+                path: existing.clone(),
+                default_branch: Some("main".into()),
+                description: None,
+                readme: true,
+                gitignore: Some("target\n".into()),
+                license: None,
+                git_attributes: None,
+                keep_existing: true,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(existing.join("README.md")).unwrap(),
+            "mine\n"
+        );
+        assert!(existing.join(".gitignore").exists());
     }
 }

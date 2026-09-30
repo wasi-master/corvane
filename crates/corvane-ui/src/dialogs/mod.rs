@@ -3,6 +3,7 @@
 
 mod acknowledgements;
 mod add_existing;
+mod add_license;
 mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod change_repository_alias;
@@ -41,8 +42,8 @@ use gpui_kit::*;
 pub use add_existing::AddExistingRepositoryDialog;
 pub use app_dialogs::{AboutDialog, ConfirmRemoveRepositoryDialog, IntegrationErrorDialog};
 pub use branch_dialogs::{
-    ConfirmOverwriteStashDialog, CreateBranchDialog, DeleteBranchDialog, MergeBranchDialog,
-    RenameBranchDialog, StashAndSwitchBranchDialog,
+    ConfirmOverwriteStashDialog, ConfirmSwitchBranchDialog, CreateBranchDialog, DeleteBranchDialog,
+    MergeBranchDialog, RenameBranchDialog, StashAndSwitchBranchDialog,
 };
 pub use ci_check_run_rerun::CiCheckRunRerunDialog;
 pub use clone_repository::CloneRepositoryDialog;
@@ -106,6 +107,18 @@ impl DialogHost {
                 .into(),
             Popup::CloneRepository { url } => cx
                 .new(|cx| CloneRepositoryDialog::new(state, url.clone(), window, cx))
+                .into(),
+            Popup::CloneRepositoryRetry { url, path, error } => cx
+                .new(|cx| {
+                    CloneRepositoryDialog::retry(
+                        state,
+                        url.clone(),
+                        path.clone(),
+                        error.clone(),
+                        window,
+                        cx,
+                    )
+                })
                 .into(),
             Popup::SignIn { enterprise } => cx
                 .new(|cx| SignInDialog::new(state, *enterprise, window, cx))
@@ -342,8 +355,11 @@ impl DialogHost {
                     )
                 })
                 .into(),
+            Popup::ConfirmSwitchBranch { repo, branch } => cx
+                .new(|_| ConfirmSwitchBranchDialog::new(*repo, branch.clone()))
+                .into(),
             Popup::DeleteBranch { repo, name } => cx
-                .new(|_| DeleteBranchDialog::new(state, *repo, name.clone()))
+                .new(|cx| DeleteBranchDialog::new(state, *repo, name.clone(), cx))
                 .into(),
             Popup::StashAndSwitchBranch { repo, branch } => cx
                 .new(|_| StashAndSwitchBranchDialog::new(state, *repo, branch.clone()))
@@ -450,6 +466,9 @@ impl DialogHost {
             Popup::ImportFromGitHubDesktop => cx
                 .new(import_github_desktop::ImportGitHubDesktopDialog::new)
                 .into(),
+            Popup::AddLicense { repo } => {
+                cx.new(|_| add_license::AddLicenseDialog::new(*repo)).into()
+            }
             Popup::CreateTutorialRepository { account, progress } => cx
                 .new(|_| {
                     tutorial_dialogs::CreateTutorialRepositoryDialog::new(

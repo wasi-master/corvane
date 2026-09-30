@@ -260,7 +260,13 @@ impl HistorySidebar {
             .filter(|r| Some(*r) != current.as_ref())
             .cloned()
             .collect();
-        group_branches(&branches, default, &recent, &query)
+        group_branches(
+            &branches,
+            default,
+            &recent,
+            &query,
+            crate::branch_list::sort_by_date(cx),
+        )
     }
 
     fn compare_branch_names(&self, id: u64, cx: &App) -> Vec<String> {
