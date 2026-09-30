@@ -1,24 +1,67 @@
 name: CI
 
+# macOS runners are scarce, so a push only runs what it has to: docs-only
+# changes skip CI, a newer push to the same branch cancels the older run,
+# rustfmt fails fast on Linux before a macOS runner is taken, and the release
+# build + bundle run only on demand (Actions → CI → Run workflow). Tags build
+# and bundle in release.yml.
+
 on:
   push:
     branches: [main]
+    paths: &code
+      - '**'
+      - '!**.md'
+      - '!docs/**'
+      - '!LICENSE'
+      - '!NOTICE'
+      - '!packaging/homebrew/**'
+      - '!.github/workflows/release.yml'
+      # Markdown the tests read (highlighting samples)
+      - 'crates/**/tests/**'
   pull_request:
+    paths: *code
+  workflow_dispatch:
+    inputs:
+      bundle:
+        description: Also build and upload a signed Corvane.app
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
 
 jobs:
-  check:
-    name: fmt · clippy · test (macOS)
-    runs-on: macos-26
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  check:
+    name: clippy · test (macOS)
+    needs: fmt
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          # PR runs read main's cache but do not write their own
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       # grammars built from source (crates/corvane-grammars/build.rs); the
       # tree-sitter tests need all of them
       - name: cache grammar sources
@@ -32,23 +75,24 @@ jobs:
         run: |
           cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
           CORVANE_TREE_SITTER="$RUNNER_TEMP/ts-cli/bin/tree-sitter" python3 tools/ts-queries/fetch.py
-      - name: rustfmt
-        run: cargo fmt --all -- --check
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
         run: cargo test --workspace
+
       - name: build (release, precompiled Metal shaders)
+        if: inputs.bundle
         run: cargo build --release --no-default-features -p corvane
-      - name: code-signing certificate (absent on fork PRs → ad-hoc)
+      - name: code-signing certificate
+        if: inputs.bundle
         env:
           MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGNING_P12 }}
           MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
-        run: |
-          if [ -n "$MACOS_SIGNING_P12" ]; then packaging/signing-cert.sh ci; else echo "no MACOS_SIGNING_P12 secret: ad-hoc"; fi
+        run: packaging/signing-cert.sh ci
       # Xcode 26's actool crashes on a macOS 15 host (its AssetCatalogAgent
       # links CoreMedia symbols only macOS 26 has), hence the macos-26 runner
       - name: bundle (Liquid Glass icon needs Xcode 26 actool)
+        if: inputs.bundle
         run: |
           export DEVELOPER_DIR="$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)/Contents/Developer"
           packaging/bundle.sh release
@@ -56,6 +100,7 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' target/bundle/Corvane.app/Contents/Info.plist
           ditto -c -k --keepParent target/bundle/Corvane.app target/bundle/Corvane.app.zip
       - uses: actions/upload-artifact@v4
+        if: inputs.bundle
         with:
           name: Corvane.app
           path: target/bundle/Corvane.app.zip
