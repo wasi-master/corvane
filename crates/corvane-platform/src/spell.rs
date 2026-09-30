@@ -159,12 +159,11 @@ pub fn guesses(_word: &str) -> Vec<String> {
 #[cfg(not(target_os = "macos"))]
 pub fn learn_word(_word: &str) {}
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(target_os = "macos")]
     fn flags_a_misspelling() {
         let text = "fix wrold thing";
         let ranges = misspelled_ranges(text);
@@ -176,7 +175,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(target_os = "macos")]
     fn maps_utf16_offsets_to_bytes() {
         let text = "café wrold";
         let ranges = misspelled_ranges(text);
