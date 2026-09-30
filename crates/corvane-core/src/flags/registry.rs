@@ -328,6 +328,21 @@ registry! {
         upstream: &[Upstream::issue(18620)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
     },
+    /// Intra-line highlights end on grapheme boundaries.
+    INTRA_LINE_GRAPHEMES = 177 "intra-line-graphemes" {
+        title: "Intra-line highlights keep accents with their letters",
+        summary: "The changed part of a modified line is widened to whole characters as \
+                  people see them (grapheme clusters), so a combining accent is highlighted \
+                  together with its letter.",
+        ghd_behaviour: "Compares UTF-16 code units, so the highlight can cut a combining mark off \
+                        its base character and the mark renders apart or disappears.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11492)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
 
     // ---- 200 Repository ----
 

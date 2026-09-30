@@ -987,6 +987,31 @@ pub fn relative_changes(a: &str, b: &str) -> (Range<usize>, Range<usize>) {
     (range(&ac, a), range(&bc, b))
 }
 
+/// How [`build_split_rows`] computes intra-line ranges.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct IntraLineOptions {
+    /// `177-intra-line-graphemes`: widen each range to whole grapheme
+    /// clusters, so a combining mark is not split from its base character
+    /// (GHD compares UTF-16 code units).
+    pub graphemes: bool,
+}
+
+/// `range` of `text` widened to the grapheme clusters it touches.
+pub fn snap_to_graphemes(text: &str, range: Range<usize>) -> Range<usize> {
+    use unicode_segmentation::UnicodeSegmentation;
+    let (mut start, mut end) = (range.start, range.end);
+    for (ix, grapheme) in text.grapheme_indices(true) {
+        let grapheme_end = ix + grapheme.len();
+        if ix < range.start && range.start < grapheme_end {
+            start = ix;
+        }
+        if ix < range.end && range.end < grapheme_end {
+            end = grapheme_end;
+        }
+    }
+    start..end
+}
+
 /// One side of a split row: the unified row it shows and, for paired
 /// modified lines, the changed range highlighted with the inner colour.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1022,7 +1047,7 @@ impl SplitRow {
 /// Pair the added and deleted lines of every block of changes: paired lines
 /// become `Modified` rows (with intra-line ranges when the block has as many
 /// additions as deletions), the rest stay on their own side.
-pub fn build_split_rows(rows: &[Row]) -> Vec<SplitRow> {
+pub fn build_split_rows(rows: &[Row], options: IntraLineOptions) -> Vec<SplitRow> {
     let mut out = Vec::with_capacity(rows.len());
     let mut i = 0;
     while i < rows.len() {
@@ -1056,7 +1081,22 @@ pub fn build_split_rows(rows: &[Row]) -> Vec<SplitRow> {
                         && rows[d].text.len() < MAX_INTRA_LINE_DIFF_LEN
                         && rows[a].text.len() < MAX_INTRA_LINE_DIFF_LEN
                     {
-                        let (b, af) = relative_changes(&rows[d].text, &rows[a].text);
+                        let (mut b, mut af) = relative_changes(&rows[d].text, &rows[a].text);
+                        if options.graphemes {
+                            // widen both sides alike: the common prefix and
+                            // suffix stay the same length
+                            let (b2, af2) = (
+                                snap_to_graphemes(&rows[d].text, b.clone()),
+                                snap_to_graphemes(&rows[a].text, af.clone()),
+                            );
+                            let (lead, trail) = (
+                                (b.start - b2.start).max(af.start - af2.start),
+                                (b2.end - b.end).max(af2.end - af.end),
+                            );
+                            let (dl, al) = (rows[d].text.len(), rows[a].text.len());
+                            b = b.start.saturating_sub(lead)..(b.end + trail).min(dl);
+                            af = af.start.saturating_sub(lead)..(af.end + trail).min(al);
+                        }
                         (Some(b), Some(af))
                     } else {
                         (None, None)
@@ -1654,8 +1694,9 @@ pub fn render_split_row(
 mod tests {
     // explicit imports: `gpui_kit::*` would shadow `#[test]` with GPUI's macro
     use super::{
-        RangeType, SearchHit, SplitRow, build_rows, build_split_rows, expand_tabs,
-        relative_changes, search_rows, spans_for_row, unified_inner, unified_to_split,
+        IntraLineOptions, RangeType, SearchHit, SplitRow, build_rows, build_split_rows,
+        expand_tabs, relative_changes, search_rows, snap_to_graphemes, spans_for_row,
+        unified_inner, unified_to_split,
     };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
@@ -1745,10 +1786,20 @@ mod tests {
     }
 
     #[test]
+    fn grapheme_snapping_keeps_combining_marks() {
+        // "e" + U+0301 against "e": the change starts inside the cluster
+        let (a, b) = relative_changes("xe\u{301}y", "xey");
+        assert_eq!((a.clone(), b.clone()), (2..4, 2..2));
+        assert_eq!(snap_to_graphemes("xe\u{301}y", a), 1..4);
+        assert_eq!(snap_to_graphemes("xey", b), 2..2);
+        assert_eq!(snap_to_graphemes("abc", 1..2), 1..2);
+    }
+
+    #[test]
     fn split_rows_pair_changes() {
         let x = crate::diff_expansion::from_hunks(&[hunk()], None);
         let rows = build_rows(&x);
-        let split = build_split_rows(&rows);
+        let split = build_split_rows(&rows, IntraLineOptions::default());
         // hunk, context, modified(beta/Beta), added(gamma), context
         assert_eq!(split.len(), 5);
         match &split[2] {
@@ -1772,12 +1823,18 @@ mod tests {
         h.lines.remove(4);
         let x = crate::diff_expansion::from_hunks(&[h], None);
         let rows = build_rows(&x);
-        let inner = unified_inner(&build_split_rows(&rows), rows.len());
+        let inner = unified_inner(
+            &build_split_rows(&rows, IntraLineOptions::default()),
+            rows.len(),
+        );
         assert_eq!(inner, vec![None, None, Some(0..1), Some(0..1), None]);
         // counts differ → nothing highlighted
         let x = crate::diff_expansion::from_hunks(&[hunk()], None);
         let rows = build_rows(&x);
-        let inner = unified_inner(&build_split_rows(&rows), rows.len());
+        let inner = unified_inner(
+            &build_split_rows(&rows, IntraLineOptions::default()),
+            rows.len(),
+        );
         assert!(inner.iter().all(Option::is_none));
     }
 

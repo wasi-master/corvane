@@ -20,6 +20,9 @@
 //!
 //! Deviation (`670-diff-font-size`): the rows' font size can be set (9–16 px
 //! in the 20 px rows); GHD's is fixed at 11 px.
+//!
+//! Deviation (`177-intra-line-graphemes`): intra-line ranges cover whole
+//! grapheme clusters, so a combining mark stays with its base character.
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -42,9 +45,9 @@ use crate::diff_expansion::{
     expand_whole, from_hunks,
 };
 use crate::diff_view_rows::{
-    Column, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection,
-    TextBounds, build_rows, build_split_rows, line_number_width, max_line_number, render_row,
-    render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
+    Column, IntraLineOptions, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow,
+    TempSelection, TextBounds, build_rows, build_split_rows, line_number_width, max_line_number,
+    render_row, render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -540,7 +543,7 @@ impl DiffView {
     fn rebuild_rows(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         let old_len = self.row_count();
         self.rows = Rc::new(build_rows(&self.hunks));
-        self.rebuild_split_rows();
+        self.rebuild_split_rows(cx);
         self.rows_key = Some(key.clone());
         self.text_selection = None;
         self.list_state.splice(0..old_len, self.row_count());
@@ -554,8 +557,12 @@ impl DiffView {
         self.highlight(key, cx);
     }
 
-    fn rebuild_split_rows(&mut self) {
-        let split = build_split_rows(&self.rows);
+    fn rebuild_split_rows(&mut self, cx: &App) {
+        let flags = &self.state.read(cx).flags;
+        let options = IntraLineOptions {
+            graphemes: flags.bool(corvane_core::flags::ids::INTRA_LINE_GRAPHEMES),
+        };
+        let split = build_split_rows(&self.rows, options);
         self.unified_to_split = Rc::new(unified_to_split(&split, self.rows.len()));
         self.unified_inner = Rc::new(unified_inner(&split, self.rows.len()));
         self.split_rows = Rc::new(split);
@@ -601,7 +608,7 @@ impl DiffView {
             _ => None,
         };
         self.rows = Rc::new(build_rows(&self.hunks));
-        self.rebuild_split_rows();
+        self.rebuild_split_rows(cx);
         self.rows_key = Some(snap.key.clone());
         self.text_selection = None;
         self.list_state

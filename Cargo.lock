@@ -1599,6 +1599,7 @@ dependencies = [
  "objc",
  "raw-window-handle",
  "tracing",
+ "unicode-segmentation",
 ]
 
 [[package]]
