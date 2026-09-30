@@ -265,6 +265,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
+    /// History context menus: Copy Commit Title / Message / URL, Copy SHAs.
+    HISTORY_COPY_ITEMS = 240 "history-copy-items" {
+        title: "History: copy commit title, message, URL and SHAs",
+        summary: "A commit's context menu adds Copy Commit Title, Copy Commit Message and (for \
+                  GitHub repositories) Copy Commit URL next to Copy SHA; a multi-commit selection's \
+                  menu adds Copy SHAs (newest first, one per line).",
+        ghd_behaviour: "Copy SHA and Copy Tag only; nothing to copy for a multi-commit selection.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12547), Upstream::issue(20853), Upstream::issue(7518), Upstream::issue(9791), Upstream::issue(21061)],
+        code: &["crates/corvane-ui/src/history.rs"],
+    },
 
     // ---- 300 GitHub ----
 
