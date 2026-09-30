@@ -372,7 +372,7 @@ impl Render for StashDiffViewer {
                                 .when_some(selected_file, |d, (path, kind)| {
                                     d.child(diff_header(&path, kind, &self.diff, cx))
                                 })
-                                .child(self.diff.clone()),
+                                .child(DiffView::embed(&self.diff)),
                         ),
                     ),
             )
