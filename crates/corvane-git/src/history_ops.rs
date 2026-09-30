@@ -50,6 +50,65 @@ pub fn revert_commits_no_commit(
     Ok(())
 }
 
+/// Corvane addition (flag `147`): `git cherry-pick --no-commit` of `shas`
+/// (oldest first) onto the current branch, leaving their changes staged.
+/// Like [`revert_commits_no_commit`]: meant for a clean working tree, and a
+/// failed pick (a conflict) resets the index and working tree to `HEAD` and
+/// drops the sequencer state.
+pub fn cherry_pick_no_commit(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    shas: &[String],
+    any_merge: bool,
+) -> Result<()> {
+    let mut cmd = GitCommand::new(git.clone())
+        .args(["cherry-pick", "--no-commit"])
+        .current_dir(workdir);
+    if any_merge {
+        cmd = cmd.args(["-m", "1"]);
+    }
+    if let Err(err) = cmd.args(shas).run() {
+        let _ = GitCommand::new(git.clone())
+            .args(["reset", "--merge", "HEAD"])
+            .current_dir(workdir)
+            .run();
+        let _ = GitCommand::new(git)
+            .args(["cherry-pick", "--quit"])
+            .current_dir(workdir)
+            .run();
+        return Err(err);
+    }
+    Ok(())
+}
+
+/// Corvane addition (flag `148`): one patch per commit of `shas` (oldest
+/// first) in `dir`, `git format-patch -1 <sha> -o <dir>`, numbered in that
+/// order. Returns the files written.
+pub fn format_patches(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    shas: &[String],
+    dir: &Path,
+) -> Result<Vec<std::path::PathBuf>> {
+    let mut written = Vec::new();
+    for (i, sha) in shas.iter().enumerate() {
+        let out = GitCommand::new(git.clone())
+            .args(["format-patch", "-1", "--no-signature", "-o"])
+            .arg(dir.to_string_lossy().as_ref())
+            .arg(format!("--start-number={}", i + 1))
+            .arg(sha.as_str())
+            .current_dir(workdir)
+            .run()?;
+        written.extend(
+            out.stdout_string()?
+                .lines()
+                .filter(|l| !l.is_empty())
+                .map(std::path::PathBuf::from),
+        );
+    }
+    Ok(written)
+}
+
 /// Corvane addition (flag `443`): undo one file's changes from `sha` in the
 /// working tree - the file's diff against the first parent (the empty tree
 /// for a root commit), `-M` so a rename goes back to `old_path`, applied in
@@ -215,6 +274,54 @@ mod tests {
         checkout_commit(git.clone(), path, &second.sha).unwrap();
         let info = crate::open_repository(path).unwrap();
         assert!(matches!(info.tip, corvane_models::Tip::Detached { .. }));
+    }
+
+    #[test]
+    fn cherry_pick_without_committing_and_format_patch() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            GitCommand::new(git.clone())
+                .args(args)
+                .current_dir(path)
+                .env("GIT_AUTHOR_NAME", "T")
+                .env("GIT_AUTHOR_EMAIL", "t@example.com")
+                .env("GIT_COMMITTER_NAME", "T")
+                .env("GIT_COMMITTER_EMAIL", "t@example.com")
+                .run()
+                .unwrap();
+        };
+        run(&["checkout", "-q", "-b", "side", "HEAD~1"]);
+        std::fs::write(path.join("b.txt"), "b\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "side b"]);
+        std::fs::write(path.join("c.txt"), "c\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "side c"]);
+        let side = crate::get_commits(path, "HEAD", 0, 10).unwrap();
+        let picks = vec![side[1].sha.clone(), side[0].sha.clone()];
+        let out = tempfile::tempdir().unwrap();
+        let files = format_patches(git.clone(), path, &picks, out.path()).unwrap();
+        assert_eq!(files.len(), 2);
+        assert!(files[0].to_string_lossy().contains("0001-side-b"));
+        assert!(files[1].to_string_lossy().contains("0002-side-c"));
+        run(&["checkout", "-q", "main"]);
+        cherry_pick_no_commit(git.clone(), path, &picks, false).unwrap();
+        assert!(path.join("b.txt").exists() && path.join("c.txt").exists());
+        assert_eq!(crate::get_commits(path, "HEAD", 0, 10).unwrap().len(), 2);
+        // a conflicting pick leaves nothing behind
+        run(&["reset", "-q", "--hard"]);
+        run(&["checkout", "-q", "side"]);
+        std::fs::write(path.join("a.txt"), "side\n").unwrap();
+        run(&["commit", "-q", "-am", "side a"]);
+        let sha = crate::head_sha(git.clone(), path).unwrap();
+        run(&["checkout", "-q", "main"]);
+        assert!(cherry_pick_no_commit(git.clone(), path, &[sha], false).is_err());
+        assert_eq!(
+            std::fs::read_to_string(path.join("a.txt")).unwrap(),
+            "two\n"
+        );
+        assert!(!crate::cherry_pick_head_found(path));
     }
 
     #[test]
