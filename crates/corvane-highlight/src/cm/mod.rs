@@ -658,9 +658,16 @@ pub type LineTokens = Vec<(usize, usize, String)>;
 
 /// GHD's highlighter worker loop over a whole document.
 pub fn run(mode: &dyn Mode, lines: &[&str], tab_size: usize) -> Vec<LineTokens> {
+    run_until(mode, lines, tab_size, lines.len())
+}
+
+/// [`run`] over the first `stop` lines only. Modes are line-stateful from the
+/// top and only look ahead (`lookAhead`) into `lines`, so these tokens are
+/// exactly the first `stop` lines of a whole run.
+pub fn run_until(mode: &dyn Mode, lines: &[&str], tab_size: usize, stop: usize) -> Vec<LineTokens> {
     let mut state = mode.start_state();
-    let mut out = Vec::with_capacity(lines.len());
-    for (ix, line) in lines.iter().enumerate() {
+    let mut out = Vec::with_capacity(stop.min(lines.len()));
+    for (ix, line) in lines.iter().enumerate().take(stop) {
         let mut tokens = LineTokens::new();
         if line.is_empty() {
             mode.blank_line(&mut *state);
@@ -752,12 +759,22 @@ pub fn resolve(style: &str) -> Option<TokenClass> {
 /// Run `mode` over `lines` and resolve every token to its colour class, as
 /// byte-range spans per line (adjacent spans of one class merged).
 pub fn highlight(mode: &dyn Mode, lines: &[&str], budget: usize) -> Vec<Vec<Span>> {
+    highlight_until(mode, lines, budget, lines.len())
+}
+
+/// [`highlight`] for the first `stop` lines (see [`run_until`]).
+pub fn highlight_until(
+    mode: &dyn Mode,
+    lines: &[&str],
+    budget: usize,
+    stop: usize,
+) -> Vec<Vec<Span>> {
     // GHD's MaxHighlightContentLength: no highlighting past the budget
     let total: usize = lines.iter().map(|l| l.len()).sum();
     if total > budget {
-        return vec![Vec::new(); lines.len()];
+        return vec![Vec::new(); stop.min(lines.len())];
     }
-    let tokens = run(mode, lines, 4);
+    let tokens = run_until(mode, lines, 4, stop);
     tokens
         .into_iter()
         .zip(lines)
