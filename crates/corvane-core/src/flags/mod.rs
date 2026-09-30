@@ -403,8 +403,8 @@ pub struct FlagDef {
     pub ghd: Value,
     /// GHD look with the invisible improvements: the Familiar preset.
     pub familiar: Value,
-    /// Every extra on: the Everything preset.
-    pub everything: Value,
+    /// Every broadly useful extra on: the Max preset.
+    pub max: Value,
     /// Only takes effect at the next launch (the dialog offers Relaunch).
     pub restart: bool,
     /// Changes something the user sees (as opposed to timing or wording in
@@ -455,7 +455,7 @@ impl FlagDef {
             Preset::GitHubDesktop => &self.ghd,
             Preset::Familiar => &self.familiar,
             Preset::Corvane => &self.corvane,
-            Preset::Everything => &self.everything,
+            Preset::Max => &self.max,
         }
     }
 
@@ -724,9 +724,9 @@ mod tests {
         assert_eq!(flags.preset(), Preset::GitHubDesktop);
         assert!(!flags.preset_from_env());
 
-        env.preset = Some(Preset::Everything);
+        env.preset = Some(Preset::Max);
         let flags = Flags::resolve(&stored, &env);
-        assert_eq!(flags.preset(), Preset::Everything);
+        assert_eq!(flags.preset(), Preset::Max);
         assert!(flags.preset_from_env());
     }
 

@@ -51,6 +51,13 @@ impl KeymapFlags {
     }
 }
 
+/// Context of the shortcuts for menu items GitHub Desktop disables while a
+/// popup is open (`menu-update.ts` `getMenuState`). `Workspace` adds
+/// `Popup` to its key context while one is; the key then goes to the dialog
+/// (a text field's ⌘⌫, ⌃H…) instead of acting on the window behind it. The
+/// handlers check too, for the menu bar's own key equivalents and clicks.
+const MENU: Option<&str> = Some("!Popup");
+
 /// The bindings other crates (gpui-kit's components) installed before ours,
 /// kept so [`sync`] can rebuild the whole keymap.
 struct InstalledKeymap {
@@ -156,60 +163,60 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("down", SelectNextFile, Some("WorktreeFilter")),
         KeyBinding::new("up", SelectPreviousFile, Some("WorktreeFilter")),
         KeyBinding::new("enter", FilterListPick, Some("WorktreeFilter")),
-        KeyBinding::new("cmd-,", OpenSettings, None),
+        KeyBinding::new("cmd-,", OpenSettings, MENU),
         // ⌘⇧, - macOS delivers the shifted character, so the chord is `cmd-<`
-        KeyBinding::new("cmd-<", OpenFlags, None),
+        KeyBinding::new("cmd-<", OpenFlags, MENU),
         KeyBinding::new("cmd-h", Hide, None),
         KeyBinding::new("alt-cmd-h", HideOthers, None),
         KeyBinding::new("cmd-q", Quit, None),
         // File
-        KeyBinding::new("cmd-n", NewRepository, None),
-        KeyBinding::new("cmd-o", AddLocalRepository, None),
-        KeyBinding::new("shift-cmd-o", CloneRepository, None),
+        KeyBinding::new("cmd-n", NewRepository, MENU),
+        KeyBinding::new("cmd-o", AddLocalRepository, MENU),
+        KeyBinding::new("shift-cmd-o", CloneRepository, MENU),
         // Edit
         KeyBinding::new("cmd-f", Find, None),
         // View
-        KeyBinding::new("cmd-1", ShowChanges, None),
-        KeyBinding::new("cmd-2", ShowHistory, None),
-        KeyBinding::new("cmd-t", ShowRepositoryList, None),
-        KeyBinding::new("cmd-b", ShowBranchesList, None),
-        KeyBinding::new("alt-cmd-w", ShowWorktreesList, None),
-        KeyBinding::new("cmd-g", GoToSummary, None),
-        KeyBinding::new("ctrl-h", ToggleStashedChanges, None),
-        KeyBinding::new("cmd-l", ToggleChangesFilter, None),
+        KeyBinding::new("cmd-1", ShowChanges, MENU),
+        KeyBinding::new("cmd-2", ShowHistory, MENU),
+        KeyBinding::new("cmd-t", ShowRepositoryList, MENU),
+        KeyBinding::new("cmd-b", ShowBranchesList, MENU),
+        KeyBinding::new("alt-cmd-w", ShowWorktreesList, MENU),
+        KeyBinding::new("cmd-g", GoToSummary, MENU),
+        KeyBinding::new("ctrl-h", ToggleStashedChanges, MENU),
+        KeyBinding::new("cmd-l", ToggleChangesFilter, MENU),
         KeyBinding::new("ctrl-cmd-f", ToggleFullScreen, None),
         KeyBinding::new("cmd-0", ResetZoom, None),
         KeyBinding::new("cmd-=", ZoomIn, None),
         KeyBinding::new("cmd--", ZoomOut, None),
         KeyBinding::new("cmd-9", ExpandActiveResizable, None),
         KeyBinding::new("cmd-8", ContractActiveResizable, None),
-        KeyBinding::new("ctrl-tab", ToggleSection, None),
+        KeyBinding::new("ctrl-tab", ToggleSection, MENU),
         // Repository
-        KeyBinding::new("shift-cmd-p", Pull, None),
-        KeyBinding::new("shift-cmd-t", Fetch, None),
-        KeyBinding::new("cmd-backspace", RemoveRepository, None),
-        KeyBinding::new("shift-cmd-g", ViewOnGitHub, None),
-        KeyBinding::new("ctrl-`", OpenInShell, None),
-        KeyBinding::new("shift-cmd-f", ShowInFinder, None),
-        KeyBinding::new("shift-cmd-a", OpenInEditor, None),
-        KeyBinding::new("shift-alt-cmd-a", OpenWith, None),
-        KeyBinding::new("cmd-i", CreateIssue, None),
+        KeyBinding::new("shift-cmd-p", Pull, MENU),
+        KeyBinding::new("shift-cmd-t", Fetch, MENU),
+        KeyBinding::new("cmd-backspace", RemoveRepository, MENU),
+        KeyBinding::new("shift-cmd-g", ViewOnGitHub, MENU),
+        KeyBinding::new("ctrl-`", OpenInShell, MENU),
+        KeyBinding::new("shift-cmd-f", ShowInFinder, MENU),
+        KeyBinding::new("shift-cmd-a", OpenInEditor, MENU),
+        KeyBinding::new("shift-alt-cmd-a", OpenWith, MENU),
+        KeyBinding::new("cmd-i", CreateIssue, MENU),
         // Branch
-        KeyBinding::new("shift-cmd-n", NewBranch, None),
-        KeyBinding::new("shift-cmd-w", NewWorktree, None),
-        KeyBinding::new("shift-cmd-r", RenameBranch, None),
-        KeyBinding::new("shift-cmd-d", DeleteBranch, None),
-        KeyBinding::new("shift-cmd-backspace", DiscardAllChanges, None),
-        KeyBinding::new("shift-cmd-s", StashAllChanges, None),
-        KeyBinding::new("shift-cmd-u", UpdateFromDefaultBranch, None),
-        KeyBinding::new("shift-cmd-b", CompareToBranch, None),
-        KeyBinding::new("shift-cmd-m", MergeIntoCurrentBranch, None),
-        KeyBinding::new("shift-cmd-h", SquashAndMergeIntoCurrentBranch, None),
-        KeyBinding::new("shift-cmd-e", RebaseCurrentBranch, None),
-        KeyBinding::new("shift-cmd-c", CompareOnGitHub, None),
-        KeyBinding::new("alt-cmd-b", ViewBranchOnGitHub, None),
-        KeyBinding::new("alt-cmd-p", PreviewPullRequest, None),
-        KeyBinding::new("cmd-r", CreatePullRequest, None),
+        KeyBinding::new("shift-cmd-n", NewBranch, MENU),
+        KeyBinding::new("shift-cmd-w", NewWorktree, MENU),
+        KeyBinding::new("shift-cmd-r", RenameBranch, MENU),
+        KeyBinding::new("shift-cmd-d", DeleteBranch, MENU),
+        KeyBinding::new("shift-cmd-backspace", DiscardAllChanges, MENU),
+        KeyBinding::new("shift-cmd-s", StashAllChanges, MENU),
+        KeyBinding::new("shift-cmd-u", UpdateFromDefaultBranch, MENU),
+        KeyBinding::new("shift-cmd-b", CompareToBranch, MENU),
+        KeyBinding::new("shift-cmd-m", MergeIntoCurrentBranch, MENU),
+        KeyBinding::new("shift-cmd-h", SquashAndMergeIntoCurrentBranch, MENU),
+        KeyBinding::new("shift-cmd-e", RebaseCurrentBranch, MENU),
+        KeyBinding::new("shift-cmd-c", CompareOnGitHub, MENU),
+        KeyBinding::new("alt-cmd-b", ViewBranchOnGitHub, MENU),
+        KeyBinding::new("alt-cmd-p", PreviewPullRequest, MENU),
+        KeyBinding::new("cmd-r", CreatePullRequest, MENU),
         // Window
         KeyBinding::new("cmd-m", Minimize, None),
         KeyBinding::new("cmd-w", CloseWindow, None),
@@ -227,10 +234,10 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         ));
     }
     if !flags.no_push_shortcut {
-        bindings.push(KeyBinding::new("cmd-p", Push, None));
+        bindings.push(KeyBinding::new("cmd-p", Push, MENU));
     }
     if flags.open_in_shell_alt_shortcut {
-        bindings.push(KeyBinding::new("alt-cmd-t", OpenInShell, None));
+        bindings.push(KeyBinding::new("alt-cmd-t", OpenInShell, MENU));
     }
     if flags.emacs_list_keys {
         for context in ["ChangesList", "HistoryList"] {
@@ -241,7 +248,7 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         }
     }
     if flags.diff_mode_shortcut {
-        bindings.push(KeyBinding::new("alt-cmd-s", ToggleDiffDisplayMode, None));
+        bindings.push(KeyBinding::new("alt-cmd-s", ToggleDiffDisplayMode, MENU));
     }
     if flags.copy_path_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {
@@ -257,17 +264,17 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     }
     if flags.navigation_shortcuts {
         bindings.extend([
-            KeyBinding::new("ctrl-cmd-p", ShowPullRequestsList, None),
+            KeyBinding::new("ctrl-cmd-p", ShowPullRequestsList, MENU),
             // ⇧⌘] / ⇧⌘[: macOS delivers the shifted character
-            KeyBinding::new("cmd-}", NextRepository, None),
-            KeyBinding::new("cmd-{", PreviousRepository, None),
-            KeyBinding::new("cmd-3", FocusDiff, None),
+            KeyBinding::new("cmd-}", NextRepository, MENU),
+            KeyBinding::new("cmd-{", PreviousRepository, MENU),
+            KeyBinding::new("cmd-3", FocusDiff, MENU),
             KeyBinding::new("alt-down", SelectNextFileFromDiff, Some("Diff")),
             KeyBinding::new("alt-up", SelectPreviousFileFromDiff, Some("Diff")),
         ]);
     }
     if flags.history_review_mode {
-        bindings.push(KeyBinding::new("ctrl-cmd-s", ToggleHistoryReviewMode, None));
+        bindings.push(KeyBinding::new("ctrl-cmd-s", ToggleHistoryReviewMode, MENU));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

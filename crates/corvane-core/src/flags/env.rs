@@ -6,7 +6,7 @@
 //! Grammar (entries separated by commas, whitespace around them ignored):
 //!
 //! ```text
-//! preset=github-desktop|familiar|corvane|everything
+//! preset=github-desktop|familiar|corvane|max
 //! 201-commit-templates=off      key = `NNN-slug`, `slug` or `NNN`
 //! fs-watcher                    a bare toggle key means `on`
 //! 203=250                       numbers, `select` option values and text as is

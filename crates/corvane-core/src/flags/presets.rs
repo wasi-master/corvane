@@ -18,8 +18,10 @@ pub enum Preset {
     /// Today's Corvane: every built deviation on.
     #[default]
     Corvane,
-    /// Everything on, including extras that are off by default.
-    Everything,
+    /// Corvane plus every broadly useful extra. Extras that suit only some
+    /// tastes or workflows stay at the Corvane preset's value.
+    #[serde(alias = "everything")]
+    Max,
 }
 
 impl Preset {
@@ -27,7 +29,7 @@ impl Preset {
         Preset::GitHubDesktop,
         Preset::Familiar,
         Preset::Corvane,
-        Preset::Everything,
+        Preset::Max,
     ];
 
     /// The `CORVANE_FLAGS` / JSON spelling.
@@ -36,12 +38,16 @@ impl Preset {
             Preset::GitHubDesktop => "github-desktop",
             Preset::Familiar => "familiar",
             Preset::Corvane => "corvane",
-            Preset::Everything => "everything",
+            Preset::Max => "max",
         }
     }
 
     pub fn parse(s: &str) -> Option<Preset> {
         let s = s.trim().to_ascii_lowercase();
+        // "everything": the Max preset's name before 2026-10-01
+        if s == "everything" {
+            return Some(Preset::Max);
+        }
         Preset::ALL.into_iter().find(|p| p.slug() == s)
     }
 
@@ -50,7 +56,7 @@ impl Preset {
             Preset::GitHubDesktop => "GitHub Desktop",
             Preset::Familiar => "Familiar",
             Preset::Corvane => "Corvane",
-            Preset::Everything => "Everything",
+            Preset::Max => "Max",
         }
     }
 
@@ -60,7 +66,7 @@ impl Preset {
             Preset::GitHubDesktop => "Behaves exactly like GitHub Desktop 3.6.6.",
             Preset::Familiar => "Looks like GitHub Desktop, keeps the improvements you can't see.",
             Preset::Corvane => "Corvane as shipped: every built deviation on.",
-            Preset::Everything => "Every extra on, including the experimental ones.",
+            Preset::Max => "Corvane plus every extra most people would want.",
         }
     }
 
@@ -83,10 +89,12 @@ impl Preset {
                  fixes included. Extras that change GitHub Desktop's look or workflow more \
                  strongly, or that few people want, stay off until you switch them on."
             }
-            Preset::Everything => {
-                "Every flag on, including the extras the Corvane preset leaves off and the \
-                 experimental ones. Good for trying out everything Corvane can do; expect parts \
-                 of it to feel unlike GitHub Desktop."
+            Preset::Max => {
+                "Corvane plus the extras it leaves off that most people would want: more \
+                 buttons, menu items, shortcuts and background work. Extras that are a matter \
+                 of taste or suit only some workflows (colour-blind diff colours, compact \
+                 History rows, a different list order, extra confirmations, skipping the \
+                 Trash…) stay as in the Corvane preset; switch those on one by one."
             }
         }
     }
@@ -112,6 +120,11 @@ mod tests {
         assert_eq!(
             Preset::parse(" GitHub-Desktop "),
             Some(Preset::GitHubDesktop)
+        );
+        assert_eq!(Preset::parse("everything"), Some(Preset::Max));
+        assert_eq!(
+            serde_json::from_str::<Preset>("\"everything\"").unwrap(),
+            Preset::Max
         );
         assert_eq!(Preset::parse("custom"), None);
     }

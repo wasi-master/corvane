@@ -118,7 +118,7 @@ pub fn render_markdown() -> String {
         let _ = writeln!(out);
         let _ = writeln!(
             out,
-            "| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |"
+            "| Flag | Kind | Corvane | GitHub Desktop | Familiar | Max | Restart | Upstream | Code |"
         );
         let _ = writeln!(out, "|---|---|---|---|---|---|---|---|---|");
         for def in defs {
@@ -162,7 +162,7 @@ pub fn render_markdown() -> String {
                 value_cell(def, &def.corvane),
                 value_cell(def, &def.ghd),
                 value_cell(def, &def.familiar),
-                value_cell(def, &def.everything),
+                value_cell(def, &def.max),
                 if def.restart { "yes" } else { "" },
                 upstream,
                 def.code
