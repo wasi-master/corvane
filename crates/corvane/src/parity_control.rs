@@ -541,6 +541,8 @@ fn state_summary(cx: &mut App) -> Value {
         "selected_commit": rs.selected_commit,
         "commits": rs.commits.iter().take(200).map(|c| c.sha.clone()).collect::<Vec<_>>(),
         "files": rs.status.as_ref().map(|s| s.files.len()),
+        // the "Committed … Undo" bar moves the commit form up
+        "undo_bar": rs.last_commit.is_some(),
     })
 }
 
