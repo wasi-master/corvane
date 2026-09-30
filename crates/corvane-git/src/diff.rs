@@ -1,6 +1,10 @@
 //! Working-directory diffs (GHD `lib/git/diff.ts` + `lib/diff-parser.ts`):
 //! text, image, submodule and large-diff detection, plus the blob / file
 //! readers that back hunk expansion (`fileContents.newContents`).
+//!
+//! Deviations: a renamed file can diff against `HEAD:<old path>`
+//! (`174-renamed-diff-against-head`); a mode-only change carries the modes
+//! (`173-file-mode-change-message`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -26,19 +30,32 @@ pub const MAX_DIFF_LINES: usize = 50_000;
 /// `git diff` for one working-directory file, compared against HEAD (or an
 /// empty file for new/untracked files), exactly like GHD. `hide_whitespace`
 /// adds `-w` (Diff Settings › Hide Whitespace Changes).
+///
+/// A renamed file is diffed index-to-working-tree like GHD, which hides
+/// staged edits; `renamed_against_head` (Corvane `174-renamed-diff-against-head`)
+/// diffs `HEAD:<old path>` to the working copy instead (`HEAD -M -- old new`),
+/// the change the commit will record, falling back to GHD's diff when git
+/// does not pair the two paths as one rename.
 pub fn working_directory_diff(
     git: Arc<GitBinary>,
     workdir: &Path,
     file: &WorkingDirectoryFileChange,
     hide_whitespace: bool,
+    renamed_against_head: bool,
 ) -> Result<Diff> {
     let mut args = vec!["diff"];
     if hide_whitespace {
         args.push("-w");
     }
     args.extend(["--no-ext-diff", "--patch-with-raw", "-z", "--no-color"]);
-    let mut cmd = GitCommand::new(git.clone()).args(args).current_dir(workdir);
+    let base = || {
+        GitCommand::new(git.clone())
+            .args(&args)
+            .current_dir(workdir)
+    };
+    let mut cmd = base();
     let is_submodule = file.status.submodule;
+    let mut rename_out = None;
     if !is_submodule && file.status.kind.is_new_or_untracked() {
         // `--no-index` exits 1 when files differ, which is the normal case.
         cmd = cmd
@@ -46,11 +63,29 @@ pub fn working_directory_diff(
             .arg(&file.path)
             .allow_exit_code(1);
     } else if file.status.kind == FileStatusKind::Renamed {
+        if renamed_against_head && let Some(old_path) = &file.old_path {
+            let out = base()
+                .args(["-M", "HEAD", "--"])
+                .arg(old_path)
+                .arg(&file.path)
+                .run()?;
+            // one patch: git paired the paths (a delete plus an add otherwise)
+            if String::from_utf8_lossy(&out.stdout)
+                .matches("diff --git ")
+                .count()
+                == 1
+            {
+                rename_out = Some(out);
+            }
+        }
         cmd = cmd.args(["--"]).arg(&file.path);
     } else {
         cmd = cmd.args(["HEAD", "--"]).arg(&file.path);
     }
-    let out = cmd.run()?;
+    let out = match rename_out {
+        Some(out) => out,
+        None => cmd.run()?,
+    };
     if is_submodule {
         return Ok(submodule_diff(
             git,
@@ -547,7 +582,7 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         for file in &status.files {
-            let diff = working_directory_diff(git.clone(), path, file, false).unwrap();
+            let diff = working_directory_diff(git.clone(), path, file, false, false).unwrap();
             let Diff::Text { hunks, .. } = diff else {
                 panic!("text diff for {}", file.path)
             };
