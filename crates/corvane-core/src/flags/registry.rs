@@ -428,6 +428,19 @@ registry! {
         upstream: &[Upstream::issue(21147)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
     },
+    /// "Copy" button on error dialogs.
+    ERROR_DIALOG_COPY = 281 "error-dialog-copy" {
+        title: "Copy button on error dialogs",
+        summary: "Error dialogs (a failed commit, push, checkout…) have a \"Copy\" button that puts \
+                  the title and message on the clipboard; the text itself cannot be selected.",
+        ghd_behaviour: "No way to copy the message (⌘C does nothing).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19198), Upstream::issue(22591), Upstream::issue(22913)],
+        code: &["crates/corvane-ui/src/dialogs/simple.rs"],
+    },
 
     // ---- 300 GitHub ----
 

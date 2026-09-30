@@ -55,6 +55,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The changes list's "Ignore All .x Files (Add to .gitignore)" items add the number of changed files with that extension ("Ignore All .png Files (170 Changed) (Add to .gitignore)"); GHD 3.6.6 gives no count. Flag: `278-ignore-menu-counts`.
 - "Copy Diff" (Corvane addition) in the changes list's file context menu ("Copy Diff of Selected Files" for a multi-selection) copies the files' working-directory changes against HEAD as one `--binary` patch, untracked files diffed against `/dev/null` (`corvane_git::working_directory_patch`). The whole file is copied, whatever lines are selected for the commit. GHD 3.6.6 has no such item. Flag: `279-copy-diff`.
 - The changes list's Filter Options popover has a sixth option, "Renamed files" (Corvane addition; GHD 3.6.6 has five). Flag: `280-renamed-files-filter`.
+- Error dialogs have a "Copy" button (Corvane addition) putting the title and message on the clipboard, since the dialog text cannot be selected; GHD 3.6.6 offers no way to copy it. Flag: `281-error-dialog-copy`.
 
 ## Diff viewer
 
