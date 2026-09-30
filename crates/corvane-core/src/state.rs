@@ -37,6 +37,13 @@ pub enum Popup {
         title: String,
         message: String,
     },
+    /// `512-remove-stale-index-lock`: an error caused by a left-over
+    /// `index.lock`, with a button to remove it.
+    IndexLockExists {
+        title: String,
+        message: String,
+        lock: PathBuf,
+    },
     AddExistingRepository {
         path: Option<PathBuf>,
     },
@@ -539,6 +546,8 @@ pub struct RepositorySettingsData {
     pub global: Identity,
     /// `core.autocrlf` (line endings written to `.gitignore`).
     pub autocrlf: bool,
+    /// `--local` `core.autocrlf` (`421-line-endings-setting`).
+    pub local_autocrlf: Option<String>,
 }
 
 /// GHD `RetryAction` (the subset behind `LocalChangesOverwritten`).
@@ -680,6 +689,9 @@ pub struct RepositoryState {
     pub section: Section,
     /// `git status` result (`IChangesState.workingDirectory`).
     pub status: Option<WorkingDirectoryStatus>,
+    /// Lines added / deleted per changed file against HEAD (Corvane
+    /// addition, flag `changes-line-counts`; empty while the flag is off).
+    pub line_stats: Arc<HashMap<String, corvane_git::LineStats>>,
     /// Path of the file whose diff is shown (`selectedFileIDs[0]`).
     pub selected_file: Option<String>,
     /// Every selected path (`selectedFileIDs`), click order; ⌘/⇧-click extend it.
@@ -712,6 +724,8 @@ pub struct RepositoryState {
     pub show_co_authored_by: bool,
     pub co_authors: Vec<corvane_models::Author>,
     pub committing: bool,
+    /// Discard Changes is running (`416-changes-busy-indicator`).
+    pub discarding: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,
     /// Filter Options popover state (`IFileListFilterState` minus the text).
@@ -757,10 +771,17 @@ pub struct RepositoryState {
     pub default_branch: Option<String>,
     /// Branch a checkout is switching to (`checkoutProgress.target`).
     pub checkout_target: Option<String>,
-    /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`).
+    /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`);
+    /// with `417-show-latest-other-stash`, else the newest stash no Desktop made.
     pub stash: Option<corvane_models::StashEntry>,
+    /// Local branches' upstream state by name, read while
+    /// `513-branch-upstream-gone` or `514-branch-list-ahead-behind` is on.
+    pub branch_tracking: Arc<std::collections::HashMap<String, corvane_git::BranchTracking>>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
+    /// Branches with a GitHub Desktop / Corvane stash (the branch list's
+    /// stash icon, `418-branch-list-stash-icon`).
+    pub stashed_branches: Vec<String>,
     /// Merge dialog preview.
     pub merge_preview: Option<crate::mco::MergePreview>,
     /// Delete Branch dialog warnings (`258-delete-branch-warnings`).
@@ -910,6 +931,13 @@ impl RepositoryState {
 
     pub fn changed_files(&self) -> usize {
         self.status.as_ref().map(|s| s.files.len()).unwrap_or(0)
+    }
+
+    /// [`Self::stash`] when a Desktop made it for this branch: the entry a new
+    /// stash replaces (a `git stash` shown by `417-show-latest-other-stash`
+    /// is never dropped to make room).
+    pub fn desktop_stash(&self) -> Option<&corvane_models::StashEntry> {
+        self.stash.as_ref().filter(|s| s.branch.is_some())
     }
 }
 

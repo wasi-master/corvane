@@ -42,6 +42,6 @@ New Corvane-only extras land behind a flag that is off in the Corvane preset and
 
 ## Accessibility
 
-- [ ] Keyboard navigation leftovers (audit 2026-09-29, `deviations.md` › Keyboard): arrow / Enter navigation from the filter box into the repository, branch, pull request and worktree lists (GHD `FilterList`), PageUp / PageDown in lists, Enter submitting a dialog's default button when no text box has focus, Shift+F10 opening the selected row's context menu, Tab traversal through toolbar buttons and list rows
+- [ ] Keyboard navigation leftovers (audit 2026-09-29, `deviations.md` › Keyboard): arrow / Enter navigation from the filter box into the branch, pull request and worktree lists (GHD `FilterList`; the repository list has it), PageUp / PageDown in lists, Enter submitting a dialog's default button when no text box has focus, Shift+F10 opening the selected row's context menu, Tab traversal through toolbar buttons and list rows
 - [ ] Full VoiceOver walkthrough (list containers own their rows, banners and the Expand/Contract Active Resizable announcement are live regions, icon-only buttons and dialogs are labelled)
 - [ ] Windows Narrator support once Windows lands (GPUI AccessKit gap on Windows)

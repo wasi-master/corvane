@@ -250,6 +250,18 @@ pub fn users_matching(
         .collect()
 }
 
+/// `422-free-form-co-authors`: `Name <email>` typed in the co-authors box,
+/// for a co-author without a GitHub account.
+pub fn parse_co_author_address(text: &str) -> Option<(String, String)> {
+    let (name, email) = text.trim().strip_suffix('>')?.rsplit_once('<')?;
+    let (name, email) = (name.trim(), email.trim());
+    let valid_email = email
+        .split_once('@')
+        .is_some_and(|(user, host)| !user.is_empty() && !host.is_empty())
+        && !email.contains(char::is_whitespace);
+    (!name.is_empty() && valid_email).then(|| (name.to_string(), email.to_string()))
+}
+
 /// Cache key: one entry per GitHub repository.
 pub fn cache_key(github: &GitHubRepository) -> String {
     github.html_url.clone()
@@ -604,6 +616,18 @@ pub type MentionableCaches = HashMap<String, MentionableCache>;
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn parses_co_author_address() {
+        assert_eq!(
+            parse_co_author_address(" Jane Q. Doe <jane@example.com> "),
+            Some(("Jane Q. Doe".to_string(), "jane@example.com".to_string()))
+        );
+        assert_eq!(parse_co_author_address("<jane@example.com>"), None);
+        assert_eq!(parse_co_author_address("Jane <jane>"), None);
+        assert_eq!(parse_co_author_address("Jane <ja ne@example.com>"), None);
+        assert_eq!(parse_co_author_address("Jane jane@example.com"), None);
+    }
     use super::*;
 
     #[test]

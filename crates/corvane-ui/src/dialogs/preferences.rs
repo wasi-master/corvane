@@ -702,16 +702,19 @@ impl PreferencesDialog {
         let tabs = tab_bar(
             vec![
                 TabModel {
+                    dot: false,
                     id: "prefs-git-author",
                     label: "Author".into(),
                     count: None,
                 },
                 TabModel {
+                    dot: false,
                     id: "prefs-git-default-branch",
                     label: "Default branch".into(),
                     count: None,
                 },
                 TabModel {
+                    dot: false,
                     id: "prefs-git-hooks",
                     label: "Hooks".into(),
                     count: None,

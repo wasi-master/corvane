@@ -91,6 +91,20 @@ pub fn path_match(mode: &str, query: &str, path: &str) -> Option<(f32, Vec<usize
     }
 }
 
+/// Corvane (`116-regex-repository-filter`): a filter text written as
+/// `/pattern/` is a case-insensitive regular expression; `None` for any
+/// other text or an invalid pattern (the caller falls back to plain text).
+pub fn regex_query(text: &str) -> Option<regex::Regex> {
+    let pattern = text.strip_prefix('/')?.strip_suffix('/')?;
+    if pattern.is_empty() {
+        return None;
+    }
+    regex::RegexBuilder::new(pattern)
+        .case_insensitive(true)
+        .build()
+        .ok()
+}
+
 /// GHD `BranchAutocompletionProvider.getAutocompletionItems`: every branch
 /// for an empty query, else the fuzzy matches best first (`match` sorts by
 /// descending score; ties keep the input order). Returns names with the
@@ -286,6 +300,16 @@ pub fn no_results_message(text: &str, filter: &FileListFilter) -> Option<String>
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn regex_query_needs_slashes_and_a_valid_pattern() {
+        let re = super::regex_query("/^desk.*p$/").unwrap();
+        assert!(re.is_match("Desktop"));
+        assert!(!re.is_match("my-desktop-fork"));
+        assert!(super::regex_query("desktop").is_none());
+        assert!(super::regex_query("//").is_none());
+        assert!(super::regex_query("/(/").is_none());
+    }
+
     use super::*;
 
     #[test]

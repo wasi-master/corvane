@@ -128,6 +128,9 @@ fn main() {
             service_urls.send(corvane_core::app_url::open_local_repo_url(&path));
         });
         Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
+        // flag-dependent key bindings, before the menu bar reads its shortcuts
+        let keymap_flags = corvane_ui::keymap::KeymapFlags::from_flags(&state.read(cx).flags);
+        corvane_ui::keymap::sync(keymap_flags, cx);
         {
             let options = menus::MenuOptions::of(state.read(cx));
             menus::install(cx, &options);
@@ -156,7 +159,7 @@ fn main() {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, welcome_done, menu_key, high_contrast, variants) = {
+            let (theme, welcome_done, menu_key, high_contrast, variants, keymap_flags) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
                 corvane_ui::relative_time::set_calendar_dates(
@@ -169,9 +172,12 @@ fn main() {
                     menus::MenuOptions::of(s),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
                     corvane_ui::theme::ThemeVariants::of(&s.flags),
+                    corvane_ui::keymap::KeymapFlags::from_flags(&s.flags),
                 )
             };
-            if menu_key != last_menu_key {
+            // a rebuilt keymap changes the menus' shortcuts
+            let keymap_changed = corvane_ui::keymap::sync(keymap_flags, cx);
+            if menu_key != last_menu_key || keymap_changed {
                 last_menu_key = menu_key;
                 menus::install(cx, &last_menu_key);
             }
@@ -370,6 +376,14 @@ fn main() {
             }
         });
         cx.on_action(|_: &OpenFlags, cx| Dispatcher::open_flags(None, cx));
+        // Corvane (`612-diff-mode-shortcut`): Diff Settings › Unified / Split
+        cx.on_action(|_: &ToggleDiffDisplayMode, cx| {
+            let split = corvane_core::AppState::global(cx)
+                .read(cx)
+                .settings
+                .show_side_by_side_diff;
+            Dispatcher::set_show_side_by_side_diff(!split, cx);
+        });
         cx.on_action(|_: &OpenSettings, cx| {
             Dispatcher::open_preferences(corvane_core::PreferencesTab::Accounts, cx)
         });
@@ -592,11 +606,11 @@ fn main() {
         // View / Window actions are global so the menu items stay enabled whatever has focus.
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowChanges, cx| {
-            ws.update(cx, |w, cx| w.set_section(Section::Changes, cx))
+            ws.update(cx, |w, cx| w.switch_section(Section::Changes, cx))
         });
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowHistory, cx| {
-            ws.update(cx, |w, cx| w.set_section(Section::History, cx))
+            ws.update(cx, |w, cx| w.switch_section(Section::History, cx))
         });
         let ws = workspace.clone();
         cx.on_action(move |_: &ToggleSection, cx| {
@@ -605,7 +619,7 @@ fn main() {
                     Section::Changes => Section::History,
                     Section::History => Section::Changes,
                 };
-                w.set_section(next, cx)
+                w.switch_section(next, cx)
             })
         });
         let ws = workspace.clone();
@@ -641,6 +655,57 @@ fn main() {
                     .ok();
             }
         });
+        // Corvane (`109-history-review-mode`)
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ToggleHistoryReviewMode, cx| {
+            ws.update(cx, |w, cx| w.toggle_review_mode(cx))
+        });
+        // Corvane (`614-navigation-shortcuts`)
+        let ws = workspace.clone();
+        cx.on_action(move |_: &ShowPullRequestsList, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.show_pull_requests_list(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &FocusDiff, cx| {
+            if let Some(window) = cx.active_window() {
+                let ws = ws.clone();
+                window
+                    .update(cx, move |_, window, cx| {
+                        ws.update(cx, |w, cx| w.focus_diff(window, cx))
+                    })
+                    .ok();
+            }
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &SelectNextFileFromDiff, cx| {
+            ws.update(cx, |w, cx| w.step_file(1, cx))
+        });
+        let ws = workspace.clone();
+        cx.on_action(move |_: &SelectPreviousFileFromDiff, cx| {
+            ws.update(cx, |w, cx| w.step_file(-1, cx))
+        });
+        let step_repository = |step: isize, cx: &mut App| {
+            let next = {
+                let s = corvane_core::AppState::global(cx).read(cx);
+                corvane_ui::repository_list::step_repository(
+                    &corvane_ui::repository_list::list_order(s),
+                    s.selected,
+                    step,
+                )
+            };
+            if let Some(id) = next {
+                Dispatcher::select_repository(id, cx);
+            }
+        };
+        cx.on_action(move |_: &NextRepository, cx| step_repository(1, cx));
+        cx.on_action(move |_: &PreviousRepository, cx| step_repository(-1, cx));
         let ws = workspace.clone();
         cx.on_action(move |_: &GoToSummary, cx| {
             if let Some(window) = cx.active_window() {

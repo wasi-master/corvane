@@ -30,6 +30,10 @@ use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
+use crate::actions::{
+    CopySelectedFilePaths, CopySelectedRelativeFilePaths, OpenSelectedFileInEditor,
+    OpenSelectedFileWithDefaultProgram,
+};
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -59,6 +63,8 @@ pub struct SelectedCommitView {
     /// Flag `245`: the ⌘/⇧-clicked files (file-list order) and the commit
     /// selection they belong to; stale once the commit selection changes.
     multi_files: Option<(Vec<String>, Vec<String>)>,
+    /// Corvane (`109-history-review-mode`): the file list is hidden.
+    file_list_hidden: bool,
 }
 
 /// How a click in the commit file list changes the selection.
@@ -93,7 +99,53 @@ impl SelectedCommitView {
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
             multi_files: None,
+            file_list_hidden: false,
         }
+    }
+
+    /// Corvane (`613-copy-path-shortcuts`): Copy File Path / Copy Relative
+    /// File Path for the selected commit file.
+    fn copy_selected_path(&self, absolute: bool, cx: &mut Context<Self>) {
+        let text = {
+            let s = self.state.read(cx);
+            let (Some(rs), Some(repo)) = (s.selected_state(), s.selected_repository()) else {
+                return;
+            };
+            let Some(path) = rs.commit_selected_file.as_ref() else {
+                return;
+            };
+            if absolute {
+                repo.path.join(path).to_string_lossy().into_owned()
+            } else {
+                path.clone()
+            }
+        };
+        cx.write_to_clipboard(ClipboardItem::new_string(text));
+    }
+
+    /// Corvane (`109-history-review-mode`): hide or show the file list.
+    pub fn set_file_list_hidden(&mut self, hidden: bool, cx: &mut Context<Self>) {
+        if self.file_list_hidden != hidden {
+            self.file_list_hidden = hidden;
+            cx.notify();
+        }
+    }
+
+    /// Corvane (`614-navigation-shortcuts`): focus the commit's diff.
+    pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.diff.update(cx, |diff, cx| diff.focus(window, cx));
+    }
+
+    /// Corvane (`608-open-file-shortcuts`): the selected commit file, when
+    /// it exists in the working directory (the context menu's condition).
+    fn selected_file_on_disk(&self, cx: &App) -> Option<std::path::PathBuf> {
+        let s = self.state.read(cx);
+        let rs = s.selected_state()?;
+        let full = s
+            .selected_repository()?
+            .path
+            .join(rs.commit_selected_file.as_ref()?);
+        full.exists().then_some(full)
     }
 
     /// The multi-selected files (flag `245`), empty when fewer than two.
@@ -1127,6 +1179,27 @@ impl Render for SelectedCommitView {
                 .child("No commit selected")
                 .into_any_element();
         };
+        let diff_pane = div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .min_h_0()
+            .when_some(selected_file, |d, (path, kind)| {
+                d.child(diff_header(&path, kind, &self.diff, cx))
+            })
+            .child(self.diff.clone());
+        // Corvane (`109-history-review-mode`): the diff alone, full width
+        if self.file_list_hidden {
+            return div()
+                .size_full()
+                .flex()
+                .flex_col()
+                .min_h_0()
+                .bg(t.background)
+                .children(self.summary(id, cx))
+                .child(diff_pane)
+                .into_any_element();
+        }
         div()
             .size_full()
             .flex()
@@ -1144,30 +1217,43 @@ impl Render for SelectedCommitView {
                         resizable_panel()
                             .size(self.file_list_width)
                             .size_range(FILE_LIST_MIN()..FILE_LIST_MAX())
-                            .child(crate::active_resizable::active_resizable(
-                                "commit-file-list-resizable",
-                                &self.resizable,
-                                Some(&self.file_list_focus),
-                                crate::active_resizable::ResizableDescription::new(
-                                    "Selected commit file list",
-                                    FILE_LIST_MIN()..FILE_LIST_MAX(),
-                                ),
-                                self.file_list(id, cx),
-                            )),
+                            .child(
+                                crate::active_resizable::active_resizable(
+                                    "commit-file-list-resizable",
+                                    &self.resizable,
+                                    Some(&self.file_list_focus),
+                                    crate::active_resizable::ResizableDescription::new(
+                                        "Selected commit file list",
+                                        FILE_LIST_MIN()..FILE_LIST_MAX(),
+                                    ),
+                                    self.file_list(id, cx),
+                                )
+                                .key_context("CommitFileList")
+                                .on_action(cx.listener(|this, _: &CopySelectedFilePaths, _, cx| {
+                                    this.copy_selected_path(true, cx)
+                                }))
+                                .on_action(cx.listener(
+                                    |this, _: &CopySelectedRelativeFilePaths, _, cx| {
+                                        this.copy_selected_path(false, cx)
+                                    },
+                                ))
+                                .on_action(cx.listener(
+                                    |this, _: &OpenSelectedFileInEditor, _, cx| {
+                                        if let Some(path) = this.selected_file_on_disk(cx) {
+                                            Dispatcher::open_in_editor(path, cx)
+                                        }
+                                    },
+                                ))
+                                .on_action(cx.listener(
+                                    |this, _: &OpenSelectedFileWithDefaultProgram, _, cx| {
+                                        if let Some(path) = this.selected_file_on_disk(cx) {
+                                            cx.open_with_system(&path)
+                                        }
+                                    },
+                                )),
+                            ),
                     )
-                    .child(
-                        resizable_panel().child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .flex_col()
-                                .min_h_0()
-                                .when_some(selected_file, |d, (path, kind)| {
-                                    d.child(diff_header(&path, kind, &self.diff, cx))
-                                })
-                                .child(self.diff.clone()),
-                        ),
-                    ),
+                    .child(resizable_panel().child(diff_pane)),
             )
             .into_any_element()
     }

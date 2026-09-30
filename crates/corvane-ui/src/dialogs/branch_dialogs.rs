@@ -844,7 +844,7 @@ impl Render for StashAndSwitchBranchDialog {
                     .and_then(|i| i.current_branch())
                     .map(|b| b.name.clone())
                     .unwrap_or_default(),
-                rs.is_some_and(|r| r.stash.is_some()),
+                rs.is_some_and(|r| r.desktop_stash().is_some()),
             )
         };
         let (repo, branch, action) = (self.repo, self.branch.clone(), self.action);

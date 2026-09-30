@@ -102,6 +102,18 @@ pub struct CloneRepositoryDialog {
     existing_repo: Option<PathBuf>,
 }
 
+thread_local! {
+    static PREFILL_FILTER: std::cell::RefCell<Option<String>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// Corvane (`113-clone-prefills-filter`): the next clone dialog opens with
+/// this text in its GitHub tabs' filter box (the repository list's filter,
+/// when Add › Clone Repository… is picked from it).
+pub fn prefill_filter(text: String) {
+    PREFILL_FILTER.with(|f| *f.borrow_mut() = Some(text));
+}
+
 impl CloneRepositoryDialog {
     pub fn new(
         state: Entity<AppState>,
@@ -127,8 +139,14 @@ impl CloneRepositoryDialog {
                 .placeholder("repository path")
                 .default_value(clone_dir.display().to_string())
         });
-        let filter =
-            cx.new(|cx| InputState::new(window, cx).placeholder("Filter your repositories"));
+        let prefill = PREFILL_FILTER.with(|f| f.borrow_mut().take());
+        let filter = cx.new(|cx| {
+            let input = InputState::new(window, cx).placeholder("Filter your repositories");
+            match prefill {
+                Some(text) => input.default_value(text),
+                None => input,
+            }
+        });
         let picker = AccountPickerState::new(window, cx);
         cx.observe(&picker.filter, |_, _, cx| cx.notify()).detach();
         cx.observe_in(&url, window, |this, _, window, cx| {
@@ -473,7 +491,10 @@ impl CloneRepositoryDialog {
         let query = self.filter.read(cx).value().to_string();
         let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
             Some(repos) => group_rows(
-                repos,
+                &crate::cloneable_repositories::without_hidden_owners(
+                    repos,
+                    &crate::cloneable_repositories::hidden_owners(cx),
+                ),
                 &account.login,
                 &crate::cloneable_repositories::filter_query(&query, cx),
             ),
@@ -653,7 +674,10 @@ impl CloneRepositoryDialog {
                 repos
                     .map(|r| {
                         group_rows(
-                            r,
+                            &crate::cloneable_repositories::without_hidden_owners(
+                                r,
+                                &crate::cloneable_repositories::hidden_owners(cx),
+                            ),
                             &account.login,
                             &crate::cloneable_repositories::filter_query(
                                 &self.filter.read(cx).value(),
@@ -875,16 +899,19 @@ impl Render for CloneRepositoryDialog {
                 .child(div().child(tab_bar(
                     vec![
                         TabModel {
+                            dot: false,
                             id: "clone-tab-dotcom",
                             label: "GitHub.com".into(),
                             count: None,
                         },
                         TabModel {
+                            dot: false,
                             id: "clone-tab-enterprise",
                             label: "GitHub Enterprise".into(),
                             count: None,
                         },
                         TabModel {
+                            dot: false,
                             id: "clone-tab-url",
                             label: "URL".into(),
                             count: None,

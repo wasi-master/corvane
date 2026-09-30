@@ -273,7 +273,10 @@ impl NoRepositoriesView {
         let query = self.filter.read(cx).value().to_string();
         let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
             Some(repos) => group_rows(
-                repos,
+                &crate::cloneable_repositories::without_hidden_owners(
+                    repos,
+                    &crate::cloneable_repositories::hidden_owners(cx),
+                ),
                 &account.login,
                 &crate::cloneable_repositories::filter_query(&query, cx),
             ),
@@ -321,7 +324,10 @@ impl NoRepositoriesView {
                 repos
                     .map(|r| {
                         group_rows(
-                            r,
+                            &crate::cloneable_repositories::without_hidden_owners(
+                                r,
+                                &crate::cloneable_repositories::hidden_owners(cx),
+                            ),
                             &account.login,
                             &crate::cloneable_repositories::filter_query(
                                 &self.filter.read(cx).value(),

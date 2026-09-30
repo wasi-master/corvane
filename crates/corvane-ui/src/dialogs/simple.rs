@@ -3,6 +3,8 @@
 //!
 //! Deviation: the error dialog can have a "Copy" button (its text cannot be
 //! selected), `281-error-dialog-copy`.
+//! Deviation (`512-remove-stale-index-lock`): an error caused by a left-over
+//! `index.lock` offers "Remove Lock File".
 
 use corvane_core::{AppState, Dispatcher, Popup};
 use gpui_kit::prelude::*;
@@ -93,6 +95,51 @@ impl Render for SimpleDialog {
                     title.clone(),
                     div().child(message.clone()),
                     buttons,
+                    close,
+                    window,
+                    cx,
+                )
+                .into_any_element()
+            }
+            // Corvane (`512-remove-stale-index-lock`): GHD shows the plain error
+            Popup::IndexLockExists {
+                title,
+                message,
+                lock,
+            } => {
+                let lock = lock.clone();
+                dialog(
+                    "dialog-index-lock",
+                    title.clone(),
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(SPACING())
+                        .child(message.clone())
+                        .child(
+                            "If no other Git program is working on this repository, a Git \
+                             process that crashed left the lock file behind. Removing it lets \
+                             Git continue; Corvane first checks that no Git process is running \
+                             in the repository.",
+                        ),
+                    vec![
+                        DialogButton {
+                            id: "index-lock-close",
+                            label: "Close".into(),
+                            primary: false,
+                            disabled: false,
+                            on_click: Box::new(close),
+                        },
+                        DialogButton {
+                            id: "index-lock-remove",
+                            label: "Remove Lock File".into(),
+                            primary: true,
+                            disabled: false,
+                            on_click: Box::new(move |_, cx| {
+                                Dispatcher::remove_index_lock(lock.clone(), cx)
+                            }),
+                        },
+                    ],
                     close,
                     window,
                     cx,

@@ -56,6 +56,31 @@ pub enum CloneRow {
     Item(GitHubRepository, Vec<usize>),
 }
 
+/// Corvane (`314-hidden-clone-owners`): the owners whose repositories the
+/// clone lists leave out (the flag's comma-separated logins, lower-cased).
+pub fn hidden_owners(cx: &App) -> Vec<String> {
+    corvane_core::AppState::global(cx)
+        .read(cx)
+        .flags
+        .text(corvane_core::flags::ids::HIDDEN_CLONE_OWNERS)
+        .split(',')
+        .map(|o| o.trim().to_lowercase())
+        .filter(|o| !o.is_empty())
+        .collect()
+}
+
+/// `repos` without those of `hidden` owners (see [`hidden_owners`]).
+pub fn without_hidden_owners(
+    repos: &[GitHubRepository],
+    hidden: &[String],
+) -> Vec<GitHubRepository> {
+    repos
+        .iter()
+        .filter(|r| !hidden.contains(&r.owner.to_lowercase()))
+        .cloned()
+        .collect()
+}
+
 /// `groupRepositories` + `SectionFilterList`'s filter: "Your Repositories"
 /// first, then one group per owner login, groups and items in GHD's
 /// `compare` order (plain `<`: capitals first, owners differing in case stay
@@ -735,6 +760,18 @@ mod tests {
                 CloneRow::Item(r, _) => r.full_name(),
             })
             .collect()
+    }
+
+    #[::core::prelude::v1::test]
+    fn hidden_owners_are_left_out_ignoring_case() {
+        let repos = vec![
+            repo("octocat", "a"),
+            repo("BigCorp", "b"),
+            repo("other", "c"),
+        ];
+        let kept = super::without_hidden_owners(&repos, &["bigcorp".to_string()]);
+        let names: Vec<&str> = kept.iter().map(|r| r.name.as_str()).collect();
+        assert_eq!(names, ["a", "c"]);
     }
 
     #[::core::prelude::v1::test]

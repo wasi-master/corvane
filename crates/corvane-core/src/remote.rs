@@ -78,6 +78,8 @@ pub enum PushPullKind {
 pub struct RepoIndicator {
     pub ahead_behind: Option<AheadBehind>,
     pub changed_files: usize,
+    /// The checked-out branch, for `119-repository-list-branch`.
+    pub branch: Option<String>,
 }
 
 /// GHD `ForcePushBranchState`
@@ -116,12 +118,16 @@ impl Dispatcher {
     // ---- helpers ----
 
     /// Settings › Advanced › Use Git Credential Manager: only for remotes that
-    /// are not GitHub (GHD `useExternalCredentialHelper`).
+    /// are not GitHub (GHD `useExternalCredentialHelper`). Also arms the
+    /// stalled-transfer timeout of flag `network-stall-timeout` (0 = none).
     fn arm_credential_helper(remote_url: &str, cx: &App) {
         let s = Self::state(cx).read(cx);
         let host = host_of(remote_url);
         let github = host == "github.com" || s.accounts.iter().any(|a| a.host() == host);
         corvane_git::set_credential_helper(s.settings.use_external_credential_helper && !github);
+        corvane_git::set_network_stall_timeout(
+            u32::try_from(s.flags.number(crate::flags::ids::NETWORK_STALL_TIMEOUT)).unwrap_or(0),
+        );
     }
 
     /// `GIT_ASKPASS` environment: one login per host from the signed-in
@@ -495,17 +501,42 @@ impl Dispatcher {
 
     /// `_fetch(FetchType::UserInitiatedTask | BackgroundTask)`
     pub fn fetch(id: u64, background: bool, cx: &mut App) {
+        Self::fetch_remote_then(id, None, background, |_, _| {}, cx);
+    }
+
+    /// `fetch` from `remote` (default: the current branch's remote), then
+    /// `then(fetched)` once it finished or did not start.
+    pub fn fetch_remote_then(
+        id: u64,
+        remote: Option<&str>,
+        background: bool,
+        then: impl FnOnce(bool, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         if !background && Self::behind_background_fetch(id, cx) {
-            return Self::after_network(id, cx, move |cx| Self::fetch(id, false, cx));
+            let remote = remote.map(str::to_string);
+            return Self::after_network(id, cx, move |cx| {
+                Self::fetch_remote_then(id, remote.as_deref(), false, then, cx)
+            });
         }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
-            return;
+            return then(false, cx);
         };
-        let Some(remote) = Self::current_remote(id, cx) else {
-            return;
+        let remote = match remote {
+            Some(name) => Self::state(cx)
+                .read(cx)
+                .repo_states
+                .get(&id)
+                .and_then(|r| r.info.as_ref())
+                .and_then(|i| i.remotes.iter().find(|r| r.name == name))
+                .cloned(),
+            None => Self::current_remote(id, cx),
+        };
+        let Some(remote) = remote else {
+            return then(false, cx);
         };
         if !Self::begin_network(id, cx) {
-            return;
+            return then(false, cx);
         }
         // `228-push-during-background-fetch`: the background fetch leaves the
         // push/pull button alone
@@ -603,6 +634,7 @@ impl Dispatcher {
                 result
             },
             move |result, cx| {
+                let fetched = result.is_ok();
                 if let Err(err) = result {
                     Self::handle_remote_error(
                         id,
@@ -615,6 +647,7 @@ impl Dispatcher {
                     );
                 }
                 Self::refresh_repository(id, cx);
+                then(fetched, cx);
             },
         );
     }
@@ -1606,11 +1639,13 @@ impl Dispatcher {
                             .ok()
                             .flatten()
                     });
+                    let branch = info.current_branch().map(|b| b.name.clone());
                     out.insert(
                         id,
                         RepoIndicator {
                             ahead_behind,
                             changed_files: changed,
+                            branch,
                         },
                     );
                 }

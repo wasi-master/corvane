@@ -85,6 +85,13 @@ pub struct Workspace {
     /// The open foldout as of the last state change (to focus its filter
     /// once when it opens).
     last_foldout: Option<corvane_core::Foldout>,
+    /// A tab click or View › Show Changes / History asked for the section's
+    /// list to take focus at the next render (`615-focus-list-on-section-switch`).
+    focus_section_list: bool,
+    /// The launch has not placed focus yet (`616-launch-focuses-commit-summary`).
+    launch_focus_pending: bool,
+    /// History shows the diff alone (`109-history-review-mode`).
+    review_mode: bool,
 }
 
 /// GHD `sidebarWidth` minimum (220 px), or 120 px with
@@ -201,6 +208,9 @@ impl Workspace {
             toolbar_resize: Rc::new(ToolbarResize::default()),
             ci_popover,
             last_foldout: None,
+            focus_section_list: false,
+            launch_focus_pending: true,
+            review_mode: false,
             dialogs,
             diff_view,
             welcome,
@@ -277,6 +287,107 @@ impl Workspace {
         self.history.update(cx, |h, cx| h.focus_compare(window, cx));
     }
 
+    /// Corvane (`614-navigation-shortcuts`, ⌃⌘P): the branch foldout on
+    /// its Pull Requests tab (the Branches list for a non-GitHub repository).
+    pub fn show_pull_requests_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        Dispatcher::change_branches_tab(corvane_core::BranchesTab::PullRequests, cx);
+        if self.state.read(cx).foldout != Some(corvane_core::Foldout::Branch) {
+            Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
+        }
+        self.branch_foldout
+            .update(cx, |f, cx| f.focus_filter(window, cx));
+    }
+
+    /// Corvane (`614-navigation-shortcuts`, ⌘3): focus the diff on the right.
+    pub fn focus_diff(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        match self.section {
+            Section::Changes => self.diff_view.update(cx, |d, cx| d.focus(window, cx)),
+            Section::History => self
+                .selected_commit
+                .update(cx, |v, cx| v.focus_diff(window, cx)),
+        }
+    }
+
+    /// Corvane (`614-navigation-shortcuts`, ⌥↓ / ⌥↑ in the diff): the
+    /// next / previous file of the section's file list, clamped at the ends.
+    pub fn step_file(&mut self, delta: isize, cx: &mut Context<Self>) {
+        match self.section {
+            Section::Changes => self
+                .changes
+                .update(cx, |changes, cx| changes.select_relative(delta, cx)),
+            Section::History => {
+                let next = {
+                    let s = self.state.read(cx);
+                    let Some(id) = s.selected else { return };
+                    let Some(rs) = s.selected_state() else { return };
+                    let Some(files) = rs.changeset.as_ref().map(|c| &c.files) else {
+                        return;
+                    };
+                    if files.is_empty() {
+                        return;
+                    }
+                    let ix = rs
+                        .commit_selected_file
+                        .as_ref()
+                        .and_then(|p| files.iter().position(|f| &f.path == p))
+                        .map(|i| i as isize + delta)
+                        .unwrap_or(0)
+                        .clamp(0, files.len() as isize - 1) as usize;
+                    (id, files[ix].path.clone())
+                };
+                Dispatcher::select_commit_file(next.0, next.1, cx);
+            }
+        }
+    }
+
+    /// The user switched sections (a tab, ⌘1 / ⌘2, ⌃Tab). Corvane
+    /// (`615-focus-list-on-section-switch`): the section's list takes focus,
+    /// where GHD leaves it on the body.
+    pub fn switch_section(&mut self, section: Section, cx: &mut Context<Self>) {
+        self.set_section(section, cx);
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::FOCUS_LIST_ON_SECTION_SWITCH)
+        {
+            self.focus_section_list = true;
+            cx.notify();
+        }
+    }
+
+    /// Corvane (`616-launch-focuses-commit-summary`): once the first
+    /// repository's status has loaded after launch, the commit summary takes
+    /// focus when there are changes to commit and nothing else is open.
+    fn place_launch_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.launch_focus_pending {
+            return;
+        }
+        let (loaded, has_changes, free) = {
+            let s = self.state.read(cx);
+            let rs = s.selected_state();
+            (
+                // no repository at launch: nothing to wait for
+                s.selected.is_none() || rs.is_some_and(|rs| rs.status.is_some()),
+                rs.is_some_and(|rs| rs.changed_files() > 0),
+                s.popup.is_none() && s.foldout.is_none() && s.settings.welcome_completed,
+            )
+        };
+        if !loaded {
+            return;
+        }
+        self.launch_focus_pending = false;
+        let enabled = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::LAUNCH_FOCUSES_COMMIT_SUMMARY);
+        if enabled && has_changes && free && self.section == Section::Changes {
+            self.changes
+                .update(cx, |changes, cx| changes.focus_summary(window, cx));
+        }
+    }
+
     pub fn set_section(&mut self, section: Section, cx: &mut Context<Self>) {
         if self.section != section {
             self.section = section;
@@ -306,6 +417,19 @@ impl Workspace {
             .child(tab_bar(
                 vec![
                     TabModel {
+                        // Corvane (`108-stash-dot-on-changes-tab`): the
+                        // branch has a stash, seen from History
+                        dot: self.section == Section::History
+                            && self
+                                .state
+                                .read(cx)
+                                .flags
+                                .bool(corvane_core::flags::ids::STASH_DOT_ON_CHANGES_TAB)
+                            && self
+                                .state
+                                .read(cx)
+                                .selected_state()
+                                .is_some_and(|rs| rs.stash.is_some()),
                         id: "tab-changes",
                         label: "Changes".into(),
                         count: self
@@ -316,6 +440,7 @@ impl Workspace {
                             .filter(|n| *n > 0),
                     },
                     TabModel {
+                        dot: false,
                         id: "tab-history",
                         label: "History".into(),
                         count: None,
@@ -324,7 +449,7 @@ impl Workspace {
                 selected,
                 move |ix, _, cx| {
                     this.update(cx, |ws, cx| {
-                        ws.set_section(
+                        ws.switch_section(
                             if ix == 0 {
                                 Section::Changes
                             } else {
@@ -357,6 +482,16 @@ impl Workspace {
                 .cloned()
         });
         let showing_stash = rs.is_some_and(|r| r.showing_stash);
+        // `419-restore-stash-suggestion`
+        let restore_stash = state
+            .flags
+            .bool(corvane_core::flags::ids::RESTORE_STASH_SUGGESTION)
+            && rs.is_some_and(|r| {
+                r.stash.is_some()
+                    && r.info
+                        .as_ref()
+                        .is_some_and(|i| matches!(i.tip, corvane_core::Tip::Valid { .. }))
+            });
         let multi_selected = rs.map(|r| r.selected_files.len()).unwrap_or(0);
         match self.section {
             Section::Changes if showing_stash => self.stash_view.clone().into_any_element(),
@@ -507,15 +642,64 @@ impl Workspace {
                         primary: false,
                     });
                 }
+                // Corvane (`419-restore-stash-suggestion`): the branch's
+                // stash can be restored from here, first and highlighted
+                if restore_stash && let Some(id) = repo_id {
+                    actions.insert(
+                        0,
+                        SuggestedAction {
+                            id: "suggested-restore-stash",
+                            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::pop_stash(id, cx)),
+                            title: "Restore your stashed changes".into(),
+                            description: Some(
+                                "This branch has stashed changes that you have not yet committed."
+                                    .into(),
+                            ),
+                            hint: "When a stash exists, access it at the bottom of the Changes \
+                                   tab to the left."
+                                .into(),
+                            keys: &[],
+                            button_label: "Restore".into(),
+                            primary: true,
+                        },
+                    );
+                }
                 no_changes(actions, cx).into_any_element()
             }
             Section::History => self.selected_commit.clone().into_any_element(),
         }
     }
 
+    /// Corvane (`109-history-review-mode`): View › Toggle History Review
+    /// Mode (⌃⌘S) hides the repository sidebar and the commit's file list
+    /// in History, so the diff gets the whole width.
+    pub fn toggle_review_mode(&mut self, cx: &mut Context<Self>) {
+        self.review_mode = !self.review_mode;
+        cx.notify();
+    }
+
+    fn review_mode_active(&self, cx: &App) -> bool {
+        self.review_mode
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::HISTORY_REVIEW_MODE)
+    }
+
     fn repository_view(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let sidebar_min = sidebar_min_width(self.state.read(cx));
+        if self.section == Section::History && self.review_mode_active(cx) {
+            return div()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .border_t_1()
+                .border_color(t.box_border)
+                .child(self.content(cx))
+                .into_any_element();
+        }
         div()
             .flex_1()
             .min_h_0()
@@ -546,6 +730,7 @@ impl Workspace {
                     )
                     .child(resizable_panel().child(self.content(cx))),
             )
+            .into_any_element()
     }
 
     /// `maybeRenderTutorialPanel`: the repository view with the tutorial
@@ -656,6 +841,17 @@ impl Render for Workspace {
             && section != self.section
         {
             self.section = section;
+        }
+        self.place_launch_focus(window, cx);
+        let review = self.review_mode_active(cx);
+        self.selected_commit
+            .update(cx, |v, cx| v.set_file_list_hidden(review, cx));
+        if std::mem::take(&mut self.focus_section_list) {
+            let handle = match self.section {
+                Section::Changes => self.changes.read(cx).list_focus_handle(),
+                Section::History => self.history.read(cx).list_focus_handle(),
+            };
+            window.focus(&handle, cx);
         }
         let t = cx.ghd();
         let welcome_done = self.state.read(cx).settings.welcome_completed;

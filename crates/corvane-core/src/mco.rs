@@ -264,6 +264,17 @@ pub enum Banner {
     ReorderUndone {
         count: usize,
     },
+    /// Corvane (`311-undo-delete-branch`): "Deleted branch **{branch}**" +
+    /// Undo, which recreates it at `sha`.
+    BranchDeleted {
+        repo: u64,
+        branch: String,
+        sha: String,
+    },
+    /// Corvane (`311-undo-delete-branch`): after that Undo.
+    BranchRestored {
+        branch: String,
+    },
     /// "Resolve conflicts to continue {description} **{branch}**."
     ConflictsFound {
         repo: u64,
@@ -281,10 +292,12 @@ impl Banner {
             | Banner::BranchAlreadyUpToDate { .. }
             | Banner::CherryPickUndone { .. }
             | Banner::SquashUndone { .. }
-            | Banner::ReorderUndone { .. } => Some(Duration::from_secs(5)),
+            | Banner::ReorderUndone { .. }
+            | Banner::BranchRestored { .. } => Some(Duration::from_secs(5)),
             Banner::SuccessfulCherryPick { .. }
             | Banner::SuccessfulSquash { .. }
-            | Banner::SuccessfulReorder { .. } => Some(Duration::from_secs(15)),
+            | Banner::SuccessfulReorder { .. }
+            | Banner::BranchDeleted { .. } => Some(Duration::from_secs(15)),
             Banner::ConflictsFound { .. } => None,
         }
     }
@@ -902,6 +915,49 @@ impl Dispatcher {
 
     /// `updateRebasePreview`
     pub fn preview_rebase(id: u64, base_branch: String, cx: &mut App) {
+        Self::preview_rebase_then(id, base_branch, |_, _| {}, cx);
+    }
+
+    /// Update from Default Branch with `pull.rebase` set
+    /// (`222-update-from-default-rebases`): rebase the current branch onto
+    /// `base_branch` without the choose-branch step.
+    pub(crate) fn rebase_onto(id: u64, base_branch: String, cx: &mut App) {
+        let Some((current, _)) = Self::current_branch_and_tip(id, cx) else {
+            return;
+        };
+        Self::preview_rebase_then(
+            id,
+            base_branch.clone(),
+            move |preview, cx| {
+                if !preview.valid {
+                    Self::show_error(
+                        "Could not rebase",
+                        format!("Unable to rebase {current} onto {base_branch}."),
+                        cx,
+                    );
+                } else if preview.behind == 0 {
+                    Self::set_banner(
+                        Banner::BranchAlreadyUpToDate {
+                            our_branch: current,
+                            their_branch: Some(base_branch),
+                        },
+                        cx,
+                    );
+                } else {
+                    Self::start_rebase(id, base_branch, false, cx);
+                }
+            },
+            cx,
+        );
+    }
+
+    /// [`Self::preview_rebase`], then `then(preview)` once it is stored.
+    fn preview_rebase_then(
+        id: u64,
+        base_branch: String,
+        then: impl FnOnce(RebasePreview, &mut App) + 'static,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -929,9 +985,10 @@ impl Dispatcher {
                     },
                 };
                 Self::state(cx).update(cx, |s, cx| {
-                    s.repo_state_mut(id).rebase_preview = Some(preview);
+                    s.repo_state_mut(id).rebase_preview = Some(preview.clone());
                     cx.notify();
                 });
+                then(preview, cx);
             },
         );
     }
@@ -1503,6 +1560,7 @@ impl Dispatcher {
             cx,
         );
         let name = branch.clone();
+        let submodules = Self::submodule_update_plan(id, cx);
         spawn_bg(
             cx,
             move || {
@@ -1513,10 +1571,26 @@ impl Dispatcher {
                     squash,
                     message.as_deref(),
                 );
+                // `310-submodules-follow-checkout`
+                let submodule_error = match (&result, submodules) {
+                    (Ok(corvane_git::MergeOutcome::Success), Some((skip, askpass))) => {
+                        corvane_git::update_submodules(
+                            git.clone(),
+                            &workdir,
+                            &skip,
+                            askpass.as_ref(),
+                        )
+                        .err()
+                    }
+                    _ => None,
+                };
                 let status = corvane_git::get_status(git, &workdir, None).ok();
-                (result, status)
+                (result, status, submodule_error)
             },
-            move |(result, status), cx| {
+            move |(result, status, submodule_error), cx| {
+                if let Some(err) = submodule_error {
+                    Self::show_error("Could not update submodules", err.to_string(), cx);
+                }
                 if let Some(status) = status {
                     Self::state(cx).update(cx, |s, cx| {
                         Self::apply_status(s.repo_state_mut(id), status);
@@ -1699,6 +1773,7 @@ impl Dispatcher {
             tip: None,
             upstream: None,
             tip_time: None,
+            remote_name: None,
         });
         let local_name = target.name_without_remote().to_string();
         let count = commits.len();

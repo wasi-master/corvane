@@ -11,6 +11,7 @@ pub mod error;
 pub mod history_ops;
 pub mod hook_env;
 pub mod ignore;
+pub mod index_lock;
 pub mod log;
 pub mod ops;
 pub mod patch;
@@ -23,12 +24,12 @@ pub mod status;
 pub mod worktree;
 
 pub use branch_ops::{
-    DESKTOP_STASH_MARKER, MergeOutcome, abort_merge, checkout_branch, checkout_new_branch,
-    commits_ahead, commits_not_in, configured_default_branch, create_branch, create_desktop_stash,
-    delete_local_branch, delete_remote_branch, desktop_stash_message, drop_stash,
-    find_default_branch, get_stashes, is_local_changes_overwritten, merge_branch,
-    merge_branch_with_message, parse_recent_branches, pop_stash, recent_branches, remote_head,
-    rename_branch, stashed_files,
+    BranchTracking, DESKTOP_STASH_MARKER, MergeOutcome, abort_merge, branch_tracking,
+    checkout_branch, checkout_new_branch, commits_ahead, commits_not_in, configured_default_branch,
+    create_branch, create_desktop_stash, delete_local_branch, delete_remote_branch,
+    desktop_stash_message, drop_stash, find_default_branch, get_stashes,
+    is_local_changes_overwritten, merge_branch, merge_branch_with_message, parse_recent_branches,
+    pop_stash, recent_branches, remote_head, rename_branch, stashed_files,
 };
 pub use commit::{
     CommitOptions, add_paths, assume_unchanged_paths, commit, discard_changes, format_message,
@@ -50,9 +51,10 @@ pub use history_ops::{
     reset_to, revert_commit, revert_commits_no_commit, revert_file_in_commit,
 };
 pub use ignore::{
-    append_ignore_files, append_ignore_rules, escape_gitignore_pattern, read_gitignore,
-    save_gitignore,
+    IgnoreTarget, append_ignore_files, append_ignore_rules, append_ignore_rules_to,
+    escape_gitignore_pattern, excludes_file, gitignore_dirs_above, read_gitignore, save_gitignore,
 };
+pub use index_lock::{index_lock_path, remove_stale_index_lock};
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
     get_commit_range_changed_files, get_commits, get_commits_in_range, get_commits_with,
@@ -61,15 +63,17 @@ pub use log::{
 };
 pub use ops::{
     CloneProgress, InitOptions, PathStatus, clone, global_identity, init_repository,
-    normalize_clone_url, parse_clone_progress, path_status, repository_name_from_url,
-    set_global_identity,
+    normalize_clone_url, parse_clone_progress, path_status, readme_exists,
+    repository_name_from_url, set_global_identity,
 };
 pub use patch::{
     apply_patch_to_index, discard_changes_from_selection, format_patch,
     format_patch_to_discard_changes, stage_partial_files,
 };
 pub use paths::git_dir;
-pub use process::{CancelToken, GitCommand, GitOutput, set_credential_helper};
+pub use process::{
+    CancelToken, GitCommand, GitOutput, set_credential_helper, set_network_stall_timeout,
+};
 pub use rebase_ops::{
     CherryPickResult, CherryPickSnapshot, RebaseOptions, RebaseResult, RebaseSnapshot,
     abort_cherry_pick, abort_rebase, abort_squash_merge, binary_paths, cherry_pick,
@@ -87,13 +91,16 @@ pub use remote_ops::{
     is_stale_remote_ref_failure, is_using_lfs, is_using_lfs_by_attributes, last_fetched,
     lfs_available, lfs_hooks_installed, parse_progress_line, prune_remote, pull, pull_with_rebase,
     push, remote_failure, remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
-    upstream_tip_in_reflog,
+    update_submodules, upstream_tip_in_reflog,
 };
 pub use repo::{
     ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,
     top_level_working_directory,
 };
-pub use status::{get_status, map_status, parse_porcelain_v2};
+pub use status::{
+    IgnoreSubmodules, LineStats, StatusOptions, get_status, get_status_with, map_status,
+    parse_porcelain_v2, working_directory_line_stats,
+};
 pub use worktree::{
     add_worktree, list_worktrees, move_worktree, parse_worktree_porcelain, remove_worktree,
 };

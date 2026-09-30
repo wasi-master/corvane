@@ -150,11 +150,13 @@ impl Render for PublishRepositoryDialog {
         let tabs = tab_bar(
             vec![
                 TabModel {
+                    dot: false,
                     id: "publish-dotcom",
                     label: "GitHub.com".into(),
                     count: None,
                 },
                 TabModel {
+                    dot: false,
                     id: "publish-enterprise",
                     label: "GitHub Enterprise".into(),
                     count: None,

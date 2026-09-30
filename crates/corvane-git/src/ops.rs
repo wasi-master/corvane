@@ -38,6 +38,12 @@ pub fn path_status(path: &Path) -> PathStatus {
     PathStatus::NotARepository
 }
 
+/// Whether `dir` already has a `README.md` that "Initialize this repository
+/// with a README" would replace (GHD `readMeExists`).
+pub fn readme_exists(dir: &Path) -> bool {
+    dir.join("README.md").exists()
+}
+
 /// Turn `owner/name` or a GitHub URL without scheme into a clone URL
 /// (GHD `parseRepositoryIdentifier` + `getDefaultDir`).
 pub fn normalize_clone_url(input: &str) -> Option<String> {
@@ -400,6 +406,15 @@ mod tests {
         let full = dir.path().join("full");
         clone(git, &url, &full, None, None, None, |_| {}).unwrap();
         assert_eq!(run(&full, &["rev-list", "--count", "HEAD"]).trim(), "2");
+    }
+
+    #[test]
+    fn readme_exists_checks_the_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!readme_exists(dir.path()));
+        assert!(!readme_exists(&dir.path().join("nope")));
+        std::fs::write(dir.path().join("README.md"), "# mine\n").unwrap();
+        assert!(readme_exists(dir.path()));
     }
 
     #[test]

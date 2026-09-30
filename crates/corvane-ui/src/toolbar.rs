@@ -36,6 +36,9 @@ pub struct ToolbarButtonModel {
     pub description: SharedString,
     /// Bold main line (repository / branch name).
     pub title: SharedString,
+    /// Corvane (`114-alias-italic-in-toolbar`): an aliased repository's
+    /// name is italic, as in the repository list.
+    pub title_italic: bool,
     pub width: Option<Pixels>,
     /// Opens this foldout when clicked; `None` = plain action button.
     pub foldout: Option<Foldout>,
@@ -162,6 +165,7 @@ pub fn toolbar_models(
             .then(|| format!("Current worktree is {title}").into());
         ToolbarButtonModel {
             id: "toolbar-worktree",
+            title_italic: false,
             icon: Octicon::FileDirectory,
             description: "Current Worktree".into(),
             title,
@@ -183,6 +187,10 @@ pub fn toolbar_models(
 
     let repository = ToolbarButtonModel {
         id: "toolbar-repository",
+        title_italic: repo.is_some_and(|r| r.alias.is_some())
+            && state
+                .flags
+                .bool(corvane_core::flags::ids::ALIAS_ITALIC_IN_TOOLBAR),
         // GHD `iconForRepository`
         icon: match repo.and_then(|r| r.github.as_ref()) {
             _ if repo.is_some_and(|r| r.missing) => Octicon::Alert,
@@ -192,7 +200,18 @@ pub fn toolbar_models(
             None if repo.is_some() => Octicon::DeviceDesktop,
             None => Octicon::Repo,
         },
-        description: "Current Repository".into(),
+        // Corvane (`312-owner-in-repository-button`): a GitHub repository's
+        // owner in place of "Current Repository"
+        description: match repo.and_then(|r| r.github.as_ref()) {
+            Some(gh)
+                if state
+                    .flags
+                    .bool(corvane_core::flags::ids::OWNER_IN_REPOSITORY_BUTTON) =>
+            {
+                gh.owner.clone().into()
+            }
+            _ => "Current Repository".into(),
+        },
         title: repo
             .map(|r| r.name().into())
             .unwrap_or_else(|| SharedString::from("Select a repository")),
@@ -294,6 +313,7 @@ pub fn toolbar_models(
     };
     let branch = ToolbarButtonModel {
         id: "toolbar-branch",
+        title_italic: false,
         icon: branch_icon,
         description: branch_desc,
         title: branch_title.clone(),
@@ -337,6 +357,7 @@ pub fn toolbar_models(
         .is_some_and(|st| st.rebase_in_progress);
     let base = ToolbarButtonModel {
         id: "toolbar-push-pull",
+        title_italic: false,
         icon: Octicon::SyncClockwise,
         description: "".into(),
         title: "".into(),
@@ -630,6 +651,7 @@ pub fn toolbar_button(
                 .line_height(zpx(14.))
                 .font_weight(FontWeight::SEMIBOLD)
                 .truncate()
+                .when(model.title_italic, |d| d.italic())
                 .child(model.title);
             let text = div().flex().flex_col().flex_1().min_w_0().mr(SPACING());
             // GHD `ToolbarButtonStyle.Subtitle` (push-pull button): title

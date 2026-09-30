@@ -41,6 +41,9 @@ pub struct RepositorySettingsSave {
     pub gitignore: Option<String>,
     /// Where the author identity lives, with the local name/email to store.
     pub git_config: Option<(GitConfigLocation, String, String)>,
+    /// `421-line-endings-setting`: the `--local` `core.autocrlf` to store
+    /// (`None`: remove it, so the global value applies).
+    pub autocrlf: Option<Option<String>>,
 }
 
 /// `openIssueCreationPage`: GitHub's issue template chooser.
@@ -771,9 +774,14 @@ impl Dispatcher {
                     remote,
                     gitignore,
                     local_name: corvane_git::local_config_value(git.clone(), &workdir, "user.name"),
-                    local_email: corvane_git::local_config_value(git, &workdir, "user.email"),
+                    local_email: corvane_git::local_config_value(
+                        git.clone(),
+                        &workdir,
+                        "user.email",
+                    ),
                     global,
                     autocrlf,
+                    local_autocrlf: corvane_git::local_config_value(git, &workdir, "core.autocrlf"),
                 }
             },
             |data, cx| {
@@ -843,6 +851,24 @@ impl Dispatcher {
                     };
                     if let Err(err) = result {
                         errors.push(format!("Failed saving the Git config: {err}"));
+                    }
+                }
+                if let Some(value) = save.autocrlf {
+                    let result = match value {
+                        Some(value) => corvane_git::set_local_config_value(
+                            git.clone(),
+                            &workdir,
+                            "core.autocrlf",
+                            &value,
+                        ),
+                        None => corvane_git::remove_local_config_value(
+                            git.clone(),
+                            &workdir,
+                            "core.autocrlf",
+                        ),
+                    };
+                    if let Err(err) = result {
+                        errors.push(format!("Failed saving the line ending setting: {err}"));
                     }
                 }
                 errors

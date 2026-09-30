@@ -74,6 +74,8 @@ pub struct TabModel {
     pub id: &'static str,
     pub label: SharedString,
     pub count: Option<usize>,
+    /// Corvane (`108-stash-dot-on-changes-tab`): a blue dot after the label.
+    pub dot: bool,
 }
 
 pub fn tab_bar(
@@ -119,7 +121,14 @@ pub fn tab_bar(
                         .flex()
                         .items_center()
                         .child(tab.label)
-                        .when_some(tab.count, |d, n| d.child(counter(n, cx))),
+                        .when_some(tab.count, |d, n| d.child(counter(n, cx)))
+                        .when(tab.dot, |d| {
+                            d.child(
+                                octicon(Octicon::DotFill, t.tab_bar_active)
+                                    .size(zpx(12.))
+                                    .ml(SPACING_HALF()),
+                            )
+                        }),
                 )
                 .when(is_selected, |d| {
                     // `box-shadow: inset 0 -3px 0 var(--tab-bar-active-color)`

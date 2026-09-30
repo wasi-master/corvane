@@ -6,6 +6,9 @@
 //! pull request a primary "View Pull Request" card leads the list (built in
 //! `workspace.rs`, `274-no-changes-view-pull-request`); GHD shows no
 //! remote action then.
+//! Deviation (`419-restore-stash-suggestion`): with a stash on the branch the
+//! first card is "Restore your stashed changes" with a primary Restore button
+//! (built in `workspace.rs`; GHD `no-changes.tsx` offers only "View stash").
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;

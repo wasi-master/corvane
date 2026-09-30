@@ -33,6 +33,14 @@
 //! - the undo bar has a commit context menu (`472-undo-bar-menu`).
 //! - an optional tag field tags the new commit (`473-commit-tag-field`).
 //! - a single file's menu has "Open With…" (`474-open-file-with`).
+//! - rows show "+N -M" before the status icon and the header the totals
+//!   (GHD `changes-list.tsx` has none; flag `changes-line-counts`).
+//! - a single file's menu adds "Ignore File In" (a nearer `.gitignore`,
+//!   `info/exclude`, the global excludes file; flag `ignore-file-targets`).
+//! - "Name <email>" in the co-authors box adds a co-author without a GitHub
+//!   account (`422-free-form-co-authors`).
+//! - the "N changed files" row ends in a spinner while Discard Changes runs
+//!   or a status refresh is slow (`416-changes-busy-indicator`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -58,10 +66,11 @@ use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
 use crate::actions::{
-    Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectFirstFile,
-    SelectLastFile, SelectNextFile, SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0,
-    SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors,
-    ToggleCommitSpellcheck, ToggleIncludeSelected,
+    Commit, DiscardSelectedFiles, ExtendSelectionDown, ExtendSelectionUp, OpenSelectedFileInEditor,
+    OpenSelectedFileWithDefaultProgram, SelectAllFiles, SelectFirstFile, SelectLastFile,
+    SelectNextFile, SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0, SpellSuggestion1,
+    SpellSuggestion2, SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors, ToggleCommitSpellcheck,
+    ToggleIncludeSelected,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
@@ -108,6 +117,22 @@ struct PendingSpell {
     word: String,
     suggestions: Vec<String>,
 }
+
+/// A co-author's token id: the lower-cased login, or the lower-cased email
+/// of a `422-free-form-co-authors` author without one.
+fn co_author_id(author: &Author) -> Option<String> {
+    match author {
+        Author::Known {
+            username: None,
+            email,
+            ..
+        } => Some(email.to_lowercase()),
+        _ => author.username().map(str::to_lowercase),
+    }
+}
+
+/// How long a status refresh runs before the header shows a spinner.
+const BUSY_INDICATOR_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
 
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
@@ -163,6 +188,8 @@ pub struct ChangesSidebar {
     /// `273-recall-commit-messages`: index into the recent messages the form
     /// shows; `None` once the user edits it.
     recalled: Option<usize>,
+    /// When the running status refresh started (`416-changes-busy-indicator`).
+    refresh_since: Cell<Option<std::time::Instant>>,
 }
 
 /// What the repository rules say about the commit being written
@@ -364,6 +391,7 @@ impl ChangesSidebar {
             rule_failure_popover_open: false,
             rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
             recalled: None,
+            refresh_since: Cell::new(None),
         }
     }
 
@@ -502,12 +530,7 @@ impl ChangesSidebar {
         self.state
             .read(cx)
             .selected_state()
-            .map(|rs| {
-                rs.co_authors
-                    .iter()
-                    .filter_map(|a| a.username().map(|u| u.to_string()))
-                    .collect()
-            })
+            .map(|rs| rs.co_authors.iter().filter_map(co_author_id).collect())
             .unwrap_or_default()
     }
 
@@ -535,7 +558,7 @@ impl ChangesSidebar {
             .filter_map(|id| {
                 current
                     .iter()
-                    .find(|a| a.username().is_some_and(|u| u.to_lowercase() == *id))
+                    .find(|a| co_author_id(a).as_ref() == Some(id))
                     .cloned()
             })
             .collect();
@@ -546,7 +569,32 @@ impl ChangesSidebar {
         let (text, caret) = self.field_text_and_caret(CommitField::CoAuthors, cx);
         let free_start = self.co_author_free_start(cx).min(text.len());
         let free = &text[free_start..];
-        if caret == text.len() && free.ends_with(' ') {
+        // Corvane (`422-free-form-co-authors`): "Name <email>" becomes a
+        // co-author without a GitHub account, and Space only turns a word
+        // typed with @ into a handle, so a name can be typed with spaces
+        let free_form = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::FREE_FORM_CO_AUTHORS);
+        if free_form
+            && caret == text.len()
+            && free.trim_end().ends_with('>')
+            && let Some((name, email)) = corvane_core::autocomplete::parse_co_author_address(free)
+        {
+            self.pending_author = Some((
+                free_start..text.len(),
+                Author::Known {
+                    name,
+                    email,
+                    username: None,
+                },
+            ));
+            cx.notify();
+        } else if caret == text.len()
+            && free.ends_with(' ')
+            && (!free_form || free.trim_start().starts_with('@'))
+        {
             let handle = free.trim().trim_start_matches('@').to_string();
             if !handle.is_empty() && !handle.contains(char::is_whitespace) {
                 let author = Author::Unknown {
@@ -570,7 +618,7 @@ impl ChangesSidebar {
         let Some(id) = self.state.read(cx).selected else {
             return;
         };
-        let Some(login) = author.username().map(|u| u.to_lowercase()) else {
+        let Some(login) = co_author_id(&author) else {
             return;
         };
         let already = self
@@ -706,7 +754,7 @@ impl ChangesSidebar {
                             let id = ctx.token().id().to_string();
                             let author = authors
                                 .iter()
-                                .find(|a| a.username().is_some_and(|u| u.to_lowercase() == id));
+                                .find(|a| co_author_id(a).as_deref() == Some(id.as_str()));
                             let unknown = match author {
                                 Some(Author::Unknown { state, .. }) => Some(*state),
                                 _ => None,
@@ -1213,6 +1261,11 @@ impl ChangesSidebar {
         cx.notify();
     }
 
+    /// Corvane (`615-focus-list-on-section-switch`).
+    pub fn list_focus_handle(&self) -> FocusHandle {
+        self.list_focus.clone()
+    }
+
     /// Edit › Find.
     pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.filter_visible = true;
@@ -1228,7 +1281,7 @@ impl ChangesSidebar {
     }
 
     /// Arrow keys move the selection through the visible files.
-    fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+    pub(crate) fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let (files, _) = self.visible_files(cx);
         if files.is_empty() {
             return;
@@ -1256,6 +1309,69 @@ impl ChangesSidebar {
         Dispatcher::select_file(id, files[index].path.clone(), cx);
         self.list_scroll
             .scroll_to_item(index, ScrollStrategy::Nearest);
+    }
+
+    /// The repository and the highlighted files (the selection, else the
+    /// selected file), for keyboard actions on the list.
+    fn highlighted_files(&self, cx: &App) -> Option<(u64, Vec<String>)> {
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let rs = s.selected_state()?;
+        let mut paths = rs.selected_files.clone();
+        if paths.is_empty()
+            && let Some(one) = rs.selected_file.clone()
+        {
+            paths.push(one);
+        }
+        (!paths.is_empty()).then_some((id, paths))
+    }
+
+    /// Corvane (`607-cmd-backspace-discards-files`): ⌘⌫ discards the
+    /// highlighted files, confirming as the context menu's Discard Changes
+    /// does (GHD binds ⌘⌫ to Repository › Remove everywhere).
+    fn discard_highlighted(&mut self, cx: &mut Context<Self>) {
+        let committing = self
+            .state
+            .read(cx)
+            .selected_state()
+            .is_some_and(|rs| rs.committing);
+        if committing {
+            return;
+        }
+        if let Some((id, paths)) = self.highlighted_files(cx) {
+            Dispatcher::request_discard_changes(id, paths, cx);
+        }
+    }
+
+    /// Corvane (`608-open-file-shortcuts`): the first highlighted file on
+    /// disk (a deleted file has nothing to open, as in the context menu).
+    fn highlighted_file_on_disk(&self, cx: &App) -> Option<PathBuf> {
+        let (id, paths) = self.highlighted_files(cx)?;
+        let s = self.state.read(cx);
+        let status = s.repo_states.get(&id)?.status.as_ref()?;
+        let first = paths.first()?;
+        let file = status.files.iter().find(|f| &f.path == first)?;
+        (file.status.kind != FileStatusKind::Deleted)
+            .then(|| s.repository(id).map(|r| r.path.join(first)))
+            .flatten()
+    }
+
+    /// Corvane (`613-copy-path-shortcuts`): the context menu's Copy Paths /
+    /// Copy Relative Paths for the highlighted files, one per line.
+    fn copy_highlighted_paths(&self, absolute: bool, cx: &mut Context<Self>) {
+        let Some((id, paths)) = self.highlighted_files(cx) else {
+            return;
+        };
+        let text = match self.state.read(cx).repository(id) {
+            Some(repo) if absolute => paths
+                .iter()
+                .map(|p| repo.path.join(p).to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join("\n"),
+            Some(_) => paths.join("\n"),
+            None => return,
+        };
+        cx.write_to_clipboard(ClipboardItem::new_string(text));
     }
 
     /// Space (GHD `onToggleInclude` for the row's `onKeyDown`): include the
@@ -1313,7 +1429,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, options) = {
+        let (id, options, push_option) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             (
@@ -1321,9 +1437,10 @@ impl ChangesSidebar {
                 s.repository(id)
                     .map(|r| r.commit_options)
                     .unwrap_or_default(),
+                s.flags.bool(corvane_core::flags::ids::COMMIT_AND_PUSH),
             )
         };
-        let items = vec![
+        let mut items = vec![
             MenuItem::checkbox(
                 "Bypass Commit Hooks",
                 options.skip_commit_hooks,
@@ -1358,6 +1475,20 @@ impl ChangesSidebar {
                 },
             ),
         ];
+        // Corvane: `220-commit-and-push`
+        if push_option {
+            items.push(MenuItem::checkbox(
+                "Push After Committing",
+                options.push_after_commit,
+                move |_, cx| {
+                    Dispatcher::update_commit_options(
+                        id,
+                        |o| o.push_after_commit = !o.push_after_commit,
+                        cx,
+                    )
+                },
+            ));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -1876,6 +2007,39 @@ impl ChangesSidebar {
                         .enabled(!is_gitignore),
                 );
             }
+            // Corvane: ignore from a nearer .gitignore, info/exclude or the
+            // global excludes file (flag `ignore-file-targets`)
+            if self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::IGNORE_FILE_TARGETS)
+            {
+                use corvane_git::IgnoreTarget;
+                let mut targets: Vec<(String, IgnoreTarget)> =
+                    corvane_git::gitignore_dirs_above(&repo_path, &path)
+                        .into_iter()
+                        .map(|dir| (format!("{dir}/.gitignore"), IgnoreTarget::Directory(dir)))
+                        .collect();
+                targets.push((
+                    ".git/info/exclude (This Repository Only)".into(),
+                    IgnoreTarget::InfoExclude,
+                ));
+                targets.push((
+                    "Global Ignore File (All Repositories)".into(),
+                    IgnoreTarget::ExcludesFile,
+                ));
+                let entries: Vec<MenuItem> = targets
+                    .into_iter()
+                    .map(|(label, target)| {
+                        let p = path.clone();
+                        MenuItem::new(label, move |_, cx| {
+                            Dispatcher::ignore_file_in(id, p.clone(), target.clone(), cx)
+                        })
+                    })
+                    .collect();
+                items.push(MenuItem::submenu("Ignore File In", entries).enabled(!is_gitignore));
+            }
         } else {
             let ignorable: Vec<String> = paths
                 .iter()
@@ -2265,8 +2429,72 @@ impl ChangesSidebar {
                             .text_size(FONT_SIZE())
                             .truncate()
                             .child(changed_files_label(visible.len(), total))
-                    }),
+                    })
+                    .when_some(self.line_stats(cx), |d, stats| {
+                        let (visible, _, _, _) = self.header_state(cx);
+                        let totals = visible.iter().filter_map(|f| stats.get(&f.path)).fold(
+                            corvane_git::LineStats::default(),
+                            |acc, s| corvane_git::LineStats {
+                                added: acc.added + s.added,
+                                deleted: acc.deleted + s.deleted,
+                            },
+                        );
+                        d.child(div().flex_1())
+                            .child(line_stats_label(totals, None, t))
+                    })
+                    .children(
+                        self.busy_indicator(cx)
+                            .map(|spinner| div().ml_auto().flex_none().child(spinner)),
+                    ),
             )
+    }
+
+    /// `416-changes-busy-indicator`: a spinner at the end of the "N changed
+    /// files" row while Discard Changes runs, or once a status refresh has
+    /// taken [`BUSY_INDICATOR_DELAY`] (GHD shows neither).
+    fn busy_indicator(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let s = self.state.read(cx);
+        let (discarding, loading) = s
+            .selected_state()
+            .filter(|_| {
+                s.flags
+                    .bool(corvane_core::flags::ids::CHANGES_BUSY_INDICATOR)
+            })
+            .map_or((false, false), |rs| (rs.discarding, rs.loading));
+        if !loading {
+            self.refresh_since.set(None);
+        }
+        let color = cx.ghd().text_secondary;
+        if discarding {
+            return Some(crate::icons::loading("changes-busy-spinner", color));
+        }
+        if !loading {
+            return None;
+        }
+        let since = self.refresh_since.get().unwrap_or_else(|| {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor().timer(BUSY_INDICATOR_DELAY).await;
+                let _ = this.update(cx, |_, cx| cx.notify());
+            })
+            .detach();
+            let now = std::time::Instant::now();
+            self.refresh_since.set(Some(now));
+            now
+        });
+        (since.elapsed() >= BUSY_INDICATOR_DELAY)
+            .then(|| crate::icons::loading("changes-busy-spinner", color))
+    }
+
+    /// Per-file line counts while flag `changes-line-counts` is on.
+    fn line_stats(
+        &self,
+        cx: &App,
+    ) -> Option<std::sync::Arc<std::collections::HashMap<String, corvane_git::LineStats>>> {
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::CHANGES_LINE_COUNTS) {
+            return None;
+        }
+        s.selected_state().map(|rs| rs.line_stats.clone())
     }
 
     fn branch_name(&self, cx: &App) -> SharedString {
@@ -2339,6 +2567,7 @@ impl ChangesSidebar {
         let query: SharedString = self.filter.read(cx).value().trim().to_string().into();
         let weak = cx.weak_entity();
         let list_focus = self.list_focus.clone();
+        let line_stats = self.line_stats(cx);
         // `ariaLabelledBy="changes-list-check-all-label"`: the header's text
         let label = {
             let (visible, total, _, _) = self.header_state(cx);
@@ -2371,6 +2600,7 @@ impl ChangesSidebar {
                             let is_selected = selected.contains(&file.path);
                             file_row(
                                 file,
+                                line_stats.as_ref().and_then(|m| m.get(&file.path)).copied(),
                                 is_selected,
                                 list_focused,
                                 &query,
@@ -3649,6 +3879,13 @@ impl ChangesSidebar {
                     .flatten(),
             )
             .child({
+                let push_after = {
+                    let s = self.state.read(cx);
+                    s.flags.bool(corvane_core::flags::ids::COMMIT_AND_PUSH)
+                        && s.selected
+                            .and_then(|id| s.repository(id))
+                            .is_some_and(|r| r.commit_options.push_after_commit)
+                };
                 let (amending, committing, included) = self
                     .state
                     .read(cx)
@@ -3668,6 +3905,11 @@ impl ChangesSidebar {
                     0 => String::new(),
                     1 => "1 file ".to_string(),
                     n => format!("{n} files "),
+                };
+                let files = if push_after {
+                    format!("{files}and push ")
+                } else {
+                    files
                 };
                 let label = if amending {
                     div().flex().flex_row().child(if committing {
@@ -3756,6 +3998,31 @@ impl Render for ChangesSidebar {
                     .on_action(cx.listener(|this, _: &ToggleIncludeSelected, _, cx| {
                         this.toggle_include_selected(cx)
                     }))
+                    .on_action(cx.listener(|this, _: &DiscardSelectedFiles, _, cx| {
+                        this.discard_highlighted(cx)
+                    }))
+                    .on_action(cx.listener(
+                        |this, _: &crate::actions::CopySelectedFilePaths, _, cx| {
+                            this.copy_highlighted_paths(true, cx)
+                        },
+                    ))
+                    .on_action(cx.listener(
+                        |this, _: &crate::actions::CopySelectedRelativeFilePaths, _, cx| {
+                            this.copy_highlighted_paths(false, cx)
+                        },
+                    ))
+                    .on_action(cx.listener(|this, _: &OpenSelectedFileInEditor, _, cx| {
+                        if let Some(path) = this.highlighted_file_on_disk(cx) {
+                            Dispatcher::open_in_editor(path, cx)
+                        }
+                    }))
+                    .on_action(cx.listener(
+                        |this, _: &OpenSelectedFileWithDefaultProgram, _, cx| {
+                            if let Some(path) = this.highlighted_file_on_disk(cx) {
+                                cx.open_with_system(&path)
+                            }
+                        },
+                    ))
                     .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
                         let (files, _) = this.visible_files(cx);
                         if let Some(id) = this.state.read(cx).selected {
@@ -3848,6 +4115,7 @@ fn summary_overflow(text: &str, caret: usize, max: usize) -> Option<Range<usize>
 #[allow(clippy::too_many_arguments)]
 fn file_row(
     file: &WorkingDirectoryFileChange,
+    line_stats: Option<corvane_git::LineStats>,
     is_selected: bool,
     list_focused: bool,
     query: &str,
@@ -4045,8 +4313,42 @@ fn file_row(
                         .child(crate::autocompletion::highlighted(&file_name, &name_hits)),
                 ),
         )
+        .when_some(line_stats, |d, stats| {
+            let colours = (is_selected && list_focused).then_some(t.box_selected_active_text);
+            d.child(line_stats_label(stats, colours, t))
+        })
         .child(octicon(icon, color))
         .into_any_element()
+}
+
+/// "+N -M" in the added / deleted colours (Corvane addition, flag
+/// `changes-line-counts`); `colour` overrides both, for a focused selected
+/// row. Zero parts are left out.
+fn line_stats_label(
+    stats: corvane_git::LineStats,
+    colour: Option<Hsla>,
+    t: &crate::theme::GhdTheme,
+) -> Div {
+    div()
+        .flex_none()
+        .flex()
+        .flex_row()
+        .gap(SPACING_HALF())
+        .text_size(FONT_SIZE_SM())
+        .when(stats.added > 0, |d| {
+            d.child(
+                div()
+                    .text_color(colour.unwrap_or(t.color_new))
+                    .child(format!("+{}", crate::format::format_count(stats.added))),
+            )
+        })
+        .when(stats.deleted > 0, |d| {
+            d.child(
+                div()
+                    .text_color(colour.unwrap_or(t.color_deleted))
+                    .child(format!("-{}", crate::format::format_count(stats.deleted))),
+            )
+        })
 }
 
 /// "N changed files", or GHD's "3 of 10 changed files" while a filter hides

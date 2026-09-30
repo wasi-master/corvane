@@ -5,7 +5,7 @@ use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
@@ -116,6 +116,26 @@ pub fn set_credential_helper(enabled: bool) {
     CREDENTIAL_HELPER.store(enabled, Ordering::Relaxed);
 }
 
+/// Seconds a network command's HTTP transfer may stay below 1 byte/s before
+/// git aborts it (`GIT_HTTP_LOW_SPEED_LIMIT` / `GIT_HTTP_LOW_SPEED_TIME`);
+/// 0 = no limit, as in GHD. Set by the dispatcher from flag
+/// `network-stall-timeout`.
+static LOW_SPEED_TIME: AtomicU32 = AtomicU32::new(0);
+
+pub fn set_network_stall_timeout(seconds: u32) {
+    LOW_SPEED_TIME.store(seconds, Ordering::Relaxed);
+}
+
+/// Commands that talk to a remote.
+fn is_network_command(arg: Option<&OsString>) -> bool {
+    arg.is_some_and(|a| {
+        matches!(
+            a.to_str(),
+            Some("fetch" | "pull" | "push" | "clone" | "ls-remote")
+        )
+    })
+}
+
 impl GitCommand {
     pub fn new(bin: Arc<GitBinary>) -> Self {
         Self {
@@ -182,14 +202,8 @@ impl GitCommand {
         let mut cmd = Command::new(&self.bin.path);
         // Settings › Advanced › Use Git Credential Manager: `-c credential.helper=manager`
         // for the network commands (GHD `useExternalCredentialHelper`).
-        if CREDENTIAL_HELPER.load(Ordering::Relaxed)
-            && self.args.first().is_some_and(|a| {
-                matches!(
-                    a.to_str(),
-                    Some("fetch" | "pull" | "push" | "clone" | "ls-remote")
-                )
-            })
-        {
+        let network = is_network_command(self.args.first());
+        if CREDENTIAL_HELPER.load(Ordering::Relaxed) && network {
             cmd.args(["-c", "credential.helper=manager"]);
         }
         cmd.args(&self.args);
@@ -207,6 +221,11 @@ impl GitCommand {
         cmd.env("GIT_TERMINAL_PROMPT", "0")
             .env("LC_ALL", "en_US.UTF-8")
             .env("GIT_OPTIONAL_LOCKS", "0");
+        let stall = LOW_SPEED_TIME.load(Ordering::Relaxed);
+        if network && stall > 0 {
+            cmd.env("GIT_HTTP_LOW_SPEED_LIMIT", "1")
+                .env("GIT_HTTP_LOW_SPEED_TIME", stall.to_string());
+        }
         for k in &self.env_removed {
             cmd.env_remove(k);
         }
@@ -423,5 +442,43 @@ fn read_until_any(reader: &mut impl BufRead, delims: &[u8], out: &mut Vec<u8>) -
                 total += n;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn envs(cmd: &GitCommand) -> Vec<(String, String)> {
+        cmd.command()
+            .get_envs()
+            .filter_map(|(k, v)| {
+                Some((
+                    k.to_string_lossy().into_owned(),
+                    v?.to_string_lossy().into_owned(),
+                ))
+            })
+            .filter(|(k, _)| k.starts_with("GIT_HTTP_LOW_SPEED"))
+            .collect()
+    }
+
+    #[test]
+    fn stall_timeout_applies_to_network_commands_only() {
+        let git = Arc::new(crate::find_git().unwrap());
+        set_network_stall_timeout(30);
+        let fetch = GitCommand::new(git.clone()).args(["fetch", "origin"]);
+        let status = GitCommand::new(git.clone()).args(["status"]);
+        let mut fetch_env = envs(&fetch);
+        fetch_env.sort();
+        assert_eq!(
+            fetch_env,
+            vec![
+                ("GIT_HTTP_LOW_SPEED_LIMIT".into(), "1".into()),
+                ("GIT_HTTP_LOW_SPEED_TIME".into(), "30".into()),
+            ]
+        );
+        assert!(envs(&status).is_empty());
+        set_network_stall_timeout(0);
+        assert!(envs(&fetch).is_empty());
     }
 }

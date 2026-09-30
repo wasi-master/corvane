@@ -97,6 +97,55 @@ pub fn delete_remote_branch(
     Ok(())
 }
 
+/// A local branch's relation to its upstream (`%(upstream:track)`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BranchTracking {
+    pub ahead: usize,
+    pub behind: usize,
+    /// The upstream is configured but its remote-tracking branch is gone
+    /// (deleted on the remote and pruned).
+    pub gone: bool,
+}
+
+/// `git for-each-ref refs/heads`: the tracking state of every local branch
+/// that has an upstream, by short name.
+pub fn branch_tracking(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+) -> Result<std::collections::HashMap<String, BranchTracking>> {
+    let out = GitCommand::new(git)
+        .args([
+            "for-each-ref",
+            "--format=%(refname:lstrip=2)%00%(upstream)%00%(upstream:track,nobracket)",
+            "refs/heads",
+        ])
+        .current_dir(workdir)
+        .run()?;
+    Ok(parse_branch_tracking(&out.stdout_string()?))
+}
+
+/// Parse [`branch_tracking`]'s `name NUL upstream NUL track` lines.
+pub fn parse_branch_tracking(text: &str) -> std::collections::HashMap<String, BranchTracking> {
+    text.lines()
+        .filter_map(|line| {
+            let mut parts = line.split('\0');
+            let (name, upstream, track) = (parts.next()?, parts.next()?, parts.next()?);
+            if upstream.is_empty() {
+                return None;
+            }
+            let mut tracking = BranchTracking::default();
+            for part in track.split(", ") {
+                match part.split_once(' ') {
+                    Some(("ahead", n)) => tracking.ahead = n.parse().unwrap_or(0),
+                    Some(("behind", n)) => tracking.behind = n.parse().unwrap_or(0),
+                    _ => tracking.gone |= part == "gone",
+                }
+            }
+            Some((name.to_string(), tracking))
+        })
+        .collect()
+}
+
 /// `getRecentBranches`: branch names from the last checkouts in HEAD's reflog.
 pub fn recent_branches(git: Arc<GitBinary>, workdir: &Path, limit: usize) -> Result<Vec<String>> {
     let out = GitCommand::new(git)
@@ -504,6 +553,57 @@ mod tests {
     }
 
     #[test]
+    fn parses_branch_tracking() {
+        let text = "main\0refs/remotes/origin/main\0\n\
+                    feature\0refs/remotes/origin/feature\0ahead 2, behind 1\n\
+                    old\0refs/remotes/origin/old\0gone\n\
+                    local\0\0\n";
+        let map = parse_branch_tracking(text);
+        assert_eq!(map.len(), 3);
+        assert_eq!(map["main"], BranchTracking::default());
+        assert_eq!(
+            map["feature"],
+            BranchTracking {
+                ahead: 2,
+                behind: 1,
+                gone: false
+            }
+        );
+        assert!(map["old"].gone);
+    }
+
+    #[test]
+    fn reads_branch_tracking() {
+        let (dir, git) = repo();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+        run(&["config", "branch.main.remote", "origin"]);
+        run(&["config", "branch.main.merge", "refs/heads/main"]);
+        run(&["config", "remote.origin.url", "https://example.com/r.git"]);
+        run(&[
+            "config",
+            "remote.origin.fetch",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ]);
+        assert_eq!(
+            branch_tracking(git.clone(), path).unwrap()["main"],
+            BranchTracking::default()
+        );
+        run(&["update-ref", "-d", "refs/remotes/origin/main"]);
+        assert!(branch_tracking(git, path).unwrap()["main"].gone);
+    }
+
+    #[test]
     fn parses_recent_branches() {
         let text = "\
 aaaa checkout: moving from main to feature\n\
@@ -547,6 +647,7 @@ eeee commit: something\n";
             tip: None,
             upstream: None,
             tip_time: None,
+            remote_name: None,
         };
         checkout_branch(git.clone(), path, &main).unwrap();
         assert_eq!(

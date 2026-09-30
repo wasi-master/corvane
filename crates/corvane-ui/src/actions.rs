@@ -15,6 +15,25 @@ gpui_kit::actions!(
         SelectLastFile,
         // Space in the changes list: include / exclude the highlighted files
         ToggleIncludeSelected,
+        // ⌘⌫ in the changes list (`607-cmd-backspace-discards-files`)
+        DiscardSelectedFiles,
+        // ⇧⌘A / ⌥⌘O in a file list (`608-open-file-shortcuts`)
+        OpenSelectedFileInEditor,
+        OpenSelectedFileWithDefaultProgram,
+        // ⌥⌘S: unified ⇄ split diff (`612-diff-mode-shortcut`)
+        ToggleDiffDisplayMode,
+        // ⌥⌘C / ⇧⌥⌘C in a file list (`613-copy-path-shortcuts`)
+        CopySelectedFilePaths,
+        CopySelectedRelativeFilePaths,
+        // `614-navigation-shortcuts`
+        ShowPullRequestsList,
+        NextRepository,
+        PreviousRepository,
+        FocusDiff,
+        SelectNextFileFromDiff,
+        SelectPreviousFileFromDiff,
+        // View › Toggle History Review Mode (`109-history-review-mode`)
+        ToggleHistoryReviewMode,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,
@@ -31,6 +50,8 @@ gpui_kit::actions!(
         // Compare-to-branch filter box
         CompareSelect,
         CompareClear,
+        // Enter in a foldout's filter box: pick the highlighted (or first) row
+        FilterListPick,
         // History keyboard reorder mode
         ReorderMoveUp,
         ReorderMoveDown,

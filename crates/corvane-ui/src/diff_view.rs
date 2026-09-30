@@ -40,6 +40,10 @@
 //!
 //! Deviation (`182-diff-expand-whole-file`): diffs can open with the whole
 //! file expanded (files up to 20 000 lines).
+//!
+//! Deviation (`107-diff-loading-indicator`): while a working-directory diff
+//! takes longer than [`LOADING_INDICATOR_DELAY`] to compute, a spinner covers
+//! the pane (GHD keeps showing the previous diff, or nothing).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -188,6 +192,9 @@ pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElemen
         })
 }
 
+/// How long a diff loads before the spinner covers the pane.
+const LOADING_INDICATOR_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
+
 /// Which diff of the repository state the view shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffSource {
@@ -324,6 +331,8 @@ pub struct DiffView {
     image: Option<Entity<ImageDiff>>,
     context_menu: Option<Entity<ContextMenu>>,
     focus_handle: FocusHandle,
+    /// When the working-directory diff started loading, for the spinner.
+    loading_since: Option<std::time::Instant>,
 }
 
 impl DiffView {
@@ -363,7 +372,49 @@ impl DiffView {
             image: None,
             context_menu: None,
             focus_handle: cx.focus_handle(),
+            loading_since: None,
         }
+    }
+
+    /// `107-diff-loading-indicator`: a spinner over the pane once the
+    /// working-directory diff has been loading for a moment.
+    fn loading_overlay(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        let loading = self.source == DiffSource::WorkingDirectory && {
+            let s = self.state.read(cx);
+            s.flags
+                .bool(corvane_core::flags::ids::DIFF_LOADING_INDICATOR)
+                && s.selected_state()
+                    .is_some_and(|rs| rs.diff_loading && rs.selected_file.is_some())
+        };
+        if !loading {
+            self.loading_since = None;
+            return None;
+        }
+        let since = *self.loading_since.get_or_insert_with(|| {
+            cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(LOADING_INDICATOR_DELAY)
+                    .await;
+                let _ = this.update(cx, |_, cx| cx.notify());
+            })
+            .detach();
+            std::time::Instant::now()
+        });
+        if since.elapsed() < LOADING_INDICATOR_DELAY {
+            return None;
+        }
+        let t = cx.ghd();
+        Some(
+            div()
+                .absolute()
+                .inset_0()
+                .flex()
+                .items_center()
+                .justify_center()
+                .bg(t.background)
+                .child(crate::icons::loading("diff-loading", t.text_secondary))
+                .into_any_element(),
+        )
     }
 
     fn snapshot(&self, cx: &App) -> Option<Snapshot> {
@@ -604,6 +655,11 @@ impl DiffView {
         } else {
             self.rows.len()
         }
+    }
+
+    /// Corvane (`614-navigation-shortcuts`): ⌘3 puts keyboard focus here.
+    pub fn focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        window.focus(&self.focus_handle, cx);
     }
 
     /// Diff Settings › Diff display changed: swap the row set.
@@ -1802,8 +1858,13 @@ impl Render for DiffView {
             self.text_size = text_size;
             self.list_state.remeasure();
         }
+        let loading = self.loading_overlay(cx);
         let Some(snap) = self.snapshot(cx) else {
-            return div().flex_1().into_any_element();
+            return div()
+                .relative()
+                .flex_1()
+                .children(loading)
+                .into_any_element();
         };
         if self.rows_key.as_ref() != Some(&snap.key) {
             self.load(&snap, cx);
@@ -1911,6 +1972,7 @@ impl Render for DiffView {
                     .map(|anchor| self.whitespace_hint_popover(anchor, cx)),
             )
             .children(self.context_menu.clone())
+            .children(loading)
             .into_any_element()
     }
 }

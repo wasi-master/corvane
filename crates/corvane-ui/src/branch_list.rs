@@ -20,6 +20,13 @@
 //! narrow the list to remote branches (`263-branch-list-remote-only`).
 //! The context menu can start a rebase onto the branch
 //! (`267-branch-menu-rebase-onto`).
+//! Deviation (`513-branch-upstream-gone`): a local branch whose upstream was
+//! deleted on the remote shows a cloud-offline icon after its name.
+//! Deviation (`514-branch-list-ahead-behind`): local branch rows show their
+//! commits to push / pull ("2↑ 1↓") or an upload icon when unpublished.
+//! Deviation (`418-branch-list-stash-icon`): a local branch with a Desktop
+//! stash shows the stash icon after its name (GHD `branch-list-item.tsx` does
+//! not).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -32,6 +39,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, octicon, spin};
@@ -563,7 +571,33 @@ impl BranchFoldout {
             .into_any_element()
     }
 
-    fn row(&self, id: u64, branch: &Branch, current: bool, cx: &Context<Self>) -> impl IntoElement {
+    /// `stashed`: the branch has a Desktop stash (`418-branch-list-stash-icon`);
+    /// `tracking`: its upstream state (`513-branch-upstream-gone`).
+    fn row(
+        &self,
+        id: u64,
+        branch: &Branch,
+        current: bool,
+        stashed: bool,
+        tracking: Option<corvane_git::BranchTracking>,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
+        // `514-branch-list-ahead-behind`: unpublished, or commits to push / pull
+        let ahead_behind = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_AHEAD_BEHIND);
+        let sync_state = (ahead_behind && branch.kind == BranchKind::Local)
+            .then(|| match (&branch.upstream, tracking) {
+                (None, _) => Some(("Not published".to_string(), None)),
+                (Some(_), Some(t)) if !t.gone && (t.ahead > 0 || t.behind > 0) => Some((
+                    format!("{} to push, {} to pull", t.ahead, t.behind),
+                    Some((t.ahead, t.behind)),
+                )),
+                _ => None,
+            })
+            .flatten();
         let t = cx.ghd();
         let name = branch.name.clone();
         let selected = match &self.selected_row {
@@ -815,6 +849,61 @@ impl BranchFoldout {
                     .text_size(FONT_SIZE())
                     .child(branch.name.clone()),
             )
+            .when_some(sync_state, |d, (tooltip, counts)| {
+                let content = match counts {
+                    None => div()
+                        .flex()
+                        .child(octicon(Octicon::Upload, t.text_secondary))
+                        .into_any_element(),
+                    Some((ahead, behind)) => div()
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .gap(zpx(2.))
+                        .text_size(FONT_SIZE_SM())
+                        .when(!selected, |d| d.text_color(t.text_secondary))
+                        .when(ahead > 0, |d| d.child(format!("{ahead}↑")))
+                        .when(behind > 0, |d| d.child(format!("{behind}↓")))
+                        .into_any_element(),
+                };
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-sync-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(content)
+                        .ghd_tooltip(tooltip),
+                )
+            })
+            .when(tracking.is_some_and(|t| t.gone), |d| {
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-gone-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(octicon(Octicon::CloudOffline, t.text_secondary))
+                        .ghd_tooltip("Deleted on the remote"),
+                )
+            })
+            .when(stashed, |d| {
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-stash-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(octicon(Octicon::Stash, t.text_secondary))
+                        .ghd_tooltip("Stashed changes"),
+                )
+            })
             .when_some(date, |d, date| {
                 d.child(
                     div()
@@ -928,10 +1017,18 @@ impl Render for BranchFoldout {
             .flags
             .bool(corvane_core::flags::ids::BRANCH_LIST_REMOTE_ONLY);
         let remote_only = remote_toggle && self.remote_only;
-        let (id, groups, current, tip_valid) = {
+        let (id, groups, current, tip_valid, stashed, tracking) = {
             let s = self.state.read(cx);
             let id = s.selected;
             let rs = id.and_then(|id| s.repo_states.get(&id));
+            let stashed = rs
+                .filter(|_| {
+                    s.flags
+                        .bool(corvane_core::flags::ids::BRANCH_LIST_STASH_ICON)
+                })
+                .map(|rs| rs.stashed_branches.clone())
+                .unwrap_or_default();
+            let tracking = rs.map(|rs| rs.branch_tracking.clone()).unwrap_or_default();
             let info = rs.and_then(|r| r.info.as_ref());
             let current = info
                 .and_then(|i| i.current_branch())
@@ -948,7 +1045,7 @@ impl Render for BranchFoldout {
                 ),
                 _ => Vec::new(),
             };
-            (id, groups, current, tip_valid)
+            (id, groups, current, tip_valid, stashed, tracking)
         };
         let Some(id) = id else {
             return div().into_any_element();
@@ -1086,7 +1183,16 @@ impl Render for BranchFoldout {
                                     .child(group.title),
                             )
                             .children(group.branches.iter().map(|b| {
-                                self.row(id, b, current.as_deref() == Some(b.name.as_str()), cx)
+                                self.row(
+                                    id,
+                                    b,
+                                    current.as_deref() == Some(b.name.as_str()),
+                                    b.kind == BranchKind::Local && stashed.contains(&b.name),
+                                    (b.kind == BranchKind::Local)
+                                        .then(|| tracking.get(&b.name).copied())
+                                        .flatten(),
+                                    cx,
+                                )
                             }))
                     }))
                     .with_scrollbar()
@@ -1108,11 +1214,13 @@ impl BranchFoldout {
             .child(tab_bar(
                 vec![
                     TabModel {
+                        dot: false,
                         id: "branches-tab",
                         label: "Branches".into(),
                         count: None,
                     },
                     TabModel {
+                        dot: false,
                         id: "pull-requests-tab",
                         label: "Pull Requests".into(),
                         count: (open_prs > 0).then_some(open_prs),

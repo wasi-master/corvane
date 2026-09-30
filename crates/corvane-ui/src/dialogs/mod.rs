@@ -8,7 +8,7 @@ mod app_dialogs;
 pub(crate) mod branch_dialogs;
 mod change_repository_alias;
 mod ci_check_run_rerun;
-mod clone_repository;
+pub(crate) mod clone_repository;
 mod confirm_commit_to_default_branch;
 mod crash_report_found;
 mod create_repository;
@@ -99,9 +99,10 @@ impl DialogHost {
     fn build(&self, popup: &Popup, window: &mut Window, cx: &mut Context<Self>) -> AnyView {
         let state = self.state.clone();
         match popup {
-            Popup::Error { .. } | Popup::InstallGit { .. } | Popup::CLIInstalled { .. } => {
-                cx.new(|_| SimpleDialog::new(popup.clone())).into()
-            }
+            Popup::Error { .. }
+            | Popup::IndexLockExists { .. }
+            | Popup::InstallGit { .. }
+            | Popup::CLIInstalled { .. } => cx.new(|_| SimpleDialog::new(popup.clone())).into(),
             Popup::AddExistingRepository { path } => cx
                 .new(|cx| AddExistingRepositoryDialog::new(state, path.clone(), window, cx))
                 .into(),

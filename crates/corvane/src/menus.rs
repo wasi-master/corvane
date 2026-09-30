@@ -25,6 +25,9 @@ pub struct MenuOptions {
     pub show_add_license: bool,
     /// Flag `423-fetch-all-repositories`.
     pub fetch_all: bool,
+    /// Flags that add key bindings and their View menu items
+    /// (`614-navigation-shortcuts`, `109-history-review-mode`).
+    pub keymap: corvane_ui::keymap::KeymapFlags,
 }
 
 impl MenuOptions {
@@ -39,6 +42,7 @@ impl MenuOptions {
             show_main_window: s.flags.bool(ids::WINDOW_MENU_MAIN_WINDOW),
             show_add_license: s.flags.bool(ids::ADD_LICENSE),
             fetch_all: s.flags.bool(ids::FETCH_ALL_REPOSITORIES),
+            keymap: corvane_ui::keymap::KeymapFlags::from_flags(&s.flags),
         }
     }
 }
@@ -50,6 +54,7 @@ impl MenuOptions {
 /// Window › Corvane (shows the window hidden with ⌘W) and Help › Show
 /// Release Notes.
 pub fn install(cx: &mut App, options: &MenuOptions) {
+    let keymap = options.keymap;
     let (editor, shell) = (&options.editor, &options.shell);
     let (show_release_notes, show_import) = (options.show_release_notes, options.show_import);
     let mut repository = vec![
@@ -89,6 +94,41 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
         repository.push(MenuItem::action("Add License…", AddLicense));
     }
     repository.push(MenuItem::action("Repository Settings…", RepositorySettings));
+    let mut view = vec![
+        MenuItem::action("Show Changes", ShowChanges),
+        MenuItem::action("Show History", ShowHistory),
+        MenuItem::action("Show Repository List", ShowRepositoryList),
+        MenuItem::action("Show Branches List", ShowBranchesList),
+        MenuItem::action("Show Worktrees List", ShowWorktreesList),
+    ];
+    // Corvane (`614-navigation-shortcuts`)
+    if keymap.navigation_shortcuts {
+        view.push(MenuItem::action(
+            "Show Pull Requests List",
+            ShowPullRequestsList,
+        ));
+    }
+    // Corvane (`109-history-review-mode`)
+    if keymap.history_review_mode {
+        view.push(MenuItem::action(
+            "Toggle History Review Mode",
+            ToggleHistoryReviewMode,
+        ));
+    }
+    view.extend([
+        MenuItem::separator(),
+        MenuItem::action("Go to Summary", GoToSummary),
+        MenuItem::action("Show Stashed Changes", ToggleStashedChanges),
+        MenuItem::action("Hide Changes Filter", ToggleChangesFilter),
+        MenuItem::separator(),
+        MenuItem::action("Toggle Full Screen", ToggleFullScreen),
+        MenuItem::separator(),
+        MenuItem::action("Reset Zoom", ResetZoom),
+        MenuItem::action("Zoom In", ZoomIn),
+        MenuItem::action("Zoom Out", ZoomOut),
+        MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
+        MenuItem::action("Contract Active Resizable", ContractActiveResizable),
+    ]);
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
@@ -131,25 +171,7 @@ pub fn install(cx: &mut App, options: &MenuOptions) {
             MenuItem::separator(),
             MenuItem::action("Find", Find),
         ]),
-        Menu::new("View").items([
-            MenuItem::action("Show Changes", ShowChanges),
-            MenuItem::action("Show History", ShowHistory),
-            MenuItem::action("Show Repository List", ShowRepositoryList),
-            MenuItem::action("Show Branches List", ShowBranchesList),
-            MenuItem::action("Show Worktrees List", ShowWorktreesList),
-            MenuItem::separator(),
-            MenuItem::action("Go to Summary", GoToSummary),
-            MenuItem::action("Show Stashed Changes", ToggleStashedChanges),
-            MenuItem::action("Hide Changes Filter", ToggleChangesFilter),
-            MenuItem::separator(),
-            MenuItem::action("Toggle Full Screen", ToggleFullScreen),
-            MenuItem::separator(),
-            MenuItem::action("Reset Zoom", ResetZoom),
-            MenuItem::action("Zoom In", ZoomIn),
-            MenuItem::action("Zoom Out", ZoomOut),
-            MenuItem::action("Expand Active Resizable", ExpandActiveResizable),
-            MenuItem::action("Contract Active Resizable", ContractActiveResizable),
-        ]),
+        Menu::new("View").items(view),
         Menu::new("Repository").items(repository),
         Menu::new("Branch").items([
             MenuItem::action("New Branch…", NewBranch),

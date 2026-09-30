@@ -1,4 +1,8 @@
 //! `git status --porcelain=2 -z` (GHD `lib/status-parser.ts` + `lib/git/status.ts`).
+//!
+//! Deviations behind flags: [`StatusOptions`] (`respect-show-untracked-files`,
+//! `ignore-submodules`) and [`working_directory_line_stats`]
+//! (`changes-line-counts`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -15,20 +19,70 @@ use crate::process::GitCommand;
 /// GHD `conflictStatusCodes`.
 const CONFLICT_CODES: &[&str] = &["DD", "AU", "UD", "UA", "DU", "AA", "UU"];
 
+/// Corvane deviations from GHD's status invocation, set from flags by the
+/// dispatcher's refresh. The default is GHD's behaviour.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StatusOptions {
+    /// `status.showUntrackedFiles=no` (or false) hides untracked files
+    /// (`--untracked-files=no`); GHD always passes `--untracked-files=all`.
+    /// Flag `respect-show-untracked-files`.
+    pub respect_show_untracked_files: bool,
+    /// `--ignore-submodules=<when>`; GHD passes nothing, so only
+    /// `submodule.<name>.ignore` applies. Flag `ignore-submodules`.
+    pub ignore_submodules: IgnoreSubmodules,
+}
+
+/// What `git status` leaves out about submodules.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IgnoreSubmodules {
+    /// No option: `submodule.<name>.ignore` decides (GHD).
+    #[default]
+    AsConfigured,
+    /// `--ignore-submodules=dirty`: changes inside submodules are hidden,
+    /// a changed submodule commit is still listed.
+    Dirty,
+    /// `--ignore-submodules=all`: submodules are never listed.
+    All,
+}
+
 /// Run status and build the model. `previous` carries over per-file selections.
 pub fn get_status(
     git: Arc<GitBinary>,
     workdir: &Path,
     previous: Option<&WorkingDirectoryStatus>,
 ) -> Result<WorkingDirectoryStatus> {
+    get_status_with(git, workdir, previous, StatusOptions::default())
+}
+
+/// [`get_status`] with Corvane's [`StatusOptions`].
+pub fn get_status_with(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    previous: Option<&WorkingDirectoryStatus>,
+    options: StatusOptions,
+) -> Result<WorkingDirectoryStatus> {
+    let hide_untracked = options.respect_show_untracked_files
+        && crate::remote_ops::config_value(git.clone(), workdir, "status.showUntrackedFiles")
+            .is_some_and(|v| {
+                matches!(
+                    v.to_ascii_lowercase().as_str(),
+                    "no" | "false" | "off" | "0"
+                )
+            });
+    let untracked = if hide_untracked {
+        "--untracked-files=no"
+    } else {
+        "--untracked-files=all"
+    };
+    let mut args = vec!["status", untracked];
+    match options.ignore_submodules {
+        IgnoreSubmodules::AsConfigured => {}
+        IgnoreSubmodules::Dirty => args.push("--ignore-submodules=dirty"),
+        IgnoreSubmodules::All => args.push("--ignore-submodules=all"),
+    }
+    args.extend(["--branch", "--porcelain=2", "-z"]);
     let out = GitCommand::new(git.clone())
-        .args([
-            "status",
-            "--untracked-files=all",
-            "--branch",
-            "--porcelain=2",
-            "-z",
-        ])
+        .args(args)
         .current_dir(workdir)
         .run()?;
     let mut status = parse_porcelain_v2(&out.stdout);
@@ -56,6 +110,88 @@ pub fn get_status(
         .files
         .sort_by_cached_key(|file| file.path.to_lowercase());
     Ok(status)
+}
+
+/// Lines added / deleted in one changed file.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LineStats {
+    pub added: u64,
+    pub deleted: u64,
+}
+
+/// Untracked files larger than this are not read for a line count.
+const UNTRACKED_LINE_COUNT_LIMIT: u64 = 1024 * 1024;
+
+/// Per-file line counts of the working directory against `HEAD` (the empty
+/// tree on an unborn branch): `git diff --numstat --no-renames -z` for
+/// tracked files; untracked files are read and their lines counted. Binary
+/// files and untracked files over 1 MiB are left out.
+pub fn working_directory_line_stats(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    status: &WorkingDirectoryStatus,
+) -> Result<std::collections::HashMap<String, LineStats>> {
+    let run = |base: &str| {
+        GitCommand::new(git.clone())
+            .args(["diff", "--numstat", "--no-renames", "-z", base, "--"])
+            .current_dir(workdir)
+            .run()
+    };
+    let out = match run("HEAD") {
+        Ok(out) => out,
+        Err(crate::error::GitError::Failed { stderr, .. })
+            if stderr.contains("bad revision")
+                || stderr.contains("unknown revision")
+                || stderr.contains("ambiguous argument") =>
+        {
+            run(crate::log::NULL_TREE_SHA)?
+        }
+        Err(err) => return Err(err),
+    };
+    let mut stats = parse_numstat(&out.stdout);
+    for file in &status.files {
+        if file.status.kind == FileStatusKind::Untracked
+            && let Some(lines) = untracked_line_count(&workdir.join(&file.path))
+        {
+            stats.insert(
+                file.path.clone(),
+                LineStats {
+                    added: lines,
+                    deleted: 0,
+                },
+            );
+        }
+    }
+    Ok(stats)
+}
+
+/// `added TAB deleted TAB path NUL` records; binary files (`-`) are skipped.
+fn parse_numstat(stdout: &[u8]) -> std::collections::HashMap<String, LineStats> {
+    let text = String::from_utf8_lossy(stdout);
+    text.split('\0')
+        .filter_map(|record| {
+            let mut cols = record.splitn(3, '\t');
+            let added = cols.next()?.trim_start_matches('\n').parse().ok()?;
+            let deleted = cols.next()?.parse().ok()?;
+            let path = cols.next().filter(|p| !p.is_empty())?;
+            Some((path.to_string(), LineStats { added, deleted }))
+        })
+        .collect()
+}
+
+fn untracked_line_count(path: &Path) -> Option<u64> {
+    let meta = std::fs::metadata(path).ok()?;
+    if !meta.is_file() || meta.len() > UNTRACKED_LINE_COUNT_LIMIT {
+        return None;
+    }
+    let bytes = std::fs::read(path).ok()?;
+    // git's binary heuristic: a NUL in the first 8000 bytes
+    if bytes.iter().take(8000).any(|&b| b == 0) {
+        return None;
+    }
+    let newlines = bytes.iter().filter(|&&b| b == b'\n').count() as u64;
+    let unterminated = bytes.last().is_some_and(|&b| b != b'\n');
+    Some(newlines + u64::from(unterminated))
 }
 
 /// Parse NUL-separated porcelain v2 output.
@@ -291,6 +427,20 @@ mod tests {
     }
 
     #[test]
+    fn parses_numstat_and_skips_binary() {
+        let stats = parse_numstat(b"3\t1\tsrc/a b.rs\0-\t-\timg.png\0" as &[u8]);
+        assert_eq!(
+            stats.get("src/a b.rs"),
+            Some(&LineStats {
+                added: 3,
+                deleted: 1
+            })
+        );
+        assert!(!stats.contains_key("img.png"));
+        assert_eq!(stats.len(), 1);
+    }
+
+    #[test]
     fn detached_head_has_no_branch() {
         let s = parse_porcelain_v2(b"# branch.oid abc\0# branch.head (detached)\0");
         assert!(s.branch.is_none());
@@ -326,7 +476,7 @@ mod tests {
         std::fs::write(path.join("b.txt"), "new\n").unwrap();
 
         let git = Arc::new(crate::find_git().unwrap());
-        let s = get_status(git, path, None).unwrap();
+        let s = get_status(git.clone(), path, None).unwrap();
         assert_eq!(s.branch.as_deref(), Some("main"));
         let mut paths: Vec<_> = s
             .files
@@ -340,6 +490,36 @@ mod tests {
                 ("a.txt", FileStatusKind::Modified),
                 ("b.txt", FileStatusKind::Untracked)
             ]
+        );
+        run(&["config", "status.showUntrackedFiles", "no"]);
+        let hidden = get_status_with(
+            git.clone(),
+            path,
+            None,
+            StatusOptions {
+                respect_show_untracked_files: true,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(hidden.files.len(), 1);
+        assert_eq!(hidden.files[0].path, "a.txt");
+        // GHD ignores the setting
+        assert_eq!(get_status(git.clone(), path, None).unwrap().files.len(), 2);
+        let stats = working_directory_line_stats(git, path, &s).unwrap();
+        assert_eq!(
+            stats.get("a.txt"),
+            Some(&LineStats {
+                added: 1,
+                deleted: 1
+            })
+        );
+        assert_eq!(
+            stats.get("b.txt"),
+            Some(&LineStats {
+                added: 1,
+                deleted: 0
+            })
         );
     }
 }

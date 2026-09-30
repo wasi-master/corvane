@@ -118,6 +118,23 @@ fn app_name(s: &str) -> Result<(), &'static str> {
     }
 }
 
+/// A comma-separated list of GitHub logins (`314-hidden-clone-owners`).
+fn owner_list(s: &str) -> Result<(), &'static str> {
+    if s.contains(['\n', '\r']) {
+        Err("One line only")
+    } else if s.chars().count() > 500 {
+        Err("At most 500 characters")
+    } else if s
+        .split(',')
+        .map(str::trim)
+        .any(|o| o.contains(|c: char| !(c.is_ascii_alphanumeric() || c == '-' || c == '_')))
+    {
+        Err("Logins separated by commas")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -225,6 +242,22 @@ const IMAGE_DIFF_ALIGNMENTS: &[SelectOption] = &[
         label: "Top left corners together",
     },
 ];
+
+const IGNORE_SUBMODULE_MODES: &[SelectOption] = &[
+    SelectOption {
+        value: "configured",
+        label: "As configured (submodule.<name>.ignore)",
+    },
+    SelectOption {
+        value: "dirty",
+        label: "Changes inside submodules",
+    },
+    SelectOption {
+        value: "all",
+        label: "All submodule changes",
+    },
+];
+
 registry! {
     // ---- 100 Appearance ----
 
@@ -310,6 +343,202 @@ registry! {
             "crates/corvane-ui/src/diff_view.rs",
             "crates/corvane-core/src/packs.rs",
         ],
+    },
+
+    /// Spinner while a working-directory diff loads.
+    DIFF_LOADING_INDICATOR = 107 "diff-loading-indicator" {
+        title: "Diff loading spinner",
+        summary: "When a changed file's diff takes more than 300 ms to compute (large files, slow \
+                  filters), a spinner covers the diff pane until it is ready.",
+        ghd_behaviour: "The previous diff (or an empty pane) stays up with no sign of work.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1913)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+
+    /// A dot on the Changes tab while History shows and the branch has a stash.
+    STASH_DOT_ON_CHANGES_TAB = 108 "stash-dot-on-changes-tab" {
+        title: "Stash dot on the Changes tab",
+        summary: "While the History tab is showing, the Changes tab has a blue dot when the \
+                  current branch has stashed changes.",
+        ghd_behaviour: "The stash is only visible at the bottom of the Changes tab.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8589)],
+        code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/tab_bar.rs"],
+    },
+
+    /// History review mode: the diff alone, full width.
+    HISTORY_REVIEW_MODE = 109 "history-review-mode" {
+        title: "History review mode",
+        summary: "View › Toggle History Review Mode (⌃⌘S) hides the repository sidebar and the \
+                  commit's file list in History so the diff gets the whole width; ⌥↓ / ⌥↑ \
+                  (flag 614) still step through the files.",
+        ghd_behaviour: "The sidebar and file list always take their width.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8456)],
+        code: &[
+            "crates/corvane-ui/src/workspace.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+            "crates/corvane/src/menus.rs",
+        ],
+    },
+
+    /// The repository list filters to repositories with changes or commits to push / pull.
+    REPOSITORY_STATUS_FILTER = 110 "repository-status-filter" {
+        title: "Repository list status filters",
+        summary: "A filter button next to the repository list's filter box shows only \
+                  repositories with uncommitted changes and / or commits to push or pull (the \
+                  rows' indicators); the Recent group is left out while one is on.",
+        ghd_behaviour: "The list filters by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18322), Upstream::issue(22693)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// How many recent repositories the repository list shows.
+    RECENT_REPOSITORIES_COUNT = 111 "recent-repositories-count" {
+        title: "Recent repositories shown",
+        summary: "How many recently opened repositories the repository list shows in its Recent \
+                  group (0 hides the group).",
+        ghd_behaviour: "Always 3.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 20, unit: None },
+        corvane: Value::Number(3), ghd: Value::Number(3),
+        familiar: Value::Number(3), everything: Value::Number(5),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15244), Upstream::issue(19828)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Opening the repository list selects its remembered filter text.
+    REPOSITORY_FILTER_SELECTS_TEXT = 112 "repository-filter-selects-text" {
+        title: "Repository filter text is selected on open",
+        summary: "Opening the repository list (⌘T or the toolbar button) selects the filter text \
+                  it remembers, so typing replaces it.",
+        ghd_behaviour: "The caret lands after the old text, which has to be deleted first.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(2652)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// Add › Clone Repository… carries the repository list's filter text.
+    CLONE_PREFILLS_FILTER = 113 "clone-prefills-filter" {
+        title: "Clone dialog takes the repository filter",
+        summary: "Add › Clone Repository… in the repository list opens the clone dialog with the \
+                  list's filter text in its GitHub tabs' filter box, so a repository that is not \
+                  cloned yet can be found without typing its name again.",
+        ghd_behaviour: "The clone dialog's filter starts empty.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20685)],
+        code: &[
+            "crates/corvane-ui/src/repository_list.rs",
+            "crates/corvane-ui/src/dialogs/clone_repository.rs",
+        ],
+    },
+
+    /// An aliased repository's name is italic in the toolbar too.
+    ALIAS_ITALIC_IN_TOOLBAR = 114 "alias-italic-in-toolbar" {
+        title: "Aliases are italic in the toolbar",
+        summary: "The Current Repository button shows an aliased repository's name in italics, \
+                  as the repository list does.",
+        ghd_behaviour: "Italic in the repository list, upright in the toolbar.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17770)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// Same-named repositories in a group show the parent folders that differ.
+    DUPLICATE_NAMES_SHOW_PATH = 115 "duplicate-names-show-path" {
+        title: "Same-named repositories show their folder",
+        summary: "When repositories in one group of the repository list share a name, each row \
+                  adds, dimmed, the parent folders that tell them apart (fork-a beside fork-b).",
+        ghd_behaviour: "Identical rows; only the tooltip's path tells them apart.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15937)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// `/pattern/` in the repository filter is a regular expression.
+    REGEX_REPOSITORY_FILTER = 116 "regex-repository-filter" {
+        title: "Regular expressions in the repository filter",
+        summary: "Typing /pattern/ in the repository list's filter matches names against a \
+                  case-insensitive regular expression; any other text (or an invalid pattern) \
+                  filters as before.",
+        ghd_behaviour: "Plain text matching only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(20745)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/filter.rs"],
+    },
+
+    /// Filtering the repository list shows one ranked list.
+    FLAT_REPOSITORY_RESULTS = 117 "flat-repository-results" {
+        title: "Flat repository filter results",
+        summary: "While text is typed in the repository list's filter, the matches form one list \
+                  without owner groups, the best match (closest to the start of a word, fewest \
+                  extra characters) first.",
+        ghd_behaviour: "Matches stay in their owner groups, so the best match can sit far down.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4860)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// A missing repository's menu removes every missing repository.
+    REMOVE_ALL_MISSING_REPOSITORIES = 118 "remove-all-missing-repositories" {
+        title: "Remove all missing repositories",
+        summary: "The context menu of a repository Corvane cannot find offers \"Remove All N \
+                  Missing Repositories\" when several are missing; like removing one missing \
+                  repository it only takes them off the list, without confirmation.",
+        ghd_behaviour: "Missing repositories are removed one by one.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21151)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// Repository list rows name the checked-out branch.
+    REPOSITORY_LIST_BRANCH = 119 "repository-list-branch" {
+        title: "Branch names in the repository list",
+        summary: "Each repository list row shows, dimmed after the name, the branch checked out \
+                  in that repository (from the background indicator refresh).",
+        ghd_behaviour: "Only the name and the change / ahead-behind indicators.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8158)],
+        code: &["crates/corvane-ui/src/repository_list.rs", "crates/corvane-core/src/remote.rs"],
     },
 
     /// Relative dates in weeks and calendar months.
@@ -861,6 +1090,264 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
+    },
+
+    /// Create Repository warns before replacing an existing README.md.
+    README_OVERWRITE_WARNING = 207 "readme-overwrite-warning" {
+        title: "Create Repository warns about an existing README",
+        summary: "With \"Initialize this repository with a README\" ticked and a README.md already \
+                  in the folder, the Create a New Repository dialog warns that its content will be \
+                  replaced.",
+        ghd_behaviour: "The warning only exists in beta builds; release builds silently overwrite \
+                        the README.md.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22471)],
+        code: &["crates/corvane-ui/src/dialogs/create_repository.rs"],
+    },
+
+    /// Changes list: lines added / deleted per file and in total.
+    CHANGES_LINE_COUNTS = 208 "changes-line-counts" {
+        title: "Line counts in the Changes list",
+        summary: "Each changed file shows the lines it adds and removes against the last commit \
+                  (+N -M), and the \"N changed files\" header shows the totals of the listed \
+                  files. Runs git diff --numstat on every refresh; untracked files over 1 MiB and \
+                  binary files get no count.",
+        ghd_behaviour: "No line counts for uncommitted changes (only the commit summary in History \
+                        has them).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[
+            Upstream::issue(12914),
+            Upstream::issue(14916),
+            Upstream::issue(16024),
+            Upstream::issue(16930),
+            Upstream::issue(22403),
+        ],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/changes.rs", "crates/corvane-git/src/status.rs"],
+    },
+
+    /// Ignore File / Folder / Extension skip rules already in .gitignore.
+    IGNORE_SKIPS_EXISTING_RULES = 209 "ignore-skips-existing-rules" {
+        title: "Ignore menu items don't duplicate .gitignore rules",
+        summary: "\"Ignore File\", \"Ignore Folder\" and \"Ignore All .ext Files\" leave out \
+                  patterns the root .gitignore already has as a line.",
+        ghd_behaviour: "Appends the pattern again, so repeated use fills .gitignore with duplicate \
+                        lines.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2537)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
+    },
+
+    /// Fetch / pull / push give up on a stalled HTTP transfer.
+    NETWORK_STALL_TIMEOUT = 210 "network-stall-timeout" {
+        title: "Give up on stalled fetch, pull and push",
+        summary: "Seconds an HTTPS fetch, pull, push or clone may transfer nothing before git \
+                  aborts it with an error (GIT_HTTP_LOW_SPEED_LIMIT=1 and \
+                  GIT_HTTP_LOW_SPEED_TIME). 0 waits forever. Does not apply to SSH remotes.",
+        ghd_behaviour: "No limit: a stalled connection leaves the operation spinning until the app \
+                        is restarted.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 3600, unit: Some("s") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(60),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22863)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/process.rs"],
+    },
+
+    /// `status.showUntrackedFiles=no` hides untracked files.
+    RESPECT_SHOW_UNTRACKED_FILES = 211 "respect-show-untracked-files" {
+        title: "Respect status.showUntrackedFiles",
+        summary: "When the repository's git config sets status.showUntrackedFiles to no, the \
+                  Changes list leaves untracked files out, as git status does (useful for a home \
+                  directory or dotfiles repository). Untracked files then cannot be committed \
+                  from Corvane until they are added with git.",
+        ghd_behaviour: "Always lists every untracked file (--untracked-files=all).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(3734)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
+    },
+
+    /// Discarding a dirty submodule cleans inside it.
+    DISCARD_SUBMODULE_CHANGES = 212 "discard-submodule-changes" {
+        title: "Discard cleans changes inside submodules",
+        summary: "Discarding a submodule that has changes inside checks out its modified files \
+                  and moves its untracked files to the Trash, so the submodule is clean \
+                  afterwards.",
+        ghd_behaviour: "The submodule stays in the list: untracked files and edits inside it are \
+                        not discarded.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(10403)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
+    },
+
+    /// Wiki repositories are plain git repositories, not GitHub ones.
+    WIKI_NOT_GITHUB = 213 "wiki-not-github" {
+        title: "Wiki repositories are not treated as GitHub repositories",
+        summary: "A repository whose origin is a GitHub wiki (owner/name.wiki) is handled as a \
+                  plain git repository, so Corvane does not ask the API for its pull requests, \
+                  issues, collaborators and checks, which do not exist. Applies at launch and \
+                  when a repository is added.",
+        ghd_behaviour: "Treats the wiki as a GitHub repository and every API request for it fails.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: true, visible: true, availability: available,
+        upstream: &[Upstream::issue(2061)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-models/src/lib.rs"],
+    },
+
+    /// Discard deletes files instead of moving them to the Trash.
+    DISCARD_SKIPS_TRASH = 214 "discard-skips-trash" {
+        title: "Discard deletes instead of using the Trash",
+        summary: "Discarding changes deletes new and untracked files (and untracked files inside \
+                  a discarded submodule) permanently instead of moving them to the Trash; the \
+                  confirmation says they cannot be restored.",
+        ghd_behaviour: "Always moves discarded files to the Trash.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10445)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/discard_changes.rs"],
+    },
+
+    /// `git status --ignore-submodules`.
+    IGNORE_SUBMODULES = 215 "ignore-submodules" {
+        title: "Hide submodule changes",
+        summary: "What the Changes list leaves out about submodules: nothing beyond each \
+                  submodule's own submodule.<name>.ignore setting, changes inside submodules (a \
+                  new submodule commit is still listed), or submodules altogether (a new \
+                  submodule commit can then not be committed from Corvane).",
+        ghd_behaviour: "As configured: only submodule.<name>.ignore hides a submodule.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IGNORE_SUBMODULE_MODES },
+        corvane: Value::text("configured"), ghd: Value::text("configured"),
+        familiar: Value::text("configured"), everything: Value::text("dirty"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20484)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
+    },
+
+    /// Remote names containing `/` are matched whole.
+    REMOTE_NAMES_WITH_SLASHES = 216 "remote-names-with-slashes" {
+        title: "Remote names with slashes",
+        summary: "A remote branch's remote is found by matching the configured remote names, so \
+                  a remote called team/fork gives team/fork/main the branch name main (checkout, \
+                  push, pull requests and the branch list use it).",
+        ghd_behaviour: "Takes everything before the first / as the remote name (team), so the \
+                        branch becomes fork/main.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3618)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/repo.rs", "crates/corvane-models/src/lib.rs"],
+    },
+
+    /// "Ignore File In" submenu.
+    IGNORE_FILE_TARGETS = 217 "ignore-file-targets" {
+        title: "Choose the ignore file",
+        summary: "A changed file's context menu adds Ignore File In: the .gitignore of a folder \
+                  above the file (anchored to that folder), .git/info/exclude (this clone only) or \
+                  the global excludes file (core.excludesFile, else ~/.config/git/ignore; the file \
+                  name is ignored in every repository).",
+        ghd_behaviour: "Ignore items always write to the .gitignore at the repository root.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12171), Upstream::issue(16028)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
+    },
+
+    /// Repository Settings › Ignored Files › Edit global ignore file.
+    EDIT_GLOBAL_IGNORE_FILE = 218 "edit-global-ignore-file" {
+        title: "Edit the global ignore file",
+        summary: "Repository Settings › Ignored Files has an \"Edit global ignore file\" link that \
+                  opens git's excludes file (core.excludesFile, else ~/.config/git/ignore, created \
+                  when missing) in the external editor.",
+        ghd_behaviour: "Only the repository's root .gitignore can be edited.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21951)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Update from Default Branch fetches and merges the remote-tracking branch.
+    UPDATE_FROM_DEFAULT_FETCHES = 219 "update-from-default-fetches" {
+        title: "Update from the default branch's remote",
+        summary: "Branch › Update from Default Branch fetches the default branch's remote first \
+                  and merges its remote-tracking branch (origin/main), so the latest commits on \
+                  the remote are brought in even when the local default branch is behind.",
+        ghd_behaviour: "Merges the local default branch as it is, which may be behind its remote.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13709), Upstream::issue(19559), Upstream::issue(21545)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/remote.rs"],
+    },
+
+    /// Commit form gear › Push After Committing.
+    COMMIT_AND_PUSH = 220 "commit-and-push" {
+        title: "Push after committing",
+        summary: "The commit form's gear menu adds Push After Committing (kept per repository); \
+                  while it is ticked the button reads \"Commit and push to main\" and the branch \
+                  is pushed (or published) once the commit, hooks included, succeeds. Push errors \
+                  show as for the toolbar button; amended commits are not pushed.",
+        ghd_behaviour: "Committing and pushing are separate steps.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21874), Upstream::issue(22742)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// New untracked files start unticked in the Changes list.
+    NEW_UNTRACKED_FILES_EXCLUDED = 221 "new-untracked-files-excluded" {
+        title: "New untracked files start unticked",
+        summary: "An untracked file that appears in the Changes list starts unticked, so it is \
+                  only committed once it is ticked; tracked changes are still included.",
+        ghd_behaviour: "Every new file is ticked and goes into the next commit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18774), Upstream::issue(21427)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Update from Default Branch rebases when pull.rebase is set.
+    UPDATE_FROM_DEFAULT_REBASES = 222 "update-from-default-rebases" {
+        title: "Update from Default Branch follows pull.rebase",
+        summary: "When git config sets pull.rebase, Branch › Update from Default Branch rebases \
+                  the current branch onto the default branch (with the usual force-push warning \
+                  and conflict flow) instead of merging it in.",
+        ghd_behaviour: "Always merges the default branch in.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(7956), Upstream::issue(16131)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs"],
     },
 
     /// A failed force push keeps Force Push recommended.
@@ -1969,6 +2456,102 @@ registry! {
         code: &["crates/corvane-core/src/commit_status.rs"],
     },
 
+    /// Force push is recommended after an amend only when the amended commit was pushed.
+    AMEND_FORCE_PUSH_IF_PUSHED = 309 "amend-force-push-if-pushed" {
+        title: "Force push only after amending a pushed commit",
+        summary: "After amending, the toolbar recommends Force push only when the amended commit \
+                  is on the branch's upstream; amending a commit that was never pushed on a branch \
+                  that is also behind offers Pull, as before the amend.",
+        ghd_behaviour: "Every amend makes Force push the recommended action once the branch has \
+                        diverged, even when the amended commit was never pushed.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20526)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Submodules are updated (and new ones initialised) after a checkout or merge.
+    SUBMODULES_FOLLOW_CHECKOUT = 310 "submodules-follow-checkout" {
+        title: "Update submodules after checkout and merge",
+        summary: "After switching branches or a merge (including Update from Default Branch), \
+                  submodules are checked out at the commits the branch records and new ones are \
+                  cloned (git submodule update --init --recursive). Submodules that showed \
+                  changes beforehand are left alone.",
+        ghd_behaviour: "Submodules stay at their old commits (and new ones uninitialised), so \
+                        they show as changed and are easily committed back.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18302), Upstream::issue(18673), Upstream::issue(9547)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
+    /// Undo banner after deleting a local branch.
+    UNDO_DELETE_BRANCH = 311 "undo-delete-branch" {
+        title: "Undo deleting a branch",
+        summary: "Deleting a local branch shows a \"Deleted branch\" banner for 15 seconds whose \
+                  Undo recreates the branch at the commit it pointed at (without its upstream; a \
+                  branch deleted on the remote too stays deleted there).",
+        ghd_behaviour: "Deleted branches can only be recovered from the reflog on the command line.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20750)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-ui/src/banner.rs"],
+    },
+
+    /// The repository button names the GitHub owner.
+    OWNER_IN_REPOSITORY_BUTTON = 312 "owner-in-repository-button" {
+        title: "Owner in the repository button",
+        summary: "For a GitHub repository the Current Repository toolbar button's small line \
+                  shows the owner (user or organization) instead of \"Current Repository\", so \
+                  forks with the same name are told apart.",
+        ghd_behaviour: "Always \"Current Repository\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17252)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// The repository list filters to forks or to the rest.
+    REPOSITORY_FORK_FILTER = 313 "repository-fork-filter" {
+        title: "Repository list fork filter",
+        summary: "The repository list's filter button (added by this flag if 110 is off) offers \
+                  Forks and Not forks, from the GitHub repository's fork flag.",
+        ghd_behaviour: "The list filters by name only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15655)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
+
+    /// Owners whose repositories the clone lists leave out.
+    HIDDEN_CLONE_OWNERS = 314 "hidden-clone-owners" {
+        title: "Owners hidden from the clone list",
+        summary: "GitHub users or organizations (comma-separated logins) whose repositories the \
+                  clone dialog and the blank slate's repository list leave out.",
+        ghd_behaviour: "Every repository the account can access is listed.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "org-a, org-b", validate: owner_list },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11908)],
+        code: &[
+            "crates/corvane-ui/src/cloneable_repositories.rs",
+            "crates/corvane-ui/src/dialogs/clone_repository.rs",
+            "crates/corvane-ui/src/no_repositories.rs",
+        ],
+    },
+
     /// Clone over SSH by default.
     CLONE_PREFERS_SSH = 355 "clone-prefers-ssh" {
         title: "Clone over SSH",
@@ -2293,6 +2876,173 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
+    /// A settings file that cannot be written is reported.
+    REPORT_SETTINGS_SAVE_ERRORS = 412 "report-settings-save-errors" {
+        title: "Report settings that could not be saved",
+        summary: "When a changed setting cannot be written to disk, an error dialog says so \
+                  (with the reason) instead of the change silently being lost on the next launch.",
+        ghd_behaviour: "A failed save goes unnoticed; the setting reverts after a restart.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5046)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// How many branches the branch list's Recent group shows.
+    RECENT_BRANCHES_COUNT = 413 "recent-branches-count" {
+        title: "Recent branches shown",
+        summary: "How many recently checked-out branches the branch list shows in its Recent \
+                  group (0 hides the group).",
+        ghd_behaviour: "Always 5.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 50, unit: None },
+        corvane: Value::Number(5), ghd: Value::Number(5),
+        familiar: Value::Number(5), everything: Value::Number(10),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14311)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Fetch after deleting the checked-out branch.
+    FETCH_AFTER_DELETING_CURRENT_BRANCH = 414 "fetch-after-deleting-current-branch" {
+        title: "Fetch after deleting the current branch",
+        summary: "Deleting the checked-out branch switches to the default branch and then fetches \
+                  its remote in the background, so the commits of a just-merged pull request \
+                  show up without a manual Fetch.",
+        ghd_behaviour: "Switches to the default branch without fetching.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15984)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// A clear error when a branch is checked out in another worktree.
+    EXPLAIN_BRANCH_IN_OTHER_WORKTREE = 415 "explain-branch-in-other-worktree" {
+        title: "Explain branches checked out in another worktree",
+        summary: "When deleting a branch fails because it, or the default branch Corvane would \
+                  switch to, is checked out in another worktree, the error names that worktree \
+                  and says what to switch first.",
+        ghd_behaviour: "Shows git's \"used by worktree at\" errors, one after another.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22569)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/error.rs"],
+    },
+
+    /// A spinner in the Changes header while discarding or refreshing.
+    CHANGES_BUSY_INDICATOR = 416 "changes-busy-indicator" {
+        title: "Changes list busy indicator",
+        summary: "The \"N changed files\" row ends in a spinner while Discard Changes runs and \
+                  while a status refresh has been running for more than 300 ms, so a slow \
+                  discard or git status is visibly in progress.",
+        ghd_behaviour: "Nothing shows that a discard or status refresh is still running.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15297), Upstream::issue(1914)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Show the newest command-line stash when the branch has no Desktop stash.
+    SHOW_LATEST_OTHER_STASH = 417 "show-latest-other-stash" {
+        title: "Show stashes made outside Corvane",
+        summary: "When the current branch has no stash of its own, the Changes list's Stashed \
+                  Changes row shows the newest stash that GitHub Desktop or Corvane did not make \
+                  (git stash on the command line), so it can be viewed, restored or discarded. \
+                  Stashing from Corvane never replaces such a stash.",
+        ghd_behaviour: "Only stashes named !!GitHub_Desktop<branch> are shown; others are invisible.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17147)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/state.rs"],
+    },
+
+    /// A stash icon on branch rows that have a stash.
+    BRANCH_LIST_STASH_ICON = 418 "branch-list-stash-icon" {
+        title: "Stash icon in the branch list",
+        summary: "Local branches with stashed changes (a GitHub Desktop or Corvane stash) show the \
+                  stash icon after their name in the branch list.",
+        ghd_behaviour: "A branch's stash is only visible after switching to it.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17198)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// "No local changes" offers restoring the branch's stash.
+    RESTORE_STASH_SUGGESTION = 419 "restore-stash-suggestion" {
+        title: "Restore stash from No local changes",
+        summary: "When the branch has stashed changes and nothing else is changed, the \"No local \
+                  changes\" view starts with a \"Restore your stashed changes\" card whose Restore \
+                  button brings them back in one click.",
+        ghd_behaviour: "The stash has to be opened from the bottom of the Changes tab first.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12864)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
+
+    /// Restore a branch's stash when switching back to it with no changes.
+    POP_STASH_ON_RETURN = 420 "pop-stash-on-return" {
+        title: "Restore a branch's stash when returning to it",
+        summary: "Switching to a branch that has stashed changes restores them (git stash pop) \
+                  when the working directory is clean after the switch, e.g. when the changes on \
+                  the branch being left were stashed there. A pop that conflicts keeps the stash \
+                  and shows the conflicts.",
+        ghd_behaviour: "The stash stays until Stashed Changes › Restore is clicked.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17682)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
+
+    /// Repository Settings › Git Config › Line endings (core.autocrlf).
+    LINE_ENDINGS_SETTING = 421 "line-endings-setting" {
+        title: "Line endings setting per repository",
+        summary: "Repository Settings › Git Config adds \"Line endings (core.autocrlf)\": use the \
+                  global config, or store true, input or false in the repository's own config. \
+                  It applies to later checkouts and commits; files already checked out keep \
+                  their line endings.",
+        ghd_behaviour: "No line ending option; core.autocrlf has to be set on the command line.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5230)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/integrations.rs"],
+    },
+
+    /// "Name <email>" co-authors without a GitHub account.
+    FREE_FORM_CO_AUTHORS = 422 "free-form-co-authors" {
+        title: "Co-authors without a GitHub account",
+        summary: "Typing \"Name <email>\" in the co-authors box adds that person as a co-author \
+                  (a Co-Authored-By trailer) without looking them up on GitHub. To allow spaces \
+                  in names, Space turns a typed word into a GitHub handle only when it starts \
+                  with @; the suggestions list works as before.",
+        ghd_behaviour: "Only GitHub users can be added; every word becomes a handle on Space.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4308)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/autocomplete.rs"],
     },
 
     /// Repository › Fetch All Repositories.
@@ -2887,6 +3637,50 @@ registry! {
         code: &["crates/corvane-core/src/release_notes.rs"],
     },
 
+    /// Remove a left-over index.lock from the error dialog.
+    REMOVE_STALE_INDEX_LOCK = 512 "remove-stale-index-lock" {
+        title: "Remove a left-over index.lock",
+        summary: "When git fails because .git/index.lock exists, the error explains it and offers \
+                  Remove Lock File, which deletes the lock only when no Git process is running in \
+                  the repository.",
+        ghd_behaviour: "Shows git's error; the lock has to be deleted by hand.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(908)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/index_lock.rs", "crates/corvane-ui/src/dialogs/simple.rs"],
+    },
+
+    /// Mark local branches whose upstream was deleted on the remote.
+    BRANCH_UPSTREAM_GONE = 513 "branch-upstream-gone" {
+        title: "Mark branches deleted on the remote",
+        summary: "Local branches whose upstream branch was deleted on the remote (and pruned by \
+                  a fetch) show a cloud icon after their name in the branch list, so merged \
+                  branches are easy to spot and clean up.",
+        ghd_behaviour: "Nothing tells such branches apart.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20897)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
+    },
+
+    /// Ahead/behind counts and "not published" in branch list rows.
+    BRANCH_LIST_AHEAD_BEHIND = 514 "branch-list-ahead-behind" {
+        title: "Push / pull state in the branch list",
+        summary: "Local branch rows show how many commits they have to push and pull (\"2↑ 1↓\") \
+                  against their upstream, or an upload icon when the branch was never published.",
+        ghd_behaviour: "Only the current branch's state shows, on the toolbar's push / pull button.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5330)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
+
     /// No automatic update checks.
     NO_AUTOMATIC_UPDATE_CHECKS = 523 "no-automatic-update-checks" {
         title: "No automatic update checks",
@@ -2987,6 +3781,170 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+    },
+
+    /// ⌘⌫ in the changes list discards the highlighted files.
+    CMD_BACKSPACE_DISCARDS_FILES = 607 "cmd-backspace-discards-files" {
+        title: "⌘⌫ in the changes list discards the selected files",
+        summary: "With the changes list focused, ⌘⌫ discards the highlighted files (confirming \
+                  as the context menu's Discard Changes does); elsewhere it still removes the \
+                  repository.",
+        ghd_behaviour: "⌘⌫ is Repository › Remove… everywhere, also in the changes list.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(11924), Upstream::issue(17680)],
+        code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// ⇧⌘A / ⌥⌘O open the file selected in a file list.
+    OPEN_FILE_SHORTCUTS = 608 "open-file-shortcuts" {
+        title: "Shortcuts that open the selected file",
+        summary: "With the changes list or a commit's file list focused, ⇧⌘A opens the selected \
+                  file in the external editor (instead of the repository) and ⌥⌘O opens it with \
+                  its default program.",
+        ghd_behaviour: "Only the file context menu opens a file; ⇧⌘A always opens the repository.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13691), Upstream::issue(4655), Upstream::issue(20773)],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/changes.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+        ],
+    },
+
+    /// Repository › Push has no ⌘P shortcut.
+    NO_PUSH_SHORTCUT = 609 "no-push-shortcut" {
+        title: "No ⌘P shortcut for Push",
+        summary: "⌘P does nothing and Repository › Push shows no shortcut, so a stray ⌘P (print, \
+                  quick open in an editor) cannot push.",
+        ghd_behaviour: "⌘P pushes (or opens Force Push… after a rebase or amend).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14604)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
+
+    /// ⌥⌘T opens the repository in the shell, next to ⌃`.
+    OPEN_IN_SHELL_ALT_SHORTCUT = 610 "open-in-shell-alt-shortcut" {
+        title: "⌥⌘T also opens the shell",
+        summary: "Repository › Open in <shell> also answers to ⌥⌘T, which every keyboard layout \
+                  can type (⌃` is a dead key on German and other layouts).",
+        ghd_behaviour: "Only ⌃`.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3240)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
+
+    /// ⌃N / ⌃P move the selection in the changes and history lists.
+    EMACS_LIST_KEYS = 611 "emacs-list-keys" {
+        title: "⌃N / ⌃P move through lists",
+        summary: "⌃N and ⌃P select the next and previous row of the changes and history lists, \
+                  like ↓ and ↑ (the macOS text-system keys).",
+        ghd_behaviour: "Only the arrow keys move the selection.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(7266)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
+
+    /// ⌥⌘S switches the diff between unified and split.
+    DIFF_MODE_SHORTCUT = 612 "diff-mode-shortcut" {
+        title: "⌥⌘S switches the diff display",
+        summary: "⌥⌘S toggles Diff Settings between Unified and Split.",
+        ghd_behaviour: "Only the diff settings popover changes it (three clicks).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(15284)],
+        code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane/src/main.rs"],
+    },
+
+    /// ⌥⌘C / ⇧⌥⌘C copy the selected files' paths.
+    COPY_PATH_SHORTCUTS = 613 "copy-path-shortcuts" {
+        title: "Shortcuts that copy file paths",
+        summary: "With the changes list or a commit's file list focused, ⌥⌘C copies the selected \
+                  files' full paths and ⇧⌥⌘C their paths relative to the repository (VS Code's \
+                  keys), one per line.",
+        ghd_behaviour: "Only the file context menu copies paths.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21810)],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/changes.rs",
+            "crates/corvane-ui/src/selected_commit.rs",
+        ],
+    },
+
+    /// ⌃⌘P, ⇧⌘] / ⇧⌘[, ⌘3 and ⌥↓ / ⌥↑ in the diff.
+    NAVIGATION_SHORTCUTS = 614 "navigation-shortcuts" {
+        title: "More navigation shortcuts",
+        summary: "View › Show Pull Requests List (⌃⌘P) opens the branch list on its Pull Requests \
+                  tab; ⇧⌘] / ⇧⌘[ switch to the next / previous repository in the list's order; \
+                  ⌘3 focuses the diff; ⌥↓ / ⌥↑ in the diff select the next / previous file.",
+        ghd_behaviour: "None of these shortcuts; the pull request list, other repositories and the \
+                        diff are reached with the mouse or by tabbing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[
+            Upstream::issue(16854),
+            Upstream::issue(20115),
+            Upstream::issue(20677),
+            Upstream::issue(19935),
+        ],
+        code: &[
+            "crates/corvane-ui/src/keymap.rs",
+            "crates/corvane-ui/src/workspace.rs",
+            "crates/corvane/src/main.rs",
+            "crates/corvane/src/menus.rs",
+        ],
+    },
+
+    /// Switching to Changes or History focuses that section's list.
+    FOCUS_LIST_ON_SECTION_SWITCH = 615 "focus-list-on-section-switch" {
+        title: "Switching tabs focuses the list",
+        summary: "Clicking the Changes or History tab, ⌘1 / ⌘2 and ⌃Tab put keyboard focus on \
+                  the section's list, so the arrow keys work straight away.",
+        ghd_behaviour: "Focus stays where it was (often the page body), and the list has to be \
+                        tabbed to.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(535)],
+        code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane/src/main.rs"],
+    },
+
+    /// At launch the commit summary takes focus when there are changes.
+    LAUNCH_FOCUSES_COMMIT_SUMMARY = 616 "launch-focuses-commit-summary" {
+        title: "Launch focuses the commit summary",
+        summary: "When Corvane opens on a repository with uncommitted changes, the caret starts \
+                  in the commit summary, ready to type.",
+        ghd_behaviour: "Nothing useful has focus at launch; the summary has to be clicked (or \
+                        reached with ⌘G).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20417)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
     },
 
     /// The diff's font size.
