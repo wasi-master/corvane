@@ -1,5 +1,5 @@
 name: main-window
-description: Changes view with the fixture's four working-tree changes, no interaction
+description: Changes view with the fixture's five working-tree changes, no interaction
 setup: repo
 steps:
   - wait: 600
@@ -83,3 +83,12 @@ steps:
   - snap: sidebar-320
   - drag: {from: [320, 400], to: [100, 400]}
   - snap: sidebar-minimum
+---
+name: diff-intraline
+description: A modified pair of lines (intra-line change highlight) and a wrapped line (line numbers on its first visual line)
+setup: repo
+steps:
+  - click: [120, 301]
+    wait: 800
+  - dump: unified
+  - snap: unified

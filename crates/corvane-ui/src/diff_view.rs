@@ -35,7 +35,7 @@ use crate::diff_expansion::{
 use crate::diff_view_rows::{
     Column, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection,
     TextBounds, build_rows, build_split_rows, line_number_width, max_line_number, render_row,
-    render_split_row, search_rows, spans_for_row, unified_to_split,
+    render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -262,6 +262,8 @@ pub struct DiffView {
     /// Side-by-side rows built from `rows` (`showSideBySideDiff`).
     split_rows: Rc<Vec<SplitRow>>,
     unified_to_split: Rc<Vec<usize>>,
+    /// Intra-line change ranges of the unified rows.
+    unified_inner: Rc<Vec<Option<std::ops::Range<usize>>>>,
     /// Whether the list currently shows `split_rows`.
     split_mode: bool,
     /// New-side file lines for expansion (`fileContents.newContents`).
@@ -307,6 +309,7 @@ impl DiffView {
             hunks: Rc::new(Vec::new()),
             split_rows: Rc::new(Vec::new()),
             unified_to_split: Rc::new(Vec::new()),
+            unified_inner: Rc::new(Vec::new()),
             split_mode: false,
             contents: None,
             old_contents: None,
@@ -542,6 +545,7 @@ impl DiffView {
     fn rebuild_split_rows(&mut self) {
         let split = build_split_rows(&self.rows);
         self.unified_to_split = Rc::new(unified_to_split(&split, self.rows.len()));
+        self.unified_inner = Rc::new(unified_inner(&split, self.rows.len()));
         self.split_rows = Rc::new(split);
     }
 
@@ -1869,6 +1873,7 @@ impl DiffView {
             hovered_group: self.hovered_group,
             view: cx.weak_entity(),
             tokens: self.tokens.clone(),
+            inner: self.unified_inner.clone(),
             search: self.search_index(),
             show_check_marks: AppState::try_global(cx)
                 .is_none_or(|s| s.read(cx).settings.show_diff_check_marks),

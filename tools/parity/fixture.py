@@ -43,6 +43,8 @@ _WORKING_CHANGES = {
     "README.md": "# Parity fixture\n\nA small repository for GitHub Desktop parity runs.\n\n## Flags\n\n- `--shout`: upper-case the greeting\n- `--quiet`: print nothing\n\n## License\n\nMIT\n",
     "notes.txt": "Remember to update the changelog.\n",
     "src/lib.rs": "pub fn greet(name: &str) -> String {\n    format!(\"Hello, {name}!\")\n}\n",
+    # one changed word (intra-line highlight) next to a line long enough to wrap
+    "src/main.rs": 'fn main() {\n    let args: Vec<String> = std::env::args().skip(1).collect();\n    let shout = args.iter().any(|a| a == "--loud");\n    let name = args.iter().find(|a| !a.starts_with("--")).cloned().unwrap_or_else(|| std::env::var("USER").unwrap_or_else(|_| "world".into())).trim().to_string(); // falls back to $USER, then to "world"\n    let line = format!("Hello, {name}!");\n    println!("{}", if shout { line.to_uppercase() } else { line });\n}\n',
 }
 _DELETED = ["docs/old.md"]
 
