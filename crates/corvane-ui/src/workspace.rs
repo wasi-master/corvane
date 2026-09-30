@@ -450,10 +450,22 @@ impl Workspace {
                 },
                 cx,
             ))
-            .child(div().flex_1().min_h_0().child(match self.section {
-                Section::Changes => self.changes.clone().into_any_element(),
-                Section::History => self.history.clone().into_any_element(),
-            }))
+            .child(
+                div().flex_1().min_h_0().child(match self.section {
+                    // cached views (like the diffs): a sidebar re-renders when
+                    // it changes, not for every frame of the diff beside it
+                    Section::Changes => self
+                        .changes
+                        .clone()
+                        .cached(StyleRefinement::default().size_full())
+                        .into_any_element(),
+                    Section::History => self
+                        .history
+                        .clone()
+                        .cached(StyleRefinement::default().size_full())
+                        .into_any_element(),
+                }),
+            )
     }
 
     fn content(&self, cx: &Context<Self>) -> AnyElement {
@@ -655,7 +667,11 @@ impl Workspace {
                 }
                 no_changes(actions, cx).into_any_element()
             }
-            Section::History => self.selected_commit.clone().into_any_element(),
+            Section::History => self
+                .selected_commit
+                .clone()
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element(),
         }
     }
 
