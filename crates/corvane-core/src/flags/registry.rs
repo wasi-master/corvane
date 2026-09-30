@@ -280,6 +280,21 @@ registry! {
         upstream: &[Upstream::issue(12459), Upstream::issue(20083)],
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
+    /// Create a Branch starts from the current branch while there are changes.
+    CREATE_BRANCH_WITH_CHANGES_FROM_CURRENT = 256 "create-branch-with-changes-from-current" {
+        title: "New branch with uncommitted changes starts from the current branch",
+        summary: "While the working directory has uncommitted changes, Create a Branch preselects \
+                  the current branch as the starting point, so the changes brought along apply \
+                  to the code they were written against.",
+        ghd_behaviour: "Always preselects the default branch; bringing the changes onto it can \
+                        conflict or appear to lose work.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9670)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
 
     // ---- 300 GitHub ----
 

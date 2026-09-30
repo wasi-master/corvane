@@ -4,7 +4,9 @@
 //! and the merge `ChooseBranch` step (`merge-choose-branch-dialog.tsx`).
 //!
 //! Deviations: Create a Branch can start from any branch through an "Other
-//! branch…" choice (`255-create-branch-from-any-branch`).
+//! branch…" choice (`255-create-branch-from-any-branch`) and preselects the
+//! current branch while there are uncommitted changes
+//! (`256-create-branch-with-changes-from-current`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -95,12 +97,30 @@ impl CreateBranchDialog {
         window.focus(&handle, cx);
         let other_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&other_filter, |_, _, cx| cx.notify()).detach();
+        // `256-create-branch-with-changes-from-current`: uncommitted changes
+        // come along, so start where they were written
+        let start_point = {
+            let s = state.read(cx);
+            let has_changes = s
+                .repo_states
+                .get(&repo)
+                .and_then(|r| r.status.as_ref())
+                .is_some_and(|st| !st.files.is_empty());
+            if has_changes
+                && s.flags
+                    .bool(corvane_core::flags::ids::CREATE_BRANCH_WITH_CHANGES_FROM_CURRENT)
+            {
+                StartPoint::CurrentBranch
+            } else {
+                StartPoint::DefaultBranch
+            }
+        };
         Self {
             state,
             repo,
             target_sha,
             name,
-            start_point: StartPoint::DefaultBranch,
+            start_point,
             other_filter,
             other_focus: cx.focus_handle(),
             other_branch: None,

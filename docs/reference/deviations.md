@@ -35,6 +35,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Branches
 
 - Create a Branch can start from any branch (Corvane addition, off in the Corvane preset): "Other branch…" joins the default / current branch choices (which are then offered even while the default branch is checked out) and opens the merge dialog's filterable branch list; Create Branch stays disabled until a branch is picked. GHD `create-branch-dialog.tsx` offers only the default and the current branch. Flag: `255-create-branch-from-any-branch`.
+- With uncommitted changes, Create a Branch preselects the current branch as the starting point, so the changes brought along apply to the code they were written against; GHD always preselects the default branch. Flag: `256-create-branch-with-changes-from-current`.
 
 ## Tutorial
 
