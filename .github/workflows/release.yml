@@ -35,7 +35,7 @@ env:
 jobs:
   release:
     name: build · sign · upload (macOS universal)
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +53,8 @@ jobs:
             echo "full=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Xcode 26: actool for the Liquid Glass icon, metal for precompiled shaders
+      # Xcode 26: actool for the Liquid Glass icon (crashes on a macOS 15 host,
+      # hence macos-26), metal for precompiled shaders
       - name: select Xcode 26
         run: echo "DEVELOPER_DIR=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)/Contents/Developer" >> "$GITHUB_ENV"
 

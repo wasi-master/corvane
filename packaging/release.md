@@ -93,8 +93,8 @@ packaging/signing-cert.sh create   # → login keychain, ~/.corvane-signing/corv
 
 ## Releasing from CI
 
-`.github/workflows/release.yml` runs on a `v*` tag push (`macos-15`, Xcode
-26): fmt, clippy and tests; a `--no-default-features` release build for
+`.github/workflows/release.yml` runs on a `v*` tag push (`macos-26`, Xcode
+26; its `actool` crashes on a macOS 15 host): fmt, clippy and tests; a `--no-default-features` release build for
 `aarch64-apple-darwin` and `x86_64-apple-darwin`; `packaging/release.sh`
 with `SKIP_BUILD=1 UPDATE_CASK=1` (lipo, bundle signed with the certificate
 from `packaging/signing-cert.sh ci`, zip, dmg, packs); the same for
