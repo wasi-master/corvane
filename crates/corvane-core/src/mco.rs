@@ -1039,6 +1039,29 @@ impl Dispatcher {
         });
     }
 
+    /// Conflicts dialog › Resolve All (flag `446`): `resolution` for every
+    /// file that still has conflicts. Nothing is written until Continue, and
+    /// each file keeps its Undo.
+    pub fn set_all_manual_resolutions(id: u64, resolution: ManualConflictResolution, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            let Some(status) = rs.status.as_ref() else {
+                return;
+            };
+            let Some(conflict) = rs.conflict_state.as_mut() else {
+                return;
+            };
+            let paths: Vec<String> = conflicted_files(status, &conflict.manual_resolutions)
+                .into_iter()
+                .map(|f| f.path.clone())
+                .collect();
+            for path in paths {
+                conflict.manual_resolutions.insert(path, resolution);
+            }
+            cx.notify();
+        });
+    }
+
     fn note_resolved_conflicts(id: u64, cx: &mut App) {
         let any_resolved = {
             let s = Self::state(cx).read(cx);

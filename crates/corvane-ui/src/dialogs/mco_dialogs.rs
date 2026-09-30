@@ -5,6 +5,9 @@
 //! `dialog/{progress,conflicts,confirm-abort,warn-force-push}-dialog.tsx`,
 //! plus `local-changes-overwritten-dialog.tsx` and the squash message popup
 //! (`commit-message` in a dialog).
+//!
+//! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
+//! `conflicts-dialog.tsx` has per-file choices only).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -567,17 +570,70 @@ impl McoDialog {
                     .child(div().pl(SPACING()).child("All conflicts resolved")),
             );
         } else {
+            // flag `446`: Resolve All ▾ next to the count (a choice per file,
+            // written on Continue; each file keeps its Undo)
+            let resolve_all = (conflicted_count > 1
+                && self
+                    .state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::RESOLVE_ALL_CONFLICTS))
+            .then(|| {
+                let items = vec![
+                    MenuItem::new(
+                        match &our {
+                            Some(b) => format!("Resolve All Using {b}"),
+                            None => "Resolve All Using Ours".to_string(),
+                        },
+                        move |_, cx| {
+                            Dispatcher::set_all_manual_resolutions(
+                                repo,
+                                ManualConflictResolution::Ours,
+                                cx,
+                            )
+                        },
+                    ),
+                    MenuItem::new(
+                        match &their {
+                            Some(b) => format!("Resolve All Using {b}"),
+                            None => "Resolve All Using Theirs".to_string(),
+                        },
+                        move |_, cx| {
+                            Dispatcher::set_all_manual_resolutions(
+                                repo,
+                                ManualConflictResolution::Theirs,
+                                cx,
+                            )
+                        },
+                    ),
+                ];
+                button("resolve-all", "Resolve All", cx)
+                    .gap(SPACING_HALF())
+                    .child(octicon(Octicon::TriangleDown, t.secondary_button_text))
+                    .on_click(cx.listener(move |_, ev: &ClickEvent, window, cx| {
+                        let position = ev.mouse_position().unwrap_or_default();
+                        show_menu(items.clone(), position, window, cx);
+                    }))
+            });
             content = content
                 .child(
                     div()
                         .mb(SPACING_DOUBLE())
-                        .text_size(FONT_SIZE_MD())
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .child(if conflicted_count == 1 {
-                            "1 conflicted file".to_string()
-                        } else {
-                            format!("{conflicted_count} conflicted files")
-                        }),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_size(FONT_SIZE_MD())
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child(if conflicted_count == 1 {
+                                    "1 conflicted file".to_string()
+                                } else {
+                                    format!("{conflicted_count} conflicted files")
+                                }),
+                        )
+                        .children(resolve_all),
                 )
                 .child(
                     div()

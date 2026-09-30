@@ -751,6 +751,20 @@ registry! {
         upstream: &[Upstream::issue(15858)],
         code: &["crates/corvane-ui/src/history.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Conflicts dialog › Resolve All ▾.
+    RESOLVE_ALL_CONFLICTS = 446 "resolve-all-conflicts" {
+        title: "Resolve all conflicts using one side",
+        summary: "With two or more conflicted files, the conflicts dialog has a Resolve All menu \
+                  that picks one branch's version for every file still in conflict. Like the \
+                  per-file choice it is applied on Continue, and each file keeps its Undo.",
+        ghd_behaviour: "One side is picked file by file.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12377), Upstream::issue(15829), Upstream::issue(22516)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-core/src/mco.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
