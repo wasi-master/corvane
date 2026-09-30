@@ -558,7 +558,7 @@ pub fn account_popover(
 ) -> AnyElement {
     let t = cx.ghd();
     let anchor = picker.button_bounds.get();
-    let viewport = crate::theme::page_size(window);
+    let viewport = window.viewport_size();
     let width = zpx(365.);
     let x = (anchor.origin.x * placement.scale)
         .min(viewport.width - width - zpx(8.))

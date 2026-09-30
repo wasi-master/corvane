@@ -1907,7 +1907,7 @@ impl Render for FlagsDialog {
         let confirm = self.confirm.map(|c| self.confirm_sheet(c, cx));
 
         deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("flags-overlay")
                     // modal: the views underneath get no hover, clicks or wheel

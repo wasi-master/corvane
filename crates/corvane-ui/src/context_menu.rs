@@ -333,7 +333,7 @@ impl ContextMenu {
 
 impl Render for ContextMenu {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let viewport = crate::theme::page_size(window);
+        let viewport = window.viewport_size();
         let width = Self::width(&self.items);
         let height = Self::height(&self.items);
         let mut x = self.position.x;

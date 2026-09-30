@@ -247,6 +247,12 @@ pub fn page_size(window: &gpui_kit::Window) -> gpui_kit::Size<gpui_kit::Pixels> 
     gpui_kit::size(viewport.width, viewport.height - page_top())
 }
 
+/// The page's top-left corner in window coordinates: where a full-page
+/// overlay (`anchored()` positions are window coordinates) starts.
+pub fn page_origin() -> gpui_kit::Point<gpui_kit::Pixels> {
+    gpui_kit::point(gpui_kit::px(0.), page_top())
+}
+
 /// [`page_size`] where it sits in window coordinates.
 pub fn page_bounds(window: &gpui_kit::Window) -> gpui_kit::Bounds<gpui_kit::Pixels> {
     gpui_kit::Bounds::new(

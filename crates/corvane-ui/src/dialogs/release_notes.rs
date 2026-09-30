@@ -128,7 +128,7 @@ impl Render for ReleaseNotesDialog {
             UpdateStatus::Ready { update, .. } if update.version == r.latest_version
         );
         deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("release-notes-overlay")
                     // modal: nothing underneath takes hover, clicks or wheel

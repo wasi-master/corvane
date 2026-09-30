@@ -127,7 +127,7 @@ fn frame(
     let viewport = crate::theme::page_size(window);
     let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
     deferred(
-        anchored().position(point(zpx(0.), zpx(0.))).child(
+        anchored().position(crate::theme::page_origin()).child(
             div()
                 .id(id)
                 // modal: nothing underneath takes hover, clicks or wheel
