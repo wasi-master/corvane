@@ -103,10 +103,17 @@ impl AboutDialog {
             ),
             UpdateStatus::AvailableViaHomebrew { update } => Some(
                 info(
-                    format!(
-                        "Corvane {} is available. Run brew upgrade corvane to install it.",
-                        update.version
-                    ),
+                    if cfg!(target_os = "macos") {
+                        format!(
+                            "Corvane {} is available. Run brew upgrade corvane to install it.",
+                            update.version
+                        )
+                    } else {
+                        format!(
+                            "Corvane {} is available. Update it with your package manager.",
+                            update.version
+                        )
+                    },
                     false,
                 )
                 .into_any_element(),

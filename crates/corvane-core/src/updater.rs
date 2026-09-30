@@ -6,9 +6,12 @@
 //! GHD lets Squirrel download the update as soon as one is found and shows
 //! the banner once it is ready; Corvane does the same (download + minisign
 //! verification in the background), then "Install and Restart" swaps the
-//! bundle on request. Deviations: one release (the latest) feeds the release
-//! notes, not every release since the running version; a Homebrew install
-//! is told to `brew upgrade corvane` instead of being swapped; checks run
+//! bundle (Linux: the AppImage) on request. Deviations: one release (the
+//! latest) feeds the release notes, not every release since the running
+//! version; a Homebrew install is told to `brew upgrade corvane` instead of
+//! being swapped, and on Linux every install but an AppImage (the `.deb`, a
+//! source build) is left to the package manager the same way
+//! (`updater::is_package_managed`); checks run
 //! only in release builds unless `CORVANE_UPDATE_CHECK=1` (debug builds also
 //! honour `CORVANE_UPDATE_INSTALL=1`: install as soon as the update is ready).
 //! The launch and four-hourly checks can be switched off
@@ -73,13 +76,15 @@ pub enum UpdateStatus {
     },
     /// `UpdateNotAvailable`
     NotAvailable,
-    /// `UpdateReady`: verified zip on disk, "Install and Restart" swaps it in.
+    /// `UpdateReady`: verified zip (Linux: AppImage) on disk, "Install and
+    /// Restart" swaps it in.
     Ready {
         update: AvailableUpdate,
         zip: PathBuf,
     },
     /// Corvane: the bundle belongs to the Homebrew cask, `brew upgrade`
-    /// installs the update.
+    /// installs the update (Linux: any install but an AppImage, which the
+    /// package manager updates).
     AvailableViaHomebrew { update: AvailableUpdate },
     /// `InstallingUpdate`: the bundle swap is running; quits when done.
     Installing,
@@ -236,9 +241,7 @@ impl Dispatcher {
                 info!(version = %release.version, "update available");
                 Self::touch_last_update_check(cx);
                 let update = AvailableUpdate::from_release(&release, Self::heading_kinds(cx));
-                let homebrew = corvane_platform::app_location::running_bundle()
-                    .is_some_and(|b| updater::is_homebrew_install(&b));
-                if homebrew {
+                if updater::is_package_managed() {
                     state.update(cx, |s, cx| {
                         s.update.status = UpdateStatus::AvailableViaHomebrew { update };
                         s.update.banner_visible = true;
@@ -402,18 +405,23 @@ impl Dispatcher {
         }
     }
 
-    /// `quitAndInstallUpdate`: swap the bundle, relaunch it after this
-    /// process exits, quit.
+    /// `quitAndInstallUpdate`: swap the bundle (Linux: rename the AppImage
+    /// over `$APPIMAGE`), relaunch it after this process exits, quit.
     pub fn install_update(cx: &mut App) {
         let state = Self::state(cx);
         let zip = match &state.read(cx).update.status {
             UpdateStatus::Ready { zip, .. } => zip.clone(),
             _ => return,
         };
-        let Some(bundle) = corvane_platform::app_location::running_bundle() else {
+        // the running `.app` (Linux: `$APPIMAGE`)
+        let Some(bundle) = updater::install_target() else {
             Self::show_error(
                 "Could not install the update",
-                "Corvane is not running from an app bundle.",
+                if cfg!(target_os = "macos") {
+                    "Corvane is not running from an app bundle."
+                } else {
+                    "Corvane is not running from an AppImage."
+                },
                 cx,
             );
             return;
@@ -449,8 +457,13 @@ impl Dispatcher {
                     Self::show_error(
                         "Could not install the update",
                         format!(
-                            "{err}\n\nDownload the release from {} and replace Corvane.app by hand.",
-                            crate::release_notes::RELEASE_NOTES_URL
+                            "{err}\n\nDownload the release from {} and replace {} by hand.",
+                            crate::release_notes::RELEASE_NOTES_URL,
+                            if cfg!(target_os = "macos") {
+                                "Corvane.app"
+                            } else {
+                                "the AppImage"
+                            }
                         ),
                         cx,
                     );
@@ -478,7 +491,11 @@ impl Dispatcher {
             body: Some(body),
             published_at: None,
             html_url: format!("https://github.com/wasi-master/corvane/releases/tag/v{version}"),
-            zip_name: format!("Corvane-{version}-macos-universal.zip"),
+            zip_name: if cfg!(target_os = "macos") {
+                format!("Corvane-{version}-macos-universal.zip")
+            } else {
+                format!("Corvane-{version}-{}.AppImage", std::env::consts::ARCH)
+            },
             zip_url: String::new(),
             zip_size: 0,
             signature_url: String::new(),
