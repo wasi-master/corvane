@@ -325,6 +325,20 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
     },
 
+    /// Create / Rename Branch refuse `head` in any case.
+    REJECT_HEAD_BRANCH_NAME = 259 "reject-head-branch-name" {
+        title: "Branches can't be named \"head\"",
+        summary: "Create a Branch and Rename Branch refuse \"head\" in any letter case, which on \
+                  a case-insensitive file system names HEAD itself.",
+        ghd_behaviour: "Creates the branch; HEAD ends up detached and the branch can't be published.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13638)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

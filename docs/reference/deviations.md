@@ -38,6 +38,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - With uncommitted changes, Create a Branch preselects the current branch as the starting point, so the changes brought along apply to the code they were written against; GHD always preselects the default branch. Flag: `256-create-branch-with-changes-from-current`.
 - Branch dates (the lists' relative times) are the tip commit's committer date, so a cherry-picked or rebased tip shows when it landed; GHD shows the author date (`for-each-ref` `%(author)`). Other Branches can be ordered by that date, newest first, in the branch list and every branch picker (Corvane addition, off in the Corvane preset); GHD sorts them by name. Flag: `257-branch-list-sort-by-date`.
 - Delete Branch warns when the branch has commits that neither the default branch (local or its upstream) nor the branch's own upstream contain (`rev-list --count <branch> --not …`, computed when the dialog opens), and when a GitHub Desktop / Corvane stash is recorded for it; GHD `delete-branch-dialog.tsx` only says the action cannot be undone. Flag: `258-delete-branch-warnings`.
+- Create a Branch and Rename Branch refuse `head` in any letter case (on a case-insensitive file system it is `.git/HEAD`, so GHD creates it and leaves HEAD detached). Flag: `259-reject-head-branch-name`.
 
 ## Tutorial
 
