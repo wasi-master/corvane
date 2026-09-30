@@ -754,6 +754,20 @@ registry! {
         code: &["crates/corvane-core/src/release_notes.rs"],
     },
 
+    /// No automatic update checks.
+    NO_AUTOMATIC_UPDATE_CHECKS = 523 "no-automatic-update-checks" {
+        title: "No automatic update checks",
+        summary: "Corvane does not check for updates at launch or every four hours; Check for \
+                  Updates in About still checks, downloads and installs on request.",
+        ghd_behaviour: "Always checks at launch and every four hours and downloads what it finds.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(3410), Upstream::issue(22468)],
+        code: &["crates/corvane-core/src/updater.rs"],
+    },
+
     // ---- 600 Accessibility ----
 
     /// ⌘9 / ⌘8 announce the width after the step.
