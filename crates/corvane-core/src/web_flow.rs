@@ -10,7 +10,8 @@
 //! The callback arrives as `x-corvane-auth://oauth?code=…&state=…` through
 //! `Dispatcher::handle_app_url`, or on the loopback listener
 //! (`http://127.0.0.1:<port>/callback`) when the URL scheme cannot be used
-//! (a bare binary outside the bundle, or `CORVANE_OAUTH_LOOPBACK=1`).
+//! (a bare binary outside the bundle, on Linux one whose `.desktop` entry
+//! is not the scheme's handler, or `CORVANE_OAUTH_LOOPBACK=1`).
 //! `state` must match the flow that opened the browser; the token only ever
 //! goes to the Keychain (`finish_sign_in`).
 
@@ -29,7 +30,7 @@ use crate::state::{PendingWebFlow, SignInState, SignInStep};
 /// Whether the callback must come over the loopback listener.
 fn use_loopback() -> bool {
     std::env::var_os("CORVANE_OAUTH_LOOPBACK").is_some()
-        || corvane_platform::app_location::running_bundle().is_none()
+        || !corvane_platform::url_schemes::auth_callback_registered()
 }
 
 /// Why an OAuth sign-in cannot start on `endpoint`.
