@@ -3,6 +3,9 @@
 //! `validatePath`), the warning then staying until the next check - unless
 //! flag `205-add-local-validates-while-typing` checks it on every change and
 //! keeps Add Repository disabled until the path is a repository.
+//!
+//! Deviation (`457-add-local-multiple`): Choose… can pick several folders;
+//! more than one adds every picked repository at once.
 
 use std::path::PathBuf;
 
@@ -18,7 +21,6 @@ use crate::theme::sizes::*;
 use crate::widgets::{button, labeled, text_box};
 
 pub struct AddExistingRepositoryDialog {
-    #[allow(dead_code)]
     state: Entity<AppState>,
     path: Entity<InputState>,
     /// The last `validatePath` result that warrants a warning
@@ -69,16 +71,24 @@ impl AddExistingRepositoryDialog {
     }
 
     fn choose(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let multiple = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ADD_LOCAL_MULTIPLE);
         let receiver = cx.prompt_for_paths(PathPromptOptions {
             files: false,
             directories: true,
-            multiple: false,
+            multiple,
             prompt: Some("Add Repository".into()),
         });
         cx.spawn_in(window, async move |this, cx| {
-            if let Ok(Ok(Some(paths))) = receiver.await
-                && let Some(p) = paths.into_iter().next()
-            {
+            let Ok(Ok(Some(paths))) = receiver.await else {
+                return;
+            };
+            if paths.len() > 1 {
+                cx.update(|_, cx| add_several(paths, cx)).ok();
+            } else if let Some(p) = paths.into_iter().next() {
                 this.update_in(cx, |d, window, cx| {
                     d.path
                         .update(cx, |s, cx| s.set_value(p.display().to_string(), window, cx));
@@ -103,6 +113,29 @@ impl AddExistingRepositoryDialog {
                 cx.notify();
             }
         }
+    }
+}
+
+/// `457-add-local-multiple`: add every picked folder that is a repository
+/// and name the ones that are not.
+fn add_several(paths: Vec<PathBuf>, cx: &mut App) {
+    let (repos, others): (Vec<PathBuf>, Vec<PathBuf>) = paths
+        .into_iter()
+        .partition(|p| corvane_git::path_status(p) == PathStatus::Repository);
+    Dispatcher::close_popup(cx);
+    for path in repos {
+        Dispatcher::add_repository(path, cx);
+    }
+    if !others.is_empty() {
+        let names: Vec<String> = others.iter().map(|p| p.display().to_string()).collect();
+        Dispatcher::show_error(
+            "Some folders were not added",
+            format!(
+                "These folders do not appear to be Git repositories:\n{}",
+                names.join("\n")
+            ),
+            cx,
+        );
     }
 }
 
