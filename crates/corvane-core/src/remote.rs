@@ -6,6 +6,8 @@
 //!
 //! Deviations (flags): a failed force push keeps the "Force push"
 //! recommendation (`223-force-push-kept-on-failure`; GHD clears it first).
+//! The background fetch can be off or cover any remote
+//! (`224-background-fetch`; GHD: GitHub repositories only).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -993,14 +995,21 @@ impl Dispatcher {
         .detach();
     }
 
-    /// Fetch the selected GitHub repository when its last fetch is older than
-    /// the interval (`shouldBackgroundFetch`).
+    /// Fetch the selected GitHub repository (see `224-background-fetch`) when
+    /// its last fetch is older than the interval (`shouldBackgroundFetch`).
     fn background_fetch_tick(cx: &mut App) {
         let (id, last_fetched, busy) = {
             let s = Self::state(cx).read(cx);
             let Some(id) = s.selected else { return };
             let Some(repo) = s.repository(id) else { return };
-            if repo.github.is_none() {
+            // GHD fetches GitHub repositories only; `224-background-fetch`
+            // can also turn it off or extend it to any remote
+            let fetch = match s.flags.text(crate::flags::ids::BACKGROUND_FETCH) {
+                "off" => false,
+                "any" => true,
+                _ => repo.github.is_some(),
+            };
+            if !fetch {
                 return;
             }
             let rs = s.repo_states.get(&id);

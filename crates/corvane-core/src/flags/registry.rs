@@ -93,6 +93,21 @@ const WIDTH_SAVES: &[SelectOption] = &[
     },
 ];
 
+const BACKGROUND_FETCHES: &[SelectOption] = &[
+    SelectOption {
+        value: "off",
+        label: "Off",
+    },
+    SelectOption {
+        value: "github",
+        label: "GitHub repositories",
+    },
+    SelectOption {
+        value: "any",
+        label: "Any repository with a remote",
+    },
+];
+
 registry! {
     // ---- 100 Appearance ----
 
@@ -277,6 +292,20 @@ registry! {
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
         upstream: &[Upstream::issue(16352)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
+    /// Which repositories the hourly background fetch covers.
+    BACKGROUND_FETCH = 224 "background-fetch" {
+        title: "Background fetch",
+        summary: "Which selected repositories are fetched in the background every hour: none, \
+                  GitHub repositories only, or any repository with a remote.",
+        ghd_behaviour: "GitHub repositories only, with no way to turn it off.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: BACKGROUND_FETCHES },
+        corvane: Value::text("github"), ghd: Value::text("github"),
+        familiar: Value::text("github"), everything: Value::text("any"),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(10687), Upstream::issue(12474)],
         code: &["crates/corvane-core/src/remote.rs"],
     },
 
