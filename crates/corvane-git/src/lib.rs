@@ -77,8 +77,8 @@ pub use rebase_ops::{
     rebase_snapshot, reorder, squash, squash_msg_set, stage_manual_conflict_resolution,
 };
 pub use remote_ops::{
-    AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, config_value,
-    fast_forward_branch_from_remote, fast_forward_branches, fetch, fetch_refspec,
+    AskpassEnv, ProgressParser, RemoteFailure, add_remote, classify_remote_failure, cloned_at,
+    config_value, fast_forward_branch_from_remote, fast_forward_branches, fetch, fetch_refspec,
     fetch_with_prune_tags, find_default_remote, get_remotes, install_lfs_hooks, is_using_lfs,
     is_using_lfs_by_attributes, last_fetched, lfs_available, lfs_hooks_installed,
     parse_progress_line, pull, pull_with_rebase, push, remote_failure, remove_remote,

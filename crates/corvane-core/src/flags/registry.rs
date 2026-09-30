@@ -393,6 +393,21 @@ registry! {
         upstream: &[Upstream::issue(19837)],
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// "Last fetched" counts the clone.
+    CLONE_COUNTS_AS_FETCH = 231 "clone-counts-as-fetch" {
+        title: "Last fetched counts the clone",
+        summary: "A repository that was cloned and not fetched since shows the clone's time as \
+                  \"Last fetched\" (from HEAD's first reflog entry) instead of \"Never fetched\".",
+        ghd_behaviour: "Reads FETCH_HEAD only, which a clone does not write, so a fresh clone \
+                        says \"Never fetched\".",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13401)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
+
 
     // ---- 300 GitHub ----
 

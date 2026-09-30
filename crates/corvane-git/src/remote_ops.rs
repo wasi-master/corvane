@@ -545,6 +545,22 @@ pub fn last_fetched(workdir: &Path) -> Option<SystemTime> {
     (meta.len() > 0).then(|| meta.modified().ok()).flatten()
 }
 
+/// When the repository was cloned: the time of `HEAD`'s first reflog entry
+/// if it is git's "clone: from …". A clone writes no `FETCH_HEAD`, so
+/// [`last_fetched`] says "never" until the first fetch (desktop#13401);
+/// Corvane falls back to this.
+pub fn cloned_at(workdir: &Path) -> Option<SystemTime> {
+    let log = std::fs::read_to_string(git_dir(workdir).join("logs").join("HEAD")).ok()?;
+    let (head, message) = log.lines().next()?.split_once('\t')?;
+    if !message.starts_with("clone: from ") {
+        return None;
+    }
+    let mut fields = head.rsplit(' ');
+    let _tz = fields.next()?;
+    let secs: u64 = fields.next()?.parse().ok()?;
+    Some(SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(secs))
+}
+
 // ---------------------------------------------------------------------------
 // LFS
 // ---------------------------------------------------------------------------
@@ -807,6 +823,30 @@ mod tests {
         .unwrap_err()
         .to_string();
         assert!(err.contains("hook-stdout\nhook-stderr"), "{err}");
+    }
+
+    #[test]
+    fn cloned_at_reads_the_clone_reflog_entry() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", src.to_str().unwrap()],
+        );
+        run(&src, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(src.join("a.txt"), "one\n").unwrap();
+        run(&src, &["add", "."]);
+        run(&src, &["commit", "-q", "-m", "first"]);
+        assert!(cloned_at(&src).is_none());
+        let copy = dir.path().join("copy");
+        run(
+            dir.path(),
+            &["clone", "-q", src.to_str().unwrap(), copy.to_str().unwrap()],
+        );
+        assert!(last_fetched(&copy).is_none());
+        let at = cloned_at(&copy).unwrap();
+        let age = SystemTime::now().duration_since(at).unwrap();
+        assert!(age.as_secs() < 600, "{age:?}");
     }
 
     #[test]

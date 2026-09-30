@@ -538,7 +538,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status) = {
+        let (path, git, previous_status, clone_counts_as_fetch) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -547,6 +547,7 @@ impl Dispatcher {
                 repo.path.clone(),
                 s.git.clone(),
                 s.repo_states.get(&id).and_then(|r| r.status.clone()),
+                s.flags.bool(crate::flags::ids::CLONE_COUNTS_AS_FETCH),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -631,7 +632,14 @@ impl Dispatcher {
                         stash_count,
                         rebase_snapshot,
                         cherry_pick_snapshot,
-                        last_fetched: corvane_git::last_fetched(&info.workdir),
+                        // `231-clone-counts-as-fetch`: a clone writes no
+                        // FETCH_HEAD, so GHD says "never fetched" until the
+                        // first fetch
+                        last_fetched: corvane_git::last_fetched(&info.workdir).or_else(|| {
+                            clone_counts_as_fetch
+                                .then(|| corvane_git::cloned_at(&info.workdir))
+                                .flatten()
+                        }),
                         pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
                         worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
                             .unwrap_or_default(),
