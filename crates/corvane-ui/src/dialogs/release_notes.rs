@@ -130,6 +130,8 @@ impl Render for ReleaseNotesDialog {
             anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("release-notes-overlay")
+                    // modal: nothing underneath takes hover, clicks or wheel
+                    .occlude()
                     .w(viewport.width)
                     .h(viewport.height)
                     .flex()

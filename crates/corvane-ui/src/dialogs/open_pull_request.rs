@@ -785,6 +785,8 @@ impl Render for OpenPullRequestDialog {
             anchored().position(point(zpx(0.), zpx(0.))).child(
                 div()
                     .id("open-pull-request")
+                    // modal: nothing underneath takes hover, clicks or wheel
+                    .occlude()
                     .w(viewport.width)
                     .h(viewport.height)
                     .flex()

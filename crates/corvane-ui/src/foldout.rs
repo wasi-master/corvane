@@ -52,6 +52,9 @@ pub fn foldout_layer(
                     // `.overlay`: click anywhere outside the panel closes it
                     div()
                         .id("foldout-overlay")
+                        // the content underneath neither hovers nor scrolls
+                        // (GHD's `.overlay` div covers it)
+                        .occlude()
                         .absolute()
                         .inset_0()
                         .bg(t.overlay)
