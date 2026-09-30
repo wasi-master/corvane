@@ -53,6 +53,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Confirm commits to the default branch (Corvane addition, off in the Corvane preset): committing (not amending) while the repository's default branch is checked out opens "Commit to Default Branch" (Cancel / Commit); the unknown co-authors prompt still follows it. GHD 3.6.6 never asks. Flag: `275-confirm-commit-to-default-branch`.
 - Commit summary length limit (Corvane addition, off in the Corvane preset): the summary takes at most 72 characters; the part of an edit past the limit is dropped (an HTML `maxlength`, applied after the edit since the kit's input has none). A recalled or amended message is not cut. GHD 3.6.6 has no limit. Flag: `277-summary-max-length`.
 - The changes list's "Ignore All .x Files (Add to .gitignore)" items add the number of changed files with that extension ("Ignore All .png Files (170 Changed) (Add to .gitignore)"); GHD 3.6.6 gives no count. Flag: `278-ignore-menu-counts`.
+- "Copy Diff" (Corvane addition) in the changes list's file context menu ("Copy Diff of Selected Files" for a multi-selection) copies the files' working-directory changes against HEAD as one `--binary` patch, untracked files diffed against `/dev/null` (`corvane_git::working_directory_patch`). The whole file is copied, whatever lines are selected for the commit. GHD 3.6.6 has no such item. Flag: `279-copy-diff`.
 
 ## Diff viewer
 

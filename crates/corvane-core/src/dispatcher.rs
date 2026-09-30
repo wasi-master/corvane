@@ -2741,6 +2741,55 @@ impl Dispatcher {
         Self::ignore_patterns(id, patterns, cx);
     }
 
+    /// Corvane `279-copy-diff`: the changes of `paths` as a patch on the
+    /// clipboard (`corvane_git::working_directory_patch`).
+    pub fn copy_diff(id: u64, paths: Vec<String>, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let (files, base) = {
+            let s = Self::state(cx).read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let files: Vec<_> = rs
+                .status
+                .as_ref()
+                .map(|st| {
+                    st.files
+                        .iter()
+                        .filter(|f| paths.contains(&f.path))
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default();
+            let unborn = rs
+                .info
+                .as_ref()
+                .is_some_and(|i| matches!(i.tip, corvane_models::Tip::Unborn { .. }));
+            let base = if unborn {
+                corvane_git::NULL_TREE_SHA
+            } else {
+                "HEAD"
+            };
+            (files, base)
+        };
+        if files.is_empty() {
+            return;
+        }
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::working_directory_patch(git, &workdir, &files, base)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(patch) => cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(patch)),
+                Err(err) => Self::show_error("Could not copy the diff", err.to_string(), cx),
+            });
+        })
+        .detach();
+    }
+
     /// Append raw patterns (e.g. `*.log`) to the root `.gitignore`, then refresh.
     pub fn ignore_patterns(id: u64, patterns: Vec<String>, cx: &mut App) {
         let Some((_git, workdir)) = Self::repo_context(id, cx) else {

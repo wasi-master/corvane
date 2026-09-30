@@ -402,6 +402,20 @@ registry! {
         upstream: &[Upstream::issue(13789)],
         code: &["crates/corvane-ui/src/changes.rs"],
     },
+    /// "Copy Diff" in the changes list's file menu.
+    COPY_DIFF = 279 "copy-diff" {
+        title: "Copy Diff",
+        summary: "The changes list's file context menu has \"Copy Diff\" (\"Copy Diff of Selected \
+                  Files\" for a multi-selection): the working-directory changes of those files as \
+                  a patch `git apply` takes, untracked files included.",
+        ghd_behaviour: "No way to copy a diff.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17746)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
 
     // ---- 300 GitHub ----
 

@@ -14,6 +14,8 @@
 //! - the summary can be capped at 72 characters (`277-summary-max-length`).
 //! - "Ignore All .x Files" items give the number of changed .x files
 //!   (`278-ignore-menu-counts`).
+//! - "Copy Diff" puts the selected files' changes on the clipboard as a patch
+//!   (`279-copy-diff`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1602,6 +1604,7 @@ impl ChangesSidebar {
             status_files,
             open_many,
             ignore_counts,
+            copy_diff,
         ) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
@@ -1624,6 +1627,7 @@ impl ChangesSidebar {
                     .unwrap_or_default(),
                 s.flags.bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES),
                 s.flags.bool(corvane_core::flags::ids::IGNORE_MENU_COUNTS),
+                s.flags.bool(corvane_core::flags::ids::COPY_DIFF),
             )
         };
         let path = file.path.clone();
@@ -1806,6 +1810,18 @@ impl ChangesSidebar {
             }));
         }
         items.push(MenuItem::separator());
+        // `279-copy-diff`
+        let copy_diff_item = copy_diff.then(|| {
+            let paths = paths.clone();
+            MenuItem::new(
+                if paths.len() > 1 {
+                    "Copy Diff of Selected Files"
+                } else {
+                    "Copy Diff"
+                },
+                move |_, cx| Dispatcher::copy_diff(id, paths.clone(), cx),
+            )
+        });
         if open_many && targets.len() > 1 {
             // `271-open-multiple-files`: the open items act on the selection
             let existing: Vec<PathBuf> = targets
@@ -1814,6 +1830,7 @@ impl ChangesSidebar {
                 .map(|f| repo_path.join(&f.path))
                 .collect();
             items.extend(copy_items(targets));
+            items.extend(copy_diff_item);
             items.push(MenuItem::separator());
             let reveal = full.clone();
             items.push(
@@ -1823,6 +1840,7 @@ impl ChangesSidebar {
             items.extend(open_many_items(&existing, &editor_label));
         } else {
             items.extend(copy_items(targets));
+            items.extend(copy_diff_item);
             items.push(MenuItem::separator());
             items.extend(open_items(full, deleted));
         }

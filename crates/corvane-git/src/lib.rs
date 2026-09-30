@@ -41,7 +41,7 @@ pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{
     blob_bytes, blob_lines, file_lines, has_hidden_bidi_chars, image_diff,
     parse_line_endings_warning, parse_raw_diff, parse_raw_diff_with_warnings, parse_unified,
-    submodule_diff, working_directory_diff, working_file_lines,
+    submodule_diff, working_directory_diff, working_directory_patch, working_file_lines,
 };
 pub use error::{GitError, dubious_ownership_path};
 pub use history_ops::{
