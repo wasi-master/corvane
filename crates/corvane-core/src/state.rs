@@ -1063,7 +1063,8 @@ impl AppState {
     }
 
     /// The editor "Open in …" menu items name: the selected editor, else the
-    /// first installed one, else GHD's generic "External Editor".
+    /// first installed one, else GHD's generic "External Editor" (lower
+    /// case off macOS, as GHD's non-darwin labels).
     pub fn editor_label(&self) -> String {
         if self.settings.use_custom_editor
             && let Some(custom) = &self.settings.custom_editor
@@ -1078,7 +1079,14 @@ impl AppState {
             .external_editor
             .clone()
             .or_else(|| self.editors.first().map(|e| e.name.clone()))
-            .unwrap_or_else(|| "External Editor".to_string())
+            .unwrap_or_else(|| {
+                if cfg!(target_os = "macos") {
+                    "External Editor"
+                } else {
+                    "external editor"
+                }
+                .to_string()
+            })
     }
 
     /// The editor "Open in …" opens can jump to a line
