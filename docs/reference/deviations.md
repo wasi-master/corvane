@@ -28,6 +28,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Repository
 
 - Filesystem watcher (Corvane addition, `corvane_core::watcher`; GHD only refreshes on window focus and after its own actions): FSEvents on the selected repository's worktree and `.git`, debounced 300 ms, trigger a refresh. Flags: `202-fs-watcher`, `203-fs-watcher-debounce-ms`.
+- Add Local Repository checks the path as it changes and keeps Add Repository disabled until it is a repository; GHD 3.6.6 checks only when Add Repository is pressed and leaves that warning up, stale, while the path is edited. Flag: `205-add-local-validates-while-typing`.
 
 ## Tutorial
 
@@ -89,6 +90,11 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 ## Accessibility
 
 - List rows (repositories, branches, pull requests, changes, history, stash and commit / pull request file lists, worktrees) are `Row` nodes (macOS `AXRow`) named with their visible text and status (`widgets::ListRowA11y`); GHD uses `role="option"` rows in a `listbox`. Each list is a `List` node (`AXList`) owning its rows, named after GHD's `ariaLabel` where it has one ("Commits", the "N changed files" header) and otherwise "Repositories", "Branches", "Pull requests", "Worktrees" or "Changed files". Banners are polite live regions announced when they appear.
+- Repository Settings › Git Config labels its lone email text box "Email"; GHD's `GitConfigUserForm` drops the label whenever the email isn't a signed-in account's address (so always when signed out), although its comment says the label should only go under the account-email dropdown's "Other". Flag: `602-git-config-email-label`.
+
+## Lists
+
+- A selected row keeps its selection colour while the pointer is on it. In GHD `.list-item:hover` outranks `.list-item.selected` by specificity, so in an unfocused list the selected row takes the hover colour and looks unselected until the pointer leaves; only the focused list's active selection survives hover. Flag: `104-selection-keeps-colour-on-hover`.
 
 ## Scrolling
 

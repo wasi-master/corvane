@@ -113,8 +113,11 @@ pub fn pull_request_row(
             d.bg(t.box_selected_background)
                 .text_color(t.box_selected_text)
         })
-        // `.list-item:hover` outranks `.list-item.selected`
-        .hover(move |s| s.bg(list_hover))
+        // `.list-item:hover` outranks `.list-item.selected` (flag 104 keeps it)
+        .when(
+            !(selected && crate::widgets::selection_keeps_colour_on_hover(cx)),
+            move |d| d.hover(move |s| s.bg(list_hover)),
+        )
         // `PullRequestListItem` drop target: dragged commits are copied onto
         // the pull request's branch (`emitEnterDropTarget({ type: Branch })`)
         .when(!selected, |d| {

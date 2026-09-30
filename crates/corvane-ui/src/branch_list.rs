@@ -498,9 +498,11 @@ impl BranchFoldout {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
-            .when(!(selected && self.list_focused), move |d| {
-                d.hover(move |s| s.bg(list_hover))
-            })
+            .when(
+                !(selected
+                    && (self.list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
+                move |d| d.hover(move |s| s.bg(list_hover)),
+            )
             .when(!current, move |d| {
                 let target_name = branch_name_for_target.clone();
                 d.drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {

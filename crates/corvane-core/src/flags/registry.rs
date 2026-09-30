@@ -115,15 +115,32 @@ registry! {
     },
     /// The name the Welcome flow and the tutorial README call the app.
     PRODUCT_NAME = 103 "product-name" {
-        title: "Product name in Welcome and tutorial copy",
-        summary: "The name the Welcome flow and the tutorial README use for the app.",
+        title: "Product name in Welcome, blank slate and tutorial copy",
+        summary: "The name the Welcome flow, the no-repositories blank slate and the tutorial \
+                  README use for the app.",
         ghd_behaviour: "\"GitHub Desktop\".",
         kind: Kind::Text { placeholder: "Corvane", validate: product_name },
         corvane: Value::text("Corvane"), ghd: Value::text("GitHub Desktop"),
         familiar: Value::text("Corvane"), everything: Value::text("Corvane"),
         restart: false, visible: true, availability: available,
         upstream: &[],
-        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs"],
+        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/no_repositories.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs"],
+    },
+
+    /// A hovered selected list row keeps its selection colour.
+    SELECTION_KEEPS_COLOUR_ON_HOVER = 104 "selection-keeps-colour-on-hover" {
+        title: "Selected rows keep their colour under the pointer",
+        summary: "Hovering a selected row in a list (changed files, commit files, branches, \
+                  repositories, pull requests, stash files, branch pickers) keeps the selection \
+                  colour instead of swapping in the hover colour.",
+        ghd_behaviour: "`.list-item:hover` outranks `.list-item.selected` in specificity, so a \
+                        selected row in an unfocused list shows the hover colour and looks \
+                        unselected while the pointer is on it.",
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/widgets.rs", "crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/branch_list.rs"],
     },
 
     // ---- 200 Repository ----
@@ -175,6 +192,21 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-core/src/clone_info.rs"],
+    },
+
+    /// Add Local Repository checks the path while typing.
+    ADD_LOCAL_VALIDATES_WHILE_TYPING = 205 "add-local-validates-while-typing" {
+        title: "Add Local Repository checks the path as you type",
+        summary: "The \"does not appear to be a Git repository\" / bare-repository warning follows \
+                  the Local Path field as it changes, and Add Repository is disabled until the \
+                  path is a repository.",
+        ghd_behaviour: "The path is only checked when Add Repository is pressed; the warning then \
+                        stays, stale, while the path is edited.",
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs"],
     },
 
     // ---- 300 GitHub ----
@@ -391,6 +423,20 @@ registry! {
         restart: false, visible: false, availability: available,
         upstream: &[],
         code: &["crates/corvane-ui/src/active_resizable.rs"],
+    },
+    /// Repository Settings › Git Config always labels its email box.
+    GIT_CONFIG_EMAIL_LABEL = 602 "git-config-email-label" {
+        title: "Git Config's email box keeps its label",
+        summary: "Repository Settings › Git Config shows \"Email\" above the email text box \
+                  whenever it stands alone.",
+        ghd_behaviour: "The label disappears whenever the email isn't one of the signed-in \
+                        accounts' addresses (always, when signed out), although the code means to \
+                        hide it only under the account-email dropdown's \"Other\".",
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
     },
 }
 

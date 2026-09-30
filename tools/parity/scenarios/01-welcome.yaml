@@ -7,16 +7,16 @@ setup: welcome
 steps:
   - wait: 600
   - dump: start
-  - snap: {name: start, mask: [[290, 226, 360, 67], [40, 309, 600, 54], [40, 719, 600, 44]], note: "product name and the no-metrics paragraph (deviations.md › Welcome)"}
+  - snap: {name: start, mask: [[40, 719, 600, 44]], note: "Corvane states it sends no usage metrics (deviations.md › Welcome)"}
   - hover: {text: "Sign in to GitHub.com", within: "#welcome"}
-  - snap: {name: sign-in-hover, mask: [[290, 226, 360, 67], [40, 309, 600, 54], [40, 719, 600, 44]], note: "product name and the no-metrics paragraph (deviations.md › Welcome)"}
+  - snap: {name: sign-in-hover, mask: [[40, 719, 600, 44]], note: "Corvane states it sends no usage metrics (deviations.md › Welcome)"}
   - press: {text: "Sign in to GitHub.com", within: "#welcome"}
-  - snap: {name: sign-in-pressed, mask: [[290, 226, 360, 67], [40, 309, 600, 54], [40, 719, 600, 44]], note: "product name and the no-metrics paragraph (deviations.md › Welcome)"}
+  - snap: {name: sign-in-pressed, mask: [[40, 719, 600, 44]], note: "Corvane states it sends no usage metrics (deviations.md › Welcome)"}
   - release: [700, 790]
   - hover: {text: "Sign in to GitHub Enterprise", within: "#welcome"}
-  - snap: {name: enterprise-hover, mask: [[290, 226, 360, 67], [40, 309, 600, 54], [40, 719, 600, 44]], note: "product name and the no-metrics paragraph (deviations.md › Welcome)"}
+  - snap: {name: enterprise-hover, mask: [[40, 719, 600, 44]], note: "Corvane states it sends no usage metrics (deviations.md › Welcome)"}
   - hover: {text: "Skip this step", within: "#welcome"}
-  - snap: {name: skip-hover, mask: [[290, 226, 360, 67], [40, 309, 600, 54], [40, 719, 600, 44]], note: "product name and the no-metrics paragraph (deviations.md › Welcome)"}
+  - snap: {name: skip-hover, mask: [[40, 719, 600, 44]], note: "Corvane states it sends no usage metrics (deviations.md › Welcome)"}
   - click: {text: "Skip this step", within: "#welcome"}
     wait: 800
   - dump: configure-git

@@ -1292,3 +1292,13 @@ pub fn input_error(message: impl Into<SharedString>, cx: &App) -> Div {
         )
         .child(div().flex_1().min_w_0().child(message.into()))
 }
+
+/// Flag `104-selection-keeps-colour-on-hover`: a hovered selected list row
+/// keeps its selection colour (off: GHD's `.list-item:hover` wins).
+pub fn selection_keeps_colour_on_hover(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::SELECTION_KEEPS_COLOUR_ON_HOVER)
+    })
+}

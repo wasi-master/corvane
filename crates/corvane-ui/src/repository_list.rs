@@ -140,8 +140,11 @@ impl RepositoryFoldout {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
-            // `.list-item:hover` outranks `.list-item.selected`
-            .hover(move |s| s.bg(hover_bg))
+            // `.list-item:hover` outranks `.list-item.selected` (flag 104 keeps it)
+            .when(
+                !(selected && crate::widgets::selection_keeps_colour_on_hover(cx)),
+                move |d| d.hover(move |s| s.bg(hover_bg)),
+            )
             // `renderTooltip`: the GitHub full name (or name) in bold, the
             // alias in parentheses, then the path
             .tooltip({

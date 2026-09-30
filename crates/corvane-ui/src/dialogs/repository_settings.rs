@@ -344,9 +344,14 @@ impl RepositorySettingsDialog {
         } else {
             text_box("repo-settings-name", &self.name, None, window, cx).into_any_element()
         };
-        // `GitConfigUserForm`: only the account-email select carries the
-        // "Email" label; the text box shows unlabeled (`emailIsOther`)
-        let email_labeled = !disabled && !emails.is_empty();
+        // `GitConfigUserForm`: GHD labels only the account-email select; its
+        // lone text box loses the label whenever `emailIsOther` holds, which
+        // flag `602-git-config-email-label` corrects
+        let email_labeled = (!disabled && !emails.is_empty())
+            || AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::GIT_CONFIG_EMAIL_LABEL);
         let email_field: AnyElement = if disabled {
             readonly_field(global.email.clone().unwrap_or_default(), cx).into_any_element()
         } else if emails.is_empty() {
