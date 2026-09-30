@@ -307,6 +307,12 @@ fn hook(request: &Value, popup: PopupHook, cx: &mut App) -> Result<Value, String
             Dispatcher::update_settings(cx, |s| s.theme = theme);
         }
         "popup" => popup(arg, cx),
+        // GHD's `focus` IPC: refresh the selected repository
+        "refresh" => {
+            if let Some(id) = corvane_core::AppState::global(cx).read(cx).selected {
+                Dispatcher::refresh_repository(id, cx);
+            }
+        }
         other => return Err(format!("unknown hook {other:?}")),
     }
     Ok(json!({}))

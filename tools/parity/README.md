@@ -97,7 +97,8 @@ steps:
   - resize: [1100, 700]
   - wait: 500                            # alone: sleep; on a step: settle time after it (default 350ms)
   - ghd: {eval: "…"}                     # app-specific step (either side can be `{skip: true}`)
-    corvane: {hook: {name: popup, arg: about}}
+    corvane: {hook: {name: popup, arg: about}}   # hooks: complete-welcome, add-repo, theme, popup, refresh (GHD's `focus` IPC)
+  - fixture: move                        # rename both fixture repositories away (missing repository)
   - context_menu: add                    # compare both apps' last native menu (items, separators, disabled/checked)
   - context_menu_pick: "Clone Repository…"   # choose an item in both (GHD: resolves its IPC; Corvane: menu-pick)
   - dump: open                           # GHD DOM boxes + computed styles as JSON ({name, root: css})

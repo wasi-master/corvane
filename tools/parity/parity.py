@@ -115,7 +115,8 @@ class Run:
         shots.mkdir(parents=True, exist_ok=True)
         (work / "logs").mkdir(parents=True)
         setup = sc.get("setup", "repo")
-        repo_g = fixture.build(work / "ghd-repo") if setup == "repo" else None
+        # same-length parents: paths shown in either app wrap alike
+        repo_g = fixture.build(work / "desktop-repo") if setup == "repo" else None
         repo_c = fixture.build(work / "corvane-repo") if setup == "repo" else None
 
         ghd = Ghd(work / "ghd-profile", work / "logs" / "ghd.log", sc.get("ghd_env"))
@@ -149,6 +150,7 @@ class Run:
                     time.sleep(2.0)
 
             both(setup_ghd, setup_cv)
+            self.fixtures = [r for r in (repo_g, repo_c) if r]
             for i, step in enumerate(sc.get("steps", [])):
                 self.step(i, step, ghd, cv, cfg, shots, result)
                 if self.args.fail_fast and any(not s["pass"] for s in result["snaps"]):
@@ -210,6 +212,14 @@ class Run:
             path = shots / f"{i:02d}-{d['name']}-ghd-dom.json"
             path.write_text(json.dumps(ghd.dump(d.get("root", "body")), indent=1))
             result.setdefault("dumps", []).append(path.name)
+            return
+        if "fixture" in step:
+            # `fixture: move`: both apps' fixture directories disappear (the
+            # missing repository view); nothing is sent to either app
+            if step["fixture"] != "move":
+                raise ValueError(f"unknown fixture action {step['fixture']!r}")
+            for repo in self.fixtures:
+                repo.rename(repo.with_name(repo.name + "-moved"))
             return
         if not step and not any(per_app.values()) and wait is not None:
             time.sleep(wait / 1000)

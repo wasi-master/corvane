@@ -1,0 +1,17 @@
+name: missing-repository
+description: The fixture directory disappears; the focus refresh marks it missing ("Can't find", Locate… / Remove, the alert icon in the toolbar and repository list)
+setup: repo
+steps:
+  - fixture: move
+  - ghd: {eval: "require('electron').ipcRenderer.emit('focus', {})"}
+    corvane: {hook: {name: refresh}}
+    wait: 1500
+  - dump: {name: missing, root: "#missing-repository-view"}
+  - snap: {name: missing, mask: [[403, 403, 561, 42]], note: "the last-seen path differs per app (desktop-repo / corvane-repo); GPUI wraps it at a slash where Chromium also breaks after a hyphen"}
+  - hover: {text: "Locate…", within: "#missing-repository-view"}
+  - snap: {name: locate-hover, mask: [[403, 403, 561, 42]]}
+  - hover: {text: "Remove", within: "#missing-repository-view"}
+  - snap: {name: remove-hover, mask: [[403, 403, 561, 42]]}
+  - click: [125, 56]
+    wait: 600
+  - snap: repository-list

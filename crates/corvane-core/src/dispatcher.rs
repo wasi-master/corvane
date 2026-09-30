@@ -338,6 +338,75 @@ impl Dispatcher {
         );
     }
 
+    /// GHD `_relocateRepository` (the missing view's "Locate…"): pick a
+    /// directory and point the entry at the repository there. The entry stays
+    /// missing until the refresh reads it; an unsafe repository then gets the
+    /// "Trust Repository" view. The main worktree is resolved again by that
+    /// refresh (the recorded one belongs to the old location).
+    pub fn relocate_repository(id: u64, cx: &mut App) {
+        Self::pick_directory("Locate", cx, move |picked, cx| {
+            let Some(picked) = picked else {
+                return;
+            };
+            crate::remote::spawn_bg(
+                cx,
+                move || {
+                    // `getRepositoryType`: a subdirectory resolves to its
+                    // repository's top level; bare repositories are refused
+                    let workdir = corvane_git::top_level_working_directory(&picked);
+                    (picked, workdir)
+                },
+                move |(picked, workdir), cx| {
+                    let Some(workdir) = workdir else {
+                        // GHD `getInvalidRepoPathsMessage` for one path
+                        Self::show_error(
+                            "Error",
+                            format!("{} isn't a Git repository.", picked.display()),
+                            cx,
+                        );
+                        return;
+                    };
+                    let changed = Self::state(cx).update(cx, |s, cx| {
+                        let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) else {
+                            return false;
+                        };
+                        info!(id, path = %workdir.display(), "relocated repository");
+                        repo.path = workdir;
+                        repo.main_worktree_path = None;
+                        persist_repositories(s);
+                        let rs = s.repo_state_mut(id);
+                        rs.unsafe_path = None;
+                        rs.worktrees.clear();
+                        // force the file watcher onto the new directory
+                        if s.watched_repo == Some(id) {
+                            s.watched_repo = None;
+                            s.watcher = None;
+                        }
+                        cx.notify();
+                        true
+                    });
+                    if changed {
+                        Self::refresh_repository(id, cx);
+                        Self::start_watching(id, cx);
+                    }
+                },
+            );
+        });
+    }
+
+    /// GHD `_cloneAgain` (the missing view's "Clone Again"): clone the
+    /// GitHub repository back into the entry's path; adding the finished
+    /// clone selects the existing entry, whose refresh clears `missing`.
+    pub fn clone_again(id: u64, cx: &mut App) {
+        let Some((url, path)) = Self::state(cx).read(cx).repository(id).and_then(|r| {
+            let gh = r.github.as_ref().filter(|gh| !gh.clone_url.is_empty())?;
+            Some((gh.clone_url.clone(), r.path.clone()))
+        }) else {
+            return;
+        };
+        Self::clone_repository(url, path, None, cx);
+    }
+
     // ---- repositories ----
 
     /// Validate `path` is a git repository (background), then add + select it.
