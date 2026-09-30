@@ -332,15 +332,28 @@ pub fn fetch(
     askpass: Option<&AskpassEnv>,
     on_progress: ProgressFn<'_>,
 ) -> Result<()> {
+    fetch_with_prune_tags(git, workdir, remote, false, askpass, on_progress)
+}
+
+/// [`fetch`], plus `--prune-tags` when `prune_tags` is set: local tags the
+/// remote no longer has are deleted (Corvane addition; GHD never prunes tags,
+/// so a tag deleted on the remote stays forever).
+pub fn fetch_with_prune_tags(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    prune_tags: bool,
+    askpass: Option<&AskpassEnv>,
+    on_progress: ProgressFn<'_>,
+) -> Result<()> {
     let mut parser = ProgressParser::fetch();
+    let mut args = vec!["fetch", "--progress", "--prune"];
+    if prune_tags {
+        args.push("--prune-tags");
+    }
+    args.extend(["--recurse-submodules=on-demand", remote]);
     remote_command(git, workdir, askpass)
-        .args([
-            "fetch",
-            "--progress",
-            "--prune",
-            "--recurse-submodules=on-demand",
-            remote,
-        ])
+        .args(args)
         .run_streaming(|line| {
             if let Some((percent, text)) = parser.parse(line) {
                 on_progress(percent, text);
@@ -681,7 +694,24 @@ mod tests {
         run(&other, &["add", "."]);
         run(&other, &["commit", "-q", "-m", "second"]);
         run(&other, &["push", "-q", "origin", "main"]);
+        // a tag deleted on the remote survives a plain fetch; --prune-tags drops it
+        run(&other, &["tag", "gone"]);
+        run(&other, &["push", "-q", "origin", "gone"]);
         fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        run(&other, &["push", "-q", "origin", ":refs/tags/gone"]);
+        fetch(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        let has_tag = || {
+            std::process::Command::new("git")
+                .args(["rev-parse", "-q", "--verify", "refs/tags/gone"])
+                .current_dir(&work)
+                .output()
+                .unwrap()
+                .status
+                .success()
+        };
+        assert!(has_tag());
+        fetch_with_prune_tags(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
+        assert!(!has_tag());
         assert!(last_fetched(&work).is_some());
         let ab = crate::symmetric_ahead_behind(git.clone(), &work, "main", "origin/main")
             .unwrap()

@@ -8,6 +8,7 @@
 //! recommendation (`223-force-push-kept-on-failure`; GHD clears it first).
 //! The background fetch can be off or cover any remote
 //! (`224-background-fetch`; GHD: GitHub repositories only).
+//! Fetch can prune tags deleted on the remote (`225-fetch-prune-tags`).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -355,14 +356,22 @@ impl Dispatcher {
         );
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
+        // `225-fetch-prune-tags`: drop tags deleted on the remote, but never
+        // while tags created here wait to be pushed (they would be lost)
+        let prune_tags = {
+            let s = Self::state(cx).read(cx);
+            s.flags.bool(crate::flags::ids::FETCH_PRUNE_TAGS)
+                && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty())
+        };
         Self::run_network(
             id,
             cx,
             move |report| {
-                let result = corvane_git::fetch(
+                let result = corvane_git::fetch_with_prune_tags(
                     git.clone(),
                     &workdir,
                     &remote_name,
+                    prune_tags,
                     askpass.as_ref(),
                     &mut |value, text| {
                         report(PushPullProgress {

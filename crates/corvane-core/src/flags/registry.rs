@@ -308,6 +308,20 @@ registry! {
         upstream: &[Upstream::issue(10687), Upstream::issue(12474)],
         code: &["crates/corvane-core/src/remote.rs"],
     },
+    /// Fetch deletes local tags the remote no longer has.
+    FETCH_PRUNE_TAGS = 225 "fetch-prune-tags" {
+        title: "Fetch prunes deleted tags",
+        summary: "Fetch (and the background fetch) passes --prune-tags, so tags deleted on the \
+                  remote disappear locally. Local tags that were never pushed are deleted too, \
+                  except while tags created in Corvane are waiting to be pushed.",
+        ghd_behaviour: "Prunes branches only; a tag deleted on the remote stays forever.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21022), Upstream::issue(22776)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 
