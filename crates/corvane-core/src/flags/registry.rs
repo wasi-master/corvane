@@ -134,6 +134,21 @@ const CHANGES_FILTER_MATCHES: &[SelectOption] = &[
     },
 ];
 
+const IMAGE_DIFF_BACKGROUNDS: &[SelectOption] = &[
+    SelectOption {
+        value: "light",
+        label: "Light checkerboard",
+    },
+    SelectOption {
+        value: "dark",
+        label: "Dark checkerboard",
+    },
+    SelectOption {
+        value: "theme",
+        label: "Follow the app theme",
+    },
+];
+
 const WIDTH_SAVES: &[SelectOption] = &[
     SelectOption {
         value: "drag-end",
@@ -414,6 +429,20 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(16140), Upstream::issue(20548)],
         code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+    /// The image diff's checkerboard.
+    IMAGE_DIFF_BACKGROUND = 183 "image-diff-background" {
+        title: "Image diff background",
+        summary: "The checkerboard behind images in the image diff: light, dark, or dark while \
+                  the app theme is dark, so light and translucent images stay visible.",
+        ghd_behaviour: "Always the light checkerboard.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IMAGE_DIFF_BACKGROUNDS },
+        corvane: Value::text("light"), ghd: Value::text("light"),
+        familiar: Value::text("light"), everything: Value::text("theme"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21092)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
     },
 
     // ---- 200 Repository ----
