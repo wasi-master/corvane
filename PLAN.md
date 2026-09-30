@@ -82,7 +82,7 @@ Reads via gix (in-process, one `gix::ThreadSafeRepository` per repo, LRU object 
 | Status | `gix::status` with rename tracking + untracked. Fallback flag `status-cli` runs `git status --porcelain=v2 -z --branch --untracked-files=all` when gix errors or worktree > 200k entries |
 | Diff | blob diff via `gix-diff`/`imara-diff` (Histogram), unified hunks with context 3; binary + oversize (>10 MB) short-circuit; image diff for PNG/JPG/GIF/WebP/SVG side-by-side |
 | Config | user.name / user.email / core.editor read through gix config; global writes via `git config --global` |
-| Stash | `refs/stash` reflog; GHD-style stash message marker `!!GitHub_Desktop<branch>` becomes `!!Corvane<branch>` and also recognises GHD's marker |
+| Stash | `refs/stash` reflog; GHD's stash message marker `!!GitHub_Desktop<branch>` is kept as is, so stashes are shared with a real GitHub Desktop |
 | Conflicts | index stage 1/2/3 entries + `MERGE_HEAD`/`REBASE_HEAD`/`CHERRY_PICK_HEAD` presence |
 
 Writes via git CLI (identical semantics to GHD, hooks + LFS + credential helpers work unchanged):
@@ -163,6 +163,12 @@ Cargo features `bundled-syntax-extended`, `bundled-git` select the full build; C
 - Self-updater (`corvane-platform::updater`, M7): check `GET /repos/wasi-master/corvane/releases/latest` every 4 h + at launch (+jitter); banner "Corvane <ver> is available" → download zip to `~/Library/Caches/Corvane/updates/` with `ureq` (files the app writes itself carry no quarantine flag, so ad-hoc signing keeps working) → verify minisign → unzip → rename running bundle to `Corvane.app.old`, move new bundle in, `open -n` new bundle, exit; old bundle removed on next launch. Skipped when the bundle lives under `/opt/homebrew/Caskroom` (banner says "run `brew upgrade corvane`").
 - Homebrew tap `wasi-master/homebrew-corvane`, cask pointing at the zip; README documents `brew install --cask wasi-master/corvane/corvane --no-quarantine` as the primary path and Privacy & Security → Open Anyway for direct downloads (macOS 15 removed the right-click → Open bypass).
 - CI (GitHub Actions, `macos-15` runner): fmt, clippy `-D warnings`, tests, universal binary via `lipo`, bundle script, minisign (secret key in repo secrets), upload to GitHub Releases on tag. No Developer ID steps.
+
+### 3.9 Feature flags (`corvane_core::flags`)
+
+- Every switchable deviation from GHD and every Corvane-only extra is a flag in `crates/corvane-core/src/flags/registry.rs`: numeric id in a category block (100 Appearance, 200 Repository, 300 GitHub, 400 Window & menus, 500 Settings & updates, 600 Accessibility, 900 Experimental) + slug (`201-commit-templates`), kind (toggle / select / number / text), a value per preset, restart flag, `desktop/desktop` upstream refs. "on" = the deviation is active.
+- Resolution: preset base (**GitHub Desktop** · **Familiar** · **Corvane**, the default · **Everything**) → stored overrides (redb key `flags`) → `CORVANE_FLAGS` for one session (locks). `AppState.flags` is the snapshot every view reads; `Dispatcher::update_flags` is the single write path. Lower crates take parameters, never read flags.
+- UI: Corvane › Flags… (⌘⇧,), a chrome://flags-style dialog (`crates/corvane-ui/src/dialogs/flags.rs`); `docs/reference/flags.md` is generated from the registry (`UPDATE_FLAGS_DOC=1 cargo test -p corvane-core flags_doc`). The parity harness runs with `preset=github-desktop`.
 
 ## 4. Milestones
 
