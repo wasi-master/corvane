@@ -2,7 +2,7 @@ name: CI
 
 # macOS runners are scarce, so a push only runs what it has to: docs-only
 # changes skip CI, a newer push to the same branch cancels the older run,
-# rustfmt fails fast on Linux before a macOS runner is taken, and the release
+# rustfmt fails fast on Linux before a macOS or Linux runner is taken, and the release
 # build + bundle run only on demand (Actions → CI → Run workflow). Tags build
 # and bundle in release.yml.
 
@@ -106,8 +106,10 @@ jobs:
           path: target/bundle/Corvane.app.zip
 
   linux:
-    name: fmt · clippy · test (Linux)
+    name: clippy · test (Linux)
+    needs: fmt
     runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       # GPUI's X11 / Wayland backends; mold is the linker .cargo/config.toml
@@ -119,11 +121,13 @@ jobs:
             clang mold pkg-config \
             libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
             libfontconfig-dev libfreetype-dev libvulkan-dev \
-            gnome-keyring dbus-x11 zip unzip
+            gnome-keyring dbus-x11 zip unzip hunspell-en-us
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: cache grammar sources
         id: grammar-src
         uses: actions/cache@v4
@@ -135,10 +139,11 @@ jobs:
         run: |
           cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
           CORVANE_TREE_SITTER="$RUNNER_TEMP/ts-cli/bin/tree-sitter" python3 tools/ts-queries/fetch.py
-      - name: rustfmt
-        run: cargo fmt --all -- --check
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       # the keyring and notification tests talk to a session bus
       - name: test
         run: dbus-run-session -- cargo test --workspace
+      # account tokens go through the secret service, never to disk in plain text
+      - name: keyring round trip (gnome-keyring)
+        run: dbus-run-session -- packaging/linux/keyring-test.sh

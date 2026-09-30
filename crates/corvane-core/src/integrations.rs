@@ -371,6 +371,20 @@ impl Dispatcher {
             .trim()
             .to_string();
         if app.is_empty() {
+            // Linux: Electron's route (FileManager1, then xdg-open), which
+            // works without a desktop portal too
+            #[cfg(not(target_os = "macos"))]
+            {
+                let path = path.to_path_buf();
+                cx.background_executor()
+                    .spawn(async move {
+                        if let Err(err) = corvane_platform::apps::show_item_in_folder(&path) {
+                            warn!(%err, path = %path.display(), "could not show the item");
+                        }
+                    })
+                    .detach();
+            }
+            #[cfg(target_os = "macos")]
             cx.reveal_path(path);
             return;
         }
