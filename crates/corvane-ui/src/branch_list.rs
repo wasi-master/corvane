@@ -16,7 +16,8 @@
 //! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
 //! The filter ignores an `owner:` prefix (`260-branch-filter-strips-owner`).
 //! Rows can tell local-only, tracked and remote-only branches apart by icon
-//! (`262-branch-list-local-remote-icons`).
+//! (`262-branch-list-local-remote-icons`), and a filter-row toggle can
+//! narrow the list to remote branches (`263-branch-list-remote-only`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -73,6 +74,8 @@ pub struct BranchFoldout {
     selected_row: Option<String>,
     list_focus: FocusHandle,
     list_focused: bool,
+    /// `263-branch-list-remote-only`: the list shows remote branches only.
+    remote_only: bool,
 }
 
 /// The pull request whose quick view is shown, its parsed body, and the
@@ -108,6 +111,29 @@ fn strip_owner_prefix(query: &str, cx: &App) -> String {
             branch.trim().to_string()
         }
         _ => query.to_string(),
+    }
+}
+
+/// Flag `263-branch-list-remote-only`: every remote branch matching `query`
+/// (those with a local counterpart too), in one "Remote Branches" group.
+fn remote_group(branches: &[Branch], query: &str, cx: &App) -> Vec<BranchGroup> {
+    let mut remote: Vec<Branch> = branches
+        .iter()
+        .filter(|b| b.kind == BranchKind::Remote)
+        .filter(|b| query.is_empty() || fuzzy_score(query, &b.name).is_some())
+        .cloned()
+        .collect();
+    remote.sort_by_key(|b| b.name.to_lowercase());
+    if sort_by_date(cx) {
+        remote.sort_by_key(|b| std::cmp::Reverse(b.tip_time.unwrap_or(0)));
+    }
+    if remote.is_empty() {
+        Vec::new()
+    } else {
+        vec![BranchGroup {
+            title: "Remote Branches",
+            branches: remote,
+        }]
     }
 }
 
@@ -210,6 +236,7 @@ impl BranchFoldout {
             selected_row: None,
             list_focus: cx.focus_handle(),
             list_focused: false,
+            remote_only: false,
         }
     }
 
@@ -786,6 +813,12 @@ impl Render for BranchFoldout {
         let t = cx.ghd();
         self.list_focused = self.list_focus.is_focused(window);
         let query = strip_owner_prefix(self.filter.read(cx).value().trim(), cx);
+        let remote_toggle = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_REMOTE_ONLY);
+        let remote_only = remote_toggle && self.remote_only;
         let (id, groups, current, tip_valid) = {
             let s = self.state.read(cx);
             let id = s.selected;
@@ -796,6 +829,7 @@ impl Render for BranchFoldout {
                 .map(|b| b.name.clone());
             let tip_valid = info.is_some_and(|i| matches!(i.tip, Tip::Valid { .. }));
             let groups = match (info, rs) {
+                (Some(info), _) if remote_only => remote_group(&info.branches, &query, cx),
                 (Some(info), Some(rs)) => group_branches(
                     &info.branches,
                     rs.default_branch.as_deref(),
@@ -875,6 +909,24 @@ impl Render for BranchFoldout {
                         window,
                         cx,
                     ))
+                    .when(remote_toggle, |d| {
+                        d.child(
+                            button("branch-remote-only", "", cx)
+                                .flex_none()
+                                .px(SPACING_HALF())
+                                .when(remote_only, |d| d.bg(t.box_selected_background))
+                                .icon_button_label(if remote_only {
+                                    "Show all branches"
+                                } else {
+                                    "Show only remote branches"
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.remote_only = !this.remote_only;
+                                    cx.notify();
+                                }))
+                                .child(octicon(Octicon::Server, t.secondary_button_text)),
+                        )
+                    })
                     .child(button("new-branch", "New Branch", cx).flex_none().on_click(
                         move |_, _, cx| {
                             Dispatcher::close_foldout(cx);

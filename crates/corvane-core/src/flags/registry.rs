@@ -381,6 +381,21 @@ registry! {
         code: &["crates/corvane-ui/src/branch_list.rs"],
     },
 
+    /// Branch list toggle: remote branches only.
+    BRANCH_LIST_REMOTE_ONLY = 263 "branch-list-remote-only" {
+        title: "Branch list can show only remote branches",
+        summary: "A server button beside the branch list's filter narrows the list to the remote \
+                  branches (including those checked out locally), in one Remote Branches group.",
+        ghd_behaviour: "Remote branches are only listed, under Other Branches, when there is no \
+                        local branch of the same name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14134)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
