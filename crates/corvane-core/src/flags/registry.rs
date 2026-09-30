@@ -649,6 +649,19 @@ registry! {
         upstream: &[Upstream::issue(22922)],
         code: &["crates/corvane-platform/src/editors.rs", "crates/corvane-core/src/integrations.rs", "crates/corvane-core/src/flags/dispatch.rs"],
     },
+    /// A name for the custom editor.
+    CUSTOM_EDITOR_NAME = 586 "custom-editor-name" {
+        title: "Custom editor name",
+        summary: "Settings › Integrations › Configure Custom Editor… has a Name box; menus then \
+                  say \"Open in <name>\" instead of \"Open in Custom Editor\".",
+        ghd_behaviour: "Always \"Custom Editor\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21376)],
+        code: &["crates/corvane-ui/src/dialogs/preferences.rs", "crates/corvane-core/src/state.rs"],
+    },
 
     // ---- 600 Accessibility ----
 

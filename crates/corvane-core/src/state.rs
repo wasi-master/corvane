@@ -867,7 +867,13 @@ impl AppState {
     /// The editor "Open in …" menu items name: the selected editor, else the
     /// first installed one, else GHD's generic "External Editor".
     pub fn editor_label(&self) -> String {
-        if self.settings.use_custom_editor && self.settings.custom_editor.is_some() {
+        if self.settings.use_custom_editor
+            && let Some(custom) = &self.settings.custom_editor
+        {
+            let name = custom.name.trim();
+            if !name.is_empty() && self.flags.bool(crate::flags::ids::CUSTOM_EDITOR_NAME) {
+                return name.to_string();
+            }
             return "Custom Editor".to_string();
         }
         self.settings
