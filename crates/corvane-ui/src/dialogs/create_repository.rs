@@ -1,6 +1,11 @@
 //! "Create a New Repository" (`ui/add-repository/create-repository.tsx`):
 //! name, description, path, README, and the bundled Git Ignore / License
 //! templates (`corvane_core::templates`).
+//!
+//! Deviation (flag `readme-overwrite-warning`): with the README box ticked
+//! and a `README.md` already in the target folder, the dialog shows the
+//! overwrite warning GHD keeps behind `enableReadmeOverwriteWarning()` (beta
+//! builds only; `renderReadmeOverwriteWarning` in create-repository.tsx).
 
 use std::path::PathBuf;
 
@@ -10,6 +15,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::dialog::{DialogButton, dialog_with_footer_message};
+use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{
@@ -17,7 +23,6 @@ use crate::widgets::{
 };
 
 pub struct CreateRepositoryDialog {
-    #[allow(dead_code)]
     state: Entity<AppState>,
     name: Entity<InputState>,
     description: Entity<InputState>,
@@ -230,6 +235,14 @@ impl Render for CreateRepositoryDialog {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let this = cx.entity();
         let readme = self.readme;
+        // `renderReadmeOverwriteWarning`
+        let readme_warning = readme
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::README_OVERWRITE_WARNING)
+            && full.as_deref().is_some_and(corvane_git::readme_exists);
         // `renderPathMessage`: "The repository will be created at <Ref>…</Ref>."
         let path_message = full.as_ref().filter(|_| !exists_as_repo).map(|path| {
             let path = path.display().to_string();
@@ -326,6 +339,27 @@ impl Render for CreateRepositoryDialog {
                         .child(checkbox("create-readme-box", readme, false, cx))
                         .child("Initialize this repository with a README"),
                 )
+                .when(readme_warning, |d| {
+                    // `.warning-helper-text`
+                    d.child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .items_start()
+                            .gap(SPACING_HALF())
+                            .text_size(FONT_SIZE_SM())
+                            .text_color(t.text_secondary)
+                            .child(
+                                octicon(Octicon::Alert, t.dialog_warning)
+                                    .flex_none()
+                                    .mt(zpx(1.)),
+                            )
+                            .child(
+                                "This directory contains a README.md file already. Checking \
+                                 this box will result in the existing content being replaced.",
+                            ),
+                    )
+                })
                 .child(labeled("Git Ignore", self.gitignore_select(cx), cx))
                 .child(labeled("License", self.license_select(cx), cx)),
             path_message,

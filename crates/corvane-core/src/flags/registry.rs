@@ -265,6 +265,21 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
+    /// Create Repository warns before replacing an existing README.md.
+    README_OVERWRITE_WARNING = 207 "readme-overwrite-warning" {
+        title: "Create Repository warns about an existing README",
+        summary: "With \"Initialize this repository with a README\" ticked and a README.md already \
+                  in the folder, the Create a New Repository dialog warns that its content will be \
+                  replaced.",
+        ghd_behaviour: "The warning only exists in beta builds; release builds silently overwrite \
+                        the README.md.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22471)],
+        code: &["crates/corvane-ui/src/dialogs/create_repository.rs"],
+    },
 
     // ---- 300 GitHub ----
 
