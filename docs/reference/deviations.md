@@ -65,6 +65,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A drafted commit message is cleared when a new newest commit of the branch, made outside Corvane, has the drafted summary (trimmed, exact); GHD 3.6.6 keeps the draft. Flag: `471-clear-message-after-outside-commit`.
 - The "Committed … Undo" bar has a context menu (Corvane addition) with the History commit menu's HEAD items that fit there: Amend Commit…, Undo Commit…, Create Tag…, Copy SHA, View on GitHub. GHD 3.6.6 has none. Flag: `472-undo-bar-menu`.
 - Tag field in the commit form (Corvane addition, off in the Corvane preset): a "Tag (optional)" field under the description (hidden while amending); after the commit lands, the name is created as a tag on it like History's Create Tag (joins the tags to push). Names over 245 characters are ignored. GHD 3.6.6 tags only from History. Flag: `473-commit-tag-field`.
+- "Open With…" (Corvane addition) in the changes list's file menu for a single file (after "Open with Default Program"; not with several selected under `271-open-multiple-files`): the Repository › Open With… application picker, applied to the file. GHD 3.6.6 offers only the editor and the default program. Flag: `474-open-file-with`.
 
 ## Diff viewer
 

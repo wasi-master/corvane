@@ -782,6 +782,20 @@ registry! {
         code: &["crates/corvane-ui/src/changes.rs"],
     },
 
+    /// "Open With…" in the changes list's file menu.
+    OPEN_FILE_WITH = 474 "open-file-with" {
+        title: "Open a changed file with…",
+        summary: "The changes list's file menu has \"Open With…\" after \"Open with Default \
+                  Program\": pick any application to open the file in.",
+        ghd_behaviour: "Only the configured editor or the default program.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20166)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/integrations.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

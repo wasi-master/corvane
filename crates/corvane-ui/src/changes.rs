@@ -32,6 +32,7 @@
 //!   (`471-clear-message-after-outside-commit`).
 //! - the undo bar has a commit context menu (`472-undo-bar-menu`).
 //! - an optional tag field tags the new commit (`473-commit-tag-field`).
+//! - a single file's menu has "Open With…" (`474-open-file-with`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1704,6 +1705,7 @@ impl ChangesSidebar {
             ignore_counts,
             copy_diff,
             assume_unchanged,
+            open_file_with,
         ) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
@@ -1728,6 +1730,7 @@ impl ChangesSidebar {
                 s.flags.bool(corvane_core::flags::ids::IGNORE_MENU_COUNTS),
                 s.flags.bool(corvane_core::flags::ids::COPY_DIFF),
                 s.flags.bool(corvane_core::flags::ids::ASSUME_UNCHANGED),
+                s.flags.bool(corvane_core::flags::ids::OPEN_FILE_WITH),
             )
         };
         let path = file.path.clone();
@@ -1781,18 +1784,29 @@ impl ChangesSidebar {
             let reveal = full.clone();
             let editor = full.clone();
             let default = full;
-            vec![
+            let mut items = vec![
                 MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
                     .enabled(!deleted),
                 MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
                     Dispatcher::open_in_editor(editor.clone(), cx)
                 })
                 .enabled(!deleted),
-                MenuItem::new("Open with Default Program", move |_, cx| {
-                    cx.open_with_system(&default)
+                MenuItem::new("Open with Default Program", {
+                    let default = default.clone();
+                    move |_, cx| cx.open_with_system(&default)
                 })
                 .enabled(!deleted),
-            ]
+            ];
+            // `474-open-file-with`
+            if open_file_with {
+                items.push(
+                    MenuItem::new("Open With…", move |_, cx| {
+                        Dispatcher::open_with(default.clone(), cx)
+                    })
+                    .enabled(!deleted),
+                );
+            }
+            items
         };
 
         if rebase_conflict {

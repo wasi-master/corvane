@@ -275,8 +275,14 @@ impl Dispatcher {
     }
 
     /// Repository › Open With… (`_openWithSystemDialog`): pick an application,
-    /// then `open -a <app> <repository>`.
+    /// then `open -a <app> <repository>`. Also a changed file's "Open With…"
+    /// (Corvane `474-open-file-with`), whose error names the file.
     pub fn open_with(path: PathBuf, cx: &mut App) {
+        let (title, what) = if path.is_dir() {
+            ("Unable to Open Repository", "the repository")
+        } else {
+            ("Unable to Open File", "the file")
+        };
         let receiver = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: true,
             directories: false,
@@ -293,11 +299,8 @@ impl Dispatcher {
             {
                 cx.update(|cx| {
                     Self::show_error(
-                        "Unable to Open Repository",
-                        format!(
-                            "Could not open the repository with {}: {err}",
-                            app.display()
-                        ),
+                        title,
+                        format!("Could not open {what} with {}: {err}", app.display()),
                         cx,
                     )
                 });
