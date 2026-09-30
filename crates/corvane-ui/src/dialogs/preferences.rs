@@ -2,8 +2,10 @@
 //! components). 600 px wide, a 190 px vertical tab bar beside tab content at
 //! least 440 px tall; Cancel / Save.
 //!
-//! Deviations from GHD 3.6.6: no Copilot tab or Copilot prompt checkbox, no
-//! Hooks sub-tab under Git (hook environment loading is not implemented), no
+//! Deviations from GHD 3.6.6: no Copilot tab, no Copilot prompt checkbox (flag
+//! `505-copilot-prompt-omitted`; with it off the checkbox is shown and only
+//! stored), no Hooks sub-tab under Git (hook environment loading is not
+//! implemented), no
 //! Usage section under Advanced (no telemetry; "Save crash reports locally"
 //! and Optional components sit there instead, scrolling within 440 px), and
 //! no Formatting section (behind a feature flag in GHD). See TODO.md.
@@ -780,7 +782,15 @@ impl PreferencesDialog {
                         ))
                     })
                     .when(emails.is_empty() || self.email_choice.is_none(), |d| {
-                        d.child(if emails.is_empty() {
+                        // `GitConfigUserForm` labels only the account-email
+                        // select; flag `602-git-config-email-label` labels the
+                        // lone text box too
+                        let label_lone = self
+                            .state
+                            .read(cx)
+                            .flags
+                            .bool(corvane_core::flags::ids::GIT_CONFIG_EMAIL_LABEL);
+                        d.child(if emails.is_empty() && label_lone {
                             labeled(
                                 "Email",
                                 text_box("prefs-git-email", &self.email, None, window, cx),
@@ -1407,6 +1417,11 @@ impl PreferencesDialog {
 
     fn prompts_tab(&self, cx: &Context<Self>) -> AnyElement {
         let d = &self.draft;
+        let copilot_prompt_omitted = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::COPILOT_PROMPT_OMITTED);
         let strategy = d.uncommitted_changes_strategy;
         let strategies = [
             (
@@ -1483,6 +1498,16 @@ impl PreferencesDialog {
                         self.edit(cx, |s, v| s.confirm_undo_commit = v),
                         cx,
                     ))
+                    // `505-copilot-prompt-omitted`
+                    .when(!copilot_prompt_omitted, |el| {
+                        el.child(checkbox_row(
+                            "prefs-confirm-commit-message-override",
+                            d.confirm_commit_message_override,
+                            "Overriding commit message with generated message",
+                            self.edit(cx, |s, v| s.confirm_commit_message_override = v),
+                            cx,
+                        ))
+                    })
                     .child(checkbox_row(
                         "prefs-confirm-worktree-removal",
                         d.confirm_worktree_removal,

@@ -449,6 +449,19 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/release_notes.rs"],
     },
+    /// Settings › Prompts leaves out the Copilot prompt.
+    COPILOT_PROMPT_OMITTED = 505 "copilot-prompt-omitted" {
+        title: "Settings › Prompts: no Copilot prompt",
+        summary: "Settings › Prompts leaves out \"Overriding commit message with generated \
+                  message\": Corvane has no Copilot commit message generation, so the \
+                  checkbox would do nothing.",
+        ghd_behaviour: "Lists the checkbox between \"Undo commit\" and \"Removing worktrees\".",
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-ui/src/dialogs/preferences.rs"],
+    },
 
     // ---- 600 Accessibility ----
 
@@ -466,8 +479,8 @@ registry! {
     /// Repository Settings › Git Config always labels its email box.
     GIT_CONFIG_EMAIL_LABEL = 602 "git-config-email-label" {
         title: "Git Config's email box keeps its label",
-        summary: "Repository Settings › Git Config shows \"Email\" above the email text box \
-                  whenever it stands alone.",
+        summary: "Settings › Git › Author and Repository Settings › Git Config show \"Email\" \
+                  above the email text box whenever it stands alone.",
         ghd_behaviour: "The label disappears whenever the email isn't one of the signed-in \
                         accounts' addresses (always, when signed out), although the code means to \
                         hide it only under the account-email dropdown's \"Other\".",
@@ -475,7 +488,7 @@ registry! {
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: true, availability: available,
         upstream: &[],
-        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-ui/src/dialogs/preferences.rs"],
     },
 }
 

@@ -70,13 +70,14 @@ Flag values for one session, never persisted; the flags it names are locked in t
 | **`502-optional-components`** Optional components<br>Settings › Advanced offers downloadable packs (the syntax-extended grammar collection), and installed packs load at launch.<br>*GitHub Desktop: Ships every grammar; no packs section.* | toggle | on | off | off | on | yes | — | `crates/corvane-ui/src/dialogs/preferences.rs`<br>`crates/corvane-core/src/packs.rs` |
 | **`503-quiet-background-update-errors`** Quiet background update checks<br>Errors from the automatic update checks are only logged; Check for Updates in About still shows them.<br>*GitHub Desktop: Posts every update error.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/updater.rs` |
 | **`504-release-notes-heading-kinds`** Release notes: untagged items keep their heading's kind<br>Release-note items without a [Kind] tag are classified by their ## heading, and the notes' leading paragraph is shown.<br>*GitHub Desktop: Drops untagged items and the leading paragraph.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/release_notes.rs` |
+| **`505-copilot-prompt-omitted`** Settings › Prompts: no Copilot prompt<br>Settings › Prompts leaves out "Overriding commit message with generated message": Corvane has no Copilot commit message generation, so the checkbox would do nothing.<br>*GitHub Desktop: Lists the checkbox between "Undo commit" and "Removing worktrees".* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/dialogs/preferences.rs` |
 
 ### 600 · Accessibility
 
 | Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
 |---|---|---|---|---|---|---|---|---|
 | **`601-resizable-announces-new-width`** Expand / Contract Active Resizable announces the new width<br>⌘9 / ⌘8 announce the percentage of the width after the step.<br>*GitHub Desktop: Reads the width before applying the step, so the announced number lags one step.* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/active_resizable.rs` |
-| **`602-git-config-email-label`** Git Config's email box keeps its label<br>Repository Settings › Git Config shows "Email" above the email text box whenever it stands alone.<br>*GitHub Desktop: The label disappears whenever the email isn't one of the signed-in accounts' addresses (always, when signed out), although the code means to hide it only under the account-email dropdown's "Other".* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/dialogs/repository_settings.rs` |
+| **`602-git-config-email-label`** Git Config's email box keeps its label<br>Settings › Git › Author and Repository Settings › Git Config show "Email" above the email text box whenever it stands alone.<br>*GitHub Desktop: The label disappears whenever the email isn't one of the signed-in accounts' addresses (always, when signed out), although the code means to hide it only under the account-email dropdown's "Other".* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/dialogs/repository_settings.rs`<br>`crates/corvane-ui/src/dialogs/preferences.rs` |
 
 ## Not toggleable
 
