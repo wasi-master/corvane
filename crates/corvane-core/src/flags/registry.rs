@@ -643,6 +643,19 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// Checkout Commit on the branch tip.
+    CHECKOUT_HEAD_COMMIT = 440 "checkout-head-commit" {
+        title: "Checkout Commit on the latest commit",
+        summary: "A commit's Checkout Commit is also enabled on the current branch's latest commit, \
+                  detaching HEAD there.",
+        ghd_behaviour: "Disabled on the latest commit, so HEAD cannot be detached at the branch tip.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22495)],
+        code: &["crates/corvane-ui/src/history.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

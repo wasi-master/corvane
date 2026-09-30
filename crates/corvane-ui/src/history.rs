@@ -17,7 +17,8 @@
 //! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
 //! Commit (flag `243`); a commit with a description gets a mark after its
 //! summary (flag `252`); compact rows drop the author line (flag `140`); the
-//! tag pill's tooltip lists every tag (flag `254`).
+//! tag pill's tooltip lists every tag (flag `254`); Checkout Commit works on
+//! the branch tip (flag `440`).
 
 use std::rc::Rc;
 
@@ -930,7 +931,7 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (html_url, is_head, busy, copy_items, revert_no_commit, unpushed) = {
+        let (html_url, is_head, busy, copy_items, revert_no_commit, unpushed, checkout_head) = {
             let s = self.state.read(cx);
             let html_url = s
                 .repository(id)
@@ -967,6 +968,12 @@ impl HistorySidebar {
                                 .and_then(|r| r.commits.iter().position(|c| c.sha == commit.sha))
                                 .is_some_and(|ix| ix < ahead)
                     }),
+                // `440`: the branch tip can be checked out (detaching HEAD)
+                s.flags.bool(corvane_core::flags::ids::CHECKOUT_HEAD_COMMIT)
+                    && rs
+                        .and_then(|r| r.info.as_ref())
+                        .and_then(|i| i.current_branch())
+                        .is_some(),
             )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
@@ -992,7 +999,7 @@ impl HistorySidebar {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
             })
-            .enabled(!is_head),
+            .enabled(!is_head || checkout_head),
             MenuItem::new("Reorder Commit", {
                 let sha = sha.clone();
                 move |_, cx| {
