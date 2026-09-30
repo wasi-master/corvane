@@ -350,6 +350,20 @@ registry! {
         upstream: &[Upstream::issue(4860)],
         code: &["crates/corvane-ui/src/repository_list.rs"],
     },
+    /// A missing repository's menu removes every missing repository.
+    REMOVE_ALL_MISSING_REPOSITORIES = 118 "remove-all-missing-repositories" {
+        title: "Remove all missing repositories",
+        summary: "The context menu of a repository Corvane cannot find offers \"Remove All N \
+                  Missing Repositories\" when several are missing; like removing one missing \
+                  repository it only takes them off the list, without confirmation.",
+        ghd_behaviour: "Missing repositories are removed one by one.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21151)],
+        code: &["crates/corvane-ui/src/repository_list.rs"],
+    },
 
     // ---- 200 Repository ----
 

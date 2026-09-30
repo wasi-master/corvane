@@ -630,6 +630,31 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             },
         ),
     ]);
+    // Corvane (`118-remove-all-missing-repositories`): on a missing row,
+    // remove every repository Corvane cannot find (without confirmation,
+    // as GHD removes one missing repository)
+    let missing_ids: Vec<u64> = state
+        .repositories
+        .iter()
+        .filter(|r| r.missing)
+        .map(|r| r.id)
+        .collect();
+    if missing
+        && missing_ids.len() > 1
+        && state
+            .flags
+            .bool(corvane_core::flags::ids::REMOVE_ALL_MISSING_REPOSITORIES)
+    {
+        items.push(MenuItem::new(
+            format!("Remove All {} Missing Repositories", missing_ids.len()),
+            move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                for id in &missing_ids {
+                    Dispatcher::remove_repository(*id, cx);
+                }
+            },
+        ));
+    }
     items
 }
 

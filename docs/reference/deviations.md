@@ -162,6 +162,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - Repositories that share a name within a repository list group show, dimmed after the name, the parent folders that tell them apart (GHD: identical rows, the path only in the tooltip). Flag: `115-duplicate-names-show-path`.
 - A repository list filter written as `/pattern/` is a case-insensitive regular expression (Corvane addition; other text, or an invalid pattern, filters as before). Flag: `116-regex-repository-filter`.
 - While the repository filter has text, the matches can form one list without owner groups, ranked by the fuzzy score best first (Corvane option; GHD keeps the groups). Flag: `117-flat-repository-results`.
+- A missing repository's context menu offers "Remove All N Missing Repositories" when several are missing (Corvane addition; only the list entries go, without confirmation as for one missing repository in GHD). Flag: `118-remove-all-missing-repositories`.
 
 ## Scrolling
 
