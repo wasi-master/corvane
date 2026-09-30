@@ -31,6 +31,7 @@
 //! - a commit made outside Corvane with the drafted summary clears the draft
 //!   (`471-clear-message-after-outside-commit`).
 //! - the undo bar has a commit context menu (`472-undo-bar-menu`).
+//! - an optional tag field tags the new commit (`473-commit-tag-field`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -77,6 +78,9 @@ use crate::widgets::{
 /// `271-open-multiple-files`: the most files one "Open …" item launches.
 pub(crate) const MAX_BULK_OPEN: usize = 25;
 
+/// GHD `MaxTagNameLength` (`473-commit-tag-field`).
+const MAX_TAG_NAME_LENGTH: usize = 245;
+
 /// Which commit-form field an autocompletion / spellcheck result belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CommitField {
@@ -112,6 +116,10 @@ pub struct ChangesSidebar {
     co_authors: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
+    /// `473-commit-tag-field`: the optional tag field, and the tag to create
+    /// once the repository's commit (nonce past the stored one) lands.
+    tag: Entity<InputState>,
+    pending_tag: Option<(u64, u64, String)>,
     /// Repository and newest commit last seen
     /// (`471-clear-message-after-outside-commit`).
     seen_head: (Option<u64>, Option<String>),
@@ -180,6 +188,21 @@ impl ChangesSidebar {
                 .selected_state()
                 .map(|rs| rs.commit_nonce)
                 .unwrap_or(0);
+            // `473-commit-tag-field`: tag the commit that just landed
+            if let Some((repo, before, _)) = &this.pending_tag {
+                let landed = state
+                    .read(cx)
+                    .repo_states
+                    .get(repo)
+                    .filter(|rs| rs.commit_nonce > *before)
+                    .and_then(|rs| rs.last_commit.as_ref())
+                    .map(|c| c.sha.clone());
+                if let Some(sha) = landed
+                    && let Some((repo, _, name)) = this.pending_tag.take()
+                {
+                    Dispatcher::create_tag(repo, name, sha, cx);
+                }
+            }
             if nonce != this.seen_commit_nonce {
                 this.seen_commit_nonce = nonce;
                 this.clear_form(window, cx);
@@ -253,6 +276,7 @@ impl ChangesSidebar {
         })
         .detach();
         let summary = cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
+        let tag = cx.new(|cx| InputState::new(window, cx).placeholder("Tag (optional)"));
         let description = cx.new(|cx| {
             TextareaState::new(window, cx)
                 .rows(4)
@@ -315,6 +339,8 @@ impl ChangesSidebar {
             state,
             seen_commit_nonce: 0,
             seen_head: (None, None),
+            tag,
+            pending_tag: None,
             seen_amend_nonce: 0,
             seen_template: (None, None),
             context_menu: None,
@@ -1145,6 +1171,7 @@ impl ChangesSidebar {
             .update(cx, |s, cx| s.set_value("", window, cx));
         self.co_authors
             .update(cx, |s, cx| s.set_value("", window, cx));
+        self.tag.update(cx, |s, cx| s.set_value("", window, cx));
         self.summary_misspelled.clear();
         self.description_misspelled.clear();
         self.autocomplete = None;
@@ -2021,6 +2048,21 @@ impl ChangesSidebar {
         self.open_menu(items, position, window, cx);
     }
 
+    /// `473-commit-tag-field`: the repository's commit nonce and the trimmed
+    /// tag name, when the field is shown and filled in with a valid length.
+    fn tag_to_create(&self, cx: &App) -> Option<(u64, String)> {
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::COMMIT_TAG_FIELD) {
+            return None;
+        }
+        let rs = s.selected_state()?;
+        if rs.commit_to_amend.is_some() {
+            return None;
+        }
+        let name = self.tag.read(cx).value().trim().to_string();
+        (!name.is_empty() && name.len() <= MAX_TAG_NAME_LENGTH).then_some((rs.commit_nonce, name))
+    }
+
     fn do_commit(&mut self, cx: &mut Context<Self>) {
         let Some(id) = self.state.read(cx).selected else {
             return;
@@ -2028,6 +2070,10 @@ impl ChangesSidebar {
         let summary = self.summary.read(cx).value().to_string();
         let description = self.description.read(cx).value().to_string();
         let unknown = self.unknown_co_authors(cx);
+        // `473-commit-tag-field`
+        self.pending_tag = self
+            .tag_to_create(cx)
+            .map(|(nonce, name)| (id, nonce, name));
         // `275-confirm-commit-to-default-branch` (not when amending)
         let default_branch = {
             let s = self.state.read(cx);
@@ -3318,6 +3364,13 @@ impl ChangesSidebar {
             let show = s.selected_state().is_some_and(|rs| rs.show_co_authored_by);
             (is_github, is_github && show)
         };
+        // `473-commit-tag-field` (not while amending)
+        let tag_field = {
+            let s = self.state.read(cx);
+            s.flags.bool(corvane_core::flags::ids::COMMIT_TAG_FIELD)
+                && s.selected_state()
+                    .is_some_and(|rs| rs.commit_to_amend.is_none())
+        };
         // Autocompletion popup anchored at the caret's bottom-left.
         let popup = self.autocomplete.as_ref().and_then(|(field, ac)| {
             let (bounds, line_height) = match field {
@@ -3548,6 +3601,15 @@ impl ChangesSidebar {
             )
             .when(co_authors_visible, |d| {
                 d.child(div().mb(SPACING()).child(self.co_author_input(window, cx)))
+            })
+            .when(tag_field, |d| {
+                d.child(div().mb(SPACING()).child(crate::widgets::text_box(
+                    "commit-tag",
+                    &self.tag,
+                    None,
+                    window,
+                    cx,
+                )))
             })
             .children(self.amend_notice(cx))
             .children(

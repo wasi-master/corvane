@@ -768,6 +768,20 @@ registry! {
         code: &["crates/corvane-ui/src/changes.rs"],
     },
 
+    /// Optional tag field in the commit form.
+    COMMIT_TAG_FIELD = 473 "commit-tag-field" {
+        title: "Tag field in the commit form",
+        summary: "The commit form has a \"Tag (optional)\" field under the description; a name \
+                  there tags the new commit once it is made (not when amending).",
+        ghd_behaviour: "Tags are created from History after committing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16256)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
