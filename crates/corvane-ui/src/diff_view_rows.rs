@@ -195,18 +195,10 @@ fn selectable_text(
     let text = &row.text;
     let bounds = ctx.text_bounds.clone();
     let view = ctx.view.clone();
-    let mut layout = None;
     let whitespace = (ctx.show_whitespace && text.contains(' ')).then(|| row.tabs.clone());
-    let body: AnyElement = if highlights.is_empty() && inner.is_none() && whitespace.is_none() {
-        SharedString::from(text.to_string()).into_any_element()
-    } else {
-        let styled =
-            StyledText::new(SharedString::from(text.to_string())).with_highlights(highlights);
-        layout = Some(styled.layout().clone());
-        styled.into_any_element()
-    };
-    let whitespace = whitespace.zip(layout.clone());
-    let inner = inner.zip(layout);
+    let styled = StyledText::new(SharedString::from(text.to_string())).with_highlights(highlights);
+    let layout = styled.layout().clone();
+    let hit_layout = layout.clone();
     div()
         .flex_1()
         .min_w_0()
@@ -215,32 +207,31 @@ fn selectable_text(
         .child(
             canvas(
                 move |b, _, _| {
-                    bounds.borrow_mut().insert((list_ix, column), b);
+                    bounds.borrow_mut().insert(
+                        (list_ix, column),
+                        RowText {
+                            bounds: b,
+                            layout: hit_layout,
+                        },
+                    );
                 },
                 move |_, _, window, cx| {
-                    if let Some(((range, color), layout)) = &inner {
-                        paint_inline_background(layout, range.clone(), *color, window);
+                    if let Some((range, color)) = &inner {
+                        paint_inline_background(&layout, range.clone(), *color, window);
                     }
-                    if let Some((tabs, layout)) = &whitespace {
+                    if let Some(tabs) = &whitespace {
                         let color = cx.ghd().text_secondary.opacity(0.6);
-                        paint_whitespace(layout, tabs, color, window);
+                        paint_whitespace(&layout, tabs, color, window);
                     }
                 },
             )
             .absolute()
             .inset_0(),
         )
-        .child(body)
-        .on_mouse_down(MouseButton::Left, move |ev, window, cx| {
+        .child(styled)
+        .on_mouse_down(MouseButton::Left, move |ev, _, cx| {
             view.update(cx, |this, cx| {
-                this.start_text_selection(
-                    list_ix,
-                    column,
-                    ev.position,
-                    ev.modifiers.shift,
-                    window,
-                    cx,
-                )
+                this.start_text_selection(list_ix, column, ev.position, ev.modifiers.shift, cx)
             })
             .ok();
         })
@@ -511,7 +502,9 @@ fn paint_whitespace(layout: &TextLayout, tabs: &[u32], color: Hsla, window: &mut
         return;
     };
     let unwrapped = &line.unwrapped_layout;
-    let middle = layout.line_height() / 2.;
+    let line_height = layout.line_height();
+    let text_origin = layout.bounds().origin;
+    let middle = line_height / 2.;
     let dot = zpx(2.);
     let text = layout.text();
     let mut tab_end = 0;
@@ -519,9 +512,7 @@ fn paint_whitespace(layout: &TextLayout, tabs: &[u32], color: Hsla, window: &mut
         if ch != ' ' || ix < tab_end {
             continue;
         }
-        let Some(origin) = layout.position_for_index(ix) else {
-            continue;
-        };
+        let origin = text_origin + wrapped_position(&line, ix, line_height);
         let is_tab = tabs.binary_search(&(ix as u32)).is_ok();
         let len = if is_tab { TAB_EXPANSION.len() } else { 1 };
         let width = unwrapped.x_for_index(ix + len) - unwrapped.x_for_index(ix);
@@ -555,15 +546,15 @@ fn paint_inline_background(
     };
     let unwrapped = &line.unwrapped_layout;
     let content = unwrapped.ascent + unwrapped.descent;
-    let inset = (layout.line_height() - content) / 2.;
+    let line_height = layout.line_height();
+    let inset = (line_height - content) / 2.;
+    let text_origin = layout.bounds().origin;
     let text = layout.text();
     // (y, x start, x end) of each visual line the range covers
     let mut segments: Vec<(Pixels, Pixels, Pixels)> = Vec::new();
     for (offset, ch) in text.get(range.clone()).unwrap_or("").char_indices() {
         let ix = range.start + offset;
-        let Some(origin) = layout.position_for_index(ix) else {
-            continue;
-        };
+        let origin = text_origin + wrapped_position(&line, ix, line_height);
         let width = unwrapped.x_for_index(ix + ch.len_utf8()) - unwrapped.x_for_index(ix);
         match segments.last_mut() {
             Some((y, _, end)) if *y == origin.y => *end = origin.x + width,
@@ -576,6 +567,35 @@ fn paint_inline_background(
             color,
         ));
     }
+}
+
+/// Where byte `ix` of a one-line text laid out as `line` sits, relative to
+/// the text's origin. A wrap boundary starts the visual line it opens: GPUI's
+/// `position_for_index` puts it at the end of the line before, which would
+/// paint the first character of every wrapped line past the previous line.
+pub(crate) fn wrapped_position(
+    line: &WrappedLineLayout,
+    ix: usize,
+    line_height: Pixels,
+) -> Point<Pixels> {
+    let unwrapped = &line.unwrapped_layout;
+    let (row, start) = wrap_starts(line)
+        .take_while(|&start| start <= ix)
+        .fold((0, 0), |(row, _), start| (row + 1, start));
+    point(
+        unwrapped.x_for_index(ix) - unwrapped.x_for_index(start),
+        line_height * row as f32,
+    )
+}
+
+/// The byte index each wrapped (second and later) visual line starts at.
+pub(crate) fn wrap_starts(line: &WrappedLineLayout) -> impl Iterator<Item = usize> + '_ {
+    let runs = &line.unwrapped_layout.runs;
+    line.wrap_boundaries().iter().filter_map(|b| {
+        runs.get(b.run_ix)
+            .and_then(|run| run.glyphs.get(b.glyph_ix))
+            .map(|glyph| glyph.index)
+    })
 }
 
 /// GHD `getHunkExpansionElementInfo`: icon, tooltip and target per handle.
@@ -1244,9 +1264,17 @@ pub enum Column {
     After,
 }
 
-/// Where the text of every rendered row sits on screen, keyed by list index
-/// and column: filled while rows paint, read by the text-selection drag.
-pub type TextBounds = Rc<RefCell<HashMap<(usize, Column), Bounds<Pixels>>>>;
+/// Where the text of every rendered row sits on screen and how it is laid
+/// out (wrapped), keyed by list index and column: filled while rows paint,
+/// read by the text-selection hit-testing.
+pub type TextBounds = Rc<RefCell<HashMap<(usize, Column), RowText>>>;
+
+/// One row's text on screen: [`TextBounds`] entry.
+#[derive(Clone)]
+pub struct RowText {
+    pub bounds: Bounds<Pixels>,
+    pub layout: TextLayout,
+}
 
 /// `.line-number` of one side: `[check][number]`, selectable when the line
 /// is a change (`renderLineNumber`).
