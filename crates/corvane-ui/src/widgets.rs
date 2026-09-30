@@ -169,11 +169,17 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
 /// `<Ref>`: inline monospace code on the alt background.
 pub fn code_ref(text: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
+    // `.ref-component`: monospace on `--path-segment-background`, 6 px radius,
+    // 3.33 px padding. The element is inline in GHD: its box is the 14 px
+    // content area plus padding (20.7 px), painted over the 18 px line
+    // without growing it - here 1.33 px beyond the line on each side.
     div()
         .font_family(crate::theme::mono_font())
-        .px(zpx(3.))
-        .rounded(zpx(3.))
-        .bg(t.box_alt_background)
+        .px(SPACING_THIRD())
+        .py(SPACING_THIRD() - zpx(2.))
+        .my(zpx(2.) - SPACING_THIRD())
+        .rounded(BORDER_RADIUS())
+        .bg(t.path_segment_background)
         .child(text.into())
 }
 
@@ -222,6 +228,21 @@ pub fn checkbox_row(
     on_toggle: impl Fn(bool, &mut Window, &mut App) + 'static,
     cx: &App,
 ) -> Stateful<Div> {
+    checkbox_row_focus(id, checked, label, false, on_toggle, cx)
+}
+
+/// [`checkbox_row`] whose box may show Chromium's focus ring (a dialog's
+/// autofocused first checkbox): 1 px gap, 2 px `--focus-color`, then a 1 px
+/// dark halo.
+pub fn checkbox_row_focus(
+    id: &'static str,
+    checked: bool,
+    label: impl IntoElement,
+    focused: bool,
+    on_toggle: impl Fn(bool, &mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
     div()
         .id(id)
         .flex()
@@ -230,12 +251,37 @@ pub fn checkbox_row(
         .gap(SPACING_HALF())
         .cursor_pointer()
         .on_click(move |_, window, cx| on_toggle(!checked, window, cx))
-        .child(checkbox(
-            ElementId::from(SharedString::from(format!("{id}-box"))),
-            checked,
-            false,
-            cx,
-        ))
+        .child(
+            div()
+                .relative()
+                .flex_none()
+                .when(focused, |d| {
+                    d.child(
+                        div()
+                            .absolute()
+                            .top(zpx(-4.))
+                            .left(zpx(-4.))
+                            .right(zpx(-4.))
+                            .bottom(zpx(-4.))
+                            .border_1()
+                            .border_color(rgb(0x101010))
+                            .rounded(zpx(6.))
+                            .child(
+                                div()
+                                    .size_full()
+                                    .border_2()
+                                    .border_color(t.focus)
+                                    .rounded(zpx(5.)),
+                            ),
+                    )
+                })
+                .child(checkbox(
+                    ElementId::from(SharedString::from(format!("{id}-box"))),
+                    checked,
+                    false,
+                    cx,
+                )),
+        )
         .child(div().flex_1().min_w_0().text_size(FONT_SIZE()).child(label))
 }
 

@@ -1,4 +1,6 @@
 //! "Add Local Repository" (`ui/add-repository/add-existing-repository.tsx`).
+//! Like GHD 3.6.6 the path is only checked on submit (`addRepository` →
+//! `validatePath`); the warning then stays until the next check.
 
 use std::path::PathBuf;
 
@@ -17,6 +19,9 @@ pub struct AddExistingRepositoryDialog {
     #[allow(dead_code)]
     state: Entity<AppState>,
     path: Entity<InputState>,
+    /// The last `validatePath` result that warrants a warning
+    /// (`showNonGitRepositoryWarning` / `isRepositoryBare`).
+    warning: Option<PathStatus>,
 }
 
 impl AddExistingRepositoryDialog {
@@ -36,7 +41,11 @@ impl AddExistingRepositoryDialog {
         cx.observe(&path, |_, _, cx| cx.notify()).detach();
         let handle = path.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
-        Self { state, path }
+        Self {
+            state,
+            path,
+            warning: None,
+        }
     }
 
     fn resolved_path(&self, cx: &App) -> Option<PathBuf> {
@@ -80,11 +89,17 @@ impl AddExistingRepositoryDialog {
     }
 
     fn submit(&mut self, cx: &mut Context<Self>) {
-        if let (Some(path), Some(PathStatus::Repository)) =
-            (self.resolved_path(cx), self.status(cx))
-        {
-            Dispatcher::close_popup(cx);
-            Dispatcher::add_repository(path, cx);
+        let status = self.status(cx);
+        match (self.resolved_path(cx), status) {
+            (Some(path), Some(PathStatus::Repository)) => {
+                Dispatcher::close_popup(cx);
+                Dispatcher::add_repository(path, cx);
+            }
+            (_, status) => {
+                self.warning =
+                    status.filter(|s| matches!(s, PathStatus::NotARepository | PathStatus::Bare));
+                cx.notify();
+            }
         }
     }
 }
@@ -98,33 +113,33 @@ fn dirs_home() -> PathBuf {
 impl Render for AddExistingRepositoryDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
-        let status = self.status(cx);
-        let can_add = status == Some(PathStatus::Repository);
+        let has_path = self.resolved_path(cx).is_some();
+        let status = self.warning.filter(|_| has_path);
         let error: Option<AnyElement> = match status {
-            Some(PathStatus::NotARepository) => Some(
+            // `buildNotAGitRepositoryError`: two paragraphs, the second
+            // linking "create a repository"
+            Some(PathStatus::NotARepository) => Some({
+                let path = self.resolved_path(cx);
                 div()
                     .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .gap(zpx(4.))
+                    .flex_col()
                     .text_color(t.error)
                     .child("This directory does not appear to be a Git repository.")
-                    .child({
-                        let path = self.resolved_path(cx);
-                        div()
-                            .id("create-instead")
-                            .text_color(t.link)
-                            .cursor_pointer()
-                            .child("Would you like to create a repository here instead?")
+                    .child(crate::widgets::paragraph(vec![
+                        "Would you like to".into(),
+                        crate::widgets::link_button("create-instead", "create a repository", cx)
                             .on_click(move |_, _, cx| {
                                 Dispatcher::show_popup(
                                     Popup::CreateRepository { path: path.clone() },
                                     cx,
                                 )
                             })
-                    })
-                    .into_any_element(),
-            ),
+                            .into_any_element()
+                            .into(),
+                        "here instead?".into(),
+                    ]))
+                    .into_any_element()
+            }),
             Some(PathStatus::Bare) => Some(
                 div()
                     .text_color(t.error)
@@ -143,7 +158,6 @@ impl Render for AddExistingRepositoryDialog {
                 .flex()
                 .flex_col()
                 .gap(SPACING())
-                .w(zpx(560.))
                 .child(
                     // `Row`: [Local Path text box][Choose…]
                     div()
@@ -179,9 +193,7 @@ impl Render for AddExistingRepositoryDialog {
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {
-                        if can_add {
-                            this.update(cx, |d, cx| d.submit(cx));
-                        }
+                        this.update(cx, |d, cx| d.submit(cx));
                     }),
                 },
             ],

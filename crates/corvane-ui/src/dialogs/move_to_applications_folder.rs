@@ -12,16 +12,21 @@ use gpui_kit::*;
 
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::sizes::*;
-use crate::widgets::checkbox_row;
+use crate::widgets::checkbox_row_focus;
 
 pub struct MoveToApplicationsFolderDialog {
     /// `askToMoveToApplicationsFolder` (the checkbox shows its inverse).
     ask_again: bool,
+    /// The autofocused checkbox's ring, until a mouse press.
+    focus_visible: bool,
 }
 
 impl MoveToApplicationsFolderDialog {
     pub fn new() -> Self {
-        Self { ask_again: true }
+        Self {
+            ask_again: true,
+            focus_visible: true,
+        }
     }
 }
 
@@ -37,10 +42,16 @@ impl Render for MoveToApplicationsFolderDialog {
         let weak = cx.weak_entity();
         let ask_again = self.ask_again;
         let content = div()
-            .w(zpx(420.))
             .flex()
             .flex_col()
             .gap(SPACING())
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    this.focus_visible = false;
+                    cx.notify();
+                }),
+            )
             .child(
                 "We've detected that you're not running Corvane from the Applications folder of \
                  your machine. This could cause problems with the app, including impacting your \
@@ -50,10 +61,11 @@ impl Render for MoveToApplicationsFolderDialog {
                 "Do you want to move Corvane to the Applications folder now? This will also \
                  restart the app.",
             )
-            .child(checkbox_row(
+            .child(checkbox_row_focus(
                 "move-to-applications-dont-ask",
                 !ask_again,
                 "Do not show this message again",
+                self.focus_visible,
                 move |checked, _, cx| {
                     weak.update(cx, |this, cx| {
                         this.ask_again = !checked;

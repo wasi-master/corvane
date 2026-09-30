@@ -159,6 +159,9 @@ impl CreateTagDialog {
     pub fn new(repo: u64, sha: String, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx));
         cx.observe(&name, |_, _, cx| cx.notify()).detach();
+        // `RefNameTextBox` autoFocus
+        let handle = name.read(cx).focus_handle(cx);
+        window.focus(&handle, cx);
         Self { repo, sha, name }
     }
 }

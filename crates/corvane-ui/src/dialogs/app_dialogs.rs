@@ -7,11 +7,10 @@ use corvane_core::{AppState, Dispatcher, Popup, PreferencesTab, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
-use crate::icons::{Octicon, octicon};
+use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::{ListRowA11y, checkbox_row, link_button};
+use crate::widgets::{ListRowA11y, link_button};
 
 pub struct AboutDialog {
     state: Entity<AppState>,
@@ -28,19 +27,14 @@ impl AboutDialog {
     /// doing, and "Check for Updates" / "Quit and Install Update".
     fn update_section(&self, cx: &App) -> Div {
         let t = cx.ghd();
-        let section = div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(SPACING());
+        // `.update-status` and the button `Row`, each 10 px above what follows
+        let section = div().w_full().flex().flex_col().items_center();
         if !corvane_core::updater::updates_enabled() {
-            return section.child(
-                div()
-                    .text_align(TextAlign::Center)
-                    .text_color(t.text_secondary)
-                    .child("Corvane is running in development and will not receive any updates."),
-            );
+            // `renderUpdateDetails` without `canCheckForUpdates`: a <p>, no button
+            return section.child(div().mb(SPACING()).text_align(TextAlign::Center).child(
+                "The application is currently running in development and will not \
+                         receive any updates.",
+            ));
         }
         let (status, last_check) = {
             let s = self.state.read(cx);
@@ -126,25 +120,26 @@ impl AboutDialog {
                     })
             }
         };
-        section.children(details).child(button)
+        section
+            .children(details.map(|d| div().mb(SPACING()).child(d)))
+            .child(div().mb(SPACING()).child(button))
     }
 }
 
 impl Render for AboutDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.ghd();
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
         let version = self.version.clone();
         let version_for_copy = version.clone();
         // `renderUpdateErrors`: no successful check on record yet
         let no_check_yet = corvane_core::updater::updates_enabled()
             && self.state.read(cx).update.last_successful_check.is_none();
+        // `About`: an untitled dialog (no header), everything centred
         let content = div()
-            .w(zpx(400.))
             .flex()
             .flex_col()
             .items_center()
-            .gap(SPACING())
+            .text_align(TextAlign::Center)
             .when(no_check_yet, |d| {
                 d.child(crate::widgets::dialog_error_banner(
                     "Couldn't determine the last time an update check was performed. You may be \
@@ -152,56 +147,70 @@ impl Render for AboutDialog {
                     cx,
                 ))
             })
-            .child(img("icon/Corvane-256.png").size(zpx(64.)))
+            .child(img("icon/Corvane-256.png").size(zpx(64.)).mb(SPACING()))
             .child(
                 div()
+                    .mb(zpx(6.))
                     .text_size(FONT_SIZE_MD())
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .child("Corvane"),
+                    .line_height(zpx(21.))
+                    .font_weight(FontWeight::BOLD)
+                    .child("About Corvane"),
             )
             .child(
-                // `.version-text`: click copies the version.
+                // "Version x (arch) (release notes)"; the version copies on click
                 div()
-                    .id("about-version")
                     .flex()
                     .flex_row()
                     .items_center()
-                    .gap(zpx(4.))
-                    .cursor_pointer()
-                    .on_click(move |_, _, cx| {
-                        cx.write_to_clipboard(ClipboardItem::new_string(version_for_copy.clone()))
-                    })
-                    .child(format!("Version {version} ({})", std::env::consts::ARCH))
-                    .child(octicon(Octicon::Copy, t.text_secondary).size(zpx(12.))),
-            )
-            .child(
-                link_button("about-release-notes", "release notes", cx).on_click(|_, _, cx| {
-                    Dispatcher::open_url(corvane_core::release_notes::RELEASE_NOTES_URL, cx)
-                }),
+                    .child(
+                        div()
+                            .id("about-version")
+                            .cursor_pointer()
+                            .on_click(move |_, _, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(
+                                    version_for_copy.clone(),
+                                ))
+                            })
+                            .child(format!("Version {version} ({})", std::env::consts::ARCH)),
+                    )
+                    .child("\u{a0}(")
+                    .child(
+                        link_button("about-release-notes", "release notes", cx).on_click(
+                            |_, _, cx| {
+                                Dispatcher::open_url(
+                                    corvane_core::release_notes::RELEASE_NOTES_URL,
+                                    cx,
+                                )
+                            },
+                        ),
+                    )
+                    .child(")"),
             )
             .child(self.update_section(cx))
             .child(
+                // `.terms-and-license-container`: 10 px above, 3 px padded links
                 div()
                     .mt(SPACING())
                     .flex()
-                    .flex_row()
+                    .flex_col()
                     .items_center()
-                    .gap(SPACING())
                     .child(
                         // GHD `onShowAcknowledgements`
                         link_button("about-license", "License and Open Source Notices", cx)
+                            .p(zpx(3.))
                             .on_click(|_, _, cx| {
                                 Dispatcher::show_popup(Popup::Acknowledgements, cx)
                             }),
                     )
-                    .child(div().text_color(t.text_secondary).child("·"))
                     .child(
-                        link_button("about-source", "Source code", cx).on_click(|_, _, cx| {
-                            Dispatcher::open_url("https://github.com/wasi-master/corvane", cx)
-                        }),
+                        link_button("about-source", "Source code", cx)
+                            .p(zpx(3.))
+                            .on_click(|_, _, cx| {
+                                Dispatcher::open_url("https://github.com/wasi-master/corvane", cx)
+                            }),
                     ),
             );
-        dialog(
+        crate::dialog::dialog_with_frame(
             "dialog-about",
             "About Corvane",
             content,
@@ -212,6 +221,11 @@ impl Render for AboutDialog {
                 disabled: false,
                 on_click: Box::new(close),
             }],
+            crate::dialog::DialogFrame {
+                show_header: false,
+                focus_primary: true,
+                ..Default::default()
+            },
             close,
             window,
             cx,
@@ -225,6 +239,8 @@ pub struct ConfirmRemoveRepositoryDialog {
     state: Entity<AppState>,
     repo: u64,
     move_to_trash: bool,
+    /// The autofocused checkbox's ring, until a mouse press.
+    focus_visible: bool,
 }
 
 impl ConfirmRemoveRepositoryDialog {
@@ -233,6 +249,7 @@ impl ConfirmRemoveRepositoryDialog {
             state,
             repo,
             move_to_trash: false,
+            focus_visible: true,
         }
     }
 }
@@ -252,33 +269,36 @@ impl Render for ConfirmRemoveRepositoryDialog {
         let trash = self.move_to_trash;
         let weak = cx.weak_entity();
         let content = div()
-            .w(zpx(400.))
             .flex()
             .flex_col()
-            .gap(SPACING())
-            .child(format!(
+            .child(div().mb(SPACING()).child(format!(
                 "Are you sure you want to remove the repository \"{name}\" from Corvane?"
-            ))
+            )))
             .child(
+                // `.description`: 11 px secondary text, the path as a <Ref>
                 div()
+                    .mb(SPACING())
                     .flex()
                     .flex_col()
-                    .gap(SPACING())
+                    .text_size(FONT_SIZE_SM())
+                    .line_height(zpx(16.5))
+                    .text_color(t.text_secondary)
                     .child("The repository will be removed from Corvane:")
-                    .child(
-                        div()
-                            .font_family(crate::theme::mono_font())
-                            .px(zpx(3.))
-                            .rounded(zpx(3.))
-                            .bg(t.box_alt_background)
-                            .child(path),
-                    ),
+                    .child(div().flex().child(crate::widgets::code_ref(path, cx))),
+            )
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    this.focus_visible = false;
+                    cx.notify();
+                }),
             )
             .when(!missing, |d| {
-                d.child(checkbox_row(
+                d.child(crate::widgets::checkbox_row_focus(
                     "remove-repo-trash",
                     trash,
                     "Also move this repository to Trash",
+                    self.focus_visible,
                     move |value, _, cx| {
                         weak.update(cx, |this, cx| {
                             this.move_to_trash = value;

@@ -336,6 +336,8 @@ impl Dispatcher {
         cx: &mut App,
         then: impl FnOnce(u64, &mut App) + 'static,
     ) {
+        // GHD stores `Path.resolve(path)`: absolute, `.`/`..` folded lexically
+        let path = resolve_path(&path);
         let state = Self::state(cx);
         if let Some(existing) = state
             .read(cx)
@@ -3025,4 +3027,37 @@ struct RefreshExtras {
     pull_with_rebase: bool,
     worktrees: Vec<corvane_models::WorktreeEntry>,
     last_local_commit: Option<crate::state::LastCommit>,
+}
+
+/// Node's `path.resolve(path)`: made absolute against the current directory,
+/// with `.` and `..` components folded lexically (symlinks untouched).
+fn resolve_path(path: &std::path::Path) -> PathBuf {
+    use std::path::Component;
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    let mut out = PathBuf::new();
+    for component in absolute.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod resolve_path_tests {
+    use super::resolve_path;
+    use std::path::Path;
+
+    #[test]
+    fn folds_dot_segments() {
+        assert_eq!(
+            resolve_path(Path::new("/a/b/../c/./d")),
+            Path::new("/a/c/d").to_path_buf()
+        );
+        assert!(resolve_path(Path::new("x/../y")).is_absolute());
+    }
 }
