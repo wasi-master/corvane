@@ -658,6 +658,9 @@ pub struct RepositoryState {
 
     // ---- remote (`isPushPullFetchInProgress`, `pushPullFetchProgress`, `lastFetched`) ----
     pub push_pull_in_progress: bool,
+    /// The running network operation is a background fetch that shows no
+    /// progress (`228-push-during-background-fetch`).
+    pub quiet_background_fetch: bool,
     pub push_pull_progress: Option<crate::remote::PushPullProgress>,
     pub last_fetched: Option<std::time::SystemTime>,
     pub pull_with_rebase: bool,

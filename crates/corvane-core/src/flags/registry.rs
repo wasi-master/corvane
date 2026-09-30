@@ -351,6 +351,20 @@ registry! {
         upstream: &[Upstream::issue(21866), Upstream::issue(22478)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/cloning_view.rs", "crates/corvane-git/src/process.rs"],
     },
+    /// Push, pull and fetch stay available during a background fetch.
+    PUSH_DURING_BACKGROUND_FETCH = 228 "push-during-background-fetch" {
+        title: "Push during a background fetch",
+        summary: "The hourly background fetch runs without taking over the push/pull button, and a \
+                  push, pull or fetch asked for meanwhile starts as soon as it finishes.",
+        ghd_behaviour: "The button shows the background fetch's progress and is disabled; a push \
+                        from the menu is ignored until the fetch is done.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1011)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 300 GitHub ----
 

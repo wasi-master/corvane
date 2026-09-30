@@ -11,6 +11,9 @@
 //! Fetch can prune tags deleted on the remote (`225-fetch-prune-tags`).
 //! The LFS check can read `.gitattributes` instead of running
 //! `git lfs track` (`226-lfs-detect-by-attributes`).
+//! The background fetch can run without progress in the push/pull button,
+//! and a push, pull or fetch asked for meanwhile waits for it
+//! (`228-push-during-background-fetch`; GHD disables the button).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -178,10 +181,45 @@ impl Dispatcher {
         })
     }
 
+    /// `228-push-during-background-fetch`: a push, pull or fetch asked for
+    /// while a background fetch runs waits for it (GHD disables the button
+    /// and drops the request).
+    fn behind_background_fetch(id: u64, cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .is_some_and(|r| r.push_pull_in_progress && r.quiet_background_fetch)
+    }
+
+    /// Run `then` once the repository's network operation finished.
+    fn after_network(id: u64, cx: &mut App, then: impl FnOnce(&mut App) + 'static) {
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(200))
+                    .await;
+                let busy = cx.update(|cx| {
+                    Self::state(cx)
+                        .read(cx)
+                        .repo_states
+                        .get(&id)
+                        .is_some_and(|r| r.push_pull_in_progress)
+                });
+                if !busy {
+                    break;
+                }
+            }
+            cx.update(then);
+        })
+        .detach();
+    }
+
     fn end_network(id: u64, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             let rs = s.repo_state_mut(id);
             rs.push_pull_in_progress = false;
+            rs.quiet_background_fetch = false;
             rs.push_pull_progress = None;
             cx.notify();
         });
@@ -334,6 +372,9 @@ impl Dispatcher {
 
     /// `_fetch(FetchType::UserInitiatedTask | BackgroundTask)`
     pub fn fetch(id: u64, background: bool, cx: &mut App) {
+        if !background && Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| Self::fetch(id, false, cx));
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -343,19 +384,32 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return;
         }
+        // `228-push-during-background-fetch`: the background fetch leaves the
+        // push/pull button alone
+        let quiet = background
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::PUSH_DURING_BACKGROUND_FETCH);
         Self::arm_credential_helper(&remote.url, cx);
         let askpass = Self::askpass_env(cx);
         let title = format!("Fetching {}", remote.name);
-        Self::set_progress(
-            id,
-            Some(PushPullProgress {
-                kind: PushPullKind::Fetch,
-                title: title.clone(),
-                description: None,
-                value: 0.,
-            }),
-            cx,
-        );
+        if quiet {
+            Self::state(cx).update(cx, |s, _| {
+                s.repo_state_mut(id).quiet_background_fetch = true;
+            });
+        } else {
+            Self::set_progress(
+                id,
+                Some(PushPullProgress {
+                    kind: PushPullKind::Fetch,
+                    title: title.clone(),
+                    description: None,
+                    value: 0.,
+                }),
+                cx,
+            );
+        }
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
         // `225-fetch-prune-tags`: drop tags deleted on the remote, but never
@@ -369,6 +423,11 @@ impl Dispatcher {
             id,
             cx,
             move |report| {
+                let mut report = |progress| {
+                    if !quiet {
+                        report(progress)
+                    }
+                };
                 let result = corvane_git::fetch_with_prune_tags(
                     git.clone(),
                     &workdir,
@@ -416,6 +475,9 @@ impl Dispatcher {
 
     /// `_pull`
     pub fn pull(id: u64, cx: &mut App) {
+        if Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| Self::pull(id, cx));
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -548,6 +610,11 @@ impl Dispatcher {
         then: impl FnOnce(PushOutcome, &mut App) + 'static,
         cx: &mut App,
     ) {
+        if Self::behind_background_fetch(id, cx) {
+            return Self::after_network(id, cx, move |cx| {
+                Self::push_then(id, force_with_lease, branch, then, cx)
+            });
+        }
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return then(PushOutcome::NotAttempted, cx);
         };
