@@ -85,6 +85,7 @@ gpui_kit::actions!(
         OpenInEditor,
         OpenWith,
         CreateIssue,
+        AddLicense,
         RepositorySettings,
         // Branch
         NewBranch,

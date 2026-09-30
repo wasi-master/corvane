@@ -1,6 +1,10 @@
 //! Bundled `.gitignore` and license templates for "Create a New Repository"
 //! (GHD `ui/add-repository/gitignores.ts` + `licenses.ts`, data from
 //! `assets/templates/`, see the README there).
+//!
+//! Corvane addition (`455-add-license`): Repository › Add License… writes
+//! one of the license templates into an existing repository
+//! ([`write_license`]); GHD offers licenses only when creating one.
 
 use rust_embed::RustEmbed;
 
@@ -112,6 +116,43 @@ pub fn render_license(body: &str, fields: &LicenseFields) -> String {
     out
 }
 
+/// An existing license file in `dir` (`LICENSE`, `LICENSE.md`, `COPYING`,
+/// `LICENCE.txt`, …, any case), `None` when there is none.
+pub fn existing_license_file(dir: &std::path::Path) -> Option<String> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    entries.flatten().find_map(|entry| {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let stem = name
+            .split('.')
+            .next()
+            .unwrap_or_default()
+            .to_ascii_lowercase();
+        let is_license = matches!(stem.as_str(), "license" | "licence" | "copying");
+        is_license.then_some(name)
+    })
+}
+
+/// `455-add-license`: write `text` to `<dir>/LICENSE`. Never replaces a
+/// file: an existing license file (see [`existing_license_file`]) is an
+/// error, and the file is created with `create_new`.
+pub fn write_license(dir: &std::path::Path, text: &str) -> Result<std::path::PathBuf, String> {
+    use std::io::Write;
+    if let Some(name) = existing_license_file(dir) {
+        return Err(format!(
+            "This repository already has a license file ({name}). Corvane won't replace it."
+        ));
+    }
+    let path = dir.join("LICENSE");
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+        .map_err(|err| format!("Couldn't create {}: {err}", path.display()))?;
+    file.write_all(text.as_bytes())
+        .map_err(|err| format!("Couldn't write {}: {err}", path.display()))?;
+    Ok(path)
+}
+
 /// `writeGitAttributes` contents.
 pub const GIT_ATTRIBUTES: &str =
     "# Auto detect text files and perform LF normalization\n* text=auto\n";
@@ -119,6 +160,26 @@ pub const GIT_ATTRIBUTES: &str =
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn write_license_never_replaces_a_license() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(existing_license_file(dir.path()), None);
+        let path = write_license(dir.path(), "MIT").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "MIT");
+        assert_eq!(
+            existing_license_file(dir.path()).as_deref(),
+            Some("LICENSE")
+        );
+        assert!(write_license(dir.path(), "other").is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "MIT");
+
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Copying.txt"), "GPL").unwrap();
+        std::fs::write(dir.path().join("licenses.json"), "{}").unwrap();
+        assert!(write_license(dir.path(), "MIT").is_err());
+        assert!(!dir.path().join("LICENSE").exists());
+    }
 
     #[test]
     fn templates_are_bundled() {
