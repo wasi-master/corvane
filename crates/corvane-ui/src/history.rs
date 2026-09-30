@@ -15,7 +15,8 @@
 //! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
 //! list scrolls back to the top when the branch changes (flag `241`); Revert
 //! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
-//! Commit (flag `243`).
+//! Commit (flag `243`); a commit with a description gets a mark after its
+//! summary (flag `252`).
 
 use std::rc::Rc;
 
@@ -1549,6 +1550,13 @@ pub(crate) fn commit_row_contents(
         commit.summary.clone()
     };
     let empty = commit.summary.is_empty();
+    // `252`: a mark after the summary when the commit has a description
+    let body_mark = !commit.body.trim().is_empty()
+        && corvane_core::AppState::try_global(cx).is_some_and(|s| {
+            s.read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::COMMIT_BODY_INDICATOR)
+        });
     let byline = format!(
         "{} • {}",
         commit.author.name,
@@ -1573,12 +1581,27 @@ pub(crate) fn commit_row_contents(
                 .flex_col()
                 .child(
                     div()
-                        .text_size(FONT_SIZE())
-                        .line_height(zpx(18.))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .truncate()
-                        .when(empty, |d| d.text_color(secondary))
-                        .child(summary),
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .child(
+                            div()
+                                .min_w_0()
+                                .text_size(FONT_SIZE())
+                                .line_height(zpx(18.))
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .truncate()
+                                .when(empty, |d| d.text_color(secondary))
+                                .child(summary),
+                        )
+                        .when(body_mark, |d| {
+                            d.child(
+                                div()
+                                    .flex_none()
+                                    .ml(SPACING_HALF())
+                                    .child(octicon(Octicon::KebabHorizontal, secondary)),
+                            )
+                        }),
                 )
                 .child(
                     div()

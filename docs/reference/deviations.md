@@ -46,6 +46,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A commit's file that is gone from disk keeps Copy File Path / Copy Relative File Path below the disabled "File Does Not Exist on Disk" item (GHD `selected-commits.tsx` shows only that item). Flag: `249-copy-path-of-missing-file`.
 - Cherry-pick, squash and reorder need a current branch; on a detached HEAD or mid-rebase GHD returns silently, Corvane shows "Could not cherry-pick / squash / reorder" saying why (a rebase in progress, or not on a branch). Flag: `250-no-branch-explained`.
 - A multi-commit selection's summary (GHD `expandable-commit-summary.tsx` `renderCommitsInDiff`, the count only) also shows the range's `+added -deleted` line totals from the range numstat. Flag: `251-multi-commit-line-totals`.
+- A commit row whose message has a description shows a secondary-coloured `kebab-horizontal` mark after the summary (Corvane addition; GHD `commit-list-item.tsx` shows the summary only). Flag: `252-commit-body-indicator`.
 
 ## Tutorial
 

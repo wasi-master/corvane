@@ -428,6 +428,19 @@ registry! {
         upstream: &[Upstream::issue(17869)],
         code: &["crates/corvane-ui/src/selected_commit.rs"],
     },
+    /// A mark on history rows whose commit has a description.
+    COMMIT_BODY_INDICATOR = 252 "commit-body-indicator" {
+        title: "Mark commits that have a description",
+        summary: "A History row whose commit message has a description (extended body) shows a \
+                  ⋯ mark after the summary.",
+        ghd_behaviour: "Only the summary; the description is seen by selecting the commit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20401)],
+        code: &["crates/corvane-ui/src/history.rs"],
+    },
 
     // ---- 300 GitHub ----
 
