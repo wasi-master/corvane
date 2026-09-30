@@ -22,7 +22,8 @@
 //!   `theme light|dark|high-contrast|system`, `popup <name>` (a
 //!   `CORVANE_POPUP` name, opened now), `fake-accounts <json>` (signed-in
 //!   accounts + their repository lists, `tools/parity/accounts.py`)
-//! - `snap {path}` → draws a fresh frame and saves it as PNG
+//! - `snap {path, cached}` → draws a fresh frame and saves it as PNG
+//!   (`cached`: re-render only invalidated views, like a real frame)
 //! - `menu` → the items of the last native menu (while the control socket is
 //!   on, menus still pop up but are recorded and close themselves after
 //!   `CORVANE_MENU_HOLD_MS`, default 1500); `menu-pick {label}` runs one
@@ -282,8 +283,12 @@ fn window_command(
                 .as_str()
                 .ok_or_else(|| "snap needs a path".to_string())?;
             // draw now: an unfocused window gets no display-link frames, and
-            // render_to_image uses the last drawn scene
-            window.refresh();
+            // render_to_image uses the last drawn scene. `cached`: only what
+            // invalidation re-renders, as a display-link frame would (shows
+            // a cached view that failed to re-render)
+            if !request["cached"].as_bool().unwrap_or_default() {
+                window.refresh();
+            }
             window.draw(cx).clear(cx);
             let image = window.render_to_image().map_err(|err| err.to_string())?;
             image.save(path).map_err(|err| err.to_string())?;
