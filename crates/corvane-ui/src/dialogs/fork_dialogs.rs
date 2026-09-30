@@ -364,15 +364,21 @@ impl UpstreamAlreadyExistsDialog {
 
 impl Render for UpstreamAlreadyExistsDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (name, parent) = {
+        let (name, parent, expected_url) = {
             let s = self.state.read(cx);
             let repository = s.repository(self.repo);
+            let parent = repository
+                .and_then(|r| r.github.as_ref())
+                .and_then(|gh| gh.parent.as_deref())
+                .cloned();
+            let expected_url = parent
+                .as_ref()
+                .map(|p| Dispatcher::parent_remote_url(s, self.repo, p))
+                .unwrap_or_default();
             (
                 repository.map(|r| r.name()).unwrap_or_default(),
-                repository
-                    .and_then(|r| r.github.as_ref())
-                    .and_then(|gh| gh.parent.as_deref())
-                    .cloned(),
+                parent,
+                expected_url,
             )
         };
         let repo = self.repo;
@@ -412,7 +418,7 @@ impl Render for UpstreamAlreadyExistsDialog {
                     .flex_col()
                     .gap(SPACING_HALF())
                     .child(bullet("Current: ", self.existing_url.clone()))
-                    .child(bullet("Expected: ", parent.clone_url.clone())),
+                    .child(bullet("Expected: ", expected_url)),
             )
             .child(paragraph(vec![
                 "Would you like to update the remote to use the expected URL?".into(),
