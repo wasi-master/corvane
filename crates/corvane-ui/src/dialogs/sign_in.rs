@@ -257,24 +257,27 @@ impl SignInDialog {
                     .gap(SPACING())
                     .child(format!("Enter this code at {verification_uri} to sign in:"))
                     .child(
+                        div().flex().child(
+                            div()
+                                .px(SPACING_DOUBLE())
+                                .py(SPACING())
+                                .rounded(BORDER_RADIUS())
+                                .border_1()
+                                .border_color(t.box_border_contrast)
+                                .bg(t.box_alt_background)
+                                .font_family(crate::theme::mono_font())
+                                .text_size(zpx(28.))
+                                .line_height(zpx(34.))
+                                .child(user_code.clone()),
+                        ),
+                    )
+                    // the code box and both buttons overflow the dialog on one row
+                    .child(
                         div()
                             .flex()
                             .flex_row()
                             .items_center()
                             .gap(SPACING())
-                            .child(
-                                div()
-                                    .px(SPACING_DOUBLE())
-                                    .py(SPACING())
-                                    .rounded(BORDER_RADIUS())
-                                    .border_1()
-                                    .border_color(t.box_border_contrast)
-                                    .bg(t.box_alt_background)
-                                    .font_family(crate::theme::mono_font())
-                                    .text_size(zpx(28.))
-                                    .line_height(zpx(34.))
-                                    .child(user_code.clone()),
-                            )
                             .child(
                                 button("sign-in-copy", "Copy code", cx)
                                     .child(

@@ -5,6 +5,16 @@ Layout constants, colour tokens, menu structure, dialog flows and some
 algorithms (e.g. the partial-staging patch formatter) are ported from
 GitHub Desktop (https://github.com/desktop/desktop), which is
 Copyright (c) GitHub, Inc. and licensed under the MIT License.
+The illustrations in assets/illustrations/ come from GitHub Desktop's
+app/static/common/ folder under the same license (ghd_high_contrast.svg
+is Corvane's recolouring of ghd_dark.svg). None of GitHub's logos (the
+files in GitHub Desktop's app/static/logos/) are included.
+
+Corvane is not affiliated with, sponsored by or endorsed by GitHub, Inc.
+GITHUB®, the GITHUB® logo design, the INVERTOCAT logo design, OCTOCAT®
+and the OCTOCAT® logo design are trademarks of GitHub, Inc.; the MIT
+license grant does not cover them. Corvane uses the names "GitHub" and
+"GitHub Desktop" only to describe what it recreates and works with.
 
 Icons in assets/octicons/ are Primer Octicons
 (https://github.com/primer/octicons), Copyright (c) GitHub, Inc.,

@@ -3530,7 +3530,11 @@ impl ChangesSidebar {
                                 .truncate()
                                 .child(format!("Committed {}", relative(last.at))),
                         )
-                        .child(div().truncate().child(last.summary.clone())),
+                        .child(
+                            div()
+                                .truncate()
+                                .child(corvane_core::text_tokens::with_emoji(&last.summary)),
+                        ),
                 )
                 .child(
                     div().p(SPACING()).pl(zpx(0.)).child(

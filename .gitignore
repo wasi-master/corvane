@@ -6,3 +6,5 @@
 /packaging/out
 *.log
 .env
+/target-check
+/.scratch

@@ -12,9 +12,9 @@
 //! `812`). A multi-commit selection's summary shows the range's +added
 //! -deleted line totals (flag `813`). The meta row adds the author date and
 //! links the SHA to the commit on GitHub (flag `805`); the tags' tooltip
-//! lists every tag (flag `806`). The title and description show `code`
-//! spans and link URLs and SHAs (flag `804`), where GHD's `RichText` links
-//! only URLs, issues and mentions. A file's menu can revert that file's
+//! lists every tag (flag `806`). The title and description (GHD `RichText`:
+//! emoji, `#123`, `@name`, URLs) also show `code` spans and link SHAs
+//! (flag `804`). A file's menu can revert that file's
 //! changes from the commit (flag `814`).
 //! A file's context menu adds "Open All Files of Commit in <editor>"
 //! (`712-open-multiple-files`).
@@ -512,26 +512,35 @@ impl SelectedCommitView {
             .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
             .flatten()
             .map(|g| format!("{}/commit/{}", g.html_url, commit.sha));
-        // `804`: `code` spans, URLs and (GitHub repositories) SHAs
-        let rich = s
+        // GHD `RichText`: emoji, `#123`, `@name` and links; `804` adds `code`
+        // spans and (GitHub repositories) SHAs
+        let token_repository = s
+            .repository(id)
+            .and_then(corvane_core::text_tokens::TokenRepository::of);
+        let rich_extras = s
             .flags
-            .bool(corvane_core::flags::ids::COMMIT_MESSAGE_RICH_TEXT)
-            .then(|| {
-                s.repository(id)
-                    .and_then(|r| r.github.as_ref())
-                    .map(|g| g.html_url.clone())
-            });
+            .bool(corvane_core::flags::ids::COMMIT_MESSAGE_RICH_TEXT);
+        let commit_base = rich_extras
+            .then(|| s.repository(id).and_then(|r| r.github.as_ref()))
+            .flatten()
+            .map(|g| g.html_url.clone());
+        let message = |id: &'static str, text: &str, cx: &App| {
+            crate::markdown::rich_text(
+                id,
+                &corvane_core::markdown::commit_message_rich_text(
+                    text,
+                    token_repository.as_ref(),
+                    rich_extras,
+                    commit_base.as_deref(),
+                ),
+                cx,
+            )
+        };
         let empty = commit.summary.is_empty();
         let title = if empty {
             "Empty commit message".to_string()
         } else {
             commit.summary.clone()
-        };
-        let description = if expanded {
-            commit.body.clone()
-        } else {
-            // `-webkit-line-clamp: 3`
-            commit.body.lines().take(3).collect::<Vec<_>>().join("\n")
         };
         let meta_item = |d: Div| {
             d.flex()
@@ -563,16 +572,10 @@ impl SelectedCommitView {
                         .line_height(zpx(16.))
                         .when(empty, |d| d.text_color(t.text_secondary))
                         // the expander follows the title (`margin-left: 10px`)
-                        .child(div().min_w_0().child(match &rich {
-                            Some(base) if !empty => crate::markdown::rich_text(
-                                "commit-title",
-                                &corvane_core::markdown::commit_message_rich_text(
-                                    &title,
-                                    base.as_deref(),
-                                ),
-                                cx,
-                            ),
-                            _ => title.into_any_element(),
+                        .child(div().min_w_0().child(if empty {
+                            title.into_any_element()
+                        } else {
+                            message("commit-title", &title, cx)
                         }))
                         .child(
                             div()
@@ -612,35 +615,30 @@ impl SelectedCommitView {
                         .when(!commit.body.is_empty(), |d| {
                             // `.ecs-description-text`: a 5 px padded box in
                             // `--box-alt-background-color`, 5 px above the meta row
-                            d.child(
-                                div().pb(SPACING_HALF()).child(
-                                    // `.ecs-description-scroll-view`: 30–80 px
-                                    // while collapsed
+                            d.child(div().pb(SPACING_HALF()).child({
+                                let text = div()
+                                    .p(SPACING_HALF())
+                                    .bg(t.box_alt_background)
+                                    .font_family(mono_font())
+                                    .text_size(FONT_SIZE_SM())
+                                    .line_height(zpx(16.5))
+                                    .child(message("commit-description", &commit.body, cx));
+                                if expanded {
+                                    // `.beneath-summary` scrolls the whole body
+                                    text.into_any_element()
+                                } else {
+                                    // `.ecs-description-scroll-view`: 30–80 px,
+                                    // `overflow-y: auto` while collapsed
                                     div()
-                                        .when(!expanded, |d| {
-                                            d.min_h(zpx(30.)).max_h(zpx(80.)).overflow_hidden()
-                                        })
-                                        .child(
-                                            div()
-                                                .p(SPACING_HALF())
-                                                .bg(t.box_alt_background)
-                                                .font_family(mono_font())
-                                                .text_size(FONT_SIZE_SM())
-                                                .line_height(zpx(16.5))
-                                                .child(match &rich {
-                                                    Some(base) => crate::markdown::rich_text(
-                                                        "commit-description",
-                                                        &corvane_core::markdown::commit_message_rich_text(
-                                                            &description,
-                                                            base.as_deref(),
-                                                        ),
-                                                        cx,
-                                                    ),
-                                                    None => description.into_any_element(),
-                                                }),
-                                        ),
-                                ),
-                            )
+                                        .id("ecs-description-scroll-view")
+                                        .min_h(zpx(30.))
+                                        .max_h(zpx(80.))
+                                        .overflow_y_scroll()
+                                        .child(text)
+                                        .with_scrollbar()
+                                        .into_any_element()
+                                }
+                            }))
                         })
                         .child(
                             // `.ecs-meta`

@@ -291,9 +291,11 @@ registry! {
 
     /// The name the Welcome flow and the tutorial README call the app.
     PRODUCT_NAME = 103 "product-name" {
-        title: "Product name in Welcome, blank slate, tutorial and Move to Applications copy",
+        title: "Product name in Welcome, blank slate, tutorial, Move to Applications and submodule copy",
         summary: "The name the Welcome flow, the no-repositories blank slate, the tutorial \
-                  README and the Move to Applications dialog use for the app.",
+                  README and the tutorial repository's GitHub description, the Move to \
+                  Applications dialog and the submodule diff's \"Open this submodule\" card \
+                  use for the app.",
         ghd_behaviour: "\"GitHub Desktop\".",
         nature: Nature::Feature,
         kind: Kind::Text { placeholder: "Corvane", validate: product_name },
@@ -301,7 +303,7 @@ registry! {
         familiar: Value::text("Corvane"), everything: Value::text("Corvane"),
         restart: false, visible: true, availability: available,
         upstream: &[],
-        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/no_repositories.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs", "crates/corvane-ui/src/dialogs/move_to_applications_folder.rs"],
+        code: &["crates/corvane-ui/src/welcome.rs", "crates/corvane-ui/src/no_repositories.rs", "crates/corvane-ui/src/tutorial_panel.rs", "crates/corvane-core/src/tutorial.rs", "crates/corvane-ui/src/dialogs/move_to_applications_folder.rs", "crates/corvane-ui/src/diff_view.rs"],
     },
 
     /// A hovered selected list row keeps its selection colour.
@@ -506,7 +508,7 @@ registry! {
         ghd_behaviour: "Not applicable: GitHub Desktop has nothing to import from.",
         nature: Nature::Feature,
         kind: Kind::Bool,
-        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
@@ -3172,9 +3174,10 @@ registry! {
     /// Inline code and autolinks in commit messages.
     COMMIT_MESSAGE_RICH_TEXT = 804 "commit-message-rich-text" {
         title: "Inline code and links in commit messages",
-        summary: "The selected commit's title and description show `backtick` spans as inline code \
-                  and link bare URLs and, in a GitHub repository, commit SHAs.",
-        ghd_behaviour: "Backticks show literally; SHAs are plain text.",
+        summary: "The selected commit's title and description show `backtick` spans as inline code, \
+                  link URLs inside punctuation and, in a GitHub repository, commit SHAs.",
+        ghd_behaviour: "Backticks show literally; SHAs are plain text; a URL is linked only as a \
+                        whole word.",
         nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,

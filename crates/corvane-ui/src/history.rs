@@ -1687,7 +1687,8 @@ pub(crate) fn commit_row_contents(
     let summary = if commit.summary.is_empty() {
         "Empty commit message".to_string()
     } else {
-        commit.summary.clone()
+        // GHD `RichText`: emoji shortcodes as emoji
+        corvane_core::text_tokens::with_emoji(&commit.summary)
     };
     let empty = commit.summary.is_empty();
     // `803`: a mark after the summary when the commit has a description

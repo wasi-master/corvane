@@ -34,6 +34,7 @@ pub mod repo_rules;
 pub mod samples;
 pub mod state;
 pub mod templates;
+pub mod text_tokens;
 pub mod toolbar_widths;
 pub mod tutorial;
 pub mod updater;

@@ -1815,6 +1815,7 @@ impl DiffView {
             );
         }
         let full_path = diff.full_path.clone();
+        let name = self.state.read(cx).product_name().to_string();
         let open_action = diff.url.is_some().then(|| {
             crate::no_changes::suggested_action_card(
                 crate::no_changes::SuggestedAction {
@@ -1822,11 +1823,13 @@ impl DiffView {
                     on_click: Rc::new(move |_, cx| {
                         Dispatcher::open_submodule(full_path.clone(), cx)
                     }),
-                    title: "Open this submodule on GitHub Desktop".into(),
+                    title: format!("Open this submodule on {name}").into(),
                     description: Some(
-                        "You can open this submodule on GitHub Desktop as a normal repository to \
-                         manage and commit any changes in it."
-                            .into(),
+                        format!(
+                            "You can open this submodule on {name} as a normal repository to \
+                             manage and commit any changes in it."
+                        )
+                        .into(),
                     ),
                     hint: "".into(),
                     keys: &[],

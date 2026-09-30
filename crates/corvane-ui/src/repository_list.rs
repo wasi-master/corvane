@@ -36,7 +36,9 @@ pub struct RepositoryFoldout {
 
 struct Group {
     title: SharedString,
-    repos: Vec<Repository>,
+    /// Each repository with the char positions of its name the filter
+    /// matched (`HighlightText`).
+    repos: Vec<(Repository, Vec<usize>)>,
 }
 
 impl RepositoryFoldout {
@@ -125,13 +127,15 @@ impl RepositoryFoldout {
             .into_iter()
             .flat_map(|g| g.repos)
             .nth(ix)
-            .map(|r| r.id);
+            .map(|(r, _)| r.id);
         if let Some(id) = id {
             Dispatcher::select_repository(id, cx);
         }
     }
 
-    /// GHD `groupRepositories`: Recent, then one group per GitHub owner, then Other.
+    /// GHD `groupRepositories`: Recent, then one group per GitHub owner, then
+    /// Other. A filter fuzzy-matches the name or `owner/name` and sorts each group best match
+    /// first (`FilterList`'s `match`; ties keep the list order).
     fn groups(&self, cx: &App) -> Vec<Group> {
         let state = self.state.read(cx);
         let raw_query = self.filter.read(cx).value().trim().to_string();
@@ -152,21 +156,16 @@ impl RepositoryFoldout {
             .flags
             .bool(corvane_core::flags::ids::REPOSITORY_FORK_FILTER)
             && (self.only_forks || self.only_sources);
-        let matches = |r: &Repository| {
-            (query.is_empty()
-                || match &regex {
-                    Some(re) => re.is_match(&r.name()),
-                    None => r.name().to_lowercase().contains(&query),
-                })
-                && (!status_filter || {
-                    let (ahead_behind, has_changes) = indicators(state, r.id);
-                    (self.only_changed && has_changes)
-                        || (self.only_ahead_behind && ahead_behind.is_some())
-                })
-                && (!fork_filter || {
-                    let fork = r.github.as_ref().is_some_and(|gh| gh.fork);
-                    (self.only_forks && fork) || (self.only_sources && !fork)
-                })
+        // the status / fork filters; the query is matched below
+        let passes_filters = |r: &Repository| {
+            (!status_filter || {
+                let (ahead_behind, has_changes) = indicators(state, r.id);
+                (self.only_changed && has_changes)
+                    || (self.only_ahead_behind && ahead_behind.is_some())
+            }) && (!fork_filter || {
+                let fork = r.github.as_ref().is_some_and(|gh| gh.fork);
+                (self.only_forks && fork) || (self.only_sources && !fork)
+            })
         };
 
         let mut groups: Vec<Group> = Vec::new();
@@ -178,11 +177,12 @@ impl RepositoryFoldout {
                     .number(corvane_core::flags::ids::RECENT_REPOSITORIES_COUNT),
             )
             .unwrap_or(3);
-            let recent: Vec<Repository> = state
+            let recent: Vec<_> = state
                 .recent
                 .iter()
                 .take(shown)
                 .filter_map(|id| state.repository(*id).cloned())
+                .map(|r| (r, Vec::new()))
                 .collect();
             if !recent.is_empty() && state.repositories.len() > 1 {
                 groups.push(Group {
@@ -192,31 +192,59 @@ impl RepositoryFoldout {
             }
         }
 
-        let mut owners: Vec<(String, Vec<Repository>)> = Vec::new();
-        let mut other: Vec<Repository> = Vec::new();
+        type Hits = Vec<(f32, Repository, Vec<usize>)>;
+        let mut owners: Vec<(String, Hits)> = Vec::new();
+        let mut other: Hits = Vec::new();
         for repo in state.sorted_repositories() {
-            if !matches(repo) {
+            if !passes_filters(repo) {
                 continue;
             }
+            let hit = match &regex {
+                // a `/pattern/` filter matches the name, no bold chars
+                Some(re) => re.is_match(&repo.name()).then(|| (1.0, Vec::new())),
+                None => {
+                    // GHD's texts are `[title, nameOf(r)]`; only the title is
+                    // highlighted, so an `owner/name` hit shows no bold chars
+                    let title = corvane_core::filter::fuzzy_match(&query, &repo.name());
+                    let full_name = repo.github.as_ref().and_then(|gh| {
+                        corvane_core::filter::fuzzy_match(&query, &gh.full_name())
+                            .map(|(score, _)| (score, Vec::new()))
+                    });
+                    match (title, full_name) {
+                        (Some(t), Some(f)) if f.0 > t.0 => Some((f.0, t.1)),
+                        (t, f) => t.or(f),
+                    }
+                }
+            };
+            let Some((score, positions)) = hit else {
+                continue;
+            };
+            let hit = (score, repo.clone(), positions);
             match &repo.github {
                 Some(gh) => match owners.iter_mut().find(|(o, _)| *o == gh.owner) {
-                    Some((_, list)) => list.push(repo.clone()),
-                    None => owners.push((gh.owner.clone(), vec![repo.clone()])),
+                    Some((_, list)) => list.push(hit),
+                    None => owners.push((gh.owner.clone(), vec![hit])),
                 },
-                None => other.push(repo.clone()),
+                None => other.push(hit),
             }
         }
+        let ranked = |mut hits: Hits| {
+            if !query.is_empty() {
+                hits.sort_by(|a, b| b.0.total_cmp(&a.0));
+            }
+            hits.into_iter().map(|(_, r, p)| (r, p)).collect()
+        };
         owners.sort_by_key(|(o, _)| o.to_lowercase());
-        for (owner, repos) in owners {
+        for (owner, hits) in owners {
             groups.push(Group {
                 title: owner.into(),
-                repos,
+                repos: ranked(hits),
             });
         }
         if !other.is_empty() {
             groups.push(Group {
                 title: "Other".into(),
-                repos: other,
+                repos: ranked(other),
             });
         }
         // Corvane (`212-flat-repository-results`): while a query is typed,
@@ -226,12 +254,13 @@ impl RepositoryFoldout {
                 .flags
                 .bool(corvane_core::flags::ids::FLAT_REPOSITORY_RESULTS)
         {
-            let mut repos: Vec<Repository> = groups.into_iter().flat_map(|g| g.repos).collect();
+            let mut repos: Vec<(Repository, Vec<usize>)> =
+                groups.into_iter().flat_map(|g| g.repos).collect();
             let score = |r: &Repository| {
                 corvane_core::filter::fuzzy_score(&query, &r.name()).unwrap_or(0.0)
             };
             // stable: equal scores keep the grouped order
-            repos.sort_by(|a, b| score(b).total_cmp(&score(a)));
+            repos.sort_by(|a, b| score(&b.0).total_cmp(&score(&a.0)));
             return vec![Group {
                 title: SharedString::default(),
                 repos,
@@ -243,6 +272,7 @@ impl RepositoryFoldout {
     fn row(
         &self,
         repo: &Repository,
+        matched: &[usize],
         selected: bool,
         highlighted: bool,
         detail: Option<String>,
@@ -362,7 +392,8 @@ impl RepositoryFoldout {
                     .when(repo.alias.is_some(), |d| d.italic())
                     .child({
                         // Corvane (`213-duplicate-names-show-path`): the
-                        // telling folders, dimmed, after the name
+                        // telling folders, dimmed, after the name;
+                        // `HighlightText`: the filter's matched chars in bold
                         let name = repo.name();
                         match detail {
                             Some(detail) => {
@@ -377,11 +408,14 @@ impl RepositoryFoldout {
                                     }),
                                     ..Default::default()
                                 };
+                                let mut highlights = bold_ranges(&name, matched);
+                                highlights.push((start..end, dim));
                                 StyledText::new(text)
-                                    .with_highlights([(start..end, dim)])
+                                    .with_highlights(highlights)
                                     .into_any_element()
                             }
-                            None => name.into_any_element(),
+                            None => crate::autocompletion::highlighted(&name, matched)
+                                .into_any_element(),
                         }
                     }),
             )
@@ -875,7 +909,7 @@ impl Render for RepositoryFoldout {
                         let first = row_ix;
                         row_ix += group.repos.len();
                         let mut details = if show_paths {
-                            duplicate_name_paths(&group.repos)
+                            duplicate_name_paths(group.repos.iter().map(|(r, _)| r))
                         } else {
                             HashMap::new()
                         };
@@ -903,20 +937,44 @@ impl Render for RepositoryFoldout {
                                         .child(group.title.clone()),
                                 )
                             })
-                            .children(group.repos.iter().enumerate().map(|(ix, repo)| {
-                                self.row(
-                                    repo,
-                                    selected == Some(repo.id),
-                                    highlighted == Some(first + ix),
-                                    details.remove(&repo.id),
-                                    cx,
-                                )
-                            }))
+                            .children(group.repos.iter().enumerate().map(
+                                |(ix, (repo, matched))| {
+                                    self.row(
+                                        repo,
+                                        matched,
+                                        selected == Some(repo.id),
+                                        highlighted == Some(first + ix),
+                                        details.remove(&repo.id),
+                                        cx,
+                                    )
+                                },
+                            ))
                     }))
                     .with_scrollbar_handle(&self.scroll),
             )
             .when(add_open, |d| d.child(self.add_menu(cx)))
     }
+}
+
+/// `HighlightText`'s bold ranges (bytes of `text`) for the matched char
+/// `positions`, as `crate::autocompletion::highlighted` draws them.
+fn bold_ranges(text: &str, positions: &[usize]) -> Vec<(std::ops::Range<usize>, HighlightStyle)> {
+    let bold = HighlightStyle {
+        font_weight: Some(FontWeight::BOLD),
+        ..Default::default()
+    };
+    let mut ranges: Vec<std::ops::Range<usize>> = Vec::new();
+    for (ci, (bi, c)) in text.char_indices().enumerate() {
+        if !positions.contains(&ci) {
+            continue;
+        }
+        let end = bi + c.len_utf8();
+        match ranges.last_mut() {
+            Some(last) if last.end == bi => last.end = end,
+            _ => ranges.push(bi..end),
+        }
+    }
+    ranges.into_iter().map(|r| (r, bold)).collect()
 }
 
 /// The row's indicators: ahead / behind (when either is non-zero) and
@@ -940,7 +998,10 @@ fn indicators(s: &AppState, id: u64) -> (Option<corvane_core::AheadBehind>, bool
 /// Corvane (`213-duplicate-names-show-path`): for repositories whose names
 /// repeat within `repos`, the trailing directories of their parent paths
 /// that tell them apart (`fork-a` for `~/fork-a/app` beside `~/fork-b/app`).
-fn duplicate_name_paths(repos: &[Repository]) -> HashMap<u64, String> {
+fn duplicate_name_paths<'a>(
+    repos: impl IntoIterator<Item = &'a Repository>,
+) -> HashMap<u64, String> {
+    let repos: Vec<&Repository> = repos.into_iter().collect();
     let parents = |r: &Repository| -> Vec<String> {
         r.path
             .parent()
@@ -956,12 +1017,12 @@ fn duplicate_name_paths(repos: &[Repository]) -> HashMap<u64, String> {
             .unwrap_or_default()
     };
     let mut out = HashMap::new();
-    for repo in repos {
+    for &repo in &repos {
         let name = repo.name().to_lowercase();
         let others: Vec<Vec<String>> = repos
             .iter()
             .filter(|r| r.id != repo.id && r.name().to_lowercase() == name)
-            .map(parents)
+            .map(|r| parents(r))
             .collect();
         if others.is_empty() {
             continue;

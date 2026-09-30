@@ -255,8 +255,8 @@ impl Dispatcher {
         let friendly = account.host();
         let endpoint = corvane_github::Endpoint::from_api_base(&account.endpoint);
         let work_path = path.clone();
-        // `InitialReadmeContents` with `103-product-name`
-        let readme = crate::flags::initial_readme(Self::state(cx).read(cx).product_name());
+        // `InitialReadmeContents` and the repository description with `103-product-name`
+        let product_name = Self::state(cx).read(cx).product_name().to_string();
         let task = cx.background_executor().spawn(async move {
             let progress = |title: &str, value: f32, detail: Option<String>| {
                 let _ = tx.send_blocking((title.to_string(), (value * 100.) as u8, detail));
@@ -266,7 +266,7 @@ impl Dispatcher {
                 Client::new(endpoint, token),
                 &friendly,
                 &work_path,
-                &readme,
+                &product_name,
                 askpass.as_ref(),
                 &progress,
             )
@@ -421,7 +421,7 @@ fn create_tutorial_repository(
     client: Client,
     friendly_endpoint: &str,
     path: &Path,
-    readme: &str,
+    product_name: &str,
     askpass: Option<&corvane_git::remote_ops::AskpassEnv>,
     progress: &dyn Fn(&str, f32, Option<String>),
 ) -> Result<corvane_models::GitHubRepository, String> {
@@ -437,13 +437,9 @@ fn create_tutorial_repository(
             path.display()
         ));
     }
+    let description = format!("{product_name} tutorial repository");
     let repo = client
-        .create_repository(
-            None,
-            TUTORIAL_REPOSITORY_NAME,
-            "GitHub Desktop tutorial repository",
-            true,
-        )
+        .create_repository(None, TUTORIAL_REPOSITORY_NAME, &description, true)
         .map_err(|err| {
             let text = err.to_string();
             if text.contains("name already exists") {
@@ -474,6 +470,7 @@ fn create_tutorial_repository(
         },
     )
     .map_err(|e| e.to_string())?;
+    let readme = crate::flags::initial_readme(product_name);
     std::fs::write(path.join("README.md"), readme).map_err(|e| e.to_string())?;
     corvane_git::add_paths(git.clone(), path, &["README.md"]).map_err(|e| e.to_string())?;
     corvane_git::commit(

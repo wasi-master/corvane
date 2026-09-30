@@ -11,6 +11,10 @@
 //! blocks, 24 px above headings and around rules). Unsupported constructs
 //! arrive as plain text (see the core module).
 //!
+//! [`rich_text`] is GHD `ui/lib/rich-text.tsx` over a commit message: links
+//! in `--link-button-color`, with the URL as the tooltip when they show
+//! `#123` or `@name`.
+//!
 //! Deviations: text is not selectable (GPUI static text), link hover has no
 //! colour change, and inline code keeps the paragraph's font size (GHD 85 %).
 
@@ -59,6 +63,7 @@ pub fn markdown(
         base: base_href.map(Rc::from),
         t: cx.ghd(),
         underline,
+        link_buttons: false,
         next: std::cell::Cell::new(0),
     };
     div()
@@ -78,6 +83,7 @@ pub fn rich_text(id: impl Into<SharedString>, text: &RichText, cx: &App) -> AnyE
         base: None,
         t: cx.ghd(),
         underline,
+        link_buttons: true,
         next: std::cell::Cell::new(0),
     }
     .rich(text)
@@ -88,6 +94,9 @@ struct Renderer<'a> {
     base: Option<Rc<str>>,
     t: &'a GhdTheme,
     underline: bool,
+    /// GHD `RichText`'s `LinkButton`s: `--link-button-color`, and the URL as
+    /// the title when the text differs (`#123`, `@name`).
+    link_buttons: bool,
     next: std::cell::Cell<usize>,
 }
 
@@ -216,13 +225,18 @@ impl Renderer<'_> {
         let mut fonts: Vec<(std::ops::Range<usize>, SharedString)> = Vec::new();
         let mut ranges = Vec::new();
         let mut urls: Vec<Option<String>> = Vec::new();
+        let mut titles: Vec<Option<SharedString>> = Vec::new();
         for span in &text.spans {
             let s = span.style;
             let link = span.link.is_some();
             highlights.push((
                 span.range.clone(),
                 HighlightStyle {
-                    color: link.then_some(t.md_accent_fg),
+                    color: link.then_some(if self.link_buttons {
+                        t.link
+                    } else {
+                        t.md_accent_fg
+                    }),
                     font_weight: s.bold.then_some(FontWeight::BOLD),
                     font_style: s.italic.then_some(FontStyle::Italic),
                     background_color: s.code.then_some(t.md_neutral_muted),
@@ -244,6 +258,10 @@ impl Renderer<'_> {
             if let Some(href) = &span.link {
                 ranges.push(span.range.clone());
                 urls.push(resolve_link(href, self.base.as_deref()));
+                titles.push(
+                    (self.link_buttons && text.text[span.range.clone()] != **href)
+                        .then(|| SharedString::from(href.clone())),
+                );
             }
         }
         let styled = StyledText::new(SharedString::from(text.text.clone()))
@@ -252,12 +270,24 @@ impl Renderer<'_> {
         if ranges.is_empty() {
             return styled.into_any_element();
         }
-        InteractiveText::new(self.element_id(), styled)
-            .on_click(ranges, move |ix, _, cx| {
+        let tips: Vec<(std::ops::Range<usize>, SharedString)> = ranges
+            .iter()
+            .zip(titles)
+            .filter_map(|(r, title)| Some((r.clone(), title?)))
+            .collect();
+        let text =
+            InteractiveText::new(self.element_id(), styled).on_click(ranges, move |ix, _, cx| {
                 if let Some(Some(url)) = urls.get(ix) {
                     Dispatcher::open_url(url, cx);
                 }
-            })
-            .into_any_element()
+            });
+        if tips.is_empty() {
+            return text.into_any_element();
+        }
+        text.tooltip(move |ix, window, cx| {
+            let (_, title) = tips.iter().find(|(r, _)| r.contains(&ix))?;
+            Some(crate::widgets::tooltip(title.clone())(window, cx))
+        })
+        .into_any_element()
     }
 }

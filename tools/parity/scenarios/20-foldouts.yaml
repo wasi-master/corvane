@@ -7,6 +7,9 @@ steps:
   - snap: open
   - hover: {text: "parity-fixture", within: ".foldout"}
   - snap: row-hover
+  - type: "par"
+  - snap: filter-match
+  - key: cmd-a backspace
   - type: "zzz"
   - snap: filter-no-results
   - key: cmd-a backspace
