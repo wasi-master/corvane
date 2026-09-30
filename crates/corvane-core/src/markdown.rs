@@ -19,6 +19,8 @@ use std::ops::Range;
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
+use crate::text_tokens::{Token, TokenRepository, tokenize};
+
 /// Inline styles active over a span of text.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct InlineStyle {
@@ -211,13 +213,25 @@ struct Walk {
     table_cells: Option<u32>,
 }
 
-/// Flag `804`: a commit message as GitHub.com shows it - `code` spans in
+/// A commit message as GHD's `RichText` shows it: the
+/// [`crate::text_tokens`] emoji, `#123` issues, `@mentions` and links.
+///
+/// With `extras` (flag `804`), as GitHub.com shows it: `code` spans in
 /// backticks (on one line; the backticks are dropped), bare `http(s)` URLs
-/// linked, and with `commit_base` (the repository's `html_url`) 7–40
-/// character hex words that mix letters and digits linked to
-/// `<commit_base>/commit/<sha>`. Everything else stays plain text.
-pub fn commit_message_rich_text(text: &str, commit_base: Option<&str>) -> RichText {
+/// also after punctuation and without trailing punctuation, and with
+/// `commit_base` (the repository's `html_url`) 7–40 character hex words that
+/// mix letters and digits linked to `<commit_base>/commit/<sha>`.
+pub fn commit_message_rich_text(
+    text: &str,
+    repository: Option<&TokenRepository>,
+    extras: bool,
+    commit_base: Option<&str>,
+) -> RichText {
     let mut out = RichText::default();
+    if !extras {
+        push_tokens(&mut out, text, repository, None);
+        return out;
+    }
     let code = InlineStyle {
         code: true,
         ..InlineStyle::default()
@@ -230,15 +244,40 @@ pub fn commit_message_rich_text(text: &str, commit_base: Option<&str>) -> RichTe
                 .then_some((open, open + 1 + close))
         });
         let Some((open, close)) = span else {
-            push_autolinked(&mut out, rest, commit_base);
+            push_tokens(&mut out, rest, repository, Some(commit_base));
             break;
         };
-        push_autolinked(&mut out, &rest[..open], commit_base);
+        push_tokens(&mut out, &rest[..open], repository, Some(commit_base));
         out.push(&rest[open + 1..close], code, None);
         rest = &rest[close + 1..];
     }
     out
 }
+
+/// GHD's tokens for `text`; `extras` (with the SHA base) as in
+/// [`commit_message_rich_text`].
+fn push_tokens(
+    out: &mut RichText,
+    text: &str,
+    repository: Option<&TokenRepository>,
+    extras: Option<Option<&str>>,
+) {
+    let plain = InlineStyle::default();
+    for token in tokenize(text, repository) {
+        match (&token, extras) {
+            (Token::Text(text), Some(commit_base)) => push_autolinked(out, text, commit_base),
+            (Token::Link { text, url }, Some(_)) if text == url => {
+                let linked = url.trim_end_matches(URL_TRAILING_PUNCTUATION);
+                out.push(linked, plain, Some(linked));
+                out.push(&url[linked.len()..], plain, None);
+            }
+            (Token::Link { text, url }, _) => out.push(text, plain, Some(url)),
+            _ => out.push(token.display(), plain, None),
+        }
+    }
+}
+
+const URL_TRAILING_PUNCTUATION: [char; 8] = ['.', ',', ':', ';', '!', '?', ')', '\''];
 
 /// Plain text with its bare URLs and (with `commit_base`) SHAs linked.
 fn push_autolinked(out: &mut RichText, text: &str, commit_base: Option<&str>) {
@@ -298,7 +337,7 @@ fn bare_urls(text: &str) -> Vec<Range<usize>> {
         let len = rest
             .find(|c: char| c.is_whitespace() || matches!(c, '<' | '>' | '"'))
             .unwrap_or(rest.len());
-        let url = rest[..len].trim_end_matches(['.', ',', ':', ';', '!', '?', ')', '\'']);
+        let url = rest[..len].trim_end_matches(URL_TRAILING_PUNCTUATION);
         let preceded_by_word = text[..start]
             .chars()
             .next_back()
@@ -572,6 +611,8 @@ mod tests {
         let base = "https://github.com/o/r";
         let t = commit_message_rich_text(
             "Fix `foo()` per a5c3785 and https://x.io/a. Not `open\nor` 1234567 or defaced",
+            None,
+            true,
             Some(base),
         );
         assert_eq!(
@@ -596,8 +637,56 @@ mod tests {
             ]
         );
         // no base: SHAs stay plain
-        let t = commit_message_rich_text("see a5c3785", None);
+        let t = commit_message_rich_text("see a5c3785", None, true, None);
         assert!(t.spans.is_empty());
+    }
+
+    #[test]
+    fn commit_message_ghd_tokens() {
+        let repo = TokenRepository {
+            html_url: "https://github.com/o/r".into(),
+            web_base: "https://github.com".into(),
+        };
+        let spans = |t: &RichText| -> Vec<(String, Option<String>)> {
+            t.spans
+                .iter()
+                .map(|s| (t.text[s.range.clone()].to_string(), s.link.clone()))
+                .collect()
+        };
+        let msg = ":tada: `x` a5c3785 @me (#452) https://x.io/a.";
+        // GHD: emoji, issue, mention, whole-word URL; backticks and SHAs plain
+        let t = commit_message_rich_text(msg, Some(&repo), false, None);
+        assert_eq!(t.text, "🎉 `x` a5c3785 @me (#452) https://x.io/a.");
+        assert_eq!(
+            spans(&t),
+            [
+                ("@me".into(), Some("https://github.com/me".into())),
+                (
+                    "#452".into(),
+                    Some("https://github.com/o/r/issues/452".into())
+                ),
+                ("https://x.io/a.".into(), Some("https://x.io/a.".into())),
+            ]
+        );
+        // `804` on top: code span, SHA, URL without the full stop
+        let t = commit_message_rich_text(msg, Some(&repo), true, Some("https://github.com/o/r"));
+        assert_eq!(t.text, "🎉 x a5c3785 @me (#452) https://x.io/a.");
+        assert_eq!(spans(&t)[0], ("x".into(), None));
+        assert_eq!(
+            spans(&t)[1..],
+            [
+                (
+                    "a5c3785".into(),
+                    Some("https://github.com/o/r/commit/a5c3785".into())
+                ),
+                ("@me".into(), Some("https://github.com/me".into())),
+                (
+                    "#452".into(),
+                    Some("https://github.com/o/r/issues/452".into())
+                ),
+                ("https://x.io/a".into(), Some("https://x.io/a".into())),
+            ]
+        );
     }
 
     fn para(blocks: &[Block], ix: usize) -> &RichText {
