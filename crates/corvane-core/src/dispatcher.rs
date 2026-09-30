@@ -2761,9 +2761,13 @@ impl Dispatcher {
         let Some((_git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
-        let task = cx
-            .background_executor()
-            .spawn(async move { corvane_git::append_ignore_rules(&workdir, &patterns) });
+        let skip_existing = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::IGNORE_SKIPS_EXISTING_RULES);
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::append_ignore_rules(&workdir, &patterns, skip_existing)
+        });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
             cx.update(|cx| {

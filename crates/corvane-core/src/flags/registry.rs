@@ -302,6 +302,20 @@ registry! {
         ],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/changes.rs", "crates/corvane-git/src/status.rs"],
     },
+    /// Ignore File / Folder / Extension skip rules already in .gitignore.
+    IGNORE_SKIPS_EXISTING_RULES = 209 "ignore-skips-existing-rules" {
+        title: "Ignore menu items don't duplicate .gitignore rules",
+        summary: "\"Ignore File\", \"Ignore Folder\" and \"Ignore All .ext Files\" leave out \
+                  patterns the root .gitignore already has as a line.",
+        ghd_behaviour: "Appends the pattern again, so repeated use fills .gitignore with duplicate \
+                        lines.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2537)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
+    },
 
     // ---- 300 GitHub ----
 
