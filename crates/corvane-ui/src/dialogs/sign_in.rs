@@ -5,6 +5,10 @@
 //! personal access token. GHD signs in to Enterprise with its own OAuth app
 //! in the browser (`ui/sign-in/sign-in.tsx`); a GHES server does not know
 //! Corvane's, so its client ID has to come from the user.
+//!
+//! Deviation (flag `enterprise-plain-http`, off except in Everything): an
+//! Enterprise address typed with `http://` keeps plain HTTP (GHD forces
+//! HTTPS since 3.4.7).
 
 use corvane_core::{AppState, Dispatcher, SignInStep};
 use corvane_github::Endpoint;
@@ -93,7 +97,12 @@ impl SignInDialog {
 
     fn continue_endpoint(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let raw = self.address.read(cx).value().to_string();
-        if let Some(endpoint) = Endpoint::enterprise(&raw) {
+        let allow_http = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ENTERPRISE_PLAIN_HTTP);
+        if let Some(endpoint) = Endpoint::enterprise(&raw, allow_http) {
             let has_app = Dispatcher::oauth_client_id(&endpoint, cx).is_some();
             self.endpoint = Some(endpoint);
             if has_app {

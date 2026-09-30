@@ -471,6 +471,20 @@ registry! {
         upstream: &[Upstream::issue(22365), Upstream::issue(5354)],
         code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-ui/src/pull_request_list.rs"],
     },
+    /// Plain-HTTP Enterprise servers.
+    ENTERPRISE_PLAIN_HTTP = 392 "enterprise-plain-http" {
+        title: "Allow plain-HTTP Enterprise servers",
+        summary: "An Enterprise address typed with http:// stays on plain HTTP, for servers \
+                  without TLS. The token then crosses the network unencrypted; an address \
+                  without a scheme still uses HTTPS.",
+        ghd_behaviour: "Always connects over HTTPS (plain HTTP was removed in 3.4.7).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(20245)],
+        code: &["crates/corvane-ui/src/dialogs/sign_in.rs", "crates/corvane-github/src/endpoint.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

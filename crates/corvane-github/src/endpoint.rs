@@ -19,12 +19,21 @@ impl Endpoint {
     }
 
     /// From a user-entered enterprise address (`ghe.corp`, `https://ghe.corp/`).
-    pub fn enterprise(input: &str) -> Option<Self> {
+    /// Always HTTPS, as GHD since 3.4.7; with `allow_http` an explicit
+    /// `http://` is kept (flag `enterprise-plain-http`, desktop/desktop#20245).
+    pub fn enterprise(input: &str, allow_http: bool) -> Option<Self> {
         let trimmed = input.trim().trim_end_matches('/');
-        let without_scheme = trimmed
-            .strip_prefix("https://")
-            .or_else(|| trimmed.strip_prefix("http://"))
-            .unwrap_or(trimmed);
+        let http = trimmed
+            .get(..7)
+            .is_some_and(|p| p.eq_ignore_ascii_case("http://"));
+        let without_scheme = if http {
+            &trimmed[7..]
+        } else {
+            trimmed
+                .get(..8)
+                .filter(|p| p.eq_ignore_ascii_case("https://"))
+                .map_or(trimmed, |_| &trimmed[8..])
+        };
         let host = without_scheme.split('/').next()?.trim();
         if host.is_empty() || host.contains(char::is_whitespace) {
             return None;
@@ -32,9 +41,10 @@ impl Endpoint {
         if host.eq_ignore_ascii_case("github.com") || host.eq_ignore_ascii_case("api.github.com") {
             return Some(Self::github_com());
         }
+        let scheme = if http && allow_http { "http" } else { "https" };
         Some(Self {
-            web_base: format!("https://{host}"),
-            api_base: format!("https://{host}/api/v3"),
+            web_base: format!("{scheme}://{host}"),
+            api_base: format!("{scheme}://{host}/api/v3"),
         })
     }
 
@@ -75,15 +85,23 @@ mod tests {
 
     #[test]
     fn enterprise_parsing() {
-        let e = Endpoint::enterprise("https://ghe.corp/").unwrap();
+        let e = Endpoint::enterprise("https://ghe.corp/", false).unwrap();
         assert_eq!(e.web_base, "https://ghe.corp");
         assert_eq!(e.api_base, "https://ghe.corp/api/v3");
         assert_eq!(e.host(), "ghe.corp");
         assert_eq!(
-            Endpoint::enterprise("github.com").unwrap(),
+            Endpoint::enterprise("github.com", false).unwrap(),
             Endpoint::github_com()
         );
-        assert!(Endpoint::enterprise("   ").is_none());
+        assert!(Endpoint::enterprise("   ", false).is_none());
+        let plain = |allow| Endpoint::enterprise("HTTP://ghe.corp/", allow).unwrap();
+        assert_eq!(plain(false).api_base, "https://ghe.corp/api/v3");
+        assert_eq!(plain(true).web_base, "http://ghe.corp");
+        assert_eq!(plain(true).api_base, "http://ghe.corp/api/v3");
+        assert_eq!(
+            Endpoint::enterprise("ghe.corp", true).unwrap().web_base,
+            "https://ghe.corp"
+        );
     }
 
     #[test]

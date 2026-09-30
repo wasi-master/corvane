@@ -32,6 +32,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Forking disabled**: the repository's API `allow_forking` is stored with its record; when it is `false` the commit form's "create a fork" warning, `CreateFork` before a push and the fork offer after a refused push are skipped, and the push runs or fails as usual (GHD `showNoWriteAccess` / `insufficientGitHubRepoPermissions` ignore it and the fork request fails). Flag: `389-fork-offer-respects-allow-forking`.
 - **Re-run checks**: the check-run popover hides Re-run and the per-job re-run when the stored record of the pull request's base repository says the account can only read it (GHD `CICheckRunPopover` shows them and the request fails). Flag: `390-rerun-needs-push-access`.
 - **Pull Requests tab signed out**: with no account for the repository's endpoint the empty tab shows "Sign in to see pull requests" with a Sign in link (the `SignIn` popup for GitHub.com or Enterprise) and the refresh button is disabled; cached pull requests still list (GHD `NoPullRequests` says "You're all set!" and the refresh button does nothing). Flag: `391-pull-requests-signed-out`.
+- **Plain-HTTP Enterprise**: an Enterprise address typed with `http://` keeps plain HTTP for the API, the sign-in flows and web links (`Endpoint::enterprise(_, allow_http)`); off except in the Everything preset, since the token is then sent unencrypted (GHD forces HTTPS since 3.4.7). Flag: `392-enterprise-plain-http`.
 
 ## Repository
 
