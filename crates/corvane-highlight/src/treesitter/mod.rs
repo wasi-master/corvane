@@ -7,9 +7,10 @@
 //! - [`detect`]: path / injection name → grammar.
 //! - [`captures`]: capture names → GHD's colour classes.
 //! - [`highlight`]: parses a whole file, paints every highlight capture
-//!   (outer nodes first, so inner ones and later patterns win, as in
-//!   `tree-sitter-highlight`), paints injected languages over their host, and
-//!   cuts the result into per-line spans like the other engines.
+//!   (by nvim's `#set! priority`, then outer nodes first, so inner ones and
+//!   later patterns win, as in `tree-sitter-highlight`), paints injected
+//!   languages over their host, and cuts the result into per-line spans like
+//!   the other engines.
 //!
 //! The painter replaces `tree-sitter-highlight`, whose event stream nests
 //! captures of different injection layers wrongly when they start at the
@@ -269,14 +270,14 @@ fn paint_document(
                 ControlFlow::Continue(())
             }
         };
-        let tree = parser
-            .parse_with_options(
-                &mut |i, _| &source[i.min(source.len())..],
-                None,
-                Some(ParseOptions::new().progress_callback(&mut on_progress)),
-            )
-            .ok_or_else(|| "parsing timed out".to_string())?;
+        let tree = parser.parse_with_options(
+            &mut |i, _| &source[i.min(source.len())..],
+            None,
+            Some(ParseOptions::new().progress_callback(&mut on_progress)),
+        );
+        // a halted parse would otherwise resume on the next document
         parser.reset();
+        let tree = tree.ok_or_else(|| "parsing timed out".to_string())?;
         let node = tree.root_node();
         paint_layer(&compiled, node, source, &mut paint);
         if depth < MAX_DEPTH
