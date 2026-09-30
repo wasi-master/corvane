@@ -11,6 +11,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
@@ -233,11 +234,7 @@ impl SelectedCommitView {
                                 } else {
                                     "Expand commit details"
                                 })
-                                .tooltip(crate::widgets::tooltip(if expanded {
-                                    "Collapse"
-                                } else {
-                                    "Expand"
-                                }))
+                                .ghd_tooltip(if expanded { "Collapse" } else { "Expand" })
                                 .ml(SPACING())
                                 .flex_none()
                                 .cursor_pointer()
@@ -619,7 +616,9 @@ fn commit_file_row(
                     .text_color(t.box_selected_text)
             }
         })
-        .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+        .when(!(is_selected && list_focused), move |d| {
+            d.hover(move |s| s.bg(hover_bg))
+        })
         .on_click(move |_, _, cx| Dispatcher::select_commit_file(id, path.clone(), cx))
         .child(
             // GHD `PathText` keeps the file name visible and truncates the

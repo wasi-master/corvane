@@ -1421,7 +1421,7 @@ impl DiffView {
             .text_size(FONT_SIZE())
             .text_color(t.text_secondary)
             .child(
-                img("illustrations/ufo-alert.svg")
+                crate::widgets::blankslate_image("ufo-alert.svg", cx)
                     .max_h(zpx(150.))
                     .object_fit(ObjectFit::Contain),
             )

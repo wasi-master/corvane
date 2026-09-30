@@ -692,7 +692,7 @@ impl Render for Workspace {
                         .flex_1()
                         .min_h_0()
                         .w_full()
-                        .child(no_repositories(cx))
+                        .child(no_repositories(window, cx))
                         .into_any_element()
                 })
             })

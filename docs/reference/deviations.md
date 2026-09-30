@@ -49,6 +49,14 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Settings › Copilot tab, Git › Hooks sub-tab, Advanced › Usage and the Git Credential Manager toggle are omitted (see the module doc of `dialogs/preferences.rs`).
 - Settings › Advanced › Optional components (Corvane addition, PLAN.md §3.7; GHD ships every grammar): the `syntax-extended` pack (two-face's full grammar collection as a syntect dump) is downloaded from the signed `packs-manifest.json` of the latest GitHub release into `~/Library/Application Support/Corvane/packs/<name>/<version>/`, sha256-checked, and swapped into the highlighter at once; Remove falls back to syntect's built-in set. The `full` cargo feature compiles the collection in and the row says "Included in this build". `corvane_packs` also understands `git-portable` / `git-lfs` entries, which are not published yet (TODO.md).
 
+## Welcome
+
+- The Welcome flow (`crates/corvane-ui/src/welcome.rs`) matches GHD's layout at the 1.2 welcome scale. Differences: texts name Corvane; the start footer's second paragraph states that Corvane sends no usage metrics (GHD's links to its metrics page), worded to fill the same two lines so the content stays put; the scale is fixed at 1.2 instead of following GHD's viewport media queries (1.3 at ≥ 1400×725, …).
+
+## Illustrations
+
+- GPUI has no CSS filters, so GHD's dark-theme `.blankslate-image` filter (`invert() grayscale(1) brightness(8) contrast(0.6)`) is baked into copies under `assets/illustrations/dark/` by `tools/illustrations/darken.py` (flat colours only, which is all the `empty-*`, `paper-stack`, `multiple-files-selected` and `ufo-alert` SVGs use).
+
 ## Window / menus
 
 - Move to Applications prompt: the backdrop dismisses it (GHD: `backdropDismissable={false}`); the move never asks for administrator rights, so it fails with the error when `/Applications` is not writable (Electron can authorize).

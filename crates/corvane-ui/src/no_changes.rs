@@ -151,7 +151,7 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
                                 ),
                         )
                         .child(
-                            img("illustrations/paper-stack.svg")
+                            crate::widgets::blankslate_image("paper-stack.svg", cx)
                                 .w(zpx(73.))
                                 .h(zpx(70.))
                                 .flex_none(),
@@ -176,7 +176,7 @@ pub fn multiple_selection(count: usize, cx: &App) -> impl IntoElement {
         .text_color(t.text_secondary)
         .text_size(FONT_SIZE())
         .child(
-            img("illustrations/multiple-files-selected.svg")
+            crate::widgets::blankslate_image("multiple-files-selected.svg", cx)
                 .w(zpx(200.))
                 .h(zpx(120.)),
         )

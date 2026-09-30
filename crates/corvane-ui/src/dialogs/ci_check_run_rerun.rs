@@ -121,7 +121,10 @@ impl Render for CiCheckRunRerunDialog {
                     .items_center()
                     .text_center()
                     .min_h(zpx(100.))
-                    .child(img("illustrations/empty-no-pull-requests.svg").w(zpx(240.)))
+                    .child(
+                        crate::widgets::blankslate_image("empty-no-pull-requests.svg", cx)
+                            .w(zpx(240.)),
+                    )
                     .child(div().font_weight(FontWeight::SEMIBOLD).child("Please wait"))
                     .child(
                         div()
