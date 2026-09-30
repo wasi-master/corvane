@@ -129,6 +129,7 @@ impl Render for WorkflowPushRejectedDialog {
                             Some(RetryAction::Push {
                                 force_with_lease: false,
                                 branch: None,
+                                up_to: None,
                             }),
                             cx,
                         );

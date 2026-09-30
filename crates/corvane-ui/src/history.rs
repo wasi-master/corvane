@@ -14,7 +14,8 @@
 //! Deviations (`.docs/deviations.md` › History): the commit menus
 //! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`); the
 //! list scrolls back to the top when the branch changes (flag `241`); Revert
-//! Changes in Commit(s) Without Committing (flag `242`).
+//! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
+//! Commit (flag `243`).
 
 use std::rc::Rc;
 
@@ -909,7 +910,7 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (html_url, is_head, busy, copy_items, revert_no_commit) = {
+        let (html_url, is_head, busy, copy_items, revert_no_commit, unpushed) = {
             let s = self.state.read(cx);
             let html_url = s
                 .repository(id)
@@ -929,6 +930,23 @@ impl HistorySidebar {
                 s.flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
                 s.flags
                     .bool(corvane_core::flags::ids::REVERT_WITHOUT_COMMITTING),
+                // `243`: one of the current branch's commits its upstream lacks
+                s.flags
+                    .bool(corvane_core::flags::ids::PUSH_UP_TO_COMMIT)
+                    .then(|| {
+                        let tracked = rs
+                            .and_then(|r| r.info.as_ref())
+                            .and_then(|i| i.current_branch())
+                            .is_some_and(|b| b.upstream.is_some());
+                        let ahead = rs
+                            .filter(|_| tracked)
+                            .and_then(|r| r.ahead_behind)
+                            .map_or(0, |ab| ab.ahead as usize);
+                        !comparing
+                            && rs
+                                .and_then(|r| r.commits.iter().position(|c| c.sha == commit.sha))
+                                .is_some_and(|ix| ix < ahead)
+                    }),
             )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
@@ -1044,12 +1062,23 @@ impl HistorySidebar {
                 items.push(MenuItem::submenu("Delete tag…", entries));
             }
         }
-        items.extend([
+        items.push(
             MenuItem::new("Cherry-pick Commit…", {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::start_cherry_pick_flow(id, vec![sha.clone()], cx)
             })
             .enabled(!busy),
+        );
+        if let Some(unpushed) = unpushed {
+            items.push(
+                MenuItem::new("Push Up to This Commit", {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
+                })
+                .enabled(unpushed && !busy),
+            );
+        }
+        items.extend([
             MenuItem::separator(),
             MenuItem::new("Copy SHA", {
                 let sha = sha.clone();
