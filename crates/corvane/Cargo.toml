@@ -28,6 +28,8 @@ snapshots = [
     "dep:serde_json",
     "gpui-pre/test-support",
     "gpui-pre-macos/test-support",
+    "dep:gpui-pre-linux",
+    "gpui-pre-linux/test-support",
 ]
 
 [dependencies]
@@ -51,3 +53,7 @@ rust-embed.workspace = true
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui-pre-apple = { workspace = true, optional = true }
 gpui-pre-macos = { version = "=0.3.7", optional = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+# `snapshots`: offscreen frames (`render_to_image`) on Linux
+gpui-pre-linux = { version = "=0.3.7", optional = true }
