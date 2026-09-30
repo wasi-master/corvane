@@ -498,6 +498,21 @@ registry! {
         upstream: &[Upstream::issue(14090)],
         code: &["crates/corvane-core/src/pull_requests.rs"],
     },
+    /// Full refresh of the `#` issue cache.
+    ISSUES_FULL_REFRESH_HOURS = 394 "issues-full-refresh-hours" {
+        title: "Issue suggestions: full refresh interval",
+        summary: "Every this many hours the # issue suggestions fetch all open issues again, so \
+                  deleted and transferred issues drop out (0 never does).",
+        ghd_behaviour: "Only fetches issues updated since the newest cached one, so deleted or \
+                        transferred issues are suggested forever.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 720, unit: Some("h") },
+        corvane: Value::Number(24), ghd: Value::Number(0),
+        familiar: Value::Number(24), everything: Value::Number(24),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(14124)],
+        code: &["crates/corvane-core/src/autocomplete.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

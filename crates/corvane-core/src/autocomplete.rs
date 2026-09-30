@@ -5,6 +5,11 @@
 //!
 //! Deviation from GHD: both caches live in memory for the session instead of
 //! IndexedDB, so the first `#` / `@` after launch fetches from the API.
+//!
+//! Deviation (flag `issues-full-refresh-hours`): the issue cache fetches
+//! every open issue again once this many hours have passed since the last
+//! full fetch, so deleted and transferred issues leave `#` completion (GHD
+//! only ever asks for issues updated since the newest cached one).
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -130,12 +135,16 @@ pub struct IssueCache {
     pub loading: bool,
     /// The redb copy was consulted (GHD: IndexedDB `IssuesDatabase`).
     pub loaded: bool,
+    /// Unix time of the last fetch of every open issue.
+    pub full_refreshed_at_secs: u64,
 }
 
 /// What redb keeps between launches (`issues:<html_url>`).
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct PersistedIssues {
     pub issues: Vec<Issue>,
+    #[serde(default)]
+    pub full_refreshed_at_secs: u64,
 }
 
 /// `mentionables:<html_url>`, with the fetch time so the ten-minute
@@ -270,6 +279,7 @@ impl Dispatcher {
             let mut since = None;
             Self::state(cx).update(cx, |s, cx| {
                 let store = s.store.clone();
+                let full_every_hours = s.flags.number(crate::flags::ids::ISSUES_FULL_REFRESH_HOURS);
                 let cache = s.issues.entry(key.clone()).or_default();
                 if !cache.loaded {
                     cache.loaded = true;
@@ -277,6 +287,7 @@ impl Dispatcher {
                         store.get::<PersistedIssues>(&format!("issues:{key}"))
                     {
                         cache.issues = persisted.issues;
+                        cache.full_refreshed_at_secs = persisted.full_refreshed_at_secs;
                     }
                 }
                 if cache.loading
@@ -289,6 +300,16 @@ impl Dispatcher {
                 }
                 cache.loading = true;
                 since = cache.issues.iter().map(|i| i.updated_at.clone()).max();
+                // `issues-full-refresh-hours`: now and then fetch every open
+                // issue again so deleted and transferred ones drop out (an
+                // incremental fetch never reports them)
+                let full_every_hours = full_every_hours.max(0) as u64;
+                if full_every_hours > 0
+                    && now_secs().saturating_sub(cache.full_refreshed_at_secs)
+                        >= full_every_hours * 3600
+                {
+                    since = None;
+                }
                 cx.notify();
             });
             if skip {
@@ -305,6 +326,7 @@ impl Dispatcher {
             return;
         };
         let (owner, name) = (github.owner.clone(), github.name.clone());
+        let full = since.is_none();
         let state = if since.is_some() {
             corvane_github::IssueState::All
         } else {
@@ -324,6 +346,11 @@ impl Dispatcher {
                     match result {
                         Ok(fetched) => {
                             cache.refreshed_at = Some(Instant::now());
+                            if full {
+                                // every open issue is in `fetched`
+                                cache.issues.clear();
+                                cache.full_refreshed_at_secs = now_secs();
+                            }
                             for issue in fetched {
                                 cache.issues.retain(|i| i.number != issue.number);
                                 if issue.state == "open" {
@@ -337,6 +364,7 @@ impl Dispatcher {
                             cache.issues.sort_by_key(|i| std::cmp::Reverse(i.number));
                             let persisted = PersistedIssues {
                                 issues: cache.issues.clone(),
+                                full_refreshed_at_secs: cache.full_refreshed_at_secs,
                             };
                             if let Err(err) = s.store.set(&format!("issues:{key}"), &persisted) {
                                 warn!(%err, "could not persist issues");
