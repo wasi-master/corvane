@@ -69,6 +69,7 @@ fn stand_in_github_repository() -> GitHubRepository {
         parent: None,
         archived: false,
         permissions: None,
+        allow_forking: None,
     }
 }
 

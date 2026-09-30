@@ -67,6 +67,9 @@ pub struct ApiRepository {
     /// Only on `GET /repos/{owner}/{name}` with a token (`IAPIRepositoryPermissions`).
     #[serde(default)]
     pub permissions: Option<ApiRepositoryPermissions>,
+    /// `false` when the owner disabled forking.
+    #[serde(default)]
+    pub allow_forking: Option<bool>,
 }
 
 /// `IAPIRepositoryPermissions`
@@ -1235,6 +1238,7 @@ impl Client {
             parent: repo.parent.map(|p| Box::new(self.convert(*p))),
             archived: repo.archived,
             permissions: repo.permissions.and_then(|p| p.permission()),
+            allow_forking: repo.allow_forking,
         }
     }
 }

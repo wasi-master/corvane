@@ -17,6 +17,11 @@
 //! Deviation (flag `fork-remotes-keep-ssh`): when the repository's remote is
 //! SSH, the fork's origin and the `upstream` remote are set over SSH too
 //! (GHD always uses the API's HTTPS `clone_url`).
+//!
+//! Deviation (flag `fork-offer-respects-allow-forking`): a repository whose
+//! API record says `allow_forking: false` gets no fork suggestion, no
+//! `CreateFork` before a push and no fork offer after a refused push; the
+//! push runs (or fails) as usual.
 
 use corvane_github::Client;
 use corvane_models::{
@@ -81,13 +86,24 @@ impl Dispatcher {
         );
     }
 
+    /// With `fork-offer-respects-allow-forking`, a repository whose owner
+    /// disabled forking is never offered a fork (GHD offers it and the fork
+    /// request fails).
+    pub fn fork_offer_blocked(s: &crate::state::AppState, gh: &GitHubRepository) -> bool {
+        gh.forking_disabled()
+            && s.flags
+                .bool(crate::flags::ids::FORK_OFFER_RESPECTS_ALLOW_FORKING)
+    }
+
     /// `_showCreateForkDialog`: only with an account for the repository.
     pub fn show_create_fork_dialog(id: u64, cx: &mut App) {
         let ok = {
             let s = Self::state(cx).read(cx);
             s.repository(id)
                 .and_then(|r| r.github.as_ref())
-                .is_some_and(|gh| s.account_for(&gh.endpoint).is_some())
+                .is_some_and(|gh| {
+                    s.account_for(&gh.endpoint).is_some() && !Self::fork_offer_blocked(s, gh)
+                })
         };
         if ok {
             Self::show_popup(Popup::CreateFork { repo: id }, cx);
