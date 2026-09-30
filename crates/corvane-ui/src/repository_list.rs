@@ -436,6 +436,7 @@ impl RepositoryFoldout {
                         .items_center()
                         .when_some(ahead_behind, |d, ab| {
                             // `renderAheadBehindIndicator`: arrows only, 12 px tall
+                            // (darwin; the base rule's 16 px elsewhere)
                             let tooltip = format!(
                                 "The currently checked out branch is{}{}{}its tracked branch.",
                                 if ab.behind > 0 {
@@ -461,7 +462,7 @@ impl RepositoryFoldout {
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .h(zpx(12.))
+                                    .h(zpx(if cfg!(target_os = "macos") { 12. } else { 16. }))
                                     .px(zpx(6.))
                                     .rounded(zpx(8.))
                                     .bg(badge_bg)

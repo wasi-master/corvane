@@ -715,7 +715,8 @@ pub fn toolbar_button(
             )
         })
         .when_some(model.badge, |d, ab| {
-            // `.ahead-behind` pill: 13 px tall, radius 8, 9 px text
+            // `.ahead-behind` pill: 13 px tall (darwin; elsewhere no height
+            // is set and the 16 px octicons make it 16), radius 8, 9 px text
             d.child(
                 div()
                     .flex_none()
@@ -724,7 +725,7 @@ pub fn toolbar_button(
                     .items_center()
                     .gap(zpx(2.))
                     .px(zpx(5.))
-                    .h(zpx(13.))
+                    .h(zpx(if cfg!(target_os = "macos") { 13. } else { 16. }))
                     .mr(SPACING_HALF())
                     .rounded(zpx(8.))
                     .bg(t.toolbar_badge_background)

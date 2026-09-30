@@ -588,11 +588,20 @@ impl Workspace {
                             let path = path.clone();
                             move |_, cx| Dispatcher::show_in_finder(&path, cx)
                         }),
-                        title: "View the files of your repository in Finder".into(),
+                        // `getPlatformFileManagerName` and the menu item's label
+                        title: crate::context_menu::mac_or(
+                            "View the files of your repository in Finder",
+                            "View the files of your repository in your File Manager",
+                        )
+                        .into(),
                         description: None,
                         hint: "Repository menu or".into(),
                         keys: &["⌘", "⇧", "F"],
-                        button_label: "Show in Finder".into(),
+                        button_label: crate::context_menu::mac_or(
+                            "Show in Finder",
+                            "Show in your File Manager",
+                        )
+                        .into(),
                         primary: false,
                     },
                 ];

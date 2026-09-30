@@ -8,8 +8,9 @@
 //! between rows) or to cherry-pick onto a branch in the branch foldout, and
 //! "Reorder Commit" starts the keyboard insertion mode (↑/↓, ⏎, Esc).
 //! Compare-to-branch and the unpushed indicator come with the remote
-//! milestone. Drop tooltips ("Copy to …", "Squash N commits")
-//! are not shown; the drop targets highlight instead.
+//! milestone. Drop tooltips ("Copy to …", "Squash N commits") show under
+//! the drag element at once (GHD waits 1.5 s on macOS), in the darwin
+//! title-tooltip look on macOS and the bordered base look elsewhere.
 //!
 //! Deviations (`.docs/deviations.md` › History): the commit menus
 //! add Copy Commit Title / Message / URL and Copy SHAs (flag `809`); the
@@ -89,23 +90,31 @@ pub struct CommitDrag {
 pub struct CommitDragElement {
     drag: CommitDrag,
     state: Entity<AppState>,
+    /// Where the pointer grabbed the row; GPUI draws the drag view that far
+    /// up and left of the pointer.
+    grab: Point<Pixels>,
 }
 
 impl CommitDragElement {
-    fn new(drag: CommitDrag, cx: &mut Context<Self>) -> Self {
+    fn new(drag: CommitDrag, grab: Point<Pixels>, cx: &mut Context<Self>) -> Self {
         let state = AppState::global(cx);
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        Self { drag, state }
+        Self { drag, state, grab }
     }
 
     /// `renderDragToolTip`: what a drop would do at the current target.
     fn tooltip(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
         let target = self.state.read(cx).drag_target.clone()?;
+        let mac = cfg!(target_os = "macos");
         let content: AnyElement = match target {
             DropTarget::Branch(name) => div()
                 .flex()
                 .flex_row()
+                // `copyToPlus`: a plus octicon leads off macOS
+                .when(!mac, |d| {
+                    d.items_center().child(octicon(Octicon::Plus, t.text))
+                })
                 .child("Copy to")
                 .child(
                     div()
@@ -124,6 +133,27 @@ impl CommitDragElement {
                 ))
                 .into_any_element(),
         };
+        if !mac {
+            // `.tool-tip-contents` base rule: a bordered box 35 px under the
+            // element's bottom, in the page's text
+            return Some(
+                div()
+                    .absolute()
+                    .left_0()
+                    .bottom(zpx(-35.))
+                    .py(SPACING_THIRD())
+                    .px(SPACING_HALF())
+                    .border_1()
+                    .border_color(t.box_border)
+                    .bg(t.background)
+                    .text_color(t.text)
+                    .text_size(FONT_SIZE())
+                    .line_height(zpx(18.))
+                    .whitespace_nowrap()
+                    .child(content)
+                    .into_any_element(),
+            );
+        }
         Some(
             // `.tool-tip-contents` (darwin): title-tooltip look under the box
             div()
@@ -159,7 +189,15 @@ impl Render for CommitDragElement {
             .relative()
             .w(zpx(300.))
             .h(commit_row_height(cx))
-            .mt(zpx(22.))
+            .map(|d| {
+                if cfg!(target_os = "macos") {
+                    d.mt(zpx(22.))
+                } else {
+                    // GHD `Draggable.verticalOffset` (15 px off macOS): the
+                    // element's top left corner 15 px below the pointer
+                    d.ml(self.grab.x).mt(self.grab.y + zpx(15.))
+                }
+            })
             .children(tooltip)
             .child(
                 div()
@@ -2065,9 +2103,9 @@ fn commit_row(
                     shas: drag_shas,
                     commit: commit_for_drag,
                 },
-                |drag, _, _, cx| {
+                |drag, grab, _, cx| {
                     let drag = drag.clone();
-                    cx.new(|cx| CommitDragElement::new(drag, cx))
+                    cx.new(|cx| CommitDragElement::new(drag, grab, cx))
                 },
             )
         })

@@ -773,7 +773,7 @@ pub fn counter(count: usize, cx: &App) -> Div {
 }
 
 /// `kbd` - one key cap: radius 6, base border, 1/2 px padding, min 16 px tall,
-/// min-width 1.5em, 2 px gap between caps (darwin).
+/// min-width 1.5em; [`kbd_group`] spaces a shortcut's caps.
 pub fn kbd(key: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
@@ -795,14 +795,42 @@ pub fn kbd(key: impl Into<SharedString>, cx: &App) -> Div {
         .child(key.into())
 }
 
-/// A row of key caps, e.g. `["⌘", "⇧", "A"]`.
+/// GHD `getPlatformSpecificNameOrSymbolForModifier` for a key written the
+/// macOS way: ⌘ (`CmdOrCtrl`) and ⌃ are Ctrl, ⇧ Shift and ⌥ Alt off macOS.
+pub fn platform_key(key: &'static str) -> &'static str {
+    if cfg!(target_os = "macos") {
+        return key;
+    }
+    match key {
+        "⌘" | "⌃" => "Ctrl",
+        "⇧" => "Shift",
+        "⌥" => "Alt",
+        other => other,
+    }
+}
+
+/// A row of key caps (GHD `KeyboardShortcut`), given the macOS way, e.g.
+/// `["⌘", "⇧", "A"]`: 2 px apart on macOS (`_globals.scss` `kbd`, darwin);
+/// elsewhere "Ctrl+Shift+A", the caps named ([`platform_key`]) and joined
+/// by a `+`.
 pub fn kbd_group(keys: &[&'static str], cx: &App) -> Div {
-    div()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(zpx(2.))
-        .children(keys.iter().map(|k| kbd(*k, cx)))
+    kbd_group_sized(keys, FONT_SIZE(), cx)
+}
+
+/// [`kbd_group`] in `size` text (the caps inherit it, as in a `.protip`).
+pub fn kbd_group_sized(keys: &[&'static str], size: Pixels, cx: &App) -> Div {
+    let row = div().flex().flex_row().items_center();
+    if cfg!(target_os = "macos") {
+        return row
+            .gap(zpx(2.))
+            .children(keys.iter().map(|k| kbd(*k, cx).text_size(size)));
+    }
+    row.text_size(size)
+        .children(keys.iter().enumerate().flat_map(|(i, k)| {
+            let plus = (i > 0).then(|| div().child("+").into_any_element());
+            plus.into_iter()
+                .chain([kbd(platform_key(k), cx).text_size(size).into_any_element()])
+        }))
 }
 
 /// A 32 × 18 toggle switch on GHD tokens (no GHD equivalent; the Flags

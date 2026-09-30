@@ -36,6 +36,18 @@
 //! "Jump to the spot that's clicked" centres the thumb there and drags; ⌥
 //! swaps the two.
 //!
+//! Linux: GHD styles `::-webkit-scrollbar` there (`_scroll.scss`
+//! `linux-context`), so Chromium draws a custom scrollbar instead: a 10 px
+//! gutter (`--linux-scroll-bar-size`) that takes layout space whenever the
+//! content overflows, no track, a 4 px `--scroll-bar-thumb-background-color`
+//! thumb inset 3 px (a 3 px transparent border clipped by
+//! `background-clip: padding-box`) that grows to 8 px in
+//! `--scroll-bar-thumb-background-color-active` while hovered or pressed,
+//! fully rounded, at least 17 px long (measured in GHD's Electron). A wheel
+//! notch scrolls 53 px (`ui/events/x/events_x_utils.cc`
+//! `kWheelScrollAmount`), and ⇧-click on the track jumps
+//! (`ScrollbarThemeAura::ShouldCenterOnThumb`).
+//!
 //! Usage: `.with_scrollbar()` on an `overflow_y_scroll` div or a
 //! `uniform_list` (it keeps the scroll handle and the legacy gutter). For a
 //! container that already tracks a handle (`ListState`, a shared
@@ -61,8 +73,14 @@ const BORDER: f32 = 1.;
 /// `kFadeOutDelay`, `kAnimationDuration`.
 const FADE_DELAY: Duration = Duration::from_millis(500);
 const ANIMATION: Duration = Duration::from_millis(250);
-/// `kScrollbarPixelsPerCocoaTick`.
-const PIXELS_PER_TICK: f32 = 40.;
+/// Pixels per GPUI wheel line: `kScrollbarPixelsPerCocoaTick` on macOS;
+/// elsewhere Chromium's 53 px per notch (`kWheelScrollAmount`) over the
+/// three lines GPUI reports for one.
+const PIXELS_PER_TICK: f32 = if cfg!(target_os = "macos") {
+    40.
+} else {
+    53. / 3.
+};
 /// `kMinFractionToStepWhenPaging`.
 const PAGE_FRACTION: f32 = 0.875;
 
@@ -86,6 +104,9 @@ const AUTOSCROLL_REPEAT: Duration = Duration::from_millis(50);
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct Metrics {
     legacy: bool,
+    /// GHD's `::-webkit-scrollbar` styles (Linux): no track, no track
+    /// border, theme-token thumb that widens on hover.
+    custom: bool,
     /// `track_width`: the strip that reacts to the mouse.
     strip: f32,
     /// Thumb inset from the track edges and ends.
@@ -100,6 +121,7 @@ impl Metrics {
     /// `overlay_regular_values = {16, 16, 26, 0, 0, 0, 1}`, inset 2.
     const OVERLAY: Self = Self {
         legacy: false,
+        custom: false,
         strip: 16.,
         inset: 2.,
         min_thumb: 26.,
@@ -108,14 +130,31 @@ impl Metrics {
     /// `legacy_regular_values = {15, 15, 20, 0, 0, 0, 2}`, inset 3.
     const LEGACY: Self = Self {
         legacy: true,
+        custom: false,
         strip: 15.,
         inset: 3.,
         min_thumb: 20.,
         min_track: 24.,
     };
 
+    /// GHD `_scroll.scss` `linux-context`: a 10 px gutter, the thumb inset
+    /// 3 px (1 px while hovered), at least 17 px long, shown on any track.
+    const LINUX: Self = Self {
+        legacy: true,
+        custom: true,
+        strip: 10.,
+        inset: 3.,
+        min_thumb: 17.,
+        min_track: 0.,
+    };
+
+    /// `:hover` / `:active` thumb inset (`border-width: 1px`).
+    const CUSTOM_HOVER_INSET: f32 = 1.;
+
     fn current() -> Self {
-        if legacy_scrollers() {
+        if !cfg!(target_os = "macos") {
+            Self::LINUX
+        } else if legacy_scrollers() {
             Self::LEGACY
         } else {
             Self::OVERLAY
@@ -155,9 +194,19 @@ fn jump_on_track_click() -> bool {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
-fn jump_on_track_click() -> bool {
-    false
+/// Whether a track press centres the thumb on the pointer (then drags)
+/// instead of paging: macOS follows "Click in the scroll bar to", ⌥
+/// swapping the two; Chromium elsewhere jumps on ⇧-click
+/// (`ScrollbarThemeAura::ShouldCenterOnThumb`).
+fn jump_to_click(modifiers: Modifiers) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        modifiers.alt != jump_on_track_click()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        modifiers.shift
+    }
 }
 
 /// Space a legacy scrollbar takes beside `handle`'s content (0 for overlay
@@ -230,6 +279,7 @@ pub trait ScrollbarExt: TrackScroll {
         WithScrollbar {
             element: Some(self),
             handle: None,
+            scroll: false,
         }
     }
 
@@ -239,6 +289,7 @@ pub trait ScrollbarExt: TrackScroll {
         WithScrollbar {
             element: Some(self),
             handle: Some(handle.clone()),
+            scroll: false,
         }
     }
 }
@@ -248,6 +299,17 @@ impl<E: TrackScroll> ScrollbarExt for E {}
 pub struct WithScrollbar<E: TrackScroll> {
     element: Option<E>,
     handle: Option<E::Handle>,
+    /// CSS `overflow-y: scroll` rather than `auto`.
+    scroll: bool,
+}
+
+impl<E: TrackScroll> WithScrollbar<E> {
+    /// GHD `overflow-y: scroll`: a scrollbar that takes layout space (Linux)
+    /// keeps its gutter when nothing overflows.
+    pub fn overflow_scroll(mut self) -> Self {
+        self.scroll = true;
+        self
+    }
 }
 
 /// Per-element state behind `WithScrollbar`.
@@ -318,7 +380,11 @@ impl<E: TrackScroll> Element for WithScrollbar<E> {
         let tracked = Self::tracked(id, self.handle.as_ref(), window, cx);
         let mut element = element.track(&tracked.handle);
         // a legacy scrollbar sits between the border and the padding
-        let gutter = reserved(&tracked.handle, Axis::Vertical);
+        let gutter = if self.scroll && Metrics::current().custom {
+            px(Metrics::current().strip)
+        } else {
+            reserved(&tracked.handle, Axis::Vertical)
+        };
         if gutter > px(0.) {
             let rem = window.rem_size();
             let padding = &mut element.style().padding.right;
@@ -582,7 +648,8 @@ fn thumb_extent(
     }
     let length = (track * viewport / content)
         .round()
-        .clamp(metrics.min_thumb, track);
+        .max(metrics.min_thumb)
+        .min(track);
     let start = (track - length) * (position / max).clamp(0., 1.);
     Some((start, length))
 }
@@ -608,6 +675,8 @@ struct State {
     shown_at: Option<Instant>,
     /// Pointer is over the strip (geometrically, even while hidden).
     in_strip: bool,
+    /// Pointer is over the thumb (custom scrollbars' `:hover`).
+    over_thumb: bool,
     /// The strip counts as hovered: entered while visible, or scrolled under
     /// the pointer.
     hovered: bool,
@@ -856,7 +925,10 @@ fn paint_bar(
     let extent = thumb_extent(metrics, track_len, viewport_len, content_len, position);
     let (alpha, expansion, hovered) = {
         let s = p.state.read(cx);
-        if metrics.legacy {
+        if metrics.custom {
+            // `::-webkit-scrollbar-thumb:hover, :active`
+            (1., 1., s.over_thumb || s.drag.is_some())
+        } else if metrics.legacy {
             (1., 1., s.in_strip || s.drag.is_some())
         } else {
             (s.thumb_alpha(now), s.expansion(now), false)
@@ -865,7 +937,15 @@ fn paint_bar(
     if let Some((start, length)) = extent
         && alpha > 0.
     {
-        let (box_width, palette) = if metrics.legacy {
+        let (box_width, palette) = if metrics.custom {
+            let t = cx.ghd();
+            let thumb = if hovered {
+                t.scroll_bar_thumb_active
+            } else {
+                t.scroll_bar_thumb
+            };
+            (metrics.strip, Palette::custom(thumb))
+        } else if metrics.legacy {
             (metrics.strip, Palette::legacy(dark, hovered))
         } else {
             (
@@ -874,17 +954,35 @@ fn paint_bar(
             )
         };
         let track = strip_bounds(p.viewport, axis, box_width);
-        let track_alpha = alpha * expansion;
+        let track_alpha = if metrics.custom {
+            0.
+        } else {
+            alpha * expansion
+        };
+        // custom scrollbars have no track border; their thumb's transparent
+        // border narrows to 1 px on hover
+        let (border, inset) = if metrics.custom {
+            (
+                0.,
+                if hovered {
+                    Metrics::CUSTOM_HOVER_INSET
+                } else {
+                    inset
+                },
+            )
+        } else {
+            (BORDER, inset)
+        };
         window.with_content_mask(Some(ContentMask { bounds: p.viewport }), |window| {
             if track_alpha > 0. {
                 paint_track(window, track, axis, &palette, track_alpha);
             }
             // thumb: inset from the box, plus the content-side border
-            let across = box_width - BORDER - 2. * inset;
+            let across = box_width - border - 2. * inset;
             let thumb = match axis {
                 Axis::Vertical => Bounds::new(
                     point(
-                        track.origin.x + px(BORDER + inset),
+                        track.origin.x + px(border + inset),
                         p.viewport.origin.y + px(start + inset),
                     ),
                     size(px(across), px(length - 2. * inset)),
@@ -892,15 +990,17 @@ fn paint_bar(
                 Axis::Horizontal => Bounds::new(
                     point(
                         p.viewport.origin.x + px(start + inset),
-                        track.origin.y + px(BORDER + inset),
+                        track.origin.y + px(border + inset),
                     ),
                     size(px(length - 2. * inset), px(across)),
                 ),
             };
-            window.paint_quad(
-                fill(thumb, with_alpha(palette.thumb, alpha))
-                    .corner_radii(Corners::all(px(across / 2.))),
-            );
+            if length - 2. * inset > 0. {
+                window.paint_quad(
+                    fill(thumb, with_alpha(palette.thumb, alpha))
+                        .corner_radii(Corners::all(px(across / 2.))),
+                );
+            }
         });
     }
     if let Some(strip) = &p.strip {
@@ -1023,11 +1123,18 @@ fn paint_bar(
             Some(strip) => strip.is_hovered(window),
             None => area.is_hovered(window) && strip_rect.contains(&event.position),
         };
+        let on_thumb = metrics.custom
+            && over
+            && extent.is_some_and(|(start, length)| {
+                let along = f32::from(event.position.along(axis) - viewport.origin.along(axis));
+                along >= start && along < start + length
+            });
         let now = Instant::now();
         let changed = state.update(cx, |s, _| {
-            let before = (s.hovered, s.in_strip);
+            let before = (s.hovered, s.in_strip, s.over_thumb);
             s.set_in_strip(over, now);
-            before != (s.hovered, s.in_strip)
+            s.over_thumb = on_thumb;
+            before != (s.hovered, s.in_strip, s.over_thumb)
         });
         if changed {
             cx.notify(view);
@@ -1061,7 +1168,7 @@ fn paint_bar(
                 s.curve = None;
                 s.shown_at = Some(now);
             });
-        } else if event.modifiers.alt != jump_on_track_click() {
+        } else if jump_to_click(event.modifiers) {
             // jump so the thumb centres on the pointer, then drag
             let grab = thumb_len / 2.;
             drag_to(&*handle, axis, pointer - grab, track_len, thumb_len, max);
@@ -1299,6 +1406,19 @@ struct Palette {
 }
 
 impl Palette {
+    /// GHD's `::-webkit-scrollbar-thumb` colour; custom scrollbars have no
+    /// track.
+    fn custom(thumb: Hsla) -> Self {
+        let none = gpui_kit::transparent_black();
+        Self {
+            thumb,
+            track_start: none,
+            track_end: none,
+            inner_border: none,
+            outer_border: none,
+        }
+    }
+
     fn legacy(dark: bool, hovered: bool) -> Self {
         if dark {
             Self {
@@ -1484,6 +1604,24 @@ mod tests {
         assert_eq!(
             thumb_extent(Metrics::OVERLAY, 400., 400., 1_000_000., 0.).map(|t| t.1),
             Some(26.)
+        );
+    }
+
+    #[test]
+    fn linux_thumb_geometry() {
+        // lengths measured in GHD's Electron on a 300 px track
+        assert_eq!(
+            thumb_extent(Metrics::LINUX, 300., 300., 5000., 0.),
+            Some((0., 18.))
+        );
+        assert_eq!(
+            thumb_extent(Metrics::LINUX, 300., 300., 100_000., 0.).map(|t| t.1),
+            Some(17.)
+        );
+        // a track shorter than the minimum still shows a thumb, as long
+        assert_eq!(
+            thumb_extent(Metrics::LINUX, 10., 10., 100_000., 0.),
+            Some((0., 10.))
         );
     }
 

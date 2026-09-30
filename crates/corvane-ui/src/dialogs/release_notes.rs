@@ -272,18 +272,22 @@ impl Render for ReleaseNotesDialog {
                                             .flex_row()
                                             .items_center()
                                             .gap(SPACING())
-                                            .child(
-                                                primary_button(
-                                                    "release-notes-ok",
-                                                    "Close",
-                                                    false,
-                                                    cx,
+                                            // `OkCancelButtonGroup`: Close is its
+                                            // Cancel, Install its OK
+                                            .children(crate::dialog::ok_cancel_order(
+                                                std::iter::once(
+                                                    primary_button(
+                                                        "release-notes-ok",
+                                                        "Close",
+                                                        false,
+                                                        cx,
+                                                    )
+                                                    .min_w(zpx(120.))
+                                                    .on_click(move |_, window, cx| {
+                                                        close(window, cx)
+                                                    }),
                                                 )
-                                                .min_w(zpx(120.))
-                                                .on_click(move |_, window, cx| close(window, cx)),
-                                            )
-                                            .when(can_install, |d| {
-                                                d.child(
+                                                .chain(can_install.then(|| {
                                                     button(
                                                         "release-notes-install",
                                                         "Install and Restart",
@@ -291,9 +295,10 @@ impl Render for ReleaseNotesDialog {
                                                     )
                                                     .on_click(|_, _, cx| {
                                                         Dispatcher::install_update(cx)
-                                                    }),
-                                                )
-                                            }),
+                                                    })
+                                                }))
+                                                .collect(),
+                                            )),
                                     ),
                             ),
                     ),

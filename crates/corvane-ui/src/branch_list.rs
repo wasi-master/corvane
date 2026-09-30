@@ -1192,14 +1192,7 @@ impl BranchFoldout {
                 crate::widgets::paragraph(vec![
                     "ProTip! Press ".into(),
                     // `kbd` inherits the 11 px `.protip` text
-                    div()
-                        .flex()
-                        .flex_row()
-                        .gap(zpx(2.))
-                        .children(
-                            ["⌘", "⇧", "N"]
-                                .map(|k| crate::widgets::kbd(k, cx).text_size(FONT_SIZE_SM())),
-                        )
+                    crate::widgets::kbd_group_sized(&["⌘", "⇧", "N"], FONT_SIZE_SM(), cx)
                         .into_any_element()
                         .into(),
                     " to quickly create a new branch from anywhere within the app".into(),

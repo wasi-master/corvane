@@ -1420,16 +1420,14 @@ impl FlagsDialog {
                             .flex_row()
                             .justify_end()
                             .gap(SPACING_HALF())
-                            .child(
+                            .children(crate::dialog::ok_cancel_order(vec![
                                 primary_button("flags-confirm-cancel", "Cancel", false, cx)
                                     .min_w(zpx(120.))
                                     .on_click(cancel),
-                            )
-                            .child(
                                 button("flags-confirm-ok", action, cx)
                                     .min_w(zpx(120.))
                                     .on_click(run),
-                            ),
+                            ])),
                     ),
             )
             .into_any_element()
