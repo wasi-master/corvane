@@ -57,6 +57,19 @@ fn product_name(s: &str) -> Result<(), &'static str> {
     }
 }
 
+fn worktree_location(s: &str) -> Result<(), &'static str> {
+    let s = s.trim();
+    if s.is_empty() {
+        Err("Enter a location, e.g. {clone-dir}")
+    } else if s.contains(['\n', '\r']) {
+        Err("One line only")
+    } else if !s.starts_with(['/', '~', '{']) {
+        Err("Start with /, ~ or {clone-dir}")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -394,6 +407,22 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(22650), Upstream::issue(22946), Upstream::issue(22375)],
         code: &["crates/corvane-ui/src/worktree_list.rs"],
+    },
+
+    /// Default location for new worktrees.
+    WORKTREE_LOCATION = 289 "worktree-location" {
+        title: "Default worktree location",
+        summary: "Where New Worktree puts worktrees by default: `{clone-dir}` is Settings' \
+                  clone directory, `{repo}` the repository's name and a leading `~` the home \
+                  folder (e.g. `~/code/worktrees/{repo}`).",
+        ghd_behaviour: "Always the clone directory.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "{clone-dir}", validate: worktree_location },
+        corvane: Value::text("{clone-dir}"), ghd: Value::text("{clone-dir}"),
+        familiar: Value::text("{clone-dir}"), everything: Value::text("{clone-dir}"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22308)],
+        code: &["crates/corvane-ui/src/worktree_list.rs", "crates/corvane-core/src/worktrees.rs"],
     },
 
     // ---- 300 GitHub ----

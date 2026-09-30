@@ -46,6 +46,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Repository Settings › Remote (`app/src/ui/repository-settings/remote.tsx`) shows the `upstream` remote's URL, read-only, under the primary remote when one exists. Flag: `286-upstream-remote-in-settings`.
 - Repository Settings › Ignored Files (`app/src/ui/repository-settings/git-ignore.tsx`) adds an "Add a template" list of the bundled `.gitignore` templates: a pick fills an empty box, or is appended under a `# <Name>` line; nothing is written until Save. Flag: `287-gitignore-templates`.
 - Worktree list (`app/src/ui/worktrees/worktree-list-item.tsx`): rows have a tooltip with the name and full path, and the filter also matches the path, so worktrees with the same folder name can be told apart. Flag: `288-worktree-paths`.
+- New Worktree's default location (GHD's Add Worktree dialog uses the clone directory) is a template: `{clone-dir}` (the default, GHD's behaviour), `{repo}` and a leading `~` (e.g. `~/code/worktrees/{repo}`). Flag: `289-worktree-location`.
 
 ## Tutorial
 

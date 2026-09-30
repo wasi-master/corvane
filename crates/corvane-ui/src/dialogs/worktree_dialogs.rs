@@ -61,7 +61,7 @@ impl AddWorktreeDialog {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let dir = crate::worktree_list::default_worktree_dir(state.read(cx));
+        let dir = crate::worktree_list::default_worktree_dir(state.read(cx), repo);
         // `RepositoryPath initialName`: the worktree name, else the branch
         let initial_name = initial_worktree_name
             .or_else(|| initial_branch_name.clone())

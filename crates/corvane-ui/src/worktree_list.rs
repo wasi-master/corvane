@@ -406,11 +406,34 @@ impl Render for WorktreeFoldout {
     }
 }
 
-/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir).
-pub fn default_worktree_dir(state: &AppState) -> PathBuf {
-    state
+/// Where a new worktree goes by default (GHD `RepositoryPath` → clone dir;
+/// flag `289-worktree-location` makes it a template).
+pub fn default_worktree_dir(state: &AppState, repo: u64) -> PathBuf {
+    let clone_dir = state
         .settings
         .clone_dir
         .clone()
-        .unwrap_or_else(corvane_platform::paths::default_clone_dir)
+        .unwrap_or_else(corvane_platform::paths::default_clone_dir);
+    let name = state
+        .repository(repo)
+        .map(|r| match &r.github {
+            Some(gh) => gh.name.clone(),
+            None => r
+                .main_worktree_path
+                .as_ref()
+                .unwrap_or(&r.path)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default(),
+        })
+        .unwrap_or_default();
+    let home = std::env::var_os("HOME").map(PathBuf::from);
+    corvane_core::worktrees::worktree_location(
+        state
+            .flags
+            .text(corvane_core::flags::ids::WORKTREE_LOCATION),
+        &clone_dir,
+        &name,
+        home.as_deref(),
+    )
 }
