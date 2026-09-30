@@ -119,6 +119,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Window › Corvane (Corvane addition): shows the main window again after ⌘W or the close button hid it (GHD only brings it back from the Dock). Flag: `486-window-menu-main-window`.
 - `--hidden` (Corvane addition): launched with it (`open -a Corvane --args --hidden`), the main window starts ordered out as after ⌘W; the Dock icon or Window › Corvane shows it. GHD always shows its window. Flag: `487-launch-hidden`.
 - Toolbar push / pull button (`app/src/ui/toolbar/push-pull-button.tsx`): while an operation runs, its progress tooltip is always 300 px (the tooltip maximum) wide instead of fitting each progress line. Flag: `187-steady-progress-tooltip`.
+- Toolbar (`app/src/ui/toolbar`): two icon buttons after Push / Pull open the repository in the external editor and the shell (Corvane addition). Flag: `488-toolbar-open-buttons`.
 
 ## Keyboard
 

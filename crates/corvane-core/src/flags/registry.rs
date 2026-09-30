@@ -812,6 +812,20 @@ registry! {
         code: &["crates/corvane/src/main.rs"],
     },
 
+    /// Open in editor / shell buttons in the toolbar.
+    TOOLBAR_OPEN_BUTTONS = 488 "toolbar-open-buttons" {
+        title: "Toolbar: Open in editor and shell buttons",
+        summary: "Two icon buttons after Push / Pull open the repository in the external editor \
+                  and in the shell.",
+        ghd_behaviour: "Only the Repository menu, its shortcuts and the no-changes suggestions.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21171)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
