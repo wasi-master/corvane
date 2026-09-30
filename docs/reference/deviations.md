@@ -63,6 +63,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 - Resolve All (Corvane addition; GHD `conflicts-dialog.tsx` resolves one file at a time): with two or more conflicted files the conflicts dialog's count row has a Resolve All ▾ menu, "Resolve All Using <branch>" for either side. It sets the manual resolution of every file that still has conflicts, exactly as picking that side per file would (deleted-on-one-side files included), so nothing is written before Continue and each row keeps its Undo. Flag: `446-resolve-all-conflicts`.
 - Rebase Current Branch with uncommitted changes shows the "Unable to rebase when changes are present on your branch" dialog (GHD `LocalChangesOverwrittenDialog`), and its Stash Changes and Continue stashes and then rebases onto the chosen branch (`RetryAction::Rebase`); GHD's retry stashes and stops. Without the flag the rebase starts and git's refusal is shown. Flag: `447-rebase-stash-and-continue`.
+- Rebase, squash and reorder run git with `-c commit.cleanup=scissors` (GHD `lib/git/rebase.ts` uses git's default, `strip`): a stopped pick's message gets git's conflict note below a cut line, and continuing (again with `scissors`, only when the message has that cut line, so a rebase started elsewhere keeps the default) drops the note but keeps `#` lines. GHD loses them, and a summary starting with `#` leaves an empty message that aborts the rebase. A squash message typed in the dialog keeps its `#` lines too. Flag: `448-rebase-keeps-hash-messages`.
 
 ## Tutorial
 

@@ -779,6 +779,21 @@ registry! {
         upstream: &[Upstream::issue(21904)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/state.rs"],
     },
+    /// Rebase / squash / reorder keep `#` message lines.
+    REBASE_KEEPS_HASH_MESSAGES = 448 "rebase-keeps-hash-messages" {
+        title: "Rebase keeps commit messages that start with #",
+        summary: "Rebase, squash and reorder keep commit message lines starting with # (a \
+                  \"#123 Fix\" summary, say) when a commit stopped on conflicts is continued, and \
+                  git's conflict notes stay out of the message.",
+        ghd_behaviour: "Continuing after a conflict drops every line starting with #; a summary \
+                        starting with # leaves the message empty and the rebase fails.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(16444)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
