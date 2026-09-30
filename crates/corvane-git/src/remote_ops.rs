@@ -544,6 +544,41 @@ pub fn is_using_lfs(git: Arc<GitBinary>, workdir: &Path) -> bool {
     }
 }
 
+/// [`is_using_lfs`] without `git lfs track`, which walks every directory
+/// (untracked ones included) looking for `.gitattributes` and takes minutes in
+/// large worktrees: reads the `.gitattributes` files in the index, the root
+/// one on disk and `info/attributes`, and looks for a `filter=lfs` attribute.
+/// Corvane addition (desktop#5198).
+pub fn is_using_lfs_by_attributes(git: Arc<GitBinary>, workdir: &Path) -> bool {
+    let mut files = vec![
+        workdir.join(".gitattributes"),
+        git_dir(workdir).join("info/attributes"),
+    ];
+    if let Ok(text) = GitCommand::new(git)
+        .args(["ls-files", "-z", "--", ":(glob)**/.gitattributes"])
+        .current_dir(workdir)
+        .run()
+        .and_then(|o| o.stdout_string())
+    {
+        files.extend(
+            text.split('\0')
+                .filter(|p| !p.is_empty() && *p != ".gitattributes")
+                .map(|p| workdir.join(p)),
+        );
+    }
+    files
+        .iter()
+        .any(|path| std::fs::read_to_string(path).is_ok_and(|text| attributes_use_lfs(&text)))
+}
+
+/// A `.gitattributes` text sets `filter=lfs` on some pattern.
+fn attributes_use_lfs(text: &str) -> bool {
+    text.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .any(|line| line.split_whitespace().skip(1).any(|a| a == "filter=lfs"))
+}
+
 /// The repository's `pre-push` hook was written by Git LFS.
 pub fn lfs_hooks_installed(workdir: &Path) -> bool {
     std::fs::read_to_string(git_dir(workdir).join("hooks/pre-push"))
@@ -634,6 +669,26 @@ mod tests {
                 .success(),
             "git {args:?}"
         );
+    }
+
+    #[test]
+    fn lfs_attributes() {
+        assert!(attributes_use_lfs(
+            "# lfs\n*.psd filter=lfs diff=lfs merge=lfs -text\n"
+        ));
+        assert!(!attributes_use_lfs(
+            "*.psd -filter\n# *.x filter=lfs\n*.md text\n"
+        ));
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        run(dir.path(), &["init", "-q"]);
+        assert!(!is_using_lfs_by_attributes(git.clone(), dir.path()));
+        std::fs::create_dir(dir.path().join("art")).unwrap();
+        std::fs::write(dir.path().join("art/.gitattributes"), "*.png filter=lfs\n").unwrap();
+        // an untracked nested file is not read (git lfs track would)
+        assert!(!is_using_lfs_by_attributes(git.clone(), dir.path()));
+        run(dir.path(), &["add", "art/.gitattributes"]);
+        assert!(is_using_lfs_by_attributes(git, dir.path()));
     }
 
     #[test]
