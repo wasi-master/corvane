@@ -317,15 +317,17 @@ impl Dispatcher {
                     if preview.file.as_deref() != Some(path.as_str()) {
                         return;
                     }
-                    preview.diff_contents = contents.map(Arc::new);
-                    preview.diff = Some(match diff {
-                        Ok(diff) => diff,
-                        Err(err) => {
-                            warn!(id, %err, "pull request diff failed");
-                            Diff::Empty
-                        }
+                    let diff = diff.unwrap_or_else(|err| {
+                        warn!(id, %err, "pull request diff failed");
+                        Diff::Empty
                     });
-                    preview.diff_generation += 1;
+                    let mut no_old = None;
+                    if crate::dispatcher::replace_diff(
+                        (&mut preview.diff, &mut preview.diff_contents, &mut no_old),
+                        (diff, contents, None),
+                    ) {
+                        preview.diff_generation += 1;
+                    }
                     cx.notify();
                 });
             },

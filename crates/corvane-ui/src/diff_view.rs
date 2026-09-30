@@ -295,8 +295,11 @@ pub struct DiffView {
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
     rows_key: Option<(u64, String, u64)>,
-    /// Syntax spans for `rows`, filled in by a background task.
+    /// Syntax spans for `rows` (see `highlight`).
     tokens: Option<Rc<Vec<Vec<corvane_highlight::Span>>>>,
+    /// The rows `tokens` belonged to before a reload of the same file, for
+    /// `carry_over`.
+    previous_rows: Option<Rc<Vec<Row>>>,
     /// The highlighter (and tree-sitter grammar set) `tokens` came from;
     /// a change (Settings, a grammar pack loaded) highlights again.
     highlighted_with: Option<(corvane_highlight::Engine, u64)>,
@@ -351,6 +354,7 @@ impl DiffView {
             rows: Rc::new(Vec::new()),
             rows_key: None,
             tokens: None,
+            previous_rows: None,
             highlighted_with: None,
             hunks: Rc::new(Vec::new()),
             split_rows: Rc::new(Vec::new()),
@@ -515,7 +519,7 @@ impl DiffView {
         })
     }
 
-    /// Tokenize the rows off the main thread (GHD: highlighter web worker).
+    /// Tokenize the rows (GHD: highlighter web worker).
     ///
     /// Like GHD (`highlightContents` + `SideBySideDiff.createFullRow`), the
     /// whole old and new files are tokenized, so parser state comes from the
@@ -523,90 +527,100 @@ impl DiffView {
     /// tokens and context rows old-file tokens unless the diff only adds
     /// lines (`getLineFilters`). Without file contents the rows themselves
     /// are tokenized in order.
+    ///
+    /// Deviation (docs/reference/deviations.md): GHD always highlights in its
+    /// worker, so a diff first shows uncoloured. Here a side already
+    /// tokenized (`SIDE_CACHE`: revisiting a file, or a reload that changed
+    /// one side) is reused, and when what is left is small and needs no
+    /// tree-sitter grammar pack it is tokenized right here, so the first
+    /// frame is coloured. Otherwise a background task does it and, until it
+    /// is done, rows whose text did not change keep their previous colours.
     fn highlight(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
-        self.tokens = None;
+        let previous = self.tokens.take().zip(self.previous_rows.take());
         let with = highlight_engine(self.state.read(cx));
         self.highlighted_with = Some(with);
-        let engine = with.0;
         let path = key.1.clone();
-        let rows: Vec<(corvane_core::DiffLineKind, Option<u32>, Option<u32>, String)> = self
+        let rows: Vec<RowSource> = self
             .rows
             .iter()
             .map(|r| (r.kind, r.old, r.new, r.text.clone()))
             .collect();
-        let old = self.old_contents.clone();
-        let new = self.contents.clone();
+        let old = self
+            .old_contents
+            .clone()
+            .map(|lines| Side::new(with, &path, lines));
+        let new = self
+            .contents
+            .clone()
+            .map(|lines| Side::new(with, &path, lines));
+        let pending_bytes: usize = if old.is_none() && new.is_none() {
+            rows.iter().map(|r| r.3.len() + 1).sum()
+        } else {
+            [&old, &new]
+                .into_iter()
+                .flatten()
+                .filter(|side| side.tokens.is_none())
+                .map(|side| side.bytes)
+                .sum()
+        };
+        let first_line = [&new, &old]
+            .into_iter()
+            .flatten()
+            .find_map(|side| side.lines.first().map(String::as_str))
+            .unwrap_or_default();
+        if pending_bytes == 0
+            || pending_bytes <= SYNC_HIGHLIGHT_BYTES
+                && tokenizes_in_process(with.0, &path, first_line)
+        {
+            let (tokens, sides) = assemble(with.0, &path, &rows, old, new);
+            remember_sides(sides);
+            self.tokens = tokens.map(Rc::new);
+            return;
+        }
+        self.tokens = previous.map(|(tokens, previous_rows)| {
+            Rc::new(carry_over(
+                &tokens,
+                previous_rows.iter().map(|r| (r.kind, r.text.as_str())),
+                self.rows.iter().map(|r| (r.kind, r.text.as_str())),
+            ))
+        });
         let generation = self.rows.len();
-        let task = cx.background_executor().spawn(async move {
-            use corvane_core::DiffLineKind as K;
-            if old.is_none() && new.is_none() {
-                // hunk header rows are fed as empty lines so parser state and indices line up
-                let texts: Vec<&str> = rows
-                    .iter()
-                    .map(|(kind, _, _, text)| if *kind == K::Hunk { "" } else { text.as_str() })
-                    .collect();
-                return corvane_highlight::highlight_lines_with(engine, &path, texts);
-            }
-            // `getPartialBlobContents(…, MaxHighlightContentLength)`
-            let tokenize = |lines: &Option<Arc<Vec<String>>>| {
-                let lines = lines.as_ref()?;
-                let mut budget = corvane_highlight::MAX_HIGHLIGHT_BYTES;
-                let texts: Vec<&str> = lines
-                    .iter()
-                    .take_while(|l| {
-                        let fits = l.len() < budget;
-                        budget = budget.saturating_sub(l.len() + 1);
-                        fits
-                    })
-                    .map(String::as_str)
-                    .collect();
-                corvane_highlight::highlight_lines_with(engine, &path, texts)
-            };
-            let old_tokens = tokenize(&old);
-            let new_tokens = tokenize(&new);
-            if old_tokens.is_none() && new_tokens.is_none() {
-                return None;
-            }
-            let any_added = rows.iter().any(|r| r.0 == K::Add);
-            let any_deleted = rows.iter().any(|r| r.0 == K::Delete);
-            // a file line's spans with the raw line they index (tabs intact)
-            let pick = |tokens: &Option<Vec<Vec<corvane_highlight::Span>>>,
-                        lines: &Option<Arc<Vec<String>>>,
-                        line: Option<u32>| {
-                let ix = line?.checked_sub(1)? as usize;
-                let spans = tokens.as_ref()?.get(ix)?.clone();
-                let raw = lines.as_ref()?.get(ix)?.clone();
-                Some((spans, raw))
-            };
+        let engine = with.0;
+        // the two sides in parallel; the rows are cheap to assemble after
+        let tokenize = |side: &Option<Side>| {
+            let side = side.as_ref().filter(|side| side.tokens.is_none())?;
+            let (lines, path) = (side.lines.clone(), path.clone());
             Some(
-                rows.iter()
-                    .map(|(kind, old_line, new_line, text)| {
-                        let picked = match kind {
-                            K::Add => pick(&new_tokens, &new, *new_line),
-                            K::Delete => pick(&old_tokens, &old, *old_line),
-                            K::Context if any_added && !any_deleted => {
-                                pick(&new_tokens, &new, *new_line)
-                            }
-                            K::Context => pick(&old_tokens, &old, *old_line)
-                                .or_else(|| pick(&new_tokens, &new, *new_line)),
-                            _ => None,
-                        };
-                        // tokens index the raw file line; move them through the
-                        // row's tab expansion
-                        picked
-                            .map_or_else(Vec::new, |(spans, raw)| spans_for_row(spans, &raw, text))
-                    })
-                    .collect(),
+                cx.background_executor()
+                    .spawn(async move { Arc::new(tokenize_side(engine, &path, &lines)) }),
             )
+        };
+        let (old_task, new_task) = (tokenize(&old), tokenize(&new));
+        let rows_task = (old.is_none() && new.is_none()).then(|| {
+            let (path, rows) = (path.clone(), rows.clone());
+            cx.background_executor()
+                .spawn(async move { assemble(engine, &path, &rows, None, None).0 })
         });
         cx.spawn(async move |this, cx| {
-            let result = task.await;
+            let result = match rows_task {
+                Some(task) => task.await,
+                None => {
+                    let (mut old, mut new) = (old, new);
+                    let mut fresh = Vec::new();
+                    for (side, task) in [(&mut old, old_task), (&mut new, new_task)] {
+                        if let (Some(side), Some(task)) = (side.as_mut(), task) {
+                            let tokens = task.await;
+                            fresh.push((side.key.clone(), tokens.clone()));
+                            side.tokens = Some(tokens);
+                        }
+                    }
+                    remember_sides(fresh);
+                    assemble(engine, &path, &rows, old, new).0
+                }
+            };
             this.update(cx, |this, cx| {
-                if this.rows_key.as_ref() == Some(&key)
-                    && this.rows.len() == generation
-                    && let Some(tokens) = result
-                {
-                    this.tokens = Some(Rc::new(tokens));
+                if this.rows_key.as_ref() == Some(&key) && this.rows.len() == generation {
+                    this.tokens = result.map(Rc::new);
                     cx.notify();
                 }
             })
@@ -618,6 +632,7 @@ impl DiffView {
     /// Rebuild rows after the hunks changed (new diff or expansion).
     fn rebuild_rows(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         let old_len = self.row_count();
+        self.previous_rows = Some(self.rows.clone());
         self.rows = Rc::new(build_rows(&self.hunks));
         self.rebuild_split_rows(cx);
         self.rows_key = Some(key.clone());
@@ -709,6 +724,14 @@ impl DiffView {
             }
             _ => None,
         };
+        let same_file = self
+            .rows_key
+            .as_ref()
+            .is_some_and(|(repo, path, _)| *repo == snap.key.0 && *path == snap.key.1);
+        self.previous_rows = same_file.then(|| self.rows.clone());
+        if !same_file {
+            self.tokens = None;
+        }
         self.rows = Rc::new(build_rows(&self.hunks));
         self.rebuild_split_rows(cx);
         self.rows_key = Some(snap.key.clone());
@@ -1817,6 +1840,192 @@ impl DiffView {
     }
 }
 
+/// A diff row as the highlighter sees it: kind, old and new line numbers, text.
+type RowSource = (corvane_core::DiffLineKind, Option<u32>, Option<u32>, String);
+type Tokens = Vec<Vec<corvane_highlight::Span>>;
+/// Which file a side's tokens belong to: the highlighter (and grammar set),
+/// the path (it picks the grammar) and the contents' hash and length.
+type SideKey = ((corvane_highlight::Engine, u64), String, u64, usize);
+
+/// Tokenize while building the rows, not in a background task, when the
+/// text left to tokenize is at most this big (a few ms with the CodeMirror
+/// ports or syntect).
+const SYNC_HIGHLIGHT_BYTES: usize = 192 * 1024;
+/// Files whose tokens `SIDE_CACHE` keeps.
+const SIDE_CACHE_LEN: usize = 16;
+
+thread_local! {
+    /// Tokens of recently highlighted files, most recent last (main thread).
+    static SIDE_CACHE: RefCell<std::collections::VecDeque<(SideKey, Arc<Option<Tokens>>)>> =
+        RefCell::default();
+}
+
+/// One side's whole file, and its tokens when `SIDE_CACHE` has them.
+struct Side {
+    lines: Arc<Vec<String>>,
+    key: SideKey,
+    /// what tokenizing it costs, in bytes (`MAX_HIGHLIGHT_BYTES` at most)
+    bytes: usize,
+    tokens: Option<Arc<Option<Tokens>>>,
+}
+
+impl Side {
+    fn new(with: (corvane_highlight::Engine, u64), path: &str, lines: Arc<Vec<String>>) -> Self {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        lines.hash(&mut hasher);
+        let bytes: usize = lines.iter().map(|l| l.len() + 1).sum();
+        let key = (with, path.to_string(), hasher.finish(), lines.len());
+        let tokens = SIDE_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            let ix = cache.iter().position(|(k, _)| *k == key)?;
+            let entry = cache.remove(ix)?;
+            let tokens = entry.1.clone();
+            cache.push_back(entry);
+            Some(tokens)
+        });
+        Self {
+            lines,
+            key,
+            bytes: bytes.min(corvane_highlight::MAX_HIGHLIGHT_BYTES),
+            tokens,
+        }
+    }
+}
+
+fn remember_sides(sides: Vec<(SideKey, Arc<Option<Tokens>>)>) {
+    SIDE_CACHE.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        for (key, tokens) in sides {
+            cache.retain(|(k, _)| *k != key);
+            cache.push_back((key, tokens));
+            if cache.len() > SIDE_CACHE_LEN {
+                cache.pop_front();
+            }
+        }
+    });
+}
+
+/// Whether `engine` tokenizes `path` without possibly loading a tree-sitter
+/// grammar pack first (seconds for a pack's first unit).
+fn tokenizes_in_process(engine: corvane_highlight::Engine, path: &str, first_line: &str) -> bool {
+    use corvane_highlight::Engine;
+    match engine {
+        Engine::GitHubDesktop => true,
+        Engine::TreeSitterFallback => corvane_highlight::cm_covers(path, first_line),
+        Engine::TreeSitter => false,
+    }
+}
+
+/// A whole file's tokens, up to `getPartialBlobContents(…,
+/// MaxHighlightContentLength)`.
+fn tokenize_side(
+    engine: corvane_highlight::Engine,
+    path: &str,
+    lines: &[String],
+) -> Option<Tokens> {
+    let mut budget = corvane_highlight::MAX_HIGHLIGHT_BYTES;
+    let texts: Vec<&str> = lines
+        .iter()
+        .take_while(|l| {
+            let fits = l.len() < budget;
+            budget = budget.saturating_sub(l.len() + 1);
+            fits
+        })
+        .map(String::as_str)
+        .collect();
+    corvane_highlight::highlight_lines_with(engine, path, texts)
+}
+
+/// The rows' tokens (see `DiffView::highlight`), and the sides tokenized
+/// on the way, for `SIDE_CACHE`.
+#[allow(clippy::type_complexity)]
+fn assemble(
+    engine: corvane_highlight::Engine,
+    path: &str,
+    rows: &[RowSource],
+    old: Option<Side>,
+    new: Option<Side>,
+) -> (Option<Tokens>, Vec<(SideKey, Arc<Option<Tokens>>)>) {
+    use corvane_core::DiffLineKind as K;
+    if old.is_none() && new.is_none() {
+        // hunk header rows are fed as empty lines so parser state and indices line up
+        let texts = rows
+            .iter()
+            .map(|(kind, _, _, text)| if *kind == K::Hunk { "" } else { text.as_str() });
+        return (
+            corvane_highlight::highlight_lines_with(engine, path, texts),
+            Vec::new(),
+        );
+    }
+    let mut fresh = Vec::new();
+    let mut tokenize = |side: Option<Side>| {
+        let side = side?;
+        let tokens = side.tokens.unwrap_or_else(|| {
+            let tokens = Arc::new(tokenize_side(engine, path, &side.lines));
+            fresh.push((side.key, tokens.clone()));
+            tokens
+        });
+        Some((side.lines, tokens))
+    };
+    let old = tokenize(old);
+    let new = tokenize(new);
+    let has_tokens = |side: &Option<(Arc<Vec<String>>, Arc<Option<Tokens>>)>| {
+        side.as_ref().is_some_and(|(_, tokens)| tokens.is_some())
+    };
+    if !has_tokens(&old) && !has_tokens(&new) {
+        return (None, fresh);
+    }
+    let any_added = rows.iter().any(|r| r.0 == K::Add);
+    let any_deleted = rows.iter().any(|r| r.0 == K::Delete);
+    // a file line's spans with the raw line they index (tabs intact)
+    let pick = |side: &Option<(Arc<Vec<String>>, Arc<Option<Tokens>>)>, line: Option<u32>| {
+        let (lines, tokens) = side.as_ref()?;
+        let ix = line?.checked_sub(1)? as usize;
+        let spans = (**tokens).as_ref()?.get(ix)?.clone();
+        Some((spans, lines.get(ix)?.clone()))
+    };
+    let tokens = rows
+        .iter()
+        .map(|(kind, old_line, new_line, text)| {
+            let picked = match kind {
+                K::Add => pick(&new, *new_line),
+                K::Delete => pick(&old, *old_line),
+                K::Context if any_added && !any_deleted => pick(&new, *new_line),
+                K::Context => pick(&old, *old_line).or_else(|| pick(&new, *new_line)),
+                _ => None,
+            };
+            // tokens index the raw file line; move them through the row's
+            // tab expansion
+            picked.map_or_else(Vec::new, |(spans, raw)| spans_for_row(spans, &raw, text))
+        })
+        .collect();
+    (Some(tokens), fresh)
+}
+
+/// Colours for `rows` from the same file's previous rows and tokens: a row
+/// whose kind and text are unchanged keeps its spans, the rest none, until
+/// the new tokens arrive (instead of the whole diff flashing uncoloured).
+fn carry_over<'a>(
+    tokens: &Tokens,
+    previous: impl IntoIterator<Item = (corvane_core::DiffLineKind, &'a str)>,
+    rows: impl IntoIterator<Item = (corvane_core::DiffLineKind, &'a str)>,
+) -> Tokens {
+    use std::mem::discriminant;
+    let mut by_text = HashMap::new();
+    for ((kind, text), spans) in previous.into_iter().zip(tokens) {
+        by_text.entry((discriminant(&kind), text)).or_insert(spans);
+    }
+    rows.into_iter()
+        .map(|(kind, text)| {
+            by_text
+                .get(&(discriminant(&kind), text))
+                .map(|spans| (*spans).clone())
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
 /// The highlighter diffs use (Settings › Appearance › Syntax highlighting,
 /// offered by `105-tree-sitter-highlighting`) and, when it runs tree-sitter,
 /// the grammar set's generation.
@@ -1872,6 +2081,7 @@ impl Render for DiffView {
         } else if self.highlighted_with != Some(highlight_engine(self.state.read(cx))) {
             // Settings › Appearance › Syntax highlighting changed, or a
             // tree-sitter grammar pack was loaded or removed
+            self.previous_rows = Some(self.rows.clone());
             self.highlight(snap.key.clone(), cx);
         }
         let split = {
@@ -2248,6 +2458,59 @@ fn floor_char_boundary(text: &str, index: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
+    #[::core::prelude::v1::test]
+    fn unchanged_rows_keep_their_colours_until_the_new_tokens_arrive() {
+        use super::carry_over;
+        use corvane_core::DiffLineKind as K;
+        use corvane_highlight::{Span, TokenClass};
+        let span = |class| vec![Span { range: 0..2, class }];
+        let tokens = vec![span(TokenClass::Keyword), span(TokenClass::String), vec![]];
+        let previous = [(K::Context, "fn a"), (K::Add, "\"s\""), (K::Delete, "x")];
+        let rows = [
+            (K::Add, "fn a"),
+            (K::Add, "\"s\""),
+            (K::Context, "fn a"),
+            (K::Add, "new"),
+        ];
+        assert_eq!(
+            carry_over(&tokens, previous, rows),
+            vec![
+                vec![],
+                span(TokenClass::String),
+                span(TokenClass::Keyword),
+                vec![]
+            ]
+        );
+    }
+
+    #[::core::prelude::v1::test]
+    fn sides_come_from_the_cache_the_second_time() {
+        use super::{Side, assemble, remember_sides};
+        use corvane_core::DiffLineKind as K;
+        use corvane_highlight::{Engine, TokenClass};
+        use std::sync::Arc;
+        let with = (Engine::GitHubDesktop, 0);
+        let lines = Arc::new(vec!["fn main() {".to_string(), "}".to_string()]);
+        let rows = vec![
+            (K::Hunk, None, None, "@@ -0,0 +1,2 @@".to_string()),
+            (K::Add, None, Some(1), "fn main() {".to_string()),
+            (K::Add, None, Some(2), "}".to_string()),
+        ];
+        let side = Side::new(with, "cache-test.rs", lines.clone());
+        assert!(side.tokens.is_none());
+        let (tokens, fresh) = assemble(with.0, "cache-test.rs", &rows, None, Some(side));
+        let tokens = tokens.expect("rust is highlighted");
+        assert!(tokens[0].is_empty());
+        assert_eq!(tokens[1][0].class, TokenClass::Keyword);
+        assert_eq!(fresh.len(), 1);
+        remember_sides(fresh);
+        let side = Side::new(with, "cache-test.rs", lines);
+        assert!(side.tokens.is_some());
+        let (again, fresh) = assemble(with.0, "cache-test.rs", &rows, None, Some(side));
+        assert!(fresh.is_empty());
+        assert_eq!(again, Some(tokens));
+    }
+
     #[::core::prelude::v1::test]
     fn selected_text_cuts_first_and_last_rows_and_skips_empty_sides() {
         use super::{Column, TextPos, TextSelectionSnapshot, join_selected_text};

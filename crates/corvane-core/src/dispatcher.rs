@@ -122,6 +122,9 @@ impl Dispatcher {
             alive: crate::alive::AliveState::default(),
         });
         AppState::install(state.clone(), cx);
+        cx.background_executor()
+            .spawn(async { corvane_highlight::prewarm() })
+            .detach();
         Self::detect_integrations(cx);
         Self::refresh_hook_env(cx);
 
@@ -1236,16 +1239,20 @@ impl Dispatcher {
                         return;
                     }
                     rs.diff_loading = false;
-                    rs.diff_contents = contents.map(Arc::new);
-                    rs.diff_old_contents = old.map(Arc::new);
-                    match result {
-                        Ok(diff) => rs.diff = Some(diff),
-                        Err(err) => {
-                            warn!(%err, "diff failed");
-                            rs.diff = Some(corvane_models::Diff::Empty);
-                        }
+                    let diff = result.unwrap_or_else(|err| {
+                        warn!(%err, "diff failed");
+                        corvane_models::Diff::Empty
+                    });
+                    if replace_diff(
+                        (
+                            &mut rs.diff,
+                            &mut rs.diff_contents,
+                            &mut rs.diff_old_contents,
+                        ),
+                        (diff, contents, old),
+                    ) {
+                        rs.diff_generation += 1;
                     }
-                    rs.diff_generation += 1;
                     // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
                     // selection to the lines that exist in this diff.
                     let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {
@@ -1651,16 +1658,20 @@ impl Dispatcher {
                     {
                         return;
                     }
-                    rs.commit_diff_contents = contents.map(Arc::new);
-                    rs.commit_diff_old_contents = old.map(Arc::new);
-                    rs.commit_diff = Some(match result {
-                        Ok(diff) => diff,
-                        Err(err) => {
-                            warn!(id, %err, "commit diff failed");
-                            corvane_models::Diff::Empty
-                        }
+                    let diff = result.unwrap_or_else(|err| {
+                        warn!(id, %err, "commit diff failed");
+                        corvane_models::Diff::Empty
                     });
-                    rs.commit_diff_generation += 1;
+                    if replace_diff(
+                        (
+                            &mut rs.commit_diff,
+                            &mut rs.commit_diff_contents,
+                            &mut rs.commit_diff_old_contents,
+                        ),
+                        (diff, contents, old),
+                    ) {
+                        rs.commit_diff_generation += 1;
+                    }
                     cx.notify();
                 });
             });
@@ -2921,16 +2932,20 @@ impl Dispatcher {
                     {
                         return;
                     }
-                    rs.stash_diff_contents = contents.map(Arc::new);
-                    rs.stash_diff_old_contents = old.map(Arc::new);
-                    rs.stash_diff = Some(match result {
-                        Ok(diff) => diff,
-                        Err(err) => {
-                            warn!(id, %err, "stash diff failed");
-                            corvane_models::Diff::Empty
-                        }
+                    let diff = result.unwrap_or_else(|err| {
+                        warn!(id, %err, "stash diff failed");
+                        corvane_models::Diff::Empty
                     });
-                    rs.stash_diff_generation += 1;
+                    if replace_diff(
+                        (
+                            &mut rs.stash_diff,
+                            &mut rs.stash_diff_contents,
+                            &mut rs.stash_diff_old_contents,
+                        ),
+                        (diff, contents, old),
+                    ) {
+                        rs.stash_diff_generation += 1;
+                    }
                     cx.notify();
                 });
             });
@@ -4523,6 +4538,41 @@ fn resolve_path(path: &std::path::Path) -> PathBuf {
     out
 }
 
+type DiffSlots<'a> = (
+    &'a mut Option<corvane_models::Diff>,
+    &'a mut Option<Arc<Vec<String>>>,
+    &'a mut Option<Arc<Vec<String>>>,
+);
+
+/// Store a freshly loaded diff and its file contents; `true` when any of
+/// them changed. The diff view starts over (rows, highlighting, text
+/// selection, expanded hunks) when its generation moves, and every refresh
+/// (window focus, the filesystem watcher, after git commands) reloads the
+/// selected file's diff, which is usually the same as before: callers only
+/// bump the generation on `true`.
+pub(crate) fn replace_diff(
+    (diff, contents, old_contents): DiffSlots<'_>,
+    (new_diff, new_contents, new_old): (
+        corvane_models::Diff,
+        Option<Vec<String>>,
+        Option<Vec<String>>,
+    ),
+) -> bool {
+    let same_lines = |current: &Option<Arc<Vec<String>>>, new: &Option<Vec<String>>| {
+        current.as_deref() == new.as_ref()
+    };
+    if diff.as_ref() == Some(&new_diff)
+        && same_lines(contents, &new_contents)
+        && same_lines(old_contents, &new_old)
+    {
+        return false;
+    }
+    *diff = Some(new_diff);
+    *contents = new_contents.map(Arc::new);
+    *old_contents = new_old.map(Arc::new);
+    true
+}
+
 /// Whether any of `committed` is among `local` (flag `818`).
 fn paths_overlap<'a>(mut committed: impl Iterator<Item = &'a String>, local: &[String]) -> bool {
     committed.any(|p| local.contains(p))
@@ -4584,5 +4634,44 @@ mod exclude_new_untracked_tests {
         let mut first = corvane_git::parse_porcelain_v2(b"? a.txt\0");
         exclude_new_untracked(&mut first, None);
         assert_eq!(first.files[0].selection.kind(), DiffSelectionType::None);
+    }
+}
+
+#[cfg(test)]
+mod replace_diff_tests {
+    use super::replace_diff;
+    use std::sync::Arc;
+
+    #[test]
+    fn an_identical_reload_keeps_the_generation_and_the_contents() {
+        let lines = || Some(vec!["fn main() {}".to_string()]);
+        let (mut diff, mut contents, mut old) = (None, None, None);
+        assert!(replace_diff(
+            (&mut diff, &mut contents, &mut old),
+            (corvane_models::Diff::Empty, lines(), None),
+        ));
+        let kept = contents.clone().unwrap();
+        assert!(!replace_diff(
+            (&mut diff, &mut contents, &mut old),
+            (corvane_models::Diff::Empty, lines(), None),
+        ));
+        // the same allocation, so the view's highlight cache still matches
+        assert!(Arc::ptr_eq(&kept, contents.as_ref().unwrap()));
+        assert!(replace_diff(
+            (&mut diff, &mut contents, &mut old),
+            (
+                corvane_models::Diff::Empty,
+                Some(vec!["fn main() { }".into()]),
+                None
+            ),
+        ));
+        assert!(replace_diff(
+            (&mut diff, &mut contents, &mut old),
+            (
+                corvane_models::Diff::Empty,
+                Some(vec!["fn main() { }".into()]),
+                lines()
+            ),
+        ));
     }
 }
