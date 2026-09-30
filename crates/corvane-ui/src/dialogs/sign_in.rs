@@ -164,12 +164,7 @@ impl SignInDialog {
         let enterprise = self.enterprise;
         // `307-sign-in-flow`: which flow the primary button starts; the
         // other one stays a link away
-        let browser_first = self
-            .state
-            .read(cx)
-            .flags
-            .text(corvane_core::flags::ids::SIGN_IN_FLOW)
-            == "browser";
+        let browser_first = Dispatcher::browser_sign_in_first(&endpoint, cx);
         let sign_in = self.state.read(cx).sign_in.clone();
         let this = cx.entity();
         match sign_in.map(|s| s.step) {

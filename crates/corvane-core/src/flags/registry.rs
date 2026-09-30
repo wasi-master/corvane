@@ -166,6 +166,10 @@ const BACKGROUND_FETCHES: &[SelectOption] = &[
 
 const SIGN_IN_FLOWS: &[SelectOption] = &[
     SelectOption {
+        value: "auto",
+        label: "Browser when this build has a client secret",
+    },
+    SelectOption {
         value: "device",
         label: "One-time code (device flow)",
     },
@@ -1475,13 +1479,14 @@ registry! {
     SIGN_IN_FLOW = 307 "sign-in-flow" {
         title: "Sign-in flow",
         summary: "How Sign in to GitHub.com starts: with a one-time code (device flow) or in the \
-                  browser (web flow with PKCE, which GitHub may refuse without a bundled client \
-                  secret). The other flow stays one link away.",
+                  browser (web flow with PKCE, which GitHub refuses without a bundled client \
+                  secret). Auto uses the browser on GitHub.com when the build has a client \
+                  secret and the one-time code otherwise. The other flow stays one link away.",
         ghd_behaviour: "Browser flow only.",
         nature: Nature::Feature,
         kind: Kind::Select { options: SIGN_IN_FLOWS },
-        corvane: Value::text("device"), ghd: Value::text("browser"),
-        familiar: Value::text("device"), everything: Value::text("device"),
+        corvane: Value::text("auto"), ghd: Value::text("browser"),
+        familiar: Value::text("auto"), everything: Value::text("auto"),
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(18749)],
         code: &["crates/corvane-ui/src/dialogs/sign_in.rs", "crates/corvane-ui/src/welcome.rs", "crates/corvane-core/src/flags/dispatch.rs"],
