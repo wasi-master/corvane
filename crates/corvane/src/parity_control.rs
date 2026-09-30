@@ -470,7 +470,8 @@ fn draw_frame(cx: &mut App) -> Result<(f64, f64, f64), String> {
 /// - `commit:<sha prefix>`: that commit is selected, its files and (when a
 ///   file is selected) its diff loaded
 /// - `branch:<name>`: `name` is checked out and the refresh after it is done
-/// - `files:<n>`: the status lists `n` changed files
+/// - `files:<n>`: the status lists `n` changed files (shown; a later refresh
+///   may still be running)
 /// - `frame`: true at once (the bench then only times the steps + a frame)
 fn predicate(until: &str, cx: &mut App) -> Result<bool, String> {
     let (kind, arg) = until.split_once(':').unwrap_or((until, ""));
@@ -519,8 +520,9 @@ fn predicate(until: &str, cx: &mut App) -> Result<bool, String> {
                     .and_then(|info| info.current_branch())
                     .is_some_and(|b| b.name == arg)
         }
+        // what the list shows, even while another refresh runs
         "files" => {
-            settled
+            rs.info.is_some()
                 && rs
                     .status
                     .as_ref()
