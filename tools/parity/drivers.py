@@ -38,6 +38,11 @@ GHD_APP = Path(
     os.environ.get("PARITY_GHD_APP")
     or ("/Applications/GitHub Desktop.app/Contents/MacOS/GitHub Desktop" if IS_MAC else "/usr/bin/github-desktop")
 )
+# PARITY_OFFLINE=1: both apps without network (an unreachable proxy), so
+# avatars, emoji and API calls fail the same way in both
+OFFLINE = os.environ.get("PARITY_OFFLINE") == "1"
+DEAD_PROXY = "http://127.0.0.1:9"
+
 # Retina on the Macs the harness grew up on; X11 under Xvfb is 1x
 DEFAULT_SCALE = 2.0 if IS_MAC else 1.0
 
@@ -195,6 +200,7 @@ class Ghd:
                     # from Corvane's (an intercepting proxy Chromium does not
                     # trust opens an "Untrusted server" dialog)
                     *shlex.split(os.environ.get("PARITY_GHD_ARGS", "")),
+                    *([f"--proxy-server={DEAD_PROXY}"] if OFFLINE else []),
                 ],
                 stdout=log,
                 stderr=log,
@@ -564,6 +570,14 @@ class Corvane:
             # (.docs/flags.md); PARITY_CORVANE_FLAGS overrides
             CORVANE_FLAGS=env.get("PARITY_CORVANE_FLAGS", "preset=github-desktop"),
         )
+        if not IS_MAC:
+            # the avatar and emoji caches live under XDG_CACHE_HOME, not the
+            # data dir: a private one keeps earlier runs' downloads out
+            env["XDG_CACHE_HOME"] = str(self.data_dir / "cache")
+        if OFFLINE:
+            for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+                env[key] = DEAD_PROXY
+            env["NO_PROXY"] = env["no_proxy"] = "localhost,127.0.0.1"
         env.update(extra_env or {})
         with open(self.log, "ab") as log:
             self.proc = subprocess.Popen([str(self.binary)], env=env, stdout=log, stderr=log, start_new_session=True)

@@ -140,10 +140,11 @@ dbus-run-session -- python3 tools/parity/parity.py main-window
 - Captures are the page: CDP leaves Electron's menu bar out, and Corvane's
   control socket works in page coordinates below its own menu bar
   (`PAGE_TOP` in `parity_control.rs`). Scale is 1.
-- `PARITY_GHD_ARGS` adds Chromium switches. Behind an intercepting HTTPS
-  proxy Chromium does not trust, GHD's first request opens an "Untrusted
-  server" dialog over every scenario; keep it offline, as Corvane is there:
-  `PARITY_GHD_ARGS=--proxy-server=http://127.0.0.1:9`.
+- `PARITY_OFFLINE=1` takes both apps offline (an unreachable proxy), so
+  avatars, emoji and API calls fail alike. Use it behind an intercepting
+  HTTPS proxy Chromium does not trust: there GHD's first request opens an
+  "Untrusted server" dialog over every scenario. `PARITY_GHD_ARGS` adds
+  other Chromium switches.
 - GHD runs without the Chromium sandbox when the harness runs as root.
 - Masks placed for macOS text do not always cover the same text on Linux
   (Noto Sans wraps differently from SF).
