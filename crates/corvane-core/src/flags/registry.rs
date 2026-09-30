@@ -713,6 +713,21 @@ registry! {
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/compare.rs", "crates/corvane/src/main.rs", "crates/corvane-ui/src/history.rs"],
     },
 
+    /// View on GitHub opens other hosts' remotes too.
+    VIEW_ON_REMOTE = 425 "view-on-remote" {
+        title: "View on Remote for other hosts",
+        summary: "Repository › View on GitHub opens the default remote's web page (as https://host/path) \
+                  for a repository that is not on GitHub, and the repository list's context menu offers \
+                  it as \"View on Remote\".",
+        ghd_behaviour: "View on GitHub does nothing / is disabled for repositories not on GitHub.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17846), Upstream::issue(20840)],
+        code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-ui/src/repository_list.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
