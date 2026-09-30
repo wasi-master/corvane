@@ -457,6 +457,20 @@ registry! {
         upstream: &[Upstream::issue(14061)],
         code: &["crates/corvane-ui/src/ci_check_popover.rs"],
     },
+    /// Pull Requests tab without an account.
+    PULL_REQUESTS_SIGNED_OUT = 391 "pull-requests-signed-out" {
+        title: "Pull Requests tab asks to sign in",
+        summary: "Without an account for the repository's host, the empty Pull Requests tab \
+                  says \"Sign in to see pull requests\" with a sign-in link, and its refresh \
+                  button is disabled.",
+        ghd_behaviour: "Shows \"You're all set!\" and a refresh button that does nothing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22365), Upstream::issue(5354)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-ui/src/pull_request_list.rs"],
+    },
 
     // ---- 400 Window & menus ----
 
