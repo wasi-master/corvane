@@ -176,8 +176,8 @@ pub fn toolbar_models(
         // GHD `iconForRepository`
         icon: match repo.and_then(|r| r.github.as_ref()) {
             _ if repo.is_some_and(|r| r.missing) => Octicon::Alert,
-            Some(gh) if gh.fork => Octicon::RepoForked,
             Some(gh) if gh.private => Octicon::Lock,
+            Some(gh) if gh.fork => Octicon::RepoForked,
             Some(_) => Octicon::Repo,
             None if repo.is_some() => Octicon::DeviceDesktop,
             None => Octicon::Repo,
@@ -541,15 +541,17 @@ pub fn toolbar_button(
             octicon(model.icon, text).mr(SPACING()).into_any_element()
         })
         .child({
+            // `.description` / `.title` keep `line-height: normal`: 13 px
+            // and 14 px boxes for SF at 11 / 12 px
             let description = div()
                 .text_size(FONT_SIZE_SM())
-                .line_height(zpx(14.))
+                .line_height(zpx(13.))
                 .text_color(secondary)
                 .truncate()
                 .child(model.description);
             let title = div()
                 .text_size(FONT_SIZE())
-                .line_height(zpx(15.))
+                .line_height(zpx(14.))
                 .font_weight(FontWeight::SEMIBOLD)
                 .truncate()
                 .child(model.title);
