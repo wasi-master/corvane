@@ -180,6 +180,20 @@ registry! {
         ],
     },
 
+    /// Taller .gitignore and squash-message text areas.
+    TALLER_TEXT_AREAS = 185 "taller-text-areas" {
+        title: "Taller .gitignore and squash message boxes",
+        summary: "Repository Settings › Ignored Files' .gitignore box is 260 px tall and the \
+                  Squash dialog's description box shows 12 lines.",
+        ghd_behaviour: "130 px for .gitignore, 6 lines for the squash description.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11715), Upstream::issue(13018)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
+    },
+
     // ---- 200 Repository ----
 
     /// `commit.template` prefills the commit description.

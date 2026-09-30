@@ -1169,9 +1169,19 @@ impl SquashCommitMessageDialog {
         let summary_state =
             cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
         summary_state.update(cx, |s, cx| s.set_value(summary, window, cx));
+        // flag `185-taller-text-areas`: 12 lines instead of GHD's 6
+        let rows = if AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TALLER_TEXT_AREAS)
+        {
+            12
+        } else {
+            6
+        };
         let description_state = cx.new(|cx| {
             TextareaState::new(window, cx)
-                .rows(6)
+                .rows(rows)
                 .placeholder("Description")
         });
         description_state.update(cx, |s, cx| s.set_value(description, window, cx));

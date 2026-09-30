@@ -55,9 +55,13 @@ impl RepositorySettingsDialog {
         cx: &mut Context<Self>,
     ) -> Self {
         let remote_url = cx.new(|cx| InputState::new(window, cx).placeholder("Remote URL"));
+        let taller = AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TALLER_TEXT_AREAS);
         let gitignore = cx.new(|cx| {
             TextareaState::new(window, cx)
-                .rows(8)
+                .rows(if taller { 16 } else { 8 })
                 .placeholder("Ignored files")
         });
         let name = cx.new(|cx| InputState::new(window, cx));
@@ -285,6 +289,15 @@ impl RepositorySettingsDialog {
 
     fn ignored_files_tab(&self, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let height = if AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TALLER_TEXT_AREAS)
+        {
+            260.
+        } else {
+            130.
+        };
         div()
             .flex()
             .flex_col()
@@ -303,9 +316,10 @@ impl RepositorySettingsDialog {
                 .into(),
             ]))
             .child(
-                // `textarea.gitignore { height: 130px }`
+                // `textarea.gitignore { height: 130px }`; flag
+                // `185-taller-text-areas` doubles it
                 div()
-                    .h(zpx(130.))
+                    .h(zpx(height))
                     .border_1()
                     .border_color(t.box_border_contrast)
                     .rounded(BORDER_RADIUS())
@@ -317,7 +331,11 @@ impl RepositorySettingsDialog {
                     .py(zpx(2.))
                     .text_size(FONT_SIZE())
                     .line_height(zpx(14.))
-                    .child(Textarea::new(&self.gitignore).appearance(false).h(zpx(124.))),
+                    .child(
+                        Textarea::new(&self.gitignore)
+                            .appearance(false)
+                            .h(zpx(height - 6.)),
+                    ),
             )
             .into_any_element()
     }
