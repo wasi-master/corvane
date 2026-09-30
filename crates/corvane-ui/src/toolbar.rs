@@ -6,6 +6,9 @@
 //! their right edge; dragging sets the width within
 //! `corvane_core::toolbar_widths`, double-clicking resets it to 230 px. The
 //! width is saved when the drag ends (GHD writes it on every move).
+//!
+//! The branch button also shows a running merge ("Merging <branch>",
+//! `265-merge-progress-in-branch-button`); GHD shows only checkouts.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -233,19 +236,49 @@ pub fn toolbar_models(
     // `checkoutProgress`: title = target branch, description = "Switching to Branch"
     let switching_to = repo_state.and_then(|s| s.checkout_target.clone());
     let switching_to_tooltip = switching_to.clone();
-    let switching = switching_to.is_some();
-    let (branch_icon, branch_desc, branch_title) = match switching_to {
-        Some(target) => (
-            Octicon::SyncClockwise,
-            "Switching to Branch",
-            SharedString::from(target),
-        ),
-        None => (branch_icon, branch_desc, branch_title),
-    };
+    // `265-merge-progress-in-branch-button`: a running merge (Merge into…,
+    // Update from Default Branch) spins the button, "Merging <branch>"
+    let merging_from = repo_state
+        .and_then(|s| s.mco.as_ref())
+        .filter(|m| {
+            m.step == corvane_core::McoStep::ShowProgress
+                && state
+                    .flags
+                    .bool(corvane_core::flags::ids::MERGE_PROGRESS_IN_BRANCH_BUTTON)
+        })
+        .and_then(|m| match &m.detail {
+            corvane_core::McoDetail::Merge { source_branch, .. } => {
+                Some(source_branch.clone().unwrap_or_default())
+            }
+            _ => None,
+        })
+        .filter(|_| switching_to.is_none());
+    let switching = switching_to.is_some() || merging_from.is_some();
+    let (branch_icon, branch_desc, branch_title): (Octicon, SharedString, SharedString) =
+        match (switching_to, &merging_from) {
+            (Some(target), _) => (
+                Octicon::SyncClockwise,
+                "Switching to Branch".into(),
+                SharedString::from(target),
+            ),
+            (None, Some(source)) => (
+                Octicon::SyncClockwise,
+                format!("Merging {source}").into(),
+                branch_title,
+            ),
+            (None, None) => (branch_icon, branch_desc.into(), branch_title),
+        };
     // `BranchDropdown` tooltip (none while open)
     let branch_tooltip: Option<SharedString> = match (&switching_to_tooltip, info.map(|i| &i.tip)) {
         _ if state.foldout == Some(Foldout::Branch) => None,
         (Some(target), _) => Some(format!("Checking out {target}").into()),
+        (None, _) if merging_from.is_some() => Some(
+            format!(
+                "Merging {} into {branch_title}",
+                merging_from.as_deref().unwrap_or_default()
+            )
+            .into(),
+        ),
         (None, Some(Tip::Valid { branch })) => Some(branch.name.clone().into()),
         (None, Some(Tip::Unborn { name })) => Some(format!("Current branch is {name}").into()),
         (None, Some(Tip::Detached { .. })) => Some("Currently on a detached HEAD".into()),
@@ -254,8 +287,8 @@ pub fn toolbar_models(
     let branch = ToolbarButtonModel {
         id: "toolbar-branch",
         icon: branch_icon,
-        description: branch_desc.into(),
-        title: branch_title,
+        description: branch_desc,
+        title: branch_title.clone(),
         width: Some(branch_width),
         foldout: Some(Foldout::Branch),
         open: state.foldout == Some(Foldout::Branch),

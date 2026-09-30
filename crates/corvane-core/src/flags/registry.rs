@@ -427,6 +427,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
 
+    /// The branch button shows a running merge.
+    MERGE_PROGRESS_IN_BRANCH_BUTTON = 265 "merge-progress-in-branch-button" {
+        title: "Branch button shows a running merge",
+        summary: "While a merge runs (Merge into…, Update from Default Branch) the toolbar's \
+                  branch button spins and reads \"Merging <branch>\", as it does while \
+                  switching branches.",
+        ghd_behaviour: "The merge dialog closes and nothing shows until the merge finishes.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6120), Upstream::issue(15996)],
+        code: &["crates/corvane-ui/src/toolbar.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.

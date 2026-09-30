@@ -44,6 +44,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Branch list rows can show where a branch lives (Corvane addition, off in the Corvane preset): `device-desktop` for a local branch without an upstream, `server` for a remote-only branch, the branch icon for tracked local branches (the current branch keeps its check); GHD uses the branch icon for all. Flag: `262-branch-list-local-remote-icons`.
 - A server button beside the branch list's filter (Corvane addition, off in the Corvane preset) narrows the list to remote branches, those with a local counterpart included, in one "Remote Branches" group; the toggle lasts while the app runs. GHD merges remote branches into Other Branches and hides those checked out locally. Flag: `263-branch-list-remote-only`.
 - Create a Branch can put a configured prefix (such as `feature/`) in front of the suggested name, unless the name already starts with it; empty by default in every preset, GHD has no such setting. Flag: `264-branch-name-prefix`.
+- While a merge runs (Merge into…, Update from Default Branch) the toolbar's branch button spins and reads "Merging <branch>" (tooltip "Merging <branch> into <current>"), like its "Switching to Branch" state; GHD shows nothing until the merge ends. Flag: `265-merge-progress-in-branch-button`.
 
 ## Tutorial
 
