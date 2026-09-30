@@ -53,7 +53,7 @@ pub use flags::FlagsDialog;
 pub use fork_dialogs::{ChooseForkSettingsDialog, CreateForkDialog, fork_settings_description};
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
-    UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
+    ResetToRemoteDialog, UnreachableCommitsDialog, WarnLocalChangesBeforeUndoDialog,
 };
 pub use mco_dialogs::{LocalChangesOverwrittenDialog, McoDialog, SquashCommitMessageDialog};
 pub use open_pull_request::OpenPullRequestDialog;
@@ -269,6 +269,23 @@ impl DialogHost {
                 .into(),
             Popup::ResetToCommit { repo, sha } => cx
                 .new(|_| ResetToCommitDialog::new(*repo, sha.clone()))
+                .into(),
+            Popup::ResetToRemote {
+                repo,
+                branch,
+                upstream,
+                ahead,
+                dirty,
+            } => cx
+                .new(|_| {
+                    ResetToRemoteDialog::new(
+                        *repo,
+                        branch.clone(),
+                        upstream.clone(),
+                        *ahead,
+                        *dirty,
+                    )
+                })
                 .into(),
             Popup::CheckoutCommit { repo, sha } => cx
                 .new(|_| CheckoutCommitDialog::new(*repo, sha.clone()))

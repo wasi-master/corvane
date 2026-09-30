@@ -82,6 +82,8 @@ type ItemClick = Box<dyn Fn(&mut Window, &mut App)>;
 
 /// GHD `PushPullButtonDropDown`: Fetch, and Force push when the branch has
 /// diverged from its upstream (`styles/ui/toolbar/_push-pull-button.scss`).
+/// Corvane addition (`229-reset-to-remote`): "Reset to <upstream>" while the
+/// branch has commits the upstream lacks.
 fn push_pull_dropdown(cx: &App) -> AnyElement {
     let t = cx.ghd();
     let state = corvane_core::AppState::global(cx).read(cx);
@@ -126,6 +128,15 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
             )
     };
     let has_force = force_push != corvane_core::ForcePushState::NotAvailable;
+    let reset_upstream = state
+        .flags
+        .bool(corvane_core::flags::ids::RESET_TO_REMOTE)
+        .then(|| state.repo_states.get(&id))
+        .flatten()
+        .filter(|rs| rs.ahead_behind.is_some_and(|ab| ab.ahead > 0))
+        .and_then(|rs| rs.info.as_ref()?.current_branch()?.upstream_short())
+        .map(str::to_string);
+    let has_reset = reset_upstream.is_some();
     div()
         .flex()
         .flex_col()
@@ -136,7 +147,7 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
             div()
                 .child(format!("Fetch the latest changes from {remote}"))
                 .into_any_element(),
-            !has_force,
+            !has_force && !has_reset,
             Box::new(move |_, cx| {
                 Dispatcher::close_foldout(cx);
                 Dispatcher::fetch(id, false, cx);
@@ -164,10 +175,27 @@ fn push_pull_dropdown(cx: &App) -> AnyElement {
                         )
                     })
                     .into_any_element(),
-                true,
+                !has_reset,
                 Box::new(move |_, cx| {
                     Dispatcher::close_foldout(cx);
                     Dispatcher::confirm_or_force_push(id, cx);
+                }),
+            ))
+        })
+        .when_some(reset_upstream, |d, upstream| {
+            d.child(item(
+                "push-pull-reset-to-remote",
+                Octicon::History,
+                format!("Reset to {upstream}"),
+                div()
+                    .child(format!(
+                        "Discard your local commits and changes and match {upstream}"
+                    ))
+                    .into_any_element(),
+                true,
+                Box::new(move |_, cx| {
+                    Dispatcher::close_foldout(cx);
+                    Dispatcher::request_reset_to_remote(id, cx);
                 }),
             ))
         })
