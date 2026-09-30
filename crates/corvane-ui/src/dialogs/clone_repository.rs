@@ -360,7 +360,11 @@ impl CloneRepositoryDialog {
         };
         let query = self.filter.read(cx).value().to_string();
         let rows = match self.state.read(cx).api_repositories.get(&account.endpoint) {
-            Some(repos) => group_rows(repos, &account.login, &query),
+            Some(repos) => group_rows(
+                repos,
+                &account.login,
+                &crate::cloneable_repositories::filter_query(&query, cx),
+            ),
             None => return,
         };
         match crate::cloneable_repositories::filtered_selection(
@@ -469,7 +473,16 @@ impl CloneRepositoryDialog {
                 s.api_repositories_loading.contains(&account.endpoint),
                 repos.is_some(),
                 repos
-                    .map(|r| group_rows(r, &account.login, &self.filter.read(cx).value()))
+                    .map(|r| {
+                        group_rows(
+                            r,
+                            &account.login,
+                            &crate::cloneable_repositories::filter_query(
+                                &self.filter.read(cx).value(),
+                                cx,
+                            ),
+                        )
+                    })
                     .unwrap_or_default(),
             )
         };

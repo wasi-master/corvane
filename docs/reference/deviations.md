@@ -26,6 +26,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** caches the repository list in redb per endpoint and filters it locally (as GHD does); there is no server-side search.
 - **Clone dialog** resolution (`corvane_core::clone_info`): when every account answers 404 for an `owner/name` shorthand, Corvane shows GHD's "We couldn't find that repository" error (GHD passes the bare alias to git, which fails); when a lookup fails otherwise (offline, anonymous rate limit) the shorthand is cloned as `https://github.com/owner/name.git` (Flag: `204-clone-shorthand-not-found`). The account picker's filter is a fuzzy match on login and endpoint, and the list has no keyboard navigation.
 - **Clone dialog** can clone over SSH: a repository picked from the list or an `owner/name` shorthand is resolved to its SSH URL; an `https://` URL typed on the URL tab keeps HTTPS (GHD clones over HTTPS unless an SSH URL is typed). Flag: `355-clone-prefers-ssh`.
+- **Clone dialog** and the signed-in blank slate: a repository URL pasted into the repository filter (`https://github.com/owner/name`, `git@host:owner/name.git`, a browser URL into the repository) filters as `owner/name`; GHD fuzzy-matches the whole URL and finds nothing. Flag: `356-clone-filter-accepts-urls`.
 
 ## Repository
 

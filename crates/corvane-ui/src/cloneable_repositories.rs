@@ -3,6 +3,11 @@
 //! `styles/ui/_account-picker.scss`), shared by Clone a Repository's account
 //! tabs and the signed-in blank slate (`no-repositories-view.tsx`).
 //!
+//! Deviation (`356-clone-filter-accepts-urls`): a repository URL pasted
+//! into the filter (`https://github.com/owner/name`, `git@host:owner/name.git`,
+//! a browser URL deeper into the repository) filters as `owner/name`; GHD
+//! fuzzy-matches the whole URL and finds nothing.
+//!
 //! Callers own the state (filter text box, selected clone URL, picked
 //! account, popover open) and wrap the pieces in their own layout; the two
 //! places differ only in insets and the list's frame.
@@ -91,6 +96,31 @@ pub fn group_rows(repos: &[GitHubRepository], login: &str, query: &str) -> Vec<C
         push_group(owner, items);
     }
     rows
+}
+
+/// The query `group_rows` filters with: the typed filter, or with
+/// `356-clone-filter-accepts-urls` a pasted URL's `owner/name`.
+pub fn filter_query(query: &str, cx: &App) -> String {
+    let on = corvane_core::AppState::global(cx)
+        .read(cx)
+        .flags
+        .bool(corvane_core::flags::ids::CLONE_FILTER_ACCEPTS_URLS);
+    if on {
+        url_as_full_name(query).unwrap_or_else(|| query.to_string())
+    } else {
+        query.to_string()
+    }
+}
+
+/// `owner/name` of a remote or browser URL (the first two path segments,
+/// `.git` stripped); `None` for anything that is not such a URL.
+pub fn url_as_full_name(query: &str) -> Option<String> {
+    let (_, path) = corvane_core::split_remote(query)?;
+    let mut parts = path.split(['/', '?', '#']).filter(|p| !p.is_empty());
+    let owner = parts.next()?;
+    let name = parts.next()?;
+    let name = name.strip_suffix(".git").unwrap_or(name);
+    (!name.is_empty()).then(|| format!("{owner}/{name}"))
 }
 
 /// `createStateUpdate` + `onSelectionChanged { kind: 'filter' }`: with a
@@ -712,6 +742,26 @@ mod tests {
                 "desktop/desktop"
             ]
         );
+    }
+
+    #[::core::prelude::v1::test]
+    fn urls_filter_as_owner_and_name() {
+        for url in [
+            "https://github.com/octocat/Hello",
+            "https://github.com/octocat/Hello.git",
+            "https://github.com/octocat/Hello/tree/main/src",
+            "git@github.com:octocat/Hello.git",
+            " https://github.com/octocat/Hello/ ",
+        ] {
+            assert_eq!(
+                url_as_full_name(url).as_deref(),
+                Some("octocat/Hello"),
+                "{url}"
+            );
+        }
+        assert_eq!(url_as_full_name("octocat/Hello"), None);
+        assert_eq!(url_as_full_name("https://github.com/octocat"), None);
+        assert_eq!(url_as_full_name("hello"), None);
     }
 
     #[::core::prelude::v1::test]

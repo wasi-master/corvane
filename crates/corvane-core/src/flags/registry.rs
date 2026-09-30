@@ -610,6 +610,21 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/clone_info.rs"],
     },
 
+    /// The clone list's filter accepts repository URLs.
+    CLONE_FILTER_ACCEPTS_URLS = 356 "clone-filter-accepts-urls" {
+        title: "Clone: repository URLs in the list filter",
+        summary: "A repository URL pasted into the repository filter of Clone a Repository (or \
+                  the \"Let's get started!\" page) filters by its owner/name, so \
+                  https://github.com/owner/name finds owner/name.",
+        ghd_behaviour: "Fuzzy-matches the whole URL and finds no repository.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20942)],
+        code: &["crates/corvane-ui/src/cloneable_repositories.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
