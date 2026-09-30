@@ -665,6 +665,21 @@ registry! {
         code: &["crates/corvane/src/menus.rs", "crates/corvane/src/main.rs"],
     },
 
+    /// `--hidden` launches with the window hidden.
+    LAUNCH_HIDDEN = 487 "launch-hidden" {
+        title: "Launch hidden with --hidden",
+        summary: "Started with `--hidden` (`open -a Corvane --args --hidden`, e.g. from a login \
+                  script), Corvane keeps its window hidden until the Dock icon or Window menu \
+                  brings it back.",
+        ghd_behaviour: "Always shows the window at launch.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(18925)],
+        code: &["crates/corvane/src/main.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

@@ -800,7 +800,28 @@ fn main() {
                     .ok();
             }
         });
-        cx.activate(true);
+        // `--hidden` (flag `487-launch-hidden`, Corvane addition): start with
+        // the window ordered out, as after ⌘W; the Dock icon shows it
+        let launch_hidden = hidden_argument(std::env::args())
+            && corvane_core::AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::LAUNCH_HIDDEN);
+        if launch_hidden {
+            info!("--hidden: the main window starts hidden");
+            #[cfg(target_os = "macos")]
+            for handle in cx.windows() {
+                handle
+                    .update(cx, |_, window, cx| {
+                        corvane_ui::native_window::hide_window(window, cx)
+                    })
+                    .ok();
+            }
+            #[cfg(not(target_os = "macos"))]
+            cx.hide();
+        } else {
+            cx.activate(true);
+        }
     });
 }
 
@@ -1105,9 +1126,21 @@ fn open_repo_argument(args: impl IntoIterator<Item = String>) -> Option<std::pat
     None
 }
 
+/// `--hidden`: launch without showing the main window.
+fn hidden_argument(args: impl IntoIterator<Item = String>) -> bool {
+    args.into_iter().any(|arg| arg == "--hidden")
+}
+
 #[cfg(test)]
 mod tests {
-    use super::open_repo_argument;
+    use super::{hidden_argument, open_repo_argument};
+
+    #[::core::prelude::v1::test]
+    fn hidden_argument_forms() {
+        let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert!(hidden_argument(args(&["corvane", "--hidden"])));
+        assert!(!hidden_argument(args(&["corvane", "--open-repo", "/tmp"])));
+    }
 
     // `gpui_kit::*` brings GPUI's `test` macro into scope; use the std one.
     #[::core::prelude::v1::test]

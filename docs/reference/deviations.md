@@ -111,6 +111,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Resizable toolbar buttons (`crates/corvane-ui/src/toolbar.rs`, `corvane_core::toolbar_widths`): the worktree and branch buttons resize as in GHD; the push/pull button keeps its 230 px (GHD resizes it too), the handles do not take ⌘9 / ⌘8 or announce the new width, and the width is saved when the drag ends rather than on every move (Flag: `404-toolbar-width-save`).
 - Repository › View Upstream on GitHub (Corvane addition, `app/src/main-process/menu/build-default-menu.ts` has only View on GitHub): opens a fork's parent repository; does nothing for a repository that is not a fork. Flag: `396-view-upstream-on-github`.
 - Window › Corvane (Corvane addition): shows the main window again after ⌘W or the close button hid it (GHD only brings it back from the Dock). Flag: `486-window-menu-main-window`.
+- `--hidden` (Corvane addition): launched with it (`open -a Corvane --args --hidden`), the main window starts ordered out as after ⌘W; the Dock icon or Window › Corvane shows it. GHD always shows its window. Flag: `487-launch-hidden`.
 
 ## Keyboard
 
