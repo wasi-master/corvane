@@ -69,6 +69,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The Rebase dialog's branch list (GHD `rebase-choose-branch-dialog.tsx`, `mergeRemoteAndLocalBranches` hides a remote branch that has a local one) ends with a Remote Branches group of those remote-tracking branches (`origin/main` beside `main`, not `*/HEAD`), filtered like the rest; picking one previews and rebases onto it as a revision. Flag: `451-rebase-onto-remote-branch`.
 - A conflicted file's ▾ menu in the conflicts dialog (GHD `unmerged-file.tsx`) adds Copy File Path and Copy Relative File Path after Reveal in Finder. Flag: `452-conflict-menu-copy-paths`.
 - The conflicts dialog of a rebase, squash or reorder (GHD `conflicts-dialog.tsx`) starts with the progress dialog's "Commit N of M:" and the stopped commit's summary (truncated); merges and cherry-picks (whose count moves only after a pick) have no such line. Flag: `453-conflicts-show-current-commit`.
+- A rebase found stopped on conflicts (started outside Corvane or before a restart; GHD `getRebaseSnapshot` knows only the `onto` sha) gets its base branch from `for-each-ref --points-at <onto>` (a local branch first, then a remote one, never the rebased branch or `*/HEAD`), which names the base side in the conflicts dialog and the success banner. A base that has moved on since is not found. Flag: `454-rebase-base-name-resolved`.
 
 ## Tutorial
 

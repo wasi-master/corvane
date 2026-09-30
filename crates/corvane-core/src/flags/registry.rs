@@ -867,6 +867,20 @@ registry! {
         upstream: &[Upstream::issue(18796)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs"],
     },
+    /// A rebase found in progress names its base branch.
+    REBASE_BASE_NAME_RESOLVED = 454 "rebase-base-name-resolved" {
+        title: "Rebase found in progress names its base branch",
+        summary: "For a rebase that stopped on conflicts outside Corvane (or before a restart), the \
+                  branch at the commit being rebased onto is looked up, so the conflicts dialog's \
+                  choices read \"from main\" and the success banner names the base.",
+        ghd_behaviour: "The base side is unnamed (\"Use the modified file\").",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8113)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

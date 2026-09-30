@@ -2237,15 +2237,22 @@ impl Dispatcher {
                     let Some(snapshot) = rebase_snapshot else {
                         return;
                     };
+                    // flag `454`: name the branch at `onto` (GHD shows none)
+                    let base = snapshot.base_branch.filter(|_| {
+                        Self::state(cx)
+                            .read(cx)
+                            .flags
+                            .bool(crate::flags::ids::REBASE_BASE_NAME_RESOLVED)
+                    });
                     (
                         McoDetail::Rebase {
-                            base_branch: None,
+                            base_branch: base.clone(),
                             commits: snapshot.commits,
                         },
                         Some(target_branch.clone()),
                         Some(original_branch_tip.clone()),
                         Some(snapshot.progress),
-                        None,
+                        base,
                         Some(target_branch.clone()),
                     )
                 }
