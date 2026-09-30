@@ -78,11 +78,11 @@ pub use rebase_ops::{
 };
 pub use remote_ops::{
     AskpassEnv, FetchOptions, ProgressParser, RemoteFailure, add_remote, classify_remote_failure,
-    cloned_at, config_value, fast_forward_branch_from_remote, fast_forward_branches, fetch,
-    fetch_refspec, fetch_with, fetch_with_prune_tags, find_default_remote, get_remotes,
-    install_lfs_hooks, is_using_lfs, is_using_lfs_by_attributes, last_fetched, lfs_available,
-    lfs_hooks_installed, parse_progress_line, pull, pull_with_rebase, push, remote_failure,
-    remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
+    cloned_at, config_value, fast_forward_branch_from_remote, fast_forward_branches,
+    fast_forward_if_only_behind, fetch, fetch_refspec, fetch_with, fetch_with_prune_tags,
+    find_default_remote, get_remotes, install_lfs_hooks, is_using_lfs, is_using_lfs_by_attributes,
+    last_fetched, lfs_available, lfs_hooks_installed, parse_progress_line, pull, pull_with_rebase,
+    push, remote_failure, remote_head_resolves, remove_remote, set_remote_url, update_remote_head,
 };
 pub use repo::{
     ahead_behind, main_worktree_path, open_repository, symmetric_ahead_behind,

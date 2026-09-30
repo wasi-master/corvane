@@ -478,6 +478,20 @@ registry! {
         upstream: &[Upstream::issue(15758)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// The background fetch fast-forwards the current branch.
+    BACKGROUND_FETCH_FAST_FORWARDS = 237 "background-fetch-fast-forwards" {
+        title: "Background fetch pulls when safe",
+        summary: "After a background fetch, the checked-out branch is fast-forwarded to its \
+                  upstream when it is only behind, the working directory has no changes and no \
+                  merge, rebase or cherry-pick is in progress. Anything else is left for Pull.",
+        ghd_behaviour: "Only fetches; the branch stays behind until you pull.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16586)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

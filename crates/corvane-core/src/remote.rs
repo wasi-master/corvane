@@ -24,6 +24,8 @@
 //! (`234-remote-head-once`; GHD runs it after every pull).
 //! Fetch can extend the commit-graph (`235-fetch-writes-commit-graph`).
 //! Fetch and pull can leave submodules alone (`236-sync-skips-submodules`).
+//! The background fetch can fast-forward a clean branch that is only behind
+//! (`237-background-fetch-fast-forwards`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -456,6 +458,11 @@ impl Dispatcher {
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
         let options = Self::fetch_options(Self::state(cx).read(cx), id);
+        let fast_forward_current = background
+            && Self::state(cx)
+                .read(cx)
+                .flags
+                .bool(crate::flags::ids::BACKGROUND_FETCH_FAST_FORWARDS);
         Self::run_network(
             id,
             cx,
@@ -487,7 +494,16 @@ impl Dispatcher {
                         description: Some("Fast-forwarding branches".into()),
                         value: 0.9,
                     });
-                    let _ = corvane_git::fast_forward_branches(git, &workdir);
+                    let _ = corvane_git::fast_forward_branches(git.clone(), &workdir);
+                    // `237-background-fetch-fast-forwards`: a clean branch
+                    // that is only behind catches up (GHD leaves it for Pull)
+                    if fast_forward_current {
+                        match corvane_git::fast_forward_if_only_behind(git, &workdir) {
+                            Ok(true) => info!(id, "fast-forwarded after background fetch"),
+                            Ok(false) => {}
+                            Err(err) => warn!(id, %err, "fast-forward after fetch failed"),
+                        }
+                    }
                 }
                 result
             },

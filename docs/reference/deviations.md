@@ -46,6 +46,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - After a pull, `git remote set-head -a` (GHD `updateRemoteHEAD`, which lists every ref on the server) runs only when `refs/remotes/<remote>/HEAD` does not resolve (`corvane_git::remote_head_resolves`); a remote whose default branch changed is picked up once the old branch is pruned. Flag: `234-remote-head-once`.
 - Fetch can pass `--write-commit-graph` (`corvane_git::FetchOptions`), extending the commit-graph file that speeds up history walks and ahead/behind counts; GHD's `fetch` never does. `--no-write-fetch-head`, also proposed upstream, is not used because "Last fetched" reads `FETCH_HEAD`. Flag: `235-fetch-writes-commit-graph`.
 - Fetch and pull can leave submodules alone (`--no-recurse-submodules`; GHD's `fetch` passes `--recurse-submodules=on-demand` and `pull` `--recurse-submodules`), off by default. Flag: `236-sync-skips-submodules`.
+- The background fetch can fast-forward the checked-out branch (`corvane_git::fast_forward_if_only_behind`, `merge --ff-only @{upstream}`) when it is behind but not ahead, the working directory is clean and no merge, rebase or cherry-pick is in progress; off by default. GHD's background fetch never touches the checked-out branch. Flag: `237-background-fetch-fast-forwards`.
 
 ## Tutorial
 

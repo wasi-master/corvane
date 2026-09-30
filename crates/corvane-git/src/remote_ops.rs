@@ -599,6 +599,33 @@ pub fn fast_forward_branches(git: Arc<GitBinary>, workdir: &Path) -> Result<usiz
     Ok(pairs.len())
 }
 
+/// Fast-forward the checked-out branch to its upstream when the working
+/// directory is clean, no merge, rebase or cherry-pick is in progress and
+/// the branch is behind but not ahead: `merge --ff-only @{upstream}`.
+/// `Ok(false)` when any of that does not hold. Corvane addition
+/// (desktop#16586: pull after a background fetch).
+pub fn fast_forward_if_only_behind(git: Arc<GitBinary>, workdir: &Path) -> Result<bool> {
+    let status = crate::get_status(git.clone(), workdir, None)?;
+    let only_behind = status
+        .ahead_behind
+        .is_some_and(|ab| ab.ahead == 0 && ab.behind > 0);
+    if !only_behind
+        || status.upstream.is_none()
+        || !status.files.is_empty()
+        || status.merge_head_found
+        || status.rebase_in_progress
+        || status.cherry_pick_head_found
+    {
+        return Ok(false);
+    }
+    GitCommand::new(git)
+        .args(["merge", "--ff-only", "@{upstream}"])
+        .env("GIT_REFLOG_ACTION", "pull")
+        .current_dir(workdir)
+        .run()?;
+    Ok(true)
+}
+
 /// GHD `updateLastFetched`: mtime of a non-empty `FETCH_HEAD`.
 pub fn last_fetched(workdir: &Path) -> Option<SystemTime> {
     let meta = std::fs::metadata(git_dir(workdir).join("FETCH_HEAD")).ok()?;
@@ -1004,6 +1031,17 @@ mod tests {
         assert_eq!((ab.ahead, ab.behind), (0, 1));
         // fast-forwarding updates `mirror` but leaves the checked-out `main` alone
         assert_eq!(fast_forward_branches(git.clone(), &work).unwrap(), 1);
+        // a dirty working directory blocks the checked-out branch's fast-forward
+        std::fs::write(work.join("a.txt"), "dirty\n").unwrap();
+        assert!(!fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        run(&work, &["checkout", "--", "a.txt"]);
+        let behind = crate::symmetric_ahead_behind(git.clone(), &work, "main", "origin/main")
+            .unwrap()
+            .unwrap();
+        assert_eq!((behind.ahead, behind.behind), (0, 1));
+        assert!(fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        assert!(!fast_forward_if_only_behind(git.clone(), &work).unwrap());
+        run(&work, &["reset", "-q", "--hard", "HEAD~1"]);
         let ab = crate::symmetric_ahead_behind(git.clone(), &work, "mirror", "origin/main")
             .unwrap()
             .unwrap();
