@@ -10,6 +10,9 @@
 //! Compare-to-branch and the unpushed indicator come with the remote
 //! milestone. Drop tooltips ("Copy to …", "Squash N commits")
 //! are not shown; the drop targets highlight instead.
+//!
+//! Deviations (`.docs/deviations.md` › History): the commit menus
+//! add Copy Commit Title / Message / URL and Copy SHAs (flag `240`).
 
 use std::rc::Rc;
 
@@ -824,10 +827,29 @@ impl HistorySidebar {
             .repo_states
             .get(&id)
             .is_some_and(|r| r.compare.is_comparing());
+        let copy_items = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS);
+        // `240`: newest first, whatever the click order
+        let shas_text = {
+            let s = self.state.read(cx);
+            let mut shas = selection.clone();
+            if let Some(rs) = s.repo_states.get(&id) {
+                shas.sort_by_key(|sha| {
+                    rs.commits
+                        .iter()
+                        .position(|c| &c.sha == sha)
+                        .unwrap_or(usize::MAX)
+                });
+            }
+            shas.join("\n")
+        };
         let weak = cx.weak_entity();
         let (s1, s2, s3) = (selection.clone(), selection.clone(), selection);
         let onto = commit.sha.clone();
-        let items = vec![
+        let mut items = vec![
             MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
                 Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx)
             })
@@ -844,6 +866,12 @@ impl HistorySidebar {
             })
             .enabled(!busy && !comparing),
         ];
+        if copy_items {
+            items.push(MenuItem::separator());
+            items.push(MenuItem::new("Copy SHAs", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(shas_text.clone()))
+            }));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -856,7 +884,7 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (html_url, is_head, busy) = {
+        let (html_url, is_head, busy, copy_items) = {
             let s = self.state.read(cx);
             let html_url = s
                 .repository(id)
@@ -873,6 +901,7 @@ impl HistorySidebar {
                 html_url,
                 is_head,
                 rs.is_some_and(|r| r.mco.is_some()) || comparing,
+                s.flags.bool(corvane_core::flags::ids::HISTORY_COPY_ITEMS),
             )
         };
         Dispatcher::select_commit(id, commit.sha.clone(), cx);
@@ -987,6 +1016,33 @@ impl HistorySidebar {
                 move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
             }),
         ]);
+        let commit_url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
+        if copy_items {
+            // `240`: the title, the full message and the GitHub URL
+            let title = commit.summary.clone();
+            let message = if commit.body.is_empty() {
+                commit.summary.clone()
+            } else {
+                format!("{}\n\n{}", commit.summary, commit.body)
+            };
+            items.push(MenuItem::new("Copy Commit Title", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(title.clone()))
+            }));
+            items.push(MenuItem::new("Copy Commit Message", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(message.clone()))
+            }));
+            items.push(
+                MenuItem::new("Copy Commit URL", {
+                    let url = commit_url.clone();
+                    move |_, cx| {
+                        if let Some(url) = &url {
+                            cx.write_to_clipboard(ClipboardItem::new_string(url.clone()));
+                        }
+                    }
+                })
+                .enabled(commit_url.is_some()),
+            );
+        }
         let tags = commit.tags.join(" ");
         items.push(
             MenuItem::new(
@@ -1001,7 +1057,7 @@ impl HistorySidebar {
         );
         items.push(
             MenuItem::new("View on GitHub", {
-                let url = html_url.clone().map(|u| format!("{u}/commit/{sha}"));
+                let url = commit_url;
                 move |_, cx| {
                     if let Some(url) = &url {
                         Dispatcher::open_url(url, cx);
