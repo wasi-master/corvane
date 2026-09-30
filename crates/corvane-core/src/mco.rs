@@ -1377,6 +1377,18 @@ impl Dispatcher {
 
     /// `_mergeBranch` (+ `initializeMergeOperation`).
     pub fn merge_branch(id: u64, branch: String, squash: bool, cx: &mut App) {
+        Self::merge_branch_with_message(id, branch, squash, None, cx)
+    }
+
+    /// [`Self::merge_branch`]; a squash merge commits with `message` when
+    /// given (flag `450`'s message fields).
+    pub fn merge_branch_with_message(
+        id: u64,
+        branch: String,
+        squash: bool,
+        message: Option<String>,
+        cx: &mut App,
+    ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
         };
@@ -1398,7 +1410,13 @@ impl Dispatcher {
         spawn_bg(
             cx,
             move || {
-                let result = corvane_git::merge_branch(git.clone(), &workdir, &branch, squash);
+                let result = corvane_git::merge_branch_with_message(
+                    git.clone(),
+                    &workdir,
+                    &branch,
+                    squash,
+                    message.as_deref(),
+                );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
                 (result, status)
             },

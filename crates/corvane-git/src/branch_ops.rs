@@ -243,6 +243,21 @@ pub fn merge_branch(
     branch: &str,
     squash: bool,
 ) -> Result<MergeOutcome> {
+    merge_branch_with_message(git, workdir, branch, squash, None)
+}
+
+/// [`merge_branch`]; a squash merge given `message` commits with it instead
+/// of git's "Squashed commit of the following" list (on conflicts it becomes
+/// `SQUASH_MSG`, and `MERGE_MSG`'s conflict note goes, so the commit made
+/// after resolving uses it too).
+pub fn merge_branch_with_message(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    branch: &str,
+    squash: bool,
+    message: Option<&str>,
+) -> Result<MergeOutcome> {
+    let message = message.filter(|m| squash && !m.trim().is_empty());
     let mut cmd = GitCommand::new(git.clone())
         .args(["merge"])
         .current_dir(workdir);
@@ -258,11 +273,23 @@ pub fn merge_branch(
             || (squash && git_dir.join("SQUASH_MSG").exists())
             || stdout.contains("Automatic merge failed")
         {
+            if let Some(message) = message
+                && git_dir.join("SQUASH_MSG").exists()
+            {
+                std::fs::write(git_dir.join("SQUASH_MSG"), message)?;
+                let _ = std::fs::remove_file(git_dir.join("MERGE_MSG"));
+            }
             return Ok(MergeOutcome::Conflicts);
         }
         return Ok(MergeOutcome::Failed(out.stderr.trim().to_string()));
     }
-    if squash {
+    if let Some(message) = message {
+        GitCommand::new(git)
+            .args(["commit", "-F", "-"])
+            .stdin(message.as_bytes().to_vec())
+            .current_dir(workdir)
+            .run()?;
+    } else if squash {
         GitCommand::new(git)
             .args(["commit", "--no-edit"])
             .current_dir(workdir)

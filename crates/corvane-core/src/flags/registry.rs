@@ -809,6 +809,21 @@ registry! {
         upstream: &[Upstream::issue(21685)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
     },
+    /// Squash and merge asks for the commit message.
+    SQUASH_MERGE_MESSAGE = 450 "squash-merge-message" {
+        title: "Squash and merge: commit message",
+        summary: "The Squash and Merge dialog has summary and description fields above its \
+                  button. With a summary, the squashed commit gets that message; left empty, \
+                  git's \"Squashed commit of the following\" list as before.",
+        ghd_behaviour: "The squashed commit always gets git's \"Squashed commit of the following\" \
+                        list of the merged commits.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21718)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/branch_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
