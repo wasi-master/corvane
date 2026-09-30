@@ -444,6 +444,19 @@ registry! {
         upstream: &[Upstream::issue(21092)],
         code: &["crates/corvane-ui/src/image_diff.rs"],
     },
+    /// TGA images get an image diff.
+    TGA_IMAGE_DIFF = 184 "tga-image-diff" {
+        title: "Image diffs for TGA files",
+        summary: "Changed `.tga` images (common in game assets) are shown in the image diff \
+                  (2-up, Swipe, Onion Skin, Difference).",
+        ghd_behaviour: "\"This binary file has changed.\"",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21970)],
+        code: &["crates/corvane-ui/src/image_diff.rs", "crates/corvane-ui/src/diff_view.rs", "crates/corvane-models/src/lib.rs"],
+    },
 
     // ---- 200 Repository ----
 

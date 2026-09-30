@@ -90,6 +90,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - "Show the diff as text anyway." (Corvane addition) under a binary working-directory file's "This binary file has changed." reloads its diff with `git diff --text` (`Dispatcher::show_binary_diff_as_text`, remembered for that path until another file is asked for). The rows are read-only: a partial commit takes its patch without `--text`. GHD 3.6.6 (`ui/diff/binary-file.tsx`) offers only "Open file in external program.". Flag: `181-binary-diff-as-text`.
 - Expanded diffs (Corvane addition, off in the Corvane preset): every text diff opens as if "Expand Whole File" had been picked (`DiffView::load`; files over 20 000 lines and large diffs stay collapsed). GHD 3.6.6 opens diffs collapsed and forgets the expansion per file. Flag: `182-diff-expand-whole-file`.
 - Image diff background (Corvane addition): the checkerboard behind images can be dark, or dark while the app theme is dark (`image_diff::checkerboard`). GHD 3.6.6 (the `checkboard-background` mixin) always draws the light one. Flag: `183-image-diff-background`.
+- TGA images (Corvane addition): `.tga` files get the image diff; the image crate decodes them to PNG for GPUI (`image_diff::Side::from_tga`) and the footer keeps the file's own size. GHD 3.6.6 (`lib/git/diff.ts` `imageFileExtensions`) shows them as binary. Flag: `184-tga-image-diff`.
 
 ## Settings
 

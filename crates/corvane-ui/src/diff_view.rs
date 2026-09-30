@@ -1804,6 +1804,20 @@ impl Render for DiffView {
             }
             Diff::Text { .. } | Diff::LargeText { .. } | Diff::Empty => self.empty_panel(&snap, cx),
             Diff::Binary => self.binary_panel(&snap, cx),
+            // `184-tga-image-diff` off: GHD does not know TGA images
+            Diff::Image { previous, current }
+                if [previous, current]
+                    .into_iter()
+                    .flatten()
+                    .any(|b| b.media_type == crate::image_diff::TGA_MEDIA_TYPE)
+                    && !self
+                        .state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::TGA_IMAGE_DIFF) =>
+            {
+                self.binary_panel(&snap, cx)
+            }
             Diff::Image { .. } => match self.image.clone() {
                 Some(image) => image.into_any_element(),
                 None => self.panel("This binary file has changed.", cx),

@@ -1273,6 +1273,8 @@ pub fn image_media_type(path: &str) -> Option<&'static str> {
         "webp" => "image/webp",
         "bmp" => "image/bmp",
         "avif" => "image/avif",
+        // Corvane `184-tga-image-diff` (the UI shows it as binary when off)
+        "tga" => "image/x-tga",
         _ => return None,
     })
 }

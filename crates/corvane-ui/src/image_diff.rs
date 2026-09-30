@@ -11,6 +11,9 @@
 //!
 //! Deviation (`183-image-diff-background`): the checkerboard behind the
 //! images can be dark, or follow the app theme.
+//!
+//! Deviation (`184-tga-image-diff`): `.tga` files are image diffs (decoded to
+//! PNG); GHD shows them as binary.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -36,6 +39,10 @@ fn SLIDER_OVERFLOW() -> Pixels {
     zpx(14.)
 }
 
+/// `184-tga-image-diff`: GPUI cannot draw TGA, so it is decoded and shown
+/// as PNG.
+pub const TGA_MEDIA_TYPE: &str = "image/x-tga";
+
 struct Side {
     image: Arc<Image>,
     bytes: usize,
@@ -45,6 +52,9 @@ struct Side {
 
 impl Side {
     fn from_blob(blob: &ImageBlob) -> Self {
+        if blob.media_type == TGA_MEDIA_TYPE {
+            return Self::from_tga(blob);
+        }
         let format = match blob.media_type.as_str() {
             "image/jpg" | "image/jpeg" => ImageFormat::Jpeg,
             "image/gif" => ImageFormat::Gif,
@@ -59,6 +69,31 @@ impl Side {
             .and_then(|r| r.into_dimensions().ok());
         Self {
             image: Arc::new(Image::from_bytes(format, blob.bytes.clone())),
+            bytes: blob.bytes.len(),
+            size,
+        }
+    }
+}
+
+impl Side {
+    /// A TGA image (no magic number to guess from) re-encoded as PNG; the
+    /// footer still shows the file's own size.
+    fn from_tga(blob: &ImageBlob) -> Self {
+        let png = image::load_from_memory_with_format(&blob.bytes, image::ImageFormat::Tga)
+            .ok()
+            .and_then(|decoded| {
+                let mut png = Vec::new();
+                decoded
+                    .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+                    .ok()?;
+                Some(((decoded.width(), decoded.height()), png))
+            });
+        let (size, bytes) = match png {
+            Some((size, png)) => (Some(size), png),
+            None => (None, Vec::new()),
+        };
+        Self {
+            image: Arc::new(Image::from_bytes(ImageFormat::Png, bytes)),
             bytes: blob.bytes.len(),
             size,
         }
@@ -801,7 +836,24 @@ fn blend_difference(backdrop: [u8; 4], source: [u8; 4]) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::blend_difference;
+    use super::{Side, TGA_MEDIA_TYPE, blend_difference};
+    use corvane_core::ImageBlob;
+
+    #[test]
+    fn tga_decodes_to_png() {
+        let mut tga = Vec::new();
+        image::RgbaImage::from_pixel(3, 2, image::Rgba([255, 0, 0, 255]))
+            .write_to(&mut std::io::Cursor::new(&mut tga), image::ImageFormat::Tga)
+            .unwrap();
+        let blob = ImageBlob {
+            bytes: tga.clone(),
+            media_type: TGA_MEDIA_TYPE.to_string(),
+        };
+        let side = Side::from_blob(&blob);
+        assert_eq!(side.size, Some((3, 2)));
+        assert_eq!(side.bytes, tga.len());
+        assert!(side.image.bytes.starts_with(b"\x89PNG"));
+    }
 
     #[test]
     fn difference_blend_matches_css() {
