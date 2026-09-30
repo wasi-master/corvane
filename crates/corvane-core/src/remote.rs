@@ -23,6 +23,7 @@
 //! A pull skips `remote set-head -a` while the remote's HEAD resolves
 //! (`234-remote-head-once`; GHD runs it after every pull).
 //! Fetch can extend the commit-graph (`235-fetch-writes-commit-graph`).
+//! Fetch and pull can leave submodules alone (`236-sync-skips-submodules`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -407,6 +408,8 @@ impl Dispatcher {
                 && s.repository(id).is_some_and(|r| r.tags_to_push.is_empty()),
             // `235-fetch-writes-commit-graph`
             write_commit_graph: s.flags.bool(crate::flags::ids::FETCH_WRITES_COMMIT_GRAPH),
+            // `236-sync-skips-submodules`
+            skip_submodules: s.flags.bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES),
         }
     }
 
@@ -637,6 +640,10 @@ impl Dispatcher {
             .read(cx)
             .flags
             .bool(crate::flags::ids::REMOTE_HEAD_ONCE);
+        let skip_submodules = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES);
         Self::set_progress(
             id,
             Some(PushPullProgress {
@@ -657,6 +664,7 @@ impl Dispatcher {
                     git.clone(),
                     &workdir,
                     &remote_name,
+                    skip_submodules,
                     askpass.as_ref(),
                     &mut |value, text| {
                         report(PushPullProgress {
@@ -942,6 +950,11 @@ impl Dispatcher {
             .map(|r| r.tags_to_push.clone())
             .unwrap_or_default();
         let pushed_tags = !tags.is_empty();
+        // GHD's plain fetch after a push, plus `235` / `236`
+        let fetch_options = corvane_git::FetchOptions {
+            prune_tags: false,
+            ..Self::fetch_options(Self::state(cx).read(cx), id)
+        };
         let retry = RetryAction::Push {
             force_with_lease,
             branch: Some(branch.name.clone()),
@@ -975,10 +988,11 @@ impl Dispatcher {
                         description: None,
                         value: 0.65,
                     });
-                    let _ = corvane_git::fetch(
+                    let _ = corvane_git::fetch_with(
                         git.clone(),
                         &workdir,
                         &remote_name,
+                        fetch_options,
                         askpass.as_ref(),
                         &mut |value, text| {
                             report(PushPullProgress {

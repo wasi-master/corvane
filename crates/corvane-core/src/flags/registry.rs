@@ -464,6 +464,20 @@ registry! {
         upstream: &[Upstream::issue(22045)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Fetch and pull leave submodules alone.
+    SYNC_SKIPS_SUBMODULES = 236 "sync-skips-submodules" {
+        title: "Fetch and pull skip submodules",
+        summary: "Fetch and pull pass --no-recurse-submodules, so submodules are neither fetched \
+                  nor updated; syncing them is left to you.",
+        ghd_behaviour: "Fetch recurses into submodules on demand and pull always updates them, \
+                        which fails the whole pull when a submodule has conflicts.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(15758)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

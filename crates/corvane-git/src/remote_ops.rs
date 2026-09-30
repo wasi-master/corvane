@@ -376,6 +376,9 @@ pub struct FetchOptions {
     /// `--write-commit-graph`: git extends the commit-graph file, which
     /// speeds up history walks and ahead/behind counts (desktop#22045).
     pub write_commit_graph: bool,
+    /// `--no-recurse-submodules` instead of `--recurse-submodules=on-demand`:
+    /// submodules are left to the user (desktop#15758).
+    pub skip_submodules: bool,
 }
 
 /// [`fetch`] with [`FetchOptions`].
@@ -395,7 +398,12 @@ pub fn fetch_with(
     if options.write_commit_graph {
         args.push("--write-commit-graph");
     }
-    args.extend(["--recurse-submodules=on-demand", remote]);
+    args.push(if options.skip_submodules {
+        "--no-recurse-submodules"
+    } else {
+        "--recurse-submodules=on-demand"
+    });
+    args.push(remote);
     remote_command(git, workdir, askpass)
         .args(args)
         .run_streaming(|line| {
@@ -467,11 +475,14 @@ pub fn config_value(git: Arc<GitBinary>, workdir: &Path, key: &str) -> Option<St
         .filter(|s| !s.is_empty())
 }
 
-/// GHD `pull`: `pull [--ff] --recurse-submodules --progress <remote>`.
+/// GHD `pull`: `pull [--ff] --recurse-submodules --progress <remote>`;
+/// `skip_submodules` passes `--no-recurse-submodules` instead (Corvane
+/// addition, desktop#15758).
 pub fn pull(
     git: Arc<GitBinary>,
     workdir: &Path,
     remote: &str,
+    skip_submodules: bool,
     askpass: Option<&AskpassEnv>,
     on_progress: ProgressFn<'_>,
 ) -> Result<()> {
@@ -481,7 +492,12 @@ pub fn pull(
     if pull_ff.is_none() {
         args.push("--ff");
     }
-    args.extend(["--recurse-submodules", "--progress", remote]);
+    args.push(if skip_submodules {
+        "--no-recurse-submodules"
+    } else {
+        "--recurse-submodules"
+    });
+    args.extend(["--progress", remote]);
     remote_command(git, workdir, askpass)
         .args(&args)
         .env("GIT_EDITOR", ":")
@@ -996,7 +1012,7 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!((ab.ahead, ab.behind), (0, 1));
-        pull(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        pull(git.clone(), &work, "origin", false, None, &mut |_, _| {}).unwrap();
         assert!(work.join("b.txt").exists());
         // diverge, then a plain push is rejected as non-fast-forward
         std::fs::write(other.join("c.txt"), "three\n").unwrap();
@@ -1020,7 +1036,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(remote_failure(&err), RemoteFailure::PushNotFastForward);
         // pull merges the remote work in
-        pull(git.clone(), &work, "origin", None, &mut |_, _| {}).unwrap();
+        pull(git.clone(), &work, "origin", true, None, &mut |_, _| {}).unwrap();
         assert!(work.join("c.txt").exists());
         push(
             git,
