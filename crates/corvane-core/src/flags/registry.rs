@@ -194,6 +194,19 @@ registry! {
             "crates/corvane-core/src/packs.rs",
         ],
     },
+    /// Spinner while a working-directory diff loads.
+    DIFF_LOADING_INDICATOR = 107 "diff-loading-indicator" {
+        title: "Diff loading spinner",
+        summary: "When a changed file's diff takes more than 300 ms to compute (large files, slow \
+                  filters), a spinner covers the diff pane until it is ready.",
+        ghd_behaviour: "The previous diff (or an empty pane) stays up with no sign of work.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(1913)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
 
     // ---- 200 Repository ----
 
