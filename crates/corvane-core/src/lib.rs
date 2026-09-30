@@ -24,6 +24,7 @@ pub mod mco;
 pub mod notifications;
 pub mod packs;
 pub mod persistence;
+pub mod portable_paths;
 pub mod pull_request_preview;
 pub mod pull_requests;
 pub mod push_errors;
