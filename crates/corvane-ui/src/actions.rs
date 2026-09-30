@@ -17,6 +17,9 @@ gpui_kit::actions!(
         ToggleIncludeSelected,
         // ⌘⌫ in the changes list (`607-cmd-backspace-discards-files`)
         DiscardSelectedFiles,
+        // ⇧⌘A / ⌥⌘O in a file list (`608-open-file-shortcuts`)
+        OpenSelectedFileInEditor,
+        OpenSelectedFileWithDefaultProgram,
         // Worktrees
         NewWorktree,
         ShowWorktreesList,

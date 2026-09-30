@@ -15,12 +15,16 @@ pub struct KeymapFlags {
     /// `607-cmd-backspace-discards-files`: ⌘⌫ in the changes list discards
     /// the selected files instead of removing the repository.
     pub discard_selected_files: bool,
+    /// `608-open-file-shortcuts`: ⇧⌘A / ⌥⌘O in the changes and commit file
+    /// lists open the selected file in the editor / default program.
+    pub open_file_shortcuts: bool,
 }
 
 impl KeymapFlags {
     pub fn from_flags(flags: &Flags) -> Self {
         Self {
             discard_selected_files: flags.bool(ids::CMD_BACKSPACE_DISCARDS_FILES),
+            open_file_shortcuts: flags.bool(ids::OPEN_FILE_SHORTCUTS),
         }
     }
 }
@@ -157,6 +161,18 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             DiscardSelectedFiles,
             Some("ChangesList"),
         ));
+    }
+    if flags.open_file_shortcuts {
+        for context in ["ChangesList", "CommitFileList"] {
+            bindings.extend([
+                KeyBinding::new("shift-cmd-a", OpenSelectedFileInEditor, Some(context)),
+                KeyBinding::new(
+                    "alt-cmd-o",
+                    OpenSelectedFileWithDefaultProgram,
+                    Some(context),
+                ),
+            ]);
+        }
     }
     bindings
 }
