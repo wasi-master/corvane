@@ -37,6 +37,18 @@ pub fn get_commits(
     skip: usize,
     limit: usize,
 ) -> Result<Vec<Commit>> {
+    get_commits_with(workdir, revision, skip, limit, false)
+}
+
+/// [`get_commits`], following only first parents when `first_parent`
+/// (`git log --first-parent`).
+pub fn get_commits_with(
+    workdir: &Path,
+    revision: &str,
+    skip: usize,
+    limit: usize,
+    first_parent: bool,
+) -> Result<Vec<Commit>> {
     let repo = gix::open(workdir)?;
     let Some(tip) = repo.rev_parse_single(revision).ok() else {
         return Ok(Vec::new());
@@ -52,8 +64,11 @@ pub fn get_commits(
             }
         }
     }
-    let walk = repo
-        .rev_walk([tip.detach()])
+    let mut walk = repo.rev_walk([tip.detach()]);
+    if first_parent {
+        walk = walk.first_parent_only();
+    }
+    let walk = walk
         .sorting(gix::revision::walk::Sorting::ByCommitTime(
             gix::traverse::commit::simple::CommitTimeOrder::NewestFirst,
         ))
@@ -602,6 +617,32 @@ mod tests {
         let page = get_commits(dir.path(), "HEAD", 1, 10).unwrap();
         assert_eq!(page.len(), 1);
         assert_eq!(page[0].summary, "first");
+    }
+
+    #[test]
+    fn first_parent_skips_merged_commits() {
+        let (dir, _) = repo();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(dir.path())
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["checkout", "-q", "-b", "topic"]);
+        std::fs::write(dir.path().join("c.txt"), "c\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "topic work"]);
+        run(&["checkout", "-q", "main"]);
+        run(&["merge", "-q", "--no-ff", "-m", "merge topic", "topic"]);
+        let all = get_commits(dir.path(), "HEAD", 0, 10).unwrap();
+        assert!(all.iter().any(|c| c.summary == "topic work"));
+        let first = get_commits_with(dir.path(), "HEAD", 0, 10, true).unwrap();
+        let summaries: Vec<_> = first.iter().map(|c| c.summary.as_str()).collect();
+        assert_eq!(summaries, ["merge topic", "second", "first"]);
     }
 
     #[test]
