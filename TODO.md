@@ -8,10 +8,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 - [ ] Decide whether to expose a provider-agnostic "AI commit message" hook (`GenerateCommitMessage*`, `Copilot*` popups, Settings › Copilot tab, Prompts › "Overriding commit message with generated message"). Not planned; keep menu/tab out of Corvane to avoid dead UI.
 
-## Tutorial + onboarding extras
-
-- [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
-
 ## Diff viewer
 
 - [ ] Tree-sitter as an opt-in highlighter (decided 2026-09-30): Settings › Appearance › Syntax highlighting "GitHub Desktop" (default: the CodeMirror ports + syntect fallback, GHD-exact) | "Tree-sitter" (Zed-style highlight queries mapped onto the same `--syntax-*` colours). Grammars ship in an on-demand pack so the default binary does not grow (compiled grammars are native code: dylib pack loaded by an ad-hoc signed app without hardened runtime, or WASM via tree-sitter's wasm store; pick one). Record the non-GHD mode in `docs/reference/deviations.md`; the parity harness keeps running in the default mode.
