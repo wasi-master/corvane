@@ -57,6 +57,22 @@ fn product_name(s: &str) -> Result<(), &'static str> {
     }
 }
 
+/// `264-branch-name-prefix`: empty (off) or a ref-name-safe prefix.
+fn branch_name_prefix(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 60 {
+        Err("At most 60 characters")
+    } else if s
+        .chars()
+        .any(|c| c.is_whitespace() || c.is_control() || "~^:?*[\\\"'".contains(c))
+    {
+        Err("No spaces or ~ ^ : ? * [ \\ quotes")
+    } else if s.starts_with(['.', '/', '-']) || s.contains("..") || s.contains("//") {
+        Err("Not a valid start of a branch name")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -394,6 +410,21 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(14134)],
         code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
+    /// Create a Branch prefills a prefix.
+    BRANCH_NAME_PREFIX = 264 "branch-name-prefix" {
+        title: "Branch name prefix",
+        summary: "Text Create a Branch puts in front of the suggested name (for example \
+                  \"feature/\" or \"yourname/\"); empty for none.",
+        ghd_behaviour: "No prefix.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "feature/", validate: branch_name_prefix },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14004)],
+        code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
 
     // ---- 300 GitHub ----
@@ -778,5 +809,15 @@ mod tests {
         assert_eq!(def.label_for(&Value::text("min-400")), "At least 400 px");
         assert_eq!(def.label_for(&Value::text("other")), "other");
         assert_eq!(def.label_for(&Value::Bool(true)), "on");
+    }
+
+    #[test]
+    fn branch_name_prefix_accepts_ref_safe_text() {
+        for ok in ["", "feature/", "wasi-", "team/wasi/"] {
+            assert!(branch_name_prefix(ok).is_ok(), "{ok}");
+        }
+        for bad in ["my feature/", "a:b", "/x", ".x", "a..b", "a//b", "x~"] {
+            assert!(branch_name_prefix(bad).is_err(), "{bad}");
+        }
     }
 }

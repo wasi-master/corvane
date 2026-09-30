@@ -10,6 +10,7 @@
 //! Delete Branch warns about unmerged commits and a stash on the branch
 //! (`258-delete-branch-warnings`).
 //! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
+//! Create a Branch can prefill a name prefix (`264-branch-name-prefix`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -105,6 +106,17 @@ impl CreateBranchDialog {
         cx: &mut Context<Self>,
     ) -> Self {
         let name = cx.new(|cx| InputState::new(window, cx));
+        // `264-branch-name-prefix`
+        let prefix = state
+            .read(cx)
+            .flags
+            .text(corvane_core::flags::ids::BRANCH_NAME_PREFIX)
+            .to_string();
+        let initial_name = if initial_name.starts_with(&prefix) {
+            initial_name
+        } else {
+            format!("{prefix}{initial_name}")
+        };
         if !initial_name.is_empty() {
             name.update(cx, |s, cx| s.set_value(initial_name, window, cx));
         }
