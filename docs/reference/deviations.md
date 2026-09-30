@@ -50,7 +50,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 
 ## Repository
 
-- Filesystem watcher (Corvane addition, `corvane_core::watcher`; GHD only refreshes on window focus and after its own actions): FSEvents on the selected repository's worktree and `.git`, debounced 300 ms, trigger a refresh. Flags: `202-fs-watcher`, `203-fs-watcher-debounce-ms`.
+- Filesystem watcher (Corvane addition, `corvane_core::watcher`; GHD only refreshes on window focus and after its own actions): FSEvents on the selected repository's worktree and `.git`, debounced 300 ms, trigger a refresh. Worktree paths git ignores do not count unless the index tracks them (gitoxide's exclude stack: the `.gitignore` files, `.git/info/exclude`, `core.excludesFile`; rebuilt when one of them, the config or the index changes), so a build writing into `target/` or `node_modules/` does not refresh every debounce window. Flags: `202-fs-watcher`, `203-fs-watcher-debounce-ms`.
 - Add Local Repository checks the path as it changes and keeps Add Repository disabled until it is a repository; GHD 3.6.6 checks only when Add Repository is pressed and leaves that warning up, stale, while the path is edited. Flag: `205-add-local-validates-while-typing`.
 - Add Local Repository › Choose… can select several folders; with more than one it adds each folder that is a Git repository and names the others in an error (GHD's picker takes one folder). Flag: `222-add-local-multiple`.
 - Add Local Repository's Local Path autocompletes folder names (`/…`, `~/…`; the Add Worktree branch popup with folder rows: ↑/↓, Enter/Tab, Esc); GHD's box is plain text. Flag: `223-add-local-path-completion`.
