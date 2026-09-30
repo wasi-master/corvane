@@ -742,6 +742,19 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/toolbar.rs"],
     },
+    /// A settings file that cannot be written is reported.
+    REPORT_SETTINGS_SAVE_ERRORS = 412 "report-settings-save-errors" {
+        title: "Report settings that could not be saved",
+        summary: "When a changed setting cannot be written to disk, an error dialog says so \
+                  (with the reason) instead of the change silently being lost on the next launch.",
+        ghd_behaviour: "A failed save goes unnoticed; the setting reverts after a restart.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5046)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

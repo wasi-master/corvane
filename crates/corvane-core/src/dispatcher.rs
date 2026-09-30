@@ -3453,14 +3453,23 @@ impl Dispatcher {
 
     // ---- settings ----
 
+    /// A failed save is logged; with `report-settings-save-errors` it is also
+    /// shown (once while that error popup is up), where GitHub Desktop's
+    /// `setItem` failures go unnoticed (desktop/desktop#5046).
     pub fn update_settings(cx: &mut App, edit: impl FnOnce(&mut Settings)) {
-        Self::state(cx).update(cx, |s, cx| {
+        const TITLE: &str = "Could not save settings";
+        let failed = Self::state(cx).update(cx, |s, cx| {
             edit(&mut s.settings);
-            if let Err(err) = s.store.save_settings(&s.settings) {
-                error!(?err, "could not save settings");
-            }
             cx.notify();
+            let err = s.store.save_settings(&s.settings).err()?;
+            error!(?err, "could not save settings");
+            let shown = matches!(&s.popup, Some(Popup::Error { title, .. }) if title == TITLE);
+            (s.flags.bool(crate::flags::ids::REPORT_SETTINGS_SAVE_ERRORS) && !shown)
+                .then(|| err.to_string())
         });
+        if let Some(message) = failed {
+            Self::show_error(TITLE, message, cx);
+        }
     }
 }
 
