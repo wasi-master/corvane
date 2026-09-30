@@ -542,7 +542,24 @@ impl BranchFoldout {
                             branch.name.clone(),
                             branch.name.clone(),
                         );
-                        let items = vec![
+                        // Corvane addition (`230-update-branch-from-upstream`)
+                        let update = (local && !current)
+                            .then(|| branch.upstream_short())
+                            .flatten()
+                            .filter(|_| {
+                                corvane_core::AppState::global(cx)
+                                    .read(cx)
+                                    .flags
+                                    .bool(corvane_core::flags::ids::UPDATE_BRANCH_FROM_UPSTREAM)
+                            })
+                            .map(|upstream| {
+                                let name = branch.name.clone();
+                                MenuItem::new(format!("Update from {upstream}"), move |_, cx| {
+                                    Dispatcher::close_foldout(cx);
+                                    Dispatcher::update_branch_from_upstream(id, name.clone(), cx)
+                                })
+                            });
+                        let mut items = vec![
                             MenuItem::new("Rename…", move |_, cx| {
                                 Dispatcher::close_foldout(cx);
                                 Dispatcher::show_popup(
@@ -580,6 +597,9 @@ impl BranchFoldout {
                                 )
                             }),
                         ];
+                        if let Some(update) = update {
+                            items.insert(2, update);
+                        }
                         crate::native_menu::show_context_menu(items, ev.position, window, cx);
                     }
                     #[cfg(not(target_os = "macos"))]

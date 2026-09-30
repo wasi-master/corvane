@@ -379,6 +379,20 @@ registry! {
         upstream: &[Upstream::issue(16673)],
         code: &["crates/corvane-ui/src/foldout.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs"],
     },
+    /// Branch context menu: fast-forward a branch that is not checked out.
+    UPDATE_BRANCH_FROM_UPSTREAM = 230 "update-branch-from-upstream" {
+        title: "Update a branch from its upstream",
+        summary: "The branch list's context menu offers \"Update from origin/…\" on local branches \
+                  that are not checked out: the branch is fast-forwarded to its upstream without \
+                  switching to it (a diverged branch is left alone with an explanation).",
+        ghd_behaviour: "No such command; the branch has to be checked out and pulled.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19837)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

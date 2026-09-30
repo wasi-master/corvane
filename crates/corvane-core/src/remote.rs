@@ -14,6 +14,8 @@
 //! The background fetch can run without progress in the push/pull button,
 //! and a push, pull or fetch asked for meanwhile waits for it
 //! (`228-push-during-background-fetch`; GHD disables the button).
+//! A local branch that is not checked out can be fast-forwarded from its
+//! upstream (`230-update-branch-from-upstream`).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -585,6 +587,104 @@ impl Dispatcher {
                             err,
                             remote_url,
                             RetryAction::Pull,
+                            false,
+                            cx,
+                        );
+                    }
+                }
+                Self::refresh_repository(id, cx);
+            },
+        );
+    }
+
+    // ---- update a branch from its upstream ----
+
+    /// The branch list's "Update from <upstream>" (`230-update-branch-from-upstream`;
+    /// GHD has none): fast-forward a local branch that is not checked out.
+    pub fn update_branch_from_upstream(id: u64, name: String, cx: &mut App) {
+        let target = {
+            let s = Self::state(cx).read(cx);
+            if !s.flags.bool(crate::flags::ids::UPDATE_BRANCH_FROM_UPSTREAM) {
+                return;
+            }
+            let info = s.repo_states.get(&id).and_then(|r| r.info.as_ref());
+            info.and_then(|info| {
+                let branch = info
+                    .branches
+                    .iter()
+                    .find(|b| b.name == name && b.kind == corvane_models::BranchKind::Local)?;
+                if info.current_branch().is_some_and(|c| c.name == name) {
+                    return None;
+                }
+                let remote = branch.upstream_remote_name()?;
+                let remote_branch = branch
+                    .upstream_short()?
+                    .strip_prefix(remote)?
+                    .strip_prefix('/')?
+                    .to_string();
+                let url = info.remotes.iter().find(|r| r.name == remote)?.url.clone();
+                Some((
+                    remote.to_string(),
+                    remote_branch,
+                    url,
+                    branch.upstream_short()?.to_string(),
+                ))
+            })
+        };
+        let Some((remote, remote_branch, remote_url, upstream)) = target else {
+            return;
+        };
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        if !Self::begin_network(id, cx) {
+            return;
+        }
+        Self::arm_credential_helper(&remote_url, cx);
+        let askpass = Self::askpass_env(cx);
+        Self::set_progress(
+            id,
+            Some(PushPullProgress {
+                kind: PushPullKind::Fetch,
+                title: format!("Updating {name} from {upstream}"),
+                description: None,
+                value: 0.,
+            }),
+            cx,
+        );
+        let local = name.clone();
+        Self::run_network(
+            id,
+            cx,
+            move |_| {
+                corvane_git::fast_forward_branch_from_remote(
+                    git,
+                    &workdir,
+                    &remote,
+                    &remote_branch,
+                    &local,
+                    askpass.as_ref(),
+                )
+            },
+            move |result, cx| {
+                if let Err(err) = result {
+                    let title = "Could not update branch";
+                    if corvane_git::remote_failure(&err) == RemoteFailure::PushNotFastForward {
+                        Self::show_error(
+                            title,
+                            format!(
+                                "{name} has commits that are not on {upstream}, so it cannot be \
+                                 fast-forwarded. Check it out and pull instead."
+                            ),
+                            cx,
+                        );
+                    } else {
+                        Self::handle_remote_error(
+                            id,
+                            title,
+                            err,
+                            remote_url,
+                            RetryAction::Fetch,
                             false,
                             cx,
                         );
