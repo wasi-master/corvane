@@ -11,6 +11,10 @@
 //! (`onMouseEnterPullRequestListItem`); leaving the row hides it after 500 ms
 //! unless the pointer reaches the quick view, and leaving the quick view
 //! hides it at once (`onMouseLeavePullRequestQuickView`).
+//!
+//! Deviation (`418-branch-list-stash-icon`): a local branch with a Desktop
+//! stash shows the stash icon after its name (GHD `branch-list-item.tsx` does
+//! not).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -23,6 +27,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, octicon, spin};
@@ -448,7 +453,15 @@ impl BranchFoldout {
             .into_any_element()
     }
 
-    fn row(&self, id: u64, branch: &Branch, current: bool, cx: &Context<Self>) -> impl IntoElement {
+    /// `stashed`: the branch has a Desktop stash (`418-branch-list-stash-icon`).
+    fn row(
+        &self,
+        id: u64,
+        branch: &Branch,
+        current: bool,
+        stashed: bool,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
         let t = cx.ghd();
         let name = branch.name.clone();
         let selected = match &self.selected_row {
@@ -620,6 +633,19 @@ impl BranchFoldout {
                     .text_size(FONT_SIZE())
                     .child(branch.name.clone()),
             )
+            .when(stashed, |d| {
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-stash-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(octicon(Octicon::Stash, t.text_secondary))
+                        .ghd_tooltip("Stashed changes"),
+                )
+            })
             .when_some(date, |d, date| {
                 d.child(
                     div()
@@ -727,10 +753,17 @@ impl Render for BranchFoldout {
         let t = cx.ghd();
         self.list_focused = self.list_focus.is_focused(window);
         let query = self.filter.read(cx).value().trim().to_string();
-        let (id, groups, current, tip_valid) = {
+        let (id, groups, current, tip_valid, stashed) = {
             let s = self.state.read(cx);
             let id = s.selected;
             let rs = id.and_then(|id| s.repo_states.get(&id));
+            let stashed = rs
+                .filter(|_| {
+                    s.flags
+                        .bool(corvane_core::flags::ids::BRANCH_LIST_STASH_ICON)
+                })
+                .map(|rs| rs.stashed_branches.clone())
+                .unwrap_or_default();
             let info = rs.and_then(|r| r.info.as_ref());
             let current = info
                 .and_then(|i| i.current_branch())
@@ -745,7 +778,7 @@ impl Render for BranchFoldout {
                 ),
                 _ => Vec::new(),
             };
-            (id, groups, current, tip_valid)
+            (id, groups, current, tip_valid, stashed)
         };
         let Some(id) = id else {
             return div().into_any_element();
@@ -865,7 +898,13 @@ impl Render for BranchFoldout {
                                     .child(group.title),
                             )
                             .children(group.branches.iter().map(|b| {
-                                self.row(id, b, current.as_deref() == Some(b.name.as_str()), cx)
+                                self.row(
+                                    id,
+                                    b,
+                                    current.as_deref() == Some(b.name.as_str()),
+                                    b.kind == BranchKind::Local && stashed.contains(&b.name),
+                                    cx,
+                                )
                             }))
                     }))
                     .with_scrollbar()

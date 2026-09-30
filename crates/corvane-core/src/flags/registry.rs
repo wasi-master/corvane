@@ -826,6 +826,19 @@ registry! {
         upstream: &[Upstream::issue(17147)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/state.rs"],
     },
+    /// A stash icon on branch rows that have a stash.
+    BRANCH_LIST_STASH_ICON = 418 "branch-list-stash-icon" {
+        title: "Stash icon in the branch list",
+        summary: "Local branches with stashed changes (a GitHub Desktop or Corvane stash) show the \
+                  stash icon after their name in the branch list.",
+        ghd_behaviour: "A branch's stash is only visible after switching to it.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17198)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

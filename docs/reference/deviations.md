@@ -54,6 +54,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Deleting the checked-out branch switches to the default branch and then fetches its upstream remote in the background, so the commits of a just-merged pull request show up; GHD switches without fetching. Flag: `414-fetch-after-deleting-current-branch`.
 - The Changes list's "N changed files" row ends in a spinner while Discard Changes runs, and while a status refresh has run for 300 ms (fast refreshes show nothing); GHD shows neither. Flag: `416-changes-busy-indicator`.
 - Show stashes made outside Corvane (Corvane addition, off in the Corvane preset): without a `!!GitHub_Desktop<branch>` stash for the current branch, the Stashed Changes row shows the newest stash whose message is not a Desktop one (a Desktop stash of another branch is never shown). Restore / Discard act on it; stashing from Corvane (switching branches, Stash All Changes) only replaces a Desktop stash, so a command-line stash is never dropped, and the overwrite warnings only count Desktop stashes. GHD shows Desktop stashes only. Flag: `417-show-latest-other-stash`.
+- Branch list rows of local branches with a `!!GitHub_Desktop<branch>` stash show the stash icon (tooltip "Stashed changes") between the name and the date; GHD shows a branch's stash only once it is checked out. Flag: `418-branch-list-stash-icon`.
 
 ## Tutorial
 

@@ -628,6 +628,9 @@ pub struct RepositoryState {
     pub stash: Option<corvane_models::StashEntry>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
+    /// Branches with a GitHub Desktop / Corvane stash (the branch list's
+    /// stash icon, `418-branch-list-stash-icon`).
+    pub stashed_branches: Vec<String>,
     /// Merge dialog preview.
     pub merge_preview: Option<crate::mco::MergePreview>,
     /// `pullRequestState`: the Preview Pull Request dialog's data.

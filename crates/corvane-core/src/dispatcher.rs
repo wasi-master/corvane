@@ -637,6 +637,8 @@ impl Dispatcher {
                     let (mut stashes, stash_count) =
                         corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
                     let current = info.current_branch().map(|b| b.name.clone());
+                    let stashed_branches =
+                        stashes.iter().filter_map(|s| s.branch.clone()).collect();
                     let desktop_stash = stashes
                         .iter()
                         .position(|s| s.branch.is_some() && s.branch == current);
@@ -678,6 +680,7 @@ impl Dispatcher {
                         default_branch,
                         stash,
                         stash_count,
+                        stashed_branches,
                         rebase_snapshot,
                         cherry_pick_snapshot,
                         last_fetched: corvane_git::last_fetched(&info.workdir),
@@ -748,6 +751,7 @@ impl Dispatcher {
                                 repo_state.default_branch = extras.default_branch;
                                 repo_state.stash = extras.stash;
                                 repo_state.stash_count = extras.stash_count;
+                                repo_state.stashed_branches = extras.stashed_branches;
                                 repo_state.last_fetched = extras.last_fetched;
                                 repo_state.pull_with_rebase = extras.pull_with_rebase;
                                 repo_state.worktrees = extras.worktrees;
@@ -3562,6 +3566,7 @@ struct RefreshExtras {
     default_branch: Option<String>,
     stash: Option<corvane_models::StashEntry>,
     stash_count: usize,
+    stashed_branches: Vec<String>,
     rebase_snapshot: Option<corvane_git::RebaseSnapshot>,
     cherry_pick_snapshot: Option<corvane_git::CherryPickSnapshot>,
     last_fetched: Option<std::time::SystemTime>,
