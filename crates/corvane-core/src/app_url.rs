@@ -19,7 +19,10 @@
 //!
 //! Deviations: GHD 3.6.6 has no `openLocalRepo` action (its CLI passes
 //! `--cli-open` to a second Electron instance); Corvane's `corvane` tool
-//! sends that URL so an already running Corvane receives it.
+//! sends that URL so an already running Corvane receives it. With flag
+//! `exact-repository-url-first`, `openRepo` prefers the repository that is
+//! the URL over a fork matching through its parent (`doesRepositoryMatchUrl`
+//! callers take the first match).
 
 use std::path::{Path, PathBuf};
 
@@ -289,9 +292,20 @@ impl Dispatcher {
     }
 
     /// GHD `doesRepositoryMatchUrl`: the repository's GitHub repository or
-    /// its parent is `url`.
+    /// its parent is `url`. With `exact-repository-url-first` a repository
+    /// that is `url` itself wins over a fork matching through its parent
+    /// (GHD takes the first match in list order).
     fn repository_matching_url(url: &str, cx: &App) -> Option<u64> {
         let s = Self::state(cx).read(cx);
+        if s.flags.bool(crate::flags::ids::EXACT_REPOSITORY_URL_FIRST)
+            && let Some(exact) = s.repositories.iter().find(|r| {
+                r.github
+                    .as_ref()
+                    .is_some_and(|g| url_matches_remote(&g.html_url, url))
+            })
+        {
+            return Some(exact.id);
+        }
         s.repositories
             .iter()
             .find(|r| {
