@@ -147,9 +147,22 @@ impl Dispatcher {
     /// Sign in the way `307-sign-in-flow` says (the dialog's primary button,
     /// Welcome, re-authorization prompts).
     pub fn begin_sign_in(endpoint: corvane_github::Endpoint, cx: &mut App) {
+        if Self::browser_sign_in_first(&endpoint, cx) {
+            Self::sign_in_web_flow(endpoint, cx)
+        } else {
+            Self::sign_in_device_flow(endpoint, cx)
+        }
+    }
+
+    /// Whether `307-sign-in-flow` starts `endpoint`'s sign-in in the browser.
+    /// "auto" does on GitHub.com when the build has a client secret (GitHub
+    /// refuses the web flow's token exchange without one); GitHub Enterprise
+    /// keeps the device flow, as its secret lives in the keychain.
+    pub fn browser_sign_in_first(endpoint: &corvane_github::Endpoint, cx: &App) -> bool {
         match Self::state(cx).read(cx).flags.text(ids::SIGN_IN_FLOW) {
-            "browser" => Self::sign_in_web_flow(endpoint, cx),
-            _ => Self::sign_in_device_flow(endpoint, cx),
+            "browser" => true,
+            "auto" => endpoint.is_dotcom() && corvane_github::CLIENT_SECRET.is_some(),
+            _ => false,
         }
     }
 
