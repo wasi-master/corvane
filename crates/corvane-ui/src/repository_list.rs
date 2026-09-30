@@ -98,8 +98,8 @@ impl RepositoryFoldout {
         // GHD `iconForRepository`
         let icon = match &repo.github {
             _ if repo.missing => Octicon::Alert,
-            Some(gh) if gh.fork => Octicon::RepoForked,
             Some(gh) if gh.private => Octicon::Lock,
+            Some(gh) if gh.fork => Octicon::RepoForked,
             Some(_) => Octicon::Repo,
             None => Octicon::DeviceDesktop,
         };
