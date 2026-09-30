@@ -477,6 +477,10 @@ pub enum RetryAction {
     },
     Pull,
     Fetch,
+    /// Rebase the current branch onto `base` (flag `447`).
+    Rebase {
+        base: String,
+    },
 }
 
 impl RetryAction {
@@ -491,6 +495,7 @@ impl RetryAction {
             RetryAction::Push { .. } => "push",
             RetryAction::Pull => "pull",
             RetryAction::Fetch => "fetch",
+            RetryAction::Rebase { .. } => "rebase",
         }
     }
 }

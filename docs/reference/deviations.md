@@ -62,6 +62,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Merge, rebase and cherry-pick
 
 - Resolve All (Corvane addition; GHD `conflicts-dialog.tsx` resolves one file at a time): with two or more conflicted files the conflicts dialog's count row has a Resolve All ▾ menu, "Resolve All Using <branch>" for either side. It sets the manual resolution of every file that still has conflicts, exactly as picking that side per file would (deleted-on-one-side files included), so nothing is written before Continue and each row keeps its Undo. Flag: `446-resolve-all-conflicts`.
+- Rebase Current Branch with uncommitted changes shows the "Unable to rebase when changes are present on your branch" dialog (GHD `LocalChangesOverwrittenDialog`), and its Stash Changes and Continue stashes and then rebases onto the chosen branch (`RetryAction::Rebase`); GHD's retry stashes and stops. Without the flag the rebase starts and git's refusal is shown. Flag: `447-rebase-stash-and-continue`.
 
 ## Tutorial
 

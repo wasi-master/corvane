@@ -765,6 +765,20 @@ registry! {
         upstream: &[Upstream::issue(12377), Upstream::issue(15829), Upstream::issue(22516)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-core/src/mco.rs"],
     },
+    /// Rebase with local changes: stash, then rebase.
+    REBASE_STASH_AND_CONTINUE = 447 "rebase-stash-and-continue" {
+        title: "Rebase: Stash Changes and Continue rebases",
+        summary: "Rebasing with uncommitted changes first offers to stash them; Stash Changes and \
+                  Continue stashes and then runs the rebase.",
+        ghd_behaviour: "Stash Changes and Continue stashes the changes and stops; the rebase has to \
+                        be started again.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21904)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/state.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

@@ -630,6 +630,7 @@ impl Dispatcher {
             } => Self::push(id, force_with_lease, branch, cx),
             RetryAction::Pull => Self::pull(id, cx),
             RetryAction::Fetch => Self::fetch(id, false, cx),
+            RetryAction::Rebase { base } => Self::start_rebase(id, base, false, cx),
         }
     }
 
@@ -849,6 +850,22 @@ impl Dispatcher {
         let Some((target, tip)) = Self::current_branch_and_tip(id, cx) else {
             return;
         };
+        // flag `447`: git refuses to rebase over local changes; offer the
+        // stash first, and rebase once it is made (GHD's retry forgets to)
+        if Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REBASE_STASH_AND_CONTINUE)
+            && Self::blocked_by_local_changes(
+                id,
+                RetryAction::Rebase {
+                    base: base_branch.clone(),
+                },
+                cx,
+            )
+        {
+            return;
+        }
         let commits = Self::state(cx)
             .read(cx)
             .repo_states
