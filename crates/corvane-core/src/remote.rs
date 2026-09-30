@@ -9,6 +9,8 @@
 //! The background fetch can be off or cover any remote
 //! (`224-background-fetch`; GHD: GitHub repositories only).
 //! Fetch can prune tags deleted on the remote (`225-fetch-prune-tags`).
+//! The LFS check can read `.gitattributes` instead of running
+//! `git lfs track` (`226-lfs-detect-by-attributes`).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -932,12 +934,24 @@ impl Dispatcher {
             return;
         }
         Self::state(cx).update(cx, |s, _| s.repo_state_mut(id).lfs_checked = true);
+        // `226-lfs-detect-by-attributes`: read the .gitattributes files instead
+        // of `git lfs track`, which walks the whole worktree
+        let by_attributes = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::LFS_DETECT_BY_ATTRIBUTES);
         spawn_bg(
             cx,
             move || {
-                corvane_git::lfs_available(git.clone())
-                    && corvane_git::is_using_lfs(git, &workdir)
-                    && !corvane_git::lfs_hooks_installed(&workdir)
+                if by_attributes {
+                    corvane_git::is_using_lfs_by_attributes(git.clone(), &workdir)
+                        && !corvane_git::lfs_hooks_installed(&workdir)
+                        && corvane_git::lfs_available(git)
+                } else {
+                    corvane_git::lfs_available(git.clone())
+                        && corvane_git::is_using_lfs(git, &workdir)
+                        && !corvane_git::lfs_hooks_installed(&workdir)
+                }
             },
             move |needs_init, cx| {
                 if needs_init && Self::state(cx).read(cx).popup.is_none() {

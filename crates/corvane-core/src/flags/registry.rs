@@ -322,6 +322,21 @@ registry! {
         upstream: &[Upstream::issue(21022), Upstream::issue(22776)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// The Git LFS check reads .gitattributes instead of `git lfs track`.
+    LFS_DETECT_BY_ATTRIBUTES = 226 "lfs-detect-by-attributes" {
+        title: "Fast Git LFS detection",
+        summary: "Whether a newly added repository uses Git LFS is decided from its committed \
+                  .gitattributes files (plus the root one and info/attributes) instead of \
+                  `git lfs track`, which walks every directory, untracked ones included.",
+        ghd_behaviour: "Runs `git lfs track --json`, which can take minutes in a worktree with \
+                        many untracked files.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(5198)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

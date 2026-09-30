@@ -34,6 +34,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - A failed force push keeps the branch's "Force push" recommendation (`Dispatcher::push_then` clears it after a successful push); GHD's `performPush` clears it before the push runs, so after a failure the button falls back to a plain Push that git rejects. Flag: `223-force-push-kept-on-failure`.
 - Background fetch (`Dispatcher::background_fetch_tick`; GHD `BackgroundFetcher`, GitHub repositories only): can be turned off, or extended to any repository with a remote (the GitHub Desktop value stays the default). Flag: `224-background-fetch`.
 - Fetch can prune tags (`corvane_git::fetch_with_prune_tags`, `--prune-tags`; GHD's `fetch` prunes branches only, so a tag deleted on the remote stays): off by default because it also deletes local tags that were never pushed; skipped while tags created in Corvane wait to be pushed. Flag: `225-fetch-prune-tags`.
+- Git LFS detection for the `InitializeLFS` prompt (`corvane_git::is_using_lfs_by_attributes`): reads the `.gitattributes` files in the index, the root one on disk and `info/attributes` for `filter=lfs`; GHD's `isUsingLFS` runs `git lfs track --json`, which walks every directory including untracked ones. A `.gitattributes` in an untracked subdirectory no longer counts. Flag: `226-lfs-detect-by-attributes`.
 
 ## Tutorial
 
