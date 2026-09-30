@@ -73,7 +73,7 @@ use crate::actions::{
     ToggleIncludeSelected,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, IS_MAC, MenuItem, labels, mac_or};
 use crate::diff_view::status_icon;
 use crate::icons::{Octicon, octicon, spin};
 use crate::relative_time::relative;
@@ -1440,7 +1440,7 @@ impl ChangesSidebar {
         };
         let mut items = vec![
             MenuItem::checkbox(
-                "Bypass Commit Hooks",
+                mac_or("Bypass Commit Hooks", "Bypass Commit hooks"),
                 options.skip_commit_hooks,
                 move |_, cx| {
                     Dispatcher::update_commit_options(
@@ -1451,7 +1451,7 @@ impl ChangesSidebar {
                 },
             ),
             MenuItem::checkbox(
-                "Add Signed-off-by Trailer",
+                mac_or("Add Signed-off-by Trailer", "Add Signed-off-by trailer"),
                 options.sign_off_commits,
                 move |_, cx| {
                     Dispatcher::update_commit_options(
@@ -1462,7 +1462,7 @@ impl ChangesSidebar {
                 },
             ),
             MenuItem::checkbox(
-                "Allow Empty Commit",
+                mac_or("Allow Empty Commit", "Allow empty commit"),
                 options.allow_empty_commit,
                 move |_, cx| {
                     Dispatcher::update_commit_options(
@@ -1476,7 +1476,7 @@ impl ChangesSidebar {
         // Corvane: `736-commit-and-push`
         if push_option {
             items.push(MenuItem::checkbox(
-                "Push After Committing",
+                mac_or("Push After Committing", "Push after committing"),
                 options.push_after_commit,
                 move |_, cx| {
                     Dispatcher::update_commit_options(
@@ -1854,11 +1854,15 @@ impl ChangesSidebar {
         let editor_label = self.state.read(cx).editor_label();
         let discard_item = |paths: Vec<String>| {
             // `getDiscardChangesMenuItemLabel`
-            let label = match (paths.len(), confirm) {
-                (1, true) => "Discard Changes…".to_string(),
-                (1, false) => "Discard Changes".to_string(),
-                (n, true) => format!("Discard {n} Selected Changes…"),
-                (n, false) => format!("Discard {n} Selected Changes"),
+            let label = match paths.len() {
+                1 => mac_or("Discard Changes", "Discard changes").to_string(),
+                n if IS_MAC => format!("Discard {n} Selected Changes"),
+                n => format!("Discard {n} selected changes"),
+            };
+            let label = if confirm {
+                format!("{label}…")
+            } else {
+                label
             };
             MenuItem::new(label, move |_, cx| {
                 Dispatcher::request_discard_changes(id, paths.clone(), cx)
@@ -1879,17 +1883,17 @@ impl ChangesSidebar {
             vec![
                 MenuItem::new(
                     if multi {
-                        "Copy Paths"
+                        labels::COPY_SELECTED_PATHS
                     } else {
-                        "Copy File Path"
+                        labels::COPY_FILE_PATH
                     },
                     move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(absolute.clone())),
                 ),
                 MenuItem::new(
                     if multi {
-                        "Copy Relative Paths"
+                        labels::COPY_SELECTED_RELATIVE_PATHS
                     } else {
-                        "Copy Relative File Path"
+                        labels::COPY_RELATIVE_FILE_PATH
                     },
                     move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(relative.clone())),
                 ),
@@ -1900,15 +1904,15 @@ impl ChangesSidebar {
             let editor = full.clone();
             let default = full;
             let mut items = vec![
-                MenuItem::new("Reveal in Finder", move |_, cx| {
+                MenuItem::new(labels::REVEAL_IN_FILE_MANAGER, move |_, cx| {
                     Dispatcher::show_in_finder(&reveal, cx)
                 })
                 .enabled(!deleted),
-                MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
+                MenuItem::new(labels::open_in(&editor_label), move |_, cx| {
                     Dispatcher::open_in_editor(editor.clone(), cx)
                 })
                 .enabled(!deleted),
-                MenuItem::new("Open with Default Program", {
+                MenuItem::new(labels::OPEN_WITH_DEFAULT_PROGRAM, {
                     let default = default.clone();
                     move |_, cx| cx.open_with_system(&default)
                 })
@@ -1917,7 +1921,7 @@ impl ChangesSidebar {
             // `713-open-file-with`
             if open_file_with {
                 items.push(
-                    MenuItem::new("Open With…", move |_, cx| {
+                    MenuItem::new(mac_or("Open With…", "Open with…"), move |_, cx| {
                         Dispatcher::open_with(default.clone(), cx)
                     })
                     .enabled(!deleted),
@@ -1965,10 +1969,16 @@ impl ChangesSidebar {
         if paths.len() == 1 {
             let is_gitignore = file.file_name() == ".gitignore";
             items.push(
-                MenuItem::new("Ignore File (Add to .gitignore)", {
-                    let p = path.clone();
-                    move |_, cx| Dispatcher::ignore_files(id, vec![p.clone()], cx)
-                })
+                MenuItem::new(
+                    mac_or(
+                        "Ignore File (Add to .gitignore)",
+                        "Ignore file (add to .gitignore)",
+                    ),
+                    {
+                        let p = path.clone();
+                        move |_, cx| Dispatcher::ignore_files(id, vec![p.clone()], cx)
+                    },
+                )
                 .enabled(!is_gitignore),
             );
             let parents: Vec<&str> = {
@@ -1987,8 +1997,14 @@ impl ChangesSidebar {
                     })
                     .collect();
                 items.push(
-                    MenuItem::submenu("Ignore Folder (Add to .gitignore)", folders)
-                        .enabled(!is_gitignore),
+                    MenuItem::submenu(
+                        mac_or(
+                            "Ignore Folder (Add to .gitignore)",
+                            "Ignore folder (add to .gitignore)",
+                        ),
+                        folders,
+                    )
+                    .enabled(!is_gitignore),
                 );
             }
             // Corvane: ignore from a nearer .gitignore, info/exclude or the
@@ -2006,11 +2022,19 @@ impl ChangesSidebar {
                         .map(|dir| (format!("{dir}/.gitignore"), IgnoreTarget::Directory(dir)))
                         .collect();
                 targets.push((
-                    ".git/info/exclude (This Repository Only)".into(),
+                    mac_or(
+                        ".git/info/exclude (This Repository Only)",
+                        ".git/info/exclude (this repository only)",
+                    )
+                    .into(),
                     IgnoreTarget::InfoExclude,
                 ));
                 targets.push((
-                    "Global Ignore File (All Repositories)".into(),
+                    mac_or(
+                        "Global Ignore File (All Repositories)",
+                        "Global ignore file (all repositories)",
+                    )
+                    .into(),
                     IgnoreTarget::ExcludesFile,
                 ));
                 let entries: Vec<MenuItem> = targets
@@ -2022,7 +2046,10 @@ impl ChangesSidebar {
                         })
                     })
                     .collect();
-                items.push(MenuItem::submenu("Ignore File In", entries).enabled(!is_gitignore));
+                items.push(
+                    MenuItem::submenu(mac_or("Ignore File In", "Ignore file in"), entries)
+                        .enabled(!is_gitignore),
+                );
             }
         } else {
             let ignorable: Vec<String> = paths
@@ -2033,7 +2060,11 @@ impl ChangesSidebar {
             let enabled = !ignorable.is_empty();
             items.push(
                 MenuItem::new(
-                    format!("Ignore {} Selected Files (Add to .gitignore)", paths.len()),
+                    if IS_MAC {
+                        format!("Ignore {} Selected Files (Add to .gitignore)", paths.len())
+                    } else {
+                        format!("Ignore {} selected files (add to .gitignore)", paths.len())
+                    },
                     move |_, cx| Dispatcher::ignore_files(id, ignorable.clone(), cx),
                 )
                 .enabled(enabled),
@@ -2052,11 +2083,17 @@ impl ChangesSidebar {
         }
         for ext in extensions.into_iter().take(5) {
             let pattern = format!("*{ext}");
-            let label = if ignore_counts {
-                let n = extension_count(&ext);
-                format!("Ignore All {ext} Files ({n} Changed) (Add to .gitignore)")
-            } else {
-                format!("Ignore All {ext} Files (Add to .gitignore)")
+            let label = match (ignore_counts, IS_MAC) {
+                (true, true) => {
+                    let n = extension_count(&ext);
+                    format!("Ignore All {ext} Files ({n} Changed) (Add to .gitignore)")
+                }
+                (true, false) => {
+                    let n = extension_count(&ext);
+                    format!("Ignore all {ext} files ({n} changed) (add to .gitignore)")
+                }
+                (false, true) => format!("Ignore All {ext} Files (Add to .gitignore)"),
+                (false, false) => format!("Ignore all {ext} files (add to .gitignore)"),
             };
             items.push(MenuItem::new(label, move |_, cx| {
                 Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx)
@@ -2073,10 +2110,10 @@ impl ChangesSidebar {
             let assume = paths.clone();
             items.push(
                 MenuItem::new(
-                    if paths.len() > 1 {
-                        format!("Assume {} Selected Files Unchanged", paths.len())
-                    } else {
-                        "Assume Unchanged".to_string()
+                    match (paths.len(), IS_MAC) {
+                        (1, _) => mac_or("Assume Unchanged", "Assume unchanged").to_string(),
+                        (n, true) => format!("Assume {n} Selected Files Unchanged"),
+                        (n, false) => format!("Assume {n} selected files unchanged"),
                     },
                     move |_, cx| {
                         Dispatcher::set_assume_unchanged(id, Some(assume.clone()), true, cx)
@@ -2088,13 +2125,15 @@ impl ChangesSidebar {
         if paths.len() > 1 {
             items.push(MenuItem::separator());
             let include = paths.clone();
-            items.push(MenuItem::new("Include Selected Files", move |_, cx| {
-                Dispatcher::set_files_included(id, include.clone(), true, cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Include Selected Files", "Include selected files"),
+                move |_, cx| Dispatcher::set_files_included(id, include.clone(), true, cx),
+            ));
             let exclude = paths.clone();
-            items.push(MenuItem::new("Exclude Selected Files", move |_, cx| {
-                Dispatcher::set_files_included(id, exclude.clone(), false, cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Exclude Selected Files", "Exclude selected files"),
+                move |_, cx| Dispatcher::set_files_included(id, exclude.clone(), false, cx),
+            ));
         }
         items.push(MenuItem::separator());
         // `714-copy-diff`
@@ -2102,9 +2141,9 @@ impl ChangesSidebar {
             let paths = paths.clone();
             MenuItem::new(
                 if paths.len() > 1 {
-                    "Copy Diff of Selected Files"
+                    mac_or("Copy Diff of Selected Files", "Copy diff of selected files")
                 } else {
-                    "Copy Diff"
+                    mac_or("Copy Diff", "Copy diff")
                 },
                 move |_, cx| Dispatcher::copy_diff(id, paths.clone(), cx),
             )
@@ -2121,7 +2160,7 @@ impl ChangesSidebar {
             items.push(MenuItem::separator());
             let reveal = full.clone();
             items.push(
-                MenuItem::new("Reveal in Finder", move |_, cx| {
+                MenuItem::new(labels::REVEAL_IN_FILE_MANAGER, move |_, cx| {
                     Dispatcher::show_in_finder(&reveal, cx)
                 })
                 .enabled(!deleted),
@@ -2185,20 +2224,25 @@ impl ChangesSidebar {
         let mut items = vec![
             MenuItem::new(
                 if confirm {
-                    "Discard All Changes…"
+                    mac_or("Discard All Changes…", "Discard all changes…")
                 } else {
-                    "Discard All Changes"
+                    mac_or("Discard All Changes", "Discard all changes")
                 },
                 move |_, cx| Dispatcher::request_discard_changes(id, paths.clone(), cx),
             )
             .enabled(has_changes),
             // TODO(M4): stashes; disabled until then.
-            MenuItem::new("Stash All Changes", |_, _| {}).enabled(false),
+            MenuItem::new(mac_or("Stash All Changes", "Stash all changes"), |_, _| {})
+                .enabled(false),
         ];
         if let Some(files) = openable {
             items.push(MenuItem::separator());
             items.push(open_all_in_editor_item(
-                format!("Open All in {editor_label}"),
+                if IS_MAC {
+                    format!("Open All in {editor_label}")
+                } else {
+                    format!("Open all in {editor_label}")
+                },
                 files,
             ));
         }
@@ -2207,7 +2251,10 @@ impl ChangesSidebar {
             // longer shows
             items.push(MenuItem::separator());
             items.push(MenuItem::new(
-                "Stop Assuming Files Unchanged",
+                mac_or(
+                    "Stop Assuming Files Unchanged",
+                    "Stop assuming files unchanged",
+                ),
                 move |_, cx| Dispatcher::set_assume_unchanged(id, None, false, cx),
             ));
         }
@@ -3417,11 +3464,11 @@ impl ChangesSidebar {
             .and_then(|r| r.github.as_ref())
             .map(|g| format!("{}/commit/{sha}", g.html_url));
         let mut items = vec![
-            MenuItem::new("Amend Commit…", {
+            MenuItem::new(mac_or("Amend Commit…", "Amend commit…"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
             }),
-            MenuItem::new("Undo Commit…", move |_, cx| {
+            MenuItem::new(mac_or("Undo Commit…", "Undo commit…"), move |_, cx| {
                 Dispatcher::request_undo_commit(id, cx)
             }),
             MenuItem::separator(),
@@ -4047,9 +4094,20 @@ fn open_many_items(files: &[PathBuf], editor_label: &str) -> Vec<MenuItem> {
     let enabled = (1..=MAX_BULK_OPEN).contains(&n);
     let default = files.to_vec();
     vec![
-        open_all_in_editor_item(format!("Open {n} Files in {editor_label}"), files.to_vec()),
+        open_all_in_editor_item(
+            if IS_MAC {
+                format!("Open {n} Files in {editor_label}")
+            } else {
+                format!("Open {n} files in {editor_label}")
+            },
+            files.to_vec(),
+        ),
         MenuItem::new(
-            format!("Open {n} Files with Default Program"),
+            if IS_MAC {
+                format!("Open {n} Files with Default Program")
+            } else {
+                format!("Open {n} files with default program")
+            },
             move |_, cx| {
                 for f in &default {
                     cx.open_with_system(f)

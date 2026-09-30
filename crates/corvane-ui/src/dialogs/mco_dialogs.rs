@@ -24,7 +24,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::branch_list::{group_branches, remote_counterparts};
-use crate::context_menu::MenuItem;
+use crate::context_menu::{IS_MAC, MenuItem, labels, mac_or};
 use crate::dialog::{
     DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
 };
@@ -665,8 +665,10 @@ impl McoDialog {
                 let items = vec![
                     MenuItem::new(
                         match &our {
-                            Some(b) => format!("Resolve All Using {b}"),
-                            None => "Resolve All Using Ours".to_string(),
+                            Some(b) if IS_MAC => format!("Resolve All Using {b}"),
+                            Some(b) => format!("Resolve all using {b}"),
+                            None => mac_or("Resolve All Using Ours", "Resolve all using ours")
+                                .to_string(),
                         },
                         move |_, cx| {
                             Dispatcher::set_all_manual_resolutions(
@@ -678,8 +680,10 @@ impl McoDialog {
                     ),
                     MenuItem::new(
                         match &their {
-                            Some(b) => format!("Resolve All Using {b}"),
-                            None => "Resolve All Using Theirs".to_string(),
+                            Some(b) if IS_MAC => format!("Resolve All Using {b}"),
+                            Some(b) => format!("Resolve all using {b}"),
+                            None => mac_or("Resolve All Using Theirs", "Resolve all using theirs")
+                                .to_string(),
                         },
                         move |_, cx| {
                             Dispatcher::set_all_manual_resolutions(
@@ -1073,7 +1077,7 @@ fn unmerged_file_row(
                                 if merge_tool {
                                     let path = rel_path.clone();
                                     menu_items.push(MenuItem::new(
-                                        "Open in Merge Tool",
+                                        mac_or("Open in Merge Tool", "Open in merge tool"),
                                         move |_, cx| {
                                             Dispatcher::open_in_merge_tool(repo, path.clone(), cx)
                                         },
@@ -1083,13 +1087,13 @@ fn unmerged_file_row(
                                     let p2 = p.clone();
                                     let absolute = p.to_string_lossy().into_owned();
                                     menu_items.push(MenuItem::new(
-                                        "Open with Default Program",
+                                        labels::OPEN_WITH_DEFAULT_PROGRAM,
                                         move |_, cx| {
                                             cx.open_with_system(&p);
                                         },
                                     ));
                                     menu_items.push(MenuItem::new(
-                                        "Reveal in Finder",
+                                        labels::REVEAL_IN_FILE_MANAGER,
                                         move |_, cx| {
                                             Dispatcher::show_in_finder(&p2, cx);
                                         },
@@ -1099,7 +1103,7 @@ fn unmerged_file_row(
                                         let relative = rel_path.clone();
                                         menu_items.push(MenuItem::separator());
                                         menu_items.push(MenuItem::new(
-                                            "Copy File Path",
+                                            labels::COPY_FILE_PATH,
                                             move |_, cx| {
                                                 cx.write_to_clipboard(ClipboardItem::new_string(
                                                     absolute.clone(),
@@ -1107,7 +1111,7 @@ fn unmerged_file_row(
                                             },
                                         ));
                                         menu_items.push(MenuItem::new(
-                                            "Copy Relative File Path",
+                                            labels::COPY_RELATIVE_FILE_PATH,
                                             move |_, cx| {
                                                 cx.write_to_clipboard(ClipboardItem::new_string(
                                                     relative.clone(),

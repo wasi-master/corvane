@@ -40,7 +40,7 @@ use crate::actions::{
     SelectNextFile, SelectPreviousFile,
 };
 use crate::branch_list::group_branches;
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, IS_MAC, MenuItem, mac_or};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
@@ -926,27 +926,48 @@ impl HistorySidebar {
         let (s5, s6) = (selection.clone(), selection);
         let onto = commit.sha.clone();
         let mut items = vec![
-            MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
-                Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx)
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Cherry-pick {count} Commits…")
+                } else {
+                    format!("Cherry-pick {count} commits…")
+                },
+                move |_, cx| Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx),
+            )
             .enabled(!busy),
-            MenuItem::new(format!("Squash {count} Commits…"), move |_, cx| {
-                Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx)
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Squash {count} Commits…")
+                } else {
+                    format!("Squash {count} commits…")
+                },
+                move |_, cx| Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx),
+            )
             .enabled(!busy && !comparing),
-            MenuItem::new(format!("Reorder {count} Commits…"), move |_, cx| {
-                weak.update(cx, |this, cx| {
-                    this.start_keyboard_reorder(id, s3.clone(), cx)
-                })
-                .ok();
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Reorder {count} Commits…")
+                } else {
+                    format!("Reorder {count} commits…")
+                },
+                move |_, cx| {
+                    weak.update(cx, |this, cx| {
+                        this.start_keyboard_reorder(id, s3.clone(), cx)
+                    })
+                    .ok();
+                },
+            )
             .enabled(!busy && !comparing),
         ];
         if revert_no_commit {
             // `815`: newest first, staged, not committed
             items.push(
                 MenuItem::new(
-                    format!("Revert Changes in {count} Commits Without Committing"),
+                    if IS_MAC {
+                        format!("Revert Changes in {count} Commits Without Committing")
+                    } else {
+                        format!("Revert changes in {count} commits without committing")
+                    },
                     move |_, cx| Dispatcher::revert_commits_without_committing(id, s4.clone(), cx),
                 )
                 .enabled(!busy && !comparing),
@@ -956,7 +977,11 @@ impl HistorySidebar {
             // `820`: onto the current branch, staged, not committed
             items.push(
                 MenuItem::new(
-                    format!("Cherry-pick {count} Commits Without Committing"),
+                    if IS_MAC {
+                        format!("Cherry-pick {count} Commits Without Committing")
+                    } else {
+                        format!("Cherry-pick {count} commits without committing")
+                    },
                     move |_, cx| Dispatcher::cherry_pick_without_committing(id, s5.clone(), cx),
                 )
                 .enabled(!busy),
@@ -965,7 +990,11 @@ impl HistorySidebar {
         if patches {
             // `821`
             items.push(MenuItem::new(
-                format!("Create {count} Patch Files…"),
+                if IS_MAC {
+                    format!("Create {count} Patch Files…")
+                } else {
+                    format!("Create {count} patch files…")
+                },
                 move |_, cx| create_patch_files(id, s6.clone(), cx),
             ));
         }
@@ -1037,26 +1066,30 @@ impl HistorySidebar {
         let weak = cx.weak_entity();
         let mut items = Vec::new();
         if is_head {
-            items.push(MenuItem::new("Amend Commit…", {
-                let sha = sha.clone();
-                move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
-            }));
-            items.push(MenuItem::new("Undo Commit…", move |_, cx| {
-                Dispatcher::request_undo_commit(id, cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Amend Commit…", "Amend commit…"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
+                },
+            ));
+            items.push(MenuItem::new(
+                mac_or("Undo Commit…", "Undo commit…"),
+                move |_, cx| Dispatcher::request_undo_commit(id, cx),
+            ));
         }
         items.extend([
-            MenuItem::new("Reset to Commit…", {
+            MenuItem::new(mac_or("Reset to Commit…", "Reset to commit…"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_reset_to_commit(id, sha.clone(), cx)
             })
             .enabled(!is_head),
-            MenuItem::new("Checkout Commit", {
+            MenuItem::new(mac_or("Checkout Commit", "Checkout commit"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
             })
             .enabled(!is_head || checkout_head),
-            MenuItem::new("Reorder Commit", {
+            MenuItem::new(mac_or("Reorder Commit", "Reorder commit"), {
                 let sha = sha.clone();
                 move |_, cx| {
                     weak.update(cx, |this, cx| {
@@ -1066,14 +1099,20 @@ impl HistorySidebar {
                 }
             })
             .enabled(!busy),
-            MenuItem::new("Revert Changes in Commit", {
-                let sha = sha.clone();
-                move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
-            }),
+            MenuItem::new(
+                mac_or("Revert Changes in Commit", "Revert changes in commit"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
+                },
+            ),
         ]);
         if revert_no_commit {
             items.push(MenuItem::new(
-                "Revert Changes in Commit Without Committing",
+                mac_or(
+                    "Revert Changes in Commit Without Committing",
+                    "Revert changes in commit without committing",
+                ),
                 {
                     let sha = sha.clone();
                     move |_, cx| {
@@ -1084,19 +1123,22 @@ impl HistorySidebar {
         }
         items.extend([
             MenuItem::separator(),
-            MenuItem::new("Create Branch from Commit", {
-                let sha = sha.clone();
-                move |_, cx| {
-                    Dispatcher::show_popup(
-                        Popup::CreateBranch {
-                            repo: id,
-                            target_sha: Some(sha.clone()),
-                            initial_name: String::new(),
-                        },
-                        cx,
-                    )
-                }
-            }),
+            MenuItem::new(
+                mac_or("Create Branch from Commit", "Create branch from commit"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::show_popup(
+                            Popup::CreateBranch {
+                                repo: id,
+                                target_sha: Some(sha.clone()),
+                                initial_name: String::new(),
+                            },
+                            cx,
+                        )
+                    }
+                },
+            ),
             MenuItem::new("Create Tag…", {
                 let sha = sha.clone();
                 move |_, cx| {
@@ -1161,7 +1203,7 @@ impl HistorySidebar {
             }
         }
         items.push(
-            MenuItem::new("Cherry-pick Commit…", {
+            MenuItem::new(mac_or("Cherry-pick Commit…", "Cherry-pick commit…"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::start_cherry_pick_flow(id, vec![sha.clone()], cx)
             })
@@ -1177,28 +1219,40 @@ impl HistorySidebar {
         if pick_no_commit {
             // `820`: onto the current branch (not the HEAD commit itself)
             items.push(
-                MenuItem::new("Cherry-pick Commit Without Committing", {
-                    let sha = sha.clone();
-                    move |_, cx| {
-                        Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
-                    }
-                })
+                MenuItem::new(
+                    mac_or(
+                        "Cherry-pick Commit Without Committing",
+                        "Cherry-pick commit without committing",
+                    ),
+                    {
+                        let sha = sha.clone();
+                        move |_, cx| {
+                            Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
+                        }
+                    },
+                )
                 .enabled(!busy && !is_head),
             );
         }
         if patches {
             // `821`
-            items.push(MenuItem::new("Create Patch File…", {
-                let sha = sha.clone();
-                move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Create Patch File…", "Create patch file…"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
+                },
+            ));
         }
         if let Some(unpushed) = unpushed {
             items.push(
-                MenuItem::new("Push Up to This Commit", {
-                    let sha = sha.clone();
-                    move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
-                })
+                MenuItem::new(
+                    mac_or("Push Up to This Commit", "Push up to this commit"),
+                    {
+                        let sha = sha.clone();
+                        move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
+                    },
+                )
                 .enabled(unpushed && !busy),
             );
         }
@@ -1218,14 +1272,16 @@ impl HistorySidebar {
             } else {
                 format!("{}\n\n{}", commit.summary, commit.body)
             };
-            items.push(MenuItem::new("Copy Commit Title", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(title.clone()))
-            }));
-            items.push(MenuItem::new("Copy Commit Message", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(message.clone()))
-            }));
+            items.push(MenuItem::new(
+                mac_or("Copy Commit Title", "Copy commit title"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(title.clone())),
+            ));
+            items.push(MenuItem::new(
+                mac_or("Copy Commit Message", "Copy commit message"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(message.clone())),
+            ));
             items.push(
-                MenuItem::new("Copy Commit URL", {
+                MenuItem::new(mac_or("Copy Commit URL", "Copy commit URL"), {
                     let url = commit_url.clone();
                     move |_, cx| {
                         if let Some(url) = &url {
@@ -1240,9 +1296,9 @@ impl HistorySidebar {
         items.push(
             MenuItem::new(
                 if commit.tags.len() > 1 {
-                    "Copy Tags"
+                    mac_or("Copy Tags", "Copy tags")
                 } else {
-                    "Copy Tag"
+                    mac_or("Copy Tag", "Copy tag")
                 },
                 move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(tags.clone())),
             )

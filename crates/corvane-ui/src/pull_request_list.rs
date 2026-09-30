@@ -28,7 +28,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::ci_status::ci_status;
-use crate::context_menu::MenuItem;
+use crate::context_menu::{MenuItem, mac_or};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
@@ -167,17 +167,20 @@ pub fn pull_request_row(
                     MenuItem::new("View Pull Request on GitHub", move |_, cx| {
                         Dispatcher::open_pull_request(&pr, cx)
                     }),
-                    MenuItem::new("Checkout in New Worktree…", move |_, cx| {
-                        Dispatcher::close_foldout(cx);
-                        Dispatcher::show_popup(
-                            Popup::AddWorktree {
-                                repo: id,
-                                initial_branch_name: Some(head.clone()),
-                                initial_worktree_name: Some(worktree_name.clone()),
-                            },
-                            cx,
-                        )
-                    }),
+                    MenuItem::new(
+                        mac_or("Checkout in New Worktree…", "Checkout in new worktree…"),
+                        move |_, cx| {
+                            Dispatcher::close_foldout(cx);
+                            Dispatcher::show_popup(
+                                Popup::AddWorktree {
+                                    repo: id,
+                                    initial_branch_name: Some(head.clone()),
+                                    initial_worktree_name: Some(worktree_name.clone()),
+                                },
+                                cx,
+                            )
+                        },
+                    ),
                 ],
                 ev.position,
                 window,

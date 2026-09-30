@@ -906,7 +906,7 @@ impl BranchFoldout {
                         this.select_row(branch.name.clone(), window, cx)
                     })
                     .ok();
-                    use crate::context_menu::MenuItem;
+                    use crate::context_menu::{IS_MAC, MenuItem, mac_or};
                     let local = branch.kind == BranchKind::Local;
                     // `856-branch-menu-rebase-onto`
                     let rebase_onto = AppState::global(cx)
@@ -958,26 +958,36 @@ impl BranchFoldout {
                             )
                         })
                         .enabled(local),
-                        MenuItem::new("Copy Branch Name", move |_, cx| {
-                            cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()))
-                        }),
-                        MenuItem::new("Checkout in New Worktree…", move |_, cx| {
-                            Dispatcher::close_foldout(cx);
-                            Dispatcher::show_popup(
-                                Popup::AddWorktree {
-                                    repo: id,
-                                    initial_branch_name: Some(worktree.clone()),
-                                    initial_worktree_name: None,
-                                },
-                                cx,
-                            )
-                        }),
+                        MenuItem::new(
+                            mac_or("Copy Branch Name", "Copy branch name"),
+                            move |_, cx| {
+                                cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()))
+                            },
+                        ),
+                        MenuItem::new(
+                            mac_or("Checkout in New Worktree…", "Checkout in new worktree…"),
+                            move |_, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::AddWorktree {
+                                        repo: id,
+                                        initial_branch_name: Some(worktree.clone()),
+                                        initial_worktree_name: None,
+                                    },
+                                    cx,
+                                )
+                            },
+                        ),
                         MenuItem::separator(),
                     ];
                     if let Some(base) = rebase_onto {
                         items.push(
                             MenuItem::new(
-                                format!("Rebase Current Branch onto {base}…"),
+                                if IS_MAC {
+                                    format!("Rebase Current Branch onto {base}…")
+                                } else {
+                                    format!("Rebase current branch onto {base}…")
+                                },
                                 move |_, cx| {
                                     Dispatcher::close_foldout(cx);
                                     Dispatcher::start_rebase_flow_onto(id, Some(base.clone()), cx);

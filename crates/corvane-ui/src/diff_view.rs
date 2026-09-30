@@ -60,7 +60,7 @@ use gpui_kit::*;
 use crate::widgets::IconButtonA11y;
 
 use crate::actions::{Copy, Find, SelectAll};
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, IS_MAC, MenuItem, mac_or};
 use crate::diff_expansion::{
     DEFAULT_DIFF_EXPANSION_STEP, ExpansionKind, HunkExpansionType, XHunk, expand_hunk,
     expand_whole, from_hunks,
@@ -1133,15 +1133,21 @@ impl DiffView {
         }
         let weak = cx.weak_entity();
         Some(if self.expanded {
-            MenuItem::new("Collapse Expanded Lines", move |_, cx| {
-                weak.update(cx, |this, cx| this.collapse(cx)).ok();
-            })
+            MenuItem::new(
+                mac_or("Collapse Expanded Lines", "Collapse expanded lines"),
+                move |_, cx| {
+                    weak.update(cx, |this, cx| this.collapse(cx)).ok();
+                },
+            )
         } else {
             let enabled =
                 self.hunks.len() != 1 || self.hunks[0].expansion != HunkExpansionType::None;
-            MenuItem::new("Expand Whole File", move |_, cx| {
-                weak.update(cx, |this, cx| this.expand_whole_file(cx)).ok();
-            })
+            MenuItem::new(
+                mac_or("Expand Whole File", "Expand whole file"),
+                move |_, cx| {
+                    weak.update(cx, |this, cx| this.expand_whole_file(cx)).ok();
+                },
+            )
             .enabled(enabled)
         })
     }
@@ -1181,7 +1187,7 @@ impl DiffView {
             })
             .enabled(has_selection)
         };
-        let select_all = MenuItem::new("Select All", move |_, cx| {
+        let select_all = MenuItem::new(mac_or("Select All", "Select all"), move |_, cx| {
             weak.update(cx, |this, cx| this.select_all_text(cx)).ok();
         });
         let mut items = vec![copy, select_all];
@@ -1212,7 +1218,11 @@ impl DiffView {
         {
             return None;
         }
-        let label = format!("Open in {} at Line {line}", s.editor_label());
+        let label = if IS_MAC {
+            format!("Open in {} at Line {line}", s.editor_label())
+        } else {
+            format!("Open in {} at line {line}", s.editor_label())
+        };
         let full = snap.repo_path.join(&snap.path);
         Some(MenuItem::new(label, move |_, cx| {
             Dispatcher::open_in_editor_at(full.clone(), Some(line), cx)

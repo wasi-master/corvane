@@ -614,7 +614,7 @@ impl RepositoryFoldout {
 
 /// GHD `generateRepositoryListContextMenu`.
 fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu::MenuItem> {
-    use crate::context_menu::MenuItem;
+    use crate::context_menu::{IS_MAC, MenuItem, labels, mac_or};
     let state = AppState::global(cx).read(cx);
     let (editor, shell) = (state.editor_label(), state.shell_label());
     let confirm = state.settings.confirm_repository_removal;
@@ -634,58 +634,67 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
     } else {
         "Create"
     };
-    let mut items = vec![MenuItem::new(format!("{verb} Alias"), move |_, cx| {
+    let alias_label = if IS_MAC {
+        format!("{verb} Alias")
+    } else {
+        format!("{verb} alias")
+    };
+    let mut items = vec![MenuItem::new(alias_label, move |_, cx| {
         Dispatcher::close_foldout(cx);
         Dispatcher::show_popup(Popup::ChangeRepositoryAlias { repo: id }, cx)
     })];
     if repo.alias.is_some() {
-        items.push(MenuItem::new("Remove Alias", move |_, cx| {
-            Dispatcher::change_repository_alias(id, None, cx)
-        }));
+        items.push(MenuItem::new(
+            mac_or("Remove Alias", "Remove alias"),
+            move |_, cx| Dispatcher::change_repository_alias(id, None, cx),
+        ));
     }
     items.extend([
         // `buildWorktreeMenuItems` (worktree support is on)
-        MenuItem::new("Show Worktrees", move |_, cx| {
+        MenuItem::new(mac_or("Show Worktrees", "Show worktrees"), move |_, cx| {
             Dispatcher::select_repository(id, cx);
             Dispatcher::toggle_foldout(corvane_core::Foldout::Worktree, cx);
         }),
-        MenuItem::new("New Worktree…", move |_, cx| {
-            Dispatcher::close_foldout(cx);
-            Dispatcher::show_popup(
-                Popup::AddWorktree {
-                    repo: id,
-                    initial_branch_name: None,
-                    initial_worktree_name: None,
-                },
-                cx,
-            )
-        }),
-        MenuItem::new("Copy Repo Name", move |_, cx| {
+        MenuItem::new(
+            mac_or("New Worktree…", "New worktree…"),
+            move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::show_popup(
+                    Popup::AddWorktree {
+                        repo: id,
+                        initial_branch_name: None,
+                        initial_worktree_name: None,
+                    },
+                    cx,
+                )
+            },
+        ),
+        MenuItem::new(mac_or("Copy Repo Name", "Copy repo name"), move |_, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(name.clone()))
         }),
-        MenuItem::new("Copy Repo Path", move |_, cx| {
+        MenuItem::new(mac_or("Copy Repo Path", "Copy repo path"), move |_, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
         }),
         MenuItem::separator(),
         // `262-view-on-remote`: "View on Remote" for other hosts
         MenuItem::new(
             if repo.github.is_none() && remote_page {
-                "View on Remote"
+                mac_or("View on Remote", "View on remote")
             } else {
                 "View on GitHub"
             },
             move |_, cx| Dispatcher::view_on_github(id, cx),
         )
         .enabled(repo.github.is_some() || remote_page),
-        MenuItem::new(format!("Open in {shell}"), move |_, cx| {
+        MenuItem::new(labels::open_in(&shell), move |_, cx| {
             Dispatcher::open_in_shell(&shell_path, cx)
         })
         .enabled(!missing),
-        MenuItem::new("Reveal in Finder", move |_, cx| {
+        MenuItem::new(labels::REVEAL_IN_FILE_MANAGER, move |_, cx| {
             Dispatcher::show_in_finder(&reveal, cx)
         })
         .enabled(!missing),
-        MenuItem::new(format!("Open in {editor}"), move |_, cx| {
+        MenuItem::new(labels::open_in(&editor), move |_, cx| {
             Dispatcher::open_in_editor(editor_path.clone(), cx)
         })
         .enabled(!missing),
@@ -714,7 +723,11 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             .bool(corvane_core::flags::ids::REMOVE_ALL_MISSING_REPOSITORIES)
     {
         items.push(MenuItem::new(
-            format!("Remove All {} Missing Repositories", missing_ids.len()),
+            if IS_MAC {
+                format!("Remove All {} Missing Repositories", missing_ids.len())
+            } else {
+                format!("Remove all {} missing repositories", missing_ids.len())
+            },
             move |_, cx| {
                 Dispatcher::close_foldout(cx);
                 for id in &missing_ids {
@@ -728,22 +741,29 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
 
 /// The Add button's items (`onNewRepositoryButtonClick`).
 fn add_menu_items(clone_filter: Option<String>) -> Vec<crate::context_menu::MenuItem> {
-    use crate::context_menu::MenuItem;
+    use crate::context_menu::{MenuItem, mac_or};
     vec![
-        MenuItem::new("Clone Repository…", move |_, cx| {
-            // Corvane (`225-clone-prefills-filter`)
-            if let Some(text) = &clone_filter {
-                crate::dialogs::clone_repository::prefill_filter(text.clone());
-            }
-            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
-        }),
-        MenuItem::new("Create New Repository…", |_, cx| {
-            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
-        }),
-        MenuItem::new("Add Existing Repository…", |_, cx| {
-            Dispatcher::close_foldout(cx);
-            Dispatcher::prompt_add_repository(cx);
-        }),
+        MenuItem::new(
+            mac_or("Clone Repository…", "Clone repository…"),
+            move |_, cx| {
+                // Corvane (`225-clone-prefills-filter`)
+                if let Some(text) = &clone_filter {
+                    crate::dialogs::clone_repository::prefill_filter(text.clone());
+                }
+                Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+            },
+        ),
+        MenuItem::new(
+            mac_or("Create New Repository…", "Create new repository…"),
+            |_, cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
+        ),
+        MenuItem::new(
+            mac_or("Add Existing Repository…", "Add existing repository…"),
+            |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::prompt_add_repository(cx);
+            },
+        ),
     ]
 }
 

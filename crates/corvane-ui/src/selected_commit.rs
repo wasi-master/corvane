@@ -882,7 +882,7 @@ fn open_commit_file_menu(
     window: &mut Window,
     cx: &mut App,
 ) {
-    use crate::context_menu::MenuItem;
+    use crate::context_menu::{IS_MAC, MenuItem, labels, mac_or};
     let state = AppState::global(cx).read(cx);
     let Some(repo) = state.repository(id) else {
         return;
@@ -896,12 +896,14 @@ fn open_commit_file_menu(
             .join("\n");
         let relative = multi.join("\n");
         let items = vec![
-            MenuItem::new("Copy File Paths", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
-            }),
-            MenuItem::new("Copy Relative File Paths", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
-            }),
+            MenuItem::new(
+                mac_or("Copy File Paths", "Copy file paths"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(full.clone())),
+            ),
+            MenuItem::new(
+                mac_or("Copy Relative File Paths", "Copy relative file paths"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(relative.clone())),
+            ),
         ];
         crate::native_menu::show_context_menu(items, position, window, cx);
         return;
@@ -941,7 +943,7 @@ fn open_commit_file_menu(
                 .and_then(|f| f.old_path.clone());
             let path = path.to_string();
             Some(MenuItem::new(
-                "Revert Changes to This File",
+                mac_or("Revert Changes to This File", "Revert changes to this file"),
                 move |_, cx| {
                     Dispatcher::revert_file_in_commit(
                         id,
@@ -972,8 +974,13 @@ fn open_commit_file_menu(
         })
         .filter(|files| files.len() > 1);
     let mut items = if !full.exists() {
-        let mut items =
-            vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
+        let mut items = vec![
+            MenuItem::new(
+                mac_or("File Does Not Exist on Disk", "File does not exist on disk"),
+                |_, _| {},
+            )
+            .enabled(false),
+        ];
         // `812`: the paths can still be copied
         if state
             .flags
@@ -982,10 +989,10 @@ fn open_commit_file_menu(
             let (full, relative) = (full.to_string_lossy().to_string(), path.to_string());
             items.extend([
                 MenuItem::separator(),
-                MenuItem::new("Copy File Path", move |_, cx| {
+                MenuItem::new(labels::COPY_FILE_PATH, move |_, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
                 }),
-                MenuItem::new("Copy Relative File Path", move |_, cx| {
+                MenuItem::new(labels::COPY_RELATIVE_FILE_PATH, move |_, cx| {
                     cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
                 }),
             ]);
@@ -1005,14 +1012,14 @@ fn open_commit_file_menu(
                 .map(|sha| format!("{}/blob/{sha}/{path}", gh.html_url))
         });
         vec![
-            MenuItem::new("Reveal in Finder", move |_, cx| {
+            MenuItem::new(labels::REVEAL_IN_FILE_MANAGER, move |_, cx| {
                 Dispatcher::show_in_finder(&reveal, cx)
             }),
-            MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
+            MenuItem::new(labels::open_in(&editor_label), move |_, cx| {
                 Dispatcher::open_in_editor(editor.clone(), cx)
             }),
             // `isSafeFileExtension` is always true on macOS
-            MenuItem::new("Open with Default Program", {
+            MenuItem::new(labels::OPEN_WITH_DEFAULT_PROGRAM, {
                 let path = relative.clone();
                 move |_, cx| match &historical {
                     Some(sha) => Dispatcher::open_commit_file_with_default_program(
@@ -1025,12 +1032,12 @@ fn open_commit_file_menu(
                 }
             }),
             MenuItem::separator(),
-            MenuItem::new("Copy File Path", move |_, cx| {
+            MenuItem::new(labels::COPY_FILE_PATH, move |_, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(
                     copy_full.to_string_lossy().to_string(),
                 ))
             }),
-            MenuItem::new("Copy Relative File Path", move |_, cx| {
+            MenuItem::new(labels::COPY_RELATIVE_FILE_PATH, move |_, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
             }),
             MenuItem::separator(),
@@ -1048,7 +1055,11 @@ fn open_commit_file_menu(
     if let Some(files) = open_all {
         items.push(MenuItem::separator());
         items.push(crate::changes::open_all_in_editor_item(
-            format!("Open All Files of Commit in {editor_label}"),
+            if IS_MAC {
+                format!("Open All Files of Commit in {editor_label}")
+            } else {
+                format!("Open all files of commit in {editor_label}")
+            },
             files,
         ));
     }
