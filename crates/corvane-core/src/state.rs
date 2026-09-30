@@ -435,6 +435,8 @@ pub struct RepositorySettingsData {
     pub global: Identity,
     /// `core.autocrlf` (line endings written to `.gitignore`).
     pub autocrlf: bool,
+    /// `--local` `core.autocrlf` (`421-line-endings-setting`).
+    pub local_autocrlf: Option<String>,
 }
 
 /// GHD `RetryAction` (the subset behind `LocalChangesOverwritten`).

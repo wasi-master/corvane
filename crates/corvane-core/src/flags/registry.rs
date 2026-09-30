@@ -868,6 +868,21 @@ registry! {
         upstream: &[Upstream::issue(17682)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// Repository Settings › Git Config › Line endings (core.autocrlf).
+    LINE_ENDINGS_SETTING = 421 "line-endings-setting" {
+        title: "Line endings setting per repository",
+        summary: "Repository Settings › Git Config adds \"Line endings (core.autocrlf)\": use the \
+                  global config, or store true, input or false in the repository's own config. \
+                  It applies to later checkouts and commits; files already checked out keep \
+                  their line endings.",
+        ghd_behaviour: "No line ending option; core.autocrlf has to be set on the command line.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5230)],
+        code: &["crates/corvane-ui/src/dialogs/repository_settings.rs", "crates/corvane-core/src/integrations.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

@@ -4,6 +4,8 @@
 //!
 //! Deviation (flag `edit-global-ignore-file`): Ignored Files links to the
 //! global excludes file, opened in the external editor.
+//! Deviation (flag `421-line-endings-setting`): Git Config ends in a "Line
+//! endings (core.autocrlf)" select stored in the repository's own config.
 
 use std::rc::Rc;
 
@@ -47,7 +49,26 @@ pub struct RepositorySettingsDialog {
     loaded: bool,
     /// Fork Behavior tab (`forkContributionTarget`).
     fork_target: corvane_core::ForkContributionTarget,
+    /// `421-line-endings-setting`: the chosen `--local` `core.autocrlf`
+    /// (`None`: the global config's).
+    autocrlf: Option<&'static str>,
 }
+
+/// The [`AUTOCRLF_CHOICES`] entry of the repository's own `core.autocrlf`.
+fn autocrlf_choice(data: &corvane_core::RepositorySettingsData) -> Option<&'static str> {
+    let value = data.local_autocrlf.as_deref()?;
+    AUTOCRLF_CHOICES
+        .iter()
+        .find_map(|(c, _)| c.filter(|c| c.eq_ignore_ascii_case(value)))
+}
+
+/// `421-line-endings-setting`: `core.autocrlf` choices (`None` = unset).
+const AUTOCRLF_CHOICES: [(Option<&str>, &str); 4] = [
+    (None, "Use my global Git config"),
+    (Some("true"), "Check out CRLF, commit LF (true)"),
+    (Some("input"), "Check out as is, commit LF (input)"),
+    (Some("false"), "Check out and commit as is (false)"),
+];
 
 impl RepositorySettingsDialog {
     pub fn new(
@@ -98,6 +119,7 @@ impl RepositorySettingsDialog {
                 .repository(repo)
                 .map(|r| r.fork_contribution_target())
                 .unwrap_or_default(),
+            autocrlf: None,
         };
         this.fill(&state, window, cx);
         this
@@ -144,6 +166,7 @@ impl RepositorySettingsDialog {
             .update(cx, |s, cx| s.set_value(email.clone(), window, cx));
         let emails = self.account_emails(cx);
         self.email_choice = emails.iter().find(|e| **e == email).cloned();
+        self.autocrlf = autocrlf_choice(&data);
         self.loaded = true;
         self.gitignore_edited = false;
     }
@@ -238,6 +261,14 @@ impl RepositorySettingsDialog {
                 }
             }
             GitConfigLocation::Global => {}
+        }
+        // an unknown stored value shows as the global one; it is only
+        // replaced when another choice is picked
+        if data
+            .as_ref()
+            .is_some_and(|d| autocrlf_choice(d) != self.autocrlf)
+        {
+            save.autocrlf = Some(self.autocrlf.map(str::to_string));
         }
         Dispatcher::save_repository_settings(self.repo, save, cx);
     }
@@ -470,7 +501,60 @@ impl RepositorySettingsDialog {
                         email_field
                     }),
             )
+            .when(
+                AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::LINE_ENDINGS_SETTING),
+                |d| d.child(self.line_endings_field(cx)),
+            )
             .into_any_element()
+    }
+
+    /// `421-line-endings-setting`: the repository's `core.autocrlf`.
+    fn line_endings_field(&self, cx: &Context<Self>) -> impl IntoElement {
+        let selected = AUTOCRLF_CHOICES
+            .iter()
+            .position(|(c, _)| *c == self.autocrlf);
+        let weak = cx.weak_entity();
+        let on_select: SelectHandler = Rc::new(move |ix, _, cx| {
+            if let Some((choice, _)) = AUTOCRLF_CHOICES.get(ix) {
+                weak.update(cx, |this, cx| {
+                    this.autocrlf = *choice;
+                    cx.notify();
+                })
+                .ok();
+            }
+        });
+        div().mt(SPACING()).child(labeled(
+            "Line endings (core.autocrlf)",
+            div()
+                .flex()
+                .flex_col()
+                .gap(SPACING_HALF())
+                .child(select_button(
+                    "repo-settings-autocrlf",
+                    AUTOCRLF_CHOICES[selected.unwrap_or(0)].1,
+                    AUTOCRLF_CHOICES
+                        .iter()
+                        .map(|(_, label)| SharedString::from(*label))
+                        .collect(),
+                    selected,
+                    false,
+                    on_select,
+                    cx,
+                ))
+                .child(
+                    div()
+                        .text_size(FONT_SIZE_SM())
+                        .text_color(cx.ghd().text_secondary)
+                        .child(
+                            "Applies to files as they are checked out or committed from now \
+                             on; files already checked out keep their line endings.",
+                        ),
+                ),
+            cx,
+        ))
     }
 }
 
