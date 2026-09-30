@@ -29,6 +29,9 @@
 //!
 //! Deviation (`180-diff-show-whitespace`): spaces can be marked with dots
 //! and tabs with a line.
+//!
+//! Deviation (`181-binary-diff-as-text`): a binary working-directory file
+//! offers "Show the diff as text anyway." (`git diff --text`, read-only).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -212,6 +215,8 @@ struct Snapshot {
     key: (u64, String, u64),
     hide_whitespace: bool,
     confirm_discard: bool,
+    /// `181-binary-diff-as-text`: a binary file shown with `--text`.
+    as_text: bool,
 }
 
 /// A position in the diff's text: a list row (unified or split index) and a
@@ -430,6 +435,8 @@ impl DiffView {
                     )
                 }
             };
+        let as_text = self.source == DiffSource::WorkingDirectory
+            && rs.diff_as_text.as_deref() == Some(path.as_str());
         Some(Snapshot {
             repo: id,
             repo_path,
@@ -442,6 +449,7 @@ impl DiffView {
             old_contents,
             hide_whitespace,
             confirm_discard: s.settings.confirm_discard_changes,
+            as_text,
         })
     }
 
@@ -1435,6 +1443,20 @@ impl DiffView {
     fn binary_panel(&self, snap: &Snapshot, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let full_path = snap.repo_path.join(&snap.path);
+        // `181-binary-diff-as-text`
+        let as_text = (self.source == DiffSource::WorkingDirectory
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::BINARY_DIFF_AS_TEXT))
+        .then(|| {
+            let repo = snap.repo;
+            div().py(SPACING_HALF()).child(
+                link_button("binary-as-text", "Show the diff as text anyway.", cx)
+                    .on_click(move |_, _, cx| Dispatcher::show_binary_diff_as_text(repo, cx)),
+            )
+        });
         div()
             .flex_1()
             .flex()
@@ -1455,6 +1477,7 @@ impl DiffView {
                         .on_click(move |_, _, cx| cx.open_with_system(&full_path)),
                 ),
             )
+            .children(as_text)
             .into_any_element()
     }
 
@@ -1914,8 +1937,11 @@ impl DiffView {
     ) -> AnyElement {
         let t = cx.ghd();
         // `canSelect`: working-directory files that are not conflicted.
-        let selectable =
-            self.source == DiffSource::WorkingDirectory && snap.kind != FileStatusKind::Conflicted;
+        // a binary file shown as text cannot be committed line by line
+        // (`181-binary-diff-as-text`: the partial patch is taken without `--text`)
+        let selectable = self.source == DiffSource::WorkingDirectory
+            && snap.kind != FileStatusKind::Conflicted
+            && !snap.as_text;
         let mut groups: BTreeMap<u32, DiffSelectionType> = BTreeMap::new();
         for row in self.rows.iter() {
             if let Some((start, len)) = row.group {

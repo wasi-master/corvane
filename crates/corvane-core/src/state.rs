@@ -567,6 +567,9 @@ pub struct RepositoryState {
     pub selected_files: Vec<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
+    /// `181-binary-diff-as-text`: the path whose diff was asked for with
+    /// `--text` ("Show diff anyway" on a binary file).
+    pub diff_as_text: Option<String>,
     /// Bumped whenever `diff` is replaced, so views can cache derived rows.
     pub diff_generation: u64,
     /// The new side of the selected file as lines, for hunk expansion

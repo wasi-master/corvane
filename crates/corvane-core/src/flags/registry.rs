@@ -386,6 +386,20 @@ registry! {
         upstream: &[Upstream::issue(12974)],
         code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
     },
+    /// "Show the diff as text anyway" on binary files.
+    BINARY_DIFF_AS_TEXT = 181 "binary-diff-as-text" {
+        title: "Show binary files' diffs as text",
+        summary: "A changed file git takes for binary (a stray NUL byte, an odd encoding) offers \
+                  \"Show the diff as text anyway.\", which diffs it line by line with \
+                  `git diff --text`. Its lines cannot be picked for a partial commit.",
+        ghd_behaviour: "\"This binary file has changed.\" and a link to open it elsewhere.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16855)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
 
     // ---- 200 Repository ----
 

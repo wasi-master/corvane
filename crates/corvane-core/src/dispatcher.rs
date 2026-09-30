@@ -932,9 +932,19 @@ impl Dispatcher {
         }
     }
 
+    /// `181-binary-diff-as-text`: "Show diff anyway" on a binary file
+    /// reloads its diff with `git diff --text`.
+    pub fn show_binary_diff_as_text(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, _| {
+            let rs = s.repo_state_mut(id);
+            rs.diff_as_text = rs.selected_file.clone();
+        });
+        Self::load_diff(id, cx);
+    }
+
     pub fn load_diff(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (git, workdir, file, hide_whitespace, renamed_against_head, symlinks_as_links) = {
+        let (git, workdir, file, hide_whitespace, renamed_against_head, symlinks_as_links, as_text) = {
             let s = state.read(cx);
             let Some(git) = s.git.clone() else { return };
             let Some(rs) = s.repo_states.get(&id) else {
@@ -959,6 +969,8 @@ impl Dispatcher {
                 s.settings.hide_whitespace_in_changes_diff,
                 s.flags.bool(crate::flags::ids::RENAMED_DIFF_AGAINST_HEAD),
                 s.flags.bool(crate::flags::ids::SYMLINK_CONTENTS),
+                rs.diff_as_text.as_deref() == Some(path.as_str())
+                    && s.flags.bool(crate::flags::ids::BINARY_DIFF_AS_TEXT),
             )
         };
         let path = file.path.clone();
@@ -974,6 +986,7 @@ impl Dispatcher {
                 &file,
                 hide_whitespace,
                 renamed_against_head,
+                as_text,
             );
             // GHD `fileContents.newContents`: the working copy, for hunk expansion.
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
