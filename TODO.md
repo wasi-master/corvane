@@ -11,7 +11,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 ## Tutorial + onboarding extras
 
 - [ ] Import repository list from GitHub Desktop's own data dir (best-effort helper)
-- [ ] Signed-in blank slate: the account's cloneable repositories pane beside the actions (`no-repositories-view.tsx` `renderRepositoryList`: `AccountPicker` with 2+ accounts, `CloneableRepositoryFilterList`, Clone *name* button); `no_repositories.rs` shows the actions pane only
 
 ## Diff viewer
 
