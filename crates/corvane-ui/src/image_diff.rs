@@ -8,6 +8,9 @@
 //! Deviation (`178-image-diff-border-outside`): the image's 1 px border sits
 //! outside its fitted size (GHD's `border-box` shrinks the image by 2 px,
 //! which blurs small images).
+//!
+//! Deviation (`183-image-diff-background`): the checkerboard behind the
+//! images can be dark, or follow the app theme.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -166,6 +169,22 @@ impl ImageDiff {
         .into_any_element()
     }
 
+    /// `183-image-diff-background`: whether the checkerboard is dark
+    /// (`dark`, or `theme` with a dark app theme).
+    fn dark_checkerboard(cx: &App) -> bool {
+        let choice = corvane_core::AppState::try_global(cx).map_or(String::new(), |s| {
+            s.read(cx)
+                .flags
+                .text(corvane_core::flags::ids::IMAGE_DIFF_BACKGROUND)
+                .to_string()
+        });
+        match choice.as_str() {
+            "dark" => true,
+            "theme" => cx.ghd().is_dark(),
+            _ => false,
+        }
+    }
+
     /// What a 1 px border adds around an image of the fitted size: nothing
     /// in GHD (`border-box`, the border eats into the image), 2 px with
     /// `178-image-diff-border-outside`.
@@ -178,6 +197,7 @@ impl ImageDiff {
         box_size: Size<Pixels>,
         border: Hsla,
         extra: Pixels,
+        dark: bool,
     ) -> AnyElement {
         let fit = side
             .size
@@ -187,7 +207,7 @@ impl ImageDiff {
             .relative()
             .w(fit.width + extra)
             .h(fit.height + extra)
-            .child(checkerboard())
+            .child(checkerboard(dark))
             .child(
                 img(side.image.clone())
                     .absolute()
@@ -266,6 +286,7 @@ impl ImageDiff {
     fn two_up(&self, previous: &Side, current: &Side, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let extra = self.border_extra();
+        let dark = Self::dark_checkerboard(cx);
         let container = self.container.get();
         // room for the headers / footers / summary rows
         let image_box = size(
@@ -290,7 +311,7 @@ impl ImageDiff {
                         .pb(zpx(10.))
                         .child(label.to_string()),
                 )
-                .child(Self::image_element(side, image_box, color, extra))
+                .child(Self::image_element(side, image_box, color, extra, dark))
                 .child(Self::footer(side, cx))
         };
         let diff_bytes = current.bytes as i64 - previous.bytes as i64;
@@ -395,7 +416,7 @@ impl ImageDiff {
                             .flex_none()
                             .w(box_size.width)
                             .h(box_size.height)
-                            .child(checkerboard())
+                            .child(checkerboard(Self::dark_checkerboard(cx)))
                             .child(
                                 // previous: `clip-path: inset(0 swiper 0 0)`
                                 div()
@@ -477,7 +498,7 @@ impl ImageDiff {
                             .flex_none()
                             .w(box_size.width)
                             .h(box_size.height)
-                            .child(checkerboard())
+                            .child(checkerboard(Self::dark_checkerboard(cx)))
                             .child(Self::overlay_image(
                                 previous,
                                 box_size,
@@ -551,6 +572,7 @@ impl ImageDiff {
     /// `NewImageDiff` / `DeletedImageDiff`: one image with its header.
     fn single(&self, side: &Side, label: &str, color: Hsla, cx: &Context<Self>) -> AnyElement {
         let extra = self.border_extra();
+        let dark = Self::dark_checkerboard(cx);
         let container = self.container.get();
         let image_box = size(
             (container.width - SPACING_DOUBLE()).max(zpx(0.)),
@@ -572,7 +594,7 @@ impl ImageDiff {
                     .pb(zpx(10.))
                     .child(label.to_string()),
             )
-            .child(Self::image_element(side, image_box, color, extra))
+            .child(Self::image_element(side, image_box, color, extra, dark))
             .into_any_element()
     }
 }
@@ -677,13 +699,17 @@ impl Render for ImageDiff {
     }
 }
 
-/// GHD `checkboard-background` mixin behind transparent images.
-fn checkerboard() -> AnyElement {
+/// GHD `checkboard-background` mixin behind transparent images; `dark`
+/// (`183-image-diff-background`) swaps in a dark pair of greys.
+fn checkerboard(dark: bool) -> AnyElement {
     canvas(
         |_, _, _| (),
-        |bounds, _, window, _| {
-            let light = rgb(0xffffff);
-            let dark = rgb(0xcccccc);
+        move |bounds, _, window, _| {
+            let (light, dark) = if dark {
+                (rgb(0x2b2b2b), rgb(0x1e1e1e))
+            } else {
+                (rgb(0xffffff), rgb(0xcccccc))
+            };
             window.paint_quad(fill(bounds, light));
             let cell = zpx(10.);
             window.with_content_mask(Some(ContentMask { bounds }), |window| {
