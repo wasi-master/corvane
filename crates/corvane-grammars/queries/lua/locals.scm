@@ -1,5 +1,5 @@
 ; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/lua/).
-; Source: tree-sitter-lua 0.5.0 (MIT): queries/locals.scm
+; Source: nvim-treesitter@728e031f6b11 queries/lua (Apache-2.0)
 ; Scopes
 [
   (chunk)
@@ -15,20 +15,42 @@
 ; Definitions
 (assignment_statement
   (variable_list
-    (identifier) @local.definition))
+    (identifier) @local.definition.var))
 
-(function_declaration
-  name: (identifier) @local.definition)
+(assignment_statement
+  (variable_list
+    (dot_index_expression
+      .
+      (_) @local.definition.associated
+      (identifier) @local.definition.var)))
+
+((function_declaration
+  name: (identifier) @local.definition.function)
+  (#set! definition.function.scope "parent"))
+
+((function_declaration
+  name: (dot_index_expression
+    .
+    (_) @local.definition.associated
+    (identifier) @local.definition.function))
+  (#set! definition.method.scope "parent"))
+
+((function_declaration
+  name: (method_index_expression
+    .
+    (_) @local.definition.associated
+    (identifier) @local.definition.method))
+  (#set! definition.method.scope "parent"))
 
 (for_generic_clause
   (variable_list
-    (identifier) @local.definition))
+    (identifier) @local.definition.var))
 
 (for_numeric_clause
-  name: (identifier) @local.definition)
+  name: (identifier) @local.definition.var)
 
 (parameters
-  (identifier) @local.definition)
+  (identifier) @local.definition.parameter)
 
 ; References
 (identifier) @local.reference

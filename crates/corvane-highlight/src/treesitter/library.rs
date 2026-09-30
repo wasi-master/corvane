@@ -413,6 +413,20 @@ mod tests {
         let spans = crate::treesitter::highlight("main.rs", &["fn main() {}"], 1024)
             .expect("rust highlights");
         assert!(!spans[0].is_empty());
+        // a whole budget's worth of Rust, as a large diff would highlight
+        let source = include_str!("mod.rs")
+            .repeat(crate::MAX_HIGHLIGHT_BYTES / include_str!("mod.rs").len());
+        let lines: Vec<&str> = source.lines().collect();
+        let started = std::time::Instant::now();
+        let spans = crate::treesitter::highlight("big.rs", &lines, crate::MAX_HIGHLIGHT_BYTES)
+            .expect("rust highlights");
+        eprintln!(
+            "{} bytes, {} lines: {:?}",
+            source.len(),
+            lines.len(),
+            started.elapsed()
+        );
+        assert!(spans.iter().filter(|s| !s.is_empty()).count() > lines.len() / 2);
         unload_library("tree-sitter-all");
     }
 }

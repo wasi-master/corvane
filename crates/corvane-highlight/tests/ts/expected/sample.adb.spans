@@ -1,0 +1,29 @@
+1: 0+55=Comment
+2: 0+4=Keyword 5+11=Qualifier 26+3=Keyword 30+11=Qualifier
+3: 0+4=Keyword 5+19=Qualifier
+5: 0+9=Keyword 10+6=Variable 17+2=Keyword
+6: 15+8=Keyword
+7: 3+4=Keyword 19+2=Keyword 22+5=Keyword 45+2=Keyword
+9: 3+4=Keyword 14+2=Keyword 17+6=Keyword
+10: 29+6=Keyword
+12: 3+3=Keyword 7+6=Keyword
+14: 16+9=Keyword
+16: 3+9=Keyword 13+4=Variable 23+2=Keyword 26+3=Keyword 54+2=Keyword
+17: 3+5=Keyword
+18: 6+2=Keyword 30+4=Keyword
+19: 9+5=Keyword 26+4=Keyword 31+15=String
+20: 6+3=Keyword 10+2=Keyword
+23: 3+3=Keyword
+25: 3+8=Keyword 12+3=Variable 28+6=Keyword 43+2=Keyword
+27: 3+5=Keyword
+28: 6+3=Keyword 12+2=Keyword 28+4=Keyword
+30: 6+3=Keyword 10+4=Keyword
+31: 6+6=Keyword
+32: 3+3=Keyword
+36: 0+5=Keyword
+37: 3+5=Keyword 15+3=Keyword 19+4=Keyword 36+4=Keyword
+39: 3+3=Keyword 7+4=Keyword
+40: 8+7=String
+43: 0+9=Keyword
+44: 3+4=Keyword 32+10=String
+45: 0+3=Keyword

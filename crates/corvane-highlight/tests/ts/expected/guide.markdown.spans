@@ -1,0 +1,57 @@
+1: 0+17=Header
+2: 0+17=Header
+3: 0+36=Header
+4: 0+5=Header
+6: 0+25=Header
+7: 0+40=Header
+8: 0+3=Header
+12: 0+3=AltVariable
+13: 0+3=AltVariable
+14: 3+2=AltVariable
+15: 3+2=AltVariable 27+18=Comment
+19: 5+36=Comment
+21: 3+2=AltVariable
+22: 0+3=AltVariable
+24: 3+3=Comment 6+2=AltVariable
+25: 3+5=Keyword 8+1=Comment 9+1=Variable 10+1=Comment 12+1=Comment 15+45=Comment
+26: 3+3=Comment
+28: 3+3=Comment 6+4=AltVariable
+29: 3+4=Tag 21+5=Tag
+30: 0+1=Comment
+31: 0+6=Comment
+33: 0+14=Comment
+34: 0+22=Comment
+36: 0+20=Comment
+38: 0+3=Comment
+39: 0+4=Comment
+40: 0+5=Comment
+41: 0+6=Comment
+42: 0+7=Comment
+43: 0+8=Comment
+45: 0+1=Comment
+46: 0+18=Comment
+47: 0+24=Comment
+48: 0+16=Comment
+50: 0+21=Comment
+51: 0+5=Comment
+52: 2+21=Quote
+53: 2+3=Comment
+54: 2+18=Comment
+55: 2+32=Comment
+56: 2+45=Comment
+60: 36+9=Link
+70: 12+3=Comment 16+5=Comment 22+7=Comment 30+7=Comment 38+13=Comment 56+3=Comment
+75: 0+7=Tag
+76: 2+4=Tag
+77: 4+4=Tag 12+5=Tag
+79: 0+41=Comment
+80: 0+2=Comment 2+5=Tag
+81: 0+8=Tag
+84: 0+2=Tag
+85: 2+5=Attribute 8+12=String 20+1=Tag 26+4=Tag
+93: 0+2=Tag 9+1=Tag
+94: 0+2=Tag 2+12=Atom 14+1=Tag
+95: 0+2=Tag 16+1=Tag
+96: 0+1=Tag 15+1=Tag
+98: 70+4=Tag 75+4=Attribute 80+6=Attribute 86+1=Tag
+138: 21+3=Tag 28+4=Tag

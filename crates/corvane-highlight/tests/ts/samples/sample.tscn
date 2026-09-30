@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3 uid="uid://b3k2x8plyr1q"]
+
+[ext_resource type="Script" path="res://player/player.gd" id="1_abcd"]
+[ext_resource type="Texture2D" uid="uid://c7t1q0sprt2w" path="res://art/player.png" id="2_efgh"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(24, 40)
+
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = "idle"
+length = 0.8
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.4),
+"transitions": PackedFloat32Array(1, 1),
+"update": 1,
+"values": [0, 1]
+}
+
+; The root node carries the controller script.
+[node name="Player" type="CharacterBody2D" groups=["players"]]
+collision_layer = 2
+script = ExtResource("1_abcd")
+acceleration = 1200.0
+friction = 0.15
+metadata/_edit_group_ = true
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_efgh")
+hframes = 2
+flip_h = false
+modulate = Color(1, 0.9, 0.9, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -20)
+shape = SubResource("RectangleShape2D_1")
+disabled = false
+
+[connection signal="died" from="." to="." method="_on_died" flags=3]

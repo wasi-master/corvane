@@ -1,0 +1,33 @@
+<%# Order summary partial; expects @order and @user. %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title><%= @order.number %> - Order summary</title>
+</head>
+<body>
+  <h1>Thanks, <%= @user.first_name.capitalize %>!</h1>
+  <% if @order.items.empty? %>
+    <p class="empty">Your cart is empty.</p>
+  <% else %>
+    <table>
+      <% @order.items.each_with_index do |item, index| %>
+        <tr class="<%= index.even? ? 'even' : 'odd' %>">
+          <td><%= item.name %></td>
+          <td><%= item.quantity %> x <%= format("%.2f", item.price) %></td>
+        </tr>
+      <% end %>
+    </table>
+    <p>Total: <strong><%= number_to_currency(@order.total, unit: "$") %></strong></p>
+  <% end %>
+  <%- discount = @order.discount || 0 -%>
+  <% unless discount.zero? %>
+    <p>You saved <%= (discount * 100).round %>% with code "<%= @order.code %>".</p>
+  <% end %>
+  <% [:email, :phone].each do |field| %>
+    <span data-field="<%= field %>"><%= @user.public_send(field) || "n/a" %></span>
+  <% end %>
+  <%= raw(footer_html) %>
+  <!-- rendered at <%= Time.now.utc.iso8601 %> -->
+</body>
+</html>

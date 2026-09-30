@@ -1,0 +1,39 @@
+1: 0+67=Comment
+2: 0+2=Keyword 3+6=Variable 10+17=String 33+10=Keyword
+3: 2+6=Keyword
+4: 0+5=Keyword
+5: 0+3=Keyword 4+2=Qualifier 6+13=Variable
+6: 0+3=Keyword 4+2=Qualifier 6+8=Variable 18+3=Keyword
+7: 0+3=Keyword 4+3=Keyword 8+3=Keyword
+9: 0+3=Keyword 4+2=Qualifier 6+13=Variable 22+3=Variable 30+15=String 48+10=String 60+6=String
+10: 0+3=Keyword 4+2=Qualifier 6+5=Variable
+12: 0+62=Comment
+13: 0+8=Keyword 10+10=Variable
+14: 2+2=Keyword 5+5=Variable 11+2=Qualifier 13+13=Variable 29+8=Keyword
+15: 4+6=Keyword
+16: 2+5=Keyword
+17: 2+3=Keyword 6+2=Qualifier 8+4=Variable 15+11=Variable
+18: 2+3=Keyword 6+2=Qualifier 8+7=Variable 18+2=Qualifier 26+1=Keyword 28+2=Qualifier 34+7=String
+19: 2+6=Keyword 10+7=Keyword 18+5=String 26+2=Qualifier 28+7=Variable 38+5=String
+20: 2+4=Keyword 7+11=Variable 19+2=Qualifier 21+4=Variable
+21: 2+3=Keyword 6+2=Qualifier 8+5=Variable
+22: 2+6=Keyword
+23: 0+11=Keyword
+25: 0+8=Keyword 10+2=Qualifier 12+13=Variable
+26: 2+3=Keyword 6+2=Qualifier 8+2=Variable 13+5=Variable 19+13=String
+27: 2+2=Keyword 5+2=Qualifier 7+2=Variable 19+8=Variable 28+2=Qualifier 30+2=Variable
+28: 4+7=Keyword 12+8=Variable 21+2=Qualifier 23+2=Variable 29+10=String
+29: 2+4=Keyword
+30: 4+8=Keyword 13+3=Keyword
+31: 4+8=Keyword 13+7=Keyword 28+9=Keyword 43+10=Keyword
+32: 2+5=Keyword
+33: 0+11=Keyword
+35: 0+7=Keyword 9+6=AltVariable 16+1=String 18+10=Variable 28+26=String
+36: 0+8=Keyword 9+8=Atom 19+6=String 35+3=String 55+2=String
+38: 0+7=Keyword 8+6=Qualifier
+39: 2+7=Keyword
+40: 2+7=Keyword 10+11=Atom 23+1=Keyword 24+2=String 28+1=Keyword 29+2=String 32+2=Keyword 35+3=Variable 43+13=String 58+2=Qualifier 60+4=Variable 68+4=Keyword 73+10=Variable 88+5=Keyword
+41: 0+7=Keyword 8+3=Qualifier
+43: 0+7=Keyword 8+6=Variable 15+23=String
+44: 0+3=Keyword 5+3=Keyword 11+2=Qualifier 13+8=Variable
+45: 0+5=Keyword 6+2=Qualifier 8+8=Variable

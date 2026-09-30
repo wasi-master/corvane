@@ -1,0 +1,92 @@
+2: 0+4=Keyword 5+11=String
+3: 0+4=Keyword 5+10=String
+4: 0+7=Keyword 8+11=String 21+8=String
+6: 0+8=AltVariable 11+6=String
+7: 0+10=AltVariable 14+6=Variable 33+1=String
+8: 0+15=AltVariable 18+3=String
+9: 0+12=AltVariable
+10: 2+7=String
+11: 2+8=String
+12: 2+7=String
+13: 2+7=String
+15: 0+9=AltVariable 12+7=String 26+10=String
+17: 0+18=Comment
+18: 0+41=Comment
+20: 0+9=Keyword 10+3=Variable 14+3=AltVariable 19+5=AltVariable 25+1=AltVariable 28+2=String
+21: 2+7=Keyword 10+8=Variable 34+3=String
+24: 0+6=Keyword 7+10=Variable 18+11=AltVariable
+25: 2+6=AltVariable 10+7=Variable
+26: 16+4=String
+27: 4+6=Comment 12+9=AltVariable 33+8=Comment
+28: 28+5=String
+29: 4+6=Comment 11+5=Variable 19+8=Comment
+31: 4+5=Keyword 10+38=String
+35: 0+6=Keyword 7+14=Variable 22+11=AltVariable 35+7=AltVariable 43+1=AltVariable 44+6=Variable 51+11=AltVariable 63+1=AltVariable 65+1=String 69+6=AltVariable 76+1=AltVariable 77+7=Variable 85+11=AltVariable 97+1=AltVariable 100+1=String
+36: 2+16=AltVariable
+37: 2+12=AltVariable
+38: 2+1=String 4+5=Attribute 11+1=String 13+5=Attribute 21+16=AltVariable
+39: 2+1=String 4+8=Type 15+7=AltVariable
+42: 1+14=Variable
+43: 2+6=AltVariable 11+2=String 14+5=String 21+3=String
+44: 2+7=AltVariable 13+2=String
+45: 2+5=AltVariable 10+3=String
+48: 1+7=Type 11+7=Keyword 20+14=Variable
+50: 1+3=Type
+51: 2+7=AltVariable 11+4=String
+52: 2+4=Tag
+53: 4+6=AltVariable
+54: 4+4=AltVariable 10+3=Variable 16+2=String
+55: 4+6=AltVariable 12+4=String
+58: 2+2=Tag
+59: 4+6=AltVariable
+60: 4+10=AltVariable 16+4=String
+62: 4+2=Tag 9+7=AltVariable 18+12=String
+65: 2+1=Tag
+66: 4+5=AltVariable
+67: 4+7=AltVariable
+68: 4+5=Tag 11+4=Attribute 19+1=String
+69: 8+2=Keyword 10+1=Variable
+71: 4+2=Keyword
+73: 4+1=String 6+5=Attribute 14+5=AltVariable 21+6=Variable 40+1=String
+74: 4+1=String 5+8=Type 16+11=AltVariable
+75: 5+4=Type 12+1=String 16+11=AltVariable 30+2=String
+78: 2+1=String 3+6=Type 10+3=Attribute 15+10=Attribute 29+12=AltVariable 44+2=String
+80: 2+8=Keyword 11+10=Variable 22+8=String
+81: 4+14=AltVariable 20+6=String
+85: 1+4=Variable 5+7=Type
+86: 2+8=Keyword 11+14=Variable 26+6=AltVariable
+89: 1+6=Variable 7+8=Type 16+5=Variable 24+5=AltVariable 31+7=Variable
+91: 0+5=Keyword 20+2=Keyword
+92: 3+5=Variable 8+7=Type 17+6=Attribute
+93: 4+7=AltVariable
+97: 0+5=Keyword 17+2=Keyword 21+8=String 36+7=String
+98: 7+1=Variable 18+5=AltVariable 30+10=Keyword
+101: 0+4=Keyword 5+2=AltVariable 8+4=Keyword 15+7=Keyword
+102: 3+3=Variable 6+4=Type 14+10=Tag 26+5=Attribute 32+1=Attribute 35+2=Variable
+105: 0+2=AltVariable
+106: 0+6=Keyword
+107: 3+5=Variable 8+4=Type 16+5=AltVariable 24+2=String
+108: 2+2=AltVariable
+111: 1+7=Type
+112: 2+5=AltVariable 9+4=String
+113: 2+11=AltVariable 16+2=String
+114: 2+6=Keyword 9+26=String
+115: 5+5=Type 13+7=AltVariable
+116: 5+4=Type 12+5=AltVariable 19+4=String
+117: 4+1=Tag 8+5=AltVariable 15+4=String
+118: 2+2=Tag 4+1=String 16+9=AltVariable 28+2=String
+119: 3+4=Atom 10+5=AltVariable 17+3=String
+120: 2+1=Tag 4+5=Attribute 11+5=AltVariable 18+4=String
+121: 2+5=Tag 8+5=Attribute 16+7=AltVariable
+122: 2+14=Tag 19+7=AltVariable 28+5=String
+125: 0+6=Comment 7+6=Variable 14+3=Keyword 19+9=AltVariable
+126: 3+9=Type 15+5=AltVariable 25+1=String
+129: 0+9=Comment 10+3=Keyword 15+7=AltVariable 24+4=String 33+1=Type 37+5=AltVariable 44+4=String
+131: 1+3=Type 7+10=Tag 19+3=Attribute 23+18=String 61+4=Type
+132: 1+3=Type 7+7=AltVariable 16+7=String 25+6=AltVariable 33+7=String 41+7=String
+133: 1+13=Type 17+5=Tag 24+4=Attribute 33+1=String
+134: 0+10=Comment 13+11=AltVariable 26+1=String 29+3=AltVariable 34+5=Variable 40+3=String
+135: 0+10=Comment 11+6=Variable 21+1=String 31+3=AltVariable 42+1=String 46+3=AltVariable 54+2=String
+136: 1+11=Type 15+7=Keyword 24+7=Type
+137: 1+10=Type 14+7=Tag
+138: 1+5=Type 9+3=AltVariable

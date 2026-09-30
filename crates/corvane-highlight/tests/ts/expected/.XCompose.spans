@@ -1,0 +1,27 @@
+1: 0+43=Comment
+2: 0+77=Comment
+3: 0+7=Keyword 9+2=String
+5: 0+12=Comment
+6: 1+9=Atom 13+6=Atom 22+6=Atom 31+6=Atom 59+8=Atom
+7: 1+9=Atom 13+5=Atom 21+5=Atom 29+5=Atom 59+6=Atom
+8: 1+9=Atom 13+5=Atom 21+5=Atom 29+6=Atom 59+6=Atom
+9: 1+9=Atom 13+4=Atom 20+8=Atom 59+19=Atom
+10: 1+9=Atom 13+7=Atom 23+8=Atom 59+20=Atom
+12: 0+8=Comment
+13: 1+9=Atom 13+5=Atom 21+7=Atom 59+10=Atom
+14: 1+9=Atom 13+4=Atom 20+5=Atom 59+9=Atom
+15: 1+9=Atom 13+5=Atom 21+7=Atom 59+5=Atom
+17: 0+6=Comment
+18: 1+9=Atom 13+6=Atom 22+5=Atom 59+8=Atom
+19: 1+9=Atom 13+4=Atom 20+5=Atom 59+13=Atom
+20: 1+9=Atom 13+4=Atom 20+5=Atom 42+9=Atom
+21: 1+9=Atom 13+1=Atom 17+1=Atom 59+8=Atom
+23: 0+22=Comment
+24: 1+10=Atom 14+1=Atom 59+12=Atom
+25: 1+10=Atom 14+1=Atom 59+8=Atom
+27: 0+22=Comment
+28: 1+9=Atom 13+1=Atom 17+5=Atom 43+4=String
+29: 1+9=Atom 13+1=Atom 17+1=Atom 43+10=String
+30: 1+9=Atom 13+2=Atom 18+1=Atom 43+16=String
+31: 1+9=Atom 13+1=Atom 17+1=Atom 59+9=Atom
+32: 1+9=Atom 13+1=Atom 17+1=Atom 59+6=Atom

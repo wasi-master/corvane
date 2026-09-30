@@ -1,7 +1,7 @@
 //! Tree-sitter capture names → GitHub Desktop's colour classes.
 //!
 //! Queries come from three vocabularies (the grammars' own and Zed's, nvim-
-//! treesitter's, Helix's); all of them land on the thirteen `--syntax-*`
+//! treesitter's, Helix's, plus a few TextMate-style names); all of them land on the thirteen `--syntax-*`
 //! colours GHD's `.cm-s-default` theme has ([`TokenClass`]). Where CodeMirror
 //! has an equivalent the mapping follows it: numbers, operators, brackets
 //! and definitions stay in the line colour, `this`/`self` are keywords, C
@@ -124,6 +124,12 @@ pub const STYLES: &[(&str, Style)] = &[
     ("text.strike", Plain),
     ("diff", Plain),
     ("error", Plain),
+    // TextMate-style names a few grammars' own queries use
+    ("entity.name.type", Class(Type)),
+    ("entity.name.function", Class(Variable)),
+    ("entity.name", Class(Variable)),
+    ("meta.attribute", Class(Attribute)),
+    ("storage", Class(Keyword)),
     // no colour of their own
     ("spell", Inherit),
     ("nospell", Inherit),

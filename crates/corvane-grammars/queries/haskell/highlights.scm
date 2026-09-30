@@ -1,19 +1,18 @@
 ; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/haskell/).
-; Source: tree-sitter-haskell 0.23.1 (MIT): queries/highlights.scm
+; Source: nvim-treesitter@728e031f6b11 queries/haskell (Apache-2.0)
 ; ----------------------------------------------------------------------------
 ; Parameters and variables
 ; NOTE: These are at the top, so that they have low priority,
 ; and don't override destructured parameters
 (variable) @variable
 
-(pattern/wildcard) @variable
-
 (decl/function
   patterns: (patterns
     (_) @variable.parameter))
 
 (expression/lambda
-  (_)+ @variable.parameter
+  patterns: (patterns
+    (_) @variable.parameter)
   "->")
 
 (decl/function
@@ -33,11 +32,9 @@
 
 (string) @string
 
-(unit) @string.special.symbol ; unit, as in ()
-
 (comment) @comment
 
-((haddock) @comment.documentation)
+(haddock) @comment.documentation
 
 ; ----------------------------------------------------------------------------
 ; Punctuation
@@ -82,7 +79,6 @@
   (operator)
   (constructor_operator)
   (all_names)
-  (wildcard)
   "."
   ".."
   "="
@@ -96,11 +92,7 @@
   "@"
 ] @operator
 
-; TODO broken, also huh?
-; ((qualified_module
-;   (module) @constructor)
-;   .
-;   (module))
+(wildcard) @character.special
 
 (module
   (module_id) @module)
@@ -132,10 +124,25 @@
 
 ; ----------------------------------------------------------------------------
 ; Functions and variables
-(decl
+(decl/signature
   [
-   name: (variable) @function
-   names: (binding_list (variable) @function)
+    name: (variable) @function
+    names: (binding_list
+      (variable) @function)
+  ])
+
+(decl/function
+  [
+    name: (variable) @function
+    names: (binding_list
+      (variable) @function)
+  ])
+
+(decl/bind
+  [
+    name: (variable) @function
+    names: (binding_list
+      (variable) @function)
   ])
 
 (decl/bind
@@ -152,8 +159,15 @@
   type: (type))
   .
   (decl
-    name: (variable) @variable)
-    match: (_)
+    [
+      (signature
+        name: (variable) @variable)
+      (function
+        name: (variable) @variable)
+      (bind
+        name: (variable) @variable)
+    ])
+  match: (_)
   (#eq? @_name @variable))
 
 ; but consider a type that involves 'IO' a decl/function
@@ -170,8 +184,15 @@
   (#eq? @_type "IO"))
   .
   (decl
-    name: (variable) @function)
-    match: (_)
+    [
+      (signature
+        name: (variable) @function)
+      (function
+        name: (variable) @function)
+      (bind
+        name: (variable) @function)
+    ])
+  match: (_)
   (#eq? @_name @function))
 
 ((decl/signature) @function
@@ -203,14 +224,13 @@
 ; decl/function calls with an infix operator
 ; e.g. func <$> a <*> b
 (infix
-  [
+  left_operand: [
     (variable) @function.call
     (qualified
       ((module) @module
         (variable) @function.call))
   ]
-  .
-  (operator))
+  operator: (operator))
 
 ; infix operators applied to variables
 ((expression/variable) @variable
@@ -225,12 +245,23 @@
       (variable) @variable)
   ])
 
+; infix operator function definitions
+(function
+  (infix
+    left_operand: [
+      (variable) @variable.parameter
+      (qualified
+        ((module) @module
+          (variable) @variable))
+    ])
+  match: (match))
+
 ; decl/function calls with infix operators
 ([
-    (expression/variable) @function.call
-    (expression/qualified
-      (variable) @function.call)
-  ]
+  (expression/variable) @function.call
+  (expression/qualified
+    (variable) @function.call)
+]
   .
   (operator) @_op
   (#any-of? @_op "$" "<$>" ">>=" "=<<"))
@@ -239,7 +270,8 @@
 ((infix
   [
     (operator)
-    (infix_id (variable))
+    (infix_id
+      (variable))
   ] ; infix or `func`
   .
   [
@@ -252,12 +284,11 @@
   (#any-of? @_op "$" "<$>" "=<<"))
 
 ; decl/function composition, arrows, monadic composition (lhs)
-(
-  [
-    (expression/variable) @function
-    (expression/qualified
-      (variable) @function)
-  ]
+([
+  (expression/variable) @function
+  (expression/qualified
+    (variable) @function)
+]
   .
   (operator) @_op
   (#any-of? @_op "." ">>>" "***" ">=>" "<=<"))
@@ -266,7 +297,8 @@
 ((infix
   [
     (operator)
-    (infix_id (variable))
+    (infix_id
+      (variable))
   ] ; infix or `func`
   .
   [
@@ -349,13 +381,13 @@
 ; scoped function types (func :: a -> b)
 (signature
   pattern: (pattern/variable) @function
-  type: (quantified_type))
+  type: (function))
 
 ; signatures that have a function type
 ; + binds that follow them
 (decl/signature
   name: (variable) @function
-  type: (quantified_type))
+  type: (function))
 
 ((decl/signature
   name: (variable) @_name
@@ -365,13 +397,39 @@
     (variable) @function)
   (#eq? @function @_name))
 
+; Treat constructor assignments (smart constructors) as functions, e.g. mkJust = Just
+(bind
+  name: (variable) @function
+  match: (match
+    expression: (constructor)))
+
+; Function composition
+(bind
+  name: (variable) @function
+  match: (match
+    expression: (infix
+      operator: (operator) @_op
+      (#eq? @_op "."))))
+
 ; ----------------------------------------------------------------------------
 ; Types
 (name) @type
 
-(type/star) @type
+(type/unit) @type
 
-(variable) @type
+(type/unit
+  [
+    "("
+    ")"
+  ] @type)
+
+(type/list
+  [
+    "["
+    "]"
+  ] @type)
+
+(type/star) @type
 
 (constructor) @constructor
 
@@ -388,26 +446,24 @@
 (quoter) @function.call
 
 (quasiquote
-  [
+  quoter: [
     (quoter) @_name
-    (_
-      (variable) @_name)
+    (quoter
+      (qualified
+        id: (variable) @_name))
   ]
   (#eq? @_name "qq")
-  (quasiquote_body) @string)
-
-(quasiquote
-  (_
-    (variable) @_name)
-  (#eq? @_name "qq")
-  (quasiquote_body) @string)
+  body: (quasiquote_body) @string)
 
 ; namespaced quasi-quoter
-(quasiquote
-  (_
-    (module) @module
-    .
-    (variable) @function.call))
+(quoter
+  [
+    (variable) @function.call
+    (_
+      (module) @module
+      .
+      (variable) @function.call)
+  ])
 
 ; Highlighting of quasiquote_body for other languages is handled by injections.scm
 ; ----------------------------------------------------------------------------
@@ -429,7 +485,6 @@
 
 ; ----------------------------------------------------------------------------
 ; Fields
-
 (field_name
   (variable) @variable.member)
 
@@ -438,7 +493,6 @@
   .
   (children
     (variable) @variable.member))
-
 
 ; ----------------------------------------------------------------------------
 ; Spell checking

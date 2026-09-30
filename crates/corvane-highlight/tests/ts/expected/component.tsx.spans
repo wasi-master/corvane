@@ -1,0 +1,34 @@
+1: 0+6=Keyword 7+1=String 9+2=Keyword 12+5=Qualifier 18+4=Keyword 23+7=String
+2: 0+6=Keyword 7+4=Keyword 14+2=Type 18+9=Type 30+4=Keyword 35+7=String
+4: 0+9=Keyword 10+11=Type
+5: 2+5=AltVariable 9+6=Type
+6: 2+7=Variable 13+5=AltVariable 20+5=Type 26+10=Type 37+17=Type 60+4=Type
+7: 2+8=AltVariable 13+9=Type
+8: 2+7=AltVariable 11+9=String 23+11=String
+11: 0+4=Keyword 5+5=Type 15+5=AltVariable 22+6=Type 30+5=AltVariable 37+5=Type 43+6=Type
+13: 0+6=Keyword 7+5=Keyword 13+6=Variable 21+2=Type 24+11=Type 42+5=AltVariable 49+7=AltVariable 58+8=AltVariable 68+7=AltVariable 78+9=String
+14: 2+5=Keyword 9+5=Variable 16+8=Variable 28+5=Type 34+8=Variable 43+6=Type
+15: 2+5=Keyword 8+3=Variable 14+5=Type 20+6=Variable 27+14=Type 43+4=Atom
+16: 2+5=Keyword 8+6=Variable 18+1=AltVariable 21+5=Type 27+10=Type 38+17=Type 59+4=Type
+17: 4+8=Variable 13+1=AltVariable 18+1=Variable
+18: 4+7=Variable 14+1=Variable
+20: 2+6=Keyword
+21: 4+4=Tag 9+3=Attribute 14+3=Variable 19+9=Attribute 30+9=String 41+7=Variable 49+1=String 51+1=Tag
+22: 6+7=Tag 14+4=Attribute 19+8=String 28+7=Attribute 37+6=Variable 45+10=Attribute 57+5=Variable 63+1=Tag
+23: 9+5=Variable 18+5=Variable
+24: 6+9=Tag
+25: 7+8=Variable
+26: 7+5=Variable 20+6=Tag 27+6=Type 35+5=Attribute 42+5=Variable 49+2=Tag
+27: 4+6=Tag
+31: 0+8=Keyword 9+8=Variable 18+1=Type 22+5=AltVariable 29+1=Type 33+1=Type
+32: 2+6=Keyword 9+5=Variable
+34: 0+5=Keyword 6+7=Variable 17+1=Type 21+1=AltVariable 24+1=Type 30+1=Variable
+35: 0+5=Keyword 6+6=Variable 15+5=Variable 21+2=Keyword 24+7=Type 32+2=Keyword 35+11=Type
+37: 0+6=Keyword 7+5=Keyword 13+7=Type 21+7=Keyword 29+5=Type 35+9=AltVariable 45+11=Type 58+5=Type
+38: 2+5=AltVariable 9+5=Type 19+5=AltVariable 29+5=AltVariable
+39: 2+7=Keyword 10+5=AltVariable 18+6=Type
+40: 2+6=Variable 12+3=Atom 16+7=Type
+41: 4+5=Keyword 12+5=Variable 22+4=Keyword 27+5=AltVariable
+42: 4+6=Keyword 11+5=Tag 17+5=Attribute 24+5=Variable 30+1=Tag 32+4=Keyword 37+5=AltVariable 43+5=AltVariable 49+7=Tag
+46: 0+4=Keyword 5+4=Type 12+5=AltVariable 20+3=String 25+5=AltVariable 33+3=String
+47: 0+6=Keyword 7+7=Keyword 15+6=Type

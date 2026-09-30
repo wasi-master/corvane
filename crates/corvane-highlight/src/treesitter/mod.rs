@@ -169,7 +169,31 @@ pub fn highlight(path: &str, lines: &[&str], budget: usize) -> Option<Vec<Vec<Sp
     }
     let grammar = detect::for_path(&grammars, path, lines.first().copied().unwrap_or(""))?;
     let root = compiled(&grammar, generation)?;
+    run(root, &grammars, generation, lines, budget)
+        .map_err(|err| tracing::debug!("tree-sitter highlighting {path}: {err}"))
+        .ok()
+}
 
+/// Highlight with `grammar`'s own queries, compiled afresh (the query tools
+/// compare query sources with this; injections use the registered grammars).
+pub fn highlight_with_grammar(grammar: &Grammar, lines: &[&str]) -> Result<Vec<Vec<Span>>, String> {
+    let root = Arc::new(compile(grammar)?);
+    run(
+        root,
+        &library::grammars(),
+        generation(),
+        lines,
+        crate::MAX_HIGHLIGHT_BYTES,
+    )
+}
+
+fn run(
+    root: Arc<Compiled>,
+    grammars: &[Arc<Grammar>],
+    generation: u64,
+    lines: &[&str],
+    budget: usize,
+) -> Result<Vec<Vec<Span>>, String> {
     let mut starts = Vec::with_capacity(lines.len());
     let mut source = String::new();
     for line in lines {
@@ -181,15 +205,8 @@ pub fn highlight(path: &str, lines: &[&str], budget: usize) -> Option<Vec<Vec<Sp
         source.push('\n');
     }
     let paint = PARSER.with_borrow_mut(|parser| {
-        paint_document(parser, &grammars, generation, root, source.as_bytes())
-    });
-    let paint = match paint {
-        Ok(paint) => paint,
-        Err(err) => {
-            tracing::debug!("tree-sitter highlighting {path}: {err}");
-            return None;
-        }
-    };
+        paint_document(parser, grammars, generation, root, source.as_bytes())
+    })?;
     let mut out: Vec<Vec<Span>> = vec![Vec::new(); lines.len()];
     for (ix, start) in starts.iter().enumerate() {
         let line = &paint[*start..start + lines[ix].len()];
@@ -206,7 +223,7 @@ pub fn highlight(path: &str, lines: &[&str], budget: usize) -> Option<Vec<Vec<Sp
             i += run;
         }
     }
-    Some(out)
+    Ok(out)
 }
 
 /// A region to parse with a grammar.
@@ -570,8 +587,11 @@ pub(crate) mod tests {
             "README.md",
             "# Title\n\nSee [docs](https://x.y).\n\n```rust\nfn f() {}\n```",
         );
-        assert!(has(&c[0], "Title", TokenClass::Header), "{c:?}");
-        assert!(has(&c[2], "docs", TokenClass::Link), "{c:?}");
+        let within = |line: &[(String, TokenClass)], text: &str, class| {
+            line.iter().any(|(t, c)| t.contains(text) && *c == class)
+        };
+        assert!(within(&c[0], "Title", TokenClass::Header), "{c:?}");
+        assert!(within(&c[2], "docs", TokenClass::Link), "{c:?}");
         assert!(has(&c[2], "https://x.y", TokenClass::String), "{c:?}");
         assert!(has(&c[5], "fn", TokenClass::Keyword), "{c:?}");
     }

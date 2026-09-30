@@ -1,0 +1,37 @@
+1: 0+2=Keyword 3+27=String
+2: 0+5=Keyword 6+13=String
+4: 0+7=Variable 8+16=String
+7: 0+40=Comment
+8: 0+4=Keyword 5+6=Qualifier 12+4=Qualifier
+10: 0+4=Keyword 5+7=Type 27+13=String 55+3=String
+12: 0+3=Keyword 4+4=Variable 11+7=Variable 19+4=Variable 24+21=Variable 46+1=Variable 47+14=String
+14: 0+3=Keyword 4+3=Variable 8+2=AltVariable 13+3=Qualifier 17+15=Variable 33+2=Variable
+15: 0+3=Keyword 4+5=Variable 14+3=Keyword 20+2=Keyword
+16: 0+3=Keyword 4+7=Variable 23+4=Qualifier 28+3=Variable
+17: 0+3=Keyword 4+7=Variable 23+4=Qualifier 28+3=Variable
+19: 0+8=Variable 8+26=String 34+1=Variable 36+9=Variable 46+16=Variable
+21: 0+40=Variable 41+3=Keyword 45+5=Variable
+22: 3+21=Variable 25+3=Variable 29+1=Variable 30+2=Type 32+28=Variable 61+7=Variable
+23: 0+3=Keyword 4+5=Variable 15+1=Variable
+25: 0+3=Keyword 4+12=Variable 19+14=String 34+7=String 42+13=String 56+7=String 64+4=String
+26: 0+3=Keyword 4+14=Variable 21+18=String
+27: 0+3=Keyword 4+5=Variable
+28: 0+3=Keyword 4+5=Variable 16+3=Keyword 20+1=AltVariable
+29: 0+3=Keyword 4+7=Variable 14+6=Variable 24+1=Variable
+30: 0+3=Keyword 4+7=Variable 19+2=Type 29+2=Type
+31: 0+3=Keyword 4+3=Variable
+33: 0+3=Keyword 4+5=Variable
+34: 0+3=Keyword 4+8=Variable 15+5=Variable 22+1=Variable 25+1=Variable 26+6=Qualifier 33+4=Variable 41+1=Variable 44+1=Variable 47+1=Variable 48+6=Qualifier 55+12=Variable
+35: 0+3=Keyword 4+2=Variable
+36: 0+3=Keyword 4+3=Variable
+37: 0+3=Keyword 4+4=Variable 32+2=Variable
+38: 0+3=Keyword 4+3=Variable 10+27=String
+39: 0+13=String 14+14=Comment
+40: 0+3=Keyword 4+8=Variable 15+2=String
+41: 0+3=Keyword 4+12=Variable 19+5=String
+42: 0+3=Keyword 4+7=Keyword 12+7=Variable
+44: 0+4=Keyword 6+7=Variable 14+6=String 25+6=Variable
+45: 0+3=Keyword 4+6=Variable 13+5=Atom 21+3=Keyword 27+2=Keyword 40+2=Keyword 43+6=Variable 50+1=Variable 52+11=Variable
+46: 0+3=Keyword 4+3=Variable 10+3=Keyword 14+6=Variable 20+3=Type 24+2=Variable
+47: 0+3=AltVariable 4+7=AltVariable 12+3=Variable 16+3=Keyword 19+1=Variable 20+1=AltVariable 21+1=Variable 24+9=Variable 33+4=String 37+2=Variable
+48: 0+35=Comment

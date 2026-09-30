@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DTD for a small library catalogue. -->
+
+<!ENTITY % text "#PCDATA">
+<!ENTITY % common.attrs
+  "id    ID      #IMPLIED
+   lang  NMTOKEN 'en'">
+<!ENTITY publisher "Example Press">
+<!ENTITY copy "&#169;">
+
+<!ELEMENT catalogue (book+, magazine*)>
+<!ATTLIST catalogue
+  version CDATA #FIXED "2.0"
+  updated CDATA #REQUIRED>
+
+<!ELEMENT book (title, author+, isbn?, (summary | note)*)>
+<!ATTLIST book
+  %common.attrs;
+  format    (hardcover | paperback | ebook) "paperback"
+  available (yes | no)                      #IMPLIED>
+
+<!ELEMENT magazine (title, issue)>
+<!ATTLIST magazine %common.attrs;>
+
+<!ELEMENT title (%text;)>
+<!ELEMENT author (%text;)>
+<!ELEMENT isbn (%text;)>
+<!ELEMENT issue EMPTY>
+<!ATTLIST issue
+  number NMTOKEN #REQUIRED
+  year   CDATA   #REQUIRED>
+<!ELEMENT summary (#PCDATA | em)*>
+<!ELEMENT note ANY>
+<!ELEMENT em (#PCDATA)>
+
+<!NOTATION png SYSTEM "image/png">
+<!ENTITY cover SYSTEM "cover.png" NDATA png>
+
+<![INCLUDE[
+<!ELEMENT draft (#PCDATA)>
+]]>

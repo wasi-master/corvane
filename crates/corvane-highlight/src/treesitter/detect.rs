@@ -13,10 +13,7 @@ pub fn for_path(grammars: &[Arc<Grammar>], path: &str, first_line: &str) -> Opti
         .next()
         .unwrap_or(path)
         .to_lowercase();
-    if let Some(g) = grammars
-        .iter()
-        .find(|g| g.filenames.contains(&name))
-    {
+    if let Some(g) = grammars.iter().find(|g| g.filenames.contains(&name)) {
         return Some(g.clone());
     }
     let mut best: Option<(&Arc<Grammar>, usize)> = None;

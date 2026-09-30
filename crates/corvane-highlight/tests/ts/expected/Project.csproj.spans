@@ -1,0 +1,45 @@
+1: 0+8=Tag 9+3=Attribute 14+17=String 32+1=Tag
+3: 2+15=Tag
+4: 4+12=Tag 19+13=Tag
+5: 4+17=Tag 27+18=Tag
+6: 4+10=Tag 20+11=Tag
+7: 4+14=Tag 30+15=Tag
+8: 4+13=Tag 36+5=Atom 42+4=Atom 54+4=Atom 59+6=String 66+8=String 75+6=Atom 81+14=Tag
+9: 4+16=Tag 21+9=Attribute 32+31=String 64+1=Tag 76+18=Tag
+10: 2+16=Tag
+12: 2+11=Tag
+13: 4+17=Tag 22+7=Attribute 31+15=String 48+7=Attribute 57+6=String 65+2=Tag
+14: 4+17=Tag 22+7=Attribute 31+7=String 40+7=Attribute 49+5=String 55+1=Tag
+15: 6+15=Tag 24+16=Tag
+16: 6+15=Tag 68+16=Tag
+17: 4+19=Tag
+18: 4+8=Tag 13+6=Attribute 21+6=String 29+2=Tag
+19: 4+5=Tag 10+6=Attribute 18+16=String
+20: 10+21=Attribute 33+14=String 49+2=Tag
+21: 2+12=Tag
+23: 2+4=Comment
+24: 0+34=Comment
+25: 0+31=Comment
+26: 0+5=Comment
+27: 2+7=Tag 10+4=Attribute 16+9=String 27+12=Attribute 41+14=String 56+1=Tag
+28: 4+5=Tag 10+7=Attribute 19+25=String 44+4=Atom 48+10=String 60+2=Tag
+29: 4+8=Tag 13+10=Attribute 25+4=String 31+4=Attribute 37+44=String 83+2=Tag
+30: 2+9=Tag
+32: 2+10=Tag 13+8=Attribute 23+6=String 31+11=Attribute 44+21=String 67+12=Attribute 81+50=String 132+1=Tag
+33: 4+6=Tag
+34: 6+5=Tag 12+4=Attribute 18+8=String 28+8=Attribute 38+2=String 41+1=Tag 42+8=Qualifier
+35: 0+55=Comment
+36: 0+27=Comment
+37: 0+6=Comment 6+3=Qualifier 9+7=Tag
+38: 4+7=Tag
+39: 2+12=Tag
+41: 2+9=Tag 12+9=Attribute 23+26=String 51+1=Attribute 54+1=String 57+1=Attribute 60+1=String 63+5=Attribute 70+4=String 76+2=Tag
+42: 2+7=Tag 14+3=Tag 21+4=Tag 31+3=Tag 41+3=Tag 49+8=Tag 58+8=Tag
+43: 2+6=Tag 10+1=Tag
+44: 2+9=Tag 16+1=Tag
+45: 2+10=Tag
+46: 4+8=Tag
+47: 0+2=Tag 9+1=Tag
+48: 0+2=Tag 9+1=Tag
+49: 0+2=Tag 2+20=Comment 22+2=Tag
+50: 0+1=Tag 22+2=Tag 24+6=Type 36+1=Tag 38+2=Tag 50+9=Tag

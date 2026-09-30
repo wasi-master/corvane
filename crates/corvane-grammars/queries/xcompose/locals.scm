@@ -1,0 +1,7 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/xcompose/).
+; Source: nvim-treesitter@728e031f6b11 queries/xcompose (Apache-2.0)
+(result
+  (keysym) @local.definition)
+
+(event
+  (keysym) @local.reference)

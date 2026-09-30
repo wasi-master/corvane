@@ -1,11 +1,92 @@
 ; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/rust/).
-; Source: tree-sitter-rust 0.24.2 (MIT): queries/injections.scm
-((macro_invocation
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
- (#set! injection.include-children))
+; Source: nvim-treesitter@728e031f6b11 queries/rust (Apache-2.0)
+; dropped predicates tree-sitter-highlight cannot evaluate: #offset!
+(macro_invocation
+  macro: [
+    (scoped_identifier
+      name: (_) @_macro_name)
+    (identifier) @_macro_name
+  ]
+  (token_tree) @injection.content
+  (#not-any-of? @_macro_name "slint" "html" "json" "xml")
+  (#set! injection.language "rust")
+  (#set! injection.include-children))
 
-((macro_rule
-  (token_tree) @injection.content)
- (#set! injection.language "rust")
- (#set! injection.include-children))
+(macro_invocation
+  macro: [
+    (scoped_identifier
+      name: (_) @injection.language)
+    (identifier) @injection.language
+  ]
+  (token_tree) @injection.content
+  (#any-of? @injection.language "slint" "html" "json" "xml")
+  
+  (#set! injection.include-children))
+
+(macro_definition
+  (macro_rule
+    left: (token_tree_pattern) @injection.content
+    (#set! injection.language "rust")))
+
+(macro_definition
+  (macro_rule
+    right: (token_tree) @injection.content
+    (#set! injection.language "rust")))
+
+([
+  (line_comment)
+  (block_comment)
+] @injection.content
+  (#set! injection.language "comment"))
+
+(call_expression
+  function: (scoped_identifier
+    path: (identifier) @_regex
+    (#any-of? @_regex "Regex" "RegexBuilder")
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (raw_string_literal
+      (string_content) @injection.content))
+  (#set! injection.language "regex"))
+
+(call_expression
+  function: (scoped_identifier
+    path: (scoped_identifier
+      (identifier) @_regex
+      (#any-of? @_regex "Regex" "RegexBuilder") .)
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (raw_string_literal
+      (string_content) @injection.content))
+  (#set! injection.language "regex"))
+
+(call_expression
+  function: (scoped_identifier
+    path: (identifier) @_regex
+    (#any-of? @_regex "RegexSet" "RegexSetBuilder")
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (array_expression
+      (raw_string_literal
+        (string_content) @injection.content)))
+  (#set! injection.language "regex"))
+
+(call_expression
+  function: (scoped_identifier
+    path: (scoped_identifier
+      (identifier) @_regex
+      (#any-of? @_regex "RegexSet" "RegexSetBuilder") .)
+    name: (identifier) @_new
+    (#eq? @_new "new"))
+  arguments: (arguments
+    (array_expression
+      (raw_string_literal
+        (string_content) @injection.content)))
+  (#set! injection.language "regex"))
+
+((block_comment) @injection.content
+  (#match? @injection.content "/\\*!([a-zA-Z]+:)?re2c")
+  (#set! injection.language "re2c"))

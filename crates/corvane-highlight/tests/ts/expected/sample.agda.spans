@@ -1,0 +1,35 @@
+1: 0+27=Comment
+2: 0+67=Comment
+3: 0+6=Keyword 7+6=Qualifier 14+5=Keyword
+5: 0+43=Comment
+6: 0+43=Comment
+7: 0+4=Keyword 5+3=Type 11+3=Type 15+5=Keyword
+8: 2+4=Variable 9+3=Variable
+9: 2+3=Variable 9+3=Variable 16+3=Variable
+11: 0+27=Comment
+12: 0+5=Keyword 8+4=Variable
+13: 0+6=Keyword 9+3=Variable
+14: 0+6=Keyword 9+4=Variable
+16: 0+4=Keyword 5+4=Type 11+1=Variable 15+3=Type 21+1=Variable 25+1=Variable 30+1=Variable 35+3=Type 39+5=Keyword
+17: 2+4=Variable 9+1=Variable
+19: 0+3=Variable 6+3=Variable 13+3=Variable 20+3=Variable
+20: 12+1=Variable
+21: 12+3=Variable 17+1=Variable
+23: 0+4=Variable 8+1=Variable 10+1=Variable 14+3=Type 20+1=Variable 22+1=Variable 26+1=Variable 30+1=Variable 34+1=Variable 35+4=Type 39+1=Variable 45+1=Variable 55+1=Variable
+24: 14+4=Variable
+26: 0+6=Variable 10+1=Variable 14+3=Variable 22+1=Variable
+27: 17+4=Variable
+28: 8+3=Variable 17+4=Variable 27+6=Variable
+30: 0+4=Keyword 5+4=Type 11+1=Variable 15+3=Type 22+3=Type 26+5=Keyword
+31: 2+2=Variable 9+4=Variable
+32: 2+4=Variable 9+1=Variable 14+4=Variable 24+4=Variable
+34: 0+6=Variable 10+1=Variable 14+3=Type 22+4=Variable 32+3=Variable
+35: 19+1=Variable
+36: 8+1=Variable 19+3=Variable 24+6=Variable
+38: 0+6=Keyword 7+4=Type 13+1=Variable 15+1=Variable 19+3=Type 26+3=Type 30+5=Keyword
+39: 2+11=Keyword 14+3=Variable
+40: 2+5=Keyword
+41: 4+3=Variable 10+1=Variable
+42: 4+3=Variable 10+1=Variable
+44: 0+7=Variable 10+6=Variable 18+1=Variable
+45: 10+4=Variable

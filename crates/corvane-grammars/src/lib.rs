@@ -32,11 +32,6 @@ macro_rules! pack_version {
 /// Version of the grammar packs (`packaging/packs.sh` reads it).
 pub const PACK_VERSION: &str = pack_version!();
 
-/// Grammars in the `tree-sitter-rest` pack: those with a file type no
-/// CodeMirror port covers, plus the languages they inject. The `rest` Cargo
-/// feature enables exactly these (checked by corvane-highlight's tests).
-pub const REST: &[&str] = &["haskell"];
-
 /// One grammar. Strings are NUL-terminated UTF-8; lists are `\n`-separated.
 #[repr(C)]
 pub struct Grammar {
@@ -126,44 +121,19 @@ macro_rules! grammars {
     };
 }
 
-grammars! {
-    "haskell" ("lang-haskell") => tree_sitter_haskell::LANGUAGE,
-        extensions: ["hs", "hs-boot", "hsc"],
-        filenames: [],
-        first_line: r"^#!.*\b(runhaskell|stack|cabal)\b",
-        aliases: ["hs"],
-        injects: [];
-    "javascript" ("lang-javascript") => tree_sitter_javascript::LANGUAGE,
-        extensions: ["js", "mjs", "cjs", "jsx"],
-        filenames: [],
-        first_line: r"^#!.*\b(node|deno|bun)\b",
-        aliases: ["js", "jsx", "node"],
-        injects: ["regex", "jsdoc"];
-    "lua" ("lang-lua") => tree_sitter_lua::LANGUAGE,
-        extensions: ["lua"],
-        filenames: [],
-        first_line: r"^#!.*\blua",
-        aliases: [],
-        injects: [];
-    "markdown" ("lang-markdown") => tree_sitter_md::LANGUAGE,
-        extensions: ["md", "markdown", "mdown", "mkd", "mkdn"],
-        filenames: [],
-        first_line: "",
-        aliases: ["md"],
-        injects: ["markdown_inline"];
-    "markdown_inline" ("lang-markdown") => tree_sitter_md::INLINE_LANGUAGE,
-        extensions: [],
-        filenames: [],
-        first_line: "",
-        aliases: [],
-        injects: [];
-    "rust" ("lang-rust") => tree_sitter_rust::LANGUAGE,
-        extensions: ["rs"],
-        filenames: [],
-        first_line: "",
-        aliases: ["rs"],
-        injects: [];
+/// A `LanguageFn` for a grammar whose package has pre-0.23 bindings (no
+/// `LanguageFn` constant): its C entry point, linked from the package.
+macro_rules! c_language {
+    ($symbol:ident) => {{
+        unsafe extern "C" {
+            fn $symbol() -> *const ();
+        }
+        // SAFETY: `$symbol` is the grammar's `tree_sitter_<name>` function.
+        unsafe { tree_sitter_language::LanguageFn::from_raw($symbol) }
+    }};
 }
+
+include!("grammars.rs");
 
 fn shared() -> &'static Shared {
     static TABLE: OnceLock<Shared> = OnceLock::new();
@@ -203,15 +173,14 @@ mod tests {
     #[test]
     fn rest_is_what_the_rest_feature_enables() {
         let manifest = include_str!("../Cargo.toml");
-        let line = manifest
-            .lines()
-            .find(|l| l.starts_with("rest = "))
-            .expect("rest feature");
-        let mut features: Vec<String> = line
+        let start = manifest.find("\nrest = [").expect("rest feature");
+        let array = &manifest[start..];
+        let array = &array[..array.find(']').expect("end of rest")];
+        let mut features: Vec<String> = array
             .split('"')
             .skip(1)
             .step_by(2)
-            .map(|f| f.trim_start_matches("lang-").to_string())
+            .map(|f| f.to_string())
             .collect();
         features.sort();
         let mut crates: Vec<String> = REST
@@ -221,7 +190,7 @@ mod tests {
                     .iter()
                     .find(|(n, _)| n == name)
                     .expect("REST names a known grammar");
-                feature.trim_start_matches("lang-").to_string()
+                feature.to_string()
             })
             .collect();
         crates.sort();

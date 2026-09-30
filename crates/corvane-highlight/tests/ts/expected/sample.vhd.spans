@@ -1,0 +1,44 @@
+1: 0+51=Comment
+2: 0+7=Keyword 8+4=Qualifier
+3: 0+3=Keyword 4+4=Qualifier 9+14=Qualifier 24+3=Atom
+4: 0+3=Keyword 4+4=Qualifier 9+11=Qualifier 21+3=Atom
+5: 0+6=Keyword 7+14=Qualifier 22+2=Keyword
+6: 2+7=Keyword 11+6=AltVariable 20+8=Type 44+11=AltVariable 58+7=Type
+7: 2+4=Keyword
+8: 4+3=Variable 9+5=Variable 17+2=Keyword 21+9=Type
+9: 4+6=Variable 17+2=Keyword 21+9=Type
+10: 4+4=Variable 17+3=Keyword 21+16=Type 39+1=Type 40+6=Keyword 46+1=Type
+12: 0+3=Keyword 4+6=Keyword 11+14=Qualifier
+13: 0+12=Keyword 13+3=AltVariable 17+2=Keyword 20+14=Qualifier 35+2=Keyword
+14: 2+8=Keyword 11+5=Atom 19+7=Type 30+6=Variable 46+11=Variable
+15: 2+4=Keyword 7+7=Type 15+2=Keyword 19+4=Atom 25+7=Atom 34+12=Atom
+16: 2+6=Keyword 9+5=Variable 17+7=Type 28+4=Variable
+17: 2+6=Keyword 9+5=Variable 17+7=Type 25+5=Keyword 33+2=Keyword 36+5=Variable
+18: 2+6=Keyword 9+5=Variable 17+8=Type 27+1=Type 28+6=Keyword 34+1=Type 42+6=Atom 52+3=Atom
+19: 2+6=Keyword 9+4=Variable 17+16=Type 35+1=Type 36+6=Keyword 42+1=Type
+20: 0+5=Keyword
+21: 2+4=Variable 10+16=Type 27+5=Variable 34+4=Keyword 39+5=Variable 48+7=Variable 56+4=Keyword 61+1=Type
+22: 2+7=Keyword 11+3=Variable 16+5=Variable
+23: 2+5=Keyword
+24: 4+2=Keyword 7+5=Variable 15+3=Atom 19+4=Keyword
+25: 6+5=Variable 15+4=Variable
+26: 6+5=Variable 16+6=Atom 26+3=Atom
+27: 4+5=Keyword 10+11=Variable 22+3=Variable 27+4=Keyword
+28: 6+4=Variable 14+4=Variable 24+6=Variable
+29: 6+4=Keyword 11+5=Variable 17+2=Keyword
+30: 8+4=Keyword 13+4=Variable
+31: 10+2=Keyword 13+4=Variable 23+3=Atom 27+4=Keyword 32+5=Variable 41+7=Variable 50+5=Variable 62+3=Keyword 66+2=Keyword
+32: 8+4=Keyword 13+7=Variable
+33: 10+2=Keyword 13+5=Variable 21+5=Variable 27+4=Keyword
+34: 12+5=Variable 21+5=Variable
+35: 12+5=Variable 21+12=Variable
+36: 10+4=Keyword
+37: 12+5=Variable 21+5=Variable
+38: 10+3=Keyword 14+2=Keyword
+39: 8+4=Keyword 13+12=Variable
+40: 10+2=Keyword 13+4=Variable 23+3=Atom 27+4=Keyword 32+5=Variable 41+4=Variable 47+3=Keyword 51+2=Keyword
+41: 6+3=Keyword 10+4=Keyword
+42: 4+3=Keyword 8+2=Keyword
+43: 2+3=Keyword 6+7=Keyword
+44: 2+6=Keyword 9+11=Variable 28+6=Keyword 35+19=String 55+8=Keyword 64+7=Keyword
+45: 0+3=Keyword 4+12=Keyword 17+3=AltVariable
