@@ -16,7 +16,8 @@
 //! list scrolls back to the top when the branch changes (flag `241`); Revert
 //! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
 //! Commit (flag `243`); a commit with a description gets a mark after its
-//! summary (flag `252`); compact rows drop the author line (flag `140`).
+//! summary (flag `252`); compact rows drop the author line (flag `140`); the
+//! tag pill's tooltip lists every tag (flag `254`).
 
 use std::rc::Rc;
 
@@ -40,7 +41,7 @@ use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
-use crate::widgets::ListRowA11y;
+use crate::widgets::{GhdTooltip, ListRowA11y};
 use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button};
 
 /// `RowHeight` in `commit-list.tsx`
@@ -1652,39 +1653,55 @@ pub(crate) fn commit_row_contents(
         // (5 px padding, 6 px radius, no icon); more tags peek out behind it
         // as a 10 px tab (`.tag-indicator-more`)
         .when(!commit.tags.is_empty(), |d| {
-            d.child(
-                div()
-                    .ml(SPACING())
-                    .h(zpx(16.))
-                    .max_w(gpui_kit::relative(0.5))
-                    .flex()
-                    .flex_row()
-                    .text_color(badge_text)
-                    .text_size(FONT_SIZE())
-                    .line_height(zpx(16.))
-                    .child(
+            let pill = div()
+                .ml(SPACING())
+                .h(zpx(16.))
+                .max_w(gpui_kit::relative(0.5))
+                .flex()
+                .flex_row()
+                .text_color(badge_text)
+                .text_size(FONT_SIZE())
+                .line_height(zpx(16.))
+                .child(
+                    div()
+                        .min_w_0()
+                        .px(SPACING_HALF())
+                        .h(zpx(16.))
+                        .rounded(BORDER_RADIUS())
+                        .bg(badge_bg)
+                        .truncate()
+                        .child(commit.tags[0].clone()),
+                )
+                .when(commit.tags.len() > 1, |d| {
+                    d.child(
                         div()
-                            .min_w_0()
-                            .px(SPACING_HALF())
+                            .flex_none()
+                            .w(SPACING())
+                            .ml(zpx(-5.))
                             .h(zpx(16.))
-                            .rounded(BORDER_RADIUS())
-                            .bg(badge_bg)
-                            .truncate()
-                            .child(commit.tags[0].clone()),
+                            .rounded_r(BORDER_RADIUS())
+                            .bg(badge_bg),
                     )
-                    .when(commit.tags.len() > 1, |d| {
-                        d.child(
-                            div()
-                                .flex_none()
-                                .w(SPACING())
-                                .ml(zpx(-5.))
-                                .h(zpx(16.))
-                                .rounded_r(BORDER_RADIUS())
-                                .bg(badge_bg),
-                        )
-                    }),
-            )
+                });
+            // `254`: hovering the pill lists every tag
+            if tags_tooltip(cx) {
+                d.child(
+                    pill.id(SharedString::from(format!("tags-{}", commit.sha)))
+                        .ghd_tooltip(commit.tags.join("\n")),
+                )
+            } else {
+                d.child(pill)
+            }
         })
+}
+
+/// `254`: the commit's tags as a tooltip on the tag pill and the details' tag list.
+pub(crate) fn tags_tooltip(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAGS_TOOLTIP)
+    })
 }
 
 /// `CommitListItem`

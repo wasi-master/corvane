@@ -467,6 +467,20 @@ registry! {
         upstream: &[Upstream::issue(20715), Upstream::issue(3785)],
         code: &["crates/corvane-ui/src/selected_commit.rs"],
     },
+    /// Tag tooltips in History.
+    TAGS_TOOLTIP = 254 "tags-tooltip" {
+        title: "Tag tooltips in History",
+        summary: "Hovering a commit's tag pill in the History list, or the tag list in the commit's \
+                  details, shows every tag, one per line.",
+        ghd_behaviour: "The pill shows the first tag and a sliver for the rest; a truncated tag list \
+                        cannot be read.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(9687)],
+        code: &["crates/corvane-ui/src/history.rs", "crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 

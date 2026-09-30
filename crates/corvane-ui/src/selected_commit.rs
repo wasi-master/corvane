@@ -11,7 +11,8 @@
 //! working copy. A file gone from disk keeps its Copy path items (flag
 //! `249`). A multi-commit selection's summary shows the range's +added
 //! -deleted line totals (flag `251`). The meta row adds the author date and
-//! links the SHA to the commit on GitHub (flag `253`).
+//! links the SHA to the commit on GitHub (flag `253`); the tags' tooltip
+//! lists every tag (flag `254`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -562,12 +563,17 @@ impl SelectedCommitView {
                                     )
                                 })
                                 .when(!commit.tags.is_empty(), |d| {
-                                    d.child(
-                                        meta_item(div())
-                                            .min_w_0()
-                                            .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
-                                            .child(div().truncate().child(commit.tags.join(", "))),
-                                    )
+                                    let tags = meta_item(div())
+                                        .id("commit-tags")
+                                        .min_w_0()
+                                        .child(octicon(Octicon::Tag, t.text).mr(SPACING_HALF()))
+                                        .child(div().truncate().child(commit.tags.join(", ")));
+                                    // `254`: hovering lists every tag
+                                    d.child(if crate::history::tags_tooltip(cx) {
+                                        tags.ghd_tooltip(commit.tags.join("\n"))
+                                    } else {
+                                        tags
+                                    })
                                 }),
                         )
                         .with_scrollbar(),
