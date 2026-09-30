@@ -59,18 +59,24 @@ pub fn clear_recorded() {
     RECORDED.with(|r| r.borrow_mut().clear());
 }
 
-/// Run the recorded menu's item with this label (a click on it).
+/// Run the recorded menu's item with this label (a click on it). An exact
+/// match wins; otherwise the label matches ignoring case, so a scenario
+/// written against GHD's macOS Title Case labels still finds the Sentence
+/// case ones used elsewhere (`context_menu::mac_or`).
 pub fn pick_recorded(label: &str, window: &mut Window, cx: &mut App) -> bool {
-    fn find(items: &[MenuItem], label: &str) -> Option<MenuAction> {
+    fn find(items: &[MenuItem], matches: &dyn Fn(&str) -> bool) -> Option<MenuAction> {
         items.iter().find_map(|item| match &item.kind {
-            MenuItemKind::Action(action) if item.label.as_ref() == label && item.enabled => {
+            MenuItemKind::Action(action) if item.enabled && matches(item.label.as_ref()) => {
                 Some(action.clone())
             }
-            MenuItemKind::Submenu(children) => find(children, label),
+            MenuItemKind::Submenu(children) => find(children, matches),
             _ => None,
         })
     }
-    let action = RECORDED.with(|r| find(&r.borrow(), label));
+    let action = RECORDED.with(|r| {
+        let items = r.borrow();
+        find(&items, &|l| l == label).or_else(|| find(&items, &|l| l.eq_ignore_ascii_case(label)))
+    });
     match action {
         Some(action) => {
             RECORDED.with(|r| r.borrow_mut().clear());
