@@ -5,6 +5,8 @@
 //! - a detached HEAD gets a commit warning (`270-detached-head-commit-warning`).
 //! - Open in editor / default program act on every selected file, and the
 //!   list menu has "Open All in <editor>" (`271-open-multiple-files`).
+//! - files matching the `272-changes-hide-globs` patterns are left out of the
+//!   list (they are still committed).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1183,7 +1185,11 @@ impl ChangesSidebar {
         let Some(status) = rs.status.as_ref() else {
             return (Vec::new(), 0);
         };
-        let visible = filtered_files(&status.files, &text, &rs.file_list_filter)
+        // `272-changes-hide-globs`
+        let hide = corvane_core::filter::hide_patterns(
+            s.flags.text(corvane_core::flags::ids::CHANGES_HIDE_GLOBS),
+        );
+        let visible = filtered_files(&status.files, &text, &rs.file_list_filter, &hide)
             .into_iter()
             .cloned()
             .collect();

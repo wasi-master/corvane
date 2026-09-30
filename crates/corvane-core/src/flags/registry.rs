@@ -57,6 +57,14 @@ fn product_name(s: &str) -> Result<(), &'static str> {
     }
 }
 
+fn hide_globs(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 1000 {
+        Err("At most 1000 characters")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -293,6 +301,22 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(16262), Upstream::issue(21374), Upstream::issue(15013)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/selected_commit.rs"],
+    },
+    /// Glob patterns hidden from the changes list.
+    CHANGES_HIDE_GLOBS = 272 "changes-hide-globs" {
+        title: "Hide files from the changes list",
+        summary: "Changed files matching these comma-separated glob patterns (gitignore-like: \
+                  `*.lock`, `node_modules`, `/docs/**`) are left out of the changes list, which then \
+                  reads \"N of M changed files\". View only: hidden files are still included in \
+                  commits. Empty hides nothing.",
+        ghd_behaviour: "Lists every changed file.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "*.lock, node_modules", validate: hide_globs },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10093), Upstream::issue(20615), Upstream::issue(21242)],
+        code: &["crates/corvane-core/src/filter.rs", "crates/corvane-ui/src/changes.rs"],
     },
 
     // ---- 300 GitHub ----
