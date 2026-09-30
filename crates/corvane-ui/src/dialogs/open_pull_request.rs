@@ -224,7 +224,7 @@ impl OpenPullRequestDialog {
     fn base_popover(&self, window: &Window, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let anchor = self.base_button_bounds.get();
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let query = self.base_filter.read(cx).value().trim().to_string();
         let (branches, recent, default) = self.base_branches(cx);
         let groups = group_branches(
@@ -611,7 +611,7 @@ impl Render for OpenPullRequestDialog {
         let Some(preview) = self.preview(cx) else {
             return div().into_any_element();
         };
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let has_pr = self
             .state
             .read(cx)

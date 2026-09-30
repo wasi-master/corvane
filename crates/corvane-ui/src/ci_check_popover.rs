@@ -748,7 +748,7 @@ impl Render for CiCheckPopover {
             .map(|c| c.checks.clone())
             .unwrap_or_default();
         let anchor = self.anchor.get();
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         // `PopoverAnchorPosition.Bottom`: centred under the badge
         let x = (anchor.origin.x + anchor.size.width / 2. - POPOVER_WIDTH() / 2.)
             .max(zpx(8.))

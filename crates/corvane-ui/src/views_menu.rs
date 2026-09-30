@@ -132,10 +132,7 @@ impl Palette {
 /// The font Chromium's menus use: the desktop UI font (fontconfig
 /// `sans-serif`, Noto Sans on Ubuntu).
 pub fn font_family() -> SharedString {
-    static FAMILY: std::sync::OnceLock<SharedString> = std::sync::OnceLock::new();
-    FAMILY
-        .get_or_init(|| corvane_platform::fonts::ghd_ui_family().into())
-        .clone()
+    crate::theme::ui_font()
 }
 
 /// `&File` → ("File", Some(0)); `&&` is a literal ampersand.

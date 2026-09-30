@@ -293,7 +293,7 @@ impl WelcomeView {
         // `#start`: at least the pane's height less its padding, content
         // centred above the footer (`.start-content { margin-top: 100px }`)
         div()
-            .min_h(window.viewport_size().height - px(80.))
+            .min_h(crate::theme::page_size(window).height - px(80.))
             .flex()
             .flex_col()
             .child(
@@ -303,7 +303,7 @@ impl WelcomeView {
                     .flex()
                     .flex_col()
                     .justify_center()
-                    .child(welcome_title(format!("Welcome to {name}")))
+                    .child(welcome_title_with_name("Welcome to", name.clone()))
                     .child(
                         welcome_text(format!(
                             "{name} is a seamless way to contribute to projects on GitHub and \
@@ -635,12 +635,30 @@ const WELCOME_FONT_MD: f32 = 14. * SCALE;
 /// `.welcome-title`: 42 px × scale, light, line-height 1.25, 10 px below.
 fn welcome_title(text: impl Into<SharedString>) -> Div {
     let text: SharedString = text.into();
+    welcome_title_box().child(text)
+}
+
+/// `.welcome-title` without its text.
+fn welcome_title_box() -> Div {
     div()
         .text_size(px(42. * SCALE))
         .line_height(px(42. * SCALE * 1.25))
         .font_weight(FontWeight::LIGHT)
         .mb(px(10.))
-        .child(text)
+}
+
+/// `Welcome to <span>{name}</span>`: `.welcome-title span` is an
+/// inline-block, so the product name moves to the next line as a whole
+/// (with a wider UI font than macOS's, e.g. Noto Sans on Linux, the title no
+/// longer fits on one line).
+fn welcome_title_with_name(prefix: &'static str, name: impl Into<SharedString>) -> Div {
+    let name: SharedString = name.into();
+    welcome_title_box()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .child(div().whitespace_nowrap().child(format!("{prefix}\u{a0}")))
+        .child(div().whitespace_nowrap().child(name))
 }
 
 /// `.welcome-text`: 10 px vertical margins. In `.start-content` (a flex
@@ -903,7 +921,7 @@ impl Render for WelcomeView {
             Step::Start => self.start(window, cx).into_any_element(),
             Step::ConfigureGit => self.configure_git(window, cx).into_any_element(),
         };
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let left_w = viewport.width * 0.6;
         let right_w = viewport.width - left_w;
         // `.welcome-right .welcome-graphic { height: 100%; object-fit: cover;
