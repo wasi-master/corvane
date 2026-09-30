@@ -35,7 +35,7 @@ grammars! {
         injects: ["comment", "css", "javascript", "json", "regex"];
     #[cfg(corvane_src = "apex")]
     "apex" ("lang-apex") => c_language!(tree_sitter_apex),
-        extensions: ["cls", "trigger", "apex"],
+        extensions: ["trigger", "apex"],
         filenames: [],
         first_line: "",
         aliases: [],
@@ -52,7 +52,7 @@ grammars! {
         filenames: [],
         first_line: "",
         aliases: ["adoc"],
-        injects: [];
+        injects: ["latex"];
     "asm" ("lang-asm") => tree_sitter_asm::LANGUAGE,
         extensions: ["asm", "s"],
         filenames: [],
@@ -325,7 +325,7 @@ grammars! {
         filenames: [],
         first_line: "",
         aliases: [],
-        injects: ["comment"];
+        injects: ["comment", "latex"];
     #[cfg(corvane_src = "dockerfile")]
     "dockerfile" ("lang-dockerfile") => c_language!(tree_sitter_dockerfile),
         extensions: ["dockerfile", "docker", "container", "containerfile"],
@@ -1008,6 +1008,13 @@ grammars! {
         first_line: "",
         aliases: [],
         injects: ["comment", "regex", "rust"];
+    #[cfg(corvane_src = "latex")]
+    "latex" ("lang-latex") => c_language!(tree_sitter_latex),
+        extensions: ["tex", "aux", "sty", "cls", "bbx", "cbx", "dtx", "ins", "lbx", "ltx", "mkii", "mkiv", "mkvi", "toc"],
+        filenames: [],
+        first_line: "",
+        aliases: [],
+        injects: ["c", "comment", "lua", "python"];
     #[cfg(corvane_src = "ledger")]
     "ledger" ("lang-ledger") => c_language!(tree_sitter_ledger),
         extensions: ["ledger", "journal"],
@@ -1105,7 +1112,7 @@ grammars! {
         filenames: [],
         first_line: "",
         aliases: [],
-        injects: ["html"];
+        injects: ["html", "latex"];
     #[cfg(corvane_src = "matlab")]
     "matlab" ("lang-matlab") => c_language!(tree_sitter_matlab),
         extensions: ["matlab"],
@@ -1131,6 +1138,13 @@ grammars! {
     "meson" ("lang-meson") => c_language!(tree_sitter_meson),
         extensions: ["meson"],
         filenames: ["meson.build", "meson_options.txt"],
+        first_line: "",
+        aliases: [],
+        injects: ["comment"];
+    #[cfg(corvane_src = "mlir")]
+    "mlir" ("lang-mlir") => c_language!(tree_sitter_mlir),
+        extensions: ["mlir"],
+        filenames: [],
         first_line: "",
         aliases: [],
         injects: ["comment"];
@@ -1179,7 +1193,7 @@ grammars! {
         filenames: [],
         first_line: "",
         aliases: [],
-        injects: ["bash", "comment", "fish", "haskell", "javascript", "lua", "python", "regex", "rust"];
+        injects: ["bash", "comment", "fish", "haskell", "javascript", "lua", "perl", "python", "regex", "rust"];
     #[cfg(corvane_src = "nqc")]
     "nqc" ("lang-nqc") => c_language!(tree_sitter_nqc),
         extensions: [],
@@ -1218,6 +1232,13 @@ grammars! {
         first_line: "",
         aliases: [],
         injects: [];
+    #[cfg(corvane_src = "ocamllex")]
+    "ocamllex" ("lang-ocamllex") => c_language!(tree_sitter_ocamllex),
+        extensions: ["mll"],
+        filenames: [],
+        first_line: "",
+        aliases: [],
+        injects: ["comment", "ocaml"];
     "odin" ("lang-odin") => tree_sitter_odin::LANGUAGE,
         extensions: ["odin"],
         filenames: [],
@@ -1244,6 +1265,13 @@ grammars! {
         first_line: "",
         aliases: [],
         injects: ["comment"];
+    #[cfg(corvane_src = "perl")]
+    "perl" ("lang-perl") => c_language!(tree_sitter_perl),
+        extensions: ["pm", "pl", "t", "al", "cgi", "fcgi", "perl", "ph", "plx", "psgi"],
+        filenames: [".latexmkrc", "makefile.pl", "rexfile", "ack", "cpanfile", "latexmkrc"],
+        first_line: r"^#!.*\b(cperl|perl)\b",
+        aliases: [],
+        injects: ["comment", "pod"];
     "php" ("lang-php") => tree_sitter_php::LANGUAGE_PHP,
         extensions: ["php", "phtml", "php3", "php4", "php5", "php7", "phps"],
         filenames: [],
@@ -1284,6 +1312,13 @@ grammars! {
         first_line: "",
         aliases: [],
         injects: ["comment"];
+    #[cfg(corvane_src = "pod")]
+    "pod" ("lang-pod") => c_language!(tree_sitter_pod),
+        extensions: ["pod"],
+        filenames: [],
+        first_line: r"^#!.*\b(perl)\b",
+        aliases: [],
+        injects: [];
     #[cfg(corvane_src = "poe_filter")]
     "poe_filter" ("lang-poe_filter") => c_language!(tree_sitter_poe_filter),
         extensions: ["filter"],
@@ -1524,7 +1559,7 @@ grammars! {
         filenames: [],
         first_line: "",
         aliases: ["restructuredtext"],
-        injects: ["comment", "csv", "python"];
+        injects: ["comment", "csv", "latex", "python"];
     "ruby" ("lang-ruby") => tree_sitter_ruby::LANGUAGE,
         extensions: ["rb", "rake", "gemspec", "ru", "rbw", "podspec", "thor", "jbuilder", "rabl"],
         filenames: ["gemfile", "rakefile", "podfile", "vagrantfile", "brewfile", "guardfile", "fastfile", "appfile", "capfile"],
@@ -1788,6 +1823,13 @@ grammars! {
         first_line: r"^#!.*\b(tclsh|wish)\b",
         aliases: [],
         injects: ["comment"];
+    #[cfg(corvane_src = "teal")]
+    "teal" ("lang-teal") => c_language!(tree_sitter_teal),
+        extensions: ["tl"],
+        filenames: [],
+        first_line: r"^#!.*\b(tl)\b",
+        aliases: [],
+        injects: ["c", "comment", "printf"];
     "templ" ("lang-templ") => tree_sitter_templ::LANGUAGE,
         extensions: ["templ"],
         filenames: [],
@@ -1916,6 +1958,13 @@ grammars! {
         first_line: "",
         aliases: [],
         injects: ["comment"];
+    #[cfg(corvane_src = "unison")]
+    "unison" ("lang-unison") => c_language!(tree_sitter_unison),
+        extensions: ["u"],
+        filenames: [],
+        first_line: "",
+        aliases: [],
+        injects: ["comment", "markdown"];
     #[cfg(corvane_src = "uxntal")]
     "uxntal" ("lang-uxntal") => c_language!(tree_sitter_uxntal),
         extensions: [],
@@ -2203,6 +2252,7 @@ pub const REST: &[&str] = &[
     "matlab",
     "mermaid",
     "meson",
+    "mlir",
     "nasm",
     "nginx",
     "nickel",
@@ -2212,9 +2262,11 @@ pub const REST: &[&str] = &[
     "nix",
     "nu",
     "ocaml_interface",
+    "ocamllex",
     "odin",
     "pem",
     "pkl",
+    "pod",
     "poe_filter",
     "pony",
     "printf",
@@ -2263,6 +2315,7 @@ pub const REST: &[&str] = &[
     "tablegen",
     "tact",
     "tcl",
+    "teal",
     "templ",
     "tera",
     "terraform",
@@ -2274,6 +2327,7 @@ pub const REST: &[&str] = &[
     "typoscript",
     "typst",
     "udev",
+    "unison",
     "v",
     "vento",
     "verilog",

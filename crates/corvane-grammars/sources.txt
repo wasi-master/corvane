@@ -99,6 +99,7 @@ kos -
 koto scanner.c
 kusto -
 lalrpop scanner.c
+latex scanner.c
 ledger -
 leo -
 linkerscript -
@@ -111,18 +112,22 @@ matlab scanner.c
 menhir scanner.c
 mermaid -
 meson -
+mlir -
 nasm -
 nim scanner.c
 nim_format_string -
 ninja -
 nqc -
 nu scanner.c
+ocamllex scanner.c
 passwd -
 pem -
+perl scanner.c
 phpdoc scanner.c
 pioasm scanner.c
 pkl scanner.c
 po -
+pod scanner.c
 poe_filter -
 pony scanner.c
 prisma -
@@ -177,6 +182,7 @@ t32 scanner.c
 tablegen scanner.c
 tact -
 tcl scanner.c
+teal scanner.c
 tera scanner.c
 terraform scanner.c
 textproto -
@@ -191,6 +197,7 @@ typoscript -
 typst scanner.c
 udev -
 ungrammar -
+unison scanner.c
 uxntal scanner.c
 v -
 vento scanner.c
