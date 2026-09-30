@@ -411,6 +411,17 @@ mod tests {
         std::fs::write(sub.join("junkdir/more.txt"), "y\n").unwrap();
         let status = crate::get_status(git.clone(), path, None).unwrap();
         assert_eq!(status.files.len(), 1);
+        let hidden = crate::get_status_with(
+            git.clone(),
+            path,
+            None,
+            crate::StatusOptions {
+                ignore_submodules: crate::IgnoreSubmodules::Dirty,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(hidden.files.is_empty());
         // GHD behaviour: the submodule stays dirty
         discard_changes(git.clone(), path, &status.files, false, false).unwrap();
         assert!(sub.join("junk.txt").exists());
