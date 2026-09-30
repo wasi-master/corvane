@@ -15,6 +15,8 @@
 //! Deviations: dates are the tip's committer date (GHD: author date); Other
 //! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
 //! The filter ignores an `owner:` prefix (`260-branch-filter-strips-owner`).
+//! Rows can tell local-only, tracked and remote-only branches apart by icon
+//! (`262-branch-list-local-remote-icons`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -509,6 +511,11 @@ impl BranchFoldout {
         let hover_bg = t.box_selected_active_background;
         let hover_text = t.box_selected_active_text;
         let branch_name_for_target = branch.name.clone();
+        let distinguish_remote = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::BRANCH_LIST_LOCAL_REMOTE_ICONS);
         div()
             .id(SharedString::from(format!("branch-{}", branch.full_name)))
             .a11y_row(
@@ -648,6 +655,13 @@ impl BranchFoldout {
                 octicon(
                     if current {
                         Octicon::Check
+                    } else if distinguish_remote {
+                        // `262-branch-list-local-remote-icons`
+                        match (branch.kind, branch.upstream.is_some()) {
+                            (BranchKind::Remote, _) => Octicon::Server,
+                            (BranchKind::Local, false) => Octicon::DeviceDesktop,
+                            (BranchKind::Local, true) => Octicon::GitBranch,
+                        }
                     } else {
                         Octicon::GitBranch
                     },

@@ -41,6 +41,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Create a Branch and Rename Branch refuse `head` in any letter case (on a case-insensitive file system it is `.git/HEAD`, so GHD creates it and leaves HEAD detached). Flag: `259-reject-head-branch-name`.
 - The branch list's filter ignores an `owner:` prefix (GitHub's "copy branch name" gives `owner:branch` for a fork's branch; `:` can't be part of a ref name), so pasting it finds the branch; GHD filters for the whole text. Flag: `260-branch-filter-strips-owner`.
 - Branch › New Branch… (⌘⇧N) while the branch list is open closes it and prefills the name with its filter text, as the list's New Branch button does; GHD's shortcut always starts empty. Flag: `261-new-branch-from-filter`.
+- Branch list rows can show where a branch lives (Corvane addition, off in the Corvane preset): `device-desktop` for a local branch without an upstream, `server` for a remote-only branch, the branch icon for tracked local branches (the current branch keeps its check); GHD uses the branch icon for all. Flag: `262-branch-list-local-remote-icons`.
 
 ## Tutorial
 

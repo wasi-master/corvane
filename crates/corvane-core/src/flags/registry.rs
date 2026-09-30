@@ -366,6 +366,21 @@ registry! {
         code: &["crates/corvane/src/main.rs", "crates/corvane-ui/src/workspace.rs", "crates/corvane-ui/src/branch_list.rs"],
     },
 
+    /// Branch rows show where the branch lives.
+    BRANCH_LIST_LOCAL_REMOTE_ICONS = 262 "branch-list-local-remote-icons" {
+        title: "Branch list icons for local-only and remote branches",
+        summary: "In the branch list a branch with no upstream (only on this computer) shows a \
+                  desktop icon and a branch that exists only on the remote shows a server icon; \
+                  tracked local branches keep the branch icon.",
+        ghd_behaviour: "Every branch shows the same branch icon.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17012), Upstream::issue(22019)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
