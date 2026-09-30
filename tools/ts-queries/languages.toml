@@ -838,7 +838,7 @@ url = "https://github.com/aheber/tree-sitter-sfapex"
 revision = "da568eee10ce4724a40f368b2b7e795dacb4f1ba"
 location = "apex"
 license = "MIT"
-extensions = ["cls", "trigger", "apex"]
+extensions = ["trigger", "apex"]
 source = "nvim"
 
 [arduino]
@@ -2336,4 +2336,66 @@ url = "https://github.com/monaqa/tree-sitter-mermaid"
 revision = "90ae195b31933ceb9d079abfa8a3ad0a36fee4cc"
 license = "MIT"
 extensions = ["mmd", "mermaid"]
+source = "nvim"
+
+# Built from source at nvim-treesitter's pinned revision (import_nvim.py)
+
+[latex]
+url = "https://github.com/latex-lsp/tree-sitter-latex"
+revision = "fa8df448fc2c0192a8c2f8cfc97de53cb2b4ecb9"
+generate = true
+license = "MIT"
+extensions = ["tex", "aux", "sty", "cls", "bbx", "cbx", "dtx", "ins", "lbx", "ltx", "mkii", "mkiv", "mkvi", "toc"]
+source = "nvim"
+
+[mlir]
+url = "https://github.com/artagnon/tree-sitter-mlir"
+revision = "d93ac1b150580040d16e183ea8bf9daa7841bcc4"
+generate = true
+license = "Apache-2.0"
+extensions = ["mlir"]
+source = "nvim"
+
+[ocamllex]
+url = "https://github.com/atom-ocaml/tree-sitter-ocamllex"
+revision = "64d543e98b4092e2efe5d0c93d78ff4db9cbff39"
+generate = true
+license = "MIT"
+extensions = ["mll"]
+source = "nvim"
+
+[perl]
+url = "https://github.com/tree-sitter-perl/tree-sitter-perl"
+revision = "f678e356280566100e7eed21716d6f59abdf96b7"
+generate = true
+license = "MIT"
+extensions = ["pm", "pl", "t", "al", "cgi", "fcgi", "perl", "ph", "plx", "psgi"]
+filenames = [".latexmkrc", "makefile.pl", "rexfile", "ack", "cpanfile", "latexmkrc"]
+first_line = "^#!.*\\b(cperl|perl)\\b"
+source = "nvim"
+
+[pod]
+url = "https://github.com/tree-sitter-perl/tree-sitter-pod"
+revision = "ffbd7f3b7b68edaaa0532898953c627355cb1a1a"
+generate = true
+license = "Artistic-2.0"
+extensions = ["pod"]
+first_line = "^#!.*\\b(perl)\\b"
+source = "nvim"
+
+[teal]
+url = "https://github.com/euclidianAce/tree-sitter-teal"
+revision = "ac6b42ffb23d5d52b582c02508dd3524ac0ba3df"
+generate = true
+license = "MIT"
+extensions = ["tl"]
+first_line = "^#!.*\\b(tl)\\b"
+source = "nvim"
+
+[unison]
+url = "https://github.com/kylegoetz/tree-sitter-unison"
+revision = "10365cc70ab2b2de85ea7ab35cf6b7636c36ce8b"
+generate = true
+license = "MIT"
+extensions = ["u"]
 source = "nvim"

@@ -168,6 +168,7 @@ all = [
     "lang-koto",
     "lang-kusto",
     "lang-lalrpop",
+    "lang-latex",
     "lang-ledger",
     "lang-leo",
     "lang-less",
@@ -186,6 +187,7 @@ all = [
     "lang-menhir",
     "lang-mermaid",
     "lang-meson",
+    "lang-mlir",
     "lang-nasm",
     "lang-nginx",
     "lang-nickel",
@@ -197,15 +199,18 @@ all = [
     "lang-nu",
     "lang-objc",
     "lang-ocaml",
+    "lang-ocamllex",
     "lang-odin",
     "lang-pascal",
     "lang-passwd",
     "lang-pem",
+    "lang-perl",
     "lang-php",
     "lang-phpdoc",
     "lang-pioasm",
     "lang-pkl",
     "lang-po",
+    "lang-pod",
     "lang-poe_filter",
     "lang-pony",
     "lang-powershell",
@@ -281,6 +286,7 @@ all = [
     "lang-tablegen",
     "lang-tact",
     "lang-tcl",
+    "lang-teal",
     "lang-templ",
     "lang-tera",
     "lang-terraform",
@@ -299,6 +305,7 @@ all = [
     "lang-typst",
     "lang-udev",
     "lang-ungrammar",
+    "lang-unison",
     "lang-uxntal",
     "lang-v",
     "lang-vento",
@@ -442,6 +449,7 @@ rest = [
     "lang-md",
     "lang-mermaid",
     "lang-meson",
+    "lang-mlir",
     "lang-nasm",
     "lang-nginx",
     "lang-nickel",
@@ -451,9 +459,11 @@ rest = [
     "lang-nix",
     "lang-nu",
     "lang-ocaml",
+    "lang-ocamllex",
     "lang-odin",
     "lang-pem",
     "lang-pkl",
+    "lang-pod",
     "lang-poe_filter",
     "lang-pony",
     "lang-printf",
@@ -502,6 +512,7 @@ rest = [
     "lang-tablegen",
     "lang-tact",
     "lang-tcl",
+    "lang-teal",
     "lang-templ",
     "lang-tera",
     "lang-terraform",
@@ -513,6 +524,7 @@ rest = [
     "lang-typoscript",
     "lang-typst",
     "lang-udev",
+    "lang-unison",
     "lang-v",
     "lang-vento",
     "lang-verilog",
@@ -726,6 +738,7 @@ lang-kos = []
 lang-koto = []
 lang-kusto = []
 lang-lalrpop = []
+lang-latex = []
 lang-ledger = []
 lang-leo = []
 lang-linkerscript = []
@@ -738,18 +751,22 @@ lang-matlab = []
 lang-menhir = []
 lang-mermaid = []
 lang-meson = []
+lang-mlir = []
 lang-nasm = []
 lang-nim = []
 lang-nim_format_string = []
 lang-ninja = []
 lang-nqc = []
 lang-nu = []
+lang-ocamllex = []
 lang-passwd = []
 lang-pem = []
+lang-perl = []
 lang-phpdoc = []
 lang-pioasm = []
 lang-pkl = []
 lang-po = []
+lang-pod = []
 lang-poe_filter = []
 lang-pony = []
 lang-prisma = []
@@ -804,6 +821,7 @@ lang-t32 = []
 lang-tablegen = []
 lang-tact = []
 lang-tcl = []
+lang-teal = []
 lang-tera = []
 lang-terraform = []
 lang-textproto = []
@@ -818,6 +836,7 @@ lang-typoscript = []
 lang-typst = []
 lang-udev = []
 lang-ungrammar = []
+lang-unison = []
 lang-uxntal = []
 lang-v = []
 lang-vento = []

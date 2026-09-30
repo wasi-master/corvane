@@ -5,8 +5,9 @@ from source at nvim-treesitter's pinned revision (so its queries match).
     python3 tools/ts-queries/import_nvim.py [--dry-run] [names…]
 
 Needs target/ts-queries/nvim-treesitter (sync.py --candidates fetches it)
-and GitHub's `gh` CLI (licenses). Skips grammars that need
-`tree-sitter generate` (no committed parser.c) and non-permissive licenses.
+and GitHub's `gh` CLI (licenses). Grammars without a
+committed parser.c are marked `generate = true` (fetch.py runs the pinned
+tree-sitter CLI); non-permissive licenses are skipped.
 File types come from the grammar's tree-sitter.json, else from GitHub
 Linguist's languages.yml (MIT). Appends to languages.toml; review the
 result, then run fetch.py, sync.py, gen.py.
@@ -32,7 +33,7 @@ TOOLS = ROOT / "tools" / "ts-queries"
 NVIM = ROOT / "target" / "ts-queries" / "nvim-treesitter"
 LINGUIST_URL = "https://raw.githubusercontent.com/github-linguist/linguist/main/lib/linguist/languages.yml"
 LINGUIST = ROOT / "target" / "ts-queries" / "linguist-languages.yml"
-PERMISSIVE = {"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unlicense", "CC0-1.0", "0BSD", "Zlib", "WTFPL", "MPL-2.0"}
+PERMISSIVE = {"Artistic-2.0", "MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unlicense", "CC0-1.0", "0BSD", "Zlib", "WTFPL", "MPL-2.0"}
 # helpers nvim-treesitter's queries inherit from; not grammars
 QUERY_ONLY = {"ecma", "html_tags", "jsx"}
 
@@ -115,14 +116,11 @@ def main(argv: list[str]) -> int:
         if not p.get("url", "").startswith("https://github.com/"):
             skipped.append(f"{name}: not on GitHub")
             continue
-        if p["generate"]:
-            skipped.append(f"{name}: needs tree-sitter generate")
-            continue
         lic = license_of(p["url"], p["revision"], p.get("location", ""))
         if lic.split(" ")[0] not in PERMISSIVE:
             skipped.append(f"{name}: license {lic}")
             continue
-        lang = {"url": p["url"], "revision": p["revision"], "location": p.get("location", "")}
+        lang = {"url": p["url"], "revision": p["revision"], "location": p.get("location", ""), "generate": p["generate"]}
         try:
             fetch.fetch(name, lang, fetch.lock(), update=True)
         except (SystemExit, OSError) as err:
@@ -136,6 +134,8 @@ def main(argv: list[str]) -> int:
         lines = [f"[{name}]", f'url = "{p["url"]}"', f'revision = "{p["revision"]}"']
         if p.get("location"):
             lines.append(f'location = "{p["location"]}"')
+        if p["generate"]:
+            lines.append("generate = true")
         lines += [f'license = "{lic}"', f"extensions = {toml_list(exts)}"]
         if files:
             lines.append(f"filenames = {toml_list(files)}")

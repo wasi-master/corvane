@@ -599,6 +599,13 @@
   "symbol": "tree_sitter_lalrpop",
   "scanner": "scanner.c"
  },
+ "latex": {
+  "revision": "fa8df448fc2c0192a8c2f8cfc97de53cb2b4ecb9",
+  "sha256": "22788c6a8710f7aa4deadd37d50d7841e72b55c0b4bc6948743f560637edcfc5",
+  "symbol": "tree_sitter_latex",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
+ },
  "ledger": {
   "revision": "d5f3973cfe2d42f98819336ce6334ada75b7696f",
   "sha256": "e3d3b33f944890dae6e0f7ca5ac4136654e9ed02f6a0a9a8ebc1f009b2087362",
@@ -671,6 +678,13 @@
   "symbol": "tree_sitter_meson",
   "scanner": ""
  },
+ "mlir": {
+  "revision": "d93ac1b150580040d16e183ea8bf9daa7841bcc4",
+  "sha256": "83cd8eb79aeefd024bd0c4496de7c5dca4b72230eb65d8d007f16d5d53b6598a",
+  "symbol": "tree_sitter_mlir",
+  "scanner": "",
+  "generated_by": "tree-sitter 0.27.0"
+ },
  "nasm": {
   "revision": "d1b3638d017f2a8585e26dcfc66fe1df94185e30",
   "sha256": "26c038419abf7345c2fce401e696b87e1d4a3e8ef8e9a17a63af2b139dccc745",
@@ -707,6 +721,13 @@
   "symbol": "tree_sitter_nu",
   "scanner": "scanner.c"
  },
+ "ocamllex": {
+  "revision": "64d543e98b4092e2efe5d0c93d78ff4db9cbff39",
+  "sha256": "8212d5707d81f289d46d9fd246cd1061907e5c65efdc58ac39c8116a6fcd2c58",
+  "symbol": "tree_sitter_ocamllex",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
+ },
  "passwd": {
   "revision": "20239395eacdc2e0923a7e5683ad3605aee7b716",
   "sha256": "74996de5b372b2fe106acae9b3aa036f008000e173a9a1ccfd258c134ccff5a7",
@@ -718,6 +739,13 @@
   "sha256": "60f73b71941b84f9b1547befa9440a6b5c7c5e4bc5e15df4407de189ca89f13b",
   "symbol": "tree_sitter_pem",
   "scanner": ""
+ },
+ "perl": {
+  "revision": "f678e356280566100e7eed21716d6f59abdf96b7",
+  "sha256": "da3947ef92fd6abe4959927d3ee1c89005d91458e9da1e830e7b890a925982f9",
+  "symbol": "tree_sitter_perl",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
  },
  "phpdoc": {
   "revision": "12d50307e6c02e5f4f876fa6cf2edea1f7808c0d",
@@ -742,6 +770,13 @@
   "sha256": "5a888bd0bfbf654b0755b2567d06ac8f24c2704df78b114e183e49e956768195",
   "symbol": "tree_sitter_po",
   "scanner": ""
+ },
+ "pod": {
+  "revision": "ffbd7f3b7b68edaaa0532898953c627355cb1a1a",
+  "sha256": "c1332a35a4ed340c4976e68ad9c1c38f2ff79b67cc4e7d9617bbe681c917d160",
+  "symbol": "tree_sitter_pod",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
  },
  "poe_filter": {
   "revision": "205a7d576984feb38a9fc2d8cfe729617f9e0548",
@@ -1067,6 +1102,13 @@
   "symbol": "tree_sitter_tcl",
   "scanner": "scanner.c"
  },
+ "teal": {
+  "revision": "ac6b42ffb23d5d52b582c02508dd3524ac0ba3df",
+  "sha256": "c7533f74677383c81a5e4f8f36cc956697ccafd4108c5cfa60713e941db4e386",
+  "symbol": "tree_sitter_teal",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
+ },
  "tera": {
   "revision": "54b3f8b43aecdbcf12a7366920f0bc8274af1dd0",
   "sha256": "350a510f3c6f56b70d7f64bb85249e33b754b3c00a782a384c666c529ef40fd8",
@@ -1150,6 +1192,13 @@
   "sha256": "a6e04207891cce986bafce796fe25632b3675105cb28ba5211e2df553879f09d",
   "symbol": "tree_sitter_ungrammar",
   "scanner": ""
+ },
+ "unison": {
+  "revision": "10365cc70ab2b2de85ea7ab35cf6b7636c36ce8b",
+  "sha256": "5608e7aca5c8e5abb52356758ae790ac6df51a4606567cb5bca7001ae0bd02b8",
+  "symbol": "tree_sitter_unison",
+  "scanner": "scanner.c",
+  "generated_by": "tree-sitter 0.27.0"
  },
  "uxntal": {
   "revision": "ad9b638b914095320de85d59c49ab271603af048",

@@ -48,7 +48,9 @@ use captures::Style;
 const MAX_DEPTH: usize = 4;
 /// At most this many injected regions per file.
 const MAX_LAYERS: usize = 8192;
-/// Give up on a file after this long (pathological input).
+/// Give up on a parse after this long (pathological input). Per layer, and
+/// not counting query compilation (a first file in a language compiles its
+/// injected languages' queries too).
 const TIME_LIMIT: Duration = Duration::from_secs(2);
 /// nvim-treesitter's default `priority`.
 const DEFAULT_PRIORITY: u32 = 100;
@@ -244,7 +246,6 @@ fn paint_document(
     root: Arc<Compiled>,
     source: &[u8],
 ) -> Result<Vec<u8>, String> {
-    let started = Instant::now();
     let mut paint = vec![0u8; source.len()];
     let mut layers = vec![Layer {
         compiled: root,
@@ -258,6 +259,7 @@ fn paint_document(
         next += 1;
         let compiled = layer.compiled.clone();
         let depth = layer.depth;
+        let started = Instant::now();
         parser
             .set_language(&compiled.language)
             .map_err(|err| err.to_string())?;
@@ -307,9 +309,6 @@ fn paint_document(
                     depth: depth + 1,
                 });
             }
-        }
-        if started.elapsed() > TIME_LIMIT {
-            return Err("highlighting timed out".to_string());
         }
     }
     Ok(paint)

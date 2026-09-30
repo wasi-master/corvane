@@ -47,7 +47,12 @@ def tarball_url(url: str, revision: str) -> str:
     return f"https://codeload.github.com/{repo}/tar.gz/{revision}"
 
 
-def wanted(member: str, location: str) -> str | None:
+TREE_SITTER = os.environ.get("CORVANE_TREE_SITTER", "tree-sitter")
+# the CLI that generates parser.c for `generate = true` grammars (matches the runtime)
+TREE_SITTER_VERSION = "0.27.0"
+
+
+def wanted(member: str, location: str, everything: bool = False) -> str | None:
     """The member's path inside the grammar folder, if it is extracted."""
     parts = member.split("/", 1)
     if len(parts) < 2:
@@ -57,6 +62,8 @@ def wanted(member: str, location: str) -> str | None:
         if not rest.startswith(location + "/"):
             return rest if rest in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING") else None
         rest = rest[len(location) + 1 :]
+    if everything:
+        return rest
     if rest.startswith(("src/", "queries/")) or rest in (
         "tree-sitter.json", "package.json", "grammar.js", "LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING",
     ):
@@ -84,7 +91,7 @@ def fetch(name: str, lang: dict, pins: dict, update: bool) -> dict:
     out.mkdir(parents=True, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
         for member in tar.getmembers():
-            rel = wanted(member.name, lang.get("location", ""))
+            rel = wanted(member.name, lang.get("location", ""), everything=bool(lang.get("generate")))
             if rel is None or not member.isfile():
                 continue
             target = out / rel
@@ -93,13 +100,34 @@ def fetch(name: str, lang: dict, pins: dict, update: bool) -> dict:
             if src:
                 target.write_bytes(src.read())
     parser = out / "src" / "parser.c"
+    if lang.get("generate"):
+        generate(name, out)
     if not parser.exists():
         raise SystemExit(f"{name}: no src/parser.c at {lang['revision']} (needs `tree-sitter generate`)")
     exports = re.findall(r"tree_sitter_(\w+)\s*\(\s*(?:void)?\s*\)\s*\{", parser.read_text(errors="replace"))
     if not exports:
         raise SystemExit(f"{name}: no tree_sitter_<name>() in parser.c")
     scanner = next((f.name for f in (out / "src").iterdir() if f.name in ("scanner.c", "scanner.cc")), "")
-    return {"revision": lang["revision"], "sha256": sha, "symbol": f"tree_sitter_{exports[-1]}", "scanner": scanner}
+    pin = {"revision": lang["revision"], "sha256": sha, "symbol": f"tree_sitter_{exports[-1]}", "scanner": scanner}
+    if lang.get("generate"):
+        pin["generated_by"] = f"tree-sitter {TREE_SITTER_VERSION}"
+    return pin
+
+
+def generate(name: str, out: Path) -> None:
+    """parser.c for a grammar that does not commit it (`tree-sitter generate`,
+    from grammar.js through node, else from src/grammar.json)."""
+    import subprocess
+
+    version = subprocess.run([TREE_SITTER, "--version"], capture_output=True, text=True, check=True).stdout.split()[-1]
+    if version != TREE_SITTER_VERSION:
+        raise SystemExit(f"{name}: needs tree-sitter {TREE_SITTER_VERSION} to generate, found {version} (CORVANE_TREE_SITTER)")
+    args = [TREE_SITTER, "generate"]
+    if not (out / "grammar.js").exists():
+        args.append("src/grammar.json")
+    result = subprocess.run(args, cwd=out, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit(f"{name}: tree-sitter generate failed: {result.stderr.strip()[-400:]}")
 
 
 def main(argv: list[str]) -> int:
