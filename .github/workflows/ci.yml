@@ -19,6 +19,19 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      # grammars built from source (crates/corvane-grammars/build.rs); the
+      # tree-sitter tests need all of them
+      - name: cache grammar sources
+        id: grammar-src
+        uses: actions/cache@v4
+        with:
+          path: target/grammar-src
+          key: grammar-src-${{ hashFiles('tools/ts-queries/languages.toml', 'tools/ts-queries/sources.lock.json') }}
+      - name: fetch grammar sources (tree-sitter CLI generates the ones without parser.c)
+        if: steps.grammar-src.outputs.cache-hit != 'true'
+        run: |
+          cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
+          CORVANE_TREE_SITTER="$RUNNER_TEMP/ts-cli/bin/tree-sitter" python3 tools/ts-queries/fetch.py
       - name: rustfmt
         run: cargo fmt --all -- --check
       - name: clippy
