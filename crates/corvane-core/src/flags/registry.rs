@@ -1083,6 +1083,19 @@ registry! {
         upstream: &[Upstream::issue(3240)],
         code: &["crates/corvane-ui/src/keymap.rs"],
     },
+    /// ⌃N / ⌃P move the selection in the changes and history lists.
+    EMACS_LIST_KEYS = 611 "emacs-list-keys" {
+        title: "⌃N / ⌃P move through lists",
+        summary: "⌃N and ⌃P select the next and previous row of the changes and history lists, \
+                  like ↓ and ↑ (the macOS text-system keys).",
+        ghd_behaviour: "Only the arrow keys move the selection.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(7266)],
+        code: &["crates/corvane-ui/src/keymap.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

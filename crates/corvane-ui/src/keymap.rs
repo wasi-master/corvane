@@ -22,6 +22,8 @@ pub struct KeymapFlags {
     pub no_push_shortcut: bool,
     /// `610-open-in-shell-alt-shortcut`: ⌥⌘T also opens the shell.
     pub open_in_shell_alt_shortcut: bool,
+    /// `611-emacs-list-keys`: ⌃N / ⌃P move through the changes and history lists.
+    pub emacs_list_keys: bool,
 }
 
 impl KeymapFlags {
@@ -31,6 +33,7 @@ impl KeymapFlags {
             open_file_shortcuts: flags.bool(ids::OPEN_FILE_SHORTCUTS),
             no_push_shortcut: flags.bool(ids::NO_PUSH_SHORTCUT),
             open_in_shell_alt_shortcut: flags.bool(ids::OPEN_IN_SHELL_ALT_SHORTCUT),
+            emacs_list_keys: flags.bool(ids::EMACS_LIST_KEYS),
         }
     }
 }
@@ -172,6 +175,14 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     }
     if flags.open_in_shell_alt_shortcut {
         bindings.push(KeyBinding::new("alt-cmd-t", OpenInShell, None));
+    }
+    if flags.emacs_list_keys {
+        for context in ["ChangesList", "HistoryList"] {
+            bindings.extend([
+                KeyBinding::new("ctrl-n", SelectNextFile, Some(context)),
+                KeyBinding::new("ctrl-p", SelectPreviousFile, Some(context)),
+            ]);
+        }
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {

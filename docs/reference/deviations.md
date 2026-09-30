@@ -135,6 +135,7 @@ Audit against GitHub's Desktop shortcut table and GHD's `List` / `FilterList` / 
 - With the changes list or a commit's file list focused, ⇧⌘A opens the selected file in the external editor and ⌥⌘O opens it with its default program (Corvane addition; GHD only offers both in the file context menu, and ⇧⌘A always opens the repository). Flag: `608-open-file-shortcuts`.
 - Push can lose its ⌘P shortcut (Corvane option), so a stray ⌘P does not push; GHD always binds it. Flag: `609-no-push-shortcut`.
 - Repository › Open in <shell> also answers to ⌥⌘T, since ⌃` is a dead key on German and other layouts; the menu still shows ⌃` as in GHD. Flag: `610-open-in-shell-alt-shortcut`.
+- ⌃N / ⌃P select the next / previous row of the changes and history lists, like ↓ / ↑ (the macOS text-system bindings; GHD has only the arrows). Flag: `611-emacs-list-keys`.
 
 ## Accessibility
 
