@@ -22,6 +22,8 @@
 //! - the list can be ordered by status or file name (`282-changes-sort-order`).
 //! - the filter text can match as a substring, suffix or exact name
 //!   (`283-changes-filter-match`).
+//! - a "Committing as Name <email>" line can sit above the summary
+//!   (`171-commit-author-line`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -2514,6 +2516,33 @@ impl ChangesSidebar {
         )
     }
 
+    /// `171-commit-author-line`: the identity the next commit is made with.
+    fn author_line(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::COMMIT_AUTHOR_LINE) {
+            return None;
+        }
+        let identity = &s.selected_state()?.info.as_ref()?.identity;
+        let text = match (identity.name.as_deref(), identity.email.as_deref()) {
+            (Some(name), Some(email)) => format!("Committing as {name} <{email}>"),
+            (Some(name), None) => format!("Committing as {name} (no user.email)"),
+            (None, Some(email)) => format!("Committing as <{email}> (no user.name)"),
+            (None, None) => "No commit author configured (user.name / user.email)".to_string(),
+        };
+        Some(
+            div()
+                .id("commit-author-line")
+                .mb(SPACING_HALF())
+                .text_size(FONT_SIZE_SM())
+                .text_color(t.text_secondary)
+                .truncate()
+                .ghd_tooltip(text.clone())
+                .child(text)
+                .into_any_element(),
+        )
+    }
+
     /// `renderBranchProtectionsRepoRulesCommitWarning`
     fn branch_protection_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -3198,6 +3227,7 @@ impl ChangesSidebar {
             .when(self.committing_hidden_files(cx).is_none(), |d| {
                 d.border_t_1().border_color(t.box_border)
             })
+            .children(self.author_line(cx))
             .child(
                 // `.summary`: avatar + summary field
                 div()

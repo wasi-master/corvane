@@ -234,6 +234,20 @@ registry! {
         upstream: &[Upstream::issue(14268), Upstream::issue(19016)],
         code: &["crates/corvane-ui/src/changes.rs"],
     },
+    /// "Committing as" line above the commit summary.
+    COMMIT_AUTHOR_LINE = 171 "commit-author-line" {
+        title: "Show the commit author",
+        summary: "A line above the commit summary names the identity git resolved for this \
+                  repository (`user.name` / `user.email`, `includeIf` included): \
+                  \"Committing as Name <email>\".",
+        ghd_behaviour: "Only the avatar, whose tooltip names the author.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21883)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 200 Repository ----
 
