@@ -4,6 +4,7 @@
 //! `launch_at_line` is Corvane's (flag `diff-open-in-editor-at-line`): VS Code
 //! and its forks, Sublime Text and Zed open a file at a line through the
 //! command line tool in their bundle; other editors just open the file.
+//! `EXTRA_EDITORS` (flag `extra-editors`) adds editors GHD does not list.
 
 use std::path::{Path, PathBuf};
 
@@ -100,6 +101,13 @@ const EDITORS: &[(&str, &[&str])] = &[
     ("Windsurf", &["com.exafunction.windsurf"]),
 ];
 
+/// Editors GHD 3.6.6 does not know, in the same shape; detected only with
+/// flag `extra-editors` and listed after GHD's.
+const EXTRA_EDITORS: &[(&str, &[&str])] = &[
+    // desktop/desktop#22922, bundle id from desktop/desktop#21417
+    ("Antigravity", &["com.google.antigravity"]),
+];
+
 /// GHD `suggestedExternalEditor`.
 pub const SUGGESTED_EDITOR_NAME: &str = "Visual Studio Code";
 pub const SUGGESTED_EDITOR_URL: &str = "https://code.visualstudio.com";
@@ -112,11 +120,14 @@ pub struct FoundEditor {
     pub path: PathBuf,
 }
 
-/// Every known editor installed on this machine, in table order. Costs one
-/// LaunchServices lookup per identifier; run it off the main thread.
-pub fn available_editors() -> Vec<FoundEditor> {
+/// Every known editor installed on this machine, in table order (then
+/// [`EXTRA_EDITORS`] when `extras`). Costs one LaunchServices lookup per
+/// identifier; run it off the main thread.
+pub fn available_editors(extras: bool) -> Vec<FoundEditor> {
+    let extra: &[(&str, &[&str])] = if extras { EXTRA_EDITORS } else { &[] };
     EDITORS
         .iter()
+        .chain(extra)
         .filter_map(|(name, ids)| {
             apps::first_installed(ids).map(|(bundle_id, path)| FoundEditor {
                 name: (*name).to_string(),
@@ -342,7 +353,11 @@ mod tests {
 
     #[test]
     fn table_has_no_duplicate_names() {
-        let mut names: Vec<&str> = EDITORS.iter().map(|(n, _)| *n).collect();
+        let mut names: Vec<&str> = EDITORS
+            .iter()
+            .chain(EXTRA_EDITORS)
+            .map(|(n, _)| *n)
+            .collect();
         let before = names.len();
         names.sort_unstable();
         names.dedup();
