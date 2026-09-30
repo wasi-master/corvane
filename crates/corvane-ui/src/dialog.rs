@@ -472,6 +472,9 @@ fn dialog_impl(
         anchored().position(point(zpx(0.), zpx(0.))).child(
             div()
                 .id(id)
+                // modal: the views underneath get no hover, clicks or wheel
+                // (GHD's `<dialog>` makes the rest of the page inert)
+                .occlude()
                 .w(viewport.width)
                 .h(viewport.height)
                 .flex()
