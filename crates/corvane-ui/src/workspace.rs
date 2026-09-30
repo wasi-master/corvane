@@ -225,6 +225,16 @@ impl Workspace {
         }
     }
 
+    /// The branch foldout's filter text while it is open on the Branches tab
+    /// (`261-new-branch-from-filter`: Branch › New Branch… prefills it).
+    pub fn open_branch_filter(&self, cx: &App) -> Option<String> {
+        let s = self.state.read(cx);
+        (s.foldout == Some(corvane_core::Foldout::Branch)
+            && s.branches_tab == corvane_core::BranchesTab::Branches)
+            .then(|| self.branch_foldout.read(cx).filter_text(cx))
+            .filter(|text| !text.is_empty())
+    }
+
     /// `View › Show Branches List` (⌘B): open the foldout and focus its filter.
     pub fn show_branches_list(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         Dispatcher::toggle_foldout(corvane_core::Foldout::Branch, cx);
