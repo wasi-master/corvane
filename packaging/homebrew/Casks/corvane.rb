@@ -3,7 +3,7 @@
 #
 #   brew install --cask wasi-master/corvane/corvane --no-quarantine
 #
-# `--no-quarantine` matters: the bundle is ad-hoc signed (no Apple Developer
+# `--no-quarantine` matters: the bundle is self-signed (no Apple Developer
 # ID), so a quarantined copy is blocked by Gatekeeper on first launch.
 cask "corvane" do
   version "0.1.0"
@@ -34,7 +34,7 @@ cask "corvane" do
   ]
 
   caveats <<~EOS
-    Corvane is ad-hoc signed. Install with --no-quarantine, or after a plain
+    Corvane is self-signed. Install with --no-quarantine, or after a plain
     install allow it once under System Settings › Privacy & Security › Open Anyway.
     Updates for this install come from `brew upgrade corvane`; the in-app
     updater only points there.

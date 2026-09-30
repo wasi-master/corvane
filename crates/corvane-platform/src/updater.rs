@@ -4,12 +4,12 @@
 //! (`GET /repos/wasi-master/corvane/releases/latest`), the release's macOS
 //! `.zip` is downloaded to `~/Library/Caches/Corvane/updates/`, verified with
 //! its minisign signature against the public key compiled into this binary,
-//! unpacked with `ditto` (keeps the ad-hoc signature intact), swapped in for
+//! unpacked with `ditto` (keeps the code signature intact), swapped in for
 //! the running bundle (`Corvane.app` → `Corvane.app.old`, new bundle moved
 //! in) and opened again once this process has exited. The `.old` bundle is
 //! removed at the next launch.
 //!
-//! Files this app writes carry no quarantine attribute, so the ad-hoc signed
+//! Files this app writes carry no quarantine attribute, so the self-signed
 //! update launches without a Gatekeeper prompt.
 //!
 //! A bundle installed by Homebrew is never swapped: `brew upgrade corvane`
