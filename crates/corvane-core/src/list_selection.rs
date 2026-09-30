@@ -25,6 +25,19 @@ pub fn selection_between(order: &[String], from: usize, to: usize) -> Vec<String
     }
 }
 
+/// `moveSelection` without a wrap: the row `delta` away from `current`
+/// (the first row when nothing is selected), clamped to a list of `len` rows.
+/// `None` for an empty list.
+pub fn step_index(len: usize, current: Option<usize>, delta: isize) -> Option<usize> {
+    let last = len.checked_sub(1)? as isize;
+    Some(
+        current
+            .map(|i| i as isize + delta)
+            .unwrap_or(0)
+            .clamp(0, last) as usize,
+    )
+}
+
 /// `addSelection`: move the end of the selection one row up (`delta < 0`) or
 /// down and select everything between the origin and the new end. `None` when
 /// nothing changes (the end is already at the edge, or `anchor` is not
@@ -78,6 +91,18 @@ pub fn extend_keeping(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn step_index_clamps_and_starts_at_the_top() {
+        assert_eq!(step_index(0, None, 1), None);
+        assert_eq!(step_index(3, None, 1), Some(0));
+        assert_eq!(step_index(3, None, -1), Some(0));
+        assert_eq!(step_index(3, Some(0), 1), Some(1));
+        assert_eq!(step_index(3, Some(2), 1), Some(2));
+        assert_eq!(step_index(3, Some(0), -1), Some(0));
+        assert_eq!(step_index(3, Some(1), isize::MIN / 2), Some(0));
+        assert_eq!(step_index(3, Some(1), isize::MAX / 2), Some(2));
+    }
 
     fn order() -> Vec<String> {
         ["a", "b", "c", "d", "e"].map(String::from).to_vec()

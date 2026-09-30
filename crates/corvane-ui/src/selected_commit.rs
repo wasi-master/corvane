@@ -31,8 +31,9 @@ use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
 use crate::actions::{
-    CopySelectedFilePaths, CopySelectedRelativeFilePaths, OpenSelectedFileInEditor,
-    OpenSelectedFileWithDefaultProgram,
+    CopySelectedFilePaths, CopySelectedRelativeFilePaths, ExtendSelectionDown, ExtendSelectionUp,
+    OpenSelectedFileInEditor, OpenSelectedFileWithDefaultProgram, SelectFirstFile, SelectLastFile,
+    SelectNextFile, SelectPreviousFile,
 };
 use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
 use crate::icons::{Octicon, octicon};
@@ -63,6 +64,10 @@ pub struct SelectedCommitView {
     /// Flag `810`: the ⌘/⇧-clicked files (file-list order) and the commit
     /// selection they belong to; stale once the commit selection changes.
     multi_files: Option<(Vec<String>, Vec<String>)>,
+    /// The moving end of a ⇧↑ / ⇧↓ selection (flag `810`); the diffed file
+    /// is its origin.
+    multi_end: Option<String>,
+    file_scroll: UniformListScrollHandle,
     /// Corvane (`801-history-review-mode`): the file list is hidden.
     file_list_hidden: bool,
 }
@@ -99,6 +104,8 @@ impl SelectedCommitView {
             file_list_focus: cx.focus_handle(),
             file_list_focused: false,
             multi_files: None,
+            multi_end: None,
+            file_scroll: UniformListScrollHandle::new(),
             file_list_hidden: false,
         }
     }
@@ -172,6 +179,107 @@ impl SelectedCommitView {
         }
     }
 
+    /// The commit's files in list order.
+    fn file_order(&self, id: u64, cx: &App) -> Vec<String> {
+        self.state
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|rs| rs.changeset.as_ref())
+            .map(|c| c.files.iter().map(|f| f.path.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    /// GHD `List.moveSelection` on the commit's `FileList` (↑ / ↓, and ⌥↓ /
+    /// ⌥↑ from the diff): the file `delta` rows from the moving end of the
+    /// selection, clamped at the ends, scrolled into view.
+    pub fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let order = self.file_order(id, cx);
+        let current = self
+            .multi_end
+            .clone()
+            .filter(|end| self.multi_selected(id, cx).contains(end))
+            .or_else(|| {
+                let s = self.state.read(cx);
+                s.repo_states.get(&id)?.commit_selected_file.clone()
+            })
+            .and_then(|p| order.iter().position(|o| *o == p));
+        if let Some(ix) = corvane_core::list_selection::step_index(order.len(), current, delta) {
+            self.select_index(id, &order, ix, cx);
+        }
+    }
+
+    /// Home / End, ⌘↑ / ⌘↓: the first or last file.
+    fn select_edge(&mut self, last: bool, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let order = self.file_order(id, cx);
+        if !order.is_empty() {
+            let ix = if last { order.len() - 1 } else { 0 };
+            self.select_index(id, &order, ix, cx);
+        }
+    }
+
+    fn select_index(&mut self, id: u64, order: &[String], ix: usize, cx: &mut Context<Self>) {
+        self.multi_files = None;
+        self.multi_end = None;
+        Dispatcher::select_commit_file(id, order[ix].clone(), cx);
+        self.file_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+        cx.notify();
+    }
+
+    /// ⇧↓ / ⇧↑ (GHD `List.addSelection`): with flag `810` the selection runs
+    /// from the diffed file to a moving end one row further; without it the
+    /// list is single-select and the keys move like ↓ / ↑.
+    fn extend_selection(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let (id, anchor, commits, multi_select) = {
+            let s = self.state.read(cx);
+            let Some(id) = s.selected else { return };
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            (
+                id,
+                rs.commit_selected_file.clone(),
+                rs.selected_commits.clone(),
+                s.flags
+                    .bool(corvane_core::flags::ids::COMMIT_FILES_MULTI_SELECT),
+            )
+        };
+        let Some(anchor) = anchor.filter(|_| multi_select) else {
+            return self.select_relative(delta, cx);
+        };
+        let order = self.file_order(id, cx);
+        let multi = self.multi_selected(id, cx);
+        let end = self
+            .multi_end
+            .clone()
+            .filter(|end| multi.contains(end))
+            .unwrap_or_else(|| anchor.clone());
+        let Some(range) = corvane_core::list_selection::extend_selection(
+            &order,
+            &anchor,
+            std::slice::from_ref(&end),
+            delta,
+        ) else {
+            return;
+        };
+        let Some(new_end) = range.last().cloned() else {
+            return;
+        };
+        if let Some(ix) = order.iter().position(|p| *p == new_end) {
+            self.file_scroll.scroll_to_item(ix, ScrollStrategy::Nearest);
+        }
+        let next: Vec<String> = order.into_iter().filter(|p| range.contains(p)).collect();
+        self.multi_files = (next.len() > 1).then_some((commits, next));
+        self.multi_end = Some(new_end);
+        cx.notify();
+    }
+
     /// ⌘-click toggles `path`, ⇧-click selects from the diffed file to
     /// `path`, a plain click leaves a single selection.
     fn click_file(&mut self, id: u64, path: String, click: FileClick, cx: &mut Context<Self>) {
@@ -239,6 +347,7 @@ impl SelectedCommitView {
                 }
             };
         self.multi_files = (next.len() > 1).then_some((commits, next));
+        self.multi_end = None;
         if let Some(path) = diffed {
             Dispatcher::select_commit_file(id, path, cx);
         }
@@ -694,6 +803,7 @@ impl SelectedCommitView {
         let files = std::rc::Rc::new(files);
         let focus = self.file_list_focus.clone();
         let focused = self.file_list_focused;
+        let scroll = self.file_scroll.clone();
         div()
             .size_full()
             .flex()
@@ -756,7 +866,7 @@ impl SelectedCommitView {
                         })
                         .flex_1()
                         .min_h_0()
-                        .with_scrollbar(),
+                        .with_scrollbar_handle(&scroll),
                     ),
             )
             .into_any_element()
@@ -1229,6 +1339,24 @@ impl Render for SelectedCommitView {
                                     self.file_list(id, cx),
                                 )
                                 .key_context("CommitFileList")
+                                .on_action(cx.listener(|this, _: &SelectNextFile, _, cx| {
+                                    this.select_relative(1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                                    this.select_relative(-1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &SelectFirstFile, _, cx| {
+                                    this.select_edge(false, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &SelectLastFile, _, cx| {
+                                    this.select_edge(true, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &ExtendSelectionDown, _, cx| {
+                                    this.extend_selection(1, cx)
+                                }))
+                                .on_action(cx.listener(|this, _: &ExtendSelectionUp, _, cx| {
+                                    this.extend_selection(-1, cx)
+                                }))
                                 .on_action(cx.listener(|this, _: &CopySelectedFilePaths, _, cx| {
                                     this.copy_selected_path(true, cx)
                                 }))

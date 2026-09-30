@@ -18,6 +18,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
 use crate::context_menu::{ContextMenu, MenuItem};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -149,21 +150,105 @@ pub struct WorktreeFoldout {
     state: Entity<AppState>,
     filter: Entity<InputState>,
     context_menu: Option<Entity<ContextMenu>>,
+    /// GHD `FilterList` keyboard selection: the row ↓ / ↑ moved to from
+    /// the filter box (an index into the rows as shown, groups flattened).
+    highlighted: Option<usize>,
+    scroll: ScrollHandle,
 }
 
 impl WorktreeFoldout {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
-        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
+        cx.observe(&filter, |this: &mut Self, _, cx| {
+            this.highlighted = None;
+            cx.notify()
+        })
+        .detach();
         Self {
             state,
             filter,
             context_menu: None,
+            highlighted: None,
+            scroll: ScrollHandle::new(),
         }
     }
 
-    pub fn focus_filter(&self, window: &mut Window, cx: &mut Context<Self>) {
+    /// The Main / Linked groups (GHD `WorktreeList` groups) as shown for
+    /// the filter text; empty groups are dropped.
+    fn groups(&self, cx: &App) -> Vec<(&'static str, Vec<WorktreeEntry>)> {
+        let query = self.filter.read(cx).value().trim().to_lowercase();
+        let s = self.state.read(cx);
+        let Some(id) = s.selected else {
+            return Vec::new();
+        };
+        let worktrees = s
+            .repo_states
+            .get(&id)
+            .map(|rs| listed_worktrees(s, &rs.worktrees))
+            .unwrap_or_default();
+        let match_path = s.flags.bool(corvane_core::flags::ids::WORKTREE_PATHS);
+        let matches = |w: &WorktreeEntry| {
+            query.is_empty()
+                || w.display_name().to_lowercase().contains(&query)
+                || (match_path && w.path.to_string_lossy().to_lowercase().contains(&query))
+        };
+        [
+            ("Main Worktree", WorktreeType::Main),
+            ("Linked Worktrees", WorktreeType::Linked),
+        ]
+        .into_iter()
+        .map(|(label, kind)| {
+            let items: Vec<WorktreeEntry> = worktrees
+                .iter()
+                .filter(|w| w.kind == kind && matches(w))
+                .cloned()
+                .collect();
+            (label, items)
+        })
+        .filter(|(_, items)| !items.is_empty())
+        .collect()
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` (`SectionFilterList`
+    /// in `WorktreeList`): ↓ / ↑ in the filter box move through the rows
+    /// (↑ from the filter starts at the last), clamped, skipping the group
+    /// headers.
+    fn move_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let sizes: Vec<usize> = self.groups(cx).iter().map(|(_, g)| g.len()).collect();
+        let Some(ix) = crate::filter_list::step(self.highlighted, delta, sizes.iter().sum()) else {
+            return;
+        };
+        self.highlighted = Some(ix);
+        let top = crate::filter_list::row_top(&sizes, ix, ROW_HEIGHT(), WORKTREE_ROW_HEIGHT());
+        crate::filter_list::scroll_into_view(&self.scroll, top, WORKTREE_ROW_HEIGHT());
+        cx.notify();
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` (Enter): the
+    /// highlighted worktree, else — with a filter typed — the first one,
+    /// switched to as a click does (`WorktreeList.onItemClick`).
+    fn pick_highlighted(&mut self, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let query_empty = self.filter.read(cx).value().trim().is_empty();
+        let ix = self.highlighted.or_else(|| (!query_empty).then_some(0));
+        let path = ix.and_then(|ix| {
+            self.groups(cx)
+                .into_iter()
+                .flat_map(|(_, g)| g)
+                .nth(ix)
+                .map(|w| w.path)
+        });
+        if let Some(path) = path {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::switch_worktree(id, path, cx);
+        }
+    }
+
+    pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.highlighted = None;
         let handle = self.filter.read(cx).focus_handle(cx);
         handle.focus(window, cx);
         cx.notify();
@@ -196,6 +281,7 @@ impl WorktreeFoldout {
         repo: u64,
         worktree: &WorktreeEntry,
         current: bool,
+        highlighted: bool,
         query: &str,
         cx: &Context<Self>,
     ) -> AnyElement {
@@ -247,6 +333,11 @@ impl WorktreeFoldout {
             .cursor_pointer()
             .text_size(FONT_SIZE())
             .hover(move |s| s.bg(list_hover))
+            // the keyboard row (GHD's focused-list selection)
+            .when(highlighted, |d| {
+                d.bg(t.box_selected_active_background)
+                    .text_color(t.box_selected_active_text)
+            })
             .on_click(move |_, _, cx| {
                 Dispatcher::close_foldout(cx);
                 Dispatcher::switch_worktree(repo, path.clone(), cx);
@@ -264,7 +355,11 @@ impl WorktreeFoldout {
                     } else {
                         Octicon::FileDirectory
                     },
-                    if current { t.text } else { t.text_secondary },
+                    if current || highlighted {
+                        t.text
+                    } else {
+                        t.text_secondary
+                    },
                 )
                 .flex_none()
                 .mr(SPACING_HALF()),
@@ -297,37 +392,18 @@ impl Render for WorktreeFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let query = self.filter.read(cx).value().trim().to_string();
-        let (id, worktrees, current) = {
+        let (id, current) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else {
                 return div().into_any_element();
             };
-            let worktrees = s
-                .repo_states
-                .get(&id)
-                .map(|rs| listed_worktrees(s, &rs.worktrees))
-                .unwrap_or_default();
-            (id, worktrees, current_worktree(s, id).map(|w| w.path))
+            (id, current_worktree(s, id).map(|w| w.path))
         };
-        let match_path = self
-            .state
-            .read(cx)
-            .flags
-            .bool(corvane_core::flags::ids::WORKTREE_PATHS);
-        let matches = |w: &WorktreeEntry| {
-            let query = query.to_lowercase();
-            query.is_empty()
-                || w.display_name().to_lowercase().contains(&query)
-                || (match_path && w.path.to_string_lossy().to_lowercase().contains(&query))
-        };
-        let main: Vec<&WorktreeEntry> = worktrees
-            .iter()
-            .filter(|w| w.kind == WorktreeType::Main && matches(w))
-            .collect();
-        let linked: Vec<&WorktreeEntry> = worktrees
-            .iter()
-            .filter(|w| w.kind == WorktreeType::Linked && matches(w))
-            .collect();
+        let shown = self.groups(cx);
+        let row_count: usize = shown.iter().map(|(_, g)| g.len()).sum();
+        self.highlighted = self.highlighted.filter(|ix| *ix < row_count);
+        let highlighted = self.highlighted;
+        let mut row_ix = 0;
         let group_header = |label: &str| {
             // `.filter-list-group-header`
             div()
@@ -342,18 +418,24 @@ impl Render for WorktreeFoldout {
                 .child(label.to_string())
         };
         let mut groups: Vec<AnyElement> = Vec::new();
-        for (label, items) in [("Main Worktree", main), ("Linked Worktrees", linked)] {
-            if items.is_empty() {
-                continue;
-            }
+        for (label, items) in shown {
+            let first = row_ix;
+            row_ix += items.len();
             groups.push(
                 div()
                     .flex()
                     .flex_col()
                     .child(group_header(label))
-                    .children(items.into_iter().map(|w| {
+                    .children(items.iter().enumerate().map(|(ix, w)| {
                         let is_current = current.as_ref() == Some(&w.path);
-                        self.row(id, w, is_current, &query, cx)
+                        self.row(
+                            id,
+                            w,
+                            is_current,
+                            highlighted == Some(first + ix),
+                            &query,
+                            cx,
+                        )
                     }))
                     .into_any_element(),
             );
@@ -373,6 +455,16 @@ impl Render for WorktreeFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
+                    .key_context("WorktreeFilter")
+                    .on_action(
+                        cx.listener(|this, _: &SelectNextFile, _, cx| this.move_highlight(1, cx)),
+                    )
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.move_highlight(-1, cx)
+                    }))
+                    .on_action(
+                        cx.listener(|this, _: &FilterListPick, _, cx| this.pick_highlighted(cx)),
+                    )
                     .child(crate::widgets::filter_text_box(
                         "worktree-filter",
                         &self.filter,
@@ -416,7 +508,7 @@ impl Render for WorktreeFoldout {
                     .flex()
                     .flex_col()
                     .children(groups)
-                    .with_scrollbar()
+                    .with_scrollbar_handle(&self.scroll)
                     .into_any_element()
             })
             .children(self.context_menu.clone())

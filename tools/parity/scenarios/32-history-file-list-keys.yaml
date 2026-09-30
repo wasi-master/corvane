@@ -1,0 +1,22 @@
+name: history-file-list-keys
+description: Arrow keys, ⌘↑ / ⌘↓ in a commit's file list
+setup: repo
+steps:
+  - click: [187, 97]
+    wait: 600
+  - click: [124, 425]
+    wait: 800
+  - click: [350, 181]
+    wait: 400
+  - key: down
+    wait: 400
+  - snap: down
+  - key: up
+    wait: 400
+  - snap: up
+  - key: cmd-down
+    wait: 400
+  - snap: cmd-down-last
+  - key: cmd-up
+    wait: 400
+  - snap: cmd-up-first

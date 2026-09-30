@@ -39,6 +39,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
 use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 
@@ -90,6 +91,14 @@ pub struct BranchFoldout {
     list_focused: bool,
     /// `851-branch-list-remote-only`: the list shows remote branches only.
     remote_only: bool,
+    /// GHD `FilterList` keyboard selection: the branch row ↓ / ↑ moved to
+    /// from the filter box (an index into the rows as shown, groups
+    /// flattened); while set it is the list's selection.
+    highlighted: Option<usize>,
+    scroll: ScrollHandle,
+    /// The same for the Pull Requests tab.
+    pr_highlighted: Option<usize>,
+    pr_scroll: ScrollHandle,
 }
 
 /// The pull request whose quick view is shown, its parsed body, and the
@@ -149,6 +158,29 @@ fn remote_group(branches: &[Branch], query: &str, cx: &App) -> Vec<BranchGroup> 
             branches: remote,
         }]
     }
+}
+
+/// GHD `BranchesContainer.onBranchItemClick` (a click, or Enter in the
+/// filter box): close the foldout and check the branch out, or ask first
+/// (`864-confirm-branch-switch`).
+fn checkout_branch_row(id: u64, name: String, current: bool, cx: &mut App) {
+    Dispatcher::close_foldout(cx);
+    if AppState::global(cx)
+        .read(cx)
+        .flags
+        .bool(corvane_core::flags::ids::CONFIRM_BRANCH_SWITCH)
+        && !current
+    {
+        Dispatcher::show_popup(
+            Popup::ConfirmSwitchBranch {
+                repo: id,
+                branch: name,
+            },
+            cx,
+        );
+        return;
+    }
+    Dispatcher::checkout_branch(id, name, None, cx)
 }
 
 /// Flag `848-branch-list-sort-by-date`: Other Branches newest first.
@@ -258,8 +290,16 @@ impl BranchFoldout {
         let filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         let pr_filter = cx.new(|cx| InputState::new(window, cx).placeholder("Filter"));
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        cx.observe(&filter, |_, _, cx| cx.notify()).detach();
-        cx.observe(&pr_filter, |_, _, cx| cx.notify()).detach();
+        cx.observe(&filter, |this: &mut Self, _, cx| {
+            this.highlighted = None;
+            cx.notify()
+        })
+        .detach();
+        cx.observe(&pr_filter, |this: &mut Self, _, cx| {
+            this.pr_highlighted = None;
+            cx.notify()
+        })
+        .detach();
         Self {
             state,
             filter,
@@ -275,6 +315,149 @@ impl BranchFoldout {
             list_focus: cx.focus_handle(),
             list_focused: false,
             remote_only: false,
+            highlighted: None,
+            scroll: ScrollHandle::new(),
+            pr_highlighted: None,
+            pr_scroll: ScrollHandle::new(),
+        }
+    }
+
+    /// The Branches tab's groups as the list shows them.
+    fn branch_groups(&self, cx: &App) -> Vec<BranchGroup> {
+        let query = self.filter_text(cx);
+        let s = self.state.read(cx);
+        let remote_only = self.remote_only
+            && s.flags
+                .bool(corvane_core::flags::ids::BRANCH_LIST_REMOTE_ONLY);
+        let Some(rs) = s.selected.and_then(|id| s.repo_states.get(&id)) else {
+            return Vec::new();
+        };
+        let Some(info) = rs.info.as_ref() else {
+            return Vec::new();
+        };
+        if remote_only {
+            remote_group(&info.branches, &query, cx)
+        } else {
+            group_branches(
+                &info.branches,
+                rs.default_branch.as_deref(),
+                &rs.recent_branches,
+                &query,
+                sort_by_date(cx),
+            )
+        }
+    }
+
+    /// The Pull Requests tab's rows as the list shows them.
+    fn pull_request_items(&self, id: u64, cx: &App) -> Vec<corvane_core::PullRequest> {
+        let query = self.pr_filter.read(cx).value().trim().to_string();
+        self.state
+            .read(cx)
+            .pull_requests_for(id)
+            .iter()
+            .filter(|pr| matches_filter(pr, &query))
+            .cloned()
+            .collect()
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown`: ↓ / ↑ in the
+    /// Branches filter box move through the branch rows (↑ from the filter
+    /// starts at the last), clamped, skipping the group headers.
+    fn move_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let sizes: Vec<usize> = self
+            .branch_groups(cx)
+            .iter()
+            .map(|g| g.branches.len())
+            .collect();
+        let Some(ix) = crate::filter_list::step(self.highlighted, delta, sizes.iter().sum()) else {
+            return;
+        };
+        self.highlighted = Some(ix);
+        // headers and `.branches-list-item` rows are both 30 px
+        let top = crate::filter_list::row_top(&sizes, ix, zpx(30.), zpx(30.));
+        crate::filter_list::scroll_into_view(&self.scroll, top, zpx(30.));
+        cx.notify();
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` (Enter) and
+    /// `onEnterPressed`: Enter in the Branches filter box checks out the
+    /// highlighted branch, else — with a filter typed — the first one, as a
+    /// click does; with a filter that matches nothing it opens Create
+    /// Branch with the text (`onEnterPressedWithoutFilteredItems`).
+    fn pick_highlighted(&mut self, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let query = self.filter_text(cx);
+        let branches: Vec<Branch> = self
+            .branch_groups(cx)
+            .into_iter()
+            .flat_map(|g| g.branches)
+            .collect();
+        let ix = self
+            .highlighted
+            .or_else(|| (!query.is_empty()).then_some(0));
+        if let Some(branch) = ix.and_then(|ix| branches.get(ix)) {
+            let current = {
+                let s = self.state.read(cx);
+                s.repo_states
+                    .get(&id)
+                    .and_then(|rs| rs.info.as_ref())
+                    .and_then(|i| i.current_branch())
+                    .is_some_and(|b| b.name == branch.name)
+            };
+            checkout_branch_row(id, branch.name.clone(), current, cx);
+        } else if branches.is_empty() && !query.is_empty() {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::show_popup(
+                Popup::CreateBranch {
+                    repo: id,
+                    target_sha: None,
+                    initial_name: query,
+                },
+                cx,
+            );
+        }
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` in the Pull Requests
+    /// filter box (`SectionFilterList`): ↓ / ↑ move through the rows.
+    fn move_pr_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let count = self.pull_request_items(id, cx).len();
+        let Some(ix) = crate::filter_list::step(self.pr_highlighted, delta, count) else {
+            return;
+        };
+        self.pr_highlighted = Some(ix);
+        // one "Pull requests in …" header, then 47 px rows
+        let top = crate::filter_list::row_top(
+            &[count],
+            ix,
+            ROW_HEIGHT(),
+            crate::pull_request_list::PR_ROW_HEIGHT(),
+        );
+        crate::filter_list::scroll_into_view(
+            &self.pr_scroll,
+            top,
+            crate::pull_request_list::PR_ROW_HEIGHT(),
+        );
+        cx.notify();
+    }
+
+    /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` (Enter): the
+    /// highlighted pull request, else — with a filter typed — the first,
+    /// checked out as a click does (`PullRequestList.onItemClick`).
+    fn pick_pr_highlighted(&mut self, cx: &mut Context<Self>) {
+        let Some(id) = self.state.read(cx).selected else {
+            return;
+        };
+        let query_empty = self.pr_filter.read(cx).value().trim().is_empty();
+        let ix = self.pr_highlighted.or_else(|| (!query_empty).then_some(0));
+        if let Some(pr) = ix.and_then(|ix| self.pull_request_items(id, cx).into_iter().nth(ix)) {
+            Dispatcher::close_foldout(cx);
+            Dispatcher::checkout_pull_request(id, pr, cx);
         }
     }
 
@@ -391,6 +574,8 @@ impl BranchFoldout {
     pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         // a freshly opened list selects the current branch again
         self.selected_row = None;
+        self.highlighted = None;
+        self.pr_highlighted = None;
         let input = if self.pull_requests_tab_shown(cx) {
             &self.pr_filter
         } else {
@@ -446,15 +631,15 @@ impl BranchFoldout {
                         .map(|b| b.name.as_str())
         });
         let all = s.pull_requests_for(id);
-        let items: Vec<corvane_core::PullRequest> = all
-            .iter()
-            .filter(|pr| matches_filter(pr, &query))
-            .cloned()
-            .collect();
+        let items = self.pull_request_items(id, cx);
+        let highlighted = self.pr_highlighted.filter(|ix| *ix < items.len());
+        let highlight_bg = t.box_selected_active_background;
+        let highlight_text = t.box_selected_active_text;
         let local_name = s.repository(id).map(|r| r.name()).unwrap_or_default();
         let rows: Vec<AnyElement> = items
             .iter()
-            .map(|pr| {
+            .enumerate()
+            .map(|(ix, pr)| {
                 let status = s.commit_status_summary(pr);
                 let entity = cx.entity().downgrade();
                 let hovered_pr = pr.clone();
@@ -468,6 +653,10 @@ impl BranchFoldout {
                     local_name.clone(),
                     cx,
                 )
+                // the keyboard row (GHD's focused-list selection)
+                .when(highlighted == Some(ix), |d| {
+                    d.bg(highlight_bg).text_color(highlight_text)
+                })
                 .relative()
                 .on_hover(move |hovered, _, cx| {
                     let pr = hovered_pr.clone();
@@ -504,6 +693,18 @@ impl BranchFoldout {
                     .gap(SPACING())
                     .p(SPACING())
                     .pb(SPACING_HALF())
+                    .key_context("PullRequestFilter")
+                    .on_action(
+                        cx.listener(|this, _: &SelectNextFile, _, cx| {
+                            this.move_pr_highlight(1, cx)
+                        }),
+                    )
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.move_pr_highlight(-1, cx)
+                    }))
+                    .on_action(
+                        cx.listener(|this, _: &FilterListPick, _, cx| this.pick_pr_highlighted(cx)),
+                    )
                     .child(crate::widgets::filter_text_box(
                         "pull-request-filter",
                         &self.pr_filter,
@@ -569,20 +770,23 @@ impl BranchFoldout {
                                 .child(format!("Pull requests in {repository_name}")),
                         )
                         .children(rows)
-                        .with_scrollbar()
+                        .with_scrollbar_handle(&self.pr_scroll)
                         .into_any_element()
                 },
             )
             .into_any_element()
     }
 
+    /// `highlighted`: the filter box's keyboard row (GHD `FilterList`);
     /// `stashed`: the branch has a Desktop stash (`854-branch-list-stash-icon`);
     /// `tracking`: its upstream state (`852-branch-upstream-gone`).
+    #[allow(clippy::too_many_arguments)]
     fn row(
         &self,
         id: u64,
         branch: &Branch,
         current: bool,
+        highlighted: bool,
         stashed: bool,
         tracking: Option<corvane_git::BranchTracking>,
         cx: &Context<Self>,
@@ -605,8 +809,15 @@ impl BranchFoldout {
             .flatten();
         let t = cx.ghd();
         let name = branch.name.clone();
-        let _ = current;
-        let selected = self.shown_selected.as_deref() == Some(branch.name.as_str());
+        // the keyboard row (GHD `FilterList` moves its selection, focusing
+        // the list) replaces the pointer / current-branch selection
+        let keyboard = self.highlighted.is_some();
+        let selected = if keyboard {
+            highlighted
+        } else {
+            self.shown_selected.as_deref() == Some(branch.name.as_str())
+        };
+        let focused = keyboard || self.list_focused;
         let date = branch
             .tip_time
             .filter(|s| *s > 0)
@@ -647,17 +858,16 @@ impl BranchFoldout {
                     move |this, _, window, cx| this.select_row(name.clone(), window, cx)
                 }),
             )
-            .when(selected && self.list_focused, |d| {
+            .when(selected && focused, |d| {
                 d.bg(t.box_selected_active_background)
                     .text_color(t.box_selected_active_text)
             })
-            .when(selected && !self.list_focused, |d| {
+            .when(selected && !focused, |d| {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
             .when(
-                !(selected
-                    && (self.list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
+                !(selected && (focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
                 move |d| d.hover(move |s| s.bg(list_hover)),
             )
             .when(!current, move |d| {
@@ -675,26 +885,7 @@ impl BranchFoldout {
                     }
                 })
             })
-            .on_click(move |_, _, cx| {
-                Dispatcher::close_foldout(cx);
-                // `864-confirm-branch-switch`
-                if AppState::global(cx)
-                    .read(cx)
-                    .flags
-                    .bool(corvane_core::flags::ids::CONFIRM_BRANCH_SWITCH)
-                    && !current
-                {
-                    Dispatcher::show_popup(
-                        Popup::ConfirmSwitchBranch {
-                            repo: id,
-                            branch: name.clone(),
-                        },
-                        cx,
-                    );
-                    return;
-                }
-                Dispatcher::checkout_branch(id, name.clone(), None, cx)
-            })
+            .on_click(move |_, _, cx| checkout_branch_row(id, name.clone(), current, cx))
             // GHD `generateBranchContextMenuItems`
             .on_mouse_down(MouseButton::Right, {
                 let branch = branch.clone();
@@ -925,6 +1116,7 @@ impl BranchFoldout {
 
     fn select_row(&mut self, name: String, window: &mut Window, cx: &mut Context<Self>) {
         self.selected_row = Some(name);
+        self.highlighted = None;
         window.focus(&self.list_focus, cx);
         cx.notify();
     }
@@ -1020,7 +1212,8 @@ impl Render for BranchFoldout {
             .flags
             .bool(corvane_core::flags::ids::BRANCH_LIST_REMOTE_ONLY);
         let remote_only = remote_toggle && self.remote_only;
-        let (id, groups, current, tip_valid, stashed, tracking) = {
+        let groups = self.branch_groups(cx);
+        let (id, current, tip_valid, stashed, tracking) = {
             let s = self.state.read(cx);
             let id = s.selected;
             let rs = id.and_then(|id| s.repo_states.get(&id));
@@ -1037,19 +1230,12 @@ impl Render for BranchFoldout {
                 .and_then(|i| i.current_branch())
                 .map(|b| b.name.clone());
             let tip_valid = info.is_some_and(|i| matches!(i.tip, Tip::Valid { .. }));
-            let groups = match (info, rs) {
-                (Some(info), _) if remote_only => remote_group(&info.branches, &query, cx),
-                (Some(info), Some(rs)) => group_branches(
-                    &info.branches,
-                    rs.default_branch.as_deref(),
-                    &rs.recent_branches,
-                    &query,
-                    crate::branch_list::sort_by_date(cx),
-                ),
-                _ => Vec::new(),
-            };
-            (id, groups, current, tip_valid, stashed, tracking)
+            (id, current, tip_valid, stashed, tracking)
         };
+        let row_count: usize = groups.iter().map(|g| g.branches.len()).sum();
+        self.highlighted = self.highlighted.filter(|ix| *ix < row_count);
+        let highlighted = self.highlighted;
+        let mut row_ix = 0;
         let Some(id) = id else {
             return div().into_any_element();
         };
@@ -1126,6 +1312,16 @@ impl Render for BranchFoldout {
                     .items_center()
                     .gap(SPACING())
                     .p(SPACING())
+                    .key_context("BranchFilter")
+                    .on_action(
+                        cx.listener(|this, _: &SelectNextFile, _, cx| this.move_highlight(1, cx)),
+                    )
+                    .on_action(cx.listener(|this, _: &SelectPreviousFile, _, cx| {
+                        this.move_highlight(-1, cx)
+                    }))
+                    .on_action(
+                        cx.listener(|this, _: &FilterListPick, _, cx| this.pick_highlighted(cx)),
+                    )
                     .child(crate::widgets::filter_text_box(
                         "branch-filter",
                         &self.filter,
@@ -1146,6 +1342,7 @@ impl Render for BranchFoldout {
                                 })
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.remote_only = !this.remote_only;
+                                    this.highlighted = None;
                                     cx.notify();
                                 }))
                                 .child(octicon(Octicon::Server, t.secondary_button_text)),
@@ -1186,6 +1383,8 @@ impl Render for BranchFoldout {
                     .flex()
                     .flex_col()
                     .children(groups.into_iter().map(|group| {
+                        let first = row_ix;
+                        row_ix += group.branches.len();
                         div()
                             .flex()
                             .flex_col()
@@ -1200,11 +1399,12 @@ impl Render for BranchFoldout {
                                     .text_size(FONT_SIZE())
                                     .child(group.title),
                             )
-                            .children(group.branches.iter().map(|b| {
+                            .children(group.branches.iter().enumerate().map(|(ix, b)| {
                                 self.row(
                                     id,
                                     b,
                                     current.as_deref() == Some(b.name.as_str()),
+                                    highlighted == Some(first + ix),
                                     b.kind == BranchKind::Local && stashed.contains(&b.name),
                                     (b.kind == BranchKind::Local)
                                         .then(|| tracking.get(&b.name).copied())
@@ -1213,7 +1413,7 @@ impl Render for BranchFoldout {
                                 )
                             }))
                     }))
-                    .with_scrollbar()
+                    .with_scrollbar_handle(&self.scroll)
                     .into_any_element()
             })
             .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))

@@ -1,0 +1,20 @@
+name: branch-foldout-filter-keys
+description: Arrow keys from the branch list's filter box (GHD FilterList)
+setup: repo
+steps:
+  - click: [365, 56]
+    wait: 500
+  - key: down
+    wait: 300
+  - snap: down-once
+  - key: down down
+    wait: 300
+  - snap: down-three
+  - key: up
+    wait: 300
+  - snap: up
+  - type: "feat"
+    wait: 300
+  - key: down
+    wait: 300
+  - snap: filtered-down

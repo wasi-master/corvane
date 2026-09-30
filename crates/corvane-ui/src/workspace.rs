@@ -311,32 +311,21 @@ impl Workspace {
     /// Corvane (`612-navigation-shortcuts`, ⌥↓ / ⌥↑ in the diff): the
     /// next / previous file of the section's file list, clamped at the ends.
     pub fn step_file(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let showing_stash = self
+            .state
+            .read(cx)
+            .selected_state()
+            .is_some_and(|rs| rs.showing_stash);
         match self.section {
+            Section::Changes if showing_stash => self
+                .stash_view
+                .update(cx, |v, cx| v.select_relative(delta, cx)),
             Section::Changes => self
                 .changes
                 .update(cx, |changes, cx| changes.select_relative(delta, cx)),
-            Section::History => {
-                let next = {
-                    let s = self.state.read(cx);
-                    let Some(id) = s.selected else { return };
-                    let Some(rs) = s.selected_state() else { return };
-                    let Some(files) = rs.changeset.as_ref().map(|c| &c.files) else {
-                        return;
-                    };
-                    if files.is_empty() {
-                        return;
-                    }
-                    let ix = rs
-                        .commit_selected_file
-                        .as_ref()
-                        .and_then(|p| files.iter().position(|f| &f.path == p))
-                        .map(|i| i as isize + delta)
-                        .unwrap_or(0)
-                        .clamp(0, files.len() as isize - 1) as usize;
-                    (id, files[ix].path.clone())
-                };
-                Dispatcher::select_commit_file(next.0, next.1, cx);
-            }
+            Section::History => self
+                .selected_commit
+                .update(cx, |v, cx| v.select_relative(delta, cx)),
         }
     }
 

@@ -1,0 +1,22 @@
+name: stash-file-list-keys
+description: Arrow keys, ⌘↑ / ⌘↓ in the stash's file list
+setup: repo
+steps:
+  - menu: stash-all-changes
+    wait: 1500
+  - menu: show-stashed-changes
+    wait: 800
+  - click: [350, 235]
+    wait: 400
+  - key: down down
+    wait: 400
+  - snap: down-twice
+  - key: up
+    wait: 400
+  - snap: up
+  - key: cmd-down
+    wait: 400
+  - snap: cmd-down-last
+  - key: cmd-up
+    wait: 400
+  - snap: cmd-up-first

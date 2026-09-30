@@ -22,6 +22,10 @@ use gpui_kit::*;
 use crate::widgets::GhdTooltip;
 use crate::widgets::{IconButtonA11y, ListRowA11y};
 
+use crate::actions::{
+    ExtendSelectionDown, ExtendSelectionUp, SelectFirstFile, SelectLastFile, SelectNextFile,
+    SelectPreviousFile,
+};
 use crate::branch_list::group_branches;
 use crate::diff_view::{DiffSource, DiffView, diff_options_button, status_icon};
 use crate::icons::{Octicon, octicon};
@@ -53,6 +57,9 @@ pub struct OpenPullRequestDialog {
     file_list_width: Pixels,
     /// The file list takes focus on click so ⌘9 / ⌘8 resize it.
     file_list_focus: FocusHandle,
+    /// `file_list_focus` held focus at the last render (active selection colours).
+    file_list_focused: bool,
+    file_scroll: ScrollHandle,
     /// `BranchSelect`: the base branch popover.
     base_select_open: bool,
     base_filter: Entity<InputState>,
@@ -89,6 +96,8 @@ impl OpenPullRequestDialog {
             resizable,
             file_list_width,
             file_list_focus: cx.focus_handle(),
+            file_list_focused: false,
+            file_scroll: ScrollHandle::new(),
             base_select_open: false,
             base_filter,
             base_button_bounds: Rc::new(Cell::new(Bounds::default())),
@@ -358,6 +367,49 @@ impl OpenPullRequestDialog {
     }
 
     /// `FileList` of the changed files (250 px, resizable).
+    /// The preview's files in list order and the selected file's index.
+    fn file_order(&self, cx: &App) -> Option<(Vec<String>, Option<usize>)> {
+        let preview = self.preview(cx)?;
+        let order: Vec<String> = preview
+            .changeset
+            .as_ref()
+            .map(|c| c.files.iter().map(|f| f.path.clone()).collect())
+            .unwrap_or_default();
+        let current = preview
+            .file
+            .as_ref()
+            .and_then(|p| order.iter().position(|o| o == p));
+        Some((order, current))
+    }
+
+    /// GHD `List.moveSelection` on `PullRequestFilesChanged`'s `FileList`
+    /// (↑ / ↓; single selection, so ⇧↑ / ⇧↓ too): the file `delta` rows
+    /// away, clamped at the ends, scrolled into view.
+    fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let Some((order, current)) = self.file_order(cx) else {
+            return;
+        };
+        if let Some(ix) = corvane_core::list_selection::step_index(order.len(), current, delta) {
+            self.select_index(&order, ix, cx);
+        }
+    }
+
+    /// Home / End, ⌘↑ / ⌘↓: the first or last file.
+    fn select_edge(&mut self, last: bool, cx: &mut Context<Self>) {
+        let Some((order, _)) = self.file_order(cx) else {
+            return;
+        };
+        if !order.is_empty() {
+            let ix = if last { order.len() - 1 } else { 0 };
+            self.select_index(&order, ix, cx);
+        }
+    }
+
+    fn select_index(&mut self, order: &[String], ix: usize, cx: &mut Context<Self>) {
+        Dispatcher::select_pull_request_file(self.repo, order[ix].clone(), cx);
+        self.file_scroll.scroll_to_item(ix);
+    }
+
     fn file_list(&self, preview: &PullRequestPreview, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let files: Vec<CommittedFileChange> = preview
@@ -368,6 +420,7 @@ impl OpenPullRequestDialog {
         let selected = preview.file.clone();
         let repo = self.repo;
         let hover_bg = t.list_item_hover_background;
+        let focused = self.file_list_focused;
         div()
             .size_full()
             .flex()
@@ -387,6 +440,13 @@ impl OpenPullRequestDialog {
                     .children(files.into_iter().map(|file| {
                         let is_selected = selected.as_deref() == Some(file.path.as_str());
                         let (icon, color) = status_icon(file.status.kind, t);
+                        // `.focus-within .list-item.selected`: the icon
+                        // takes the row's colour
+                        let color = if is_selected && focused {
+                            t.box_selected_active_text
+                        } else {
+                            color
+                        };
                         let path = file.path.clone();
                         div()
                             .id(SharedString::from(format!("pr-file-{}", file.path)))
@@ -408,8 +468,13 @@ impl OpenPullRequestDialog {
                             .px(SPACING())
                             .cursor_pointer()
                             .when(is_selected, |d| {
-                                d.bg(t.box_selected_background)
-                                    .text_color(t.box_selected_text)
+                                if focused {
+                                    d.bg(t.box_selected_active_background)
+                                        .text_color(t.box_selected_active_text)
+                                } else {
+                                    d.bg(t.box_selected_background)
+                                        .text_color(t.box_selected_text)
+                                }
                             })
                             .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
                             .on_click(move |_, _, cx| {
@@ -426,7 +491,11 @@ impl OpenPullRequestDialog {
                                         div()
                                             .min_w_0()
                                             .truncate()
-                                            .text_color(t.text_secondary)
+                                            .text_color(match (is_selected, focused) {
+                                                (true, true) => t.box_selected_active_text,
+                                                (true, false) => t.box_selected_text,
+                                                _ => t.text_secondary,
+                                            })
                                             .child(file.directory().to_string()),
                                     )
                                     .child(
@@ -439,7 +508,7 @@ impl OpenPullRequestDialog {
                             )
                             .child(octicon(icon, color))
                     }))
-                    .with_scrollbar(),
+                    .with_scrollbar_handle(&self.file_scroll),
             )
             .into_any_element()
     }
@@ -537,6 +606,7 @@ impl OpenPullRequestDialog {
 
 impl Render for OpenPullRequestDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.file_list_focused = self.file_list_focus.is_focused(window);
         let t = cx.ghd();
         let Some(preview) = self.preview(cx) else {
             return div().into_any_element();
@@ -561,56 +631,57 @@ impl Render for OpenPullRequestDialog {
             .unwrap_or((0, 0));
         let ok_disabled = preview.commit_shas.as_ref().is_none_or(|s| s.is_empty());
         // `renderContent`: no base branch / no changes / files + diff
-        let content: AnyElement = if preview.base_branch.is_none() {
-            self.message(
-                "Could not find a default branch to compare against.",
+        let content: AnyElement =
+            if preview.base_branch.is_none() {
+                self.message(
+                    "Could not find a default branch to compare against.",
+                    div()
+                        .child("Select a base branch above.")
+                        .into_any_element(),
+                    cx,
+                )
+            } else if preview.commit_shas.as_ref().is_some_and(|s| s.is_empty()) {
+                let base = preview.base_branch.clone().unwrap_or_default();
+                let current = preview.current_branch.clone();
+                let body = if preview.merge_status == Some(MergeStatus::Invalid) {
+                    div()
+                        .flex()
+                        .flex_row()
+                        .flex_wrap()
+                        .items_center()
+                        .justify_center()
+                        .gap(zpx(3.))
+                        .child(code_ref(base, cx))
+                        .child("and")
+                        .child(code_ref(current, cx))
+                        .child("are entirely different commit histories.")
+                        .into_any_element()
+                } else {
+                    div()
+                        .flex()
+                        .flex_row()
+                        .flex_wrap()
+                        .items_center()
+                        .justify_center()
+                        .gap(zpx(3.))
+                        .child(code_ref(base, cx))
+                        .child("is up to date with all commits from")
+                        .child(code_ref(current, cx))
+                        .child(".")
+                        .into_any_element()
+                };
+                self.message("There are no changes.", body, cx)
+            } else if preview.commit_shas.is_none() {
                 div()
-                    .child("Select a base branch above.")
-                    .into_any_element(),
-                cx,
-            )
-        } else if preview.commit_shas.as_ref().is_some_and(|s| s.is_empty()) {
-            let base = preview.base_branch.clone().unwrap_or_default();
-            let current = preview.current_branch.clone();
-            let body = if preview.merge_status == Some(MergeStatus::Invalid) {
-                div()
+                    .size_full()
                     .flex()
-                    .flex_row()
-                    .flex_wrap()
                     .items_center()
                     .justify_center()
-                    .gap(zpx(3.))
-                    .child(code_ref(base, cx))
-                    .child("and")
-                    .child(code_ref(current, cx))
-                    .child("are entirely different commit histories.")
+                    .text_color(t.text_secondary)
+                    .child("Loading…")
                     .into_any_element()
             } else {
                 div()
-                    .flex()
-                    .flex_row()
-                    .flex_wrap()
-                    .items_center()
-                    .justify_center()
-                    .gap(zpx(3.))
-                    .child(code_ref(base, cx))
-                    .child("is up to date with all commits from")
-                    .child(code_ref(current, cx))
-                    .child(".")
-                    .into_any_element()
-            };
-            self.message("There are no changes.", body, cx)
-        } else if preview.commit_shas.is_none() {
-            div()
-                .size_full()
-                .flex()
-                .items_center()
-                .justify_center()
-                .text_color(t.text_secondary)
-                .child("Loading…")
-                .into_any_element()
-        } else {
-            div()
                 .size_full()
                 .flex()
                 .flex_col()
@@ -657,7 +728,32 @@ impl Render for OpenPullRequestDialog {
                                                 FILE_LIST_MIN()..FILE_LIST_MAX(),
                                             ),
                                             self.file_list(&preview, cx),
-                                        )),
+                                        )
+                                        .key_context("PullRequestFileList")
+                                        .on_action(cx.listener(|this, _: &SelectNextFile, _, cx| {
+                                            this.select_relative(1, cx)
+                                        }))
+                                        .on_action(cx.listener(
+                                            |this, _: &SelectPreviousFile, _, cx| {
+                                                this.select_relative(-1, cx)
+                                            },
+                                        ))
+                                        .on_action(cx.listener(
+                                            |this, _: &ExtendSelectionDown, _, cx| {
+                                                this.select_relative(1, cx)
+                                            },
+                                        ))
+                                        .on_action(cx.listener(
+                                            |this, _: &ExtendSelectionUp, _, cx| {
+                                                this.select_relative(-1, cx)
+                                            },
+                                        ))
+                                        .on_action(cx.listener(|this, _: &SelectFirstFile, _, cx| {
+                                            this.select_edge(false, cx)
+                                        }))
+                                        .on_action(cx.listener(|this, _: &SelectLastFile, _, cx| {
+                                            this.select_edge(true, cx)
+                                        }))),
                                 )
                                 .child(
                                     resizable_panel().child(
@@ -672,7 +768,7 @@ impl Render for OpenPullRequestDialog {
                         ),
                 )
                 .into_any_element()
-        };
+            };
         let close = cx.listener(|this, _, _, cx| this.close(cx));
         let preview_for_submit = preview.clone();
         let ok_label = if has_pr {
