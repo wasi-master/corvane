@@ -362,6 +362,21 @@ registry! {
         upstream: &[Upstream::issue(10403)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
     },
+    /// Wiki repositories are plain git repositories, not GitHub ones.
+    WIKI_NOT_GITHUB = 213 "wiki-not-github" {
+        title: "Wiki repositories are not treated as GitHub repositories",
+        summary: "A repository whose origin is a GitHub wiki (owner/name.wiki) is handled as a \
+                  plain git repository, so Corvane does not ask the API for its pull requests, \
+                  issues, collaborators and checks, which do not exist. Applies at launch and \
+                  when a repository is added.",
+        ghd_behaviour: "Treats the wiki as a GitHub repository and every API request for it fails.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: true, visible: true, availability: available,
+        upstream: &[Upstream::issue(2061)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-models/src/lib.rs"],
+    },
 
     // ---- 300 GitHub ----
 

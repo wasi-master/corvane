@@ -123,6 +123,12 @@ impl GitHubRepository {
         format!("{}/{}", self.owner, self.name)
     }
 
+    /// A wiki repository (`owner/name.wiki`): it can be cloned, pushed and
+    /// pulled, but the REST API knows nothing about it.
+    pub fn is_wiki(&self) -> bool {
+        self.name.ends_with(".wiki")
+    }
+
     /// `hasWritePermission`: can the user push? Unknown permissions count
     /// as writable.
     pub fn has_write_permission(&self) -> bool {
@@ -484,6 +490,17 @@ mod tests {
         assert!(github_from_remote("git@ghe.corp:a/b.git", &[]).is_none());
         let gh = github_from_remote("git@ghe.corp:a/b.git", &["ghe.corp".into()]).unwrap();
         assert_eq!(gh.endpoint, "https://ghe.corp/api/v3");
+    }
+
+    #[test]
+    fn detects_wiki_remotes() {
+        let wiki = github_from_remote("https://github.com/o/n.wiki.git", &[]).unwrap();
+        assert!(wiki.is_wiki());
+        assert!(
+            !github_from_remote("git@github.com:o/n.git", &[])
+                .unwrap()
+                .is_wiki()
+        );
     }
 
     #[test]

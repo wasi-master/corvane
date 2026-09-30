@@ -34,10 +34,17 @@ impl Dispatcher {
         cx: &mut App,
     ) -> Entity<AppState> {
         let flags = crate::flags::Flags::resolve(&flag_overrides, &flags_env);
-        let repositories = store.repositories().unwrap_or_else(|err| {
+        let mut repositories = store.repositories().unwrap_or_else(|err| {
             error!(?err, "could not load repositories");
             Vec::new()
         });
+        if flags.bool(crate::flags::ids::WIKI_NOT_GITHUB) {
+            for repo in &mut repositories {
+                if repo.github.as_ref().is_some_and(|gh| gh.is_wiki()) {
+                    repo.github = None;
+                }
+            }
+        }
         let recent = store.recent_repositories().unwrap_or_default();
         let selected = store
             .selected_repository()
@@ -451,9 +458,11 @@ impl Dispatcher {
                             s.repositories.iter().map(|r| r.id).max().unwrap_or(0) + 1
                         });
                         let mut repo = Repository::new(id, info.workdir.clone());
+                        let wiki_not_github = s.flags.bool(crate::flags::ids::WIKI_NOT_GITHUB);
                         repo.github = info
                             .remote("origin")
-                            .and_then(|r| github_from_remote(&r.url, &[]));
+                            .and_then(|r| github_from_remote(&r.url, &[]))
+                            .filter(|gh| !(wiki_not_github && gh.is_wiki()));
                         s.repositories.push(repo);
                         let repo_state = s.repo_state_mut(id);
                         repo_state.info = Some(info);
