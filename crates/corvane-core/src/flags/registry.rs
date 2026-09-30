@@ -444,6 +444,19 @@ registry! {
         upstream: &[Upstream::issue(22156)],
         code: &["crates/corvane-core/src/forks.rs", "crates/corvane-core/src/remote.rs", "crates/corvane-ui/src/changes.rs"],
     },
+    /// No Re-run for read-only repositories.
+    RERUN_NEEDS_PUSH_ACCESS = 390 "rerun-needs-push-access" {
+        title: "Re-run checks needs push access",
+        summary: "The check-run popover hides Re-run (and the per-job re-run) when the \
+                  repository's permissions say the account can only read it.",
+        ghd_behaviour: "Shows Re-run to everyone; for read-only accounts the request fails.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14061)],
+        code: &["crates/corvane-ui/src/ci_check_popover.rs"],
+    },
 
     // ---- 400 Window & menus ----
 

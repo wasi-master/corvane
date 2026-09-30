@@ -5,6 +5,11 @@
 //! (`styles/ui/check-runs/*.scss`): 440 px wide, header with the
 //! completeness indicator, title and summary, the Re-run button, then the
 //! check runs grouped by workflow, expandable to their job steps.
+//!
+//! Deviation (flag `rerun-needs-push-access`): when the stored record of the
+//! pull request's base repository says the user can only read it, the Re-run
+//! button and the per-job re-run are hidden (GHD shows them and the re-run
+//! request fails).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -56,6 +61,9 @@ struct Snapshot {
     git_ref: String,
     check: Option<CombinedRefCheck>,
     dotcom: bool,
+    /// `rerun-needs-push-access`: the stored record of the base repository
+    /// says the user can only read it, so nothing can be re-run.
+    read_only: bool,
 }
 
 impl CiCheckPopover {
@@ -80,11 +88,23 @@ impl CiCheckPopover {
         let pr = s.current_pull_request(id)?;
         let github = pr.base.repository.clone()?;
         let git_ref = pr.commit_ref();
+        let read_only = s
+            .flags
+            .bool(corvane_core::flags::ids::RERUN_NEEDS_PUSH_ACCESS)
+            && s.repository(id)
+                .and_then(|r| r.github.as_ref())
+                .filter(|gh| {
+                    gh.endpoint == github.endpoint
+                        && gh.owner.eq_ignore_ascii_case(&github.owner)
+                        && gh.name.eq_ignore_ascii_case(&github.name)
+                })
+                .is_some_and(|gh| !gh.has_write_permission());
         Some(Snapshot {
             repo: id,
             pr_number: pr.number,
             check: s.commit_status(&github, &git_ref).cloned(),
             dotcom: github.endpoint == "https://api.github.com",
+            read_only,
             github,
             git_ref,
         })
@@ -210,6 +230,7 @@ impl CiCheckPopover {
             git_ref: snap.git_ref.clone(),
             check: None,
             dotcom: snap.dotcom,
+            read_only: snap.read_only,
         };
         let checks_for_menu = checks.to_vec();
         div()
@@ -249,9 +270,9 @@ impl CiCheckPopover {
                             .child(summary),
                     ),
             )
-            .child({
+            .when(!snap.read_only, |d| {
                 let snap = snap_for_menu;
-                rerun_button(
+                d.child(rerun_button(
                     "ci-rerun",
                     &checks_for_menu,
                     rerun_disabled,
@@ -260,7 +281,7 @@ impl CiCheckPopover {
                         Self::rerun(&snap, checks, failed_only, cx)
                     }),
                     cx,
-                )
+                ))
             })
             .into_any_element()
     }
@@ -289,6 +310,7 @@ impl CiCheckPopover {
             git_ref: snap.git_ref.clone(),
             check: None,
             dotcom: snap.dotcom,
+            read_only: snap.read_only,
         };
         // `.ci-steps-container`
         let steps_region = div()
@@ -300,7 +322,7 @@ impl CiCheckPopover {
             .child(check_run_steps(
                 check,
                 external_url,
-                snap.dotcom.then(|| {
+                (snap.dotcom && !snap.read_only).then(|| {
                     Rc::new(move |cx: &mut App| {
                         Self::rerun(&snap_for_rerun, vec![rerun_check.clone()], false, cx)
                     }) as RerunJob
