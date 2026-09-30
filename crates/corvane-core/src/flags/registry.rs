@@ -1151,6 +1151,20 @@ registry! {
             "crates/corvane/src/menus.rs",
         ],
     },
+    /// Switching to Changes or History focuses that section's list.
+    FOCUS_LIST_ON_SECTION_SWITCH = 615 "focus-list-on-section-switch" {
+        title: "Switching tabs focuses the list",
+        summary: "Clicking the Changes or History tab, ⌘1 / ⌘2 and ⌃Tab put keyboard focus on \
+                  the section's list, so the arrow keys work straight away.",
+        ghd_behaviour: "Focus stays where it was (often the page body), and the list has to be \
+                        tabbed to.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(535)],
+        code: &["crates/corvane-ui/src/workspace.rs", "crates/corvane/src/main.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

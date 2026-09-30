@@ -219,6 +219,11 @@ impl HistorySidebar {
         }
     }
 
+    /// Corvane (`615-focus-list-on-section-switch`).
+    pub fn list_focus_handle(&self) -> FocusHandle {
+        self.list_focus.clone()
+    }
+
     /// Branch › Compare to Branch: focus the compare box, which opens the list.
     pub fn focus_compare(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let handle = self.compare.read(cx).focus_handle(cx);

@@ -82,6 +82,9 @@ pub struct Workspace {
     /// The open foldout as of the last state change (to focus its filter
     /// once when it opens).
     last_foldout: Option<corvane_core::Foldout>,
+    /// A tab click or View › Show Changes / History asked for the section's
+    /// list to take focus at the next render (`615-focus-list-on-section-switch`).
+    focus_section_list: bool,
 }
 
 impl Workspace {
@@ -184,6 +187,7 @@ impl Workspace {
             toolbar_resize: Rc::new(ToolbarResize::default()),
             ci_popover,
             last_foldout: None,
+            focus_section_list: false,
             dialogs,
             diff_view,
             welcome,
@@ -303,6 +307,22 @@ impl Workspace {
         }
     }
 
+    /// The user switched sections (a tab, ⌘1 / ⌘2, ⌃Tab). Corvane
+    /// (`615-focus-list-on-section-switch`): the section's list takes focus,
+    /// where GHD leaves it on the body.
+    pub fn switch_section(&mut self, section: Section, cx: &mut Context<Self>) {
+        self.set_section(section, cx);
+        if self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::FOCUS_LIST_ON_SECTION_SWITCH)
+        {
+            self.focus_section_list = true;
+            cx.notify();
+        }
+    }
+
     pub fn set_section(&mut self, section: Section, cx: &mut Context<Self>) {
         if self.section != section {
             self.section = section;
@@ -350,7 +370,7 @@ impl Workspace {
                 selected,
                 move |ix, _, cx| {
                     this.update(cx, |ws, cx| {
-                        ws.set_section(
+                        ws.switch_section(
                             if ix == 0 {
                                 Section::Changes
                             } else {
@@ -663,6 +683,13 @@ impl Render for Workspace {
             && section != self.section
         {
             self.section = section;
+        }
+        if std::mem::take(&mut self.focus_section_list) {
+            let handle = match self.section {
+                Section::Changes => self.changes.read(cx).list_focus_handle(),
+                Section::History => self.history.read(cx).list_focus_handle(),
+            };
+            window.focus(&handle, cx);
         }
         let t = cx.ghd();
         let welcome_done = self.state.read(cx).settings.welcome_completed;

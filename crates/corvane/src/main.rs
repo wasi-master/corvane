@@ -595,11 +595,11 @@ fn main() {
         // View / Window actions are global so the menu items stay enabled whatever has focus.
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowChanges, cx| {
-            ws.update(cx, |w, cx| w.set_section(Section::Changes, cx))
+            ws.update(cx, |w, cx| w.switch_section(Section::Changes, cx))
         });
         let ws = workspace.clone();
         cx.on_action(move |_: &ShowHistory, cx| {
-            ws.update(cx, |w, cx| w.set_section(Section::History, cx))
+            ws.update(cx, |w, cx| w.switch_section(Section::History, cx))
         });
         let ws = workspace.clone();
         cx.on_action(move |_: &ToggleSection, cx| {
@@ -608,7 +608,7 @@ fn main() {
                     Section::Changes => Section::History,
                     Section::History => Section::Changes,
                 };
-                w.set_section(next, cx)
+                w.switch_section(next, cx)
             })
         });
         let ws = workspace.clone();

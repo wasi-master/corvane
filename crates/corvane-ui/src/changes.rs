@@ -1066,6 +1066,11 @@ impl ChangesSidebar {
         cx.notify();
     }
 
+    /// Corvane (`615-focus-list-on-section-switch`).
+    pub fn list_focus_handle(&self) -> FocusHandle {
+        self.list_focus.clone()
+    }
+
     /// Edit › Find.
     pub fn focus_filter(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.filter_visible = true;
