@@ -179,6 +179,19 @@ registry! {
             "crates/corvane-core/src/packs.rs",
         ],
     },
+    /// Summary-only History rows.
+    COMPACT_COMMIT_ROWS = 140 "compact-commit-rows" {
+        title: "Compact History rows",
+        summary: "History rows are 30 px tall and show the commit summary only, without the avatar, \
+                  author and time line (the commit's details pane still has them).",
+        ghd_behaviour: "50 px rows with an avatar + \"author • time\" line under the summary.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15956)],
+        code: &["crates/corvane-ui/src/history.rs"],
+    },
 
     // ---- 200 Repository ----
 
