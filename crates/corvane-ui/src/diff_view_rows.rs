@@ -988,12 +988,25 @@ pub fn relative_changes(a: &str, b: &str) -> (Range<usize>, Range<usize>) {
 }
 
 /// How [`build_split_rows`] computes intra-line ranges.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IntraLineOptions {
     /// `177-intra-line-graphemes`: widen each range to whole grapheme
     /// clusters, so a combining mark is not split from its base character
     /// (GHD compares UTF-16 code units).
     pub graphemes: bool,
+    /// Lines this long or longer get no intra-line range
+    /// ([`MAX_INTRA_LINE_DIFF_LEN`]; `179-intra-line-max-length`, `None` for
+    /// no limit).
+    pub max_len: Option<usize>,
+}
+
+impl Default for IntraLineOptions {
+    fn default() -> Self {
+        Self {
+            graphemes: false,
+            max_len: Some(MAX_INTRA_LINE_DIFF_LEN),
+        }
+    }
 }
 
 /// `range` of `text` widened to the grapheme clusters it touches.
@@ -1077,10 +1090,9 @@ pub fn build_split_rows(rows: &[Row], options: IntraLineOptions) -> Vec<SplitRow
                 let pairs = added.len().min(deleted.len());
                 for k in 0..pairs {
                     let (d, a) = (deleted[k], added[k]);
-                    let (before_inner, after_inner) = if with_tokens
-                        && rows[d].text.len() < MAX_INTRA_LINE_DIFF_LEN
-                        && rows[a].text.len() < MAX_INTRA_LINE_DIFF_LEN
-                    {
+                    let short =
+                        |ix: usize| options.max_len.is_none_or(|max| rows[ix].text.len() < max);
+                    let (before_inner, after_inner) = if with_tokens && short(d) && short(a) {
                         let (mut b, mut af) = relative_changes(&rows[d].text, &rows[a].text);
                         if options.graphemes {
                             // widen both sides alike: the common prefix and
@@ -1694,9 +1706,9 @@ pub fn render_split_row(
 mod tests {
     // explicit imports: `gpui_kit::*` would shadow `#[test]` with GPUI's macro
     use super::{
-        IntraLineOptions, RangeType, SearchHit, SplitRow, build_rows, build_split_rows,
-        expand_tabs, relative_changes, search_rows, snap_to_graphemes, spans_for_row,
-        unified_inner, unified_to_split,
+        IntraLineOptions, MAX_INTRA_LINE_DIFF_LEN, RangeType, SearchHit, SplitRow, build_rows,
+        build_split_rows, expand_tabs, relative_changes, search_rows, snap_to_graphemes,
+        spans_for_row, unified_inner, unified_to_split,
     };
     use corvane_core::{DiffHunk, DiffLine, DiffLineKind};
 
@@ -1836,6 +1848,29 @@ mod tests {
             rows.len(),
         );
         assert!(inner.iter().all(Option::is_none));
+    }
+
+    #[test]
+    fn intra_line_length_cap() {
+        let mut h = hunk();
+        h.lines.remove(4);
+        h.lines[2].text = format!("{}beta", "x".repeat(2000));
+        h.lines[3].text = format!("{}Beta", "x".repeat(2000));
+        let x = crate::diff_expansion::from_hunks(&[h], None);
+        let rows = build_rows(&x);
+        let inner = |max_len| {
+            let options = IntraLineOptions {
+                max_len,
+                ..Default::default()
+            };
+            unified_inner(&build_split_rows(&rows, options), rows.len())
+        };
+        assert!(
+            inner(Some(MAX_INTRA_LINE_DIFF_LEN))
+                .iter()
+                .all(Option::is_none)
+        );
+        assert_eq!(inner(None)[2], Some(2000..2001));
     }
 
     #[test]

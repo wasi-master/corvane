@@ -358,6 +358,21 @@ registry! {
         upstream: &[Upstream::issue(14469)],
         code: &["crates/corvane-ui/src/image_diff.rs"],
     },
+    /// The intra-line highlighting length cap.
+    INTRA_LINE_MAX_LENGTH = 179 "intra-line-max-length" {
+        title: "Longest line with intra-line highlighting",
+        summary: "A modified line pair gets its changed characters highlighted only while both \
+                  lines are shorter than this many bytes (0: no limit).",
+        ghd_behaviour: "1024 (`MaxIntraLineDiffStringLength`), fixed; longer lines only show as \
+                        wholly replaced.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 1_000_000, unit: Some("bytes") },
+        corvane: Value::Number(1024), ghd: Value::Number(1024),
+        familiar: Value::Number(1024), everything: Value::Number(0),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22556)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
 
     // ---- 200 Repository ----
 

@@ -85,6 +85,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Diff font size (Corvane addition, off in every preset): the diff rows' monospace text can be set to 9–16 px (`diff_view.rs`, scaled by View › Zoom like everything else); rows stay 20 px tall. GHD 3.6.6 fixes it at 11 px (`styles/ui/_side-by-side-diff.scss`). Flag: `670-diff-font-size`.
 - Intra-line change ranges are widened to whole grapheme clusters (`diff_view_rows::snap_to_graphemes`), so a combining mark is highlighted with its base character. GHD 3.6.6 (`ui/diff/changed-range.ts` `relativeChanges`) compares UTF-16 code units and can split a cluster. Flag: `177-intra-line-graphemes`.
 - The image diff's 1 px coloured border is drawn outside the image's fitted size (`image_diff.rs` `border_extra`), so a small image shows at its natural size. GHD 3.6.6 (`styles/ui/_diff.scss` `.image-wrapper`, `border-box`) shrinks every image by 2 px, which blurs pixel art. Flag: `178-image-diff-border-outside`.
+- The length cap for intra-line highlighting (GHD's `MaxIntraLineDiffStringLength`, 1024, `ui/diff/diff-helpers.tsx`) is a setting; 0 lifts it (the prefix / suffix scan is linear, so long prose lines stay cheap). Flag: `179-intra-line-max-length`.
 
 ## Settings
 

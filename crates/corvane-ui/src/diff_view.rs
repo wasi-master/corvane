@@ -23,6 +23,9 @@
 //!
 //! Deviation (`177-intra-line-graphemes`): intra-line ranges cover whole
 //! grapheme clusters, so a combining mark stays with its base character.
+//!
+//! Deviation (`179-intra-line-max-length`): the line length beyond which no
+//! intra-line range is computed can be changed (GHD: 1024, fixed).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -561,6 +564,10 @@ impl DiffView {
         let flags = &self.state.read(cx).flags;
         let options = IntraLineOptions {
             graphemes: flags.bool(corvane_core::flags::ids::INTRA_LINE_GRAPHEMES),
+            max_len: match flags.number(corvane_core::flags::ids::INTRA_LINE_MAX_LENGTH) {
+                0 => None,
+                n => Some(n as usize),
+            },
         };
         let split = build_split_rows(&self.rows, options);
         self.unified_to_split = Rc::new(unified_to_split(&split, self.rows.len()));
