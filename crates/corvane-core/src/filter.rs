@@ -1,6 +1,9 @@
 //! Changes-list filtering - GHD `ui/changes/filter-changes-logic.ts` plus the
 //! fuzzy text match of `lib/fuzzy-find.ts` (fuzzaldrin-plus, approximated:
 //! ordered subsequence with bonuses for consecutive and boundary hits).
+//!
+//! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
+//! patterns from the list (view only; they are still committed).
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -98,16 +101,82 @@ pub fn matches_options(filter: &FileListFilter, file: &WorkingDirectoryFileChang
     true
 }
 
+/// The `272-changes-hide-globs` flag text split into patterns: separated by
+/// commas or whitespace, empty ones dropped.
+pub fn hide_patterns(text: &str) -> Vec<String> {
+    text.split(|c: char| c == ',' || c.is_whitespace())
+        .map(|p| p.trim_end_matches('/'))
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// Whether `path` (repository-relative, `/`-separated) matches one of the
+/// patterns. Gitignore-like: `*` and `?` stay inside one path component, `**`
+/// spans components; a pattern without `/` matches any component (`*.lock`,
+/// `node_modules`), one with `/` matches from the root (a leading `/` is
+/// optional), and a pattern matching a directory hides everything below it.
+pub fn hidden_by(patterns: &[String], path: &str) -> bool {
+    patterns.iter().any(|pattern| {
+        if pattern.contains('/') {
+            let pattern = pattern.trim_start_matches('/');
+            // the path itself or one of its parent directories
+            glob_match(pattern, path)
+                || path
+                    .match_indices('/')
+                    .any(|(i, _)| glob_match(pattern, &path[..i]))
+        } else {
+            path.split('/')
+                .any(|component| glob_match(pattern, component))
+        }
+    })
+}
+
+/// `*` / `?` without crossing `/`, `**` across it.
+fn glob_match(pattern: &str, text: &str) -> bool {
+    fn go(p: &[char], t: &[char]) -> bool {
+        match p.first() {
+            None => t.is_empty(),
+            Some('*') if p.get(1) == Some(&'*') => {
+                let rest = &p[2..];
+                // `**/` also matches no directory at all
+                let rest_no_slash = rest.strip_prefix(&['/']).unwrap_or(rest);
+                (0..=t.len()).any(|i| go(rest, &t[i..]) || go(rest_no_slash, &t[i..]))
+            }
+            Some('*') => {
+                let rest = &p[1..];
+                for i in 0..=t.len() {
+                    if go(rest, &t[i..]) {
+                        return true;
+                    }
+                    if t.get(i) == Some(&'/') {
+                        break;
+                    }
+                }
+                false
+            }
+            Some('?') => t.first().is_some_and(|c| *c != '/') && go(&p[1..], &t[1..]),
+            Some(c) => t.first() == Some(c) && go(&p[1..], &t[1..]),
+        }
+    }
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    go(&p, &t)
+}
+
 /// Files that pass the option filters and fuzzy-match `text`, best match first
-/// (original order when `text` is empty).
+/// (original order when `text` is empty). Files matching a `hide` pattern
+/// ([`hidden_by`]) are left out.
 pub fn filtered_files<'a>(
     files: &'a [WorkingDirectoryFileChange],
     text: &str,
     filter: &FileListFilter,
+    hide: &[String],
 ) -> Vec<&'a WorkingDirectoryFileChange> {
     let text = text.trim();
     let mut scored: Vec<(f32, &WorkingDirectoryFileChange)> = files
         .iter()
+        .filter(|f| hide.is_empty() || !hidden_by(hide, &f.path))
         .filter(|f| matches_options(filter, f))
         .filter_map(|f| fuzzy_score(text, &f.path).map(|s| (s, f)))
         .collect();
@@ -186,6 +255,32 @@ mod tests {
         let exact = fuzzy_score("main", "src/main.rs").unwrap();
         let scattered = fuzzy_score("main", "m/a/i/n/x.rs").unwrap();
         assert!(exact > scattered);
+    }
+
+    #[test]
+    fn hide_globs() {
+        let p = hide_patterns("*.lock, node_modules  dist/,/docs/*.md ,src/**/gen");
+        assert_eq!(
+            p,
+            ["*.lock", "node_modules", "dist", "/docs/*.md", "src/**/gen"]
+        );
+        assert!(hidden_by(&p, "Cargo.lock"));
+        assert!(hidden_by(&p, "web/yarn.lock"));
+        assert!(!hidden_by(&p, "lockfile.rs"));
+        assert!(hidden_by(&p, "node_modules/a/b.js"));
+        assert!(hidden_by(&p, "web/node_modules/a.js"));
+        assert!(hidden_by(&p, "dist/app.js"));
+        assert!(!hidden_by(&p, "distribution/app.js"));
+        assert!(hidden_by(&p, "docs/readme.md"));
+        assert!(!hidden_by(&p, "docs/sub/readme.md"));
+        assert!(!hidden_by(&p, "other/docs/readme.md"));
+        assert!(hidden_by(&p, "src/gen/x.rs"));
+        assert!(hidden_by(&p, "src/a/b/gen/x.rs"));
+        assert!(!hidden_by(&p, "src/general.rs"));
+        let q = hide_patterns("fil?.txt");
+        assert!(hidden_by(&q, "a/file.txt"));
+        assert!(!hidden_by(&q, "a/fi/e.txt"));
+        assert!(hide_patterns("  ,  ").is_empty());
     }
 
     #[test]
