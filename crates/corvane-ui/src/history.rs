@@ -16,7 +16,7 @@
 //! list scrolls back to the top when the branch changes (flag `241`); Revert
 //! Changes in Commit(s) Without Committing (flag `242`); Push Up to This
 //! Commit (flag `243`); a commit with a description gets a mark after its
-//! summary (flag `252`).
+//! summary (flag `252`); compact rows drop the author line (flag `140`).
 
 use std::rc::Rc;
 
@@ -47,6 +47,24 @@ use crate::widgets::{avatar_image, avatar_lookup, kbd, primary_button};
 #[allow(non_snake_case)]
 pub fn COMMIT_ROW_HEIGHT() -> Pixels {
     zpx(50.)
+}
+
+/// `140`: summary-only commit rows, 30 px tall.
+fn compact_rows(cx: &App) -> bool {
+    corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::COMPACT_COMMIT_ROWS)
+    })
+}
+
+/// The commit row height: [`COMMIT_ROW_HEIGHT`], or 30 px for compact rows.
+pub fn commit_row_height(cx: &App) -> Pixels {
+    if compact_rows(cx) {
+        zpx(30.)
+    } else {
+        COMMIT_ROW_HEIGHT()
+    }
 }
 
 /// GHD `CommitDragData`: what a commit drag carries (drop targets in the
@@ -134,7 +152,7 @@ impl Render for CommitDragElement {
         div()
             .relative()
             .w(zpx(300.))
-            .h(COMMIT_ROW_HEIGHT())
+            .h(commit_row_height(cx))
             .mt(zpx(22.))
             .children(tooltip)
             .child(
@@ -1557,6 +1575,7 @@ pub(crate) fn commit_row_contents(
                 .flags
                 .bool(corvane_core::flags::ids::COMMIT_BODY_INDICATOR)
         });
+    let compact = compact_rows(cx);
     let byline = format!(
         "{} • {}",
         commit.author.name,
@@ -1576,7 +1595,7 @@ pub(crate) fn commit_row_contents(
             div()
                 .flex_1()
                 .min_w(zpx(50.))
-                .mt(zpx(-4.))
+                .when(!compact, |d| d.mt(zpx(-4.)))
                 .flex()
                 .flex_col()
                 .child(
@@ -1603,29 +1622,31 @@ pub(crate) fn commit_row_contents(
                             )
                         }),
                 )
-                .child(
-                    div()
-                        .mt(zpx(3.))
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .gap(zpx(4.))
-                        .child(avatar_image(
-                            avatar_lookup(&commit.author.email, cx),
-                            zpx(16.),
-                            cx,
-                        ))
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .truncate()
-                                .text_size(FONT_SIZE_SM())
-                                .line_height(zpx(16.5))
-                                .text_color(secondary)
-                                .child(byline),
-                        ),
-                ),
+                .when(!compact, |d| {
+                    d.child(
+                        div()
+                            .mt(zpx(3.))
+                            .flex()
+                            .flex_row()
+                            .items_center()
+                            .gap(zpx(4.))
+                            .child(avatar_image(
+                                avatar_lookup(&commit.author.email, cx),
+                                zpx(16.),
+                                cx,
+                            ))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .truncate()
+                                    .text_size(FONT_SIZE_SM())
+                                    .line_height(zpx(16.5))
+                                    .text_color(secondary)
+                                    .child(byline),
+                            ),
+                    )
+                }),
         )
         // `.commit-indicators .tag-indicator`: the first tag as a 16 px pill
         // (5 px padding, 6 px radius, no icon); more tags peek out behind it
@@ -1746,7 +1767,7 @@ fn commit_row(
         )
         .relative()
         .w_full()
-        .h(COMMIT_ROW_HEIGHT())
+        .h(commit_row_height(cx))
         .flex_none()
         .bg(bg)
         // `.has-highlighted-commits .list-item:not(.highlighted) { opacity: 30% }`
