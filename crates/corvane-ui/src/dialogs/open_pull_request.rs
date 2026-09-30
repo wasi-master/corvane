@@ -218,7 +218,13 @@ impl OpenPullRequestDialog {
         let viewport = window.viewport_size();
         let query = self.base_filter.read(cx).value().trim().to_string();
         let (branches, recent, default) = self.base_branches(cx);
-        let groups = group_branches(&branches, default.as_deref(), &recent, &query);
+        let groups = group_branches(
+            &branches,
+            default.as_deref(),
+            &recent,
+            &query,
+            crate::branch_list::sort_by_date(cx),
+        );
         let width = zpx(365.);
         let x = anchor
             .origin
