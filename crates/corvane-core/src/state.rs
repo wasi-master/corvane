@@ -539,6 +539,9 @@ pub struct CloneState {
     pub cancel: corvane_git::CancelToken,
 }
 
+/// How many incoming commits [`RepositoryState::incoming_commits`] keeps.
+pub const INCOMING_COMMITS_LIMIT: usize = 10;
+
 /// Per-repository cache (`IRepositoryState`, trimmed).
 #[derive(Clone, Debug, Default)]
 pub struct RepositoryState {
@@ -574,6 +577,10 @@ pub struct RepositoryState {
     pub diff_old_contents: Option<Arc<Vec<String>>>,
     /// Most recent commit made from Corvane in this session (`UndoCommit` bar).
     pub last_commit: Option<LastCommit>,
+    /// Summaries of the upstream's commits the current branch lacks
+    /// (`HEAD..upstream`, newest first, at most [`INCOMING_COMMITS_LIMIT`]),
+    /// for the Pull button's tooltip (flag `246`).
+    pub incoming_commits: Vec<String>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
     /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).

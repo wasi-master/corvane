@@ -6,6 +6,10 @@
 //! their right edge; dragging sets the width within
 //! `corvane_core::toolbar_widths`, double-clicking resets it to 230 px. The
 //! width is saved when the drag ends (GHD writes it on every move).
+//!
+//! Deviation (`.docs/deviations.md` › History, flag `246`): the Pull
+//! button's tooltip lists the incoming commits' summaries (GHD
+//! `push-pull-button.tsx` has none).
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -389,6 +393,7 @@ pub fn toolbar_models(
                     }
                 } else if ab.behind > 0 {
                     ToolbarButtonModel {
+                        tooltip: incoming_tooltip(ab.behind, repo_state, state),
                         icon: Octicon::ArrowDown,
                         description: last_fetched,
                         title: if pull_with_rebase {
@@ -424,6 +429,35 @@ pub fn toolbar_models(
     buttons.push(branch);
     buttons.push(push_pull);
     buttons
+}
+
+/// Flag `246`: the Pull button's tooltip lists the incoming commits.
+fn incoming_tooltip(
+    behind: u32,
+    repo_state: Option<&corvane_core::RepositoryState>,
+    state: &AppState,
+) -> Option<SharedString> {
+    if !state
+        .flags
+        .bool(corvane_core::flags::ids::PULL_TOOLTIP_LISTS_COMMITS)
+    {
+        return None;
+    }
+    let summaries = &repo_state?.incoming_commits;
+    if summaries.is_empty() {
+        return None;
+    }
+    let mut lines = vec![if behind == 1 {
+        "1 commit to pull:".to_string()
+    } else {
+        format!("{behind} commits to pull:")
+    }];
+    lines.extend(summaries.iter().map(|s| format!("• {s}")));
+    let more = behind as usize - summaries.len().min(behind as usize);
+    if more > 0 {
+        lines.push(format!("…and {more} more"));
+    }
+    Some(lines.join("\n").into())
 }
 
 pub fn toolbar_button(
