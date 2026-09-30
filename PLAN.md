@@ -214,7 +214,7 @@ Total ≈ 12 weeks for one developer. Windows/Linux, GitHub layer: see `TODO.md`
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes |
+| R1 | `gpui-pre` weekly snapshots break API | Pin exact `=0.3.7` + `gpui-kit =0.7.0`; upgrade on a branch monthly; vendor via `[patch.crates-io]` if a snapshot vanishes. Vendored today: `vendor/gpui-pre-macos` (0.3.7 + exact variable-font weights in `src/text_system.rs`, see its `exact_weight_variant`); re-apply that diff when upgrading |
 | R2 | gpui-kit look leaks into GHD chrome | Own widgets for toolbar/tabs/lists/diff; gpui-kit only for form controls + infra; theme override tested by screenshot diff |
 | R3 | gix status slower than git on huge/fsmonitor repos | `status-cli` fallback path; measure in M2; keep both parsers |
 | R4 | Commit description editor (autocomplete, IME, spellcheck) | gpui-kit `Textarea` + custom autocomplete popover; spellcheck deferred (`TODO.md`) |
