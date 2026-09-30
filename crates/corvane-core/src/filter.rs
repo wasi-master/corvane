@@ -5,7 +5,9 @@
 //! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
 //! patterns from the list (view only; they are still committed), and the
 //! `280-renamed-files-filter` option keeps renamed files; [`sort_files`]
-//! orders the list by status or file name (`282-changes-sort-order`).
+//! orders the list by status or file name (`282-changes-sort-order`), and
+//! [`path_match`] can match the filter text as a substring, a suffix or the
+//! exact path / file name instead of fuzzily (`283-changes-filter-match`).
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -54,6 +56,39 @@ pub fn fuzzy_match(query: &str, text: &str) -> Option<(f32, Vec<usize>)> {
             .sqrt()
             .clamp(0.05, 1.0);
     Some((score, hits))
+}
+
+/// `283-changes-filter-match`: how the changes filter text matches a path.
+/// `mode` is the flag value: `fuzzy` (GHD), `substring`, `suffix` (the path
+/// ends with the text) or `exact` (the whole path or the file name). Case is
+/// ignored; hits are char positions in `path`, as for [`fuzzy_match`]. Non-fuzzy
+/// matches all score 1, so they keep the list order.
+pub fn path_match(mode: &str, query: &str, path: &str) -> Option<(f32, Vec<usize>)> {
+    let q: Vec<char> = query.chars().flat_map(|c| c.to_lowercase()).collect();
+    if q.is_empty() || !matches!(mode, "substring" | "suffix" | "exact") {
+        return fuzzy_match(query, path);
+    }
+    let t: Vec<char> = path
+        .chars()
+        .map(|c| c.to_lowercase().next().unwrap_or(c))
+        .collect();
+    let hit = |start: usize| Some((1.0, (start..start + q.len()).collect()));
+    if q.len() > t.len() {
+        return None;
+    }
+    let tail = t.len() - q.len();
+    match mode {
+        "substring" => (0..=tail)
+            .find(|&i| t[i..i + q.len()] == q[..])
+            .and_then(hit),
+        "suffix" => (t[tail..] == q[..]).then_some(tail).and_then(hit),
+        _ => {
+            let name_start = t.iter().rposition(|&c| c == '/').map_or(0, |i| i + 1);
+            (t[tail..] == q[..] && (tail == 0 || tail == name_start))
+                .then_some(tail)
+                .and_then(hit)
+        }
+    }
 }
 
 /// GHD `BranchAutocompletionProvider.getAutocompletionItems`: every branch
@@ -171,19 +206,20 @@ fn glob_match(pattern: &str, text: &str) -> bool {
 
 /// Files that pass the option filters and fuzzy-match `text`, best match first
 /// (original order when `text` is empty). Files matching a `hide` pattern
-/// ([`hidden_by`]) are left out.
+/// ([`hidden_by`]) are left out; `mode` is the [`path_match`] mode.
 pub fn filtered_files<'a>(
     files: &'a [WorkingDirectoryFileChange],
     text: &str,
     filter: &FileListFilter,
     hide: &[String],
+    mode: &str,
 ) -> Vec<&'a WorkingDirectoryFileChange> {
     let text = text.trim();
     let mut scored: Vec<(f32, &WorkingDirectoryFileChange)> = files
         .iter()
         .filter(|f| hide.is_empty() || !hidden_by(hide, &f.path))
         .filter(|f| matches_options(filter, f))
-        .filter_map(|f| fuzzy_score(text, &f.path).map(|s| (s, f)))
+        .filter_map(|f| path_match(mode, text, &f.path).map(|(s, _)| (s, f)))
         .collect();
     if !text.is_empty() {
         scored.sort_by(|a, b| b.0.total_cmp(&a.0));
@@ -334,7 +370,7 @@ mod tests {
         let mut f = FileListFilter::default();
         f.set(FilterOption::RenamedFiles, true);
         assert_eq!(f.count_active(), 1);
-        let hits = filtered_files(&files, "", &f, &[]);
+        let hits = filtered_files(&files, "", &f, &[], "fuzzy");
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].path, "a");
         assert!(
@@ -342,6 +378,25 @@ mod tests {
                 .unwrap()
                 .ends_with("Renamed files")
         );
+    }
+
+    #[test]
+    fn match_modes() {
+        let path = "Assets/Player.cs.meta";
+        assert!(path_match("fuzzy", "meta", "src/mesh/data.ts").is_some());
+        assert!(path_match("substring", "meta", "src/mesh/data.ts").is_none());
+        assert_eq!(
+            path_match("substring", "PLAYER", path).map(|(_, h)| h),
+            Some(vec![7, 8, 9, 10, 11, 12])
+        );
+        assert!(path_match("suffix", ".meta", path).is_some());
+        assert!(path_match("suffix", "player", path).is_none());
+        assert!(path_match("exact", "player.cs.meta", path).is_some());
+        assert!(path_match("exact", "assets/player.cs.meta", path).is_some());
+        assert!(path_match("exact", "cs.meta", path).is_none());
+        assert!(path_match("exact", "x", "").is_none());
+        // an empty query matches everything in every mode
+        assert!(path_match("exact", "", path).is_some());
     }
 
     #[test]

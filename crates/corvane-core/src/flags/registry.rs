@@ -105,6 +105,25 @@ const CHANGES_SORT_ORDERS: &[SelectOption] = &[
     },
 ];
 
+const CHANGES_FILTER_MATCHES: &[SelectOption] = &[
+    SelectOption {
+        value: "fuzzy",
+        label: "Fuzzy",
+    },
+    SelectOption {
+        value: "substring",
+        label: "Contains the text",
+    },
+    SelectOption {
+        value: "suffix",
+        label: "Ends with the text",
+    },
+    SelectOption {
+        value: "exact",
+        label: "Exact path or file name",
+    },
+];
+
 const WIDTH_SAVES: &[SelectOption] = &[
     SelectOption {
         value: "drag-end",
@@ -482,6 +501,21 @@ registry! {
         familiar: Value::text("path"), everything: Value::text("status"),
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(4739)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
+    },
+    /// How the changes filter text matches.
+    CHANGES_FILTER_MATCH = 283 "changes-filter-match" {
+        title: "Changes filter matching",
+        summary: "How the changes list's filter text matches a path: fuzzily (the letters in \
+                  order), as a substring, as the end of the path (`.meta`), or as the exact path \
+                  or file name. Case is ignored.",
+        ghd_behaviour: "Fuzzy only.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: CHANGES_FILTER_MATCHES },
+        corvane: Value::text("fuzzy"), ghd: Value::text("fuzzy"),
+        familiar: Value::text("fuzzy"), everything: Value::text("substring"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20555)],
         code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
     },
 

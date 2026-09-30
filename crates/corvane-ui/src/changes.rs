@@ -20,6 +20,8 @@
 //! - rows can show the file name without its directory
 //!   (`170-changes-file-names-only`).
 //! - the list can be ordered by status or file name (`282-changes-sort-order`).
+//! - the filter text can match as a substring, suffix or exact name
+//!   (`283-changes-filter-match`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1309,7 +1311,9 @@ impl ChangesSidebar {
             sorted = Some(files);
         }
         let files = sorted.as_deref().unwrap_or(&status.files);
-        let visible = filtered_files(files, &text, &rs.file_list_filter, &hide)
+        // `283-changes-filter-match`
+        let mode = s.flags.text(corvane_core::flags::ids::CHANGES_FILTER_MATCH);
+        let visible = filtered_files(files, &text, &rs.file_list_filter, &hide, mode)
             .into_iter()
             .cloned()
             .collect();
@@ -3579,7 +3583,13 @@ fn file_row(
     });
     let directory = file.directory().to_string();
     let file_name = file.file_name().to_string();
-    let hits = corvane_core::filter::fuzzy_match(query, &file.path)
+    let mode = corvane_core::AppState::try_global(cx).map_or("fuzzy".to_string(), |s| {
+        s.read(cx)
+            .flags
+            .text(corvane_core::flags::ids::CHANGES_FILTER_MATCH)
+            .to_string()
+    });
+    let hits = corvane_core::filter::path_match(&mode, query, &file.path)
         .map(|(_, hits)| hits)
         .unwrap_or_default();
     let dir_len = directory.chars().count();

@@ -58,6 +58,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Error dialogs have a "Copy" button (Corvane addition) putting the title and message on the clipboard, since the dialog text cannot be selected; GHD 3.6.6 offers no way to copy it. Flag: `281-error-dialog-copy`.
 - File names only (Corvane addition, off in the Corvane preset): changes-list rows leave out the dimmed directory part of `PathText`; the filter still matches the whole path and the row's accessible name keeps it. Flag: `170-changes-file-names-only`.
 - Changes list order (Corvane addition): a setting orders the list by path (GHD), by status (conflicted, new, modified, renamed / copied, deleted; path order within each) or by file name, case-insensitively; a filter text still ranks its matches best first, and ⇧-click / arrow keys follow the shown order. Flag: `282-changes-sort-order`.
+- Changes filter matching (Corvane addition): a setting makes the filter text match as a substring, as the end of the path, or as the exact path or file name (case-insensitive, matches kept in list order) instead of GHD's fuzzy match. Flag: `283-changes-filter-match`.
 
 ## Diff viewer
 
