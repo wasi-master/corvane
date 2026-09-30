@@ -4,7 +4,8 @@
 //! Accessibility: the box is a `Dialog` node labelled with its title, and the
 //! open dialog's title becomes the window title (VoiceOver reads it as the
 //! `AXWindow` title; the title bar itself is hidden) until the dialog closes
-//! (`DialogHost` restores "Corvane").
+//! (`DialogHost` restores "Corvane"). Linux keeps the app name in its
+//! visible title bar, as Electron does; AT-SPI reads the `Dialog` node.
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -26,8 +27,11 @@ thread_local! {
         const { std::cell::RefCell::new(SharedString::new_static(APP_WINDOW_TITLE)) };
 }
 
-/// Set the window title unless it already is `title`.
+/// Set the window title unless it already is `title` (macOS only).
 pub fn sync_window_title(title: &SharedString, window: &mut Window) {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
     let changed = WINDOW_TITLE.with(|current| {
         let mut current = current.borrow_mut();
         if *current == *title {

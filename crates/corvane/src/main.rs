@@ -552,7 +552,9 @@ fn main() {
         let options = WindowOptions {
             titlebar: Some(TitlebarOptions {
                 title: Some("Corvane".into()),
-                appears_transparent: true,
+                // macOS: hiddenInset; Linux keeps the window manager's frame
+                // (Electron's default there)
+                appears_transparent: cfg!(target_os = "macos"),
                 traffic_light_position: Some(point(px(9.), px(9.))),
             }),
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
@@ -573,6 +575,9 @@ fn main() {
                 },
             ),
             app_id: Some(corvane_platform::BUNDLE_ID.into()),
+            // X11 `_NET_WM_ICON` (Electron sets the app icon on its window)
+            #[cfg(not(target_os = "macos"))]
+            icon: corvane_ui::title_bar::window_icon(),
             ..Default::default()
         };
 
