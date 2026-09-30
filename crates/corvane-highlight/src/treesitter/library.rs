@@ -1,16 +1,20 @@
 //! Where tree-sitter grammars come from: the table compiled in by the
-//! `bundled-tree-sitter` feature (the "full" build) or the dylib of an
-//! installed `tree-sitter-all` / `tree-sitter-rest` pack. Both are read
-//! through the same C-ABI table ([`super::ffi::Table`]).
+//! `bundled-tree-sitter` feature (the "full" build) or an installed
+//! `tree-sitter-all` / `tree-sitter-rest` pack. A pack is an `index.json`
+//! plus one gzipped library per grammar package (a *unit*): detection reads
+//! the index ([`Entry`]); a unit is unpacked into the cache and opened the
+//! first time a file needs one of its grammars, so disk and memory hold only
+//! the languages in use. Every library is read through the same C-ABI table
+//! ([`super::ffi::Table`]).
 //!
 //! Loaded libraries are never closed: `Language`s and compiled queries point
 //! into them and may still be in use on another thread. Removing a pack only
 //! drops its grammars from the registry (the file can be deleted while
 //! mapped).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::ffi::{CStr, c_char};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -97,9 +101,136 @@ fn in_string(code: &str, at: usize) -> bool {
     quoted
 }
 
+/// What detection needs to know about a grammar, available before its
+/// library is loaded (a pack's `index.json`).
+pub struct Entry {
+    pub name: String,
+    pub extensions: Vec<String>,
+    pub filenames: Vec<String>,
+    pub first_line: Option<Regex>,
+    pub aliases: Vec<String>,
+    pub injects: Vec<String>,
+    unit: Arc<Unit>,
+}
+
+impl Entry {
+    /// The loaded grammar, loading its unit (unpacking and opening the
+    /// library) on first use. `None` when the unit cannot be loaded (logged
+    /// once) or lacks the grammar.
+    pub fn grammar(&self) -> Option<Arc<Grammar>> {
+        self.unit.load().get(&self.name).cloned()
+    }
+
+    /// An entry with no grammar behind it (detection tests).
+    #[cfg(test)]
+    pub(crate) fn detached(
+        name: &str,
+        extensions: Vec<String>,
+        filenames: Vec<String>,
+        first_line: Option<Regex>,
+        aliases: Vec<String>,
+    ) -> Arc<Entry> {
+        Arc::new(Entry {
+            name: name.to_string(),
+            extensions,
+            filenames,
+            first_line,
+            aliases,
+            injects: Vec::new(),
+            unit: Unit::loaded(&[]),
+        })
+    }
+
+    fn of(grammar: &Arc<Grammar>, unit: Arc<Unit>) -> Arc<Entry> {
+        Arc::new(Entry {
+            name: grammar.name.clone(),
+            extensions: grammar.extensions.clone(),
+            filenames: grammar.filenames.clone(),
+            first_line: grammar.first_line.clone(),
+            aliases: grammar.aliases.clone(),
+            injects: grammar.injects.clone(),
+            unit,
+        })
+    }
+}
+
+/// Grammars that load together: one library of a pack (a grammar package
+/// such as `typescript` with `typescript` and `tsx`), or a whole table.
+struct Unit {
+    /// `None`: `loaded` was filled at registration
+    file: Option<UnitFile>,
+    loaded: OnceLock<HashMap<String, Arc<Grammar>>>,
+}
+
+/// A pack's compressed library and where it is unpacked to.
+struct UnitFile {
+    gz: PathBuf,
+    cache: PathBuf,
+}
+
+impl Unit {
+    fn loaded(grammars: &[Arc<Grammar>]) -> Arc<Unit> {
+        let map = grammars
+            .iter()
+            .map(|g| (g.name.clone(), g.clone()))
+            .collect();
+        let unit = Unit {
+            file: None,
+            loaded: OnceLock::new(),
+        };
+        let _ = unit.loaded.set(map);
+        Arc::new(unit)
+    }
+
+    fn load(&self) -> &HashMap<String, Arc<Grammar>> {
+        self.loaded.get_or_init(|| {
+            let Some(file) = &self.file else {
+                return HashMap::new();
+            };
+            match unpack(file).and_then(|path| open_library(&path)) {
+                Ok(grammars) => grammars.into_iter().map(|g| (g.name.clone(), g)).collect(),
+                Err(err) => {
+                    tracing::warn!("tree-sitter grammars in {}: {err}", file.gz.display());
+                    HashMap::new()
+                }
+            }
+        })
+    }
+}
+
+/// Unpack a unit's `.dylib.gz` next to the other unpacked units (once; the
+/// cache is keyed by pack version). Written to a temporary name and renamed:
+/// a library must never be rewritten in place.
+fn unpack(file: &UnitFile) -> Result<PathBuf, String> {
+    if file.cache.metadata().is_ok_and(|m| m.len() > 0) {
+        return Ok(file.cache.clone());
+    }
+    let dir = file
+        .cache
+        .parent()
+        .ok_or_else(|| "no cache directory".to_string())?;
+    std::fs::create_dir_all(dir).map_err(|err| format!("{}: {err}", dir.display()))?;
+    let input =
+        std::fs::File::open(&file.gz).map_err(|err| format!("{}: {err}", file.gz.display()))?;
+    let tmp = file
+        .cache
+        .with_extension(format!("partial-{}", std::process::id()));
+    let result = (|| {
+        let mut out = std::fs::File::create(&tmp)?;
+        std::io::copy(&mut flate2::read::GzDecoder::new(input), &mut out)?;
+        out.sync_all()?;
+        std::fs::rename(&tmp, &file.cache)
+    })();
+    if let Err(err) = result {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("unpacking {}: {err}", file.gz.display()));
+    }
+    Ok(file.cache.clone())
+}
+
 struct Source {
     name: String,
-    grammars: Vec<Arc<Grammar>>,
+    entries: Vec<Arc<Entry>>,
 }
 
 /// Source name of the compiled-in table.
@@ -130,7 +261,7 @@ fn sources() -> &'static RwLock<Vec<Source>> {
                     if let Ok(mut guard) = lock.write() {
                         guard.push(Source {
                             name: BUNDLED.to_string(),
-                            grammars,
+                            entries: entries_of(&grammars),
                         });
                     }
                 }
@@ -139,6 +270,14 @@ fn sources() -> &'static RwLock<Vec<Source>> {
         }
         lock
     })
+}
+
+fn entries_of(grammars: &[Arc<Grammar>]) -> Vec<Arc<Entry>> {
+    let unit = Unit::loaded(grammars);
+    grammars
+        .iter()
+        .map(|g| Entry::of(g, unit.clone()))
+        .collect()
 }
 
 static GENERATION: AtomicU64 = AtomicU64::new(1);
@@ -158,7 +297,7 @@ pub fn bundled() -> bool {
 pub fn available() -> bool {
     sources()
         .read()
-        .map(|s| s.iter().any(|source| !source.grammars.is_empty()))
+        .map(|s| s.iter().any(|source| !source.entries.is_empty()))
         .unwrap_or(false)
 }
 
@@ -170,27 +309,34 @@ pub fn is_loaded(name: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Every available grammar, in lookup order; a name a better-ranked source
-/// already has is skipped.
-pub fn grammars() -> Vec<Arc<Grammar>> {
+/// Every known grammar, in lookup order; a name a better-ranked source
+/// already has is skipped. Nothing is loaded.
+pub fn entries() -> Vec<Arc<Entry>> {
     let Ok(sources) = sources().read() else {
         return Vec::new();
     };
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
     for source in sources.iter() {
-        for grammar in &source.grammars {
-            if seen.insert(grammar.name.clone()) {
-                out.push(grammar.clone());
+        for entry in &source.entries {
+            if seen.insert(entry.name.clone()) {
+                out.push(entry.clone());
             }
         }
     }
     out
 }
 
-/// Open a pack's grammar library and use its grammars from now on, under the
-/// pack's `name`. Returns how many grammars it holds.
-pub fn load_library(name: &str, path: &Path) -> Result<usize, String> {
+/// Every grammar, loaded (tests and tools; this unpacks and opens every
+/// library of a pack).
+pub fn grammars() -> Vec<Arc<Grammar>> {
+    entries().iter().filter_map(|e| e.grammar()).collect()
+}
+
+/// Open one grammar library (a unit, or a single-library pack) and read its
+/// table. The library stays loaded for the rest of the process: languages
+/// and compiled queries point into it and may be in use on other threads.
+fn open_library(path: &Path) -> Result<Vec<Arc<Grammar>>, String> {
     // SAFETY: loading a library runs its initialisers. The pack comes from a
     // manifest verified with the release key and a matching sha256
     // (corvane-packs), the same trust as an app update.
@@ -201,31 +347,125 @@ pub fn load_library(name: &str, path: &Path) -> Result<usize, String> {
     let table = unsafe {
         let entry = library
             .get::<unsafe extern "C" fn() -> *const ffi::Table>(ffi::ENTRY_SYMBOL)
-            .map_err(|err| format!("{} is not a grammar pack: {err}", path.display()))?;
+            .map_err(|err| format!("{} is not a grammar library: {err}", path.display()))?;
         entry()
     };
-    // SAFETY: the library stays loaded for the rest of the process (below).
+    // SAFETY: the library is never closed (below).
     let grammars = unsafe { read_table(table) }?;
-    let count = grammars.len();
     std::mem::forget(library);
-    insert(name, grammars);
+    Ok(grammars)
+}
+
+/// Use one grammar library (every grammar in it, loaded now) under `name`.
+/// Returns how many grammars it holds.
+pub fn load_library(name: &str, path: &Path) -> Result<usize, String> {
+    let grammars = open_library(path)?;
+    let count = grammars.len();
+    insert(name, entries_of(&grammars));
+    Ok(count)
+}
+
+/// A pack's `index.json`: the grammars of each unit, so detection works
+/// before any library is unpacked.
+#[derive(serde::Deserialize)]
+struct Index {
+    abi: u32,
+    units: Vec<IndexUnit>,
+}
+
+#[derive(serde::Deserialize)]
+struct IndexUnit {
+    /// the unit's `.dylib.gz`, relative to the index
+    file: String,
+    grammars: Vec<IndexGrammar>,
+}
+
+#[derive(serde::Deserialize)]
+struct IndexGrammar {
+    name: String,
+    #[serde(default)]
+    extensions: Vec<String>,
+    #[serde(default)]
+    filenames: Vec<String>,
+    #[serde(default)]
+    first_line: String,
+    #[serde(default)]
+    aliases: Vec<String>,
+    #[serde(default)]
+    injects: Vec<String>,
+}
+
+/// Use an installed grammar pack under `name`: read its `index.json` now,
+/// unpack each unit into `cache_dir` and open it when a file first needs one
+/// of its grammars. Returns how many grammars the pack lists.
+pub fn load_pack(name: &str, index: &Path, cache_dir: &Path) -> Result<usize, String> {
+    let text =
+        std::fs::read_to_string(index).map_err(|err| format!("{}: {err}", index.display()))?;
+    let parsed: Index =
+        serde_json::from_str(&text).map_err(|err| format!("{}: {err}", index.display()))?;
+    if parsed.abi != ffi::ABI {
+        return Err(format!(
+            "the grammar pack has table version {}, this build reads {}",
+            parsed.abi,
+            ffi::ABI
+        ));
+    }
+    let base = index.parent().unwrap_or(Path::new("."));
+    let mut entries = Vec::new();
+    for unit in parsed.units {
+        let stem = Path::new(&unit.file)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|n| n.trim_end_matches(".gz").to_string())
+            .ok_or_else(|| format!("{}: a unit without a file name", index.display()))?;
+        let shared = Arc::new(Unit {
+            file: Some(UnitFile {
+                gz: base.join(&unit.file),
+                cache: cache_dir.join(stem),
+            }),
+            loaded: OnceLock::new(),
+        });
+        for g in unit.grammars {
+            let first_line = if g.first_line.is_empty() {
+                None
+            } else {
+                Some(
+                    Regex::new(&g.first_line)
+                        .map_err(|err| format!("{}: first_line: {err}", g.name))?,
+                )
+            };
+            let lower = |v: Vec<String>| v.into_iter().map(|s| s.to_lowercase()).collect();
+            entries.push(Arc::new(Entry {
+                name: g.name,
+                extensions: lower(g.extensions),
+                filenames: lower(g.filenames),
+                first_line,
+                aliases: lower(g.aliases),
+                injects: lower(g.injects),
+                unit: shared.clone(),
+            }));
+        }
+    }
+    let count = entries.len();
+    insert(name, entries);
     Ok(count)
 }
 
 /// Register grammars under `name`, replacing what it had.
-fn insert(name: &str, grammars: Vec<Arc<Grammar>>) {
+fn insert(name: &str, entries: Vec<Arc<Entry>>) {
     if let Ok(mut sources) = sources().write() {
         sources.retain(|s| s.name != name);
         sources.push(Source {
             name: name.to_string(),
-            grammars,
+            entries,
         });
         sources.sort_by_key(|s| rank(&s.name));
     }
     GENERATION.fetch_add(1, Ordering::AcqRel);
 }
 
-/// Stop using a pack's grammars (it was removed). The library stays mapped.
+/// Stop using a pack's grammars (it was removed). Opened libraries stay
+/// mapped.
 pub fn unload_library(name: &str) {
     if let Ok(mut sources) = sources().write() {
         let before = sources.len();
@@ -247,7 +487,7 @@ pub unsafe fn register_table(name: &str, table: *const ffi::Table) -> Result<usi
     // SAFETY: forwarded from the caller.
     let grammars = unsafe { read_table(table) }?;
     let count = grammars.len();
-    insert(name, grammars);
+    insert(name, entries_of(&grammars));
     Ok(count)
 }
 
@@ -402,31 +642,69 @@ mod tests {
         assert!(!is_loaded("tree-sitter-all"));
     }
 
+    #[test]
+    fn a_pack_index_is_read_without_opening_libraries() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("corvane-ts-pack-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("grammars")).unwrap();
+        // not a library: detection works, loading fails quietly
+        let mut gz = flate2::write::GzEncoder::new(
+            std::fs::File::create(dir.join("grammars/fake.dylib.gz")).unwrap(),
+            flate2::Compression::default(),
+        );
+        gz.write_all(b"not a dylib").unwrap();
+        gz.finish().unwrap();
+        std::fs::write(
+            dir.join("index.json"),
+            r#"{"abi":1,"version":"t","units":[{"file":"grammars/fake.dylib.gz","grammars":[
+                {"name":"fakelang","extensions":["FAKE"],"aliases":["fk"],"first_line":"^#!.*fake"}]}]}"#,
+        )
+        .unwrap();
+        let cache = dir.join("cache");
+        let count = load_pack("test-pack", &dir.join("index.json"), &cache).expect("index");
+        assert_eq!(count, 1);
+        let entries = entries();
+        let entry =
+            crate::treesitter::detect::for_path(&entries, "a.fake", "").expect("by extension");
+        assert_eq!(entry.name, "fakelang");
+        assert!(crate::treesitter::detect::for_injection(&entries, "fk").is_some());
+        assert!(entry.grammar().is_none());
+        // unpacked (then refused by dlopen)
+        assert_eq!(
+            std::fs::read(cache.join("fake.dylib")).unwrap(),
+            b"not a dylib"
+        );
+        unload_library("test-pack");
+        assert!(!is_loaded("test-pack"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
     /// `CORVANE_TS_LIBRARY=<pack dylib> cargo test -p corvane-highlight -- --ignored`
     #[test]
     #[ignore]
     fn a_built_pack_library_loads() {
         let path = std::env::var("CORVANE_TS_LIBRARY").expect("CORVANE_TS_LIBRARY");
-        let count = load_library("tree-sitter-all", Path::new(&path)).expect("loads");
-        assert!(count > 0);
-        assert!(is_loaded("tree-sitter-all"));
-        let spans = crate::treesitter::highlight("main.rs", &["fn main() {}"], 1024)
-            .expect("rust highlights");
-        assert!(!spans[0].is_empty());
-        // a whole budget's worth of Rust, as a large diff would highlight
-        let source = include_str!("mod.rs")
-            .repeat(crate::MAX_HIGHLIGHT_BYTES / include_str!("mod.rs").len());
-        let lines: Vec<&str> = source.lines().collect();
-        let started = std::time::Instant::now();
-        let spans = crate::treesitter::highlight("big.rs", &lines, crate::MAX_HIGHLIGHT_BYTES)
-            .expect("rust highlights");
-        eprintln!(
-            "{} bytes, {} lines: {:?}",
-            source.len(),
-            lines.len(),
-            started.elapsed()
-        );
-        assert!(spans.iter().filter(|s| !s.is_empty()).count() > lines.len() / 2);
+        let grammars = open_library(Path::new(&path)).expect("loads");
+        assert!(!grammars.is_empty());
+        for grammar in &grammars {
+            crate::treesitter::check_queries(grammar)
+                .unwrap_or_else(|err| panic!("{}: {err}", grammar.name));
+        }
+        eprintln!("{:?}", grammars.iter().map(|g| &g.name).collect::<Vec<_>>());
+        let count = load_library("tree-sitter-all", Path::new(&path)).expect("registers");
+        assert_eq!(count, grammars.len());
+        if grammars.iter().any(|g| g.name == "rust") {
+            // a whole budget's worth of Rust, as a large diff would highlight
+            let one = include_str!("mod.rs");
+            let source = one.repeat(crate::MAX_HIGHLIGHT_BYTES / one.len());
+            let lines: Vec<&str> = source.lines().collect();
+            let started = std::time::Instant::now();
+            let spans = crate::treesitter::highlight("big.rs", &lines, crate::MAX_HIGHLIGHT_BYTES)
+                .expect("rust highlights");
+            eprintln!("{} bytes: {:?}", source.len(), started.elapsed());
+            assert!(spans.iter().filter(|s| !s.is_empty()).count() > lines.len() / 2);
+        }
         unload_library("tree-sitter-all");
     }
 }

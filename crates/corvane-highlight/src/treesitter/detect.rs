@@ -2,12 +2,12 @@
 
 use std::sync::Arc;
 
-use super::library::Grammar;
+use super::library::Entry;
 
 /// The grammar for `path`: an exact file name, else the longest matching
 /// extension (`d.ts` beats `ts`), else a first-line pattern (shebangs).
 /// Grammars earlier in `grammars` win ties.
-pub fn for_path(grammars: &[Arc<Grammar>], path: &str, first_line: &str) -> Option<Arc<Grammar>> {
+pub fn for_path(grammars: &[Arc<Entry>], path: &str, first_line: &str) -> Option<Arc<Entry>> {
     let name = path
         .rsplit(['/', '\\'])
         .next()
@@ -16,7 +16,7 @@ pub fn for_path(grammars: &[Arc<Grammar>], path: &str, first_line: &str) -> Opti
     if let Some(g) = grammars.iter().find(|g| g.filenames.contains(&name)) {
         return Some(g.clone());
     }
-    let mut best: Option<(&Arc<Grammar>, usize)> = None;
+    let mut best: Option<(&Arc<Entry>, usize)> = None;
     for grammar in grammars {
         for ext in &grammar.extensions {
             let matches = name.len() > ext.len()
@@ -42,7 +42,7 @@ pub fn for_path(grammars: &[Arc<Grammar>], path: &str, first_line: &str) -> Opti
 
 /// The grammar an injection names (`javascript`, a code fence's `rs`): a
 /// grammar name, an alias, else an extension.
-pub fn for_injection(grammars: &[Arc<Grammar>], name: &str) -> Option<Arc<Grammar>> {
+pub fn for_injection(grammars: &[Arc<Entry>], name: &str) -> Option<Arc<Entry>> {
     let name = name.trim().to_lowercase();
     let name = name.trim_start_matches('.');
     if name.is_empty() {
@@ -68,25 +68,17 @@ pub fn for_injection(grammars: &[Arc<Grammar>], name: &str) -> Option<Arc<Gramma
 mod tests {
     use super::*;
 
-    fn grammar(name: &str, extensions: &[&str], filenames: &[&str], first: &str) -> Arc<Grammar> {
-        let table = unsafe { &*corvane_grammars::corvane_grammars_v1() };
-        let entries = unsafe { std::slice::from_raw_parts(table.grammars, table.len) };
-        let language = unsafe { tree_sitter_language::LanguageFn::from_raw(entries[0].language) };
-        Arc::new(Grammar {
-            name: name.into(),
-            language: language.into(),
-            highlights: String::new(),
-            injections: String::new(),
-            locals: String::new(),
-            extensions: extensions.iter().map(|s| s.to_string()).collect(),
-            filenames: filenames.iter().map(|s| s.to_string()).collect(),
-            first_line: (!first.is_empty()).then(|| regex::Regex::new(first).expect("re")),
-            aliases: vec![format!("{name}-alias")],
-            injects: vec![],
-        })
+    fn grammar(name: &str, extensions: &[&str], filenames: &[&str], first: &str) -> Arc<Entry> {
+        Entry::detached(
+            name,
+            extensions.iter().map(|s| s.to_string()).collect(),
+            filenames.iter().map(|s| s.to_string()).collect(),
+            (!first.is_empty()).then(|| regex::Regex::new(first).expect("re")),
+            vec![format!("{name}-alias")],
+        )
     }
 
-    fn set() -> Vec<Arc<Grammar>> {
+    fn set() -> Vec<Arc<Entry>> {
         vec![
             grammar("typescript", &["ts", "mts"], &[], ""),
             grammar("dts", &["d.ts"], &[], ""),
@@ -95,7 +87,7 @@ mod tests {
         ]
     }
 
-    fn name(g: Option<Arc<Grammar>>) -> Option<String> {
+    fn name(g: Option<Arc<Entry>>) -> Option<String> {
         g.map(|g| g.name.clone())
     }
 

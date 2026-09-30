@@ -38,7 +38,7 @@
 53: 0+4=Comment
 55: 0+3=Comment 3+4=AltVariable
 56: 0+4=Tag 4+1=Comment 5+5=Attribute 11+8=String 19+1=Comment 20+2=Attribute 23+4=Comment 27+1=Tag
-57: 0+2=Comment 2+3=Tag 10+1=Comment 11+5=String 16+1=Comment 24+4=Tag
+57: 0+2=Comment 2+3=Tag 5+6=Comment 11+5=String 16+8=Comment 24+4=Tag
 58: 0+6=Tag
 59: 0+3=Comment
 61: 0+3=Comment 3+3=AltVariable

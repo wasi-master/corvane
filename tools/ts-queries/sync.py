@@ -27,6 +27,7 @@ are appended (Corvane additions, MIT).
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
@@ -41,9 +42,9 @@ KINDS = ("highlights", "injections", "locals")
 
 # Pinned query sources (bump deliberately, then rerun and review the diff).
 NVIM_REPO = "https://github.com/nvim-treesitter/nvim-treesitter"
-NVIM_REV = "main"
+NVIM_REV = "728e031f6b11d03d1f0708b7dc4fb0f1d9c8a137"
 HELIX_REPO = "https://github.com/helix-editor/helix"
-HELIX_REV = "master"
+HELIX_REV = "ba40e547426b0f9896c8bdc699a4ab11f2b37dbc"
 
 LICENSES = {"nvim": "Apache-2.0", "helix": "MPL-2.0", "corvane": "MIT"}
 
@@ -82,11 +83,23 @@ def packages() -> dict[str, dict]:
     return _packages
 
 
+def source_dir(name: str) -> Path:
+    return Path(os.environ.get("CORVANE_GRAMMAR_SOURCES", ROOT / "target" / "grammar-src")) / name
+
+
 def upstream_files(name: str, lang: dict) -> tuple[dict[str, list[Path]], str] | None:
-    pkg = packages().get(lang["package"])
-    if pkg is None:
-        return None
-    root = pkg["dir"]
+    if "url" in lang:
+        root = source_dir(name)
+        if not root.exists():
+            return None
+        pkg = {"dir": root, "version": lang["revision"][:12], "license": lang.get("license", "?")}
+        label_name = lang["url"].removeprefix("https://github.com/")
+    else:
+        pkg = packages().get(lang["package"])
+        if pkg is None:
+            return None
+        root = pkg["dir"]
+        label_name = lang["package"]
     config = {}
     ts_json = root / "tree-sitter.json"
     if ts_json.exists():
@@ -105,7 +118,7 @@ def upstream_files(name: str, lang: dict) -> tuple[dict[str, list[Path]], str] |
         if isinstance(listed, str):
             listed = [listed]
         files[kind] = [root / p for p in listed if (root / p).exists()]
-    label = f"{lang['package']} {pkg['version']}"
+    label = f"{label_name} {pkg['version']}"
     return files, f"{label} ({pkg['license']})"
 
 
@@ -392,7 +405,8 @@ def render_source(name: str, lang: dict, source: str) -> dict[str, str] | None:
             return None
         for kind in KINDS:
             body = "".join(p.read_text() for p in files[kind])
-            rels = ", ".join(str(p.relative_to(packages()[lang["package"]]["dir"])) for p in files[kind])
+            base = source_dir(name) if "url" in lang else packages()[lang["package"]]["dir"]
+            rels = ", ".join(str(p.relative_to(base)) for p in files[kind])
             out[kind] = header(name, f"{label}: {rels}" if rels else label) + body if body else header(name, label)
         return out
     if source == "corvane":
@@ -445,9 +459,13 @@ def third_party(languages: dict) -> str:
     ]
     for name in sorted(languages):
         lang = languages[name]
-        pkg = packages().get(lang["package"], {})
-        repo = pkg.get("repository", "")
-        parser = f"[{lang['package']} {pkg.get('version', '?')}]({repo})" if repo else f"{lang['package']} {pkg.get('version', '?')}"
+        if "url" in lang:
+            pkg = {"license": lang.get("license", "?")}
+            parser = f"[{lang['url'].removeprefix('https://github.com/')} {lang['revision'][:12]}]({lang['url']})"
+        else:
+            pkg = packages().get(lang["package"], {})
+            repo = pkg.get("repository", "")
+            parser = f"[{lang['package']} {pkg.get('version', '?')}]({repo})" if repo else f"{lang['package']} {pkg.get('version', '?')}"
         source = ""
         path = OUT / name / "highlights.scm"
         if path.exists():

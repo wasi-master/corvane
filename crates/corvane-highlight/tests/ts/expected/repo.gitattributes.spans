@@ -1,0 +1,6 @@
+1: 0+1=String 2+4=Keyword 7+4=String 12+3=Keyword 16+2=String
+2: 0+1=String 6+6=Keyword
+3: 0+1=String 5+4=Keyword 10+4=String
+4: 0+17=Comment
+5: 11+18=AltVariable 30+4=Atom 36+4=Keyword
+6: 5+2=String 8+22=AltVariable

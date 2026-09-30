@@ -10,9 +10,34 @@ in `languages.toml`; two scripts derive the rest.
 |---|---|
 | `crates/corvane-grammars/queries/<grammar>/{highlights,injections,locals}.scm` | `sync.py` |
 | `crates/corvane-grammars/THIRD_PARTY.md` (grammar + query licenses, shipped in the packs) | `sync.py` |
-| `crates/corvane-grammars/Cargo.toml`, `src/grammars.rs` (features, deps, the grammar table, `REST`) | `gen.py` |
+| `crates/corvane-grammars/Cargo.toml`, `src/grammars.rs`, `sources.txt` (features, deps, the grammar table, `REST`, the source-built list) | `gen.py` |
+| `tools/ts-queries/sources.lock.json` (sha256 and C entry point of every source-built grammar) | `fetch.py` |
+| `target/grammar-src/<grammar>/` (their `src/`, `queries/`, metadata; not in git) | `fetch.py` |
 | `docs/reference/tree-sitter-languages.md` | `cargo test -p corvane-highlight --test treesitter languages_doc` with `UPDATE_TS_LANGUAGES_DOC=1` |
 | `crates/corvane-highlight/tests/ts/expected/*.spans` | the same test file's `golden_spans` with `UPDATE_TS_GOLDEN=1` |
+
+## Two kinds of grammar
+
+- **Crates** (`package` + `version`): crates.io grammar crates, resolved by cargo.
+- **Source-built** (`url` + `revision`): grammars without a usable crate (none
+  published, or Rust bindings that pin an older tree-sitter). `fetch.py`
+  downloads the pinned GitHub tarball (sha256 in `sources.lock.json`) and
+  extracts `src/` + `queries/`; corvane-grammars' `build.rs` compiles
+  `parser.c` and the scanner and sets `cfg(corvane_src = "<name>")`. Without
+  fetched sources they are skipped, so a plain checkout still builds and
+  tests. `import_nvim.py` added nvim-treesitter's parser list this way, at
+  nvim-treesitter's pinned revisions, so its queries match (GPL / LGPL
+  grammars and ones needing `tree-sitter generate` are skipped).
+
+`gen.py` refuses two grammars claiming one file type.
+
+## Pack units
+
+`packaging/packs.sh` builds one library per unit (a crate's grammars, or one
+source-built grammar) with `build_unit.py`: clang compiles the parser(s),
+scanner(s) and a generated C table with corvane-grammars' layout (`ABI` 1),
+no Rust. The pack is those libraries gzipped plus `index.json` (`gen.py
+--index`), so the app can detect languages without opening any library.
 
 ## Adding or bumping a grammar
 
@@ -72,10 +97,8 @@ the node's named children unless `injection.include-children` is set
 
 ## Packs
 
-`packaging/packs.sh` builds `corvane-grammars` as a dylib twice: with the
-`all` feature (`tree-sitter-all`) and with `rest` (`tree-sitter-rest`: the
-grammars of languages GitHub Desktop does not highlight at all, plus the
-injection-only grammars they use), once per macOS architecture (the parse
-tables of ~100 grammars take ~170 MB per architecture, 13.5 MB zipped for
-`all` on arm64), ad-hoc signed, with `THIRD_PARTY.md`. Manifest entries carry
+`packaging/packs.sh` assembles `tree-sitter-all` (every unit) and
+`tree-sitter-rest` (the units of languages GitHub Desktop does not highlight
+at all, plus the injection-only grammars they use) per macOS architecture,
+ad-hoc signed, with `THIRD_PARTY.md`. Manifest entries carry
 `target = "macos-aarch64"` / `"macos-x86_64"`.

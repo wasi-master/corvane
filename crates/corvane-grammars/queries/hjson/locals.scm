@@ -1,0 +1,9 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/hjson/).
+; Source: nvim-treesitter@728e031f6b11 queries/hjson (Apache-2.0)
+; inherited from json
+[
+  (object)
+  (array)
+] @local.scope
+
+

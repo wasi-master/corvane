@@ -8,103 +8,311 @@ The grammars of Settings › Appearance › Syntax highlighting (flag `105-tree-
 |---|---|---|---|---|
 | ada | `.ads` `.adb` `.ada` |  | yes | nvim-treesitter@728e031f6b11 queries/ada (Apache-2.0) |
 | agda | `.agda` `.lagda` |  | yes | nvim-treesitter@728e031f6b11 queries/agda (Apache-2.0) |
+| angular | `.component.html` | yes |  | nvim-treesitter@728e031f6b11 queries/angular (Apache-2.0) |
+| apex | `.cls` `.trigger` `.apex` |  | yes | nvim-treesitter@728e031f6b11 queries/apex (Apache-2.0) |
+| arduino | `.ino` | yes |  | nvim-treesitter@728e031f6b11 queries/arduino (Apache-2.0) |
 | asciidoc | `.adoc` `.asciidoc` `.asc` |  | yes | tree-sitter-asciidoc 0.9.0 (Apache-2.0): queries/highlights.scm |
-| asm | `.asm` `.s` `.nasm` `.inc` |  | yes | nvim-treesitter@728e031f6b11 queries/asm (Apache-2.0) |
+| asm | `.asm` `.s` |  | yes | nvim-treesitter@728e031f6b11 queries/asm (Apache-2.0) |
+| astro | `.astro` | yes |  | nvim-treesitter@728e031f6b11 queries/astro (Apache-2.0) |
+| authzed | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/authzed (Apache-2.0) |
+| awk | `.awk` `.auk` `.gawk` `.mawk` `.nawk` |  | yes | nvim-treesitter@728e031f6b11 queries/awk (Apache-2.0) |
 | bash | `.sh` `.bash` `.ebuild` `.eclass` `.bats` `.command` `.ksh` `.bashrc` `.bash_profile` `.bash_login` `.bash_logout` `.profile` `bashrc` `.envrc` `pkgbuild` `apkbuild` | yes |  | nvim-treesitter@728e031f6b11 queries/bash (Apache-2.0) |
+| bass | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/bass (Apache-2.0) |
+| beancount | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/beancount (Apache-2.0) |
+| bibtex | `.bib` `.bibtex` |  | yes | nvim-treesitter@728e031f6b11 queries/bibtex (Apache-2.0) |
 | bicep | `.bicep` `.bicepparam` |  | yes | nvim-treesitter@728e031f6b11 queries/bicep (Apache-2.0) |
+| bitbake | `.bb` `.bbappend` `.bbclass` |  | yes | nvim-treesitter@728e031f6b11 queries/bitbake (Apache-2.0) |
+| blade | `.blade` `.blade.php` | yes |  | nvim-treesitter@728e031f6b11 queries/blade (Apache-2.0) |
+| bp | `.bp` |  | yes | nvim-treesitter@728e031f6b11 queries/bp (Apache-2.0) |
+| bpftrace | `.bt` |  | yes | nvim-treesitter@728e031f6b11 queries/bpftrace (Apache-2.0) |
+| brightscript | `.brs` |  | yes | nvim-treesitter@728e031f6b11 queries/brightscript (Apache-2.0) |
 | c | `.c` `.h` | yes |  | nvim-treesitter@728e031f6b11 queries/c (Apache-2.0) |
+| c3 | `.c3` `.c3i` `.c3t` |  | yes | nvim-treesitter@728e031f6b11 queries/c3 (Apache-2.0) |
 | c_sharp | `.cs` `.csx` | yes |  | nvim-treesitter@728e031f6b11 queries/c_sharp (Apache-2.0) |
+| cairo | `.cairo` |  | yes | nvim-treesitter@728e031f6b11 queries/cairo (Apache-2.0) |
+| capnp | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/capnp (Apache-2.0) |
+| chatito | `.chatito` |  | yes | nvim-treesitter@728e031f6b11 queries/chatito (Apache-2.0) |
+| circom | `.circom` |  | yes | nvim-treesitter@728e031f6b11 queries/circom (Apache-2.0) |
+| clojure | `.clj` `.boot` `.cl2` `.cljc` `.cljs` `.cljs.hl` `.cljscm` `.cljx` `.hic` `riemann.config` | yes |  | nvim-treesitter@728e031f6b11 queries/clojure (Apache-2.0) |
 | cmake | `.cmake` `cmakelists.txt` | yes |  | nvim-treesitter@728e031f6b11 queries/cmake (Apache-2.0) |
 | comment | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/comment (Apache-2.0) |
 | commonlisp | `.lisp` `.lsp` `.cl` `.asd` |  | yes | nvim-treesitter@728e031f6b11 queries/commonlisp (Apache-2.0) |
-| cpp | `.cc` `.cpp` `.cxx` `.c++` `.hpp` `.hxx` `.hh` `.h++` `.ipp` `.tpp` `.inl` `.ino` | yes |  | nvim-treesitter@728e031f6b11 queries/cpp (Apache-2.0) |
+| cooklang | `.cook` |  | yes | nvim-treesitter@728e031f6b11 queries/cooklang (Apache-2.0) |
+| corn | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/corn (Apache-2.0) |
+| cpon | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/cpon (Apache-2.0) |
+| cpp | `.cc` `.cpp` `.cxx` `.c++` `.hpp` `.hxx` `.hh` `.h++` `.ipp` `.tpp` `.inl` | yes |  | nvim-treesitter@728e031f6b11 queries/cpp (Apache-2.0) |
 | css | `.css` | yes |  | nvim-treesitter@728e031f6b11 queries/css (Apache-2.0) |
+| csv | `.csv` |  | yes | nvim-treesitter@728e031f6b11 queries/csv (Apache-2.0) |
 | cuda | `.cu` `.cuh` |  | yes | nvim-treesitter@728e031f6b11 queries/cuda (Apache-2.0) |
+| cue | `.cue` |  | yes | nvim-treesitter@728e031f6b11 queries/cue (Apache-2.0) |
+| cylc | `.cylc` `suite.rc` |  | yes | nvim-treesitter@728e031f6b11 queries/cylc (Apache-2.0) |
 | d | `.d` `.di` |  | yes | nvim-treesitter@728e031f6b11 queries/d (Apache-2.0) |
 | dart | `.dart` | yes |  | tree-sitter-dart 0.2.0 (MIT): queries/highlights.scm |
+| desktop | `.desktop` `.directory` `.desktop.in` |  | yes | nvim-treesitter@728e031f6b11 queries/desktop (Apache-2.0) |
+| devicetree | `.dts` `.dtsi` `.dtso` `.its` `.overlay` |  | yes | nvim-treesitter@728e031f6b11 queries/devicetree (Apache-2.0) |
+| dhall | `.dhall` |  | yes | nvim-treesitter@728e031f6b11 queries/dhall (Apache-2.0) |
 | diff | `.diff` `.patch` | yes |  | tree-sitter-diff 0.1.0 (MIT): queries/highlights.scm |
+| djot | `.dj` |  | yes | nvim-treesitter@728e031f6b11 queries/djot (Apache-2.0) |
+| dockerfile | `.dockerfile` `.docker` `.container` `.containerfile` `dockerfile` `containerfile` | yes |  | nvim-treesitter@728e031f6b11 queries/dockerfile (Apache-2.0) |
+| dot | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/dot (Apache-2.0) |
+| doxygen | `.doxygen` |  | yes | nvim-treesitter@728e031f6b11 queries/doxygen (Apache-2.0) |
 | dtd | `.dtd` |  | yes | nvim-treesitter@728e031f6b11 queries/dtd (Apache-2.0) |
+| earthfile | `earthfile` |  | yes | nvim-treesitter@728e031f6b11 queries/earthfile (Apache-2.0) |
+| editorconfig | `.editorconfig` `editorconfig` `.editorconfig` | yes |  | nvim-treesitter@728e031f6b11 queries/editorconfig (Apache-2.0) |
+| eds | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/eds (Apache-2.0) |
+| eex | `.html.eex` `.leex` |  | yes | nvim-treesitter@728e031f6b11 queries/eex (Apache-2.0) |
 | elisp | `.el` `.emacs` `_emacs` |  | yes | tree-sitter-elisp 1.7.2 (MIT): queries/highlights.scm |
 | elixir | `.ex` `.exs` | yes |  | nvim-treesitter@728e031f6b11 queries/elixir (Apache-2.0) |
 | elm | `.elm` |  | yes | nvim-treesitter@728e031f6b11 queries/elm (Apache-2.0) |
+| elsa | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/elsa (Apache-2.0) |
+| elvish | `.elv` |  | yes | nvim-treesitter@728e031f6b11 queries/elvish (Apache-2.0) |
 | embedded_template | `.erb` `.ejs` `.etlua` `.rhtml` |  | yes | nvim-treesitter@728e031f6b11 queries/embedded_template (Apache-2.0) |
+| enforce | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/enforce (Apache-2.0) |
 | erlang | `.erl` `.hrl` `.escript` `.app.src` `rebar.config` |  | yes | nvim-treesitter@728e031f6b11 queries/erlang (Apache-2.0) |
+| facility | `.fsd` |  | yes | nvim-treesitter@728e031f6b11 queries/facility (Apache-2.0) |
+| faust | `.dsp` `.lib` |  | yes | nvim-treesitter@728e031f6b11 queries/faust (Apache-2.0) |
+| fennel | `.fnl` |  | yes | nvim-treesitter@728e031f6b11 queries/fennel (Apache-2.0) |
+| fidl | `.fidl` |  | yes | nvim-treesitter@728e031f6b11 queries/fidl (Apache-2.0) |
+| firrtl | `.fir` |  | yes | nvim-treesitter@728e031f6b11 queries/firrtl (Apache-2.0) |
 | fish | `.fish` |  | yes | nvim-treesitter@728e031f6b11 queries/fish (Apache-2.0) |
+| foam | `.foam` `openfoam` |  | yes | nvim-treesitter@728e031f6b11 queries/foam (Apache-2.0) |
+| forth | `.forth` `.fth` `.4th` `.fr` `.frt` |  | yes | nvim-treesitter@728e031f6b11 queries/forth (Apache-2.0) |
 | fortran | `.f` `.f90` `.f95` `.f03` `.f08` `.for` `.ftn` `.f77` | yes |  | nvim-treesitter@728e031f6b11 queries/fortran (Apache-2.0) |
+| fsh | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/fsh (Apache-2.0) |
 | fsharp | `.fs` `.fsx` `.fsscript` | yes |  | nvim-treesitter@728e031f6b11 queries/fsharp (Apache-2.0) |
+| func | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/func (Apache-2.0) |
+| gap | `.g` `.gi` `.gap` |  | yes | nvim-treesitter@728e031f6b11 queries/gap (Apache-2.0) |
+| gaptst | `.tst` |  | yes | nvim-treesitter@728e031f6b11 queries/gaptst (Apache-2.0) |
 | gdscript | `.gd` |  | yes | helix@ba40e547426b queries/gdscript (MPL-2.0) |
+| gdshader | `.gdshader` `.gdshaderinc` |  | yes | nvim-treesitter@728e031f6b11 queries/gdshader (Apache-2.0) |
+| git_config | `.gitconfig` `.gitconfig` `.gitmodules` `.tgitconfig` `config.worktree` |  | yes | nvim-treesitter@728e031f6b11 queries/git_config (Apache-2.0) |
+| git_rebase | `.git-rebase-todo` |  | yes | nvim-treesitter@728e031f6b11 queries/git_rebase (Apache-2.0) |
+| gitattributes | `.gitattributes` `gitattributes` `.gitattributes` | yes |  | nvim-treesitter@728e031f6b11 queries/gitattributes (Apache-2.0) |
 | gitcommit | `commit_editmsg` `merge_msg` `tag_editmsg` |  | yes | nvim-treesitter@728e031f6b11 queries/gitcommit (Apache-2.0) |
+| gitignore | `.gitignore` `.agignore` `.atomignore` `.babelignore` `.bzrignore` `.ckignore` `.coffeelintignore` `.cvsignore` `.dockerignore` `.easignore` `.eleventyignore` `.eslint-ignore` `.eslintignore` `.gitignore` `.ignore` `.markdownlintignore` `.nodemonignore` `.npmignore` `.prettierignore` `.rgignore` `.stylelintignore` `.vercelignore` `.vscodeignore` `gitignore-global` `gitignore_global` | yes |  | nvim-treesitter@728e031f6b11 queries/gitignore (Apache-2.0) |
 | gleam | `.gleam` |  | yes | nvim-treesitter@728e031f6b11 queries/gleam (Apache-2.0) |
+| glimmer | `.html.handlebars` `.glimmer` |  | yes | nvim-treesitter@728e031f6b11 queries/glimmer (Apache-2.0) |
+| glimmer_javascript | `.gjs` `.javascript.glimmer` |  | yes | nvim-treesitter@728e031f6b11 queries/glimmer_javascript (Apache-2.0) |
+| glimmer_typescript | `.gts` `.typescript.glimmer` |  | yes | nvim-treesitter@728e031f6b11 queries/glimmer_typescript (Apache-2.0) |
 | glsl | `.glsl` `.vert` `.frag` `.geom` `.tesc` `.tese` `.comp` `.rgen` `.rchit` `.rmiss` `.mesh` `.task` |  | yes | nvim-treesitter@728e031f6b11 queries/glsl (Apache-2.0) |
+| gn | `.gn` `.gni` `.gn` |  | yes | nvim-treesitter@728e031f6b11 queries/gn (Apache-2.0) |
+| gnuplot | `.gnuplot` `.gp` `.gnu` `.p` `.plot` `.plt` |  | yes | nvim-treesitter@728e031f6b11 queries/gnuplot (Apache-2.0) |
 | go | `.go` | yes |  | nvim-treesitter@728e031f6b11 queries/go (Apache-2.0) |
+| goctl | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/goctl (Apache-2.0) |
 | godot_resource | `.tscn` `.tres` `.godot` |  | yes | nvim-treesitter@728e031f6b11 queries/godot_resource (Apache-2.0) |
+| gomod | `.go.mod` |  | yes | nvim-treesitter@728e031f6b11 queries/gomod (Apache-2.0) |
+| gosum | `.go.sum` |  | yes | nvim-treesitter@728e031f6b11 queries/gosum (Apache-2.0) |
+| gotmpl | `.gohtml` `.gotmpl` `.html.tmpl` `.tmpl` `.tpl` `_helpers.tpl` |  | yes | nvim-treesitter@728e031f6b11 queries/gotmpl (Apache-2.0) |
+| gowork | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/gowork (Apache-2.0) |
+| gpg | `.gpg.conf` |  | yes | nvim-treesitter@728e031f6b11 queries/gpg (Apache-2.0) |
 | graphql | `.graphql` `.graphqls` `.gql` |  | yes | nvim-treesitter@728e031f6b11 queries/graphql (Apache-2.0) |
+| gren | `.gren` |  | yes | nvim-treesitter@728e031f6b11 queries/gren (Apache-2.0) |
+| groovy | `.groovy` `.grt` `.gtpl` `.gvy` `jenkinsfile` |  | yes | nvim-treesitter@728e031f6b11 queries/groovy (Apache-2.0) |
+| groq | `.groq` |  | yes | nvim-treesitter@728e031f6b11 queries/groq (Apache-2.0) |
+| gstlaunch | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/gstlaunch (Apache-2.0) |
+| hack | `.hack` `.hhi` |  | yes | nvim-treesitter@728e031f6b11 queries/hack (Apache-2.0) |
 | handlebars | `.hbs` `.handlebars` `.mustache` |  | yes | tree-sitter-handlebars 0.1.0 (MIT): queries/highlights.scm |
+| hare | `.ha` |  | yes | nvim-treesitter@728e031f6b11 queries/hare (Apache-2.0) |
 | haskell | `.hs` `.hs-boot` `.hsc` |  | yes | nvim-treesitter@728e031f6b11 queries/haskell (Apache-2.0) |
-| hcl | `.hcl` `.tf` `.tfvars` `.nomad` |  | yes | nvim-treesitter@728e031f6b11 queries/hcl (Apache-2.0) |
+| haskell_persistent | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/haskell_persistent (Apache-2.0) |
+| hcl | `.hcl` `.nomad` |  | yes | nvim-treesitter@728e031f6b11 queries/hcl (Apache-2.0) |
 | heex | `.heex` |  | yes | nvim-treesitter@728e031f6b11 queries/heex (Apache-2.0) |
+| helm | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/helm (Apache-2.0) |
+| hjson | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/hjson (Apache-2.0) |
 | hlsl | `.hlsl` `.hlsli` `.fx` `.fxh` `.usf` `.ush` |  | yes | nvim-treesitter@728e031f6b11 queries/hlsl (Apache-2.0) |
+| hocon | `.hocon` `.scalafix.conf` `.scalafmt.conf` |  | yes | nvim-treesitter@728e031f6b11 queries/hocon (Apache-2.0) |
+| hoon | `.hoon` |  | yes | nvim-treesitter@728e031f6b11 queries/hoon (Apache-2.0) |
 | html | `.html` `.htm` `.xhtml` `.shtml` | yes |  | nvim-treesitter@728e031f6b11 queries/html (Apache-2.0) |
-| ini | `.ini` `.cfg` `.inf` `.gitconfig` `.npmrc` `.editorconfig` `gitconfig` | yes |  | nvim-treesitter@728e031f6b11 queries/ini (Apache-2.0) |
+| htmldjango | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/htmldjango (Apache-2.0) |
+| http | `.http` |  | yes | nvim-treesitter@728e031f6b11 queries/http (Apache-2.0) |
+| hurl | `.hurl` |  | yes | nvim-treesitter@728e031f6b11 queries/hurl (Apache-2.0) |
+| hyprlang | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/hyprlang (Apache-2.0) |
+| idl | `.idl` `.pro` `.dlm` |  | yes | nvim-treesitter@728e031f6b11 queries/idl (Apache-2.0) |
+| idris | `.idr` `.lidr` |  | yes | nvim-treesitter@728e031f6b11 queries/idris (Apache-2.0) |
+| ini | `.ini` `.cfg` `.inf` `.npmrc` | yes |  | nvim-treesitter@728e031f6b11 queries/ini (Apache-2.0) |
+| inko | `.inko` |  | yes | nvim-treesitter@728e031f6b11 queries/inko (Apache-2.0) |
+| ispc | `.ispc` `.isph` |  | yes | nvim-treesitter@728e031f6b11 queries/ispc (Apache-2.0) |
+| janet_simple | `.cgen` `.janet` `.jdn` |  | yes | nvim-treesitter@728e031f6b11 queries/janet_simple (Apache-2.0) |
 | java | `.java` | yes |  | nvim-treesitter@728e031f6b11 queries/java (Apache-2.0) |
+| javadoc | `.javadoc` |  | yes | nvim-treesitter@728e031f6b11 queries/javadoc (Apache-2.0) |
 | javascript | `.js` `.mjs` `.cjs` `.jsx` | yes |  | nvim-treesitter@728e031f6b11 queries/javascript (Apache-2.0) |
 | jinja | `.jinja` `.jinja2` `.j2` |  | yes | tree-sitter-jinja2 0.0.16 (MIT): queries/highlights.scm |
-| jsdoc | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/jsdoc (Apache-2.0) |
+| jinja_inline | `.jinja_inline` |  | yes | nvim-treesitter@728e031f6b11 queries/jinja_inline (Apache-2.0) |
+| jjdescription | `.jjdescription` |  | yes | nvim-treesitter@728e031f6b11 queries/jjdescription (Apache-2.0) |
+| jq | `.jq` |  | yes | nvim-treesitter@728e031f6b11 queries/jq (Apache-2.0) |
+| jsdoc | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/jsdoc (Apache-2.0) |
 | json | `.json` `.jsonc` `.geojson` `.webmanifest` `.har` `.code-workspace` `.jsonl` `.babelrc` `.eslintrc` `.prettierrc` `composer.lock` `flake.lock` `.swcrc` | yes |  | nvim-treesitter@728e031f6b11 queries/json (Apache-2.0) |
+| json5 | `.json5` |  | yes | nvim-treesitter@728e031f6b11 queries/json5 (Apache-2.0) |
 | jsonnet | `.jsonnet` `.libsonnet` |  | yes | tree-sitter-jsonnet 0.0.1 (MIT): queries/highlights.scm |
 | julia | `.jl` | yes |  | nvim-treesitter@728e031f6b11 queries/julia (Apache-2.0) |
+| just | `.just` `.justfile` `just` `justfile` `.justfile` |  | yes | nvim-treesitter@728e031f6b11 queries/just (Apache-2.0) |
+| kcl | `.k` `kcl.mod` `kcl.mod.lock` |  | yes | nvim-treesitter@728e031f6b11 queries/kcl (Apache-2.0) |
+| kconfig | `kconfig` |  | yes | nvim-treesitter@728e031f6b11 queries/kconfig (Apache-2.0) |
 | kdl | `.kdl` |  | yes | nvim-treesitter@728e031f6b11 queries/kdl (Apache-2.0) |
+| kitty | `.kitty.conf` |  | yes | nvim-treesitter@728e031f6b11 queries/kitty (Apache-2.0) |
+| kos | `.kos` |  | yes | nvim-treesitter@728e031f6b11 queries/kos (Apache-2.0) |
 | kotlin | `.kt` `.kts` | yes |  | Corvane (MIT) |
+| koto | `.koto` |  | yes | nvim-treesitter@728e031f6b11 queries/koto (Apache-2.0) |
+| kusto | `.csl` `.kql` |  | yes | nvim-treesitter@728e031f6b11 queries/kusto (Apache-2.0) |
+| lalrpop | `.lalrpop` |  | yes | nvim-treesitter@728e031f6b11 queries/lalrpop (Apache-2.0) |
+| ledger | `.ledger` `.journal` |  | yes | nvim-treesitter@728e031f6b11 queries/ledger (Apache-2.0) |
+| leo | `.leo` |  | yes | nvim-treesitter@728e031f6b11 queries/leo (Apache-2.0) |
 | less | `.less` | yes |  | tree-sitter-less 1.0.0 (MIT): queries/highlights.scm |
+| linkerscript | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/linkerscript (Apache-2.0) |
+| liquid | `.liquid` |  | yes | nvim-treesitter@728e031f6b11 queries/liquid (Apache-2.0) |
+| liquidsoap | `.liquidsoap` `.liq` |  | yes | nvim-treesitter@728e031f6b11 queries/liquidsoap (Apache-2.0) |
 | llvm | `.ll` |  | yes | nvim-treesitter@728e031f6b11 queries/llvm (Apache-2.0) |
 | lua | `.lua` | yes |  | nvim-treesitter@728e031f6b11 queries/lua (Apache-2.0) |
+| luadoc | `.luadoc` |  | yes | nvim-treesitter@728e031f6b11 queries/luadoc (Apache-2.0) |
+| luap | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/luap (Apache-2.0) |
 | luau | `.luau` | yes |  | nvim-treesitter@728e031f6b11 queries/luau (Apache-2.0) |
+| m68k | `.x68` |  | yes | nvim-treesitter@728e031f6b11 queries/m68k (Apache-2.0) |
 | make | `.mk` `.mak` `.make` `makefile` `gnumakefile` `bsdmakefile` |  | yes | nvim-treesitter@728e031f6b11 queries/make (Apache-2.0) |
 | markdown | `.md` `.markdown` `.mdown` `.mkd` `.mkdn` `.mdwn` `.ronn` | yes |  | nvim-treesitter@728e031f6b11 queries/markdown (Apache-2.0) |
-| markdown_inline | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/markdown_inline (Apache-2.0) |
+| markdown_inline | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/markdown_inline (Apache-2.0) |
+| matlab | `.matlab` |  | yes | nvim-treesitter@728e031f6b11 queries/matlab (Apache-2.0) |
+| menhir | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/menhir (Apache-2.0) |
+| mermaid | `.mmd` `.mermaid` |  | yes | nvim-treesitter@728e031f6b11 queries/mermaid (Apache-2.0) |
+| meson | `.meson` `meson.build` `meson_options.txt` |  | yes | nvim-treesitter@728e031f6b11 queries/meson (Apache-2.0) |
+| nasm | `.a51` `.nas` `.nasm` |  | yes | nvim-treesitter@728e031f6b11 queries/nasm (Apache-2.0) |
 | nginx | `.nginx` `nginx.conf` |  | yes | nvim-treesitter@728e031f6b11 queries/nginx (Apache-2.0) |
 | nickel | `.ncl` |  | yes | nvim-treesitter@728e031f6b11 queries/nickel (Apache-2.0) |
+| nim | `.nimble` `.nims` `.nim` `.nim.cfg` `.nimrod` `nim.cfg` |  | yes | nvim-treesitter@728e031f6b11 queries/nim (Apache-2.0) |
+| nim_format_string | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/nim_format_string (Apache-2.0) |
+| ninja | `.ninja` |  | yes | nvim-treesitter@728e031f6b11 queries/ninja (Apache-2.0) |
 | nix | `.nix` |  | yes | nvim-treesitter@728e031f6b11 queries/nix (Apache-2.0) |
+| nqc | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/nqc (Apache-2.0) |
+| nu | `.nu` `nukefile` |  | yes | nvim-treesitter@728e031f6b11 queries/nu (Apache-2.0) |
 | objc | `.m` `.mm` | yes |  | nvim-treesitter@728e031f6b11 queries/objc (Apache-2.0) |
 | ocaml | `.ml` | yes |  | nvim-treesitter@728e031f6b11 queries/ocaml (Apache-2.0) |
 | ocaml_interface | `.mli` |  | yes | nvim-treesitter@728e031f6b11 queries/ocaml_interface (Apache-2.0) |
 | ocaml_type | (injected only) |  |  | tree-sitter-ocaml 0.26.0 (MIT): queries/highlights.scm |
 | odin | `.odin` |  | yes | nvim-treesitter@728e031f6b11 queries/odin (Apache-2.0) |
 | pascal | `.pas` `.dpr` `.lpr` `.dpk` | yes |  | nvim-treesitter@728e031f6b11 queries/pascal (Apache-2.0) |
+| passwd | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/passwd (Apache-2.0) |
+| pem | `.pem` `.key` `.crt` `.cer` `.csr` |  | yes | nvim-treesitter@728e031f6b11 queries/pem (Apache-2.0) |
 | php | `.php` `.phtml` `.php3` `.php4` `.php5` `.php7` `.phps` | yes |  | nvim-treesitter@728e031f6b11 queries/php (Apache-2.0) |
 | php_only | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/php_only (Apache-2.0) |
+| phpdoc | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/phpdoc (Apache-2.0) |
+| pioasm | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/pioasm (Apache-2.0) |
+| pkl | `.pcf` `.pkl` |  | yes | nvim-treesitter@728e031f6b11 queries/pkl (Apache-2.0) |
+| po | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/po (Apache-2.0) |
+| poe_filter | `.filter` |  | yes | nvim-treesitter@728e031f6b11 queries/poe_filter (Apache-2.0) |
+| pony | `.pony` |  | yes | nvim-treesitter@728e031f6b11 queries/pony (Apache-2.0) |
 | powershell | `.ps1` `.psm1` `.psd1` | yes |  | nvim-treesitter@728e031f6b11 queries/powershell (Apache-2.0) |
 | printf | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/printf (Apache-2.0) |
+| prisma | `.prisma` |  | yes | nvim-treesitter@728e031f6b11 queries/prisma (Apache-2.0) |
+| promql | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/promql (Apache-2.0) |
 | properties | `.properties` | yes |  | nvim-treesitter@728e031f6b11 queries/properties (Apache-2.0) |
 | proto | `.proto` | yes |  | nvim-treesitter@728e031f6b11 queries/proto (Apache-2.0) |
+| prql | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/prql (Apache-2.0) |
+| psv | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/psv (Apache-2.0) |
+| pug | `.jade` `.pug` | yes |  | nvim-treesitter@728e031f6b11 queries/pug (Apache-2.0) |
+| puppet | `.pp` `modulefile` | yes |  | nvim-treesitter@728e031f6b11 queries/puppet (Apache-2.0) |
+| purescript | `.^(purescript|purs)$` `.purs` |  | yes | nvim-treesitter@728e031f6b11 queries/purescript (Apache-2.0) |
+| pymanifest | `manifest.in` |  | yes | nvim-treesitter@728e031f6b11 queries/pymanifest (Apache-2.0) |
 | python | `.py` `.pyi` `.pyw` `.gyp` `.wsgi` `sconstruct` `sconscript` | yes |  | nvim-treesitter@728e031f6b11 queries/python (Apache-2.0) |
 | ql | `.ql` `.qll` |  | yes | nvim-treesitter@728e031f6b11 queries/ql (Apache-2.0) |
+| qmldir | `.qmldir` |  | yes | nvim-treesitter@728e031f6b11 queries/qmldir (Apache-2.0) |
+| qmljs | `.qml` |  | yes | nvim-treesitter@728e031f6b11 queries/qmljs (Apache-2.0) |
+| query | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/query (Apache-2.0) |
 | r | `.r` `.rprofile` `.rprofile` | yes |  | nvim-treesitter@728e031f6b11 queries/r (Apache-2.0) |
 | racket | `.rkt` `.rktl` `.rktd` `.scrbl` |  | yes | nvim-treesitter@728e031f6b11 queries/racket (Apache-2.0) |
+| rasi | `.rasi` |  | yes | nvim-treesitter@728e031f6b11 queries/rasi (Apache-2.0) |
+| razor | `.razor` `.cshtml` | yes |  | nvim-treesitter@728e031f6b11 queries/razor (Apache-2.0) |
+| rbs | `.rbs` |  | yes | nvim-treesitter@728e031f6b11 queries/rbs (Apache-2.0) |
+| re2c | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/re2c (Apache-2.0) |
+| readline | `.inputrc` `.inputrc` `inputrc` |  | yes | nvim-treesitter@728e031f6b11 queries/readline (Apache-2.0) |
 | regex | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/regex (Apache-2.0) |
+| rego | `.rego` |  | yes | nvim-treesitter@728e031f6b11 queries/rego (Apache-2.0) |
 | requirements | `requirements.txt` `requirements-dev.txt` `constraints.txt` |  | yes | nvim-treesitter@728e031f6b11 queries/requirements (Apache-2.0) |
+| rescript | `.res` `.resi` |  | yes | nvim-treesitter@728e031f6b11 queries/rescript (Apache-2.0) |
+| rifleconf | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/rifleconf (Apache-2.0) |
+| robot | `.robot` |  | yes | nvim-treesitter@728e031f6b11 queries/robot (Apache-2.0) |
+| robots_txt | `.robots` `robots.txt` |  | yes | nvim-treesitter@728e031f6b11 queries/robots_txt (Apache-2.0) |
+| roc | `.roc` |  | yes | nvim-treesitter@728e031f6b11 queries/roc (Apache-2.0) |
+| ron | `.ron` |  | yes | nvim-treesitter@728e031f6b11 queries/ron (Apache-2.0) |
 | rst | `.rst` `.rest` | yes |  | nvim-treesitter@728e031f6b11 queries/rst (Apache-2.0) |
 | ruby | `.rb` `.rake` `.gemspec` `.ru` `.rbw` `.podspec` `.thor` `.jbuilder` `.rabl` `gemfile` `rakefile` `podfile` `vagrantfile` `brewfile` `guardfile` `fastfile` `appfile` `capfile` | yes |  | nvim-treesitter@728e031f6b11 queries/ruby (Apache-2.0) |
+| runescript | `.rs2` `.cs2` |  | yes | nvim-treesitter@728e031f6b11 queries/runescript (Apache-2.0) |
 | rust | `.rs` | yes |  | nvim-treesitter@728e031f6b11 queries/rust (Apache-2.0) |
 | scala | `.scala` `.sc` `.sbt` | yes |  | nvim-treesitter@728e031f6b11 queries/scala (Apache-2.0) |
+| scfg | `.scfg` |  | yes | nvim-treesitter@728e031f6b11 queries/scfg (Apache-2.0) |
 | scheme | `.scm` `.ss` `.sld` | yes |  | nvim-treesitter@728e031f6b11 queries/scheme (Apache-2.0) |
 | scss | `.scss` | yes |  | nvim-treesitter@728e031f6b11 queries/scss (Apache-2.0) |
+| sflog | `.sflog` |  | yes | nvim-treesitter@728e031f6b11 queries/sflog (Apache-2.0) |
+| slang | `.slang` |  | yes | nvim-treesitter@728e031f6b11 queries/slang (Apache-2.0) |
+| slim | `.slim` | yes |  | nvim-treesitter@728e031f6b11 queries/slim (Apache-2.0) |
+| slint | `.slint` |  | yes | nvim-treesitter@728e031f6b11 queries/slint (Apache-2.0) |
+| smali | `.smali` |  | yes | nvim-treesitter@728e031f6b11 queries/smali (Apache-2.0) |
+| smithy | `.smithy` |  | yes | nvim-treesitter@728e031f6b11 queries/smithy (Apache-2.0) |
+| snakemake | `.smk` `.snakefile` `snakefile` |  | yes | nvim-treesitter@728e031f6b11 queries/snakemake (Apache-2.0) |
+| snl | `.st` `.stt` | yes |  | nvim-treesitter@728e031f6b11 queries/snl (Apache-2.0) |
 | solidity | `.sol` |  | yes | nvim-treesitter@728e031f6b11 queries/solidity (Apache-2.0) |
+| soql | `.soql` |  | yes | nvim-treesitter@728e031f6b11 queries/soql (Apache-2.0) |
+| sosl | `.sosl` |  | yes | nvim-treesitter@728e031f6b11 queries/sosl (Apache-2.0) |
+| sourcepawn | `.sp` |  | yes | nvim-treesitter@728e031f6b11 queries/sourcepawn (Apache-2.0) |
+| sparql | `.sparql` `.rq` | yes |  | nvim-treesitter@728e031f6b11 queries/sparql (Apache-2.0) |
+| sproto | `.sproto` |  | yes | nvim-treesitter@728e031f6b11 queries/sproto (Apache-2.0) |
+| sql | `.sql` `.ddl` `.mysql` `.prc` `.tab` `.udf` `.viw` | yes |  | nvim-treesitter@728e031f6b11 queries/sql (Apache-2.0) |
+| squirrel | `.nut` |  | yes | nvim-treesitter@728e031f6b11 queries/squirrel (Apache-2.0) |
+| ssh_config | `.ssh_config` `ssh-config` `ssh_config` `sshconfig` `sshconfig.snip` `sshd-config` `sshd_config` |  | yes | nvim-treesitter@728e031f6b11 queries/ssh_config (Apache-2.0) |
 | starlark | `.bzl` `.star` `.bazel` `build` `build.bazel` `workspace` `workspace.bazel` `module.bazel` `tiltfile` |  | yes | nvim-treesitter@728e031f6b11 queries/starlark (Apache-2.0) |
+| strace | `.strace` |  | yes | nvim-treesitter@728e031f6b11 queries/strace (Apache-2.0) |
+| styled | (injected only) |  | yes | nvim-treesitter@728e031f6b11 queries/styled (Apache-2.0) |
+| supercollider | `.scd` |  | yes | nvim-treesitter@728e031f6b11 queries/supercollider (Apache-2.0) |
+| superhtml | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/superhtml (Apache-2.0) |
+| surface | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/surface (Apache-2.0) |
 | svelte | `.svelte` |  | yes | nvim-treesitter@728e031f6b11 queries/svelte (Apache-2.0) |
 | swift | `.swift` | yes |  | nvim-treesitter@728e031f6b11 queries/swift (Apache-2.0) |
+| sxhkdrc | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/sxhkdrc (Apache-2.0) |
+| systemtap | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/systemtap (Apache-2.0) |
 | systemverilog | `.sv` `.svh` |  | yes | nvim-treesitter@728e031f6b11 queries/systemverilog (Apache-2.0) |
+| t32 | `.cmm` `.cmmt` `.t32` |  | yes | nvim-treesitter@728e031f6b11 queries/t32 (Apache-2.0) |
+| tablegen | `.td` |  | yes | nvim-treesitter@728e031f6b11 queries/tablegen (Apache-2.0) |
+| tact | `.tact` |  | yes | nvim-treesitter@728e031f6b11 queries/tact (Apache-2.0) |
+| tcl | `.tk` `.tcl` `.tm` `.adp` `.sdc` `.tcl.in` `.xdc` `owh` `starfield` |  | yes | nvim-treesitter@728e031f6b11 queries/tcl (Apache-2.0) |
 | templ | `.templ` |  | yes | nvim-treesitter@728e031f6b11 queries/templ (Apache-2.0) |
+| tera | `.tera` |  | yes | nvim-treesitter@728e031f6b11 queries/tera (Apache-2.0) |
+| terraform | `.tf` `.tfvars` `.tofu` `.workflow` |  | yes | nvim-treesitter@728e031f6b11 queries/terraform (Apache-2.0) |
+| textproto | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/textproto (Apache-2.0) |
+| thrift | `.thrift` |  | yes | nvim-treesitter@728e031f6b11 queries/thrift (Apache-2.0) |
+| tiger | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/tiger (Apache-2.0) |
 | tlaplus | `.tla` |  | yes | nvim-treesitter@728e031f6b11 queries/tlaplus (Apache-2.0) |
+| todotxt | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/todotxt (Apache-2.0) |
 | toml | `.toml` `cargo.lock` `poetry.lock` `uv.lock` `pipfile` | yes |  | nvim-treesitter@728e031f6b11 queries/toml (Apache-2.0) |
+| tsv | `.tsv` `.vcf` |  | yes | nvim-treesitter@728e031f6b11 queries/tsv (Apache-2.0) |
 | tsx | `.tsx` `.mtsx` `.ctsx` | yes |  | nvim-treesitter@728e031f6b11 queries/tsx (Apache-2.0) |
+| turtle | `.ttl` |  | yes | nvim-treesitter@728e031f6b11 queries/turtle (Apache-2.0) |
+| twig | `.twig` `.html.twig` `.html.twig.js.css` | yes |  | nvim-treesitter@728e031f6b11 queries/twig (Apache-2.0) |
 | typescript | `.ts` `.mts` `.cts` | yes |  | nvim-treesitter@728e031f6b11 queries/typescript (Apache-2.0) |
+| typespec | `.typespec` `.tsp` |  | yes | nvim-treesitter@728e031f6b11 queries/typespec (Apache-2.0) |
+| typoscript | `.typoscript` `.tsconfig` |  | yes | nvim-treesitter@728e031f6b11 queries/typoscript (Apache-2.0) |
+| typst | `.typ` |  | yes | nvim-treesitter@728e031f6b11 queries/typst (Apache-2.0) |
+| udev | `.rules` |  | yes | nvim-treesitter@728e031f6b11 queries/udev (Apache-2.0) |
+| ungrammar | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/ungrammar (Apache-2.0) |
+| uxntal | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/uxntal (Apache-2.0) |
+| v | `.vsh` `.v.mod` |  | yes | nvim-treesitter@728e031f6b11 queries/v (Apache-2.0) |
+| vento | `.vto` |  | yes | nvim-treesitter@728e031f6b11 queries/vento (Apache-2.0) |
 | verilog | `.v` `.vh` |  | yes | helix@ba40e547426b queries/verilog (MPL-2.0) |
 | vhdl | `.vhd` `.vhdl` |  | yes | nvim-treesitter@728e031f6b11 queries/vhdl (Apache-2.0) |
+| vhs | `.tape` |  | yes | nvim-treesitter@728e031f6b11 queries/vhs (Apache-2.0) |
 | vim | `.vim` `.vimrc` `_vimrc` `.gvimrc` `vimrc` |  | yes | helix@ba40e547426b queries/vim (MPL-2.0) |
+| vimdoc | `.txt` |  | yes | nvim-treesitter@728e031f6b11 queries/vimdoc (Apache-2.0) |
+| vrl | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/vrl (Apache-2.0) |
+| vue | `.vue` | yes |  | nvim-treesitter@728e031f6b11 queries/vue (Apache-2.0) |
+| wgsl | `.wgsl` |  | yes | nvim-treesitter@728e031f6b11 queries/wgsl (Apache-2.0) |
+| wgsl_bevy | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/wgsl_bevy (Apache-2.0) |
+| wing | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/wing (Apache-2.0) |
 | wit | `.wit` |  | yes | tree-sitter-wit 0.2.0 (MIT OR Apache-2.0): queries/highlights.scm |
+| wxml | `.wxml` |  | yes | nvim-treesitter@728e031f6b11 queries/wxml (Apache-2.0) |
 | xcompose | `.xcompose` `xcompose` |  | yes | nvim-treesitter@728e031f6b11 queries/xcompose (Apache-2.0) |
 | xml | `.xml` `.svg` `.xsd` `.xslt` `.xsl` `.rng` `.plist` `.xaml` `.csproj` `.fsproj` `.vbproj` `.vcxproj` `.props` `.targets` `.resx` `.nuspec` `.wsdl` `.kml` `.gpx` `.storyboard` `.xib` `.entitlements` | yes |  | nvim-treesitter@728e031f6b11 queries/xml (Apache-2.0) |
+| xresources | `xdefaults` `xresources` |  | yes | nvim-treesitter@728e031f6b11 queries/xresources (Apache-2.0) |
 | yaml | `.yml` `.yaml` `.clang-format` `.clang-tidy` `.gemrc` | yes |  | nvim-treesitter@728e031f6b11 queries/yaml (Apache-2.0) |
+| yang | `.yang` |  | yes | nvim-treesitter@728e031f6b11 queries/yang (Apache-2.0) |
+| yuck | `.yuck` |  | yes | nvim-treesitter@728e031f6b11 queries/yuck (Apache-2.0) |
 | zig | `.zig` `.zon` | yes |  | nvim-treesitter@728e031f6b11 queries/zig (Apache-2.0) |
+| ziggy | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/ziggy (Apache-2.0) |
+| ziggy_schema | (injected only) |  |  | nvim-treesitter@728e031f6b11 queries/ziggy_schema (Apache-2.0) |
 | zsh | `.zsh` `.zshrc` `.zprofile` `.zshenv` `.zlogin` `.zlogout` `zshrc` |  | yes | nvim-treesitter@728e031f6b11 queries/zsh (Apache-2.0) |

@@ -6,7 +6,7 @@
 7: 0+6=Keyword 7+4=Variable 12+4=Variable 17+8=Variable 26+8=Type
 8: 0+6=Keyword 7+6=Keyword 14+4=Variable 19+4=Variable 24+4=Type 29+3=Variable
 10: 0+3=Comment
-11: 0+63=Comment
+11: 0+16=Comment 17+5=Keyword 22+1=Comment 23+3=AltVariable 27+5=Comment 32+3=Tag 41+4=Tag 45+18=Comment
 12: 0+32=Comment
 13: 0+3=Comment
 14: 0+17=Attribute 19+11=String 32+10=String

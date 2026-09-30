@@ -1,0 +1,2 @@
+; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/brightscript/).
+; Source: nvim-treesitter@728e031f6b11 queries/brightscript (Apache-2.0)

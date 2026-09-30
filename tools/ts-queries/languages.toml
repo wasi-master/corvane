@@ -37,7 +37,7 @@ source = "upstream"
 package = "tree-sitter-asm"
 version = "0.24.0"
 language = "LANGUAGE"
-extensions = ["asm", "s", "nasm", "inc"]
+extensions = ["asm", "s"]
 aliases = ["assembly", "nasm"]
 source = "nvim"
 
@@ -102,7 +102,7 @@ helix = "common-lisp"
 package = "tree-sitter-cpp"
 version = "0.23.4"
 language = "LANGUAGE"
-extensions = ["cc", "cpp", "cxx", "c++", "hpp", "hxx", "hh", "h++", "ipp", "tpp", "inl", "ino"]
+extensions = ["cc", "cpp", "cxx", "c++", "hpp", "hxx", "hh", "h++", "ipp", "tpp", "inl"]
 aliases = ["c++"]
 source = "nvim"
 
@@ -294,7 +294,7 @@ source = "nvim"
 package = "tree-sitter-hcl"
 version = "1.1.0"
 language = "LANGUAGE"
-extensions = ["hcl", "tf", "tfvars", "nomad"]
+extensions = ["hcl", "nomad"]
 aliases = ["terraform", "tf"]
 source = "nvim"
 
@@ -324,7 +324,7 @@ package = "tree-sitter-ini"
 version = "1.4.0"
 language = "LANGUAGE"
 extensions = ["ini", "cfg", "inf"]
-filenames = [".gitconfig", ".npmrc", ".editorconfig", "gitconfig"]
+filenames = [".npmrc"]
 aliases = ["dosini"]
 source = "nvim"
 
@@ -823,3 +823,1517 @@ filenames = [".zshrc", ".zprofile", ".zshenv", ".zlogin", ".zlogout", "zshrc"]
 first_line = "^#!.*\\bzsh\\b"
 source = "nvim"
 
+
+# Built from source at nvim-treesitter's pinned revision (import_nvim.py)
+
+[angular]
+url = "https://github.com/dlvandenberg/tree-sitter-angular"
+revision = "38a8014ed5452cd6b7cf1399c00177a1f5374256"
+license = "MIT"
+extensions = ["component.html"]
+source = "nvim"
+
+[apex]
+url = "https://github.com/aheber/tree-sitter-sfapex"
+revision = "da568eee10ce4724a40f368b2b7e795dacb4f1ba"
+location = "apex"
+license = "MIT"
+extensions = ["cls", "trigger", "apex"]
+source = "nvim"
+
+[arduino]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-arduino"
+revision = "11dd46c9ae25135c473c0003a133bb06a484af0c"
+license = "MIT"
+extensions = ["ino"]
+source = "nvim"
+
+[astro]
+url = "https://github.com/virchau13/tree-sitter-astro"
+revision = "213f6e6973d9b456c6e50e86f19f66877e7ef0ee"
+license = "MIT"
+extensions = ["astro"]
+source = "nvim"
+
+[authzed]
+url = "https://github.com/mleonidas/tree-sitter-authzed"
+revision = "83e5c26a8687eb4688fe91d690c735cc3d21ad81"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[bass]
+url = "https://github.com/vito/tree-sitter-bass"
+revision = "28dc7059722be090d04cd751aed915b2fee2f89a"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[beancount]
+url = "https://github.com/polarmutex/tree-sitter-beancount"
+revision = "c8a9780610dbe8ade4888045b1f2caa7a0a9d8aa"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[bibtex]
+url = "https://github.com/latex-lsp/tree-sitter-bibtex"
+revision = "8d04ed27b3bc7929f14b7df9236797dab9f3fa66"
+license = "MIT"
+extensions = ["bib", "bibtex"]
+source = "nvim"
+
+[bitbake]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-bitbake"
+revision = "a5d04fdb5a69a02b8fa8eb5525a60dfb5309b73b"
+license = "MIT"
+extensions = ["bb", "bbappend", "bbclass"]
+source = "nvim"
+
+[blade]
+url = "https://github.com/EmranMR/tree-sitter-blade"
+revision = "b5291d1ba207a8ebb8383b2ecb8a8a6535210a50"
+license = "MIT"
+extensions = ["blade", "blade.php"]
+source = "nvim"
+
+[bp]
+url = "https://github.com/ambroisie/tree-sitter-bp"
+revision = "ee641d15390183d7535777947ce0f2f1fbcee69f"
+license = "MIT"
+extensions = ["bp"]
+source = "nvim"
+
+[bpftrace]
+url = "https://github.com/sgruszka/tree-sitter-bpftrace"
+revision = "8269e497af01ef26edea3283bc21ed71ada61f44"
+license = "MIT"
+extensions = ["bt"]
+source = "nvim"
+
+[brightscript]
+url = "https://github.com/ajdelcimmuto/tree-sitter-brightscript"
+revision = "0c534d56bb04778d0a3510bed5e720d1fe15cb76"
+license = "ISC"
+extensions = ["brs"]
+source = "nvim"
+
+[c3]
+url = "https://github.com/c3lang/tree-sitter-c3"
+revision = "e4d3418873ff9f36c71474b5b08c204289f46fb0"
+license = "MIT"
+extensions = ["c3", "c3i", "c3t"]
+source = "nvim"
+
+[cairo]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-cairo"
+revision = "6238f609bea233040fe927858156dee5515a0745"
+license = "MIT"
+extensions = ["cairo"]
+source = "nvim"
+
+[capnp]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-capnp"
+revision = "7b0883c03e5edd34ef7bcf703194204299d7099f"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[chatito]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-chatito"
+revision = "c0ed82c665b732395073f635c74c300f09530a7f"
+license = "MIT"
+extensions = ["chatito"]
+source = "nvim"
+
+[circom]
+url = "https://github.com/Decurity/tree-sitter-circom"
+revision = "02150524228b1e6afef96949f2d6b7cc0aaf999e"
+license = "MIT"
+extensions = ["circom"]
+source = "nvim"
+
+[clojure]
+url = "https://github.com/sogaiu/tree-sitter-clojure"
+revision = "e43eff80d17cf34852dcd92ca5e6986d23a7040f"
+license = "CC0-1.0"
+extensions = ["clj", "boot", "cl2", "cljc", "cljs", "cljs.hl", "cljscm", "cljx", "hic"]
+filenames = ["riemann.config"]
+first_line = "^#!.*\\b(bb)\\b"
+source = "nvim"
+
+[cooklang]
+url = "https://github.com/addcninblue/tree-sitter-cooklang"
+revision = "4ebe237c1cf64cf3826fc249e9ec0988fe07e58e"
+license = "ISC"
+extensions = ["cook"]
+source = "nvim"
+
+[corn]
+url = "https://github.com/jakestanger/tree-sitter-corn"
+revision = "464654742cbfd3a3de560aba120998f1d5dfa844"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[cpon]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-cpon"
+revision = "594289eadfec719198e560f9d7fd243c4db678d5"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[csv]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-csv"
+revision = "f6bf6e35eb0b95fbadea4bb39cb9709507fcb181"
+location = "csv"
+license = "MIT"
+extensions = ["csv"]
+source = "nvim"
+
+[cue]
+url = "https://github.com/eonpatapon/tree-sitter-cue"
+revision = "dd7b90e0770ff18070c515937ba3c3d6d93db00e"
+license = "MIT"
+extensions = ["cue"]
+source = "nvim"
+
+[cylc]
+url = "https://github.com/elliotfontaine/tree-sitter-cylc"
+revision = "6d1d81137112299324b526477ce1db989ab58fb8"
+license = "MIT"
+extensions = ["cylc"]
+filenames = ["suite.rc"]
+source = "nvim"
+
+[desktop]
+url = "https://github.com/ValdezFOmar/tree-sitter-desktop"
+revision = "v1.1.1"
+license = "MIT"
+extensions = ["desktop", "directory", "desktop.in"]
+source = "nvim"
+
+[devicetree]
+url = "https://github.com/joelspadin/tree-sitter-devicetree"
+revision = "e78bf56f206cb47bee28a217423acb651e076848"
+license = "MIT"
+extensions = ["dts", "dtsi", "dtso", "its", "overlay"]
+source = "nvim"
+
+[dhall]
+url = "https://github.com/jbellerb/tree-sitter-dhall"
+revision = "62013259b26ac210d5de1abf64cf1b047ef88000"
+license = "MIT"
+extensions = ["dhall"]
+source = "nvim"
+
+[djot]
+url = "https://github.com/treeman/tree-sitter-djot"
+revision = "759a61896ccb2200a4becec4443e768638a21d58"
+license = "MIT"
+extensions = ["dj"]
+source = "nvim"
+
+[dockerfile]
+url = "https://github.com/camdencheek/tree-sitter-dockerfile"
+revision = "971acdd908568b4531b0ba28a445bf0bb720aba5"
+license = "MIT"
+extensions = ["dockerfile", "docker", "container", "containerfile"]
+filenames = ["dockerfile", "containerfile"]
+source = "nvim"
+
+[dot]
+url = "https://github.com/rydesun/tree-sitter-dot"
+revision = "80327abbba6f47530edeb0df9f11bd5d5c93c14d"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[doxygen]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-doxygen"
+revision = "6069b1815b139080d6c562b5ff9ae2296cbc6602"
+license = "MIT"
+extensions = ["doxygen"]
+source = "nvim"
+
+[earthfile]
+url = "https://github.com/glehmann/tree-sitter-earthfile"
+revision = "5baef88717ad0156fd29a8b12d0d8245bb1096a8"
+license = "MIT"
+extensions = []
+filenames = ["earthfile"]
+source = "nvim"
+
+[editorconfig]
+url = "https://github.com/ValdezFOmar/tree-sitter-editorconfig"
+revision = "v2.0.0"
+license = "MIT"
+extensions = ["editorconfig"]
+filenames = ["editorconfig", ".editorconfig"]
+source = "nvim"
+
+[eds]
+url = "https://github.com/uyha/tree-sitter-eds"
+revision = "26d529e6cfecde391a03c21d1474eb51e0285805"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[eex]
+url = "https://github.com/connorlay/tree-sitter-eex"
+revision = "f742f2fe327463335e8671a87c0b9b396905d1d1"
+license = "MIT"
+extensions = ["html.eex", "leex"]
+source = "nvim"
+
+[elsa]
+url = "https://github.com/glapa-grossklag/tree-sitter-elsa"
+revision = "0a66b2b3f3c1915e67ad2ef9f7dbd2a84820d9d7"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[elvish]
+url = "https://github.com/elves/tree-sitter-elvish"
+revision = "5e7210d945425b77f82cbaebc5af4dd3e1ad40f5"
+license = "0BSD"
+extensions = ["elv"]
+first_line = "^#!.*\\b(elvish)\\b"
+source = "nvim"
+
+[enforce]
+url = "https://github.com/simonvic/tree-sitter-enforce"
+revision = "f6daeccf744141c13b4a94c39d7de22307173735"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[facility]
+url = "https://github.com/FacilityApi/tree-sitter-facility"
+revision = "e4bfd3e960de9f4b4648acb1c92e9b95b47d8cfb"
+license = "MIT"
+extensions = ["fsd"]
+source = "nvim"
+
+[faust]
+url = "https://github.com/khiner/tree-sitter-faust"
+revision = "6074204d3511392fd0b9c4fa1cef347ded65b246"
+license = "MIT"
+extensions = ["dsp", "lib"]
+source = "nvim"
+
+[fennel]
+url = "https://github.com/alexmozaidze/tree-sitter-fennel"
+revision = "3f0f6b24d599e92460b969aabc4f4c5a914d15a0"
+license = "CC0-1.0"
+extensions = ["fnl"]
+first_line = "^#!.*\\b(fennel)\\b"
+source = "nvim"
+
+[fidl]
+url = "https://github.com/google/tree-sitter-fidl"
+revision = "3faeeae0dbe66b54be0086daa0e0af4da44e7d68"
+license = "Apache-2.0"
+extensions = ["fidl"]
+source = "nvim"
+
+[firrtl]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-firrtl"
+revision = "8503d3a0fe0f9e427863cb0055699ff2d29ae5f5"
+license = "Apache-2.0"
+extensions = ["fir"]
+source = "nvim"
+
+[foam]
+url = "https://github.com/FoamScience/tree-sitter-foam"
+revision = "f72e493dadcca6a334c113b4cbaf864460541de4"
+license = "MIT"
+extensions = ["foam"]
+filenames = ["openfoam"]
+source = "nvim"
+
+[forth]
+url = "https://github.com/AlexanderBrevig/tree-sitter-forth"
+revision = "7190f2173060d19a2174c96bfb5b7c6f9745512b"
+license = "MIT"
+extensions = ["forth", "fth", "4th", "fr", "frt"]
+source = "nvim"
+
+[fsh]
+url = "https://github.com/mgramigna/tree-sitter-fsh"
+revision = "fad2e175099a45efbc98f000cc196d3674cc45e0"
+license = "Apache-2.0"
+extensions = []
+source = "nvim"
+
+[func]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-func"
+revision = "f780ca55e65e7d7360d0229331763e16c452fc98"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[gap]
+url = "https://github.com/gap-system/tree-sitter-gap"
+revision = "96fe2e49745ecd62b80cd19dca01fb52b83f93a1"
+license = "MIT"
+extensions = ["g", "gi", "gap"]
+source = "nvim"
+
+[gaptst]
+url = "https://github.com/gap-system/tree-sitter-gaptst"
+revision = "69086d7627c03e1f4baf766bcef14c60d9e92331"
+license = "MIT"
+extensions = ["tst"]
+source = "nvim"
+
+[gdshader]
+url = "https://github.com/airblast-dev/tree-sitter-gdshader"
+revision = "68268631c8b6dc093985f1246b099f81b30ea7d1"
+license = "MIT"
+extensions = ["gdshader", "gdshaderinc"]
+source = "nvim"
+
+[git_config]
+url = "https://github.com/the-mikedavis/tree-sitter-git-config"
+revision = "3a61756a81a86291a0f48e3eeeaa0692b9981aa9"
+license = "MIT"
+extensions = ["gitconfig"]
+filenames = [".gitconfig", ".gitmodules", ".tgitconfig", "config.worktree"]
+source = "nvim"
+
+[git_rebase]
+url = "https://github.com/the-mikedavis/tree-sitter-git-rebase"
+revision = "32686d6b72980b36f876ae2d07719c9c3ed154e2"
+license = "MIT"
+extensions = ["git-rebase-todo"]
+source = "nvim"
+
+[gitattributes]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-gitattributes"
+revision = "1b7af09d45b579f9f288453b95ad555f1f431645"
+license = "MIT"
+extensions = ["gitattributes"]
+filenames = ["gitattributes", ".gitattributes"]
+source = "nvim"
+
+[gitignore]
+url = "https://github.com/shunsambongi/tree-sitter-gitignore"
+revision = "f4685bf11ac466dd278449bcfe5fd014e94aa504"
+license = "MIT"
+extensions = ["gitignore"]
+filenames = [".agignore", ".atomignore", ".babelignore", ".bzrignore", ".ckignore", ".coffeelintignore", ".cvsignore", ".dockerignore", ".easignore", ".eleventyignore", ".eslint-ignore", ".eslintignore", ".gitignore", ".ignore", ".markdownlintignore", ".nodemonignore", ".npmignore", ".prettierignore", ".rgignore", ".stylelintignore", ".vercelignore", ".vscodeignore", "gitignore-global", "gitignore_global"]
+source = "nvim"
+
+[glimmer]
+url = "https://github.com/ember-tooling/tree-sitter-glimmer"
+revision = "c67a73679db2945a686ca45d3e5318d86138e72a"
+license = "MIT"
+extensions = ["html.handlebars", "glimmer"]
+source = "nvim"
+
+[glimmer_javascript]
+url = "https://github.com/NullVoxPopuli/tree-sitter-glimmer-javascript"
+revision = "d9cf7a2f1dad3c6b660148eaf77e955d418fdb8b"
+license = "MIT"
+extensions = ["gjs", "javascript.glimmer"]
+source = "nvim"
+
+[glimmer_typescript]
+url = "https://github.com/NullVoxPopuli/tree-sitter-glimmer-typescript"
+revision = "12d98944c1d5077b957cbdb90d663a7c4d50118c"
+license = "MIT"
+extensions = ["gts", "typescript.glimmer"]
+source = "nvim"
+
+[gn]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-gn"
+revision = "bc06955bc1e3c9ff8e9b2b2a55b38b94da923c05"
+license = "MIT"
+extensions = ["gn", "gni"]
+filenames = [".gn"]
+first_line = "^#!.*\\b(gn)\\b"
+source = "nvim"
+
+[gnuplot]
+url = "https://github.com/dpezto/tree-sitter-gnuplot"
+revision = "v4.1.0"
+license = "MIT"
+extensions = ["gnuplot", "gp", "gnu", "p", "plot", "plt"]
+first_line = "^#!.*\\b(gnuplot)\\b"
+source = "nvim"
+
+[goctl]
+url = "https://github.com/chaozwn/tree-sitter-goctl"
+revision = "49c43532689fe1f53e8b9e009d0521cab02c432b"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[gomod]
+url = "https://github.com/camdencheek/tree-sitter-go-mod"
+revision = "2e886870578eeba1927a2dc4bd2e2b3f598c5f9a"
+license = "MIT"
+extensions = ["go.mod"]
+source = "nvim"
+
+[gosum]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-go-sum"
+revision = "27816eb6b7315746ae9fcf711e4e1396dc1cf237"
+license = "MIT"
+extensions = ["go.sum"]
+source = "nvim"
+
+[gotmpl]
+url = "https://github.com/ngalaiko/tree-sitter-go-template"
+revision = "aa71f63de226c5592dfbfc1f29949522d7c95fac"
+license = "MIT"
+extensions = ["gohtml", "gotmpl", "html.tmpl", "tmpl", "tpl"]
+filenames = ["_helpers.tpl"]
+source = "nvim"
+
+[gowork]
+url = "https://github.com/omertuc/tree-sitter-go-work"
+revision = "949a8a470559543857a62102c84700d291fc984c"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[gpg]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-gpg-config"
+revision = "4024eb268c59204280f8ac71ef146b8ff5e737f6"
+license = "MIT"
+extensions = ["gpg.conf"]
+source = "nvim"
+
+[gren]
+url = "https://github.com/MaeBrooks/tree-sitter-gren"
+revision = "cecd8ce9b18f1803d37682f33b6224978fd04d31"
+license = "MIT"
+extensions = ["gren"]
+source = "nvim"
+
+[groovy]
+url = "https://github.com/murtaza64/tree-sitter-groovy"
+revision = "deb0dcf8c4544f07564060f6e9b9f6e4b0bfc27d"
+license = "MIT"
+extensions = ["groovy", "grt", "gtpl", "gvy"]
+filenames = ["jenkinsfile"]
+first_line = "^#!.*\\b(groovy)\\b"
+source = "nvim"
+
+[groq]
+url = "https://github.com/ajrussellaudio/tree-sitter-groq"
+revision = "1fa1ab0eb391a270957e8ad8c731b492e3645649"
+license = "MIT"
+extensions = ["groq"]
+source = "nvim"
+
+[hack]
+url = "https://github.com/slackhq/tree-sitter-hack"
+revision = "1a7ded90288189746c54861ac144ede97df95081"
+license = "MIT"
+extensions = ["hack", "hhi"]
+source = "nvim"
+
+[hare]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-hare"
+revision = "eed7ddf6a66b596906aa8ca3d40521b8278adc6f"
+license = "MIT"
+extensions = ["ha"]
+source = "nvim"
+
+[haskell_persistent]
+url = "https://github.com/MercuryTechnologies/tree-sitter-haskell-persistent"
+revision = "577259b4068b2c281c9ebf94c109bd50a74d5857"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[helm]
+url = "https://github.com/ngalaiko/tree-sitter-go-template"
+revision = "aa71f63de226c5592dfbfc1f29949522d7c95fac"
+location = "dialects/helm"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[hjson]
+url = "https://github.com/winston0410/tree-sitter-hjson"
+revision = "02fa3b79b3ff9a296066da6277adfc3f26cbc9e0"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[hocon]
+url = "https://github.com/antosha417/tree-sitter-hocon"
+revision = "c390f10519ae69fdb03b3e5764f5592fb6924bcc"
+license = "MIT"
+extensions = ["hocon"]
+filenames = [".scalafix.conf", ".scalafmt.conf"]
+source = "nvim"
+
+[hoon]
+url = "https://github.com/urbit-pilled/tree-sitter-hoon"
+revision = "1545137aadcc63660c47db9ad98d02fa602655d0"
+license = "BSD-3-Clause"
+extensions = ["hoon"]
+source = "nvim"
+
+[htmldjango]
+url = "https://github.com/interdependence/tree-sitter-htmldjango"
+revision = "a10318892603d9a0b925df7cc7771a840304b997"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[http]
+url = "https://github.com/rest-nvim/tree-sitter-http"
+revision = "db8b4398de90b6d0b6c780aba96aaa2cd8e9202c"
+license = "MIT"
+extensions = ["http"]
+source = "nvim"
+
+[hurl]
+url = "https://github.com/pfeiferj/tree-sitter-hurl"
+revision = "597efbd7ce9a814bb058f48eabd055b1d1e12145"
+license = "Apache-2.0"
+extensions = ["hurl"]
+source = "nvim"
+
+[hyprlang]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-hyprlang"
+revision = "cecd6b748107d9da1f7b4ca03ef95f1f71d93b8f"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[idl]
+url = "https://github.com/cathaysia/tree-sitter-idl"
+revision = "b5ecf511e542e43313ba4602bdb206a08cb06232"
+license = "Apache-2.0"
+extensions = ["idl", "pro", "dlm"]
+source = "nvim"
+
+[idris]
+url = "https://github.com/kayhide/tree-sitter-idris"
+revision = "9fe334fb603fdce0e84349ed78f41ae3d2f7036b"
+license = "MIT"
+extensions = ["idr", "lidr"]
+source = "nvim"
+
+[inko]
+url = "https://github.com/inko-lang/tree-sitter-inko"
+revision = "v0.8.0"
+license = "MPL-2.0"
+extensions = ["inko"]
+source = "nvim"
+
+[ispc]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-ispc"
+revision = "ba1bb38ac8ddfa6aa7571cbfe9b4d029f7f77447"
+license = "MIT"
+extensions = ["ispc", "isph"]
+source = "nvim"
+
+[janet_simple]
+url = "https://github.com/sogaiu/tree-sitter-janet-simple"
+revision = "3c1bdcfff374138da03a1db25c75efce623910fe"
+license = "CC0-1.0"
+extensions = ["cgen", "janet", "jdn"]
+source = "nvim"
+
+[javadoc]
+url = "https://github.com/rmuir/tree-sitter-javadoc"
+revision = "4e9e1db7a116244aaa248f0cf58ca058694a0de4"
+license = "MIT"
+extensions = ["javadoc"]
+source = "nvim"
+
+[jinja_inline]
+url = "https://github.com/cathaysia/tree-sitter-jinja"
+revision = "c213d3745ccdcaaa858869181c7b1bf9557a025f"
+location = "tree-sitter-jinja_inline"
+license = "Apache-2.0"
+extensions = ["jinja_inline"]
+source = "nvim"
+
+[jjdescription]
+url = "https://github.com/ribru17/tree-sitter-jjdescription"
+revision = "v1.0.3"
+license = "MIT"
+extensions = ["jjdescription"]
+source = "nvim"
+
+[jq]
+url = "https://github.com/flurie/tree-sitter-jq"
+revision = "c204e36d2c3c6fce1f57950b12cabcc24e5cc4d9"
+license = "BSD-3-Clause"
+extensions = ["jq"]
+first_line = "^#!.*\\b(gojq|jaq|jq|jqjq|jqq|query\\-json)\\b"
+source = "nvim"
+
+[json5]
+url = "https://github.com/Joakker/tree-sitter-json5"
+revision = "248b8564567087d7866be76569b182f6dd7e14e9"
+license = "MIT"
+extensions = ["json5"]
+source = "nvim"
+
+[just]
+url = "https://github.com/IndianBoy42/tree-sitter-just"
+revision = "5685543a6e64f66335e25518c9ae8ffa1dae3d01"
+license = "Apache-2.0"
+extensions = ["just", "justfile"]
+filenames = ["just", "justfile", ".justfile"]
+source = "nvim"
+
+[kcl]
+url = "https://github.com/kcl-lang/tree-sitter-kcl"
+revision = "6a5cc921928660cd6756cd6e0d636d9e24ea348e"
+license = "Apache-2.0"
+extensions = ["k"]
+filenames = ["kcl.mod", "kcl.mod.lock"]
+source = "nvim"
+
+[kconfig]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-kconfig"
+revision = "9ac99fe4c0c27a35dc6f757cef534c646e944881"
+license = "MIT"
+extensions = []
+filenames = ["kconfig"]
+source = "nvim"
+
+[kitty]
+url = "https://github.com/OXY2DEV/tree-sitter-kitty"
+revision = "0e3eca6e786356bd37b1633f5e8b5a1c864333c1"
+license = "MIT"
+extensions = ["kitty.conf"]
+source = "nvim"
+
+[kos]
+url = "https://github.com/kos-lang/tree-sitter-kos"
+revision = "a7338629da17c5246dc2129cd2a493a6ee59e922"
+license = "MIT"
+extensions = ["kos"]
+source = "nvim"
+
+[koto]
+url = "https://github.com/koto-lang/tree-sitter-koto"
+revision = "e8d41cbaca867aa1b0213e1fc1caeaf593da7bf7"
+license = "MIT"
+extensions = ["koto"]
+source = "nvim"
+
+[kusto]
+url = "https://github.com/Willem-J-an/tree-sitter-kusto"
+revision = "8353a1296607d6ba33db7c7e312226e5fc83e8ce"
+license = "MIT"
+extensions = ["csl", "kql"]
+source = "nvim"
+
+[lalrpop]
+url = "https://github.com/traxys/tree-sitter-lalrpop"
+revision = "27b0f7bb55b4cabd8f01a933d9ee6a49dbfc2192"
+license = "MIT"
+extensions = ["lalrpop"]
+source = "nvim"
+
+[ledger]
+url = "https://github.com/cbarrete/tree-sitter-ledger"
+revision = "d5f3973cfe2d42f98819336ce6334ada75b7696f"
+license = "MIT"
+extensions = ["ledger", "journal"]
+source = "nvim"
+
+[leo]
+url = "https://github.com/r001/tree-sitter-leo"
+revision = "6bc5564917edacd070afc4d33cf5e2e677831ea9"
+license = "Apache-2.0"
+extensions = ["leo"]
+source = "nvim"
+
+[linkerscript]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-linkerscript"
+revision = "f99011a3554213b654985a4b0a65b3b032ec4621"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[liquid]
+url = "https://github.com/hankthetank27/tree-sitter-liquid"
+revision = "e45dbac8c5fa95b1f0e00e7e0c04bc8855823391"
+license = "MIT"
+extensions = ["liquid"]
+source = "nvim"
+
+[liquidsoap]
+url = "https://github.com/savonet/tree-sitter-liquidsoap"
+revision = "a094345ace46277b23dbcb81a5d8cd972df32183"
+license = "ISC"
+extensions = ["liquidsoap", "liq"]
+source = "nvim"
+
+[luadoc]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-luadoc"
+revision = "4d04632a3a398b78af52e83be074883e722f40be"
+license = "MIT"
+extensions = ["luadoc"]
+source = "nvim"
+
+[luap]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-luap"
+revision = "c134aaec6acf4fa95fe4aa0dc9aba3eacdbbe55a"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[m68k]
+url = "https://github.com/grahambates/tree-sitter-m68k"
+revision = "ab9f2ad96db56619d05a6474a52e3dbdd705a637"
+license = "MIT"
+extensions = ["x68"]
+source = "nvim"
+
+[matlab]
+url = "https://github.com/acristoffers/tree-sitter-matlab"
+revision = "f03d0347acd8bb05d4edd8c845ac1718729e1fad"
+license = "MIT"
+extensions = ["matlab"]
+source = "nvim"
+
+[menhir]
+url = "https://github.com/Kerl13/tree-sitter-menhir"
+revision = "be8866a6bcc2b563ab0de895af69daeffa88fe70"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[meson]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-meson"
+revision = "aa8d472034956f94f51f2ef2cbfec4cc07efbfde"
+license = "MIT"
+extensions = ["meson"]
+filenames = ["meson.build", "meson_options.txt"]
+source = "nvim"
+
+[nasm]
+url = "https://github.com/naclsn/tree-sitter-nasm"
+revision = "d1b3638d017f2a8585e26dcfc66fe1df94185e30"
+license = "MIT"
+extensions = ["a51", "nas", "nasm"]
+source = "nvim"
+
+[nim]
+url = "https://github.com/alaviss/tree-sitter-nim"
+revision = "ac72ba30d16edf0be021588a9301ede4accd6cf4"
+license = "MPL-2.0"
+extensions = ["nimble", "nims", "nim", "nim.cfg", "nimrod"]
+filenames = ["nim.cfg"]
+source = "nvim"
+
+[nim_format_string]
+url = "https://github.com/aMOPel/tree-sitter-nim-format-string"
+revision = "d45f75022d147cda056e98bfba68222c9c8eca3a"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[ninja]
+url = "https://github.com/alemuller/tree-sitter-ninja"
+revision = "0a95cfdc0745b6ae82f60d3a339b37f19b7b9267"
+license = "MIT"
+extensions = ["ninja"]
+source = "nvim"
+
+[nqc]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-nqc"
+revision = "14e6da1627aaef21d2b2aa0c37d04269766dcc1d"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[nu]
+url = "https://github.com/nushell/tree-sitter-nu"
+revision = "4f577aaa735154f934594b598a69ed7b1b707cf6"
+license = "MIT"
+extensions = ["nu"]
+filenames = ["nukefile"]
+first_line = "^#!.*\\b(nush)\\b"
+source = "nvim"
+
+[passwd]
+url = "https://github.com/ath3/tree-sitter-passwd"
+revision = "20239395eacdc2e0923a7e5683ad3605aee7b716"
+license = "Unlicense"
+extensions = []
+source = "nvim"
+
+[pem]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-pem"
+revision = "e525b177a229b1154fd81bc0691f943028d9e685"
+license = "MIT"
+extensions = ["pem", "key", "crt", "cer", "csr"]
+source = "nvim"
+
+[phpdoc]
+url = "https://github.com/claytonrcarter/tree-sitter-phpdoc"
+revision = "12d50307e6c02e5f4f876fa6cf2edea1f7808c0d"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[pioasm]
+url = "https://github.com/leo60228/tree-sitter-pioasm"
+revision = "afece58efdb30440bddd151ef1347fa8d6f744a9"
+license = "ISC"
+extensions = []
+source = "nvim"
+
+[pkl]
+url = "https://github.com/apple/tree-sitter-pkl"
+revision = "c95d8284940f5e1da2cd0d8f1ee45d7ef9ef75d1"
+license = "Apache-2.0"
+extensions = ["pcf", "pkl"]
+first_line = "^#!.*\\b(pkl)\\b"
+source = "nvim"
+
+[po]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-po"
+revision = "bd860a0f57f697162bf28e576674be9c1500db5e"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[poe_filter]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-poe-filter"
+revision = "205a7d576984feb38a9fc2d8cfe729617f9e0548"
+license = "MIT"
+extensions = ["filter"]
+source = "nvim"
+
+[pony]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-pony"
+revision = "73ff874ae4c9e9b45462673cbc0a1e350e2522a7"
+license = "MIT"
+extensions = ["pony"]
+source = "nvim"
+
+[prisma]
+url = "https://github.com/victorhqc/tree-sitter-prisma"
+revision = "3556b2c1f20ec9ac91e92d32c43d9d2a0ca3cc49"
+license = "MIT"
+extensions = ["prisma"]
+source = "nvim"
+
+[promql]
+url = "https://github.com/MichaHoffmann/tree-sitter-promql"
+revision = "77625d78eebc3ffc44d114a07b2f348dff3061b0"
+license = "Apache-2.0"
+extensions = []
+source = "nvim"
+
+[prql]
+url = "https://github.com/PRQL/tree-sitter-prql"
+revision = "09e158cd3650581c0af4c49c2e5b10c4834c8646"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[psv]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-csv"
+revision = "f6bf6e35eb0b95fbadea4bb39cb9709507fcb181"
+location = "psv"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[pug]
+url = "https://github.com/zealot128/tree-sitter-pug"
+revision = "13e9195370172c86a8b88184cc358b23b677cc46"
+license = "MIT"
+extensions = ["jade", "pug"]
+source = "nvim"
+
+[puppet]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-puppet"
+revision = "15f192929b7d317f5914de2b4accd37b349182a6"
+license = "MIT"
+extensions = ["pp"]
+filenames = ["modulefile"]
+source = "nvim"
+
+[purescript]
+url = "https://github.com/postsolar/tree-sitter-purescript"
+revision = "f541f95ffd6852fbbe88636317c613285bc105af"
+license = "MIT"
+extensions = ["^(purescript|purs)$", "purs"]
+source = "nvim"
+
+[pymanifest]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-pymanifest"
+revision = "debbdb83fe6356adc7261c41c69b45ba49c97294"
+license = "MIT"
+extensions = []
+filenames = ["manifest.in"]
+source = "nvim"
+
+[qmldir]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-qmldir"
+revision = "c57e00865a1a6f1cca83340d6dad91f13df55479"
+license = "MIT"
+extensions = ["qmldir"]
+source = "nvim"
+
+[qmljs]
+url = "https://github.com/yuja/tree-sitter-qmljs"
+revision = "de96ed62abded51fcdfcbeaaa120e0dd0d20c697"
+license = "MIT"
+extensions = ["qml"]
+source = "nvim"
+
+[query]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-query"
+revision = "8e9e223812ff30854fbc912adbec696ba5f0e023"
+license = "Apache-2.0"
+extensions = []
+source = "nvim"
+
+[rasi]
+url = "https://github.com/Fymyte/tree-sitter-rasi"
+revision = "e735c6881d8b475aaa4ef8f0a2bdfd825b438143"
+license = "MIT"
+extensions = ["rasi"]
+source = "nvim"
+
+[razor]
+url = "https://github.com/tris203/tree-sitter-razor"
+revision = "d4664e409caaea12f73c9525484e3cf88b1cf718"
+license = "MIT"
+extensions = ["razor", "cshtml"]
+source = "nvim"
+
+[rbs]
+url = "https://github.com/joker1007/tree-sitter-rbs"
+revision = "5282e2f36d4109f5315c1d9486b5b0c2044622bb"
+license = "MIT"
+extensions = ["rbs"]
+source = "nvim"
+
+[re2c]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-re2c"
+revision = "c18a3c2f4b6665e35b7e50d6048ea3cff770c572"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[readline]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-readline"
+revision = "6b744c527aebd12e46a5ecb3aebdb8d621a8e83e"
+license = "MIT"
+extensions = ["inputrc"]
+filenames = [".inputrc", "inputrc"]
+source = "nvim"
+
+[rego]
+url = "https://github.com/FallenAngel97/tree-sitter-rego"
+revision = "da2a1f63cd877efb05d56de61fe516e90012b9a7"
+license = "MIT"
+extensions = ["rego"]
+source = "nvim"
+
+[rescript]
+url = "https://github.com/rescript-lang/tree-sitter-rescript"
+revision = "90643a6302057b969c51e1bf235b8ecf1da49232"
+license = "MIT"
+extensions = ["res", "resi"]
+first_line = "^#!.*\\b(ocaml)\\b"
+source = "nvim"
+
+[rifleconf]
+url = "https://github.com/purarue/tree-sitter-rifleconf"
+revision = "6389ef0fc0d48f0397ec233109c074a0cb685e36"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[robot]
+url = "https://github.com/Hubro/tree-sitter-robot"
+revision = "v1.3.0"
+license = "ISC"
+extensions = ["robot"]
+source = "nvim"
+
+[robots_txt]
+url = "https://github.com/opa-oz/tree-sitter-robots-txt"
+revision = "0c066107e3548de79316a6a4ec771e2f7cf7c468"
+license = "MIT"
+extensions = ["robots"]
+filenames = ["robots.txt"]
+source = "nvim"
+
+[roc]
+url = "https://github.com/faldor20/tree-sitter-roc"
+revision = "40e52f343f1b1f270d6ecb2ca898ca9b8cba6936"
+license = "MIT"
+extensions = ["roc"]
+source = "nvim"
+
+[ron]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-ron"
+revision = "78938553b93075e638035f624973083451b29055"
+license = "Apache-2.0"
+extensions = ["ron"]
+source = "nvim"
+
+[runescript]
+url = "https://github.com/2004Scape/tree-sitter-runescript"
+revision = "cf85bbd5da0c5ad243301d889c7f84d790a4cae4"
+license = "MIT"
+extensions = ["rs2", "cs2"]
+source = "nvim"
+
+[scfg]
+url = "https://github.com/rockorager/tree-sitter-scfg"
+revision = "d850fd470445d73de318a21d734d1e09e29b773c"
+license = "MIT"
+extensions = ["scfg"]
+source = "nvim"
+
+[sflog]
+url = "https://github.com/aheber/tree-sitter-sfapex"
+revision = "da568eee10ce4724a40f368b2b7e795dacb4f1ba"
+location = "sflog"
+license = "MIT"
+extensions = ["sflog"]
+source = "nvim"
+
+[slang]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-slang"
+revision = "1dbcc4abc7b3cdd663eb03d93031167d6ed19f56"
+license = "MIT"
+extensions = ["slang"]
+source = "nvim"
+
+[slim]
+url = "https://github.com/theoo/tree-sitter-slim"
+revision = "d4ff7e388eb271c04662f2176c08548c9c51078f"
+license = "MIT"
+extensions = ["slim"]
+source = "nvim"
+
+[slint]
+url = "https://github.com/slint-ui/tree-sitter-slint"
+revision = "68b25244cec6eb9d7f8f790ef781c29c822d8f84"
+license = "MIT"
+extensions = ["slint"]
+source = "nvim"
+
+[smali]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-smali"
+revision = "fdfa6a1febc43c7467aa7e937b87b607956f2346"
+license = "MIT"
+extensions = ["smali"]
+source = "nvim"
+
+[smithy]
+url = "https://github.com/indoorvivants/tree-sitter-smithy"
+revision = "ec4fe14586f2b0a1bc65d6db17f8d8acd8a90433"
+license = "MIT"
+extensions = ["smithy"]
+source = "nvim"
+
+[snakemake]
+url = "https://github.com/osthomas/tree-sitter-snakemake"
+revision = "68010430c3e51c0e84c1ce21c6551df0e2469f51"
+license = "MIT"
+extensions = ["smk", "snakefile"]
+filenames = ["snakefile"]
+source = "nvim"
+
+[snl]
+url = "https://github.com/minijackson/tree-sitter-snl"
+revision = "846e2d6809ac5863a15b5494f20fd267c21221c8"
+license = "MIT"
+extensions = ["st", "stt"]
+source = "nvim"
+
+[soql]
+url = "https://github.com/aheber/tree-sitter-sfapex"
+revision = "da568eee10ce4724a40f368b2b7e795dacb4f1ba"
+location = "soql"
+license = "MIT"
+extensions = ["soql"]
+source = "nvim"
+
+[sosl]
+url = "https://github.com/aheber/tree-sitter-sfapex"
+revision = "da568eee10ce4724a40f368b2b7e795dacb4f1ba"
+location = "sosl"
+license = "MIT"
+extensions = ["sosl"]
+source = "nvim"
+
+[sourcepawn]
+url = "https://github.com/nilshelmig/tree-sitter-sourcepawn"
+revision = "2ef2d389c29b952f8b23909783f7d3c7972046f5"
+license = "MIT"
+extensions = ["sp"]
+source = "nvim"
+
+[sparql]
+url = "https://github.com/GordianDziwis/tree-sitter-sparql"
+revision = "1ef52d35a73a2a5f2e433ecfd1c751c1360a923b"
+license = "MIT"
+extensions = ["sparql", "rq"]
+source = "nvim"
+
+[sproto]
+url = "https://github.com/hanxi/tree-sitter-sproto"
+revision = "d554c1456e35e7b2690552d52921c987d0cf6799"
+license = "MIT"
+extensions = ["sproto"]
+source = "nvim"
+
+[sql]
+url = "https://github.com/derekstride/tree-sitter-sql"
+revision = "39fdb006403747241244326e8af3b3e96b85381c"
+license = "MIT"
+extensions = ["sql", "ddl", "mysql", "prc", "tab", "udf", "viw"]
+source = "nvim"
+
+[squirrel]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-squirrel"
+revision = "072c969749e66f000dba35a33c387650e203e96e"
+license = "MIT"
+extensions = ["nut"]
+source = "nvim"
+
+[ssh_config]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-ssh-config"
+revision = "0c35b243392268f48fd096607da192d76c843398"
+license = "MIT"
+extensions = ["ssh_config"]
+filenames = ["ssh-config", "ssh_config", "sshconfig", "sshconfig.snip", "sshd-config", "sshd_config"]
+source = "nvim"
+
+[strace]
+url = "https://github.com/sigmaSd/tree-sitter-strace"
+revision = "ac874ddfcc08d689fee1f4533789e06d88388f29"
+license = "MIT"
+extensions = ["strace"]
+source = "nvim"
+
+[styled]
+url = "https://github.com/mskelton/tree-sitter-styled"
+revision = "319cdcaa0346ba6db668a222d938e5c3569e2a51"
+license = "ISC"
+extensions = []
+source = "nvim"
+
+[supercollider]
+url = "https://github.com/madskjeldgaard/tree-sitter-supercollider"
+revision = "2b03ff49dd19b046add072d0861c4d1ca8a384c8"
+license = "ISC"
+extensions = ["scd"]
+first_line = "^#!.*\\b(sclang|scsynth)\\b"
+source = "nvim"
+
+[superhtml]
+url = "https://github.com/kristoff-it/superhtml"
+revision = "f0deee80ae422938d5cdc43a5598c417670db38b"
+location = "tree-sitter-superhtml"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[surface]
+url = "https://github.com/connorlay/tree-sitter-surface"
+revision = "f4586b35ac8548667a9aaa4eae44456c1f43d032"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[sxhkdrc]
+url = "https://github.com/RaafatTurki/tree-sitter-sxhkdrc"
+revision = "440d5f913d9465c9c776a1bd92334d32febcf065"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[systemtap]
+url = "https://github.com/ok-ryoko/tree-sitter-systemtap"
+revision = "f2b378a9af0b7e1192cff67a5fb45508c927205d"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[t32]
+url = "https://github.com/xasc/tree-sitter-t32"
+revision = "11947ac01ba681fb6f62667cb1447354833f4a5b"
+license = "MIT"
+extensions = ["cmm", "cmmt", "t32"]
+source = "nvim"
+
+[tablegen]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-tablegen"
+revision = "b1170880c61355aaf38fc06f4af7d3c55abdabc4"
+license = "MIT"
+extensions = ["td"]
+source = "nvim"
+
+[tact]
+url = "https://github.com/tact-lang/tree-sitter-tact"
+revision = "1c689f0a8bbe5910db628a62bfc26d37f54bf9be"
+license = "MIT"
+extensions = ["tact"]
+source = "nvim"
+
+[tcl]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-tcl"
+revision = "850a72ab6436e06645b33b11cfa60cbdb04b1f01"
+license = "MIT"
+extensions = ["tk", "tcl", "tm", "adp", "sdc", "tcl.in", "xdc"]
+filenames = ["owh", "starfield"]
+first_line = "^#!.*\\b(tclsh|wish)\\b"
+source = "nvim"
+
+[tera]
+url = "https://github.com/uncenter/tree-sitter-tera"
+revision = "54b3f8b43aecdbcf12a7366920f0bc8274af1dd0"
+license = "MIT"
+extensions = ["tera"]
+source = "nvim"
+
+[terraform]
+url = "https://github.com/MichaHoffmann/tree-sitter-hcl"
+revision = "64ad62785d442eb4d45df3a1764962dafd5bc98b"
+location = "dialects/terraform"
+license = "Apache-2.0"
+extensions = ["tf", "tfvars", "tofu", "workflow"]
+source = "nvim"
+
+[textproto]
+url = "https://github.com/PorterAtGoogle/tree-sitter-textproto"
+revision = "568471b80fd8793d37ed01865d8c2208a9fefd1b"
+license = "ISC"
+extensions = []
+source = "nvim"
+
+[thrift]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-thrift"
+revision = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf"
+license = "MIT"
+extensions = ["thrift"]
+source = "nvim"
+
+[tiger]
+url = "https://github.com/ambroisie/tree-sitter-tiger"
+revision = "4a77b2d7a004587646bddc4e854779044b6db459"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[todotxt]
+url = "https://github.com/arnarg/tree-sitter-todotxt"
+revision = "3937c5cd105ec4127448651a21aef45f52d19609"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[tsv]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-csv"
+revision = "f6bf6e35eb0b95fbadea4bb39cb9709507fcb181"
+location = "tsv"
+license = "MIT"
+extensions = ["tsv", "vcf"]
+source = "nvim"
+
+[turtle]
+url = "https://github.com/GordianDziwis/tree-sitter-turtle"
+revision = "7f789ea7ef765080f71a298fc96b7c957fa24422"
+license = "MIT"
+extensions = ["ttl"]
+source = "nvim"
+
+[twig]
+url = "https://github.com/gbprod/tree-sitter-twig"
+revision = "2208d2a3c3ee7ef378e97df2e51c18feb7ee9dfc"
+license = "MIT"
+extensions = ["twig", "html.twig", "html.twig.js.css"]
+source = "nvim"
+
+[typespec]
+url = "https://github.com/happenslol/tree-sitter-typespec"
+revision = "395bef1e1eb4dd18365401642beb534e8a244056"
+license = "MIT"
+extensions = ["typespec", "tsp"]
+source = "nvim"
+
+[typoscript]
+url = "https://github.com/Teddytrombone/tree-sitter-typoscript"
+revision = "b5d0162b328ec52cf300054a8a23d47f84f55cb4"
+license = "MIT"
+extensions = ["typoscript", "tsconfig"]
+source = "nvim"
+
+[typst]
+url = "https://github.com/uben0/tree-sitter-typst"
+revision = "46cf4ded12ee974a70bf8457263b67ad7ee0379d"
+license = "MIT"
+extensions = ["typ"]
+source = "nvim"
+
+[udev]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-udev"
+revision = "2fcb563a4d56a6b8e8c129252325fc6335e4acbf"
+license = "MIT"
+extensions = ["rules"]
+source = "nvim"
+
+[ungrammar]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-ungrammar"
+revision = "debd26fed283d80456ebafa33a06957b0c52e451"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[uxntal]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-uxntal"
+revision = "ad9b638b914095320de85d59c49ab271603af048"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[v]
+url = "https://github.com/vlang/v-analyzer"
+revision = "925d4570d1668746762a2cdf0ecb9a25be704a67"
+location = "tree_sitter_v"
+license = "MIT"
+extensions = ["vsh", "v.mod"]
+source = "nvim"
+
+[vento]
+url = "https://github.com/ventojs/tree-sitter-vento"
+revision = "edd6596d4b0f392b87fc345dc26d84a6c32f7059"
+license = "MIT"
+extensions = ["vto"]
+source = "nvim"
+
+[vhs]
+url = "https://github.com/charmbracelet/tree-sitter-vhs"
+revision = "0c6fae9d2cfc5b217bfd1fe84a7678f5917116db"
+license = "MIT"
+extensions = ["tape"]
+source = "nvim"
+
+[vimdoc]
+url = "https://github.com/neovim/tree-sitter-vimdoc"
+revision = "23daa416c1ff5d15f59a1aa648f031d6e3ee15c5"
+license = "Apache-2.0"
+extensions = ["txt"]
+source = "nvim"
+
+[vrl]
+url = "https://github.com/belltoy/tree-sitter-vrl"
+revision = "274b3ce63f72aa8ffea18e7fc280d3062d28f0ba"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[vue]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-vue"
+revision = "ce8011a414fdf8091f4e4071752efc376f4afb08"
+license = "MIT"
+extensions = ["vue"]
+source = "nvim"
+
+[wgsl]
+url = "https://github.com/szebniok/tree-sitter-wgsl"
+revision = "40259f3c77ea856841a4e0c4c807705f3e4a2b65"
+license = "MIT"
+extensions = ["wgsl"]
+source = "nvim"
+
+[wgsl_bevy]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-wgsl-bevy"
+revision = "d9306a798ede627001a8e5752f775858c8edd7e4"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[wing]
+url = "https://github.com/winglang/tree-sitter-wing"
+revision = "76e0c25844a66ebc6e866d690fcc5f4e90698947"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[wxml]
+url = "https://github.com/BlockLune/tree-sitter-wxml"
+revision = "1cc1761c8c11cacab5516dbe64e20ee689aa4428"
+license = "MIT"
+extensions = ["wxml"]
+source = "nvim"
+
+[xresources]
+url = "https://github.com/ValdezFOmar/tree-sitter-xresources"
+revision = "v1.0.0"
+license = "MIT"
+extensions = []
+filenames = ["xdefaults", "xresources"]
+source = "nvim"
+
+[yang]
+url = "https://github.com/Hubro/tree-sitter-yang"
+revision = "2c0e6be8dd4dcb961c345fa35c309ad4f5bd3502"
+license = "Apache-2.0"
+extensions = ["yang"]
+source = "nvim"
+
+[yuck]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-yuck"
+revision = "6c60112b3b3e739fb1ca4a8ea4bea2b6ffe11318"
+license = "MIT"
+extensions = ["yuck"]
+source = "nvim"
+
+[ziggy]
+url = "https://github.com/kristoff-it/ziggy"
+revision = "4353b20ef2ac750e35c6d68e4eb2a07c2d7cf901"
+location = "tree-sitter-ziggy"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[ziggy_schema]
+url = "https://github.com/kristoff-it/ziggy"
+revision = "4353b20ef2ac750e35c6d68e4eb2a07c2d7cf901"
+location = "tree-sitter-ziggy-schema"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+# Built from source at nvim-treesitter's pinned revision (import_nvim.py)
+
+[awk]
+url = "https://github.com/Beaglefoot/tree-sitter-awk"
+revision = "34bbdc7cce8e803096f47b625979e34c1be38127"
+license = "MIT"
+extensions = ["awk", "auk", "gawk", "mawk", "nawk"]
+first_line = "^#!.*\\b(awk|gawk|mawk|nawk)\\b"
+source = "nvim"
+
+[gstlaunch]
+url = "https://github.com/tree-sitter-grammars/tree-sitter-gstlaunch"
+revision = "549aef253fd38a53995cda1bf55c501174372bf7"
+license = "MIT"
+extensions = []
+source = "nvim"
+
+[mermaid]
+url = "https://github.com/monaqa/tree-sitter-mermaid"
+revision = "90ae195b31933ceb9d079abfa8a3ad0a36fee4cc"
+license = "MIT"
+extensions = ["mmd", "mermaid"]
+source = "nvim"

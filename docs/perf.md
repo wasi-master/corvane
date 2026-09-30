@@ -30,10 +30,11 @@ Opt-in engine (flag `105-tree-sitter-highlighting`, `crates/corvane-highlight/sr
 | Metric | Measured | Notes |
 |---|---|---|
 | Default build size | +~0.2 MB | the tree-sitter C runtime (`libtree-sitter.a`: 169 KB `__text`) plus the loader and painter; the grammars are not linked. The M7 release was 22.7 MB against the 25 MB budget; not re-measured with a full release build (disk) |
-| `tree-sitter-all` pack (102 grammars) | 13.5 MB zipped, 170 MB installed | per architecture; the parse tables dominate (systemverilog 23.5 MB, verilog 18.2 MB, fsharp 14.2 MB, ocaml 12.9 MB) |
-| `tree-sitter-rest` pack (53 grammars) | 7.4 MB zipped, 101 MB installed | |
-| `full` build | +~170 MB per architecture | every grammar linked in |
-| Loading a pack | 2.3 s the first time a new pack file is opened, 2 ms afterwards | `dlopen` of the freshly written dylib (macOS evaluates the new file once); on a background thread, diffs keep GHD's highlighting until it finishes |
+| `tree-sitter-all` pack (310 grammars) | 25 MB zipped and installed | one gzipped library per grammar package (built with clang, no Rust std: html 50 KB, typescript 2.9 MB unpacked); a unit is unpacked into `~/Library/Caches/Corvane/grammars/` the first time a diff needs it, so disk holds only the languages in use (a Rust cdylib per unit carried ~300 KB of std each) |
+| `tree-sitter-rest` pack (201 grammars) | 15.7 MB | |
+| `full` build | +~170 MB per architecture (102 crates.io grammars) | the source-built grammars are linked in too when their sources are fetched |
+| Core syntect set | 1.4 MB dump (syntect defaults + 330 TextMate grammars) | replaces syntect's built-in set in the default build |
+| Loading a grammar | reading `index.json` at launch; per unit, gunzip + first `dlopen` of a small library (tens of ms) on the highlight thread the first time its language shows up | the old single 170 MB library took 2.3 s on first open |
 | Highlighting a 246 KB Rust file | 148 ms | debug build of the Rust side, optimised C runtime and grammars; budget is `MAX_HIGHLIGHT_BYTES` (256 KB) like the other engines |
 
 ## How to measure
