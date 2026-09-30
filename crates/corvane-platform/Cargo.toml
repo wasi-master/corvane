@@ -17,6 +17,7 @@ ureq.workspace = true
 
 # freedesktop.org Trash spec (the crate corvane-git already uses)
 [target.'cfg(not(target_os = "macos"))'.dependencies]
+libc = "0.2"
 trash = "5"
 # org.freedesktop.Notifications (the crate GPUI's Linux backend uses)
 notify-rust = "4"
