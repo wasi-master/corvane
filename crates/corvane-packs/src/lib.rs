@@ -1,6 +1,6 @@
 //! On-demand packs: a minisign-signed manifest on GitHub
-//! Releases lists archives (`syntax-extended`, later `git-portable` and
-//! `git-lfs`) with their sha256; a pack is downloaded to
+//! Releases lists archives (`syntax-extended`, `tree-sitter-all`,
+//! `tree-sitter-rest`, later `git-portable` and `git-lfs`) with their sha256; a pack is downloaded to
 //! `~/Library/Caches/Corvane/packs/`, checked against the manifest's sha256,
 //! unpacked into `~/Library/Application Support/Corvane/packs/<name>/<version>/`
 //! and marked installed. The `default` build fetches packs on demand; the
@@ -9,6 +9,10 @@
 //!
 //! GitHub Desktop has no equivalent: Electron ships every grammar and a
 //! private git; Corvane keeps the default bundle lean instead.
+//!
+//! Entries of native packs (the tree-sitter grammar libraries) carry a
+//! `target` ([`pack_target`]); entries of a kind or target this build does
+//! not know are skipped, so a manifest can grow without breaking older apps.
 //!
 //! Testing hook: `CORVANE_PACKS_MANIFEST=<url or file path>` replaces the
 //! manifest location.
@@ -36,7 +40,7 @@ const USER_AGENT: &str = concat!("Corvane/", env!("CARGO_PKG_VERSION"));
 pub enum PackError {
     #[error("the packs manifest could not be reached: {0}")]
     Network(String),
-    #[error("the packs manifest answered with status {0}")]
+    #[error("the server answered with status {0}")]
     Status(u16),
     #[error("the packs manifest could not be read: {0}")]
     Manifest(String),
@@ -70,6 +74,34 @@ pub enum PackKind {
     GitPortable,
     /// git-lfs alone.
     GitLfs,
+    /// every tree-sitter grammar (`corvane-grammars` as a dynamic library).
+    TreeSitterAll,
+    /// the tree-sitter grammars for languages no CodeMirror port covers.
+    TreeSitterRest,
+}
+
+/// The grammar library inside a tree-sitter pack.
+#[cfg(target_os = "macos")]
+const GRAMMAR_LIBRARY: &str = "libcorvane_grammars.dylib";
+#[cfg(target_os = "windows")]
+const GRAMMAR_LIBRARY: &str = "corvane_grammars.dll";
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+const GRAMMAR_LIBRARY: &str = "libcorvane_grammars.so";
+
+/// The `target` of manifest entries for native packs this build can load:
+/// `macos` (universal), else `<os>-<arch>` (`linux-x86_64`).
+pub fn pack_target() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(all(target_os = "windows", target_arch = "aarch64")) {
+        "windows-aarch64"
+    } else if cfg!(target_os = "windows") {
+        "windows-x86_64"
+    } else if cfg!(target_arch = "aarch64") {
+        "linux-aarch64"
+    } else {
+        "linux-x86_64"
+    }
 }
 
 impl PackKind {
@@ -79,6 +111,8 @@ impl PackKind {
             PackKind::SyntaxExtended => "syntax-extended",
             PackKind::GitPortable => "git-portable",
             PackKind::GitLfs => "git-lfs",
+            PackKind::TreeSitterAll => "tree-sitter-all",
+            PackKind::TreeSitterRest => "tree-sitter-rest",
         }
     }
 
@@ -88,6 +122,8 @@ impl PackKind {
             PackKind::SyntaxExtended => "Extended syntax highlighting",
             PackKind::GitPortable => "Portable Git",
             PackKind::GitLfs => "Git LFS",
+            PackKind::TreeSitterAll => "Tree-sitter grammars",
+            PackKind::TreeSitterRest => "Tree-sitter grammars for other languages",
         }
     }
 
@@ -97,6 +133,7 @@ impl PackKind {
             PackKind::SyntaxExtended => "syntaxes.packdump",
             PackKind::GitPortable => "bin/git",
             PackKind::GitLfs => "bin/git-lfs",
+            PackKind::TreeSitterAll | PackKind::TreeSitterRest => GRAMMAR_LIBRARY,
         }
     }
 }
@@ -113,6 +150,10 @@ pub struct PackEntry {
     pub sha256: String,
     pub size: u64,
     pub kind: PackKind,
+    /// The platform of a native pack ([`pack_target`]); `None` for data
+    /// packs every platform reads.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,11 +163,13 @@ pub struct PackManifest {
 }
 
 impl PackManifest {
-    /// The newest entry of `kind` this app version can use.
+    /// The newest entry of `kind` for this platform that this app version
+    /// can use.
     pub fn entry_for(&self, kind: PackKind, app_version: &str) -> Option<&PackEntry> {
         self.packs
             .iter()
             .filter(|p| p.kind == kind)
+            .filter(|p| p.target.as_deref().is_none_or(|t| t == pack_target()))
             .filter(|p| !version_is_newer(&p.min_app, app_version))
             .max_by(|a, b| compare_versions(&a.version, &b.version))
     }
@@ -223,14 +266,34 @@ pub fn fetch_manifest() -> Result<PackManifest, PackError> {
     parse_manifest(&body)
 }
 
-/// Parse a manifest body (already verified).
+/// Parse a manifest body (already verified). Entries this build cannot read
+/// (a pack kind added later) are skipped.
 pub fn parse_manifest(body: &[u8]) -> Result<PackManifest, PackError> {
-    let manifest: PackManifest =
-        serde_json::from_slice(body).map_err(|err| PackError::Manifest(err.to_string()))?;
-    if manifest.schema > MANIFEST_SCHEMA {
-        return Err(PackError::Schema(manifest.schema));
+    #[derive(Deserialize)]
+    struct Raw {
+        schema: u32,
+        packs: Vec<serde_json::Value>,
     }
-    Ok(manifest)
+    let raw: Raw =
+        serde_json::from_slice(body).map_err(|err| PackError::Manifest(err.to_string()))?;
+    if raw.schema > MANIFEST_SCHEMA {
+        return Err(PackError::Schema(raw.schema));
+    }
+    let packs = raw
+        .packs
+        .into_iter()
+        .filter_map(|value| match serde_json::from_value::<PackEntry>(value) {
+            Ok(entry) => Some(entry),
+            Err(err) => {
+                debug!("skipping a packs manifest entry: {err}");
+                None
+            }
+        })
+        .collect();
+    Ok(PackManifest {
+        schema: raw.schema,
+        packs,
+    })
 }
 
 /// The installed version of `kind`, newest first when several are present.
@@ -465,7 +528,41 @@ mod tests {
             sha256: String::new(),
             size: 0,
             kind,
+            target: None,
         }
+    }
+
+    #[test]
+    fn native_packs_match_this_platform() {
+        let mut here = entry(PackKind::TreeSitterAll, "1.0.0", "0.1.0");
+        here.target = Some(pack_target().to_string());
+        let mut elsewhere = entry(PackKind::TreeSitterAll, "2.0.0", "0.1.0");
+        elsewhere.target = Some("plan9-mips".to_string());
+        let manifest = PackManifest {
+            schema: 1,
+            packs: vec![here, elsewhere],
+        };
+        let pick = manifest
+            .entry_for(PackKind::TreeSitterAll, "0.1.0")
+            .unwrap();
+        assert_eq!(pick.version, "1.0.0");
+        assert!(
+            manifest
+                .entry_for(PackKind::TreeSitterRest, "0.1.0")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn unknown_kinds_are_skipped() {
+        let json = r#"{"schema":1,"packs":[
+            {"name":"future","version":"1.0.0","min_app":"0.1.0","url":"u","sha256":"ab","size":1,"kind":"future-kind"},
+            {"name":"tree-sitter-all","version":"1.0.0","min_app":"0.1.0","url":"u","sha256":"ab","size":1,"kind":"tree-sitter-all","target":"macos"}
+        ]}"#;
+        let manifest = parse_manifest(json.as_bytes()).unwrap();
+        assert_eq!(manifest.packs.len(), 1);
+        assert_eq!(manifest.packs[0].kind, PackKind::TreeSitterAll);
+        assert_eq!(manifest.packs[0].target.as_deref(), Some("macos"));
     }
 
     #[test]
@@ -524,6 +621,7 @@ mod tests {
             sha256: sha,
             size: 0,
             kind: PackKind::SyntaxExtended,
+            target: None,
         };
         // SAFETY: the only test touching CORVANE_PACKS_DIR
         unsafe { std::env::set_var("CORVANE_PACKS_DIR", dir.join("packs")) };

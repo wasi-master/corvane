@@ -1,11 +1,19 @@
-//! Line-stateful syntax highlighting for diffs: syntect parsing
-//! with the compiled-in grammar set or the `syntax-extended` pack
-//! (`syntaxes`), classified into GitHub Desktop's CodeMirror token classes
-//! (`styles/ui/_diff.scss` `.cm-s-default`) so the UI can colour them with
-//! the `--syntax-*-color` tokens. Grammars load lazily on first use.
+//! Line-stateful syntax highlighting for diffs, classified into
+//! GitHub Desktop's CodeMirror token classes (`styles/ui/_diff.scss`
+//! `.cm-s-default`) so the UI can colour them with the `--syntax-*-color`
+//! tokens. Three tokenizers, chained per [`Engine`]:
+//!
+//! - [`cm`]: ports of the CodeMirror modes GHD's highlighter runs;
+//! - syntect with the compiled-in grammar set or the `syntax-extended` pack
+//!   ([`syntaxes`]), for languages no port covers;
+//! - [`treesitter`] (Corvane addition, opt-in): grammars from the full build
+//!   or a `tree-sitter-all` / `tree-sitter-rest` pack.
+//!
+//! Grammars load lazily on first use.
 
 pub mod cm;
 pub mod syntaxes;
+pub mod treesitter;
 
 use std::ops::Range;
 use std::str::FromStr;
@@ -42,6 +50,20 @@ pub struct Span {
 
 /// Highlighting stops after this many bytes (GHD `MaxHighlightContentLength`).
 pub const MAX_HIGHLIGHT_BYTES: usize = 256 * 1024;
+
+/// Which tokenizers run, in order; the first that knows the file wins
+/// (Settings › Appearance › Syntax highlighting).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Engine {
+    /// GHD's: the CodeMirror ports, then syntect
+    #[default]
+    GitHubDesktop,
+    /// the CodeMirror ports, then tree-sitter, then syntect: tree-sitter only
+    /// for languages GHD does not highlight itself
+    TreeSitterFallback,
+    /// tree-sitter, then the CodeMirror ports, then syntect
+    TreeSitter,
+}
 
 fn syntax_set() -> Arc<SyntaxSet> {
     syntaxes::current()
@@ -115,28 +137,62 @@ fn syntax_for<'a>(ss: &'a SyntaxSet, path: &str, first_line: &str) -> Option<&'a
 }
 
 /// Tokenize `lines` (without trailing newlines) in order, carrying parser
-/// state from line to line. `None` when no grammar matches the path.
-/// Lines after `MAX_HIGHLIGHT_BYTES` get no spans.
+/// state from line to line, with GitHub Desktop's tokenizers. `None` when no
+/// grammar matches the path. Lines after `MAX_HIGHLIGHT_BYTES` get no spans.
 pub fn highlight_lines<'a>(
     path: &str,
     lines: impl IntoIterator<Item = &'a str>,
 ) -> Option<Vec<Vec<Span>>> {
-    let mut lines = lines.into_iter().peekable();
-    let first = lines.peek().copied().unwrap_or("");
-    // languages whose CodeMirror mode is ported run GHD's own tokenizer
-    let cm_mode = cm::mode_for_path(path).or_else(|| {
+    highlight_lines_with(Engine::GitHubDesktop, path, lines)
+}
+
+/// [`highlight_lines`] with the tokenizers `engine` chains.
+pub fn highlight_lines_with<'a>(
+    engine: Engine,
+    path: &str,
+    lines: impl IntoIterator<Item = &'a str>,
+) -> Option<Vec<Vec<Span>>> {
+    let lines: Vec<&str> = lines.into_iter().collect();
+    let ts = || treesitter::highlight(path, &lines, MAX_HIGHLIGHT_BYTES);
+    match engine {
+        Engine::GitHubDesktop => {
+            cm_highlight(path, &lines).or_else(|| syntect_highlight(path, &lines))
+        }
+        Engine::TreeSitterFallback => cm_highlight(path, &lines)
+            .or_else(ts)
+            .or_else(|| syntect_highlight(path, &lines)),
+        Engine::TreeSitter => ts()
+            .or_else(|| cm_highlight(path, &lines))
+            .or_else(|| syntect_highlight(path, &lines)),
+    }
+}
+
+/// The ported CodeMirror mode GHD would pick for `path`: by extension or
+/// file name, else (for a file with no known extension) by the first line.
+fn cm_mode(path: &str, first_line: &str) -> Option<std::sync::Arc<dyn cm::Mode>> {
+    cm::mode_for_path(path).or_else(|| {
         let name = path.rsplit('/').next().unwrap_or(path).to_lowercase();
         let has_known_ext = name
             .rfind('.')
             .is_some_and(|i| cm::modes::mime_for_extension(&name[i..]).is_some());
         (!has_known_ext && cm::modes::mime_for_basename(&name).is_none())
-            .then(|| cm::modes::guess_mime(first).and_then(cm::modes::mode_for_mime))
+            .then(|| cm::modes::guess_mime(first_line).and_then(cm::modes::mode_for_mime))
             .flatten()
-    });
-    if let Some(mode) = cm_mode {
-        let lines: Vec<&str> = lines.collect();
-        return Some(cm::highlight(&*mode, &lines, MAX_HIGHLIGHT_BYTES));
-    }
+    })
+}
+
+/// Whether GitHub Desktop's own tokenizer (a CodeMirror mode) covers `path`.
+pub fn cm_covers(path: &str, first_line: &str) -> bool {
+    cm_mode(path, first_line).is_some()
+}
+
+fn cm_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
+    let mode = cm_mode(path, lines.first().copied().unwrap_or(""))?;
+    Some(cm::highlight(&*mode, lines, MAX_HIGHLIGHT_BYTES))
+}
+
+fn syntect_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
+    let first = lines.first().copied().unwrap_or("");
     let ss = syntax_set();
     let syntax = syntax_for(&ss, path, first)?;
     let ss = &*ss;
@@ -224,5 +280,47 @@ mod tests {
     #[test]
     fn unknown_extension_is_none() {
         assert!(highlight_lines("file.unknownext", ["x"]).is_none());
+    }
+
+    fn first_class(engine: Engine, path: &str, line: &str) -> Option<TokenClass> {
+        treesitter::tests::with_grammars();
+        highlight_lines_with(engine, path, [line])
+            .and_then(|spans| spans[0].first().map(|s| s.class))
+    }
+
+    #[test]
+    fn engines_chain_their_tokenizers() {
+        // GHD has no Haskell mode: syntect, unless tree-sitter may run
+        let haskell = "module Main where";
+        assert_eq!(
+            first_class(Engine::GitHubDesktop, "Main.hs", haskell),
+            syntect_first("Main.hs", haskell)
+        );
+        assert_eq!(
+            first_class(Engine::TreeSitterFallback, "Main.hs", haskell),
+            Some(TokenClass::Keyword)
+        );
+        assert_eq!(
+            first_class(Engine::TreeSitter, "Main.hs", haskell),
+            Some(TokenClass::Keyword)
+        );
+        // GHD covers .js: the fallback engine keeps CodeMirror's tokens
+        let js = "foo(1)";
+        assert_eq!(
+            first_class(Engine::TreeSitterFallback, "a.js", js),
+            cm_first("a.js", js)
+        );
+        assert!(cm_covers("a.js", ""));
+        assert!(!cm_covers("Main.hs", ""));
+        // nobody knows it
+        assert!(highlight_lines_with(Engine::TreeSitter, "x.unknownext", ["x"]).is_none());
+    }
+
+    fn syntect_first(path: &str, line: &str) -> Option<TokenClass> {
+        syntect_highlight(path, &[line]).and_then(|s| s[0].first().map(|s| s.class))
+    }
+
+    fn cm_first(path: &str, line: &str) -> Option<TokenClass> {
+        cm_highlight(path, &[line]).and_then(|s| s[0].first().map(|s| s.class))
     }
 }

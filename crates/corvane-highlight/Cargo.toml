@@ -9,14 +9,26 @@ description = "Corvane diff syntax highlighting (syntect)"
 # The "full" build: two-face's whole grammar collection compiled in instead
 # of the on-demand `syntax-extended` pack.
 bundled-syntax-extended = ["dep:two-face"]
+# The "full" build: every tree-sitter grammar linked in instead of the
+# `tree-sitter-all` / `tree-sitter-rest` packs.
+bundled-tree-sitter = ["dep:corvane-grammars", "corvane-grammars/all"]
 # `cargo run -p corvane-highlight --features pack-builder --example dump-extended <out>`
 # writes the pack's syntaxes.packdump (packaging/packs.sh).
 pack-builder = ["dep:two-face", "syntect/dump-create"]
 
 [dependencies]
+corvane-grammars = { workspace = true, optional = true }
 fancy-regex = "0.16"
+libloading.workspace = true
+regex.workspace = true
 syntect.workspace = true
+tracing.workspace = true
+tree-sitter.workspace = true
+tree-sitter-language.workspace = true
 two-face = { workspace = true, optional = true }
+
+[dev-dependencies]
+corvane-grammars = { workspace = true, features = ["all"] }
 
 [[example]]
 name = "dump-extended"

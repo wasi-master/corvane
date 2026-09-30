@@ -20,7 +20,7 @@ runtime-shaders = ["gpui-pre-apple/runtime_shaders"]
 # after the delay, saves it and quits; `CORVANE_CONTROL=<port>` serves the parity
 # harness (tools/parity). Development only (pulls GPUI's test support).
 # The "full" build: every on-demand pack compiled in.
-full = ["corvane-highlight/bundled-syntax-extended"]
+full = ["corvane-highlight/bundled-syntax-extended", "corvane-highlight/bundled-tree-sitter"]
 snapshots = [
     "dep:gpui-pre",
     "dep:gpui-pre-macos",

@@ -512,11 +512,15 @@ impl Dispatcher {
         });
         Self::show_popup(Popup::Preferences { tab }, cx);
         Self::detect_integrations(cx);
-        // Settings › Advanced lists the on-demand packs from the manifest
-        // (`502-optional-components`)
+        // Settings › Advanced (and Appearance › Syntax highlighting) list the
+        // on-demand packs from the manifest (`502-optional-components`,
+        // `105-tree-sitter-highlighting`)
         let wants_manifest = {
             let s = Self::state(cx).read(cx);
-            s.packs.manifest.is_none() && s.flags.bool(crate::flags::ids::OPTIONAL_COMPONENTS)
+            s.packs.manifest.is_none()
+                && crate::packs::offered_packs(&s.flags)
+                    .iter()
+                    .any(|kind| !s.packs.bundled(*kind))
         };
         if wants_manifest {
             Self::refresh_packs_manifest(cx);

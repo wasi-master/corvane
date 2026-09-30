@@ -166,6 +166,10 @@ impl Dispatcher {
             Self::restart_watcher(cx);
         }
         Self::sync_crash_reports_setting(cx);
+        if now.bool(ids::TREE_SITTER_HIGHLIGHTING) && !previous.bool(ids::TREE_SITTER_HIGHLIGHTING)
+        {
+            Self::load_tree_sitter_packs(cx);
+        }
         for id in now.restart_pending(&Self::state(cx).read(cx).flags_at_launch) {
             warn!(flag = %id, "flag takes effect at the next launch");
         }

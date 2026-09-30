@@ -517,6 +517,22 @@ pub enum ThemeSetting {
     HighContrast,
 }
 
+/// Settings › Appearance › Syntax highlighting (Corvane addition, offered by
+/// flag `105-tree-sitter-highlighting`; GHD always runs its CodeMirror modes).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+pub enum SyntaxHighlighter {
+    /// GHD's CodeMirror modes, syntect for the rest
+    #[default]
+    #[serde(rename = "github-desktop")]
+    GitHubDesktop,
+    /// GHD's modes where it has one, tree-sitter for other languages
+    #[serde(rename = "tree-sitter-fallback")]
+    TreeSitterFallback,
+    /// tree-sitter wherever it has a grammar
+    #[serde(rename = "tree-sitter")]
+    TreeSitter,
+}
+
 // ---- working directory status (`models/status.ts`) ----
 
 /// `AppFileStatusKind`

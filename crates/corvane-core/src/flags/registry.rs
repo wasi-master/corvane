@@ -142,6 +142,31 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/widgets.rs", "crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/branch_list.rs"],
     },
+    /// Settings › Appearance › Syntax highlighting (tree-sitter).
+    TREE_SITTER_HIGHLIGHTING = 105 "tree-sitter-highlighting" {
+        title: "Tree-sitter syntax highlighting",
+        summary: "Settings › Appearance offers Syntax highlighting: GitHub Desktop's highlighter, \
+                  tree-sitter for the languages it does not highlight, or tree-sitter wherever \
+                  there is a grammar. The grammars download as an optional component.",
+        ghd_behaviour: "CodeMirror 5 modes only; files in other languages get no colours.",
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[
+            Upstream::issue(22015),
+            Upstream::issue(19038),
+            Upstream::issue(21385),
+            Upstream::issue(22663),
+            Upstream::issue(21106),
+            Upstream::issue(19311),
+        ],
+        code: &[
+            "crates/corvane-highlight/src/treesitter/mod.rs",
+            "crates/corvane-ui/src/dialogs/preferences.rs",
+            "crates/corvane-ui/src/diff_view.rs",
+            "crates/corvane-core/src/packs.rs",
+        ],
+    },
 
     // ---- 200 Repository ----
 

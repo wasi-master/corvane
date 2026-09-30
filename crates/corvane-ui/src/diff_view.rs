@@ -254,6 +254,9 @@ pub struct DiffView {
     rows_key: Option<(u64, String, u64)>,
     /// Syntax spans for `rows`, filled in by a background task.
     tokens: Option<Rc<Vec<Vec<corvane_highlight::Span>>>>,
+    /// The highlighter (and tree-sitter grammar set) `tokens` came from;
+    /// a change (Settings, a grammar pack loaded) highlights again.
+    highlighted_with: Option<(corvane_highlight::Engine, u64)>,
     /// The hunks as shown (expanded copies of the model's).
     hunks: Rc<Vec<XHunk>>,
     /// Side-by-side rows built from `rows` (`showSideBySideDiff`).
@@ -300,6 +303,7 @@ impl DiffView {
             rows: Rc::new(Vec::new()),
             rows_key: None,
             tokens: None,
+            highlighted_with: None,
             hunks: Rc::new(Vec::new()),
             split_rows: Rc::new(Vec::new()),
             unified_to_split: Rc::new(Vec::new()),
@@ -427,6 +431,9 @@ impl DiffView {
     /// are tokenized in order.
     fn highlight(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         self.tokens = None;
+        let with = highlight_engine(self.state.read(cx));
+        self.highlighted_with = Some(with);
+        let engine = with.0;
         let path = key.1.clone();
         let rows: Vec<(corvane_core::DiffLineKind, Option<u32>, Option<u32>, String)> = self
             .rows
@@ -444,7 +451,7 @@ impl DiffView {
                     .iter()
                     .map(|(kind, _, _, text)| if *kind == K::Hunk { "" } else { text.as_str() })
                     .collect();
-                return corvane_highlight::highlight_lines(&path, texts);
+                return corvane_highlight::highlight_lines_with(engine, &path, texts);
             }
             // `getPartialBlobContents(…, MaxHighlightContentLength)`
             let tokenize = |lines: &Option<Arc<Vec<String>>>| {
@@ -459,7 +466,7 @@ impl DiffView {
                     })
                     .map(String::as_str)
                     .collect();
-                corvane_highlight::highlight_lines(&path, texts)
+                corvane_highlight::highlight_lines_with(engine, &path, texts)
             };
             let old_tokens = tokenize(&old);
             let new_tokens = tokenize(&new);
@@ -1627,6 +1634,29 @@ impl DiffView {
     }
 }
 
+/// The highlighter diffs use (Settings › Appearance › Syntax highlighting,
+/// offered by `105-tree-sitter-highlighting`) and, when it runs tree-sitter,
+/// the grammar set's generation.
+fn highlight_engine(s: &AppState) -> (corvane_highlight::Engine, u64) {
+    use corvane_core::SyntaxHighlighter;
+    use corvane_highlight::Engine;
+    let allowed = s
+        .flags
+        .bool(corvane_core::flags::ids::TREE_SITTER_HIGHLIGHTING);
+    match corvane_core::flags::effective_syntax_highlighter(s.settings.syntax_highlighter, allowed)
+    {
+        SyntaxHighlighter::GitHubDesktop => (Engine::GitHubDesktop, 0),
+        SyntaxHighlighter::TreeSitterFallback => (
+            Engine::TreeSitterFallback,
+            corvane_highlight::treesitter::generation(),
+        ),
+        SyntaxHighlighter::TreeSitter => (
+            Engine::TreeSitter,
+            corvane_highlight::treesitter::generation(),
+        ),
+    }
+}
+
 impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // View › Zoom changed the row heights the list has cached
@@ -1640,6 +1670,10 @@ impl Render for DiffView {
         };
         if self.rows_key.as_ref() != Some(&snap.key) {
             self.load(&snap, cx);
+        } else if self.highlighted_with != Some(highlight_engine(self.state.read(cx))) {
+            // Settings › Appearance › Syntax highlighting changed, or a
+            // tree-sitter grammar pack was loaded or removed
+            self.highlight(snap.key.clone(), cx);
         }
         let split = self.state.read(cx).settings.show_side_by_side_diff;
         self.set_split_mode(split);

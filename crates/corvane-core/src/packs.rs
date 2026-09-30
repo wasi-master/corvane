@@ -1,18 +1,21 @@
 //! On-demand packs in the app (`corvane_packs`): which packs
 //! are installed, the manifest for Settings › Advanced, download / remove
-//! with progress, and handing the `syntax-extended` dump to
-//! `corvane_highlight`. No GHD equivalent (Electron ships everything).
+//! with progress, and handing the `syntax-extended` dump and the tree-sitter
+//! grammar libraries to `corvane_highlight`. No GHD equivalent (Electron
+//! ships everything, and has no tree-sitter).
 //!
 //! Testing hooks: `CORVANE_PACKS_MANIFEST=<url|path>` (the manifest),
 //! `CORVANE_INSTALL_PACK=<name>` installs that pack at launch.
 
 use std::collections::HashMap;
 
+use corvane_models::SyntaxHighlighter;
 use corvane_packs::{InstalledPack, PackError, PackKind, PackManifest};
 use gpui_kit::{App, AsyncApp};
 use tracing::{error, info, warn};
 
 use crate::dispatcher::Dispatcher;
+use crate::flags::{Flags, ids};
 use crate::remote::spawn_bg;
 
 /// A download / install in flight.
@@ -46,73 +49,158 @@ impl PacksState {
     pub fn bundled(&self, kind: PackKind) -> bool {
         match kind {
             PackKind::SyntaxExtended => corvane_highlight::syntaxes::extended_bundled(),
+            PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
+                corvane_highlight::treesitter::bundled()
+            }
             PackKind::GitPortable | PackKind::GitLfs => false,
+        }
+    }
+
+    /// The pack a Syntax highlighting choice still needs (`None` when it
+    /// needs none or what it needs is here). The `tree-sitter-all` pack
+    /// covers what `tree-sitter-rest` has.
+    pub fn missing_for(&self, highlighter: SyntaxHighlighter) -> Option<PackKind> {
+        match highlighter {
+            SyntaxHighlighter::GitHubDesktop => None,
+            SyntaxHighlighter::TreeSitter => {
+                (!self.available(PackKind::TreeSitterAll)).then_some(PackKind::TreeSitterAll)
+            }
+            SyntaxHighlighter::TreeSitterFallback => (!self.available(PackKind::TreeSitterAll)
+                && !self.available(PackKind::TreeSitterRest))
+            .then_some(PackKind::TreeSitterRest),
         }
     }
 }
 
-/// Every pack Settings › Advanced lists (the git packs are not published
-/// yet, so only the grammar pack for now).
-pub const OFFERED_PACKS: &[PackKind] = &[PackKind::SyntaxExtended];
+/// Every pack Settings › Advanced may list (the git packs are not published
+/// yet).
+pub const OFFERED_PACKS: &[PackKind] = &[
+    PackKind::SyntaxExtended,
+    PackKind::TreeSitterAll,
+    PackKind::TreeSitterRest,
+];
+
+/// The packs the flags offer: the extended syntect grammars with
+/// `502-optional-components`, the tree-sitter grammars with
+/// `105-tree-sitter-highlighting`.
+pub fn offered_packs(flags: &Flags) -> Vec<PackKind> {
+    OFFERED_PACKS
+        .iter()
+        .copied()
+        .filter(|kind| match kind {
+            PackKind::SyntaxExtended => flags.bool(ids::OPTIONAL_COMPONENTS),
+            PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
+                flags.bool(ids::TREE_SITTER_HIGHLIGHTING)
+            }
+            PackKind::GitPortable | PackKind::GitLfs => false,
+        })
+        .collect()
+}
 
 fn app_version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
 /// Point the consumer at an installed pack's data.
-fn activate(pack: &InstalledPack) {
-    if pack.kind == PackKind::SyntaxExtended {
-        match corvane_highlight::syntaxes::use_extended_dump(&pack.entry_path()) {
-            Ok(count) => info!(count, version = %pack.version, "extended grammars loaded"),
-            Err(err) => warn!(%err, "could not load the extended grammars"),
+fn activate(pack: &InstalledPack) -> Result<(), String> {
+    match pack.kind {
+        PackKind::SyntaxExtended => {
+            match corvane_highlight::syntaxes::use_extended_dump(&pack.entry_path()) {
+                Ok(count) => info!(count, version = %pack.version, "extended grammars loaded"),
+                Err(err) => warn!(%err, "could not load the extended grammars"),
+            }
+            Ok(())
         }
+        PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
+            let count =
+                corvane_highlight::treesitter::load_library(pack.kind.name(), &pack.entry_path())
+                    .map_err(|err| {
+                    warn!(%err, pack = pack.kind.name(), "could not load the tree-sitter grammars");
+                    err
+                })?;
+            info!(count, version = %pack.version, pack = pack.kind.name(), "tree-sitter grammars loaded");
+            Ok(())
+        }
+        PackKind::GitPortable | PackKind::GitLfs => Ok(()),
     }
 }
 
 fn deactivate(kind: PackKind) {
-    if kind == PackKind::SyntaxExtended {
-        corvane_highlight::syntaxes::clear_extended_dump();
+    match kind {
+        PackKind::SyntaxExtended => corvane_highlight::syntaxes::clear_extended_dump(),
+        PackKind::TreeSitterAll | PackKind::TreeSitterRest => {
+            corvane_highlight::treesitter::unload_library(kind.name());
+        }
+        PackKind::GitPortable | PackKind::GitLfs => {}
     }
 }
 
 impl Dispatcher {
-    /// At launch: find installed packs on disk and activate them (unless
-    /// `502-optional-components` is off).
+    /// At launch: find the installed packs the flags offer and activate them.
     pub fn load_installed_packs(cx: &mut App) {
-        if !Self::state(cx)
-            .read(cx)
-            .flags
-            .bool(crate::flags::ids::OPTIONAL_COMPONENTS)
-        {
-            info!("optional components are off: installed packs stay inactive");
+        let offered: Vec<PackKind> = {
+            let s = Self::state(cx).read(cx);
+            offered_packs(&s.flags)
+                .into_iter()
+                .filter(|kind| !s.packs.bundled(*kind))
+                .collect()
+        };
+        if offered.is_empty() {
+            info!("no optional components offered: installed packs stay inactive");
             return;
         }
+        Self::load_packs(offered, cx);
+    }
+
+    /// Activate the installed ones of `kinds` (in the background); honours
+    /// `CORVANE_INSTALL_PACK` for them afterwards.
+    fn load_packs(kinds: Vec<PackKind>, cx: &mut App) {
+        let wanted = kinds.clone();
         spawn_bg(
             cx,
-            || {
+            move || {
                 let mut found = Vec::new();
-                for kind in OFFERED_PACKS {
-                    if let Some(pack) = corvane_packs::installed(*kind) {
-                        activate(&pack);
-                        found.push(pack);
+                for kind in wanted {
+                    if let Some(pack) = corvane_packs::installed(kind) {
+                        let error = activate(&pack).err();
+                        found.push((pack, error));
                     }
                 }
                 found
             },
-            |found, cx| {
+            move |found, cx| {
                 Self::state(cx).update(cx, |s, cx| {
-                    for pack in found {
+                    for (pack, error) in found {
+                        match error {
+                            Some(err) => s.packs.errors.insert(pack.kind, err),
+                            None => s.packs.errors.remove(&pack.kind),
+                        };
                         s.packs.installed.insert(pack.kind, pack);
                     }
                     cx.notify();
                 });
                 if let Ok(name) = std::env::var("CORVANE_INSTALL_PACK")
-                    && let Some(kind) = OFFERED_PACKS.iter().find(|k| k.name() == name)
+                    && let Some(kind) = kinds.iter().find(|k| k.name() == name)
                 {
                     Self::install_pack(*kind, cx);
                 }
             },
         );
+    }
+
+    /// `105-tree-sitter-highlighting` turned on: load the grammar packs
+    /// already on disk.
+    pub(crate) fn load_tree_sitter_packs(cx: &mut App) {
+        let kinds: Vec<PackKind> = [PackKind::TreeSitterAll, PackKind::TreeSitterRest]
+            .into_iter()
+            .filter(|kind| {
+                let packs = &Self::state(cx).read(cx).packs;
+                !packs.bundled(*kind) && !packs.installed.contains_key(kind)
+            })
+            .collect();
+        if !kinds.is_empty() {
+            Self::load_packs(kinds, cx);
+        }
     }
 
     /// Fetch the signed manifest (Settings › Advanced opening, Retry).
@@ -243,14 +331,17 @@ impl Dispatcher {
                     }
                 };
                 let pack = corvane_packs::install(&entry, app_version(), &mut progress)?;
-                activate(&pack);
-                Ok::<InstalledPack, PackError>(pack)
+                let error = activate(&pack).err();
+                Ok::<(InstalledPack, Option<String>), PackError>((pack, error))
             },
             move |result, cx| {
                 Self::state(cx).update(cx, |s, cx| {
                     s.packs.progress.remove(&kind);
                     match result {
-                        Ok(pack) => {
+                        Ok((pack, error)) => {
+                            if let Some(err) = error {
+                                s.packs.errors.insert(kind, err);
+                            }
                             s.packs.installed.insert(kind, pack);
                         }
                         Err(err) => {
