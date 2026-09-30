@@ -233,6 +233,9 @@ pub struct GhdTheme {
     pub background: Hsla,
     pub box_background: Hsla,
     pub box_alt_background: Hsla,
+    /// `--tip-box-background-color` / `--tip-box-border-color` (blank-slate ProTip).
+    pub tip_box_background: Hsla,
+    pub tip_box_border: Hsla,
     pub box_border: Hsla,
     pub box_border_contrast: Hsla,
     pub box_border_accent: Hsla,
@@ -353,6 +356,8 @@ pub struct GhdTheme {
     pub status_success: Hsla,
     pub tooltip_background: Hsla,
     pub tooltip_text: Hsla,
+    /// `--tooltip-shadow-color` (`0 8px 24px`).
+    pub tooltip_shadow: Hsla,
 
     // Native (NSMenu-like) context menus - Corvane addition, GHD uses real NSMenus
     pub menu_background: Hsla,

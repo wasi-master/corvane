@@ -10,6 +10,7 @@ use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
+use crate::widgets::GhdTooltip;
 use crate::widgets::ListRowA11y;
 use crate::widgets::button;
 
@@ -139,7 +140,26 @@ impl RepositoryFoldout {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
-            .when(!selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+            // `.list-item:hover` outranks `.list-item.selected`
+            .hover(move |s| s.bg(hover_bg))
+            // `renderTooltip`: the GitHub full name (or name) in bold, the
+            // alias in parentheses, then the path
+            .tooltip({
+                let real = repo
+                    .github
+                    .as_ref()
+                    .map(|gh| format!("{}/{}", gh.owner, gh.name))
+                    .unwrap_or_else(|| repo.name());
+                let bold = 0..real.len();
+                let mut text = real;
+                if let Some(alias) = &repo.alias {
+                    text.push_str(&format!(" ({alias})"));
+                }
+                text.push('\n');
+                text.push_str(&repo.path.to_string_lossy());
+                crate::widgets::rich_tooltip(text, bold)
+            })
+            .tooltip_show_delay(crate::widgets::TOOLTIP_DELAY)
             .on_click(move |_, _, cx| Dispatcher::select_repository(id, cx))
             .on_mouse_down(MouseButton::Right, {
                 let repo = repo.clone();
@@ -166,37 +186,79 @@ impl RepositoryFoldout {
                     .when(repo.alias.is_some(), |d| d.italic())
                     .child(repo.name()),
             )
-            .when(has_changes, |d| {
-                // `.change-indicator-wrapper`: a dot for uncommitted changes
-                d.child(
-                    octicon(Octicon::DotFill, t.text_secondary)
-                        .size(zpx(10.))
-                        .mr(zpx(4.)),
-                )
-            })
-            .when_some(ahead_behind, |d, ab| {
+            // `.repo-indicators`: ahead / behind arrows, then the changes dot
+            .when(has_changes || ahead_behind.is_some(), |d| {
+                let (badge_bg, badge_text) = if selected {
+                    (
+                        t.list_item_selected_badge_background,
+                        t.list_item_selected_badge_text,
+                    )
+                } else {
+                    (t.list_item_badge_background, t.list_item_badge_text)
+                };
                 d.child(
                     div()
                         .flex_none()
+                        .ml_auto()
+                        .mr(SPACING_HALF())
                         .flex()
                         .flex_row()
                         .items_center()
-                        .gap(zpx(2.))
-                        .px(zpx(5.))
-                        .h(zpx(13.))
-                        .rounded(zpx(8.))
-                        .bg(t.list_item_badge_background)
-                        .text_color(t.list_item_badge_text)
-                        .text_size(FONT_SIZE_XS())
-                        .line_height(zpx(11.))
-                        .when(ab.ahead > 0, |d| {
-                            d.child(format!("{}", ab.ahead)).child(
-                                octicon(Octicon::ArrowUp, t.list_item_badge_text).size(zpx(9.)),
+                        .when_some(ahead_behind, |d, ab| {
+                            // `renderAheadBehindIndicator`: arrows only, 12 px tall
+                            let tooltip = format!(
+                                "The currently checked out branch is{}{}{}its tracked branch.",
+                                if ab.behind > 0 {
+                                    format!(" {} behind ", commit_grammar(ab.behind))
+                                } else {
+                                    String::new()
+                                },
+                                if ab.behind > 0 && ab.ahead > 0 {
+                                    "and"
+                                } else {
+                                    ""
+                                },
+                                if ab.ahead > 0 {
+                                    format!(" {} ahead of ", commit_grammar(ab.ahead))
+                                } else {
+                                    String::new()
+                                },
+                            );
+                            d.child(
+                                div()
+                                    .id(("repo-ahead-behind", id))
+                                    .ghd_tooltip(tooltip)
+                                    .flex()
+                                    .flex_row()
+                                    .items_center()
+                                    .h(zpx(12.))
+                                    .px(zpx(6.))
+                                    .rounded(zpx(8.))
+                                    .bg(badge_bg)
+                                    .when(ab.ahead > 0, |d| {
+                                        d.child(
+                                            octicon(Octicon::ArrowUp, badge_text).size(zpx(12.)),
+                                        )
+                                    })
+                                    .when(ab.behind > 0, |d| {
+                                        d.child(
+                                            octicon(Octicon::ArrowDown, badge_text).size(zpx(12.)),
+                                        )
+                                    }),
                             )
                         })
-                        .when(ab.behind > 0, |d| {
-                            d.child(format!("{}", ab.behind)).child(
-                                octicon(Octicon::ArrowDown, t.list_item_badge_text).size(zpx(9.)),
+                        .when(has_changes, |d| {
+                            // `.change-indicator-wrapper`: 5 px in, at least 12 px wide
+                            d.child(
+                                div()
+                                    .id(("repo-changes", id))
+                                    .ghd_tooltip("There are uncommitted changes in this repository")
+                                    .ml(SPACING_HALF())
+                                    .min_w(zpx(12.))
+                                    .flex()
+                                    .justify_center()
+                                    .items_center()
+                                    .child(octicon(Octicon::DotFill, t.tab_bar_active)),
                             )
                         }),
                 )
@@ -479,5 +541,14 @@ impl Render for RepositoryFoldout {
                     .with_scrollbar(),
             )
             .when(add_open, |d| d.child(self.add_menu(cx)))
+    }
+}
+
+/// GHD `commitGrammar`: "1 commit" / "N commits".
+fn commit_grammar(n: u32) -> String {
+    if n == 1 {
+        "1 commit".to_string()
+    } else {
+        format!("{n} commits")
     }
 }

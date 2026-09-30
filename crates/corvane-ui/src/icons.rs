@@ -96,6 +96,7 @@ pub enum Octicon {
     ListUnordered,
     MortarBoard,
     Telescope,
+    LightBulb,
 }
 
 impl Octicon {
@@ -170,6 +171,7 @@ impl Octicon {
             Octicon::LinkExternal => "octicons/link-external-16.svg",
             Octicon::ListUnordered => "octicons/list-unordered-16.svg",
             Octicon::MortarBoard => "octicons/mortar-board-16.svg",
+            Octicon::LightBulb => "octicons/light-bulb-16.svg",
             Octicon::Telescope => "octicons/telescope-16.svg",
             Octicon::Terminal => "octicons/terminal-16.svg",
             Octicon::FileCode => "octicons/file-code-16.svg",

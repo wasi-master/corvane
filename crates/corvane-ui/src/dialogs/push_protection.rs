@@ -14,6 +14,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::theme::{c, mono_font, primer};
+use crate::widgets::GhdTooltip;
 use crate::widgets::{Inline, link_button, paragraph, segmented_option};
 
 pub struct PushProtectionErrorDialog {
@@ -65,7 +66,7 @@ impl PushProtectionErrorDialog {
                                 location.commit_sha
                             )))
                             .cursor_pointer()
-                            .tooltip(crate::widgets::tooltip("Copy the full SHA"))
+                            .ghd_tooltip("Copy the full SHA")
                             .on_click(move |_, _, cx| {
                                 cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
                             })
@@ -192,11 +193,11 @@ impl Render for PushProtectionErrorDialog {
                                         .flex_none()
                                         .px(SPACING_HALF())
                                         .cursor_pointer()
-                                        .tooltip(crate::widgets::tooltip(if expanded {
+                                        .ghd_tooltip(if expanded {
                                             "Show Less Locations"
                                         } else {
                                             "Show More locations"
-                                        }))
+                                        })
                                         .on_click(cx.listener(move |this, _, _, cx| {
                                             if !this.expanded.remove(&toggle_id) {
                                                 this.expanded.insert(toggle_id.clone());

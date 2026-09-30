@@ -781,30 +781,216 @@ pub fn segmented_option(
 
 /// GHD `.tool-tip-contents` (darwin): the small dark caption below a control.
 struct TextTooltip {
+    /// Lines separated by `\n`.
     text: SharedString,
+    /// A `<strong>` byte range of `text`.
+    bold: Option<std::ops::Range<usize>>,
+    /// `direction` + the target's bounds; `None` anchors to the pointer.
+    anchor: Option<(Bounds<Pixels>, TooltipDirection)>,
+}
+
+/// GHD `DefaultTooltipDelay` (`ui/lib/tooltip.tsx`).
+pub const TOOLTIP_DELAY: std::time::Duration = std::time::Duration::from_millis(400);
+
+/// GHD `TooltipDirection`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TooltipDirection {
+    North,
+    NorthEast,
+    NorthWest,
+    South,
+    SouthEast,
+    SouthWest,
+    East,
+    West,
+}
+
+/// GHD `getTooltipRectRelativeTo`: the tooltip's rect for `direction`
+/// around `target`, leaving room for the 6 px arrow.
+fn tooltip_rect(
+    target: Bounds<Pixels>,
+    direction: TooltipDirection,
+    size: Size<Pixels>,
+) -> Bounds<Pixels> {
+    use TooltipDirection::*;
+    let (tip_x, tip_w) = (px(10.), px(6.));
+    let x_mid = target.left() + target.size.width / 2.;
+    let y_top = target.top() - size.height;
+    let y_mid = target.top() + target.size.height / 2. - size.height / 2.;
+    let origin = match direction {
+        NorthEast => point(x_mid - tip_x - tip_w, y_top - tip_w),
+        North => point(x_mid - size.width / 2., y_top - tip_w),
+        NorthWest => point(x_mid - size.width + tip_x + tip_w, y_top - tip_w),
+        East => point(target.right() + tip_w, y_mid),
+        SouthEast => point(x_mid - tip_x - tip_w, target.bottom() + tip_w),
+        South => point(x_mid - size.width / 2., target.bottom() + tip_w),
+        SouthWest => point(x_mid - size.width + tip_x + tip_w, target.bottom() + tip_w),
+        West => point(target.left() - size.width - tip_w, y_mid),
+    };
+    Bounds::new(origin, size)
+}
+
+/// GHD `getDirection`: the desired direction when it fits, else the others
+/// (its own side first); pointer-anchored tooltips try south-east, then
+/// north-east. Falls back to south.
+fn tooltip_direction(
+    desired: Option<TooltipDirection>,
+    target: Bounds<Pixels>,
+    window: Bounds<Pixels>,
+    size: Size<Pixels>,
+) -> TooltipDirection {
+    use TooltipDirection::*;
+    let fits = |d: TooltipDirection| {
+        let r = tooltip_rect(target, d, size);
+        r.left() >= window.left()
+            && r.top() >= window.top()
+            && r.right() <= window.right()
+            && r.bottom() <= window.bottom()
+    };
+    let all = [
+        North, NorthEast, NorthWest, South, SouthEast, SouthWest, East, West,
+    ];
+    let mut order: Vec<TooltipDirection> = match desired {
+        Some(d) if matches!(d, South | SouthEast | SouthWest) => {
+            vec![d, South, SouthEast, SouthWest]
+        }
+        Some(d) if matches!(d, North | NorthEast | NorthWest) => {
+            vec![d, North, NorthEast, NorthWest]
+        }
+        Some(d) => vec![d],
+        None => vec![SouthEast, NorthEast],
+    };
+    for d in all {
+        if !order.contains(&d) {
+            order.push(d);
+        }
+    }
+    order.into_iter().find(|d| fits(*d)).unwrap_or(South)
 }
 
 impl Render for TextTooltip {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    // GHD `Tooltip` without a `direction`: placed around a 20 px square at the
+    // pointer (`mouseRect`), 300 px at most, 5 / 10 px padding, 11 px text,
+    // a 6 px arrow pointing back at the pointer.
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        use TooltipDirection::*;
         let t = cx.ghd();
-        div()
-            .px(SPACING_THIRD())
-            .py(zpx(1.))
-            .rounded(zpx(1.))
-            .bg(t.tooltip_background)
-            .text_color(t.tooltip_text)
-            .text_size(FONT_SIZE_SM())
-            .whitespace_nowrap()
-            .shadow(vec![BoxShadow {
-                color: t.shadow,
-                offset: point(zpx(0.), zpx(1.)),
-                blur_radius: zpx(3.),
-                spread_radius: zpx(0.),
-                inset: false,
-            }])
-            .child(self.text.clone())
+        let mouse = window.mouse_position();
+        let (target, desired) = match self.anchor {
+            Some((bounds, direction)) => (bounds, Some(direction)),
+            None => (
+                Bounds::new(mouse - point(px(10.), px(10.)), size(px(20.), px(20.))),
+                None,
+            ),
+        };
+        let viewport = Bounds::new(Point::default(), window.viewport_size());
+        let font_size = FONT_SIZE_SM();
+        let line_height = font_size * 1.5;
+        let (pad_x, pad_y) = (SPACING(), SPACING_HALF());
+        let max_text = zpx(300.) - pad_x * 2.;
+        let mut style = window.text_style();
+        style.font_size = font_size.into();
+        let run = style.to_run(self.text.len());
+        let text_size = window
+            .text_system()
+            .shape_text(self.text.clone(), font_size, &[run], Some(max_text), None)
+            .ok()
+            .map(|lines| {
+                lines.iter().fold(size(px(0.), px(0.)), |acc, line| {
+                    let s = line.size(line_height);
+                    size(acc.width.max(s.width), acc.height + s.height)
+                })
+            })
+            .unwrap_or(size(max_text, line_height));
+        let box_size = size(
+            text_size.width.ceil() + pad_x * 2.,
+            text_size.height + pad_y * 2.,
+        );
+        let direction = tooltip_direction(desired, target, viewport, box_size);
+        let rect = tooltip_rect(target, direction, box_size);
+        let bg = t.tooltip_background;
+        // `::before`: a 12 × 6 triangle outside the box
+        let arrow = |path: &'static str, w: f32, h: f32| {
+            svg()
+                .path(path)
+                .w(zpx(w))
+                .h(zpx(h))
+                .text_color(bg)
+                .absolute()
+        };
+        let arrow = match direction {
+            SouthEast => arrow("ui/tooltip-arrow-up.svg", 12., 6.)
+                .top(zpx(-6.))
+                .left(zpx(10.)),
+            South => arrow("ui/tooltip-arrow-up.svg", 12., 6.)
+                .top(zpx(-6.))
+                .left(box_size.width / 2. - zpx(6.)),
+            SouthWest => arrow("ui/tooltip-arrow-up.svg", 12., 6.)
+                .top(zpx(-6.))
+                .right(zpx(10.)),
+            NorthEast => arrow("ui/tooltip-arrow-down.svg", 12., 6.)
+                .bottom(zpx(-6.))
+                .left(zpx(10.)),
+            North => arrow("ui/tooltip-arrow-down.svg", 12., 6.)
+                .bottom(zpx(-6.))
+                .left(box_size.width / 2. - zpx(6.)),
+            NorthWest => arrow("ui/tooltip-arrow-down.svg", 12., 6.)
+                .bottom(zpx(-6.))
+                .right(zpx(10.)),
+            East => arrow("ui/tooltip-arrow-left.svg", 6., 12.)
+                .left(zpx(-6.))
+                .top(box_size.height / 2. - zpx(6.)),
+            West => arrow("ui/tooltip-arrow-right.svg", 6., 12.)
+                .right(zpx(-6.))
+                .top(box_size.height / 2. - zpx(6.)),
+        };
+        anchored().position(rect.origin.map(|v| v.round())).child(
+            div()
+                .relative()
+                .w(box_size.width)
+                .px(pad_x)
+                .py(pad_y)
+                .rounded(BORDER_RADIUS())
+                .bg(bg)
+                .text_color(t.tooltip_text)
+                .text_size(font_size)
+                .line_height(line_height)
+                .shadow(vec![BoxShadow {
+                    color: t.tooltip_shadow,
+                    offset: point(zpx(0.), zpx(8.)),
+                    blur_radius: zpx(24.),
+                    spread_radius: zpx(0.),
+                    inset: false,
+                }])
+                .child(arrow)
+                .child(
+                    StyledText::new(self.text.clone()).with_highlights(self.bold.clone().map(
+                        |range| {
+                            (
+                                range,
+                                HighlightStyle {
+                                    font_weight: Some(FontWeight::BOLD),
+                                    ..Default::default()
+                                },
+                            )
+                        },
+                    )),
+                ),
+        )
     }
 }
+
+/// GHD tooltips on any element: the caption tooltip after
+/// [`TOOLTIP_DELAY`].
+pub trait GhdTooltip: StatefulInteractiveElement + Sized {
+    fn ghd_tooltip(self, text: impl Into<SharedString>) -> Self {
+        let text: SharedString = text.into();
+        self.tooltip(tooltip(text))
+            .tooltip_show_delay(TOOLTIP_DELAY)
+    }
+}
+
+impl<E: StatefulInteractiveElement> GhdTooltip for E {}
 
 /// Accessibility for icon-only controls, after GHD's `ariaLabel` +
 /// `tooltip` pairs: a `Button` node VoiceOver announces by `label`, and the
@@ -813,7 +999,7 @@ pub trait IconButtonA11y: StatefulInteractiveElement + Sized {
     /// `Button` role, accessible name and tooltip.
     fn icon_button_label(self, label: impl Into<SharedString>) -> Self {
         let label: SharedString = label.into();
-        self.a11y_button(label.clone()).tooltip(tooltip(label))
+        self.a11y_button(label.clone()).ghd_tooltip(label)
     }
 
     /// `Button` role and accessible name only (the tooltip is set elsewhere
@@ -866,8 +1052,69 @@ pub fn status_label(kind: corvane_core::FileStatusKind) -> &'static str {
     }
 }
 
-/// A `.tooltip(...)` builder with GHD's caption look.
+/// A `.tooltip(...)` builder with GHD's caption look, anchored to the pointer.
 pub fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
     let text: SharedString = text.into();
-    move |_, cx| cx.new(|_| TextTooltip { text: text.clone() }).into()
+    move |_, cx| {
+        cx.new(|_| TextTooltip {
+            text: text.clone(),
+            bold: None,
+            anchor: None,
+        })
+        .into()
+    }
+}
+
+/// [`tooltip`] with a bold byte range (`<strong>`); `\n` breaks lines.
+pub fn rich_tooltip(
+    text: impl Into<SharedString>,
+    bold: std::ops::Range<usize>,
+) -> impl Fn(&mut Window, &mut App) -> AnyView {
+    let text: SharedString = text.into();
+    move |_, cx| {
+        cx.new(|_| TextTooltip {
+            text: text.clone(),
+            bold: Some(bold.clone()),
+            anchor: None,
+        })
+        .into()
+    }
+}
+
+/// GHD `<Tooltip direction={…}>`: the caption tooltip placed around `el`
+/// (a probe child records its bounds) after [`TOOLTIP_DELAY`].
+pub fn with_directed_tooltip(
+    el: Stateful<Div>,
+    text: impl Into<SharedString>,
+    direction: TooltipDirection,
+) -> Stateful<Div> {
+    let text: SharedString = text.into();
+    let bounds = std::rc::Rc::new(std::cell::Cell::new(Bounds::default()));
+    let probe = bounds.clone();
+    el.relative()
+        .child(
+            canvas(move |b, _, _| probe.set(b), |_, _, _, _| {})
+                .absolute()
+                .size_full(),
+        )
+        .tooltip(move |_, cx| {
+            cx.new(|_| TextTooltip {
+                text: text.clone(),
+                bold: None,
+                anchor: Some((bounds.get(), direction)),
+            })
+            .into()
+        })
+        .tooltip_show_delay(TOOLTIP_DELAY)
+}
+
+/// GHD `.blankslate-image`: an `illustrations/<name>` picture, drawn in the
+/// dark themes through `invert() grayscale(1) brightness(8) contrast(0.6)`,
+/// which `tools/illustrations/darken.py` bakes into `illustrations/dark/`.
+pub fn blankslate_image(name: &str, cx: &App) -> Img {
+    if cx.ghd().appearance == crate::theme::Appearance::Dark {
+        img(format!("illustrations/dark/{name}"))
+    } else {
+        img(format!("illustrations/{name}"))
+    }
 }

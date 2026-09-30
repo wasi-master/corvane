@@ -19,6 +19,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::GhdTooltip;
 use crate::widgets::{IconButtonA11y, ListRowA11y};
 
 use crate::branch_list::group_branches;
@@ -836,7 +837,7 @@ impl Render for OpenPullRequestDialog {
                                         primary_button("open-pull-request-ok", "", ok_disabled, cx)
                                             .min_w(zpx(120.))
                                             .gap(SPACING_HALF())
-                                            .tooltip(crate::widgets::tooltip(ok_title))
+                                            .ghd_tooltip(ok_title)
                                             .when(has_pr, |d| {
                                                 d.child(octicon(
                                                     Octicon::LinkExternal,

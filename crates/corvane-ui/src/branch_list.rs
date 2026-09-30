@@ -498,7 +498,9 @@ impl BranchFoldout {
                 d.bg(t.box_selected_background)
                     .text_color(t.box_selected_text)
             })
-            .when(!selected, move |d| d.hover(move |s| s.bg(list_hover)))
+            .when(!(selected && self.list_focused), move |d| {
+                d.hover(move |s| s.bg(list_hover))
+            })
             .when(!current, move |d| {
                 let target_name = branch_name_for_target.clone();
                 d.drag_over::<crate::history::CommitDrag>(move |s, _, _, _| {
@@ -638,17 +640,28 @@ impl BranchFoldout {
         cx.notify();
     }
 
-    /// `NoBranches`: shown when the filter matches nothing.
+    /// `NoBranches`: shown when the filter matches nothing. `.no-branches`
+    /// in a resizable `.branches-container`: 365 px wide, 10 px margin and
+    /// padding, the illustration at full width (`.foldout .blankslate-image`).
     fn no_branches(&self, id: u64, query: String, cx: &Context<Self>) -> impl IntoElement {
-        let t = cx.ghd();
         div()
-            .flex_1()
+            .flex_none()
+            .w(zpx(365.))
+            .mx_auto()
+            .my(SPACING())
+            .p(SPACING())
             .flex()
             .flex_col()
             .items_center()
-            .p(SPACING())
-            .my(SPACING())
+            .text_center()
             .text_size(FONT_SIZE())
+            .line_height(zpx(18.))
+            // 257 × 85 at the 345 px content width
+            .child(
+                crate::widgets::blankslate_image("empty-no-branches.svg", cx)
+                    .w(zpx(345.))
+                    .h(zpx(345. * 85. / 257.)),
+            )
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
@@ -657,33 +670,52 @@ impl BranchFoldout {
             .child(
                 div()
                     .mx(SPACING_DOUBLE())
-                    .text_center()
                     .text_size(FONT_SIZE_SM())
+                    .line_height(zpx(16.5))
                     .child("Do you want to create a new branch instead?"),
             )
             .child(
-                crate::widgets::primary_button("no-branches-create", "Create New Branch", false, cx)
-                    .m(SPACING_DOUBLE())
-                    .w_full()
-                    .on_click(move |_, _, cx| {
-                        Dispatcher::close_foldout(cx);
-                        Dispatcher::show_popup(
-                            Popup::CreateBranch {
-                                repo: id,
-                                target_sha: None,
-                                initial_name: query.clone(),
-                            },
-                            cx,
-                        )
-                    }),
+                crate::widgets::primary_button(
+                    "no-branches-create",
+                    "Create New Branch",
+                    false,
+                    cx,
+                )
+                .m(SPACING_DOUBLE())
+                .self_stretch()
+                .on_click(move |_, _, cx| {
+                    Dispatcher::close_foldout(cx);
+                    Dispatcher::show_popup(
+                        Popup::CreateBranch {
+                            repo: id,
+                            target_sha: None,
+                            initial_name: query.clone(),
+                        },
+                        cx,
+                    )
+                }),
             )
             .child(
-                div()
-                    .px(zpx(30.))
-                    .text_center()
-                    .text_size(FONT_SIZE_SM())
-                    .text_color(t.text_secondary)
-                    .child("Protip! Press ⌘⇧N to quickly create a new branch from anywhere within the app"),
+                // `.protip` with a `KeyboardShortcut` (⌘⇧N) in the sentence
+                crate::widgets::paragraph(vec![
+                    "ProTip! Press".into(),
+                    // `kbd` inherits the 11 px `.protip` text
+                    div()
+                        .flex()
+                        .flex_row()
+                        .gap(zpx(2.))
+                        .children(
+                            ["⌘", "⇧", "N"]
+                                .map(|k| crate::widgets::kbd(k, cx).text_size(FONT_SIZE_SM())),
+                        )
+                        .into_any_element()
+                        .into(),
+                    "to quickly create a new branch from anywhere within the app".into(),
+                ])
+                .justify_center()
+                .px(SPACING() * 3.)
+                .text_size(FONT_SIZE_SM())
+                .line_height(zpx(16.5)),
             )
     }
 }
@@ -796,7 +828,14 @@ impl Render for BranchFoldout {
                     )),
             )
             .child(if groups.is_empty() {
-                self.no_branches(id, query, cx).into_any_element()
+                // the filter list keeps growing; `.no-branches` sits at its top
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .child(self.no_branches(id, query, cx))
+                    .into_any_element()
             } else {
                 div()
                     .id("branches-list")

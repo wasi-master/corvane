@@ -132,7 +132,8 @@ fn stash_file_row(id: u64, file: &CommittedFileChange, is_selected: bool, cx: &A
             d.bg(t.box_selected_background)
                 .text_color(t.box_selected_text)
         })
-        .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+        // `.list-item:hover` outranks `.list-item.selected`
+        .hover(move |s| s.bg(hover_bg))
         .on_click(move |_, _, cx| Dispatcher::select_stash_file(id, path.clone(), cx))
         .child(
             div()

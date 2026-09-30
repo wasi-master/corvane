@@ -593,6 +593,7 @@ pub(crate) fn check_run_steps(
                     ),
             )
             .child(
+                // `ci-check-run-no-steps`: a plain <img>, no dark filter
                 img("illustrations/paper-stack.svg")
                     .flex_1()
                     .ml(SPACING_DOUBLE())
@@ -709,7 +710,9 @@ impl Render for CiCheckPopover {
                 .text_center()
                 .p(SPACING())
                 .pb(SPACING_DOUBLE())
-                .child(img("illustrations/empty-no-pull-requests.svg").w(zpx(240.)))
+                .child(
+                    crate::widgets::blankslate_image("empty-no-pull-requests.svg", cx).w(zpx(240.)),
+                )
                 .child(div().font_weight(FontWeight::SEMIBOLD).child("Stand By"))
                 .child(
                     div()

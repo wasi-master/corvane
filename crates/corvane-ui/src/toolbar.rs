@@ -48,6 +48,8 @@ pub struct ToolbarButtonModel {
     pub pr_badge: Option<PrBadge>,
     /// Resizable worktree / branch button and its width constraints.
     pub resize: Option<(ResizeTarget, ConstrainedWidth)>,
+    /// GHD `ToolbarButton` `tooltip`, shown south of the button.
+    pub tooltip: Option<SharedString>,
 }
 
 /// Which toolbar button a resize handle belongs to.
@@ -147,6 +149,8 @@ pub fn toolbar_models(
             .or_else(|| repo.map(|r| r.name()))
             .unwrap_or_default()
             .into();
+        let worktree_tooltip = (state.foldout != Some(Foldout::Worktree))
+            .then(|| format!("Current worktree is {title}").into());
         ToolbarButtonModel {
             id: "toolbar-worktree",
             icon: Octicon::FileDirectory,
@@ -163,6 +167,7 @@ pub fn toolbar_models(
             spin: false,
             pr_badge: None,
             resize: Some((ResizeTarget::Worktree, widths.worktree)),
+            tooltip: worktree_tooltip,
         }
     });
 
@@ -190,6 +195,10 @@ pub fn toolbar_models(
         spin: false,
         pr_badge: None,
         resize: None,
+        // `repository && !isOpen ? repository.path : undefined`
+        tooltip: repo
+            .filter(|_| state.foldout != Some(Foldout::Repository))
+            .map(|r| r.path.to_string_lossy().into_owned().into()),
     };
 
     // `currentPullRequest`: the icon becomes the PR icon and the badge shows
@@ -221,6 +230,7 @@ pub fn toolbar_models(
     };
     // `checkoutProgress`: title = target branch, description = "Switching to Branch"
     let switching_to = repo_state.and_then(|s| s.checkout_target.clone());
+    let switching_to_tooltip = switching_to.clone();
     let switching = switching_to.is_some();
     let (branch_icon, branch_desc, branch_title) = match switching_to {
         Some(target) => (
@@ -229,6 +239,15 @@ pub fn toolbar_models(
             SharedString::from(target),
         ),
         None => (branch_icon, branch_desc, branch_title),
+    };
+    // `BranchDropdown` tooltip (none while open)
+    let branch_tooltip: Option<SharedString> = match (&switching_to_tooltip, info.map(|i| &i.tip)) {
+        _ if state.foldout == Some(Foldout::Branch) => None,
+        (Some(target), _) => Some(format!("Checking out {target}").into()),
+        (None, Some(Tip::Valid { branch })) => Some(branch.name.clone().into()),
+        (None, Some(Tip::Unborn { name })) => Some(format!("Current branch is {name}").into()),
+        (None, Some(Tip::Detached { .. })) => Some("Currently on a detached HEAD".into()),
+        _ => None,
     };
     let branch = ToolbarButtonModel {
         id: "toolbar-branch",
@@ -246,6 +265,7 @@ pub fn toolbar_models(
         spin: switching,
         pr_badge,
         resize: Some((ResizeTarget::Branch, widths.branch)),
+        tooltip: branch_tooltip,
     };
 
     // Push/Pull (`PushPullButton.renderButton`)
@@ -287,6 +307,7 @@ pub fn toolbar_models(
         spin: false,
         pr_badge: None,
         resize: None,
+        tooltip: None,
     };
     let push_pull = if repo.is_none() {
         ToolbarButtonModel {
@@ -302,6 +323,8 @@ pub fn toolbar_models(
                 .unwrap_or_else(|| "Hang on…".to_string())
                 .into(),
             title: p.title.clone().into(),
+            // `tooltip={progress.description}`
+            tooltip: p.description.clone().map(Into::into),
             disabled: true,
             progress: Some(p.value),
             spin: true,
@@ -615,6 +638,14 @@ pub fn toolbar_button(
                 s.with_transformation(Transformation::rotate(Radians(std::f32::consts::PI)))
             }))
         });
+    let button = match model.tooltip {
+        Some(tip) => crate::widgets::with_directed_tooltip(
+            button,
+            tip,
+            crate::widgets::TooltipDirection::South,
+        ),
+        None => button,
+    };
     if let Some(((target, constraint), width)) = resize {
         // `.resizable-component` + `.resize-handle` (6 px, `right: -3px`)
         let state = resize_state.clone();

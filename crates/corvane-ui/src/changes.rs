@@ -20,6 +20,7 @@ use gpui_kit::component::input::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
@@ -629,9 +630,7 @@ impl ChangesSidebar {
                                 .bg(bg)
                                 .text_color(fg)
                                 .cursor_pointer()
-                                .when_some(title, |d, title| {
-                                    d.tooltip(crate::widgets::tooltip(title))
-                                })
+                                .when_some(title, |d, title| d.ghd_tooltip(title))
                                 .child(ctx.token().label().clone())
                                 .when(unknown == Some(UnknownAuthorState::Searching), |d| {
                                     d.child(spin(
@@ -2378,11 +2377,11 @@ impl ChangesSidebar {
                 .right(zpx(6.))
                 .top(zpx(4.))
                 .cursor_pointer()
-                .tooltip(crate::widgets::tooltip(if can_bypass {
+                .ghd_tooltip(if can_bypass {
                     "Warning: Commit message fails repository rules, but you can bypass them. View details."
                 } else {
                     "Error: Commit message fails repository rules. View details."
-                }))
+                })
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.rule_failure_popover_open = !this.rule_failure_popover_open;
                     cx.notify();
@@ -2954,7 +2953,7 @@ impl ChangesSidebar {
                                         .text_color(color)
                                         .hover(move |s| s.text_color(hover))
                                         .a11y_button(toggle_label)
-                                        .tooltip(crate::widgets::tooltip(toggle_label))
+                                        .ghd_tooltip(toggle_label)
                                         .on_click(cx.listener(|this, _, window, cx| {
                                             this.toggle_co_authors(window, cx)
                                         }))
@@ -3247,7 +3246,9 @@ fn file_row(
                     .text_color(t.box_selected_text)
             }
         })
-        .when(!is_selected, move |d| d.hover(move |s| s.bg(hover_bg)))
+        .when(!(is_selected && list_focused), move |d| {
+            d.hover(move |s| s.bg(hover_bg))
+        })
         .when_some(repo_id, move |d, id| {
             // ⌘-click toggles, ⇧-click extends (GHD `SelectionSource`)
             d.on_click(move |ev: &ClickEvent, window, cx| {
