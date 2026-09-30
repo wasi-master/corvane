@@ -824,6 +824,22 @@ registry! {
         upstream: &[Upstream::issue(21718)],
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/branch_ops.rs"],
     },
+    /// Rebase onto `origin/main`.
+    REBASE_ONTO_REMOTE_BRANCH = 451 "rebase-onto-remote-branch" {
+        title: "Rebase onto a remote branch",
+        summary: "The Rebase dialog's list ends with Remote Branches: the remote-tracking \
+                  branches of local branches (origin/main next to main), so a branch can be \
+                  rebased onto what was last fetched without checking out and pulling the local \
+                  branch first.",
+        ghd_behaviour: "A remote branch that has a local branch is not listed; only the local one \
+                        can be picked.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13994)],
+        code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-ui/src/branch_list.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

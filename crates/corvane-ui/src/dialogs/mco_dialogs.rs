@@ -7,7 +7,8 @@
 //! (`commit-message` in a dialog).
 //!
 //! Deviations: the conflicts step's Resolve All menu (flag `446`, GHD
-//! `conflicts-dialog.tsx` has per-file choices only).
+//! `conflicts-dialog.tsx` has per-file choices only); remote-tracking
+//! branches with a local branch in the rebase list (flag `451`).
 
 use corvane_core::{
     AppState, Dispatcher, ManualConflictResolution, McoStep, MultiCommitOperationKind, RetryAction,
@@ -17,7 +18,7 @@ use gpui_kit::component::input::{InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::branch_list::group_branches;
+use crate::branch_list::{group_branches, remote_counterparts};
 use crate::context_menu::MenuItem;
 use crate::dialog::{
     DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
@@ -91,7 +92,7 @@ impl McoDialog {
             let s = self.state.read(cx);
             let rs = s.repo_states.get(&repo);
             let info = rs.and_then(|r| r.info.as_ref());
-            let groups = match (info, rs) {
+            let mut groups = match (info, rs) {
                 (Some(info), Some(rs)) => group_branches(
                     &info.branches,
                     rs.default_branch.as_deref(),
@@ -100,6 +101,13 @@ impl McoDialog {
                 ),
                 _ => Vec::new(),
             };
+            // flag `451`: `origin/main` too, not only the local `main`
+            if let Some(info) = info
+                && s.flags
+                    .bool(corvane_core::flags::ids::REBASE_ONTO_REMOTE_BRANCH)
+            {
+                groups.extend(remote_counterparts(&info.branches, &query));
+            }
             (groups, rs.and_then(|r| r.rebase_preview.clone()))
         };
         let selected = self.selected_branch.clone();
