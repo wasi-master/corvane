@@ -669,6 +669,19 @@ registry! {
         upstream: &[Upstream::issue(19844)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-ui/src/changes.rs"],
     },
+    /// ⌘⏎ submits Create a Tag.
+    CMD_ENTER_SUBMITS_CREATE_TAG = 442 "cmd-enter-submits-create-tag" {
+        title: "⌘⏎ creates the tag",
+        summary: "In Create a Tag, ⌘⏎ creates the tag from the Message field as well as from Name \
+                  (where ⏎ does too).",
+        ghd_behaviour: "Only ⏎ in the Name field submits; ⌘⏎ does nothing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22740)],
+        code: &["crates/corvane-ui/src/dialogs/history_dialogs.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

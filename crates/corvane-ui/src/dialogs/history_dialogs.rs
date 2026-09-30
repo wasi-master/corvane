@@ -4,10 +4,11 @@
 //!
 //! Deviation (`docs/reference/deviations.md` › History): Create a Tag has an
 //! optional Message field (flag `244`); GHD always tags with an empty message.
-//! Undoing a tagged commit warns first (flag `441`).
+//! Undoing a tagged commit warns first (flag `441`); ⌘⏎ submits Create a Tag
+//! from its Message field (flag `442`).
 
 use corvane_core::{AppState, Dispatcher, UnreachableCommitsTab};
-use gpui_kit::component::input::{InputState, Textarea, TextareaState};
+use gpui_kit::component::input::{InputEvent, InputState, Textarea, TextareaState};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -169,6 +170,32 @@ impl CreateTagDialog {
         let handle = name.read(cx).focus_handle(cx);
         window.focus(&handle, cx);
         let message = cx.new(|cx| TextareaState::new(window, cx).rows(4));
+        // ⏎ in Name submits the form, as GHD's `<form onSubmit>`; `442`: ⌘⏎
+        // submits from the Message field too
+        let cmd_enter = |cx: &App| {
+            AppState::global(cx)
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::CMD_ENTER_SUBMITS_CREATE_TAG)
+        };
+        cx.subscribe(&name, move |this, _, ev: &InputEvent, cx| {
+            if let InputEvent::PressEnter { secondary, .. } = ev
+                && (!secondary || cmd_enter(cx))
+            {
+                this.submit(cx);
+            }
+        })
+        .detach();
+        cx.subscribe(&message, move |this, _, ev: &InputEvent, cx| {
+            if let InputEvent::PressEnter {
+                secondary: true, ..
+            } = ev
+                && cmd_enter(cx)
+            {
+                this.submit(cx);
+            }
+        })
+        .detach();
         Self {
             repo,
             sha,
@@ -176,30 +203,51 @@ impl CreateTagDialog {
             message,
         }
     }
+
+    /// The trimmed name and its error (`getCurrentError`).
+    fn name_and_error(&self, cx: &App) -> (String, Option<String>) {
+        let name = self.name.read(cx).value().trim().to_string();
+        let error = (name.len() > MAX_TAG_NAME_LENGTH).then(|| {
+            format!("The tag name cannot be longer than {MAX_TAG_NAME_LENGTH} characters")
+        });
+        (name, error)
+    }
+
+    /// The message, empty unless flag `244` shows the Message field.
+    fn message_text(&self, cx: &App) -> String {
+        if AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::TAG_MESSAGE)
+        {
+            self.message.read(cx).value().trim().to_string()
+        } else {
+            String::new()
+        }
+    }
+
+    /// `createTag`
+    fn submit(&mut self, cx: &mut Context<Self>) {
+        let (name, error) = self.name_and_error(cx);
+        if error.is_some() || name.is_empty() {
+            return;
+        }
+        let message = self.message_text(cx);
+        Dispatcher::close_popup(cx);
+        Dispatcher::create_tag(self.repo, name, self.sha.clone(), message, cx);
+    }
 }
 
 impl Render for CreateTagDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
-        let name = self.name.read(cx).value().trim().to_string();
-        let error = if name.len() > MAX_TAG_NAME_LENGTH {
-            Some(format!(
-                "The tag name cannot be longer than {MAX_TAG_NAME_LENGTH} characters"
-            ))
-        } else {
-            None
-        };
+        let (name, error) = self.name_and_error(cx);
         let disabled = error.is_some() || name.is_empty();
-        let (repo, sha) = (self.repo, self.sha.clone());
+        let this = cx.weak_entity();
         let with_message = AppState::global(cx)
             .read(cx)
             .flags
             .bool(corvane_core::flags::ids::TAG_MESSAGE);
-        let message = if with_message {
-            self.message.read(cx).value().trim().to_string()
-        } else {
-            String::new()
-        };
         let t = cx.ghd();
         let content = div()
             .flex()
@@ -245,17 +293,9 @@ impl Render for CreateTagDialog {
                     primary: true,
                     disabled,
                     on_click: Box::new(move |_, cx| {
-                        if disabled {
-                            return;
+                        if !disabled {
+                            this.update(cx, |this, cx| this.submit(cx)).ok();
                         }
-                        Dispatcher::close_popup(cx);
-                        Dispatcher::create_tag(
-                            repo,
-                            name.clone(),
-                            sha.clone(),
-                            message.clone(),
-                            cx,
-                        );
                     }),
                 },
             ],
