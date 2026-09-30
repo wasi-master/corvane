@@ -4,11 +4,19 @@ Corvane signs in to GitHub.com with an OAuth app (client id
 `corvane_github::CLIENT_ID`, overridable at build time with
 `CORVANE_GITHUB_CLIENT_ID`). GitHub Desktop uses the OAuth web application
 flow with a bundled client secret (`docs/technical/oauth.md` in
-desktop/desktop); Corvane uses the **device flow** by default, because it
-needs no secret in the binary (PLAN.md §2), and offers the browser flow as an
-alternative.
+desktop/desktop). Corvane starts with the **browser flow** when the build has
+a client secret (`CORVANE_GITHUB_CLIENT_SECRET`, set by release builds, never
+committed) and with the **device flow** otherwise, since GitHub refuses the
+browser flow's token exchange without a secret even with PKCE
+(`incorrect_client_credentials`). The other flow stays one link away. Flag
+`307-sign-in-flow` (auto / device / browser) overrides the choice.
 
-## Device flow (default)
+The secret is extractable from any shipped binary (native apps are public
+clients, RFC 8252); it adds little, because the device flow already issues
+tokens for the client ID alone. PKCE keeps an intercepted callback code
+useless, and the registered redirect URIs keep codes off other servers.
+
+## Device flow
 
 `corvane_github::auth`: `POST /login/device/code` → the dialog shows the
 user code and opens `verification_uri` → `POST /login/oauth/access_token`
@@ -16,11 +24,12 @@ polled at the interval GitHub asked for → `GET /user` → token into the
 macOS Keychain (`corvane_platform::keychain`). The OAuth app must have
 "Enable Device Flow" ticked.
 
-## Browser flow (alternative)
+## Browser flow
 
 `corvane_github::auth::WebFlow` + `corvane_core::web_flow`
 (`Dispatcher::sign_in_web_flow` / `complete_web_flow`), reachable from the
-sign-in dialog's "Use the browser flow instead" link:
+sign-in dialog's primary button when a secret is built in, else its "Use
+the browser flow instead" link:
 
 1. A fresh CSRF `state` and a PKCE `code_verifier` (RFC 7636, S256) are
    generated; the browser opens
@@ -38,10 +47,9 @@ sign-in dialog's "Use the browser flow instead" link:
    callback page fails with "did not match this sign-in attempt").
 4. `POST /login/oauth/access_token` with `client_id`, `code`,
    `redirect_uri`, `code_verifier` and, when the build has one, the
-   `client_secret` from `CORVANE_GITHUB_CLIENT_SECRET`. Without a secret the
-   exchange succeeds only for OAuth apps GitHub lets use PKCE alone;
-   otherwise GitHub answers that the secret is required and the dialog says
-   so — the device flow remains the way in.
+   `client_secret` from `CORVANE_GITHUB_CLIENT_SECRET`. Without a secret
+   GitHub answers `incorrect_client_credentials` and the dialog says so —
+   the device flow remains the way in.
 5. The token goes through the same `finish_sign_in` as the device flow:
    `GET /user`, Keychain, account list. It never touches the settings store
    or the logs.
