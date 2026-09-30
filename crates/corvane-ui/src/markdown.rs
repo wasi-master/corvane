@@ -68,6 +68,21 @@ pub fn markdown(
         .child(r.blocks(blocks, 0))
 }
 
+/// One [`RichText`] run (styled spans, clickable links) without block
+/// layout, in the surrounding text style.
+pub fn rich_text(id: impl Into<SharedString>, text: &RichText, cx: &App) -> AnyElement {
+    let underline =
+        corvane_core::AppState::try_global(cx).is_some_and(|s| s.read(cx).settings.underline_links);
+    Renderer {
+        id: id.into(),
+        base: None,
+        t: cx.ghd(),
+        underline,
+        next: std::cell::Cell::new(0),
+    }
+    .rich(text)
+}
+
 struct Renderer<'a> {
     id: SharedString,
     base: Option<Rc<str>>,

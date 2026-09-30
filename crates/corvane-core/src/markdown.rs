@@ -211,6 +211,74 @@ struct Walk {
     table_cells: Option<u32>,
 }
 
+/// Flag `141`: a commit message as GitHub.com shows it - `code` spans in
+/// backticks (on one line; the backticks are dropped), bare `http(s)` URLs
+/// linked, and with `commit_base` (the repository's `html_url`) 7–40
+/// character hex words that mix letters and digits linked to
+/// `<commit_base>/commit/<sha>`. Everything else stays plain text.
+pub fn commit_message_rich_text(text: &str, commit_base: Option<&str>) -> RichText {
+    let mut out = RichText::default();
+    let code = InlineStyle {
+        code: true,
+        ..InlineStyle::default()
+    };
+    let mut rest = text;
+    while !rest.is_empty() {
+        let span = rest.find('`').and_then(|open| {
+            let close = rest[open + 1..].find(['`', '\n'])?;
+            (rest.as_bytes()[open + 1 + close] == b'`' && close > 0)
+                .then_some((open, open + 1 + close))
+        });
+        let Some((open, close)) = span else {
+            push_autolinked(&mut out, rest, commit_base);
+            break;
+        };
+        push_autolinked(&mut out, &rest[..open], commit_base);
+        out.push(&rest[open + 1..close], code, None);
+        rest = &rest[close + 1..];
+    }
+    out
+}
+
+/// Plain text with its bare URLs and (with `commit_base`) SHAs linked.
+fn push_autolinked(out: &mut RichText, text: &str, commit_base: Option<&str>) {
+    let mut links: Vec<(Range<usize>, String)> = bare_urls(text)
+        .into_iter()
+        .map(|r| (r.clone(), text[r].to_string()))
+        .collect();
+    if let Some(base) = commit_base {
+        let mut start = None;
+        for (ix, c) in text
+            .char_indices()
+            .chain(std::iter::once((text.len(), ' ')))
+        {
+            if c.is_ascii_alphanumeric() {
+                start.get_or_insert(ix);
+                continue;
+            }
+            let Some(from) = start.take() else {
+                continue;
+            };
+            let word = &text[from..ix];
+            let is_sha = (7..=40).contains(&word.len())
+                && word.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+                && word.bytes().any(|b| b.is_ascii_digit())
+                && word.bytes().any(|b| b.is_ascii_alphabetic());
+            if is_sha && !links.iter().any(|(r, _)| r.contains(&from)) {
+                links.push((from..ix, format!("{base}/commit/{word}")));
+            }
+        }
+        links.sort_by_key(|(r, _)| r.start);
+    }
+    let mut at = 0;
+    for (range, url) in links {
+        out.push(&text[at..range.start], InlineStyle::default(), None);
+        out.push(&text[range.clone()], InlineStyle::default(), Some(&url));
+        at = range.end;
+    }
+    out.push(&text[at..], InlineStyle::default(), None);
+}
+
 /// Bare `http://` / `https://` URLs in `text` as byte ranges, without the
 /// trailing punctuation GFM's extended autolinks leave out.
 fn bare_urls(text: &str) -> Vec<Range<usize>> {
@@ -498,6 +566,39 @@ impl Walk {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn commit_message_code_urls_and_shas() {
+        let base = "https://github.com/o/r";
+        let t = commit_message_rich_text(
+            "Fix `foo()` per a5c3785 and https://x.io/a. Not `open\nor` 1234567 or defaced",
+            Some(base),
+        );
+        assert_eq!(
+            t.text,
+            "Fix foo() per a5c3785 and https://x.io/a. Not `open\nor` 1234567 or defaced"
+        );
+        let spans: Vec<(&str, bool, Option<&str>)> = t
+            .spans
+            .iter()
+            .map(|s| (&t.text[s.range.clone()], s.style.code, s.link.as_deref()))
+            .collect();
+        assert_eq!(
+            spans,
+            [
+                ("foo()", true, None),
+                (
+                    "a5c3785",
+                    false,
+                    Some("https://github.com/o/r/commit/a5c3785")
+                ),
+                ("https://x.io/a", false, Some("https://x.io/a")),
+            ]
+        );
+        // no base: SHAs stay plain
+        let t = commit_message_rich_text("see a5c3785", None);
+        assert!(t.spans.is_empty());
+    }
 
     fn para(blocks: &[Block], ix: usize) -> &RichText {
         match &blocks[ix] {
