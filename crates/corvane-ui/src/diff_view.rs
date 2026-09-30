@@ -1916,7 +1916,9 @@ struct Side {
 impl Side {
     fn new(with: (corvane_highlight::Engine, u64), path: &str, lines: Arc<Vec<String>>) -> Self {
         use std::hash::{Hash, Hasher};
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        // FxHash: SipHash over a whole file was a noticeable part of a new
+        // diff's frame; this is a cache key, not a defence against collisions
+        let mut hasher = rustc_hash::FxHasher::default();
         lines.hash(&mut hasher);
         let bytes: usize = lines.iter().map(|l| l.len() + 1).sum();
         let key = (with, path.to_string(), hasher.finish(), lines.len());

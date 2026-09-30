@@ -15,6 +15,8 @@ corvane-github.workspace = true
 corvane-platform.workspace = true
 tracing.workspace = true
 libc = "0.2"
+# fast content hashes for the diff token cache (whole files, every new diff)
+rustc-hash = "2"
 # `746-intra-line-graphemes`: intra-line ranges end on grapheme boundaries
 unicode-segmentation = "1"
 # image diffs: dimensions + the "Difference" blend (same major as GPUI's);
