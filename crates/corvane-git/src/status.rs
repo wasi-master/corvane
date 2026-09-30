@@ -112,6 +112,36 @@ pub fn get_status_with(
     Ok(status)
 }
 
+/// Corvane `903-refresh-stale-index`: `git update-index -q --refresh`, which
+/// writes the working files' current stat data into the index. Status runs
+/// with `GIT_OPTIONAL_LOCKS=0` (as GHD's does), so it never saves what it
+/// learns: once many files' stat data is stale (a copied or restored
+/// checkout, a tool that rewrote files unchanged) every status re-reads them
+/// (6 s instead of 0.2 s on a 50,000-file tree). At most once a minute per
+/// repository; a held `index.lock` makes it give up, which is fine.
+pub fn refresh_stale_index(git: Arc<GitBinary>, workdir: &Path) {
+    use std::collections::HashMap;
+    use std::sync::{LazyLock, Mutex};
+    use std::time::{Duration, Instant};
+    static LAST: LazyLock<Mutex<HashMap<std::path::PathBuf, Instant>>> =
+        LazyLock::new(Default::default);
+    if let Ok(mut last) = LAST.lock() {
+        if last
+            .get(workdir)
+            .is_some_and(|t| t.elapsed() < Duration::from_secs(60))
+        {
+            return;
+        }
+        last.insert(workdir.to_path_buf(), Instant::now());
+    }
+    let _ = GitCommand::new(git)
+        .args(["update-index", "-q", "--refresh"])
+        .current_dir(workdir)
+        // it exits 1 when files need updating, the normal case here
+        .allow_exit_code(1)
+        .run();
+}
+
 /// Lines added / deleted in one changed file.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LineStats {

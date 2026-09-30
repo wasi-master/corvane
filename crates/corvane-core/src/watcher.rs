@@ -1,7 +1,8 @@
 //! Filesystem watcher for the selected repository (Corvane addition; GHD only
 //! refreshes on focus and after its own actions). FSEvents via `notify`,
 //! debounced 300 ms on a helper thread, delivered as a coalesced "refresh"
-//! signal over an async channel the foreground awaits.
+//! signal (with the time of the burst's last event) over an async channel the
+//! foreground awaits.
 //!
 //! Worktree paths git ignores (`target/`, `node_modules/`, …) do not count,
 //! so a build writing into them does not refresh every debounce window. The
@@ -13,7 +14,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use corvane_git::ignore::IgnoreMatcher;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -27,11 +28,16 @@ pub struct RepoWatcher {
 }
 
 /// Start watching `workdir`, coalescing bursts closer than `debounce`.
+/// Each signal carries when the last event it covers arrived, so a refresh
+/// that started later can be skipped. With `leading` (flag
+/// `902-fs-watcher-leading-edge`) the first relevant event of a quiet period
+/// is signalled at once and the rest of the burst after it settles.
 /// Dropping the returned watcher stops everything.
 pub fn watch(
     workdir: PathBuf,
     debounce: Duration,
-) -> anyhow::Result<(RepoWatcher, async_channel::Receiver<()>)> {
+    leading: bool,
+) -> anyhow::Result<(RepoWatcher, async_channel::Receiver<Instant>)> {
     let (raw_tx, raw_rx) = mpsc::channel::<Vec<PathBuf>>();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(event) = res {
@@ -40,7 +46,9 @@ pub fn watch(
     })?;
     watcher.watch(&workdir, RecursiveMode::Recursive)?;
 
-    let (tx, rx) = async_channel::bounded::<()>(1);
+    // unbounded: every burst's time reaches the dispatcher (a refresh that
+    // started before it must not swallow it)
+    let (tx, rx) = async_channel::unbounded::<Instant>();
     // FSEvents reports resolved paths (`/private/var/…` for `/var/…`)
     let root = workdir.canonicalize().unwrap_or_else(|_| workdir.clone());
     std::thread::Builder::new()
@@ -50,17 +58,29 @@ pub fn watch(
             // Each iteration: wait for one relevant event, then absorb the burst.
             while let Ok(paths) = raw_rx.recv() {
                 let mut relevant = rules.any_relevant(&paths, false);
+                let mut last = Instant::now();
+                // leading edge: this event is signalled now; only later ones
+                // make the burst's own signal necessary
+                if relevant && leading {
+                    debug!(path = ?paths.first(), "filesystem change, refresh requested (leading)");
+                    let _ = tx.try_send(last);
+                    relevant = false;
+                }
                 loop {
                     match raw_rx.recv_timeout(debounce) {
-                        Ok(more) => relevant = rules.any_relevant(&more, relevant),
+                        Ok(more) => {
+                            if rules.any_relevant(&more, false) {
+                                relevant = true;
+                                last = Instant::now();
+                            }
+                        }
                         Err(mpsc::RecvTimeoutError::Timeout) => break,
                         Err(mpsc::RecvTimeoutError::Disconnected) => return,
                     }
                 }
                 if relevant {
                     debug!(path = %root.display(), "filesystem change, refresh requested");
-                    // try_send: a pending signal already covers this burst
-                    let _ = tx.try_send(());
+                    let _ = tx.try_send(last);
                 }
             }
         })
@@ -281,7 +301,8 @@ mod tests {
         std::fs::write(dir.path().join(".gitignore"), "target/\n").unwrap();
         std::fs::create_dir(dir.path().join("target")).unwrap();
         std::thread::sleep(Duration::from_millis(200));
-        let (_watcher, rx) = watch(dir.path().to_path_buf(), Duration::from_millis(100)).unwrap();
+        let (_watcher, rx) =
+            watch(dir.path().to_path_buf(), Duration::from_millis(100), false).unwrap();
         std::thread::sleep(Duration::from_millis(200));
         for i in 0..20 {
             std::fs::write(dir.path().join(format!("target/{i}.o")), "x").unwrap();
@@ -300,7 +321,7 @@ mod tests {
     fn signals_on_worktree_change() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir(dir.path().join(".git")).unwrap();
-        let (_watcher, rx) = watch(dir.path().to_path_buf(), DEBOUNCE).unwrap();
+        let (_watcher, rx) = watch(dir.path().to_path_buf(), DEBOUNCE, false).unwrap();
         std::thread::sleep(Duration::from_millis(200));
         std::fs::write(dir.path().join("a.txt"), "x").unwrap();
         let got = smol::block_on(async {

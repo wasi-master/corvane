@@ -164,6 +164,13 @@ pub fn commit(
 }
 
 pub fn head_sha(git: Arc<GitBinary>, workdir: &Path) -> Result<String> {
+    // in-process (a `git rev-parse` spawn otherwise)
+    if let Some(id) = crate::handle::open(workdir)
+        .ok()
+        .and_then(|repo| repo.head_id().ok().map(|id| id.detach()))
+    {
+        return Ok(id.to_string());
+    }
     let out = GitCommand::new(git)
         .args(["rev-parse", "HEAD"])
         .current_dir(workdir)

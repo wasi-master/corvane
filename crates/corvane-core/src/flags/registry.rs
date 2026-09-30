@@ -4105,6 +4105,39 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/diff_cache.rs"],
     },
+
+    /// The watcher refreshes on the first change of a burst.
+    FS_WATCHER_LEADING_EDGE = 902 "fs-watcher-leading-edge" {
+        title: "Filesystem watcher: refresh at the first change",
+        summary: "A change made outside Corvane (a save in the editor) refreshes at once instead of \
+                  after the watcher's debounce; a burst of changes still ends with one refresh \
+                  after it settles.",
+        ghd_behaviour: "No watcher.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-core/src/watcher.rs"],
+    },
+
+    /// Save refreshed stat data after a slow status.
+    REFRESH_STALE_INDEX = 903 "refresh-stale-index" {
+        title: "Refresh the index after a slow status",
+        summary: "When git status took over half a second, Corvane runs git update-index --refresh \
+                  once (at most once a minute), so git stops re-reading files whose timestamps \
+                  changed without their contents (a copied or restored checkout, a formatter): \
+                  status on a 50,000-file tree went from 6 s to 0.2 s. It briefly holds \
+                  index.lock, like any git command that writes the index.",
+        ghd_behaviour: "Runs status without ever writing the index, so such a tree stays slow \
+                        until a git command run elsewhere refreshes it.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-git/src/status.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

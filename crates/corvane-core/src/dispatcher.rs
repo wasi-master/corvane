@@ -142,7 +142,7 @@ impl Dispatcher {
     /// and after its own actions); `203-fs-watcher-debounce-ms` is the wait.
     pub fn start_watching(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, debounce) = {
+        let (path, debounce, leading) = {
             let s = state.read(cx);
             if s.watched_repo == Some(id) || !s.flags.bool(crate::flags::ids::FS_WATCHER) {
                 return;
@@ -154,9 +154,10 @@ impl Dispatcher {
             (
                 repo.path.clone(),
                 std::time::Duration::from_millis(debounce.max(0) as u64),
+                s.flags.bool(crate::flags::ids::FS_WATCHER_LEADING_EDGE),
             )
         };
-        match crate::watcher::watch(path.clone(), debounce) {
+        match crate::watcher::watch(path.clone(), debounce, leading) {
             Ok((watcher, rx)) => {
                 state.update(cx, |s, _| {
                     s.watcher = Some(watcher);
@@ -164,12 +165,25 @@ impl Dispatcher {
                 });
                 let state = state.clone();
                 cx.spawn(async move |cx: &mut AsyncApp| {
-                    while rx.recv().await.is_ok() {
-                        let still_watched = state.read_with(cx, |s, _| s.watched_repo == Some(id));
+                    while let Ok(changed_at) = rx.recv().await {
+                        let (still_watched, seen) = state.read_with(cx, |s, _| {
+                            (
+                                s.watched_repo == Some(id),
+                                // a refresh that started after the change
+                                // (the one after Corvane's own git command)
+                                // already saw it
+                                s.repo_states
+                                    .get(&id)
+                                    .and_then(|rs| rs.refresh_started)
+                                    .is_some_and(|started| started > changed_at),
+                            )
+                        });
                         if !still_watched {
                             break;
                         }
-                        cx.update(|cx| Self::refresh_repository(id, cx));
+                        if !seen {
+                            cx.update(|cx| Self::refresh_repository(id, cx));
+                        }
                     }
                 })
                 .detach();
@@ -178,7 +192,6 @@ impl Dispatcher {
         }
     }
 
-    /// GHD refreshes the selected repository when the window regains focus.
     /// Window focus (GHD `focus` IPC). A refresh that started a moment ago
     /// already sees what focus would: at launch the window activates while
     /// the first refresh runs, which queued a second full refresh.
@@ -669,6 +682,7 @@ impl Dispatcher {
             track_branches,
             clone_counts_as_fetch,
             detect_rewrite,
+            refresh_stale_index,
         ) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
@@ -698,6 +712,7 @@ impl Dispatcher {
                 s.flags.bool(crate::flags::ids::CLONE_COUNTS_AS_FETCH),
                 s.flags
                     .bool(crate::flags::ids::FORCE_PUSH_AFTER_OUTSIDE_REWRITE),
+                s.flags.bool(crate::flags::ids::REFRESH_STALE_INDEX),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -754,7 +769,25 @@ impl Dispatcher {
                     let path = path.as_path();
                     let previous = previous_status.as_ref();
                     let status = spawn_git(scope, &git, move |git| {
-                        corvane_git::get_status_with(git, path, previous, status_options)
+                        let started = Instant::now();
+                        let status = corvane_git::get_status_with(
+                            git.clone(),
+                            path,
+                            previous,
+                            status_options,
+                        );
+                        // `903-refresh-stale-index`: a slow status is most often
+                        // one re-reading files whose stat data went stale
+                        if refresh_stale_index
+                            && status.is_ok()
+                            && started.elapsed() > std::time::Duration::from_millis(500)
+                        {
+                            let path = path.to_path_buf();
+                            std::thread::spawn(move || {
+                                corvane_git::refresh_stale_index(git, &path)
+                            });
+                        }
+                        status
                     });
                     let recent = spawn_git(scope, &git, move |git| {
                         corvane_git::recent_branches(git, path, recent_count).unwrap_or_default()
@@ -3685,6 +3718,21 @@ impl Dispatcher {
                     .collect()
             })
             .unwrap_or_default();
+        // every changed file goes in whole: `reset -- .` would only unstage
+        // what `update-index` stages again (one index rewrite fewer, ~120 ms
+        // on a 50,000-file index)
+        let restages_everything = Self::state(cx)
+            .read(cx)
+            .repo_states
+            .get(&id)
+            .and_then(|r| r.status.as_ref())
+            .is_some_and(|st| {
+                !st.has_conflicts()
+                    && st
+                        .files
+                        .iter()
+                        .all(|f| f.selection.kind() == DiffSelectionType::All)
+            });
         let options = Self::state(cx)
             .read(cx)
             .repository(id)
@@ -3753,7 +3801,9 @@ impl Dispatcher {
                 }
             };
             let message = corvane_git::merge_trailers(git.clone(), &workdir, &message, &trailers)?;
-            corvane_git::unstage_all(git.clone(), &workdir)?;
+            if !restages_everything {
+                corvane_git::unstage_all(git.clone(), &workdir)?;
+            }
             corvane_git::stage_files(git.clone(), &workdir, &files)?;
             corvane_git::stage_partial_files(git.clone(), &workdir, &files)?;
             corvane_git::commit(

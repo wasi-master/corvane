@@ -100,7 +100,7 @@ pub use repo::{
 };
 pub use status::{
     IgnoreSubmodules, LineStats, StatusOptions, get_status, get_status_with, map_status,
-    parse_porcelain_v2, working_directory_line_stats,
+    parse_porcelain_v2, refresh_stale_index, working_directory_line_stats,
 };
 pub use worktree::{
     add_worktree, list_worktrees, move_worktree, parse_worktree_porcelain, remove_worktree,
