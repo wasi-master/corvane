@@ -79,6 +79,7 @@ gpui_kit::actions!(
         FetchAllRepositories,
         RemoveRepository,
         ViewOnGitHub,
+        ViewUpstreamOnGitHub,
         OpenInShell,
         ShowInFinder,
         OpenInEditor,
