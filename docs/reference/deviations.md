@@ -43,6 +43,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - The Pull button's tooltip lists the incoming commits (Corvane addition; GHD `push-pull-button.tsx` shows only the count): each refresh with the branch behind reads `HEAD..upstream` (gitoxide, newest first, at most ten summaries), and the tooltip says how many commits there are, one bullet per summary, then "…and N more". Flag: `246-pull-tooltip-lists-commits`.
 - Undo Commit's "changes in progress" warning (GHD `WarnLocalChangesBeforeUndo`, shown on any local change) appears only when a locally changed path (or its rename source) is among the commit's files; when those cannot be read, it warns as GHD does. Flag: `247-undo-warns-only-on-overlap`.
 - A commit's file menu › Open with Default Program opens the file as of the (newest) selected commit: `git show <sha>:<path>` is written read-only to `$TMPDIR/corvane-history/<sha>/<path>` and opened; GHD opens the working copy. Reveal in Finder and Open in <Editor> still use the working copy. Flag: `248-open-historical-file`.
+- A commit's file that is gone from disk keeps Copy File Path / Copy Relative File Path below the disabled "File Does Not Exist on Disk" item (GHD `selected-commits.tsx` shows only that item). Flag: `249-copy-path-of-missing-file`.
 
 ## Tutorial
 

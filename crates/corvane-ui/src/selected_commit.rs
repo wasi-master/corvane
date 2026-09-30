@@ -8,7 +8,8 @@
 //! list multi-selects with ⌘/⇧-click, and a multi-selection's context menu
 //! copies all the paths; GHD's history file list selects one file. Open with
 //! Default Program opens the file as of the commit (flag `248`), not the
-//! working copy.
+//! working copy. A file gone from disk keeps its Copy path items (flag
+//! `249`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -659,7 +660,25 @@ fn open_commit_file_menu(
         })
         .flatten();
     let items = if !full.exists() {
-        vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)]
+        let mut items =
+            vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
+        // `249`: the paths can still be copied
+        if state
+            .flags
+            .bool(corvane_core::flags::ids::COPY_PATH_OF_MISSING_FILE)
+        {
+            let (full, relative) = (full.to_string_lossy().to_string(), path.to_string());
+            items.extend([
+                MenuItem::separator(),
+                MenuItem::new("Copy File Path", move |_, cx| {
+                    cx.write_to_clipboard(ClipboardItem::new_string(full.clone()))
+                }),
+                MenuItem::new("Copy Relative File Path", move |_, cx| {
+                    cx.write_to_clipboard(ClipboardItem::new_string(relative.clone()))
+                }),
+            ]);
+        }
+        items
     } else {
         let (reveal, editor, default, copy_full) =
             (full.clone(), full.clone(), full.clone(), full.clone());

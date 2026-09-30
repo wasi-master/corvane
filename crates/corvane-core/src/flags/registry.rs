@@ -389,6 +389,19 @@ registry! {
         upstream: &[Upstream::issue(21117)],
         code: &["crates/corvane-ui/src/selected_commit.rs", "crates/corvane-core/src/integrations.rs"],
     },
+    /// Copy path items for a commit's file that is gone from disk.
+    COPY_PATH_OF_MISSING_FILE = 249 "copy-path-of-missing-file" {
+        title: "Copy the path of a file missing on disk",
+        summary: "In a commit's file list, a file that no longer exists on disk still offers Copy \
+                  File Path and Copy Relative File Path under \"File Does Not Exist on Disk\".",
+        ghd_behaviour: "Only the disabled \"File Does Not Exist on Disk\" item.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18349)],
+        code: &["crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 
