@@ -814,6 +814,20 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-git/src/ops.rs"],
     },
 
+    /// Add Local Repository › Choose… picks several folders.
+    ADD_LOCAL_MULTIPLE = 457 "add-local-multiple" {
+        title: "Add several local repositories at once",
+        summary: "Add Local Repository's Choose… can select several folders; picking more than \
+                  one adds every one that is a Git repository and lists the others.",
+        ghd_behaviour: "One folder at a time.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(2978)],
+        code: &["crates/corvane-ui/src/dialogs/add_existing.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
