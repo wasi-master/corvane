@@ -3,6 +3,9 @@
 //! the `BackgroundFetcher` (every hour, at least 5 minutes apart) and the
 //! `RepositoryIndicatorUpdater` (every 15 minutes), plus the Git LFS
 //! initialisation prompt (`InitializeLFS`).
+//!
+//! Deviations (flags): a failed force push keeps the "Force push"
+//! recommendation (`223-force-push-kept-on-failure`; GHD clears it first).
 
 use std::collections::HashMap;
 use std::time::{Duration, SystemTime};
@@ -584,11 +587,19 @@ impl Dispatcher {
         if !Self::begin_network(id, cx) {
             return then(PushOutcome::NotAttempted, cx);
         }
-        if force_with_lease {
+        // GHD clears the "force push recommended" mark before the push runs,
+        // so a failed force push leaves a plain Push button (desktop#16352);
+        // `223-force-push-kept-on-failure` clears it after success only
+        let keep_force_push_on_failure = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::FORCE_PUSH_KEPT_ON_FAILURE);
+        let force_push_branch = branch.name_without_remote().to_string();
+        if force_with_lease && !keep_force_push_on_failure {
             Self::state(cx).update(cx, |s, _| {
                 s.repo_state_mut(id)
                     .force_push_branches
-                    .remove(branch.name_without_remote());
+                    .remove(&force_push_branch);
             });
         }
         Self::arm_credential_helper(&remote.url, cx);
@@ -679,6 +690,13 @@ impl Dispatcher {
             },
             move |result, cx| {
                 let pushed = result.is_ok();
+                if pushed && force_with_lease && keep_force_push_on_failure {
+                    Self::state(cx).update(cx, |s, _| {
+                        s.repo_state_mut(id)
+                            .force_push_branches
+                            .remove(&force_push_branch);
+                    });
+                }
                 // `clearTagsToPush` once the push went through
                 if pushed && pushed_tags {
                     Self::update_tags_to_push(id, cx, Vec::clear);

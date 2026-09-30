@@ -265,6 +265,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-platform/src/ghd_import.rs", "crates/corvane-core/src/ghd_import.rs", "crates/corvane-ui/src/dialogs/import_github_desktop.rs"],
     },
+    /// A failed force push keeps Force Push recommended.
+    FORCE_PUSH_KEPT_ON_FAILURE = 223 "force-push-kept-on-failure" {
+        title: "Failed force push keeps Force Push",
+        summary: "After a rebase, the branch's \"Force push\" recommendation is only cleared once a \
+                  force push succeeds, so the button still offers it after a failed attempt.",
+        ghd_behaviour: "Clears the recommendation before the push runs; after a failure the button \
+                        offers a plain Push that git rejects.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(16352)],
+        code: &["crates/corvane-core/src/remote.rs"],
+    },
 
     // ---- 300 GitHub ----
 
