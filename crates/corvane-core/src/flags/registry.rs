@@ -954,6 +954,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-core/src/release_notes.rs"],
     },
+    /// Remove a left-over index.lock from the error dialog.
+    REMOVE_STALE_INDEX_LOCK = 512 "remove-stale-index-lock" {
+        title: "Remove a left-over index.lock",
+        summary: "When git fails because .git/index.lock exists, the error explains it and offers \
+                  Remove Lock File, which deletes the lock only when no Git process is running in \
+                  the repository.",
+        ghd_behaviour: "Shows git's error; the lock has to be deleted by hand.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(908)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/index_lock.rs", "crates/corvane-ui/src/dialogs/simple.rs"],
+    },
 
     // ---- 600 Accessibility ----
 

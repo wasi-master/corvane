@@ -11,6 +11,7 @@ pub mod error;
 pub mod history_ops;
 pub mod hook_env;
 pub mod ignore;
+pub mod index_lock;
 pub mod log;
 pub mod ops;
 pub mod patch;
@@ -51,6 +52,7 @@ pub use ignore::{
     IgnoreTarget, append_ignore_files, append_ignore_rules, append_ignore_rules_to,
     escape_gitignore_pattern, excludes_file, gitignore_dirs_above, read_gitignore, save_gitignore,
 };
+pub use index_lock::{index_lock_path, remove_stale_index_lock};
 pub use log::{
     COMMIT_BATCH_SIZE, NULL_TREE_SHA, commit_file_diff, commit_range_file_diff, get_changed_files,
     get_commit_range_changed_files, get_commits, get_commits_in_range, merge_base,

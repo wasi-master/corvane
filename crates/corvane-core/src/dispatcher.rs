@@ -252,6 +252,40 @@ impl Dispatcher {
         });
     }
 
+    /// `512-remove-stale-index-lock`: the error dialog's "Remove Lock File":
+    /// delete `lock` unless a git process is running in the repository.
+    pub fn remove_index_lock(lock: PathBuf, cx: &mut App) {
+        Self::close_popup(cx);
+        let (selected, workdir) = {
+            let s = Self::state(cx).read(cx);
+            let repo = s.selected_repository();
+            (
+                repo.map(|r| r.id),
+                repo.map(|r| r.path.clone())
+                    // `<workdir>/.git/index.lock`
+                    .or_else(|| lock.parent()?.parent().map(Path::to_path_buf)),
+            )
+        };
+        let Some(workdir) = workdir else {
+            return;
+        };
+        let task = cx
+            .background_executor()
+            .spawn(async move { corvane_git::remove_stale_index_lock(&lock, &workdir) });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not remove the lock file", err.to_string(), cx);
+                }
+                if let Some(id) = selected {
+                    Self::refresh_repository(id, cx);
+                }
+            });
+        })
+        .detach();
+    }
+
     pub fn close_popup(cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
             if let Some(popup) = s.popup.take() {
@@ -279,6 +313,24 @@ impl Dispatcher {
         if let Some(path) = corvane_git::dubious_ownership_path(&message)
             && Self::mark_unsafe_repository(path, cx)
         {
+            return;
+        }
+        // Corvane (`512-remove-stale-index-lock`): a left-over index.lock can
+        // be removed from the error (GHD shows git's words only)
+        if Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::REMOVE_STALE_INDEX_LOCK)
+            && let Some(lock) = corvane_git::index_lock_path(&message)
+        {
+            Self::show_popup(
+                Popup::IndexLockExists {
+                    title: title.into(),
+                    message,
+                    lock,
+                },
+                cx,
+            );
             return;
         }
         Self::show_popup(

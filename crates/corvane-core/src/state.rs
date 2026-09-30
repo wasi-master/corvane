@@ -37,6 +37,13 @@ pub enum Popup {
         title: String,
         message: String,
     },
+    /// `512-remove-stale-index-lock`: an error caused by a left-over
+    /// `index.lock`, with a button to remove it.
+    IndexLockExists {
+        title: String,
+        message: String,
+        lock: PathBuf,
+    },
     AddExistingRepository {
         path: Option<PathBuf>,
     },
