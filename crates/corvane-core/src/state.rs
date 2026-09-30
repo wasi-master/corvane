@@ -190,6 +190,16 @@ pub enum Popup {
         summary: String,
         description: String,
     },
+    /// Corvane `275-confirm-commit-to-default-branch`: committing on the
+    /// default branch; "Commit" goes on to `UnknownAuthors` when
+    /// `unknown_co_authors` is not empty.
+    ConfirmCommitToDefaultBranch {
+        repo: u64,
+        branch: String,
+        summary: String,
+        description: String,
+        unknown_co_authors: Vec<String>,
+    },
     /// `ConfirmDiscardSelection`: lines picked from the diff gutter menu.
     ConfirmDiscardSelection {
         repo: u64,
@@ -676,6 +686,9 @@ pub struct RepositoryState {
     pub selected_files: Vec<String>,
     pub diff: Option<Diff>,
     pub diff_loading: bool,
+    /// `181-binary-diff-as-text`: the path whose diff was asked for with
+    /// `--text` ("Show diff anyway" on a binary file).
+    pub diff_as_text: Option<String>,
     /// Bumped whenever `diff` is replaced, so views can cache derived rows.
     pub diff_generation: u64,
     /// The new side of the selected file as lines, for hunk expansion
@@ -692,6 +705,9 @@ pub struct RepositoryState {
     pub incoming_commits: Vec<String>,
     /// Incremented after every successful commit so the form can clear itself.
     pub commit_nonce: u64,
+    /// `476-discard-confirm-snooze`: discarding (not all changes) skips the
+    /// confirmation until then (this session only).
+    pub discard_confirm_snoozed_until: Option<Instant>,
     /// GHD `showCoAuthoredBy` / `coAuthors` (per repository, this session).
     pub show_co_authored_by: bool,
     pub co_authors: Vec<corvane_models::Author>,
@@ -820,6 +836,8 @@ pub struct FileListFilter {
     pub new_files: bool,
     pub modified: bool,
     pub deleted: bool,
+    /// Corvane `280-renamed-files-filter`.
+    pub renamed: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -829,6 +847,8 @@ pub enum FilterOption {
     NewFiles,
     ModifiedFiles,
     DeletedFiles,
+    /// Corvane `280-renamed-files-filter`.
+    RenamedFiles,
 }
 
 impl FileListFilter {
@@ -839,6 +859,7 @@ impl FileListFilter {
             FilterOption::NewFiles => self.new_files,
             FilterOption::ModifiedFiles => self.modified,
             FilterOption::DeletedFiles => self.deleted,
+            FilterOption::RenamedFiles => self.renamed,
         }
     }
 
@@ -849,6 +870,7 @@ impl FileListFilter {
             FilterOption::NewFiles => self.new_files = on,
             FilterOption::ModifiedFiles => self.modified = on,
             FilterOption::DeletedFiles => self.deleted = on,
+            FilterOption::RenamedFiles => self.renamed = on,
         }
     }
 
@@ -860,6 +882,7 @@ impl FileListFilter {
             self.new_files,
             self.modified,
             self.deleted,
+            self.renamed,
         ]
         .iter()
         .filter(|b| **b)

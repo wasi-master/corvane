@@ -1091,7 +1091,7 @@ fn unmerged_file_row(
                                     menu_items.push(MenuItem::new(
                                         "Reveal in Finder",
                                         move |_, cx| {
-                                            cx.reveal_path(&p2);
+                                            Dispatcher::show_in_finder(&p2, cx);
                                         },
                                     ));
                                     // flag `452`: the changes list's copy items

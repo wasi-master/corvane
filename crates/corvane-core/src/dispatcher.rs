@@ -929,8 +929,25 @@ impl Dispatcher {
     /// ⇧-click: select the visible range between the anchor and `path`.
     pub fn extend_file_selection(id: u64, path: String, order: Vec<String>, cx: &mut App) {
         Self::state(cx).update(cx, |s, cx| {
+            // `172-shift-click-keeps-selection`
+            let keep = s.flags.bool(crate::flags::ids::SHIFT_CLICK_KEEPS_SELECTION);
             let rs = s.repo_state_mut(id);
             let anchor = rs.selected_file.clone().unwrap_or_else(|| path.clone());
+            if keep {
+                if let Some(selection) = crate::list_selection::extend_keeping(
+                    &order,
+                    &anchor,
+                    &rs.selected_files,
+                    &path,
+                ) {
+                    rs.selected_files = selection;
+                    if rs.selected_file.is_none() {
+                        rs.selected_file = Some(path);
+                    }
+                    cx.notify();
+                }
+                return;
+            }
             let (Some(a), Some(b)) = (
                 order.iter().position(|p| *p == anchor),
                 order.iter().position(|p| *p == path),
@@ -994,9 +1011,19 @@ impl Dispatcher {
         }
     }
 
+    /// `181-binary-diff-as-text`: "Show diff anyway" on a binary file
+    /// reloads its diff with `git diff --text`.
+    pub fn show_binary_diff_as_text(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, _| {
+            let rs = s.repo_state_mut(id);
+            rs.diff_as_text = rs.selected_file.clone();
+        });
+        Self::load_diff(id, cx);
+    }
+
     pub fn load_diff(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (git, workdir, file, hide_whitespace) = {
+        let (git, workdir, file, hide_whitespace, renamed_against_head, symlinks_as_links, as_text) = {
             let s = state.read(cx);
             let Some(git) = s.git.clone() else { return };
             let Some(rs) = s.repo_states.get(&id) else {
@@ -1019,6 +1046,10 @@ impl Dispatcher {
                 info.workdir.clone(),
                 file,
                 s.settings.hide_whitespace_in_changes_diff,
+                s.flags.bool(crate::flags::ids::RENAMED_DIFF_AGAINST_HEAD),
+                s.flags.bool(crate::flags::ids::SYMLINK_CONTENTS),
+                rs.diff_as_text.as_deref() == Some(path.as_str())
+                    && s.flags.bool(crate::flags::ids::BINARY_DIFF_AS_TEXT),
             )
         };
         let path = file.path.clone();
@@ -1028,10 +1059,17 @@ impl Dispatcher {
         });
         let git_for_old = git.clone();
         let work = cx.background_executor().spawn(async move {
-            let diff = corvane_git::working_directory_diff(git, &workdir, &file, hide_whitespace);
+            let diff = corvane_git::working_directory_diff(
+                git,
+                &workdir,
+                &file,
+                hide_whitespace,
+                renamed_against_head,
+                as_text,
+            );
             // GHD `fileContents.newContents`: the working copy, for hunk expansion.
             let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
-                .then(|| corvane_git::working_file_lines(&workdir, &file.path))
+                .then(|| corvane_git::working_file_lines(&workdir, &file.path, symlinks_as_links))
                 .flatten();
             // GHD `getOldFileContent`: what is committed (`HEAD`), not the index
             let old = (!matches!(
@@ -2971,8 +3009,25 @@ impl Dispatcher {
         });
     }
 
+    /// Open a link. With a `571-browser` application set, web links open in
+    /// it (`open -a <app> <url>`); other schemes keep the system handler.
     pub fn open_url(url: &str, cx: &mut App) {
-        cx.open_url(url);
+        let browser = Self::state(cx)
+            .read(cx)
+            .flags
+            .text(crate::flags::ids::BROWSER)
+            .trim()
+            .to_string();
+        let web = url.starts_with("https://") || url.starts_with("http://");
+        if browser.is_empty() || !web {
+            cx.open_url(url);
+            return;
+        }
+        if let Err(err) = corvane_platform::apps::open_with_app(Path::new(&browser), Path::new(url))
+        {
+            warn!(%browser, %err, "opening a link in the chosen browser failed");
+            cx.open_url(url);
+        }
     }
 
     /// Native folder picker → `Some(path)` on the foreground.
@@ -3248,8 +3303,9 @@ impl Dispatcher {
                 .unwrap_or(0);
             (s.settings.confirm_discard_changes, total)
         };
-        if confirm {
-            let all = paths.len() == total;
+        let all = paths.len() == total;
+        // `476-discard-confirm-snooze`: never for Discard All
+        if confirm && (all || !Self::discard_confirm_snoozed(id, cx)) {
             Self::show_popup(
                 Popup::DiscardChanges {
                     repo: id,
@@ -3263,6 +3319,30 @@ impl Dispatcher {
         }
     }
 
+    /// Corvane `476-discard-confirm-snooze`: the confirmation is snoozed for
+    /// this repository.
+    fn discard_confirm_snoozed(id: u64, cx: &App) -> bool {
+        let s = Self::state(cx).read(cx);
+        s.flags.number(crate::flags::ids::DISCARD_CONFIRM_SNOOZE) > 0
+            && s.repo_states
+                .get(&id)
+                .and_then(|r| r.discard_confirm_snoozed_until)
+                .is_some_and(|until| Instant::now() < until)
+    }
+
+    /// Corvane `476-discard-confirm-snooze`: skip the confirmation for the
+    /// flag's number of minutes.
+    pub fn snooze_discard_confirm(id: u64, cx: &mut App) {
+        Self::state(cx).update(cx, |s, _| {
+            let minutes = s.flags.number(crate::flags::ids::DISCARD_CONFIRM_SNOOZE);
+            let Ok(minutes) = u64::try_from(minutes) else {
+                return;
+            };
+            s.repo_state_mut(id).discard_confirm_snoozed_until =
+                Some(Instant::now() + std::time::Duration::from_secs(minutes * 60));
+        });
+    }
+
     /// GHD `onDiscardChangesFromSelection` (diff gutter menu): confirm first
     /// unless the user opted out.
     pub fn request_discard_selection(
@@ -3271,7 +3351,9 @@ impl Dispatcher {
         selection: corvane_models::DiffSelection,
         cx: &mut App,
     ) {
-        if Self::state(cx).read(cx).settings.confirm_discard_changes {
+        if Self::state(cx).read(cx).settings.confirm_discard_changes
+            && !Self::discard_confirm_snoozed(id, cx)
+        {
             Self::show_popup(
                 Popup::ConfirmDiscardSelection {
                     repo: id,
@@ -3367,6 +3449,80 @@ impl Dispatcher {
             .map(|p| corvane_git::escape_gitignore_pattern(p))
             .collect();
         Self::ignore_patterns(id, patterns, cx);
+    }
+
+    /// Corvane `279-copy-diff`: the changes of `paths` as a patch on the
+    /// clipboard (`corvane_git::working_directory_patch`).
+    pub fn copy_diff(id: u64, paths: Vec<String>, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let (files, base) = {
+            let s = Self::state(cx).read(cx);
+            let Some(rs) = s.repo_states.get(&id) else {
+                return;
+            };
+            let files: Vec<_> = rs
+                .status
+                .as_ref()
+                .map(|st| {
+                    st.files
+                        .iter()
+                        .filter(|f| paths.contains(&f.path))
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default();
+            let unborn = rs
+                .info
+                .as_ref()
+                .is_some_and(|i| matches!(i.tip, corvane_models::Tip::Unborn { .. }));
+            let base = if unborn {
+                corvane_git::NULL_TREE_SHA
+            } else {
+                "HEAD"
+            };
+            (files, base)
+        };
+        if files.is_empty() {
+            return;
+        }
+        let task = cx.background_executor().spawn(async move {
+            corvane_git::working_directory_patch(git, &workdir, &files, base)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| match result {
+                Ok(patch) => cx.write_to_clipboard(gpui_kit::ClipboardItem::new_string(patch)),
+                Err(err) => Self::show_error("Could not copy the diff", err.to_string(), cx),
+            });
+        })
+        .detach();
+    }
+
+    /// Corvane `470-assume-unchanged`: mark `paths` assume-unchanged, or with
+    /// `paths: None` clear the mark from every file that has it; then refresh.
+    pub fn set_assume_unchanged(id: u64, paths: Option<Vec<String>>, assume: bool, cx: &mut App) {
+        let Some((git, workdir)) = Self::repo_context(id, cx) else {
+            return;
+        };
+        let task = cx.background_executor().spawn(async move {
+            let paths = match paths {
+                Some(paths) => paths,
+                None => corvane_git::assume_unchanged_paths(git.clone(), &workdir)?,
+            };
+            corvane_git::set_assume_unchanged(git, &workdir, &paths, assume)
+        });
+        cx.spawn(async move |cx: &mut AsyncApp| {
+            let result = task.await;
+            cx.update(|cx| {
+                if let Err(err) = result {
+                    Self::show_error("Could not update the index", err.to_string(), cx);
+                }
+                Self::refresh_repository(id, cx);
+            });
+        })
+        .detach();
     }
 
     /// Append raw patterns (e.g. `*.log`) to the root `.gitignore`, then refresh.
@@ -3502,7 +3658,7 @@ impl Dispatcher {
                                     },
                                     cx,
                                 );
-                                cx.open_url(&uri);
+                                Self::open_url(&uri, cx);
                             });
                         }
                         Msg::Token { token, scopes } => {

@@ -465,6 +465,36 @@ impl Workspace {
                         primary: false,
                     });
                 }
+                // `274-no-changes-view-pull-request`: GHD shows no remote
+                // action while the branch has an open pull request
+                let open_pr = repo_id
+                    .filter(|_| {
+                        state
+                            .flags
+                            .bool(corvane_core::flags::ids::NO_CHANGES_VIEW_PULL_REQUEST)
+                    })
+                    .and_then(|id| state.current_pull_request(id).map(|pr| (id, pr.clone())));
+                if let Some((id, pr)) = open_pr {
+                    actions.insert(
+                        0,
+                        SuggestedAction {
+                            id: "suggested-view-pull-request",
+                            on_click: std::rc::Rc::new(move |_, cx| {
+                                Dispatcher::show_pull_request(id, cx)
+                            }),
+                            title: format!(
+                                "Pull request #{} is open for the current branch",
+                                pr.number
+                            )
+                            .into(),
+                            description: Some(pr.title.into()),
+                            hint: "Branch menu or".into(),
+                            keys: &["⌘", "R"],
+                            button_label: "View Pull Request".into(),
+                            primary: true,
+                        },
+                    );
+                }
                 if has_github && let Some(id) = repo_id {
                     actions.push(SuggestedAction {
                         id: "suggested-github",

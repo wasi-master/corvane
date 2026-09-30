@@ -100,6 +100,24 @@ fn account_logins(s: &str) -> Result<(), &'static str> {
     }
 }
 
+fn hide_globs(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 1000 {
+        Err("At most 1000 characters")
+    } else {
+        Ok(())
+    }
+}
+
+fn app_name(s: &str) -> Result<(), &'static str> {
+    if s.chars().count() > 500 {
+        Err("At most 500 characters")
+    } else if s.contains(['\n', '\r']) {
+        Err("One line only")
+    } else {
+        Ok(())
+    }
+}
+
 const ON: Value = Value::Bool(true);
 const OFF: Value = Value::Bool(false);
 
@@ -151,6 +169,62 @@ const WIDTH_SAVES: &[SelectOption] = &[
     },
 ];
 
+const CHANGES_SORT_ORDERS: &[SelectOption] = &[
+    SelectOption {
+        value: "path",
+        label: "Path",
+    },
+    SelectOption {
+        value: "status",
+        label: "Status, then path",
+    },
+    SelectOption {
+        value: "name",
+        label: "File name",
+    },
+];
+const CHANGES_FILTER_MATCHES: &[SelectOption] = &[
+    SelectOption {
+        value: "fuzzy",
+        label: "Fuzzy",
+    },
+    SelectOption {
+        value: "substring",
+        label: "Contains the text",
+    },
+    SelectOption {
+        value: "suffix",
+        label: "Ends with the text",
+    },
+    SelectOption {
+        value: "exact",
+        label: "Exact path or file name",
+    },
+];
+const IMAGE_DIFF_BACKGROUNDS: &[SelectOption] = &[
+    SelectOption {
+        value: "light",
+        label: "Light checkerboard",
+    },
+    SelectOption {
+        value: "dark",
+        label: "Dark checkerboard",
+    },
+    SelectOption {
+        value: "theme",
+        label: "Follow the app theme",
+    },
+];
+const IMAGE_DIFF_ALIGNMENTS: &[SelectOption] = &[
+    SelectOption {
+        value: "centre",
+        label: "Centred",
+    },
+    SelectOption {
+        value: "top-left",
+        label: "Top left corners together",
+    },
+];
 registry! {
     // ---- 100 Appearance ----
 
@@ -403,6 +477,232 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(9609)],
         code: &["crates/corvane-ui/src/dialogs/mco_dialogs.rs", "crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
+
+    /// File names without their directory in the changes list.
+    CHANGES_FILE_NAMES_ONLY = 170 "changes-file-names-only" {
+        title: "File names only in the changes list",
+        summary: "Rows of the changes list show the file name alone, without its directory \
+                  (the filter still matches the whole path).",
+        ghd_behaviour: "Directory (dimmed) followed by the file name.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14268), Upstream::issue(19016)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// "Committing as" line above the commit summary.
+    COMMIT_AUTHOR_LINE = 171 "commit-author-line" {
+        title: "Show the commit author",
+        summary: "A line above the commit summary names the identity git resolved for this \
+                  repository (`user.name` / `user.email`, `includeIf` included): \
+                  \"Committing as Name <email>\".",
+        ghd_behaviour: "Only the avatar, whose tooltip names the author.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21883)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// ⇧-click keeps ⌘-clicked rows.
+    SHIFT_CLICK_KEEPS_SELECTION = 172 "shift-click-keeps-selection" {
+        title: "⇧-click keeps ⌘-clicked files",
+        summary: "In the changes list, ⇧-click replaces only the range from the last clicked \
+                  file; files ⌘-clicked outside it stay selected, as in Finder.",
+        ghd_behaviour: "⇧-click selects the range alone and drops the other selected files.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16355)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/list_selection.rs"],
+    },
+
+    /// "The file mode changed" for a mode-only diff.
+    FILE_MODE_CHANGE_MESSAGE = 173 "file-mode-change-message" {
+        title: "Say when only the file mode changed",
+        summary: "A diff whose only change is the file mode (e.g. the executable bit) says \
+                  \"The file mode changed from 100644 to 100755\".",
+        ghd_behaviour: "\"No content changes found\", or \"Only whitespace changes found\" while \
+                        whitespace changes are hidden.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11685), Upstream::issue(557)],
+        code: &["crates/corvane-git/src/diff.rs", "crates/corvane-ui/src/diff_view.rs"],
+    },
+
+    /// A renamed file's diff starts from HEAD.
+    RENAMED_DIFF_AGAINST_HEAD = 174 "renamed-diff-against-head" {
+        title: "Renamed files diff against the last commit",
+        summary: "A renamed file's diff compares the old path in the last commit with the \
+                  working copy, so edits staged outside Corvane show up too.",
+        ghd_behaviour: "Compares the index with the working copy: a renamed file whose edits \
+                        were staged (e.g. by `git add`) shows no changes.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19142), Upstream::issue(5575)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
+
+    /// Split mode shows added and deleted files unified.
+    UNIFIED_DIFF_FOR_ADDED_FILES = 175 "unified-diff-for-added-files" {
+        title: "Added and deleted files use the unified layout",
+        summary: "With Diff Settings › Split selected, a new or deleted file is still shown \
+                  unified, across the whole width, instead of beside an empty column.",
+        ghd_behaviour: "Split mode draws a new file in the right half next to an empty left \
+                        half (a deleted one the other way round).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13763), Upstream::issue(16610)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+
+    /// A symbolic link's contents are its target path.
+    SYMLINK_CONTENTS = 176 "symlink-contents" {
+        title: "Symbolic links are not followed",
+        summary: "Loading a changed symbolic link reads the path it points to, as git records \
+                  it, instead of the file behind it.",
+        ghd_behaviour: "Reads the file the link points to for hunk expansion, so a link to a \
+                        pipe or device keeps the diff loading forever and a link to a huge file \
+                        loads it whole.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(18620)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
+
+    /// Intra-line highlights end on grapheme boundaries.
+    INTRA_LINE_GRAPHEMES = 177 "intra-line-graphemes" {
+        title: "Intra-line highlights keep accents with their letters",
+        summary: "The changed part of a modified line is widened to whole characters as \
+                  people see them (grapheme clusters), so a combining accent is highlighted \
+                  together with its letter.",
+        ghd_behaviour: "Compares UTF-16 code units, so the highlight can cut a combining mark off \
+                        its base character and the mark renders apart or disappears.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(11492)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
+
+    /// Image diff borders go around the image.
+    IMAGE_DIFF_BORDER_OUTSIDE = 178 "image-diff-border-outside" {
+        title: "Image diff borders don't shrink the image",
+        summary: "The coloured 1 px border of an image in the image diff is drawn around the \
+                  image, which keeps its natural (or fitted) size.",
+        ghd_behaviour: "The border is inside the image's box (`box-sizing: border-box`), so every \
+                        image is drawn 2 px smaller than its size, blurring small images and \
+                        pixel art.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14469)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
+    },
+
+    /// The intra-line highlighting length cap.
+    INTRA_LINE_MAX_LENGTH = 179 "intra-line-max-length" {
+        title: "Longest line with intra-line highlighting",
+        summary: "A modified line pair gets its changed characters highlighted only while both \
+                  lines are shorter than this many bytes (0: no limit).",
+        ghd_behaviour: "1024 (`MaxIntraLineDiffStringLength`), fixed; longer lines only show as \
+                        wholly replaced.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 1_000_000, unit: Some("bytes") },
+        corvane: Value::Number(1024), ghd: Value::Number(1024),
+        familiar: Value::Number(1024), everything: Value::Number(0),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22556)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
+
+    /// Visible whitespace in diffs.
+    DIFF_SHOW_WHITESPACE = 180 "diff-show-whitespace" {
+        title: "Show whitespace in diffs",
+        summary: "Diff lines mark every space with a faint dot and every tab with a faint line, \
+                  so indentation and trailing whitespace changes can be told apart.",
+        ghd_behaviour: "Whitespace is invisible.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12974)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-ui/src/diff_view_rows.rs"],
+    },
+
+    /// "Show the diff as text anyway" on binary files.
+    BINARY_DIFF_AS_TEXT = 181 "binary-diff-as-text" {
+        title: "Show binary files' diffs as text",
+        summary: "A changed file git takes for binary (a stray NUL byte, an odd encoding) offers \
+                  \"Show the diff as text anyway.\", which diffs it line by line with \
+                  `git diff --text`. Its lines cannot be picked for a partial commit.",
+        ghd_behaviour: "\"This binary file has changed.\" and a link to open it elsewhere.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16855)],
+        code: &["crates/corvane-ui/src/diff_view.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
+
+    /// Diffs open with the whole file expanded.
+    DIFF_EXPAND_WHOLE_FILE = 182 "diff-expand-whole-file" {
+        title: "Expand the whole file in diffs",
+        summary: "Every text diff opens as if \"Expand Whole File\" had been picked (files up \
+                  to 20 000 lines; large diffs stay collapsed). \"Collapse Expanded Lines\" \
+                  still collapses it.",
+        ghd_behaviour: "Diffs open collapsed to their hunks; the expansion is per file and \
+                        forgotten.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16140), Upstream::issue(20548)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+
+    /// The image diff's checkerboard.
+    IMAGE_DIFF_BACKGROUND = 183 "image-diff-background" {
+        title: "Image diff background",
+        summary: "The checkerboard behind images in the image diff: light, dark, or dark while \
+                  the app theme is dark, so light and translucent images stay visible.",
+        ghd_behaviour: "Always the light checkerboard.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IMAGE_DIFF_BACKGROUNDS },
+        corvane: Value::text("light"), ghd: Value::text("light"),
+        familiar: Value::text("light"), everything: Value::text("theme"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21092)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
+    },
+
+    /// TGA images get an image diff.
+    TGA_IMAGE_DIFF = 184 "tga-image-diff" {
+        title: "Image diffs for TGA files",
+        summary: "Changed `.tga` images (common in game assets) are shown in the image diff \
+                  (2-up, Swipe, Onion Skin, Difference).",
+        ghd_behaviour: "\"This binary file has changed.\"",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21970)],
+        code: &["crates/corvane-ui/src/image_diff.rs", "crates/corvane-ui/src/diff_view.rs", "crates/corvane-models/src/lib.rs"],
     },
 
     /// Taller .gitignore and squash-message text areas.
@@ -1242,6 +1542,232 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(21880)],
         code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ops.rs"],
+    },
+
+    /// Commit form warning while HEAD is detached.
+    DETACHED_HEAD_COMMIT_WARNING = 270 "detached-head-commit-warning" {
+        title: "Warn when committing on a detached HEAD",
+        summary: "While HEAD is detached the commit form shows a warning that the commit will not \
+                  be on any branch, with a link to create one.",
+        ghd_behaviour: "Commits on a detached HEAD without a word; the button reads \"Commit to\".",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(788)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// Open in editor / default program acts on every selected file.
+    OPEN_MULTIPLE_FILES = 271 "open-multiple-files" {
+        title: "Open several files at once",
+        summary: "With several changed files selected, \"Open in <editor>\" and \"Open with Default \
+                  Program\" open all of them; the changes list's context menu gains \"Open All in \
+                  <editor>\" and a history file's menu \"Open All Files of Commit in <editor>\". \
+                  At most 25 files at a time.",
+        ghd_behaviour: "Opens only the right-clicked file.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16262), Upstream::issue(21374), Upstream::issue(15013)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/selected_commit.rs"],
+    },
+
+    /// Glob patterns hidden from the changes list.
+    CHANGES_HIDE_GLOBS = 272 "changes-hide-globs" {
+        title: "Hide files from the changes list",
+        summary: "Changed files matching these comma-separated glob patterns (gitignore-like: \
+                  `*.lock`, `node_modules`, `/docs/**`) are left out of the changes list, which then \
+                  reads \"N of M changed files\". View only: hidden files are still included in \
+                  commits. Empty hides nothing.",
+        ghd_behaviour: "Lists every changed file.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "*.lock, node_modules", validate: hide_globs },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10093), Upstream::issue(20615), Upstream::issue(21242)],
+        code: &["crates/corvane-core/src/filter.rs", "crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// ↑ / ↓ in an empty commit summary recall recent commit messages.
+    RECALL_COMMIT_MESSAGES = 273 "recall-commit-messages" {
+        title: "Recall recent commit messages with ↑ / ↓",
+        summary: "In an empty commit form, ↑ in the summary fills in the summary and description \
+                  of the latest commit on the branch; more ↑ go further back (merges and repeated \
+                  summaries skipped), ↓ comes forward and past the newest empties the form again. \
+                  Editing the text keeps it.",
+        ghd_behaviour: "↑ / ↓ only move the caret.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(12927), Upstream::issue(20559), Upstream::issue(17525)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-models/src/lib.rs"],
+    },
+
+    /// "No local changes" links the branch's open pull request.
+    NO_CHANGES_VIEW_PULL_REQUEST = 274 "no-changes-view-pull-request" {
+        title: "\"View Pull Request\" when there are no local changes",
+        summary: "While the current branch has an open pull request, the \"No local changes\" view \
+                  leads with a \"View Pull Request\" card naming its number and title, opening it \
+                  on GitHub.",
+        ghd_behaviour: "Shows no pull request action while one is open (only Create / Preview \
+                        Pull Request for a branch without one).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19329)],
+        code: &["crates/corvane-ui/src/workspace.rs"],
+    },
+
+    /// Confirmation before committing on the default branch.
+    CONFIRM_COMMIT_TO_DEFAULT_BRANCH = 275 "confirm-commit-to-default-branch" {
+        title: "Confirm commits to the default branch",
+        summary: "Committing (not amending) while the default branch is checked out asks \
+                  \"Commit to Default Branch\" first.",
+        ghd_behaviour: "Commits to the default branch without asking.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21857)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-ui/src/dialogs/confirm_commit_to_default_branch.rs"],
+    },
+
+    /// No Trash sentence when only submodules are discarded.
+    DISCARD_SUBMODULE_NO_TRASH_HINT = 276 "discard-submodule-no-trash-hint" {
+        title: "Discarding submodules does not mention the Trash",
+        summary: "When every discarded entry is a submodule, the discard confirmation leaves out \
+                  \"Changes can be restored by retrieving them from the Trash\": nothing is moved \
+                  there.",
+        ghd_behaviour: "Always promises the Trash.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(10402)],
+        code: &["crates/corvane-ui/src/dialogs/discard_changes.rs"],
+    },
+
+    /// Hard 72-character limit on the commit summary.
+    SUMMARY_MAX_LENGTH = 277 "summary-max-length" {
+        title: "Limit the commit summary to 72 characters",
+        summary: "The commit summary field takes at most 72 characters (GitHub truncates longer \
+                  summaries); typing or pasting past the limit drops the excess, like an HTML \
+                  maxlength.",
+        ghd_behaviour: "No limit.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(18290)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// Changed-file counts in the "Ignore All .x Files" items.
+    IGNORE_MENU_COUNTS = 278 "ignore-menu-counts" {
+        title: "Counts in \"Ignore All .x Files\"",
+        summary: "The changes list's \"Ignore All .x Files\" context-menu items say how many \
+                  changed files have that extension: \"Ignore All .png Files (170 Changed)\".",
+        ghd_behaviour: "\"Ignore All .png Files (Add to .gitignore)\", no count.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13789)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// "Copy Diff" in the changes list's file menu.
+    COPY_DIFF = 279 "copy-diff" {
+        title: "Copy Diff",
+        summary: "The changes list's file context menu has \"Copy Diff\" (\"Copy Diff of Selected \
+                  Files\" for a multi-selection): the working-directory changes of those files as \
+                  a patch `git apply` takes, untracked files included.",
+        ghd_behaviour: "No way to copy a diff.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(17746)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
+
+    /// "Renamed files" in the changes list's Filter Options.
+    RENAMED_FILES_FILTER = 280 "renamed-files-filter" {
+        title: "\"Renamed files\" filter option",
+        summary: "The changes list's Filter Options popover has a sixth option, \"Renamed files\".",
+        ghd_behaviour: "Included / excluded, new, modified and deleted files only.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(21147)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
+    },
+
+    /// "Copy" button on error dialogs.
+    ERROR_DIALOG_COPY = 281 "error-dialog-copy" {
+        title: "Copy button on error dialogs",
+        summary: "Error dialogs (a failed commit, push, checkout…) have a \"Copy\" button that puts \
+                  the title and message on the clipboard; the text itself cannot be selected.",
+        ghd_behaviour: "No way to copy the message (⌘C does nothing).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19198), Upstream::issue(22591), Upstream::issue(22913)],
+        code: &["crates/corvane-ui/src/dialogs/simple.rs"],
+    },
+
+    /// Order of the changes list.
+    CHANGES_SORT_ORDER = 282 "changes-sort-order" {
+        title: "Changes list order",
+        summary: "How the changes list orders its files: by path, by status (conflicted, new, \
+                  modified, renamed, deleted; path order within each), or by file name. A filter \
+                  text still ranks its matches best first.",
+        ghd_behaviour: "Path order (git's).",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: CHANGES_SORT_ORDERS },
+        corvane: Value::text("path"), ghd: Value::text("path"),
+        familiar: Value::text("path"), everything: Value::text("status"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4739)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
+    },
+
+    /// How the changes filter text matches.
+    CHANGES_FILTER_MATCH = 283 "changes-filter-match" {
+        title: "Changes filter matching",
+        summary: "How the changes list's filter text matches a path: fuzzily (the letters in \
+                  order), as a substring, as the end of the path (`.meta`), or as the exact path \
+                  or file name. Case is ignored.",
+        ghd_behaviour: "Fuzzy only.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: CHANGES_FILTER_MATCHES },
+        corvane: Value::text("fuzzy"), ghd: Value::text("fuzzy"),
+        familiar: Value::text("fuzzy"), everything: Value::text("substring"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20555)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
+    },
+
+    /// Warn about paths Windows cannot check out.
+    WINDOWS_INVALID_NAMES_WARNING = 284 "windows-invalid-names-warning" {
+        title: "Warn about names invalid on Windows",
+        summary: "The commit form warns when an included file's path is invalid on Windows (a \
+                  reserved name like `CON` or `nul.txt`, a character such as `:` or `?`, or a name \
+                  ending in a space or a dot). Committing stays possible.",
+        ghd_behaviour: "Commits them silently; Windows clones then fail to check them out.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19292)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/portable_paths.rs"],
     },
 
     /// "No local changes" offers Open in <Shell>.
@@ -2141,6 +2667,111 @@ registry! {
         upstream: &[Upstream::issue(22505)],
         code: &["crates/corvane-ui/src/dialogs/add_existing.rs", "crates/corvane-ui/src/dialogs/create_repository.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+
+    /// "Assume Unchanged" in the changes list's menus.
+    ASSUME_UNCHANGED = 470 "assume-unchanged" {
+        title: "Assume Unchanged",
+        summary: "The changes list's file menu has \"Assume Unchanged\" (`git update-index \
+                  --assume-unchanged`) for modified or deleted tracked files, which then leave \
+                  the list; the list's own menu has \"Stop Assuming Files Unchanged\" to bring \
+                  them all back.",
+        ghd_behaviour: "No such items; only ignoring (which does not affect tracked files).",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22841)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/commit.rs"],
+    },
+
+    /// Clear the drafted message after a matching outside commit.
+    CLEAR_MESSAGE_AFTER_OUTSIDE_COMMIT = 471 "clear-message-after-outside-commit" {
+        title: "Clear the draft after an outside commit",
+        summary: "When a new commit appears on the branch (made on the command line or in another \
+                  app) whose summary is the one drafted in the commit form, the form is cleared \
+                  as after committing in Corvane.",
+        ghd_behaviour: "The drafted message stays.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(5233)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// Context menu on the "Committed … Undo" bar.
+    UNDO_BAR_MENU = 472 "undo-bar-menu" {
+        title: "Context menu on the undo bar",
+        summary: "Right-clicking the \"Committed just now … Undo\" bar under the commit button \
+                  offers Amend Commit…, Undo Commit…, Create Tag…, Copy SHA and View on GitHub \
+                  for that commit.",
+        ghd_behaviour: "No context menu there; those items live in History.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(12561), Upstream::issue(19938)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// Optional tag field in the commit form.
+    COMMIT_TAG_FIELD = 473 "commit-tag-field" {
+        title: "Tag field in the commit form",
+        summary: "The commit form has a \"Tag (optional)\" field under the description; a name \
+                  there tags the new commit once it is made (not when amending).",
+        ghd_behaviour: "Tags are created from History after committing.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(16256)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
+
+    /// "Open With…" in the changes list's file menu.
+    OPEN_FILE_WITH = 474 "open-file-with" {
+        title: "Open a changed file with…",
+        summary: "The changes list's file menu has \"Open With…\" after \"Open with Default \
+                  Program\": pick any application to open the file in.",
+        ghd_behaviour: "Only the configured editor or the default program.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20166)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/integrations.rs"],
+    },
+
+    /// VS Code opens the repository's workspace file.
+    VSCODE_WORKSPACE_FILE = 475 "vscode-workspace-file" {
+        title: "Open the VS Code workspace file",
+        summary: "Opening the repository in Visual Studio Code (or VSCodium, Cursor, Windsurf) \
+                  opens its `*.code-workspace` file when the repository's top folder has exactly \
+                  one.",
+        ghd_behaviour: "Always opens the folder.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(7007)],
+        code: &["crates/corvane-core/src/integrations.rs", "crates/corvane-platform/src/editors.rs"],
+    },
+
+    /// Snooze the discard confirmation.
+    DISCARD_CONFIRM_SNOOZE = 476 "discard-confirm-snooze" {
+        title: "Snooze the discard confirmation",
+        summary: "The Confirm Discard Changes dialog offers \"Do not show this message again for N \
+                  minutes\": discarding in that repository then skips the confirmation for N \
+                  minutes (this session; Discard All Changes still asks). 0 hides the option.",
+        ghd_behaviour: "Only \"Do not show this message again\", for good.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 120, unit: Some("min") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(10),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20747)],
+        code: &["crates/corvane-ui/src/dialogs/discard_changes.rs", "crates/corvane-core/src/dispatcher.rs"],
+    },
     /// The diff's "Open in <Editor> at Line N".
     DIFF_OPEN_IN_EDITOR_AT_LINE = 485 "diff-open-in-editor-at-line" {
         title: "Diff: Open in editor at a line",
@@ -2269,6 +2900,38 @@ registry! {
         upstream: &[Upstream::issue(3410), Upstream::issue(22468)],
         code: &["crates/corvane-core/src/updater.rs"],
     },
+
+    /// Reveal in another file manager.
+    FILE_MANAGER = 570 "file-manager" {
+        title: "File manager",
+        summary: "Application that Show in Finder and the Reveal in Finder items open the folder \
+                  with (a file's parent folder), by name or path: `Path Finder`, \
+                  `/Applications/ForkLift.app`. Empty uses Finder.",
+        ghd_behaviour: "Always Finder.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "Path Finder", validate: app_name },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(13812)],
+        code: &["crates/corvane-core/src/integrations.rs"],
+    },
+
+    /// Open web links in a chosen browser.
+    BROWSER = 571 "browser" {
+        title: "Browser",
+        summary: "Application that web links open in (GitHub pages, pull requests, sign-in, help \
+                  links), by name or path: `Firefox`, `/Applications/Safari.app`. Empty uses the \
+                  system's default browser.",
+        ghd_behaviour: "Always the default browser.",
+        nature: Nature::Feature,
+        kind: Kind::Text { placeholder: "Firefox", validate: app_name },
+        corvane: Value::text(""), ghd: Value::text(""),
+        familiar: Value::text(""), everything: Value::text(""),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21762)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
     /// Editors GitHub Desktop does not detect.
     EXTRA_EDITORS = 585 "extra-editors" {
         title: "Detect more external editors",
@@ -2324,6 +2987,37 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
+    },
+
+    /// The diff's font size.
+    DIFF_FONT_SIZE = 670 "diff-font-size" {
+        title: "Diff font size",
+        summary: "The size of the diff's monospace text, 9 to 16 pixels at 100 % zoom (0 \
+                  keeps 11 px). Rows stay 20 px tall.",
+        ghd_behaviour: "11 px, changed only by zooming the whole window.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 16, unit: Some("px") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(0),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22929)],
+        code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+
+    /// How Swipe / Onion Skin / Difference align images of different sizes.
+    IMAGE_DIFF_ALIGNMENT = 671 "image-diff-alignment" {
+        title: "Image diff alignment",
+        summary: "Where Swipe, Onion Skin and Difference put two images of different sizes: \
+                  centred on each other, or with their top left corners together (for layouts \
+                  that grow to the right and down, such as UI snapshots).",
+        ghd_behaviour: "Always centred.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IMAGE_DIFF_ALIGNMENTS },
+        corvane: Value::text("centre"), ghd: Value::text("centre"),
+        familiar: Value::text("centre"), everything: Value::text("top-left"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19385)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
     },
 }
 

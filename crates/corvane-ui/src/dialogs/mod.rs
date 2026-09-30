@@ -9,6 +9,7 @@ pub(crate) mod branch_dialogs;
 mod change_repository_alias;
 mod ci_check_run_rerun;
 mod clone_repository;
+mod confirm_commit_to_default_branch;
 mod crash_report_found;
 mod create_repository;
 mod discard_changes;
@@ -47,6 +48,7 @@ pub use branch_dialogs::{
 };
 pub use ci_check_run_rerun::CiCheckRunRerunDialog;
 pub use clone_repository::CloneRepositoryDialog;
+pub use confirm_commit_to_default_branch::ConfirmCommitToDefaultBranchDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
 pub use discard_selection::DiscardSelectionDialog;
@@ -271,6 +273,23 @@ impl DialogHost {
                         usernames.clone(),
                         summary.clone(),
                         description.clone(),
+                    )
+                })
+                .into(),
+            Popup::ConfirmCommitToDefaultBranch {
+                repo,
+                branch,
+                summary,
+                description,
+                unknown_co_authors,
+            } => cx
+                .new(|_| {
+                    ConfirmCommitToDefaultBranchDialog::new(
+                        *repo,
+                        branch.clone(),
+                        summary.clone(),
+                        description.clone(),
+                        unknown_co_authors.clone(),
                     )
                 })
                 .into(),

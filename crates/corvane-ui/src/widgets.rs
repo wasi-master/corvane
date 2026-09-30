@@ -127,16 +127,16 @@ impl From<AnyElement> for Inline {
 /// text child never shrinks in GPUI, so long sentences would overflow;
 /// splitting the text into words gives real line wrapping around the inline
 /// elements. Text that touches an element with no space (`"(" + chip`,
-/// `chip + "."`) stays attached.
+/// `chip + "."`) stays attached: the pieces share one flex item, so the line
+/// never breaks between them (a browser has no break opportunity there).
 pub fn paragraph(parts: Vec<Inline>) -> Div {
     const GAP: f32 = 3.;
-    let mut row = div()
-        .flex()
-        .flex_row()
-        .flex_wrap()
-        .items_center()
-        .gap_x(zpx(GAP))
-        .line_height(zpx(18.));
+    // flex items, each a run of pieces with no whitespace between them
+    let mut items: Vec<Vec<AnyElement>> = Vec::new();
+    let mut push = |piece: AnyElement, attach: bool| match items.last_mut() {
+        Some(item) if attach => item.push(piece),
+        _ => items.push(vec![piece]),
+    };
     let mut attach_next = false;
     for part in parts {
         match part {
@@ -146,10 +146,11 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
                 let mut first = true;
                 for word in text.split_whitespace() {
                     let attach = first && starts_attached && attach_next;
-                    row = row.child(
+                    push(
                         div()
-                            .when(attach, |d| d.ml(zpx(-GAP)))
-                            .child(SharedString::from(word.to_string())),
+                            .child(SharedString::from(word.to_string()))
+                            .into_any_element(),
+                        attach,
                     );
                     first = false;
                 }
@@ -158,12 +159,30 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
                 }
             }
             Inline::Element(el) => {
-                row = row.child(div().when(attach_next, |d| d.ml(zpx(-GAP))).child(el));
+                push(div().child(el).into_any_element(), attach_next);
                 attach_next = true;
             }
         }
     }
-    row
+    div()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .items_center()
+        .gap_x(zpx(GAP))
+        .line_height(zpx(18.))
+        .children(items.into_iter().map(|mut pieces| {
+            if pieces.len() == 1 {
+                pieces.remove(0)
+            } else {
+                div()
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .children(pieces)
+                    .into_any_element()
+            }
+        }))
 }
 
 /// `<Ref>`: inline monospace code on the alt background.

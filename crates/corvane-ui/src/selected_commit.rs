@@ -16,6 +16,8 @@
 //! spans and link URLs and SHAs (flag `141`), where GHD's `RichText` links
 //! only URLs, issues and mentions. A file's menu can revert that file's
 //! changes from the commit (flag `443`).
+//! A file's context menu adds "Open All Files of Commit in <editor>"
+//! (`271-open-multiple-files`).
 
 use corvane_core::{AppState, CommittedFileChange, Dispatcher, Popup, UnreachableCommitsTab};
 use gpui_kit::component::resizable::{
@@ -526,7 +528,7 @@ impl SelectedCommitView {
                                                         .text_size(FONT_SIZE_SM())
                                                         .ghd_tooltip("View on GitHub")
                                                         .on_click(move |_, _, cx| {
-                                                            cx.open_url(&url)
+                                                            Dispatcher::open_url(&url, cx)
                                                         }),
                                                 ),
                                                 None => div().pl(SPACING_HALF()).child(label),
@@ -795,6 +797,23 @@ fn open_commit_file_menu(
             ))
         })
         .flatten();
+    // `271-open-multiple-files`: every file of the commit still on disk
+    let open_all = state
+        .flags
+        .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
+        .then(|| {
+            let files: Vec<std::path::PathBuf> = rs
+                .and_then(|r| r.changeset.as_ref())
+                .map(|c| c.files.iter().map(|f| repo.path.join(&f.path)).collect())
+                .unwrap_or_default();
+            // past the cap the item is disabled anyway: skip the disk checks
+            if files.len() > crate::changes::MAX_BULK_OPEN {
+                files
+            } else {
+                files.into_iter().filter(|f| f.exists()).collect()
+            }
+        })
+        .filter(|files| files.len() > 1);
     let mut items = if !full.exists() {
         let mut items =
             vec![MenuItem::new("File Does Not Exist on Disk", |_, _| {}).enabled(false)];
@@ -829,7 +848,9 @@ fn open_commit_file_menu(
                 .map(|sha| format!("{}/blob/{sha}/{path}", gh.html_url))
         });
         vec![
-            MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal)),
+            MenuItem::new("Reveal in Finder", move |_, cx| {
+                Dispatcher::show_in_finder(&reveal, cx)
+            }),
             MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
                 Dispatcher::open_in_editor(editor.clone(), cx)
             }),
@@ -866,6 +887,13 @@ fn open_commit_file_menu(
     };
     if let Some(item) = revert_file {
         items.extend([MenuItem::separator(), item]);
+    }
+    if let Some(files) = open_all {
+        items.push(MenuItem::separator());
+        items.push(crate::changes::open_all_in_editor_item(
+            format!("Open All Files of Commit in {editor_label}"),
+            files,
+        ));
     }
     #[cfg(target_os = "macos")]
     crate::native_menu::show_context_menu(items, position, window, cx);

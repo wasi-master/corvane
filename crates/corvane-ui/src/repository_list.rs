@@ -397,7 +397,10 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             Dispatcher::open_in_shell(&shell_path, cx)
         })
         .enabled(!missing),
-        MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal)).enabled(!missing),
+        MenuItem::new("Reveal in Finder", move |_, cx| {
+            Dispatcher::show_in_finder(&reveal, cx)
+        })
+        .enabled(!missing),
         MenuItem::new(format!("Open in {editor}"), move |_, cx| {
             Dispatcher::open_in_editor(editor_path.clone(), cx)
         })

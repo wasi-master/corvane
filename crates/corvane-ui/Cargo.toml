@@ -15,8 +15,11 @@ corvane-github.workspace = true
 corvane-platform.workspace = true
 tracing.workspace = true
 libc = "0.2"
-# image diffs: dimensions + the "Difference" blend (same major as GPUI's)
-image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico"] }
+# `177-intra-line-graphemes`: intra-line ranges end on grapheme boundaries
+unicode-segmentation = "1"
+# image diffs: dimensions + the "Difference" blend (same major as GPUI's);
+# tga: decoded to PNG for `184-tga-image-diff`
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp", "ico", "tga"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

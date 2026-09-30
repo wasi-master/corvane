@@ -34,6 +34,12 @@ New Corvane-only extras land behind a flag that is off in the Corvane preset and
 
 - [ ] Flags dialog: ↑ / ↓ row navigation, a "Reset to preset" per category, a link that opens the flag's deviations.md entry
 
+## UI parity gaps
+
+- [ ] **[UI]** Commit summary placeholder generated from the changes ("Update main.c", "Create …", "Delete …", "Update N files"; `getPlaceholderMessage`, `app/src/ui/changes/filter-changes-list.tsx`) and the summary length hint past 50 characters (`IdealSummaryLength`, `app/src/ui/changes/commit-message.tsx`)
+- [ ] **[UI]** Branch menu shows "View Pull Request on GitHub" instead of "Create Pull Request" when the current branch has a pull request (`app/src/main-process/menu/build-default-menu.ts`; also `app/src/ui/branches/branch-list-item-context-menu.tsx`)
+- [ ] **[UI]** Create Tag / Create Branch name sanitising with the "Will be created as …" warning (`sanitizedRefName`, `app/src/lib/sanitize-ref-name.ts`; `app/src/ui/lib/ref-name-text-box.tsx`)
+
 ## Accessibility
 
 - [ ] Keyboard navigation leftovers (audit 2026-09-29, `deviations.md` › Keyboard): arrow / Enter navigation from the filter box into the repository, branch, pull request and worktree lists (GHD `FilterList`), PageUp / PageDown in lists, Enter submitting a dialog's default button when no text box has focus, Shift+F10 opening the selected row's context menu, Tab traversal through toolbar buttons and list rows

@@ -1,6 +1,11 @@
 //! Working-directory diffs (GHD `lib/git/diff.ts` + `lib/diff-parser.ts`):
 //! text, image, submodule and large-diff detection, plus the blob / file
 //! readers that back hunk expansion (`fileContents.newContents`).
+//!
+//! Deviations: a renamed file can diff against `HEAD:<old path>`
+//! (`174-renamed-diff-against-head`); a mode-only change carries the modes
+//! (`173-file-mode-change-message`); a symbolic link's working copy is its
+//! target path (`176-symlink-contents`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -26,19 +31,39 @@ pub const MAX_DIFF_LINES: usize = 50_000;
 /// `git diff` for one working-directory file, compared against HEAD (or an
 /// empty file for new/untracked files), exactly like GHD. `hide_whitespace`
 /// adds `-w` (Diff Settings › Hide Whitespace Changes).
+///
+/// A renamed file is diffed index-to-working-tree like GHD, which hides
+/// staged edits; `renamed_against_head` (Corvane `174-renamed-diff-against-head`)
+/// diffs `HEAD:<old path>` to the working copy instead (`HEAD -M -- old new`),
+/// the change the commit will record, falling back to GHD's diff when git
+/// does not pair the two paths as one rename.
+///
+/// `as_text` adds `--text` (Corvane `181-binary-diff-as-text`): a file git
+/// takes for binary is diffed line by line anyway.
 pub fn working_directory_diff(
     git: Arc<GitBinary>,
     workdir: &Path,
     file: &WorkingDirectoryFileChange,
     hide_whitespace: bool,
+    renamed_against_head: bool,
+    as_text: bool,
 ) -> Result<Diff> {
     let mut args = vec!["diff"];
     if hide_whitespace {
         args.push("-w");
     }
+    if as_text {
+        args.push("--text");
+    }
     args.extend(["--no-ext-diff", "--patch-with-raw", "-z", "--no-color"]);
-    let mut cmd = GitCommand::new(git.clone()).args(args).current_dir(workdir);
+    let base = || {
+        GitCommand::new(git.clone())
+            .args(&args)
+            .current_dir(workdir)
+    };
+    let mut cmd = base();
     let is_submodule = file.status.submodule;
+    let mut rename_out = None;
     if !is_submodule && file.status.kind.is_new_or_untracked() {
         // `--no-index` exits 1 when files differ, which is the normal case.
         cmd = cmd
@@ -46,11 +71,29 @@ pub fn working_directory_diff(
             .arg(&file.path)
             .allow_exit_code(1);
     } else if file.status.kind == FileStatusKind::Renamed {
+        if renamed_against_head && let Some(old_path) = &file.old_path {
+            let out = base()
+                .args(["-M", "HEAD", "--"])
+                .arg(old_path)
+                .arg(&file.path)
+                .run()?;
+            // one patch: git paired the paths (a delete plus an add otherwise)
+            if String::from_utf8_lossy(&out.stdout)
+                .matches("diff --git ")
+                .count()
+                == 1
+            {
+                rename_out = Some(out);
+            }
+        }
         cmd = cmd.args(["--"]).arg(&file.path);
     } else {
         cmd = cmd.args(["HEAD", "--"]).arg(&file.path);
     }
-    let out = cmd.run()?;
+    let out = match rename_out {
+        Some(out) => out,
+        None => cmd.run()?,
+    };
     if is_submodule {
         return Ok(submodule_diff(
             git,
@@ -74,6 +117,47 @@ pub fn working_directory_diff(
         }
         other => other,
     })
+}
+
+/// Corvane `279-copy-diff`: the working-directory changes of `files` as one
+/// patch `git apply` takes (`--binary`), against `base` (`HEAD`, or
+/// [`crate::NULL_TREE_SHA`] on an unborn branch). Tracked files come first,
+/// in one `git diff`, then each new / untracked file against `/dev/null`.
+pub fn working_directory_patch(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    files: &[WorkingDirectoryFileChange],
+    base: &str,
+) -> Result<String> {
+    const ARGS: [&str; 4] = ["diff", "--no-ext-diff", "--no-color", "--binary"];
+    let (untracked, tracked): (Vec<_>, Vec<_>) = files
+        .iter()
+        .partition(|f| !f.status.submodule && f.status.kind.is_new_or_untracked());
+    let mut patch = Vec::new();
+    if !tracked.is_empty() {
+        let paths = tracked
+            .iter()
+            .flat_map(|f| std::iter::once(&f.path).chain(f.old_path.as_ref()));
+        let out = GitCommand::new(git.clone())
+            .args(ARGS)
+            .args([base, "--"])
+            .args(paths)
+            .current_dir(workdir)
+            .run()?;
+        patch.extend(out.stdout);
+    }
+    for f in untracked {
+        // `--no-index` exits 1 when the files differ
+        let out = GitCommand::new(git.clone())
+            .args(ARGS)
+            .args(["--no-index", "--", "/dev/null"])
+            .arg(&f.path)
+            .current_dir(workdir)
+            .allow_exit_code(1)
+            .run()?;
+        patch.extend(out.stdout);
+    }
+    Ok(String::from_utf8_lossy(&patch).into_owned())
 }
 
 /// GHD `getImageDiff`: a binary change of a known image type becomes an
@@ -167,10 +251,24 @@ pub fn file_lines(bytes: &[u8]) -> Vec<String> {
 }
 
 /// The working copy of `path` as lines (`None` when unreadable, e.g. deleted).
-pub fn working_file_lines(workdir: &Path, path: &str) -> Option<Vec<String>> {
-    std::fs::read(workdir.join(path))
-        .ok()
-        .map(|b| file_lines(&b))
+///
+/// GHD reads through a symbolic link, which hangs on a link to a FIFO or a
+/// device and loads a huge target whole; `symlinks_as_links` (Corvane
+/// `176-symlink-contents`) reads the link's target path instead, the one
+/// line git records and diffs for a link.
+pub fn working_file_lines(
+    workdir: &Path,
+    path: &str,
+    symlinks_as_links: bool,
+) -> Option<Vec<String>> {
+    let full = workdir.join(path);
+    if symlinks_as_links
+        && std::fs::symlink_metadata(&full).is_ok_and(|m| m.file_type().is_symlink())
+    {
+        let target = std::fs::read_link(&full).ok()?;
+        return Some(file_lines(target.to_string_lossy().as_bytes()));
+    }
+    std::fs::read(full).ok().map(|b| file_lines(&b))
 }
 
 /// A committed blob as lines (`None` when the path is not in that commit).
@@ -285,6 +383,7 @@ pub fn parse_unified(patch: &str) -> Diff {
     let mut new_no = 0u32;
     let mut total_lines = 0usize;
     let mut truncated = false;
+    let (mut old_mode, mut new_mode) = (None, None);
 
     for line in patch.split_inclusive('\n') {
         let line = line.strip_suffix('\n').unwrap_or(line);
@@ -313,7 +412,13 @@ pub fn parse_unified(patch: &str) -> Diff {
             continue;
         }
         let Some(hunk) = current.as_mut() else {
-            continue; // file header lines before the first hunk
+            // file header lines before the first hunk
+            if let Some(mode) = line.strip_prefix("old mode ") {
+                old_mode = Some(mode.to_string());
+            } else if let Some(mode) = line.strip_prefix("new mode ") {
+                new_mode = Some(mode.to_string());
+            }
+            continue;
         };
         if line.starts_with("\\ No newline at end of file") {
             if let Some(last) = hunk.lines.last_mut() {
@@ -362,7 +467,8 @@ pub fn parse_unified(patch: &str) -> Diff {
     if let Some(h) = current.take() {
         hunks.push(h);
     }
-    if hunks.is_empty() {
+    let mode_change = old_mode.zip(new_mode);
+    if hunks.is_empty() && mode_change.is_none() {
         return Diff::Empty;
     }
     let warnings = DiffWarnings {
@@ -371,6 +477,7 @@ pub fn parse_unified(patch: &str) -> Diff {
             .flat_map(|h| h.lines.iter())
             .any(|l| has_hidden_bidi_chars(&l.text)),
         line_endings: None,
+        mode_change,
     };
     if truncated {
         Diff::LargeText { hunks, warnings }
@@ -382,6 +489,48 @@ pub fn parse_unified(patch: &str) -> Diff {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn working_directory_patch_applies() {
+        use std::process::Command;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
+        std::fs::write(path.join("a.txt"), "one\n").unwrap();
+        std::fs::write(path.join("skip.txt"), "same\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "init"]);
+        std::fs::write(path.join("a.txt"), "one\ntwo\n").unwrap();
+        std::fs::write(path.join("skip.txt"), "changed\n").unwrap();
+        std::fs::write(path.join("new.txt"), "fresh\n").unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        let files: Vec<_> = status
+            .files
+            .into_iter()
+            .filter(|f| f.path != "skip.txt")
+            .collect();
+        let patch = working_directory_patch(git, path, &files, "HEAD").unwrap();
+        assert!(patch.contains("+two"));
+        assert!(patch.contains("+fresh"));
+        assert!(!patch.contains("skip.txt"));
+        // the patch reverses cleanly onto the working tree
+        std::fs::write(path.join("p.diff"), &patch).unwrap();
+        run(&["apply", "--check", "-R", "p.diff"]);
+    }
 
     const SAMPLE: &str = "diff --git a/a.txt b/a.txt\nindex 1..2 100644\n--- a/a.txt\n+++ b/a.txt\n@@ -1,3 +1,4 @@\n one\n-two\n+TWO\n+three\n four\n\\ No newline at end of file\n";
 
@@ -455,7 +604,8 @@ mod tests {
         let git = Arc::new(crate::find_git().unwrap());
         let status = crate::status::get_status(git.clone(), path, None).unwrap();
         for file in &status.files {
-            let diff = working_directory_diff(git.clone(), path, file, false).unwrap();
+            let diff =
+                working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
             let Diff::Text { hunks, .. } = diff else {
                 panic!("text diff for {}", file.path)
             };
@@ -465,6 +615,83 @@ mod tests {
                 assert_eq!(file.status.kind, corvane_models::FileStatusKind::Untracked);
             }
         }
+    }
+
+    #[test]
+    fn mode_only_change_is_a_text_diff_without_hunks() {
+        let raw = ":100644 100755 aaa aaa M\0a.sh\0\ndiff --git a/a.sh b/a.sh\nold mode 100644\nnew mode 100755\n";
+        let Diff::Text { hunks, warnings } = parse_raw_diff(raw.as_bytes()) else {
+            panic!("text diff expected")
+        };
+        assert!(hunks.is_empty());
+        assert_eq!(
+            warnings.mode_change,
+            Some(("100644".to_string(), "100755".to_string()))
+        );
+        let with_hunks = SAMPLE.replacen(
+            "index 1..2 100644\n",
+            "old mode 100644\nnew mode 100755\n",
+            1,
+        );
+        let Diff::Text { hunks, warnings } = parse_unified(&with_hunks) else {
+            panic!("text diff expected")
+        };
+        assert_eq!(hunks.len(), 1);
+        assert!(warnings.mode_change.is_some());
+    }
+
+    #[test]
+    fn symlink_lines_are_the_target() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("real.txt"), "one\ntwo\n").unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("real.txt", dir.path().join("link")).unwrap();
+        #[cfg(not(unix))]
+        return;
+        assert_eq!(
+            working_file_lines(dir.path(), "link", false),
+            Some(vec!["one".to_string(), "two".to_string()])
+        );
+        assert_eq!(
+            working_file_lines(dir.path(), "link", true),
+            Some(vec!["real.txt".to_string()])
+        );
+        assert_eq!(
+            working_file_lines(dir.path(), "real.txt", true).map(|l| l.len()),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn binary_file_as_text() {
+        use std::process::Command;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path();
+        let run = |args: &[&str]| {
+            assert!(
+                Command::new("git")
+                    .args(args)
+                    .current_dir(path)
+                    .status()
+                    .unwrap()
+                    .success()
+            )
+        };
+        run(&["init", "-q", "-b", "main"]);
+        run(&["config", "commit.gpgsign", "false"]);
+        run(&["config", "user.name", "T"]);
+        run(&["config", "user.email", "t@example.com"]);
+        std::fs::write(path.join("data.bin"), b"one\0\ntwo\n").unwrap();
+        run(&["add", "."]);
+        run(&["commit", "-q", "-m", "init"]);
+        std::fs::write(path.join("data.bin"), b"one\0\nTWO\n").unwrap();
+        let git = Arc::new(crate::find_git().unwrap());
+        let status = crate::get_status(git.clone(), path, None).unwrap();
+        let file = &status.files[0];
+        let binary = working_directory_diff(git.clone(), path, file, false, false, false).unwrap();
+        assert_eq!(binary, Diff::Binary);
+        let text = working_directory_diff(git, path, file, false, false, true).unwrap();
+        assert!(matches!(text, Diff::Text { .. }));
     }
 
     #[test]

@@ -86,7 +86,7 @@ impl PushProtectionErrorDialog {
         if secret.requires_approval {
             let url = secret.bypass_url.clone();
             return link_button(id, "Bypass", cx)
-                .on_click(move |_, _, cx| cx.open_url(&url))
+                .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx))
                 .into_any_element();
         }
         if self.bypassed.contains(&secret.id) {
@@ -128,7 +128,7 @@ impl Render for PushProtectionErrorDialog {
         let docs = |id: &'static str, label: &'static str, url: &'static str, cx: &App| {
             Inline::Element(
                 link_button(id, label, cx)
-                    .on_click(move |_, _, cx| cx.open_url(url))
+                    .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(url, cx))
                     .into_any_element(),
             )
         };

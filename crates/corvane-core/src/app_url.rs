@@ -384,7 +384,7 @@ impl Dispatcher {
                 return;
             };
             match resolve_within(&root, &filepath) {
-                Some(resolved) => cx.reveal_path(&resolved),
+                Some(resolved) => Self::show_in_finder(&resolved, cx),
                 None => warn!(
                     %filepath,
                     "prevented attempt to open path outside of the repository root"

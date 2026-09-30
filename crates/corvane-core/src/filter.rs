@@ -1,6 +1,13 @@
 //! Changes-list filtering — GHD `ui/changes/filter-changes-logic.ts` plus the
 //! fuzzy text match of `lib/fuzzy-find.ts` (fuzzaldrin-plus, approximated:
 //! ordered subsequence with bonuses for consecutive and boundary hits).
+//!
+//! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
+//! patterns from the list (view only; they are still committed), and the
+//! `280-renamed-files-filter` option keeps renamed files; [`sort_files`]
+//! orders the list by status or file name (`282-changes-sort-order`), and
+//! [`path_match`] can match the filter text as a substring, a suffix or the
+//! exact path / file name instead of fuzzily (`283-changes-filter-match`).
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -51,6 +58,39 @@ pub fn fuzzy_match(query: &str, text: &str) -> Option<(f32, Vec<usize>)> {
     Some((score, hits))
 }
 
+/// `283-changes-filter-match`: how the changes filter text matches a path.
+/// `mode` is the flag value: `fuzzy` (GHD), `substring`, `suffix` (the path
+/// ends with the text) or `exact` (the whole path or the file name). Case is
+/// ignored; hits are char positions in `path`, as for [`fuzzy_match`]. Non-fuzzy
+/// matches all score 1, so they keep the list order.
+pub fn path_match(mode: &str, query: &str, path: &str) -> Option<(f32, Vec<usize>)> {
+    let q: Vec<char> = query.chars().flat_map(|c| c.to_lowercase()).collect();
+    if q.is_empty() || !matches!(mode, "substring" | "suffix" | "exact") {
+        return fuzzy_match(query, path);
+    }
+    let t: Vec<char> = path
+        .chars()
+        .map(|c| c.to_lowercase().next().unwrap_or(c))
+        .collect();
+    let hit = |start: usize| Some((1.0, (start..start + q.len()).collect()));
+    if q.len() > t.len() {
+        return None;
+    }
+    let tail = t.len() - q.len();
+    match mode {
+        "substring" => (0..=tail)
+            .find(|&i| t[i..i + q.len()] == q[..])
+            .and_then(hit),
+        "suffix" => (t[tail..] == q[..]).then_some(tail).and_then(hit),
+        _ => {
+            let name_start = t.iter().rposition(|&c| c == '/').map_or(0, |i| i + 1);
+            (t[tail..] == q[..] && (tail == 0 || tail == name_start))
+                .then_some(tail)
+                .and_then(hit)
+        }
+    }
+}
+
 /// GHD `BranchAutocompletionProvider.getAutocompletionItems`: every branch
 /// for an empty query, else the fuzzy matches best first (`match` sorts by
 /// descending score; ties keep the input order). Returns names with the
@@ -95,26 +135,115 @@ pub fn matches_options(filter: &FileListFilter, file: &WorkingDirectoryFileChang
     if filter.deleted && file.status.kind != FileStatusKind::Deleted {
         return false;
     }
+    if filter.renamed && file.status.kind != FileStatusKind::Renamed {
+        return false;
+    }
     true
 }
 
+/// The `272-changes-hide-globs` flag text split into patterns: separated by
+/// commas or whitespace, empty ones dropped.
+pub fn hide_patterns(text: &str) -> Vec<String> {
+    text.split(|c: char| c == ',' || c.is_whitespace())
+        .map(|p| p.trim_end_matches('/'))
+        .filter(|p| !p.is_empty())
+        .map(str::to_string)
+        .collect()
+}
+
+/// Whether `path` (repository-relative, `/`-separated) matches one of the
+/// patterns. Gitignore-like: `*` and `?` stay inside one path component, `**`
+/// spans components; a pattern without `/` matches any component (`*.lock`,
+/// `node_modules`), one with `/` matches from the root (a leading `/` is
+/// optional), and a pattern matching a directory hides everything below it.
+pub fn hidden_by(patterns: &[String], path: &str) -> bool {
+    patterns.iter().any(|pattern| {
+        if pattern.contains('/') {
+            let pattern = pattern.trim_start_matches('/');
+            // the path itself or one of its parent directories
+            glob_match(pattern, path)
+                || path
+                    .match_indices('/')
+                    .any(|(i, _)| glob_match(pattern, &path[..i]))
+        } else {
+            path.split('/')
+                .any(|component| glob_match(pattern, component))
+        }
+    })
+}
+
+/// `*` / `?` without crossing `/`, `**` across it.
+fn glob_match(pattern: &str, text: &str) -> bool {
+    fn go(p: &[char], t: &[char]) -> bool {
+        match p.first() {
+            None => t.is_empty(),
+            Some('*') if p.get(1) == Some(&'*') => {
+                let rest = &p[2..];
+                // `**/` also matches no directory at all
+                let rest_no_slash = rest.strip_prefix(&['/']).unwrap_or(rest);
+                (0..=t.len()).any(|i| go(rest, &t[i..]) || go(rest_no_slash, &t[i..]))
+            }
+            Some('*') => {
+                let rest = &p[1..];
+                for i in 0..=t.len() {
+                    if go(rest, &t[i..]) {
+                        return true;
+                    }
+                    if t.get(i) == Some(&'/') {
+                        break;
+                    }
+                }
+                false
+            }
+            Some('?') => t.first().is_some_and(|c| *c != '/') && go(&p[1..], &t[1..]),
+            Some(c) => t.first() == Some(c) && go(&p[1..], &t[1..]),
+        }
+    }
+    let p: Vec<char> = pattern.chars().collect();
+    let t: Vec<char> = text.chars().collect();
+    go(&p, &t)
+}
+
 /// Files that pass the option filters and fuzzy-match `text`, best match first
-/// (original order when `text` is empty).
+/// (original order when `text` is empty). Files matching a `hide` pattern
+/// ([`hidden_by`]) are left out; `mode` is the [`path_match`] mode.
 pub fn filtered_files<'a>(
     files: &'a [WorkingDirectoryFileChange],
     text: &str,
     filter: &FileListFilter,
+    hide: &[String],
+    mode: &str,
 ) -> Vec<&'a WorkingDirectoryFileChange> {
     let text = text.trim();
     let mut scored: Vec<(f32, &WorkingDirectoryFileChange)> = files
         .iter()
+        .filter(|f| hide.is_empty() || !hidden_by(hide, &f.path))
         .filter(|f| matches_options(filter, f))
-        .filter_map(|f| fuzzy_score(text, &f.path).map(|s| (s, f)))
+        .filter_map(|f| path_match(mode, text, &f.path).map(|(s, _)| (s, f)))
         .collect();
     if !text.is_empty() {
         scored.sort_by(|a, b| b.0.total_cmp(&a.0));
     }
     scored.into_iter().map(|(_, f)| f).collect()
+}
+
+/// `282-changes-sort-order`: how the changes list orders its files before
+/// the filter ranks them. Unknown flag values keep git's path order.
+pub fn sort_files(files: &mut [WorkingDirectoryFileChange], order: &str) {
+    fn rank(kind: FileStatusKind) -> u8 {
+        match kind {
+            FileStatusKind::Conflicted => 0,
+            FileStatusKind::New | FileStatusKind::Untracked => 1,
+            FileStatusKind::Modified => 2,
+            FileStatusKind::Renamed | FileStatusKind::Copied => 3,
+            FileStatusKind::Deleted => 4,
+        }
+    }
+    match order {
+        "status" => files.sort_by_key(|f| rank(f.status.kind)),
+        "name" => files.sort_by_cached_key(|f| f.file_name().to_lowercase()),
+        _ => {}
+    }
 }
 
 /// Count per option, as the popover labels show them (`getFilterCounts`).
@@ -136,6 +265,7 @@ pub fn no_results_message(text: &str, filter: &FileListFilter) -> Option<String>
         (filter.new_files, "New files"),
         (filter.modified, "Modified files"),
         (filter.deleted, "Deleted files"),
+        (filter.renamed, "Renamed files"),
     ] {
         if flag {
             active.push(label.to_string());
@@ -186,6 +316,131 @@ mod tests {
         let exact = fuzzy_score("main", "src/main.rs").unwrap();
         let scattered = fuzzy_score("main", "m/a/i/n/x.rs").unwrap();
         assert!(exact > scattered);
+    }
+
+    #[test]
+    fn hide_globs() {
+        let p = hide_patterns("*.lock, node_modules  dist/,/docs/*.md ,src/**/gen");
+        assert_eq!(
+            p,
+            ["*.lock", "node_modules", "dist", "/docs/*.md", "src/**/gen"]
+        );
+        assert!(hidden_by(&p, "Cargo.lock"));
+        assert!(hidden_by(&p, "web/yarn.lock"));
+        assert!(!hidden_by(&p, "lockfile.rs"));
+        assert!(hidden_by(&p, "node_modules/a/b.js"));
+        assert!(hidden_by(&p, "web/node_modules/a.js"));
+        assert!(hidden_by(&p, "dist/app.js"));
+        assert!(!hidden_by(&p, "distribution/app.js"));
+        assert!(hidden_by(&p, "docs/readme.md"));
+        assert!(!hidden_by(&p, "docs/sub/readme.md"));
+        assert!(!hidden_by(&p, "other/docs/readme.md"));
+        assert!(hidden_by(&p, "src/gen/x.rs"));
+        assert!(hidden_by(&p, "src/a/b/gen/x.rs"));
+        assert!(!hidden_by(&p, "src/general.rs"));
+        let q = hide_patterns("fil?.txt");
+        assert!(hidden_by(&q, "a/file.txt"));
+        assert!(!hidden_by(&q, "a/fi/e.txt"));
+        assert!(hide_patterns("  ,  ").is_empty());
+    }
+
+    #[test]
+    fn renamed_option() {
+        use corvane_models::{DiffSelection, FileStatus, GitStatusEntry};
+        let file = |path: &str, kind| WorkingDirectoryFileChange {
+            path: path.to_string(),
+            old_path: None,
+            status: FileStatus {
+                kind,
+                index: GitStatusEntry::Unchanged,
+                working_tree: GitStatusEntry::Unchanged,
+                score: None,
+                code: String::new(),
+                submodule: false,
+                submodule_status: None,
+                conflict_markers: None,
+            },
+            selection: DiffSelection::all(),
+        };
+        let files = [
+            file("a", FileStatusKind::Renamed),
+            file("b", FileStatusKind::Modified),
+        ];
+        assert_eq!(option_count(FilterOption::RenamedFiles, &files), 1);
+        let mut f = FileListFilter::default();
+        f.set(FilterOption::RenamedFiles, true);
+        assert_eq!(f.count_active(), 1);
+        let hits = filtered_files(&files, "", &f, &[], "fuzzy");
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].path, "a");
+        assert!(
+            no_results_message("", &f)
+                .unwrap()
+                .ends_with("Renamed files")
+        );
+    }
+
+    #[test]
+    fn match_modes() {
+        let path = "Assets/Player.cs.meta";
+        assert!(path_match("fuzzy", "meta", "src/mesh/data.ts").is_some());
+        assert!(path_match("substring", "meta", "src/mesh/data.ts").is_none());
+        assert_eq!(
+            path_match("substring", "PLAYER", path).map(|(_, h)| h),
+            Some(vec![7, 8, 9, 10, 11, 12])
+        );
+        assert!(path_match("suffix", ".meta", path).is_some());
+        assert!(path_match("suffix", "player", path).is_none());
+        assert!(path_match("exact", "player.cs.meta", path).is_some());
+        assert!(path_match("exact", "assets/player.cs.meta", path).is_some());
+        assert!(path_match("exact", "cs.meta", path).is_none());
+        assert!(path_match("exact", "x", "").is_none());
+        // an empty query matches everything in every mode
+        assert!(path_match("exact", "", path).is_some());
+    }
+
+    #[test]
+    fn sort_orders() {
+        use corvane_models::{DiffSelection, FileStatus, GitStatusEntry};
+        let file = |path: &str, kind| WorkingDirectoryFileChange {
+            path: path.to_string(),
+            old_path: None,
+            status: FileStatus {
+                kind,
+                index: GitStatusEntry::Unchanged,
+                working_tree: GitStatusEntry::Unchanged,
+                score: None,
+                code: String::new(),
+                submodule: false,
+                submodule_status: None,
+                conflict_markers: None,
+            },
+            selection: DiffSelection::all(),
+        };
+        let files = vec![
+            file("a/zeta.rs", FileStatusKind::Deleted),
+            file("b/Alpha.rs", FileStatusKind::Modified),
+            file("c/beta.rs", FileStatusKind::Untracked),
+            file("d/gamma.rs", FileStatusKind::Modified),
+        ];
+        fn paths(files: &[WorkingDirectoryFileChange]) -> Vec<&str> {
+            files.iter().map(|f| f.path.as_str()).collect()
+        }
+        let mut by_status = files.clone();
+        sort_files(&mut by_status, "status");
+        assert_eq!(
+            paths(&by_status),
+            ["c/beta.rs", "b/Alpha.rs", "d/gamma.rs", "a/zeta.rs"]
+        );
+        let mut by_name = files.clone();
+        sort_files(&mut by_name, "name");
+        assert_eq!(
+            paths(&by_name),
+            ["b/Alpha.rs", "c/beta.rs", "d/gamma.rs", "a/zeta.rs"]
+        );
+        let mut by_path = files.clone();
+        sort_files(&mut by_path, "path");
+        assert_eq!(paths(&by_path), paths(&files));
     }
 
     #[test]

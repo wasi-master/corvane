@@ -1565,6 +1565,7 @@ dependencies = [
  "objc",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.21",
  "tracing",
  "ureq",
@@ -1599,6 +1600,7 @@ dependencies = [
  "objc",
  "raw-window-handle",
  "tracing",
+ "unicode-segmentation",
 ]
 
 [[package]]

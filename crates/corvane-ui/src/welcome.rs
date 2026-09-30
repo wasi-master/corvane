@@ -385,7 +385,10 @@ impl WelcomeView {
                                     .text_size(px(WELCOME_FONT_MD))
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .on_click(|_, _, cx| {
-                                        cx.open_url("https://github.com/join?source=corvane")
+                                        corvane_core::Dispatcher::open_url(
+                                            "https://github.com/join?source=corvane",
+                                            cx,
+                                        )
                                     })
                                     .into_any_element()
                                     .into(),
@@ -656,7 +659,7 @@ fn welcome_text(text: impl Into<SharedString>) -> Div {
 fn footer_link(id: &'static str, label: &'static str, url: &'static str, cx: &App) -> Inline {
     link_button(id, label, cx)
         .text_size(px(WELCOME_FONT_SM))
-        .on_click(move |_, _, cx| cx.open_url(url))
+        .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(url, cx))
         .into_any_element()
         .into()
 }
@@ -825,9 +828,10 @@ fn email_not_found_warning(account: &corvane_core::Account, email: &str, cx: &Ap
             link_button("welcome-email-learn-more", "Learn more.", cx)
                 .text_size(px(WELCOME_FONT_MD))
                 .on_click(|_, _, cx| {
-                    cx.open_url(
+                    corvane_core::Dispatcher::open_url(
                         "https://docs.github.com/en/github/committing-changes-to-your-project/\
                          why-are-my-commits-linked-to-the-wrong-user",
+                        cx,
                     )
                 })
                 .into_any_element()

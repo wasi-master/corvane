@@ -1,5 +1,38 @@
 //! Changes sidebar: filter header, "N changed files" row, file list, commit form.
 //! `styles/ui/changes/{_changes-list,_commit-message}.scss`.
+//!
+//! Deviations (GHD `app/src/ui/changes/commit-message.tsx`):
+//! - a detached HEAD gets a commit warning (`270-detached-head-commit-warning`).
+//! - Open in editor / default program act on every selected file, and the
+//!   list menu has "Open All in <editor>" (`271-open-multiple-files`).
+//! - files matching the `272-changes-hide-globs` patterns are left out of the
+//!   list (they are still committed).
+//! - ↑ / ↓ in an empty summary recall recent commit messages
+//!   (`273-recall-commit-messages`).
+//! - committing on the default branch asks first
+//!   (`275-confirm-commit-to-default-branch`).
+//! - the summary can be capped at 72 characters (`277-summary-max-length`).
+//! - "Ignore All .x Files" items give the number of changed .x files
+//!   (`278-ignore-menu-counts`).
+//! - "Copy Diff" puts the selected files' changes on the clipboard as a patch
+//!   (`279-copy-diff`).
+//! - the Filter Options popover has "Renamed files" (`280-renamed-files-filter`).
+//! - rows can show the file name without its directory
+//!   (`170-changes-file-names-only`).
+//! - the list can be ordered by status or file name (`282-changes-sort-order`).
+//! - the filter text can match as a substring, suffix or exact name
+//!   (`283-changes-filter-match`).
+//! - a "Committing as Name <email>" line can sit above the summary
+//!   (`171-commit-author-line`).
+//! - included paths Windows cannot check out get a warning
+//!   (`284-windows-invalid-names-warning`).
+//! - the file menu can mark files assume-unchanged, the list menu clears the
+//!   marks (`470-assume-unchanged`).
+//! - a commit made outside Corvane with the drafted summary clears the draft
+//!   (`471-clear-message-after-outside-commit`).
+//! - the undo bar has a commit context menu (`472-undo-bar-menu`).
+//! - an optional tag field tags the new commit (`473-commit-tag-field`).
+//! - a single file's menu has "Open With…" (`474-open-file-with`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -43,6 +76,12 @@ use crate::widgets::{
     primary_button, text_box_with_menu,
 };
 
+/// `271-open-multiple-files`: the most files one "Open …" item launches.
+pub(crate) const MAX_BULK_OPEN: usize = 25;
+
+/// GHD `MaxTagNameLength` (`473-commit-tag-field`).
+const MAX_TAG_NAME_LENGTH: usize = 245;
+
 /// Which commit-form field an autocompletion / spellcheck result belongs to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum CommitField {
@@ -78,6 +117,13 @@ pub struct ChangesSidebar {
     co_authors: Entity<TextareaState>,
     state: Entity<AppState>,
     seen_commit_nonce: u64,
+    /// `473-commit-tag-field`: the optional tag field, and the tag to create
+    /// once the repository's commit (nonce past the stored one) lands.
+    tag: Entity<InputState>,
+    pending_tag: Option<(u64, u64, String)>,
+    /// Repository and newest commit last seen
+    /// (`471-clear-message-after-outside-commit`).
+    seen_head: (Option<u64>, Option<String>),
     seen_amend_nonce: u64,
     /// Repository and `commit.template` text the form was last prefilled for.
     seen_template: (Option<u64>, Option<String>),
@@ -114,6 +160,9 @@ pub struct ChangesSidebar {
     /// `isRuleFailurePopoverOpen`: the commit-message rule failures popover.
     rule_failure_popover_open: bool,
     rule_hint_bounds: Rc<Cell<Bounds<Pixels>>>,
+    /// `273-recall-commit-messages`: index into the recent messages the form
+    /// shows; `None` once the user edits it.
+    recalled: Option<usize>,
 }
 
 /// What the repository rules say about the commit being written
@@ -140,20 +189,51 @@ impl ChangesSidebar {
                 .selected_state()
                 .map(|rs| rs.commit_nonce)
                 .unwrap_or(0);
+            // `473-commit-tag-field`: tag the commit that just landed
+            if let Some((repo, before, _)) = &this.pending_tag {
+                let landed = state
+                    .read(cx)
+                    .repo_states
+                    .get(repo)
+                    .filter(|rs| rs.commit_nonce > *before)
+                    .and_then(|rs| rs.last_commit.as_ref())
+                    .map(|c| c.sha.clone());
+                if let Some(sha) = landed
+                    && let Some((repo, _, name)) = this.pending_tag.take()
+                {
+                    Dispatcher::create_tag(repo, name, sha, String::new(), cx);
+                }
+            }
             if nonce != this.seen_commit_nonce {
                 this.seen_commit_nonce = nonce;
-                this.summary.update(cx, |s, cx| s.set_value("", window, cx));
-                this.description
-                    .update(cx, |s, cx| s.set_value("", window, cx));
-                this.co_authors
-                    .update(cx, |s, cx| s.set_value("", window, cx));
-                this.summary_misspelled.clear();
-                this.description_misspelled.clear();
-                this.autocomplete = None;
-                // the next commit starts from the template again
-                let template = this.seen_template.1.clone();
-                this.apply_commit_template(None, template, window, cx);
-                cx.notify();
+                this.clear_form(window, cx);
+            }
+            // `471-clear-message-after-outside-commit`: a new HEAD commit made
+            // elsewhere with the drafted summary clears the draft
+            let head = {
+                let s = state.read(cx);
+                let rs = s.selected_state();
+                let head = rs.and_then(|rs| rs.commits.first());
+                (
+                    s.selected,
+                    head.map(|c| c.sha.clone()),
+                    head.map(|c| c.summary.clone()),
+                    s.flags
+                        .bool(corvane_core::flags::ids::CLEAR_MESSAGE_AFTER_OUTSIDE_COMMIT),
+                )
+            };
+            let (repo, sha, summary, clear_outside) = head;
+            let previous = std::mem::replace(&mut this.seen_head, (repo, sha.clone()));
+            if clear_outside
+                && previous.0 == repo
+                && previous.1.is_some()
+                && previous.1 != sha
+                && let Some(summary) = summary
+            {
+                let draft = this.summary.read(cx).value().trim().to_string();
+                if !draft.is_empty() && draft == summary.trim() {
+                    this.clear_form(window, cx);
+                }
             }
             let template = {
                 let s = state.read(cx);
@@ -197,6 +277,7 @@ impl ChangesSidebar {
         })
         .detach();
         let summary = cx.new(|cx| InputState::new(window, cx).placeholder("Summary (required)"));
+        let tag = cx.new(|cx| InputState::new(window, cx).placeholder("Tag (optional)"));
         let description = cx.new(|cx| {
             TextareaState::new(window, cx)
                 .rows(4)
@@ -219,6 +300,34 @@ impl ChangesSidebar {
             this.on_input_event(CommitField::Summary, ev, cx)
         })
         .detach();
+        // `277-summary-max-length`: like `maxlength`, the part of an edit
+        // that goes past the limit is dropped
+        cx.subscribe_in(
+            &summary,
+            window,
+            |this, summary, ev: &InputEvent, window, cx| {
+                if !matches!(ev, InputEvent::Change)
+                    || !this
+                        .state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::SUMMARY_MAX_LENGTH)
+                {
+                    return;
+                }
+                let (text, caret) = {
+                    let s = summary.read(cx);
+                    (s.value().to_string(), s.cursor())
+                };
+                if let Some(excess) = summary_overflow(&text, caret, SUMMARY_MAX_CHARS) {
+                    summary.update(cx, |s, cx| {
+                        s.set_selected_range(excess, cx);
+                        s.replace("", window, cx);
+                    });
+                }
+            },
+        )
+        .detach();
         cx.subscribe(&description, |this, _, ev: &InputEvent, cx| {
             this.on_input_event(CommitField::Description, ev, cx)
         })
@@ -230,6 +339,9 @@ impl ChangesSidebar {
             co_authors,
             state,
             seen_commit_nonce: 0,
+            seen_head: (None, None),
+            tag,
+            pending_tag: None,
             seen_amend_nonce: 0,
             seen_template: (None, None),
             context_menu: None,
@@ -251,12 +363,16 @@ impl ChangesSidebar {
             pending_author: None,
             rule_failure_popover_open: false,
             rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
+            recalled: None,
         }
     }
 
     // ---- autocompletion + spellcheck (GHD `AutocompletingTextInput`) ----
 
     fn on_input_event(&mut self, field: CommitField, ev: &InputEvent, cx: &mut Context<Self>) {
+        if matches!(ev, InputEvent::Change) && field != CommitField::CoAuthors {
+            self.recalled = None;
+        }
         match ev {
             InputEvent::Change if field == CommitField::CoAuthors => {
                 self.sync_co_authors(cx);
@@ -981,11 +1097,91 @@ impl ChangesSidebar {
         self.refresh_spelling(CommitField::Description, cx);
     }
 
+    /// `273-recall-commit-messages`: ↑ (`delta` 1, older) / ↓ (-1, newer) in
+    /// the summary field, shell-history style. Starts only from an untouched
+    /// form (summary empty, description empty or the commit template); ↓ past
+    /// the newest message restores the untouched form. Returns whether the
+    /// key was used.
+    fn recall_message(
+        &mut self,
+        delta: isize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        let messages = {
+            let s = self.state.read(cx);
+            if !s
+                .flags
+                .bool(corvane_core::flags::ids::RECALL_COMMIT_MESSAGES)
+            {
+                return false;
+            }
+            let Some(rs) = s.selected_state() else {
+                return false;
+            };
+            if rs.commit_to_amend.is_some() {
+                return false;
+            }
+            corvane_core::recent_commit_messages(&rs.commits, 50)
+        };
+        let template = self.seen_template.1.clone().unwrap_or_default();
+        let next = match self.recalled {
+            Some(ix) => ix as isize + delta,
+            None => {
+                let untouched = self.summary.read(cx).value().is_empty() && {
+                    let d = self.description.read(cx).value();
+                    d.is_empty() || AsRef::<str>::as_ref(&d) == template
+                };
+                if delta < 0 || !untouched {
+                    return false;
+                }
+                0
+            }
+        };
+        let (summary, description) = if next < 0 {
+            self.recalled = None;
+            (String::new(), template)
+        } else {
+            let Some(message) = messages.get(next as usize) else {
+                // past the oldest: stay, but keep the key
+                return self.recalled.is_some();
+            };
+            self.recalled = Some(next as usize);
+            message.clone()
+        };
+        self.summary
+            .update(cx, |s, cx| s.set_value(summary, window, cx));
+        self.description
+            .update(cx, |s, cx| s.set_value(description, window, cx));
+        self.refresh_spelling(CommitField::Summary, cx);
+        self.refresh_spelling(CommitField::Description, cx);
+        cx.notify();
+        true
+    }
+
     /// View › Go to Summary.
     /// Prefill the description with the repository's `commit.template`
     /// (`corvane_git::commit_template`) while the form is untouched: summary
     /// empty and the description empty or still holding the `previous`
     /// template text.
+    /// Empty the commit form (GHD resets `commitMessage` after a commit); the
+    /// next commit starts from the template again.
+    fn clear_form(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.summary.update(cx, |s, cx| s.set_value("", window, cx));
+        self.description
+            .update(cx, |s, cx| s.set_value("", window, cx));
+        self.co_authors
+            .update(cx, |s, cx| s.set_value("", window, cx));
+        self.tag.update(cx, |s, cx| s.set_value("", window, cx));
+        self.summary_misspelled.clear();
+        self.description_misspelled.clear();
+        self.autocomplete = None;
+        self.recalled = None;
+        let template = self.seen_template.1.clone();
+        self.apply_commit_template(None, template, window, cx);
+        cx.notify();
+    }
+
     fn apply_commit_template(
         &mut self,
         previous: Option<String>,
@@ -1175,7 +1371,22 @@ impl ChangesSidebar {
         let Some(status) = rs.status.as_ref() else {
             return (Vec::new(), 0);
         };
-        let visible = filtered_files(&status.files, &text, &rs.file_list_filter)
+        // `272-changes-hide-globs`
+        let hide = corvane_core::filter::hide_patterns(
+            s.flags.text(corvane_core::flags::ids::CHANGES_HIDE_GLOBS),
+        );
+        // `282-changes-sort-order`
+        let order = s.flags.text(corvane_core::flags::ids::CHANGES_SORT_ORDER);
+        let mut sorted = None;
+        if order != "path" {
+            let mut files = status.files.clone();
+            corvane_core::filter::sort_files(&mut files, order);
+            sorted = Some(files);
+        }
+        let files = sorted.as_deref().unwrap_or(&status.files);
+        // `283-changes-filter-match`
+        let mode = s.flags.text(corvane_core::flags::ids::CHANGES_FILTER_MATCH);
+        let visible = filtered_files(files, &text, &rs.file_list_filter, &hide, mode)
             .into_iter()
             .cloned()
             .collect();
@@ -1303,6 +1514,9 @@ impl ChangesSidebar {
         let filter = self.filter_options(cx);
         let text_active = !self.filter.read(cx).value().trim().is_empty();
         let active = filter.count_active() > 0 || text_active;
+        // `280-renamed-files-filter` (kept while active, to be cleared)
+        let renamed_option =
+            s.flags.bool(corvane_core::flags::ids::RENAMED_FILES_FILTER) || filter.renamed;
         let bounds = self.filter_button_bounds.get();
         let close =
             |this: &mut Self, _: &MouseDownEvent, _: &mut Window, cx: &mut Context<Self>| {
@@ -1416,7 +1630,13 @@ impl ChangesSidebar {
                                         .child(option_row(
                                             FilterOption::DeletedFiles,
                                             "Deleted files",
-                                        )),
+                                        ))
+                                        .when(renamed_option, |d| {
+                                            d.child(option_row(
+                                                FilterOption::RenamedFiles,
+                                                "Renamed files",
+                                            ))
+                                        }),
                                 )
                                 .when(active, |d| {
                                     d.child(div().pt(SPACING_HALF()).pb(SPACING()).child(
@@ -1474,7 +1694,19 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, repo_path, selected_files, rebase_conflict, status_files) = {
+        let (
+            id,
+            confirm,
+            repo_path,
+            selected_files,
+            rebase_conflict,
+            status_files,
+            open_many,
+            ignore_counts,
+            copy_diff,
+            assume_unchanged,
+            open_file_with,
+        ) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1494,6 +1726,11 @@ impl ChangesSidebar {
                     .as_ref()
                     .map(|st| st.files.clone())
                     .unwrap_or_default(),
+                s.flags.bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES),
+                s.flags.bool(corvane_core::flags::ids::IGNORE_MENU_COUNTS),
+                s.flags.bool(corvane_core::flags::ids::COPY_DIFF),
+                s.flags.bool(corvane_core::flags::ids::ASSUME_UNCHANGED),
+                s.flags.bool(corvane_core::flags::ids::OPEN_FILE_WITH),
             )
         };
         let path = file.path.clone();
@@ -1547,18 +1784,31 @@ impl ChangesSidebar {
             let reveal = full.clone();
             let editor = full.clone();
             let default = full;
-            vec![
-                MenuItem::new("Reveal in Finder", move |_, cx| cx.reveal_path(&reveal))
-                    .enabled(!deleted),
+            let mut items = vec![
+                MenuItem::new("Reveal in Finder", move |_, cx| {
+                    Dispatcher::show_in_finder(&reveal, cx)
+                })
+                .enabled(!deleted),
                 MenuItem::new(format!("Open in {editor_label}"), move |_, cx| {
                     Dispatcher::open_in_editor(editor.clone(), cx)
                 })
                 .enabled(!deleted),
-                MenuItem::new("Open with Default Program", move |_, cx| {
-                    cx.open_with_system(&default)
+                MenuItem::new("Open with Default Program", {
+                    let default = default.clone();
+                    move |_, cx| cx.open_with_system(&default)
                 })
                 .enabled(!deleted),
-            ]
+            ];
+            // `474-open-file-with`
+            if open_file_with {
+                items.push(
+                    MenuItem::new("Open With…", move |_, cx| {
+                        Dispatcher::open_with(default.clone(), cx)
+                    })
+                    .enabled(!deleted),
+                );
+            }
+            items
         };
 
         if rebase_conflict {
@@ -1574,11 +1824,23 @@ impl ChangesSidebar {
             return;
         }
 
+        // `278-ignore-menu-counts`: changed files per extension
+        let extension_count = |ext: &str| {
+            status_files
+                .iter()
+                .filter(|f| {
+                    Path::new(&f.path)
+                        .extension()
+                        .is_some_and(|e| format!(".{}", e.to_string_lossy()) == ext)
+                })
+                .count()
+        };
         // `getDefaultContextMenu`
         let targets: Vec<WorkingDirectoryFileChange> = if selected_files.contains(&path) {
             status_files
-                .into_iter()
+                .iter()
                 .filter(|f| selected_files.contains(&f.path))
+                .cloned()
                 .collect()
         } else {
             vec![file.clone()]
@@ -1642,10 +1904,38 @@ impl ChangesSidebar {
         }
         for ext in extensions.into_iter().take(5) {
             let pattern = format!("*{ext}");
-            items.push(MenuItem::new(
-                format!("Ignore All {ext} Files (Add to .gitignore)"),
-                move |_, cx| Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx),
-            ));
+            let label = if ignore_counts {
+                let n = extension_count(&ext);
+                format!("Ignore All {ext} Files ({n} Changed) (Add to .gitignore)")
+            } else {
+                format!("Ignore All {ext} Files (Add to .gitignore)")
+            };
+            items.push(MenuItem::new(label, move |_, cx| {
+                Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx)
+            }));
+        }
+        // `470-assume-unchanged`: tracked files only (the index must know them)
+        if assume_unchanged {
+            let tracked = targets.iter().all(|f| {
+                matches!(
+                    f.status.kind,
+                    FileStatusKind::Modified | FileStatusKind::Deleted
+                )
+            });
+            let assume = paths.clone();
+            items.push(
+                MenuItem::new(
+                    if paths.len() > 1 {
+                        format!("Assume {} Selected Files Unchanged", paths.len())
+                    } else {
+                        "Assume Unchanged".to_string()
+                    },
+                    move |_, cx| {
+                        Dispatcher::set_assume_unchanged(id, Some(assume.clone()), true, cx)
+                    },
+                )
+                .enabled(tracked),
+            );
         }
         if paths.len() > 1 {
             items.push(MenuItem::separator());
@@ -1659,9 +1949,42 @@ impl ChangesSidebar {
             }));
         }
         items.push(MenuItem::separator());
-        items.extend(copy_items(targets));
-        items.push(MenuItem::separator());
-        items.extend(open_items(full, deleted));
+        // `279-copy-diff`
+        let copy_diff_item = copy_diff.then(|| {
+            let paths = paths.clone();
+            MenuItem::new(
+                if paths.len() > 1 {
+                    "Copy Diff of Selected Files"
+                } else {
+                    "Copy Diff"
+                },
+                move |_, cx| Dispatcher::copy_diff(id, paths.clone(), cx),
+            )
+        });
+        if open_many && targets.len() > 1 {
+            // `271-open-multiple-files`: the open items act on the selection
+            let existing: Vec<PathBuf> = targets
+                .iter()
+                .filter(|f| f.status.kind != FileStatusKind::Deleted)
+                .map(|f| repo_path.join(&f.path))
+                .collect();
+            items.extend(copy_items(targets));
+            items.extend(copy_diff_item);
+            items.push(MenuItem::separator());
+            let reveal = full.clone();
+            items.push(
+                MenuItem::new("Reveal in Finder", move |_, cx| {
+                    Dispatcher::show_in_finder(&reveal, cx)
+                })
+                .enabled(!deleted),
+            );
+            items.extend(open_many_items(&existing, &editor_label));
+        } else {
+            items.extend(copy_items(targets));
+            items.extend(copy_diff_item);
+            items.push(MenuItem::separator());
+            items.extend(open_items(full, deleted));
+        }
         self.open_menu(items, position, window, cx);
     }
 
@@ -1672,7 +1995,7 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, paths) = {
+        let (id, confirm, paths, openable, assume_unchanged) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1684,10 +2007,34 @@ impl ChangesSidebar {
                 .as_ref()
                 .map(|st| st.files.iter().map(|f| f.path.clone()).collect())
                 .unwrap_or_default();
-            (id, s.settings.confirm_discard_changes, paths)
+            // `271-open-multiple-files`: every changed file still on disk
+            let openable: Option<Vec<PathBuf>> = s
+                .flags
+                .bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES)
+                .then(|| {
+                    let root = s.repository(id).map(|r| r.path.clone()).unwrap_or_default();
+                    rs.status
+                        .as_ref()
+                        .map(|st| {
+                            st.files
+                                .iter()
+                                .filter(|f| f.status.kind != FileStatusKind::Deleted)
+                                .map(|f| root.join(&f.path))
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                });
+            (
+                id,
+                s.settings.confirm_discard_changes,
+                paths,
+                openable,
+                s.flags.bool(corvane_core::flags::ids::ASSUME_UNCHANGED),
+            )
         };
         let has_changes = !paths.is_empty();
-        let items = vec![
+        let editor_label = self.state.read(cx).editor_label();
+        let mut items = vec![
             MenuItem::new(
                 if confirm {
                     "Discard All Changes…"
@@ -1700,7 +2047,38 @@ impl ChangesSidebar {
             // TODO(M4): stashes; disabled until then.
             MenuItem::new("Stash All Changes", |_, _| {}).enabled(false),
         ];
+        if let Some(files) = openable {
+            items.push(MenuItem::separator());
+            items.push(open_all_in_editor_item(
+                format!("Open All in {editor_label}"),
+                files,
+            ));
+        }
+        if assume_unchanged {
+            // `470-assume-unchanged`: the way back for files the list no
+            // longer shows
+            items.push(MenuItem::separator());
+            items.push(MenuItem::new(
+                "Stop Assuming Files Unchanged",
+                move |_, cx| Dispatcher::set_assume_unchanged(id, None, false, cx),
+            ));
+        }
         self.open_menu(items, position, window, cx);
+    }
+
+    /// `473-commit-tag-field`: the repository's commit nonce and the trimmed
+    /// tag name, when the field is shown and filled in with a valid length.
+    fn tag_to_create(&self, cx: &App) -> Option<(u64, String)> {
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::COMMIT_TAG_FIELD) {
+            return None;
+        }
+        let rs = s.selected_state()?;
+        if rs.commit_to_amend.is_some() {
+            return None;
+        }
+        let name = self.tag.read(cx).value().trim().to_string();
+        (!name.is_empty() && name.len() <= MAX_TAG_NAME_LENGTH).then_some((rs.commit_nonce, name))
     }
 
     fn do_commit(&mut self, cx: &mut Context<Self>) {
@@ -1710,6 +2088,37 @@ impl ChangesSidebar {
         let summary = self.summary.read(cx).value().to_string();
         let description = self.description.read(cx).value().to_string();
         let unknown = self.unknown_co_authors(cx);
+        // `473-commit-tag-field`
+        self.pending_tag = self
+            .tag_to_create(cx)
+            .map(|(nonce, name)| (id, nonce, name));
+        // `275-confirm-commit-to-default-branch` (not when amending)
+        let default_branch = {
+            let s = self.state.read(cx);
+            s.selected_state()
+                .filter(|_| {
+                    s.flags
+                        .bool(corvane_core::flags::ids::CONFIRM_COMMIT_TO_DEFAULT_BRANCH)
+                })
+                .filter(|rs| rs.commit_to_amend.is_none())
+                .and_then(|rs| {
+                    let current = rs.info.as_ref()?.current_branch()?.name.clone();
+                    (rs.default_branch.as_deref() == Some(current.as_str())).then_some(current)
+                })
+        };
+        if let Some(branch) = default_branch {
+            Dispatcher::show_popup(
+                Popup::ConfirmCommitToDefaultBranch {
+                    repo: id,
+                    branch,
+                    summary,
+                    description,
+                    unknown_co_authors: unknown,
+                },
+                cx,
+            );
+            return;
+        }
         if !unknown.is_empty() {
             Dispatcher::show_popup(
                 Popup::UnknownAuthors {
@@ -2201,6 +2610,127 @@ impl ChangesSidebar {
         )
     }
 
+    /// Corvane addition (`270-detached-head-commit-warning`): a `CommitWarning`
+    /// while HEAD is detached, since the commit lands on no branch.
+    fn detached_head_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let (id, sha) = {
+            let s = self.state.read(cx);
+            if !s
+                .flags
+                .bool(corvane_core::flags::ids::DETACHED_HEAD_COMMIT_WARNING)
+            {
+                return None;
+            }
+            let id = s.selected?;
+            let rs = s.selected_state()?;
+            if rs.commit_to_amend.is_some() {
+                return None;
+            }
+            match &rs.info.as_ref()?.tip {
+                Tip::Detached { sha } => (id, sha.clone()),
+                _ => return None,
+            }
+        };
+        Some(
+            self.commit_warning(
+                Octicon::Alert,
+                t.dialog_warning,
+                crate::widgets::paragraph(vec![
+                    "You're not on a branch (detached HEAD). This commit won't belong to any \
+                     branch unless you "
+                        .into(),
+                    crate::widgets::link_button(
+                        "commit-warning-detached-create-branch",
+                        "create a branch",
+                        cx,
+                    )
+                    .on_click(move |_, _, cx| {
+                        Dispatcher::show_popup(
+                            Popup::CreateBranch {
+                                repo: id,
+                                target_sha: Some(sha.clone()),
+                                initial_name: String::new(),
+                            },
+                            cx,
+                        )
+                    })
+                    .into_any_element()
+                    .into(),
+                    ".".into(),
+                ])
+                .justify_center()
+                .into_any_element(),
+                cx,
+            ),
+        )
+    }
+
+    /// `284-windows-invalid-names-warning`: included (not deleted) files whose
+    /// path Windows rejects.
+    fn windows_names_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        if !s
+            .flags
+            .bool(corvane_core::flags::ids::WINDOWS_INVALID_NAMES_WARNING)
+        {
+            return None;
+        }
+        let files = &s.selected_state()?.status.as_ref()?.files;
+        let bad: Vec<(&str, &str)> = files
+            .iter()
+            .filter(|f| {
+                f.status.kind != FileStatusKind::Deleted
+                    && f.selection.kind() != DiffSelectionType::None
+            })
+            .filter_map(|f| {
+                corvane_core::portable_paths::windows_invalid_reason(&f.path)
+                    .map(|why| (f.path.as_str(), why))
+            })
+            .collect();
+        let (path, why) = *bad.first()?;
+        let message = match bad.len() {
+            1 => format!("\"{path}\" {why}, so it can't be checked out on Windows."),
+            n => format!(
+                "{n} files can't be checked out on Windows: \"{path}\" {why}, among others."
+            ),
+        };
+        Some(self.commit_warning(
+            Octicon::Alert,
+            t.dialog_warning,
+            div().child(message).into_any_element(),
+            cx,
+        ))
+    }
+
+    /// `171-commit-author-line`: the identity the next commit is made with.
+    fn author_line(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        let t = cx.ghd();
+        let s = self.state.read(cx);
+        if !s.flags.bool(corvane_core::flags::ids::COMMIT_AUTHOR_LINE) {
+            return None;
+        }
+        let identity = &s.selected_state()?.info.as_ref()?.identity;
+        let text = match (identity.name.as_deref(), identity.email.as_deref()) {
+            (Some(name), Some(email)) => format!("Committing as {name} <{email}>"),
+            (Some(name), None) => format!("Committing as {name} (no user.email)"),
+            (None, Some(email)) => format!("Committing as <{email}> (no user.name)"),
+            (None, None) => "No commit author configured (user.name / user.email)".to_string(),
+        };
+        Some(
+            div()
+                .id("commit-author-line")
+                .mb(SPACING_HALF())
+                .text_size(FONT_SIZE_SM())
+                .text_color(t.text_secondary)
+                .truncate()
+                .ghd_tooltip(text.clone())
+                .child(text)
+                .into_any_element(),
+        )
+    }
+
     /// `renderBranchProtectionsRepoRulesCommitWarning`
     fn branch_protection_warning(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
@@ -2225,7 +2755,7 @@ impl ChangesSidebar {
                 corvane_core::integrations::encode_component(&format!("refs/heads/{branch}"))
             );
             crate::widgets::link_button("commit-warning-rulesets", label, cx)
-                .on_click(move |_, _, cx| cx.open_url(&url))
+                .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx))
                 .into_any_element()
         };
         let message = |parts: Vec<AnyElement>| {
@@ -2339,9 +2869,7 @@ impl ChangesSidebar {
                     cx,
                 )
                 .on_click(|_, _, cx| {
-                    cx.open_url(
-                        "https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits",
-                    )
+                    corvane_core::Dispatcher::open_url("https://docs.github.com/authentication/managing-commit-signature-verification/signing-commits", cx)
                 })
                 .into_any_element(),
             ],
@@ -2462,7 +2990,9 @@ impl ChangesSidebar {
                                     f.description.clone(),
                                     cx,
                                 )
-                                .on_click(move |_, _, cx| cx.open_url(&url)),
+                                .on_click(move |_, _, cx| {
+                                    corvane_core::Dispatcher::open_url(&url, cx)
+                                }),
                             )
                     })),
             )
@@ -2530,7 +3060,11 @@ impl ChangesSidebar {
                                                 "View all rulesets for this branch.",
                                                 cx,
                                             )
-                                            .on_click(move |_, _, cx| cx.open_url(&all_url)),
+                                            .on_click(
+                                                move |_, _, cx| {
+                                                    corvane_core::Dispatcher::open_url(&all_url, cx)
+                                                },
+                                            ),
                                         ),
                                 )
                                 .children(list("Failed", &failures.failed))
@@ -2565,6 +3099,35 @@ impl ChangesSidebar {
             || (!any_included && !allow_empty && !amending)
             || committing
             || self.has_repo_rule_failure(cx)
+    }
+
+    /// GHD `getButtonTooltip` for a disabled commit button (an enabled one
+    /// only shows its title when it overflows, which ours never does).
+    fn commit_button_tooltip(&self, cx: &App) -> Option<&'static str> {
+        if self.summary.read(cx).value().trim().is_empty() {
+            return Some("A commit summary is required to commit");
+        }
+        let s = self.state.read(cx);
+        let rs = s.selected_state()?;
+        let files = rs
+            .status
+            .as_ref()
+            .map(|st| st.files.as_slice())
+            .unwrap_or(&[]);
+        let any_included = files
+            .iter()
+            .any(|f| f.selection.kind() != DiffSelectionType::None);
+        let allow_empty = s
+            .selected
+            .and_then(|id| s.repository(id))
+            .is_some_and(|r| r.commit_options.allow_empty_commit);
+        if !any_included && !files.is_empty() && !allow_empty {
+            Some("Select one or more files to commit")
+        } else if rs.committing {
+            Some("Committing changes…")
+        } else {
+            None
+        }
     }
 
     /// `CommitWarning` with the information icon: "Your changes will modify
@@ -2634,13 +3197,76 @@ impl ChangesSidebar {
     }
 
     /// `#undo-commit`: "Committed N ago / summary" + Undo, after a commit.
+    /// `472-undo-bar-menu`: the History commit menu's items for HEAD that
+    /// make sense here.
+    fn open_undo_bar_menu(
+        &mut self,
+        id: u64,
+        sha: String,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let html_url = self
+            .state
+            .read(cx)
+            .repository(id)
+            .and_then(|r| r.github.as_ref())
+            .map(|g| format!("{}/commit/{sha}", g.html_url));
+        let mut items = vec![
+            MenuItem::new("Amend Commit…", {
+                let sha = sha.clone();
+                move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
+            }),
+            MenuItem::new("Undo Commit…", move |_, cx| {
+                Dispatcher::request_undo_commit(id, cx)
+            }),
+            MenuItem::separator(),
+            MenuItem::new("Create Tag…", {
+                let sha = sha.clone();
+                move |_, cx| {
+                    Dispatcher::show_popup(
+                        Popup::CreateTag {
+                            repo: id,
+                            sha: sha.clone(),
+                        },
+                        cx,
+                    )
+                }
+            }),
+            MenuItem::separator(),
+            MenuItem::new("Copy SHA", move |_, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string(sha.clone()))
+            }),
+        ];
+        if let Some(url) = html_url {
+            items.push(MenuItem::new("View on GitHub", move |_, cx| {
+                Dispatcher::open_url(&url, cx)
+            }));
+        }
+        self.open_menu(items, position, window, cx);
+    }
+
     fn undo_bar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
         let t = cx.ghd();
         let s = self.state.read(cx);
         let id = s.selected?;
         let last = s.selected_state()?.last_commit.clone()?;
+        let menu = s.flags.bool(corvane_core::flags::ids::UNDO_BAR_MENU);
+        let sha = last.sha.clone();
         Some(
             div()
+                .id("undo-commit-bar")
+                // `472-undo-bar-menu`
+                .when(menu, |d| {
+                    d.on_mouse_down(
+                        MouseButton::Right,
+                        cx.listener(move |this, ev: &MouseDownEvent, window, cx| {
+                            cx.stop_propagation();
+                            this.open_undo_bar_menu(id, sha.clone(), ev.position, window, cx)
+                        }),
+                    )
+                })
                 .flex_none()
                 .flex()
                 .flex_row()
@@ -2763,6 +3389,13 @@ impl ChangesSidebar {
             let show = s.selected_state().is_some_and(|rs| rs.show_co_authored_by);
             (is_github, is_github && show)
         };
+        // `473-commit-tag-field` (not while amending)
+        let tag_field = {
+            let s = self.state.read(cx);
+            s.flags.bool(corvane_core::flags::ids::COMMIT_TAG_FIELD)
+                && s.selected_state()
+                    .is_some_and(|rs| rs.commit_to_amend.is_none())
+        };
         // Autocompletion popup anchored at the caret's bottom-left.
         let popup = self.autocomplete.as_ref().and_then(|(field, ac)| {
             let (bounds, line_height) = match field {
@@ -2787,13 +3420,18 @@ impl ChangesSidebar {
                 }
             }))
             // Popup keys win over the field's own bindings (GHD `onKeyDown`).
-            .capture_action(cx.listener(|this, _: &MoveUp, _, cx| {
-                if this.autocomplete_move(-1, cx) {
+            .capture_action(cx.listener(|this, _: &MoveUp, window, cx| {
+                if this.autocomplete_move(-1, cx)
+                    || (this.summary_focus.is_focused(window) && this.recall_message(1, window, cx))
+                {
                     cx.stop_propagation();
                 }
             }))
-            .capture_action(cx.listener(|this, _: &MoveDown, _, cx| {
-                if this.autocomplete_move(1, cx) {
+            .capture_action(cx.listener(|this, _: &MoveDown, window, cx| {
+                if this.autocomplete_move(1, cx)
+                    || (this.summary_focus.is_focused(window)
+                        && this.recall_message(-1, window, cx))
+                {
                     cx.stop_propagation();
                 }
             }))
@@ -2851,6 +3489,7 @@ impl ChangesSidebar {
             .when(self.committing_hidden_files(cx).is_none(), |d| {
                 d.border_t_1().border_color(t.box_border)
             })
+            .children(self.author_line(cx))
             .child(
                 // `.summary`: avatar + summary field
                 div()
@@ -2988,11 +3627,22 @@ impl ChangesSidebar {
             .when(co_authors_visible, |d| {
                 d.child(div().mb(SPACING()).child(self.co_author_input(window, cx)))
             })
+            .when(tag_field, |d| {
+                d.child(div().mb(SPACING()).child(crate::widgets::text_box(
+                    "commit-tag",
+                    &self.tag,
+                    None,
+                    window,
+                    cx,
+                )))
+            })
             .children(self.amend_notice(cx))
             .children(
                 self.no_write_access_warning(cx)
+                    .or_else(|| self.detached_head_warning(cx))
                     .or_else(|| self.branch_protection_warning(cx)),
             )
+            .children(self.windows_names_warning(cx))
             .children(
                 self.rule_failure_popover_open
                     .then(|| self.rule_failure_popover(window, cx))
@@ -3041,8 +3691,13 @@ impl ChangesSidebar {
                                 .child(self.branch_name(cx)),
                         )
                 };
-                primary_button("commit", label, self.commit_disabled(cx), cx)
+                let disabled = self.commit_disabled(cx);
+                primary_button("commit", label, disabled, cx)
                     .w_full()
+                    .when_some(
+                        disabled.then(|| self.commit_button_tooltip(cx)).flatten(),
+                        |d, tip| d.ghd_tooltip(tip),
+                    )
                     .on_click(cx.listener(|this, _, _, cx| {
                         if !this.commit_disabled(cx) {
                             this.do_commit(cx)
@@ -3135,6 +3790,60 @@ impl Render for ChangesSidebar {
     }
 }
 
+/// `271-open-multiple-files`: "Open N Files in <editor>" / "… with Default
+/// Program" for a multi-selection; disabled past [`MAX_BULK_OPEN`].
+fn open_many_items(files: &[PathBuf], editor_label: &str) -> Vec<MenuItem> {
+    let n = files.len();
+    let enabled = (1..=MAX_BULK_OPEN).contains(&n);
+    let default = files.to_vec();
+    vec![
+        open_all_in_editor_item(format!("Open {n} Files in {editor_label}"), files.to_vec()),
+        MenuItem::new(
+            format!("Open {n} Files with Default Program"),
+            move |_, cx| {
+                for f in &default {
+                    cx.open_with_system(f)
+                }
+            },
+        )
+        .enabled(enabled),
+    ]
+}
+
+/// An item opening every file in the editor, disabled when there are none or
+/// more than [`MAX_BULK_OPEN`].
+pub(crate) fn open_all_in_editor_item(label: String, files: Vec<PathBuf>) -> MenuItem {
+    let enabled = (1..=MAX_BULK_OPEN).contains(&files.len());
+    MenuItem::new(label, move |_, cx| {
+        for f in &files {
+            Dispatcher::open_in_editor(f.clone(), cx)
+        }
+    })
+    .enabled(enabled)
+}
+
+/// `277-summary-max-length`: GitHub truncates longer summaries.
+const SUMMARY_MAX_CHARS: usize = 72;
+
+/// The byte range to drop so `text` fits in `max` chars: the chars just
+/// before `caret` (the end of the edit that overflowed), or the tail when
+/// the caret is too close to the start.
+fn summary_overflow(text: &str, caret: usize, max: usize) -> Option<Range<usize>> {
+    let excess = text.chars().count().checked_sub(max).filter(|n| *n > 0)?;
+    let caret = caret.min(text.len());
+    let before = text[..caret].chars().count();
+    if before >= excess {
+        let start = text[..caret]
+            .char_indices()
+            .nth(before - excess)
+            .map_or(caret, |(i, _)| i);
+        Some(start..caret)
+    } else {
+        let start = text.char_indices().nth(max).map_or(text.len(), |(i, _)| i);
+        Some(start..text.len())
+    }
+}
+
 /// One changes-list row (`ChangedFile`).
 #[allow(clippy::too_many_arguments)]
 fn file_row(
@@ -3169,9 +3878,20 @@ fn file_row(
     let checkbox_focus = list_focus.clone();
     // `HighlightText`: the filter's fuzzy hits in bold (`<mark>`), split
     // between the directory and the file name like `PathText`
+    let names_only = corvane_core::AppState::try_global(cx).is_some_and(|s| {
+        s.read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::CHANGES_FILE_NAMES_ONLY)
+    });
     let directory = file.directory().to_string();
     let file_name = file.file_name().to_string();
-    let hits = corvane_core::filter::fuzzy_match(query, &file.path)
+    let mode = corvane_core::AppState::try_global(cx).map_or("fuzzy".to_string(), |s| {
+        s.read(cx)
+            .flags
+            .text(corvane_core::flags::ids::CHANGES_FILTER_MATCH)
+            .to_string()
+    });
+    let hits = corvane_core::filter::path_match(&mode, query, &file.path)
         .map(|(_, hits)| hits)
         .unwrap_or_default();
     let dir_len = directory.chars().count();
@@ -3303,18 +4023,20 @@ fn file_row(
                 .flex()
                 .flex_row()
                 .text_size(FONT_SIZE())
-                .child(
-                    div()
-                        .min_w_0()
-                        .truncate()
-                        // `.list-item.selected .dirname` inherits the row colour
-                        .text_color(match (is_selected, list_focused) {
-                            (true, true) => t.box_selected_active_text,
-                            (true, false) => t.box_selected_text,
-                            _ => t.text_secondary,
-                        })
-                        .child(crate::autocompletion::highlighted(&directory, &dir_hits)),
-                )
+                .when(!names_only, |d| {
+                    d.child(
+                        div()
+                            .min_w_0()
+                            .truncate()
+                            // `.list-item.selected .dirname` inherits the row colour
+                            .text_color(match (is_selected, list_focused) {
+                                (true, true) => t.box_selected_active_text,
+                                (true, false) => t.box_selected_text,
+                                _ => t.text_secondary,
+                            })
+                            .child(crate::autocompletion::highlighted(&directory, &dir_hits)),
+                    )
+                })
                 .child(
                     div()
                         .flex_none()
@@ -3342,5 +4064,23 @@ fn changed_files_label(visible: usize, total: usize) -> String {
             "{prefix}{} changed files",
             crate::format::format_count(total as u64)
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::summary_overflow;
+
+    #[test]
+    fn summary_overflow_drops_the_end_of_the_edit() {
+        assert_eq!(summary_overflow("abc", 3, 3), None);
+        // typed "X" at byte 1 of "abc" with max 3
+        assert_eq!(summary_overflow("aXbc", 2, 3), Some(1..2));
+        // pasted "XYZ" at the end
+        assert_eq!(summary_overflow("abXYZ", 5, 3), Some(3..5));
+        // multi-byte chars
+        assert_eq!(summary_overflow("éé€", 7, 2), Some(4..7));
+        // caret at the start: cut the tail
+        assert_eq!(summary_overflow("abcd", 0, 3), Some(3..4));
     }
 }

@@ -1370,7 +1370,7 @@ impl PreferencesDialog {
         let notifications_link = |id: &'static str, cx: &Context<Self>| {
             let url = settings_url.clone();
             link_button(id, "Notifications Settings", cx)
-                .on_click(move |_, _, cx| cx.open_url(&url))
+                .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx))
                 .into_any_element()
         };
         // `renderNotificationHint`

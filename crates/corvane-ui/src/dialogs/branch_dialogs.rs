@@ -388,8 +388,9 @@ crate::branch_list::sort_by_date(cx),
                                     cx,
                                 )
                                 .on_click(|_, _, cx| {
-                                    cx.open_url(
+                                    corvane_core::Dispatcher::open_url(
                                         "https://help.github.com/articles/setting-the-default-branch/",
+                                        cx,
                                     )
                                 })
                                 .into_any_element()

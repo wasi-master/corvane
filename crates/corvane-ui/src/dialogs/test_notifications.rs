@@ -92,7 +92,7 @@ impl TestNotificationsDialog {
             let url = settings_url.clone();
             Inline::Element(
                 link_button("test-notifications-settings", "Notifications Settings", cx)
-                    .on_click(move |_, _, cx| cx.open_url(&url))
+                    .on_click(move |_, _, cx| corvane_core::Dispatcher::open_url(&url, cx))
                     .into_any_element(),
             )
         };

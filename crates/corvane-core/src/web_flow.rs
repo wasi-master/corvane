@@ -130,7 +130,7 @@ impl Dispatcher {
             }
             cx.notify();
         });
-        cx.open_url(&authorize_url);
+        crate::Dispatcher::open_url(&authorize_url, cx);
     }
 
     /// `resolveOAuthRequest`: the callback's `code` and `state`; the state

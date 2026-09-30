@@ -193,7 +193,7 @@ impl Dispatcher {
     /// (the diff's "Open in <Editor> at Line N", flag
     /// `diff-open-in-editor-at-line`); a custom editor opens the file.
     pub fn open_in_editor_at(path: PathBuf, line: Option<u32>, cx: &mut App) {
-        let (editors, selected, custom) = {
+        let (editors, selected, custom, workspace_file) = {
             let s = Self::state(cx).read(cx);
             (
                 s.editors.clone(),
@@ -202,6 +202,7 @@ impl Dispatcher {
                     .use_custom_editor
                     .then(|| s.settings.custom_editor.clone())
                     .flatten(),
+                s.flags.bool(crate::flags::ids::VSCODE_WORKSPACE_FILE),
             )
         };
         if let Some(custom) = custom {
@@ -247,7 +248,15 @@ impl Dispatcher {
             cx,
             move || match line {
                 Some(line) => editors::launch_at_line(&editor, &path, line),
-                None => editors::launch(&editor, &path),
+                None => {
+                    // `475-vscode-workspace-file`: a repository opens its only
+                    // workspace file instead of the folder
+                    let target = workspace_file
+                        .then(|| editors::code_workspace_file(&editor, &path))
+                        .flatten()
+                        .unwrap_or(path);
+                    editors::launch(&editor, &target)
+                }
             },
             |result, cx| {
                 if let Err(err) = result {
@@ -345,14 +354,44 @@ impl Dispatcher {
         );
     }
 
-    /// Repository › Show in Finder (`revealInFileManager`).
+    /// Repository › Show in Finder (`revealInFileManager`), and every Reveal
+    /// in Finder item. With a `570-file-manager` application set, it opens
+    /// the folder (a file's parent folder) with `open -a <app>` instead.
     pub fn show_in_finder(path: &Path, cx: &mut App) {
-        cx.reveal_path(path);
+        let app = Self::state(cx)
+            .read(cx)
+            .flags
+            .text(crate::flags::ids::FILE_MANAGER)
+            .trim()
+            .to_string();
+        if app.is_empty() {
+            cx.reveal_path(path);
+            return;
+        }
+        let dir = if path.is_dir() {
+            path.to_path_buf()
+        } else {
+            path.parent()
+                .map_or_else(|| path.to_path_buf(), Path::to_path_buf)
+        };
+        if let Err(err) = corvane_platform::apps::open_with_app(Path::new(&app), &dir) {
+            Self::show_error(
+                "Unable to Open File Manager",
+                format!("Could not open {} with {app}: {err}", dir.display()),
+                cx,
+            );
+        }
     }
 
     /// Repository › Open With… (`_openWithSystemDialog`): pick an application,
-    /// then `open -a <app> <repository>`.
+    /// then `open -a <app> <repository>`. Also a changed file's "Open With…"
+    /// (Corvane `474-open-file-with`), whose error names the file.
     pub fn open_with(path: PathBuf, cx: &mut App) {
+        let (title, what) = if path.is_dir() {
+            ("Unable to Open Repository", "the repository")
+        } else {
+            ("Unable to Open File", "the file")
+        };
         let receiver = cx.prompt_for_paths(gpui_kit::PathPromptOptions {
             files: true,
             directories: false,
@@ -369,11 +408,8 @@ impl Dispatcher {
             {
                 cx.update(|cx| {
                     Self::show_error(
-                        "Unable to Open Repository",
-                        format!(
-                            "Could not open the repository with {}: {err}",
-                            app.display()
-                        ),
+                        title,
+                        format!("Could not open {what} with {}: {err}", app.display()),
                         cx,
                     )
                 });

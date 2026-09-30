@@ -486,7 +486,7 @@ fn main() {
         cx.on_action(|_: &ShowLogs, cx| {
             let dir = corvane_platform::paths::logs_dir();
             let _ = std::fs::create_dir_all(&dir);
-            cx.reveal_path(&dir);
+            Dispatcher::show_in_finder(&dir, cx);
         });
         // Window
         cx.on_action(|_: &CloseWindow, cx| {

@@ -31,8 +31,8 @@ pub use branch_ops::{
     rename_branch, stashed_files,
 };
 pub use commit::{
-    CommitOptions, add_paths, commit, discard_changes, format_message, head_sha, merge_trailers,
-    stage_files, undo_last_commit, unstage_all,
+    CommitOptions, add_paths, assume_unchanged_paths, commit, discard_changes, format_message,
+    head_sha, merge_trailers, set_assume_unchanged, stage_files, undo_last_commit, unstage_all,
 };
 pub use config::{
     add_safe_directory, global_config_value, local_config_value, remove_local_config_value,
@@ -42,7 +42,7 @@ pub use detect::{GitBinary, GitVersion, find_git};
 pub use diff::{
     blob_bytes, blob_lines, file_lines, has_hidden_bidi_chars, image_diff,
     parse_line_endings_warning, parse_raw_diff, parse_raw_diff_with_warnings, parse_unified,
-    submodule_diff, working_directory_diff, working_file_lines,
+    submodule_diff, working_directory_diff, working_directory_patch, working_file_lines,
 };
 pub use error::{GitError, dubious_ownership_path};
 pub use history_ops::{

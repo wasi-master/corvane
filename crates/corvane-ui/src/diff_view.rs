@@ -16,6 +16,30 @@
 //! text context menu offers "Open in <Editor> at Line N" for the clicked
 //! row's new-file line when the editor can jump to a line (GHD
 //! `onContextMenuText` has Copy, Select All and the expansion item only).
+//!
+//! Deviation (`173-file-mode-change-message`): a mode-only change says "The
+//! file mode changed from … to …" instead of GHD's "No content changes found".
+//!
+//! Deviation (`175-unified-diff-for-added-files`): in Split mode a new or
+//! deleted file still shows the unified layout, full width.
+//!
+//! Deviation (`670-diff-font-size`): the rows' font size can be set (9–16 px
+//! in the 20 px rows); GHD's is fixed at 11 px.
+//!
+//! Deviation (`177-intra-line-graphemes`): intra-line ranges cover whole
+//! grapheme clusters, so a combining mark stays with its base character.
+//!
+//! Deviation (`179-intra-line-max-length`): the line length beyond which no
+//! intra-line range is computed can be changed (GHD: 1024, fixed).
+//!
+//! Deviation (`180-diff-show-whitespace`): spaces can be marked with dots
+//! and tabs with a line.
+//!
+//! Deviation (`181-binary-diff-as-text`): a binary working-directory file
+//! offers "Show the diff as text anyway." (`git diff --text`, read-only).
+//!
+//! Deviation (`182-diff-expand-whole-file`): diffs can open with the whole
+//! file expanded (files up to 20 000 lines).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -38,9 +62,9 @@ use crate::diff_expansion::{
     expand_whole, from_hunks,
 };
 use crate::diff_view_rows::{
-    Column, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow, TempSelection,
-    TextBounds, build_rows, build_split_rows, line_number_width, max_line_number, render_row,
-    render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
+    Column, IntraLineOptions, RangeType, Row, RowContext, SearchHit, SearchIndex, SplitRow,
+    TempSelection, TextBounds, build_rows, build_split_rows, line_number_width, max_line_number,
+    render_row, render_split_row, search_rows, spans_for_row, unified_inner, unified_to_split,
 };
 use crate::icons::{Octicon, octicon};
 use crate::image_diff::ImageDiff;
@@ -50,6 +74,9 @@ use crate::theme::{ActiveGhdTheme, GhdTheme, mono_font};
 use crate::widgets::{
     Inline, button, checkbox_row, code_ref, link_button, paragraph, primary_button, radio_row,
 };
+
+/// `182-diff-expand-whole-file` leaves longer files collapsed.
+const MAX_AUTO_EXPAND_LINES: usize = 20_000;
 
 #[allow(non_snake_case)]
 pub fn DIFF_LINE_HEIGHT() -> Pixels {
@@ -199,6 +226,8 @@ struct Snapshot {
     key: (u64, String, u64),
     hide_whitespace: bool,
     confirm_discard: bool,
+    /// `181-binary-diff-as-text`: a binary file shown with `--text`.
+    as_text: bool,
 }
 
 /// A position in the diff's text: a list row (unified or split index) and a
@@ -253,6 +282,8 @@ pub struct DiffView {
     text_bounds: TextBounds,
     /// The zoom factor the list's row heights were measured at.
     zoom_seen: f32,
+    /// The rows' font size (`670-diff-font-size`; GHD's 11 px otherwise).
+    text_size: Pixels,
     list_state: ListState,
     rows: Rc<Vec<Row>>,
     /// (repo, path, diff generation) the cached rows were built from.
@@ -306,6 +337,7 @@ impl DiffView {
             text_selection: None,
             text_bounds: Rc::new(RefCell::new(HashMap::new())),
             zoom_seen: crate::theme::sizes::zoom_factor(),
+            text_size: FONT_SIZE_SM(),
             list_state: ListState::new(0, ListAlignment::Top, zpx(200.)),
             rows: Rc::new(Vec::new()),
             rows_key: None,
@@ -414,6 +446,8 @@ impl DiffView {
                     )
                 }
             };
+        let as_text = self.source == DiffSource::WorkingDirectory
+            && rs.diff_as_text.as_deref() == Some(path.as_str());
         Some(Snapshot {
             repo: id,
             repo_path,
@@ -426,6 +460,7 @@ impl DiffView {
             old_contents,
             hide_whitespace,
             confirm_discard: s.settings.confirm_discard_changes,
+            as_text,
         })
     }
 
@@ -533,7 +568,7 @@ impl DiffView {
     fn rebuild_rows(&mut self, key: (u64, String, u64), cx: &mut Context<Self>) {
         let old_len = self.row_count();
         self.rows = Rc::new(build_rows(&self.hunks));
-        self.rebuild_split_rows();
+        self.rebuild_split_rows(cx);
         self.rows_key = Some(key.clone());
         self.text_selection = None;
         self.list_state.splice(0..old_len, self.row_count());
@@ -547,8 +582,16 @@ impl DiffView {
         self.highlight(key, cx);
     }
 
-    fn rebuild_split_rows(&mut self) {
-        let split = build_split_rows(&self.rows);
+    fn rebuild_split_rows(&mut self, cx: &App) {
+        let flags = &self.state.read(cx).flags;
+        let options = IntraLineOptions {
+            graphemes: flags.bool(corvane_core::flags::ids::INTRA_LINE_GRAPHEMES),
+            max_len: match flags.number(corvane_core::flags::ids::INTRA_LINE_MAX_LENGTH) {
+                0 => None,
+                n => Some(n as usize),
+            },
+        };
+        let split = build_split_rows(&self.rows, options);
         self.unified_to_split = Rc::new(unified_to_split(&split, self.rows.len()));
         self.unified_inner = Rc::new(unified_inner(&split, self.rows.len()));
         self.split_rows = Rc::new(split);
@@ -586,6 +629,23 @@ impl DiffView {
             Some(hunks) => from_hunks(hunks, self.contents.as_ref().map(|c| c.len())),
             None => Vec::new(),
         });
+        // `182-diff-expand-whole-file`: start expanded, like "Expand Whole
+        // File" (not for large diffs or files)
+        if matches!(snap.diff, Diff::Text { .. })
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::DIFF_EXPAND_WHOLE_FILE)
+            && let Some(contents) = self
+                .contents
+                .clone()
+                .filter(|c| !c.is_empty() && c.len() <= MAX_AUTO_EXPAND_LINES)
+            && let Some(hunks) = expand_whole(self.hunks.as_ref().clone(), &contents)
+        {
+            self.hunks = Rc::new(hunks);
+            self.expanded = true;
+        }
         self.image = match &snap.diff {
             Diff::Image { previous, current } => {
                 let (previous, current, kind) = (previous.clone(), current.clone(), snap.kind);
@@ -594,7 +654,7 @@ impl DiffView {
             _ => None,
         };
         self.rows = Rc::new(build_rows(&self.hunks));
-        self.rebuild_split_rows();
+        self.rebuild_split_rows(cx);
         self.rows_key = Some(snap.key.clone());
         self.text_selection = None;
         self.list_state
@@ -692,7 +752,7 @@ impl DiffView {
         };
         let line = window.text_system().shape_line(
             SharedString::from(text.to_string()),
-            FONT_SIZE_SM(),
+            self.text_size,
             &[run],
             None,
         );
@@ -1415,6 +1475,16 @@ impl DiffView {
 
     /// GHD `renderText` with no hunks.
     fn empty_panel(&self, snap: &Snapshot, cx: &App) -> AnyElement {
+        // `173-file-mode-change-message`
+        if let Some((old, new)) = snap.diff.warnings().and_then(|w| w.mode_change.as_ref())
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::FILE_MODE_CHANGE_MESSAGE)
+        {
+            return self.panel(format!("The file mode changed from {old} to {new}"), cx);
+        }
         let message = match snap.kind {
             FileStatusKind::New | FileStatusKind::Untracked => "The file is empty",
             FileStatusKind::Renamed => "The file was renamed but not changed",
@@ -1431,6 +1501,20 @@ impl DiffView {
     fn binary_panel(&self, snap: &Snapshot, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
         let full_path = snap.repo_path.join(&snap.path);
+        // `181-binary-diff-as-text`
+        let as_text = (self.source == DiffSource::WorkingDirectory
+            && self
+                .state
+                .read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::BINARY_DIFF_AS_TEXT))
+        .then(|| {
+            let repo = snap.repo;
+            div().py(SPACING_HALF()).child(
+                link_button("binary-as-text", "Show the diff as text anyway.", cx)
+                    .on_click(move |_, _, cx| Dispatcher::show_binary_diff_as_text(repo, cx)),
+            )
+        });
         div()
             .flex_1()
             .flex()
@@ -1451,6 +1535,7 @@ impl DiffView {
                         .on_click(move |_, _, cx| cx.open_with_system(&full_path)),
                 ),
             )
+            .children(as_text)
             .into_any_element()
     }
 
@@ -1543,7 +1628,9 @@ impl DiffView {
                         "This is a submodule based on the repository".into(),
                         Inline::Element(
                             link_button("submodule-repo-link", label, cx)
-                                .on_click(move |_, _, cx| cx.open_url(&html_url))
+                                .on_click(move |_, _, cx| {
+                                    corvane_core::Dispatcher::open_url(&html_url, cx)
+                                })
                                 .into_any_element(),
                         ),
                         ".".into(),
@@ -1700,8 +1787,19 @@ impl Render for DiffView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // View › Zoom changed the row heights the list has cached
         let zoom = crate::theme::sizes::zoom_factor();
-        if self.zoom_seen != zoom {
+        // … and so does `670-diff-font-size`
+        let text_size = match self
+            .state
+            .read(cx)
+            .flags
+            .number(corvane_core::flags::ids::DIFF_FONT_SIZE)
+        {
+            0 => FONT_SIZE_SM(),
+            size => zpx(size.clamp(9, 16) as f32),
+        };
+        if self.zoom_seen != zoom || self.text_size != text_size {
             self.zoom_seen = zoom;
+            self.text_size = text_size;
             self.list_state.remeasure();
         }
         let Some(snap) = self.snapshot(cx) else {
@@ -1714,7 +1812,17 @@ impl Render for DiffView {
             // tree-sitter grammar pack was loaded or removed
             self.highlight(snap.key.clone(), cx);
         }
-        let split = self.state.read(cx).settings.show_side_by_side_diff;
+        let split = {
+            let s = self.state.read(cx);
+            // `175-unified-diff-for-added-files`: one side would be empty
+            let one_sided = matches!(
+                snap.kind,
+                FileStatusKind::New | FileStatusKind::Untracked | FileStatusKind::Deleted
+            ) && s
+                .flags
+                .bool(corvane_core::flags::ids::UNIFIED_DIFF_FOR_ADDED_FILES);
+            s.settings.show_side_by_side_diff && !one_sided
+        };
         self.set_split_mode(split);
         let background = cx.ghd().background;
         let options = self
@@ -1731,6 +1839,20 @@ impl Render for DiffView {
             }
             Diff::Text { .. } | Diff::LargeText { .. } | Diff::Empty => self.empty_panel(&snap, cx),
             Diff::Binary => self.binary_panel(&snap, cx),
+            // `184-tga-image-diff` off: GHD does not know TGA images
+            Diff::Image { previous, current }
+                if [previous, current]
+                    .into_iter()
+                    .flatten()
+                    .any(|b| b.media_type == crate::image_diff::TGA_MEDIA_TYPE)
+                    && !self
+                        .state
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::TGA_IMAGE_DIFF) =>
+            {
+                self.binary_panel(&snap, cx)
+            }
             Diff::Image { .. } => match self.image.clone() {
                 Some(image) => image.into_any_element(),
                 None => self.panel("This binary file has changed.", cx),
@@ -1812,7 +1934,9 @@ impl DiffView {
                             "Learn more about bidirectional Unicode characters",
                             cx,
                         )
-                        .on_click(|_, _, cx| cx.open_url("https://github.co/hiddenchars"))
+                        .on_click(|_, _, cx| {
+                            corvane_core::Dispatcher::open_url("https://github.co/hiddenchars", cx)
+                        })
                         .into_any_element(),
                     ),
                 ])
@@ -1826,9 +1950,7 @@ impl DiffView {
                     Inline::Element(
                         link_button("line-endings-docs", "Git is configured to convert them", cx)
                             .on_click(|_, _, cx| {
-                                cx.open_url(
-                                    "https://docs.github.com/get-started/git-basics/configuring-git-to-handle-line-endings",
-                                )
+                                corvane_core::Dispatcher::open_url("https://docs.github.com/get-started/git-basics/configuring-git-to-handle-line-endings", cx)
                             })
                             .into_any_element(),
                     ),
@@ -1887,8 +2009,11 @@ impl DiffView {
     ) -> AnyElement {
         let t = cx.ghd();
         // `canSelect`: working-directory files that are not conflicted.
-        let selectable =
-            self.source == DiffSource::WorkingDirectory && snap.kind != FileStatusKind::Conflicted;
+        // a binary file shown as text cannot be committed line by line
+        // (`181-binary-diff-as-text`: the partial patch is taken without `--text`)
+        let selectable = self.source == DiffSource::WorkingDirectory
+            && snap.kind != FileStatusKind::Conflicted
+            && !snap.as_text;
         let mut groups: BTreeMap<u32, DiffSelectionType> = BTreeMap::new();
         for row in self.rows.iter() {
             if let Some((start, len)) = row.group {
@@ -1919,6 +2044,11 @@ impl DiffView {
                 self.text_bounds.borrow_mut().clear();
                 self.text_bounds.clone()
             },
+            show_whitespace: AppState::try_global(cx).is_some_and(|s| {
+                s.read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::DIFF_SHOW_WHITESPACE)
+            }),
         });
         let rows = self.rows.clone();
         let split_rows = self.split_rows.clone();
@@ -1956,7 +2086,7 @@ impl DiffView {
             .min_h_0()
             .w_full()
             .font_family(mono_font())
-            .text_size(FONT_SIZE_SM())
+            .text_size(self.text_size)
             .line_height(DIFF_LINE_HEIGHT())
             .text_color(t.diff_text)
             .on_mouse_up(
