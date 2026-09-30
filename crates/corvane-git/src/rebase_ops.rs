@@ -577,6 +577,29 @@ fn message_has_scissors(path: &Path) -> bool {
     std::fs::read_to_string(path).is_ok_and(|m| m.lines().any(|l| l.contains(SCISSORS)))
 }
 
+/// Marker in `rebase-merge/` (git deletes the folder when the rebase ends)
+/// saying the rebase was started with [`cleanup_config`]. Older git (2.43,
+/// Ubuntu 24.04's) writes no cut line into a stopped pick's message, so
+/// [`message_has_scissors`] alone cannot tell.
+const KEEP_MESSAGES_MARKER: &str = "rebase-merge/corvane-keep-messages";
+
+/// After a rebase started with `keep` stopped: leave [`KEEP_MESSAGES_MARKER`].
+fn mark_kept_messages(workdir: &Path, keep: bool, result: &RebaseResult) {
+    if keep && *result == RebaseResult::ConflictsEncountered {
+        let marker = git_dir(workdir).join(KEEP_MESSAGES_MARKER);
+        if let Err(err) = std::fs::write(&marker, "") {
+            warn!(%err, "could not mark the rebase as keeping messages");
+        }
+    }
+}
+
+/// Whether the stopped rebase was started with [`cleanup_config`].
+fn rebase_keeps_messages(workdir: &Path) -> bool {
+    let dir = git_dir(workdir);
+    dir.join(KEEP_MESSAGES_MARKER).is_file()
+        || message_has_scissors(&dir.join("rebase-merge/message"))
+}
+
 /// GHD `GitRebaseParser`: `Rebasing (n/m)` on stderr.
 pub fn parse_rebase_progress(line: &str, commits: &[CommitOneLine]) -> Option<McoProgress> {
     let rest = line.trim().strip_prefix("Rebasing (")?;
@@ -652,7 +675,9 @@ pub fn rebase(
                 on_progress(p);
             }
         });
-    classify_rebase(workdir, result)
+    let result = classify_rebase(workdir, result);
+    mark_kept_messages(workdir, keep_messages, &result);
+    result
 }
 
 /// GHD `abortRebase`
@@ -679,8 +704,7 @@ pub fn continue_rebase(
     if !rebase_head_set(workdir) {
         return Ok(RebaseResult::Aborted);
     }
-    let keep_messages =
-        keep_messages && message_has_scissors(&git_dir(workdir).join("rebase-merge/message"));
+    let keep_messages = keep_messages && rebase_keeps_messages(workdir);
     let status = crate::status::get_status(git.clone(), workdir, None)?;
     let tracked_after = status
         .files
@@ -759,7 +783,9 @@ pub fn rebase_interactive(
                 on_progress(p);
             }
         });
-    classify_rebase(workdir, result)
+    let result = classify_rebase(workdir, result);
+    mark_kept_messages(workdir, options.keep_messages, &result);
+    result
 }
 
 /// Commits from `last_retained_ref` (exclusive) to HEAD, oldest first; the
