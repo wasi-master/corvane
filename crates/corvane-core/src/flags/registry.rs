@@ -968,6 +968,20 @@ registry! {
         upstream: &[Upstream::issue(908)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/index_lock.rs", "crates/corvane-ui/src/dialogs/simple.rs"],
     },
+    /// Mark local branches whose upstream was deleted on the remote.
+    BRANCH_UPSTREAM_GONE = 513 "branch-upstream-gone" {
+        title: "Mark branches deleted on the remote",
+        summary: "Local branches whose upstream branch was deleted on the remote (and pruned by \
+                  a fetch) show a cloud icon after their name in the branch list, so merged \
+                  branches are easy to spot and clean up.",
+        ghd_behaviour: "Nothing tells such branches apart.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20897)],
+        code: &["crates/corvane-ui/src/branch_list.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/branch_ops.rs"],
+    },
 
     // ---- 600 Accessibility ----
 

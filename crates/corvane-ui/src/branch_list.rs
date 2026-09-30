@@ -12,6 +12,8 @@
 //! unless the pointer reaches the quick view, and leaving the quick view
 //! hides it at once (`onMouseLeavePullRequestQuickView`).
 //!
+//! Deviation (`513-branch-upstream-gone`): a local branch whose upstream was
+//! deleted on the remote shows a cloud-offline icon after its name.
 //! Deviation (`418-branch-list-stash-icon`): a local branch with a Desktop
 //! stash shows the stash icon after its name (GHD `branch-list-item.tsx` does
 //! not).
@@ -453,13 +455,15 @@ impl BranchFoldout {
             .into_any_element()
     }
 
-    /// `stashed`: the branch has a Desktop stash (`418-branch-list-stash-icon`).
+    /// `stashed`: the branch has a Desktop stash (`418-branch-list-stash-icon`);
+    /// `tracking`: its upstream state (`513-branch-upstream-gone`).
     fn row(
         &self,
         id: u64,
         branch: &Branch,
         current: bool,
         stashed: bool,
+        tracking: Option<corvane_git::BranchTracking>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let t = cx.ghd();
@@ -633,6 +637,19 @@ impl BranchFoldout {
                     .text_size(FONT_SIZE())
                     .child(branch.name.clone()),
             )
+            .when(tracking.is_some_and(|t| t.gone), |d| {
+                d.child(
+                    div()
+                        .id(SharedString::from(format!(
+                            "branch-gone-{}",
+                            branch.full_name
+                        )))
+                        .flex_none()
+                        .mr(SPACING_HALF())
+                        .child(octicon(Octicon::CloudOffline, t.text_secondary))
+                        .ghd_tooltip("Deleted on the remote"),
+                )
+            })
             .when(stashed, |d| {
                 d.child(
                     div()
@@ -753,7 +770,7 @@ impl Render for BranchFoldout {
         let t = cx.ghd();
         self.list_focused = self.list_focus.is_focused(window);
         let query = self.filter.read(cx).value().trim().to_string();
-        let (id, groups, current, tip_valid, stashed) = {
+        let (id, groups, current, tip_valid, stashed, tracking) = {
             let s = self.state.read(cx);
             let id = s.selected;
             let rs = id.and_then(|id| s.repo_states.get(&id));
@@ -764,6 +781,7 @@ impl Render for BranchFoldout {
                 })
                 .map(|rs| rs.stashed_branches.clone())
                 .unwrap_or_default();
+            let tracking = rs.map(|rs| rs.branch_tracking.clone()).unwrap_or_default();
             let info = rs.and_then(|r| r.info.as_ref());
             let current = info
                 .and_then(|i| i.current_branch())
@@ -778,7 +796,7 @@ impl Render for BranchFoldout {
                 ),
                 _ => Vec::new(),
             };
-            (id, groups, current, tip_valid, stashed)
+            (id, groups, current, tip_valid, stashed, tracking)
         };
         let Some(id) = id else {
             return div().into_any_element();
@@ -903,6 +921,9 @@ impl Render for BranchFoldout {
                                     b,
                                     current.as_deref() == Some(b.name.as_str()),
                                     b.kind == BranchKind::Local && stashed.contains(&b.name),
+                                    (b.kind == BranchKind::Local)
+                                        .then(|| tracking.get(&b.name).copied())
+                                        .flatten(),
                                     cx,
                                 )
                             }))

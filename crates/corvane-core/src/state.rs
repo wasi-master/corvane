@@ -635,6 +635,9 @@ pub struct RepositoryState {
     /// Corvane/GHD stash entry for the current branch (`changesState.stashEntry`);
     /// with `417-show-latest-other-stash`, else the newest stash no Desktop made.
     pub stash: Option<corvane_models::StashEntry>,
+    /// Local branches' upstream state by name, read while
+    /// `513-branch-upstream-gone` is on.
+    pub branch_tracking: Arc<std::collections::HashMap<String, corvane_git::BranchTracking>>,
     /// Total stash entries (`stashEntryCount`).
     pub stash_count: usize,
     /// Branches with a GitHub Desktop / Corvane stash (the branch list's
