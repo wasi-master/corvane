@@ -25,6 +25,11 @@
 //! Deviation (`360-clone-local-sources`): the URL tab takes a local
 //! folder (`/path`, `~/path`) or `file://` URL, see `corvane_core::clone_info`.
 //!
+//! Deviation (`361-clone-failure-keeps-input`): a failed clone reopens
+//! this dialog on the URL tab with its URL and local path, git's error in
+//! the banner (GHD closes it and shows an error dialog, so both are typed
+//! again).
+//!
 //! Deviation (`355-clone-prefers-ssh`): repositories picked from the list
 //! and `owner/name` shorthands can clone over SSH.
 
@@ -76,6 +81,10 @@ pub struct CloneRepositoryDialog {
     resolving: bool,
     /// `resolveCloneInfo` failed: the repository was not found.
     resolve_error: Option<&'static str>,
+    /// `361-clone-failure-keeps-input`: git's error from the failed clone
+    /// this dialog reopened after, with that clone's URL and path; shown
+    /// until either field differs.
+    clone_error: Option<(SharedString, String, String)>,
     /// `selectedAccount` per GitHub tab, as `(endpoint, login)`.
     dotcom_account: Option<(String, String)>,
     enterprise_account: Option<(String, String)>,
@@ -119,6 +128,7 @@ impl CloneRepositoryDialog {
         cx.observe(&picker.filter, |_, _, cx| cx.notify()).detach();
         cx.observe_in(&url, window, |this, _, window, cx| {
             this.resolve_error = None;
+            this.forget_stale_clone_error(cx);
             this.derive_path(window, cx);
             this.validate(cx);
             cx.notify()
@@ -126,6 +136,7 @@ impl CloneRepositoryDialog {
         .detach();
         cx.observe(&path, |this, _, cx| {
             this.resolve_error = None;
+            this.forget_stale_clone_error(cx);
             this.validate(cx);
             cx.notify()
         })
@@ -166,9 +177,42 @@ impl CloneRepositoryDialog {
             picker,
             shallow: false,
             existing_repo: None,
+            clone_error: None,
         };
         this.ensure_loaded(cx);
         this
+    }
+
+    /// `361-clone-failure-keeps-input`: the URL tab with the failed clone's
+    /// URL and local path, and git's error above.
+    pub fn retry(
+        state: Entity<AppState>,
+        url: String,
+        path: PathBuf,
+        error: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let url_value = url.clone();
+        let mut this = Self::new(state, Some(url), window, cx);
+        let path = path.display().to_string();
+        this.path_edited = true;
+        this.path
+            .update(cx, |s, cx| s.set_value(path.clone(), window, cx));
+        this.clone_error = Some((error.into(), url_value, path));
+        this
+    }
+
+    fn forget_stale_clone_error(&mut self, cx: &App) {
+        let url = self.url.read(cx).value();
+        let path = self.path.read(cx).value();
+        if self
+            .clone_error
+            .as_ref()
+            .is_some_and(|(_, u, p)| u.as_str() != url.as_ref() || p.as_str() != path.as_ref())
+        {
+            self.clone_error = None;
+        }
     }
 
     /// GHD `getAccountsForTab`.
@@ -776,7 +820,11 @@ impl Render for CloneRepositoryDialog {
             Tab::Enterprise => self.account_tab(true, window, cx),
             Tab::Url => self.url_tab(window, cx).into_any_element(),
         };
-        let error = self.resolve_error.or(self.path_error);
+        let error: Option<SharedString> = self
+            .resolve_error
+            .map(SharedString::from)
+            .or_else(|| self.clone_error.as_ref().map(|(e, _, _)| e.clone()))
+            .or_else(|| self.path_error.map(SharedString::from));
         // signed out, the account tabs are only a call to action: no footer
         let has_footer = self.tab == Tab::Url || self.account(cx).is_some();
 

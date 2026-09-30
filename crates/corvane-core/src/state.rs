@@ -46,6 +46,13 @@ pub enum Popup {
     CloneRepository {
         url: Option<String>,
     },
+    /// Corvane addition (flag 361): Clone a Repository reopened after a
+    /// failed clone, with its URL, local path and git's error.
+    CloneRepositoryRetry {
+        url: String,
+        path: PathBuf,
+        error: String,
+    },
     SignIn {
         enterprise: bool,
     },

@@ -108,6 +108,18 @@ impl DialogHost {
             Popup::CloneRepository { url } => cx
                 .new(|cx| CloneRepositoryDialog::new(state, url.clone(), window, cx))
                 .into(),
+            Popup::CloneRepositoryRetry { url, path, error } => cx
+                .new(|cx| {
+                    CloneRepositoryDialog::retry(
+                        state,
+                        url.clone(),
+                        path.clone(),
+                        error.clone(),
+                        window,
+                        cx,
+                    )
+                })
+                .into(),
             Popup::SignIn { enterprise } => cx
                 .new(|cx| SignInDialog::new(state, *enterprise, window, cx))
                 .into(),

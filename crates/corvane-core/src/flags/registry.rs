@@ -717,6 +717,21 @@ registry! {
         code: &["crates/corvane-core/src/clone_info.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs"],
     },
 
+    /// A failed clone reopens the clone dialog.
+    CLONE_FAILURE_KEEPS_INPUT = 361 "clone-failure-keeps-input" {
+        title: "Failed clone keeps the dialog's input",
+        summary: "When a clone fails, Clone a Repository opens again with the same URL and \
+                  local path and git's error at the top, ready to fix and retry.",
+        ghd_behaviour: "Shows a \"Clone failed\" error dialog; the URL and path have to be \
+                        entered again.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(8720)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/clone_repository.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.

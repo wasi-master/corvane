@@ -32,6 +32,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - **Clone dialog** can suggest `<clone folder>/<owner>/<name>` as the local path (GHD: `<clone folder>/<name>`); git creates the owner folder. Flag: `358-clone-path-includes-owner`.
 - **Clone dialog**: when the local path is already a Git repository, a line under the path offers "Add this repository instead?" (as Create a New Repository does); GHD only says the folder contains files. Flag: `359-clone-offer-add-existing`.
 - **Clone dialog**'s URL tab takes a local repository (`/path`, `~/path`, `file://` URL): the suggested local path is named after the folder and a path without a repository shows "There's no Git repository at that path" before git runs. GHD takes `/a/b` for the GitHub repository `a/b` and rejects longer paths. Flag: `360-clone-local-sources`.
+- **Clone dialog**: a failed clone reopens the dialog on the URL tab with the same URL and local path and git's error in the banner; GHD shows a "Clone failed" error dialog and the input is lost. Flag: `361-clone-failure-keeps-input`.
 
 ## Repository
 

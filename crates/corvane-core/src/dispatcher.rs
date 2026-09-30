@@ -2520,6 +2520,22 @@ impl Dispatcher {
                 match result {
                     // an `openRepo` URL waiting for this clone continues
                     Ok(()) => Self::add_repository_then(path, cx, Self::resume_open_in_desktop),
+                    // `361-clone-failure-keeps-input`: back to the dialog
+                    Err(err)
+                        if Self::state(cx)
+                            .read(cx)
+                            .flags
+                            .bool(crate::flags::ids::CLONE_FAILURE_KEEPS_INPUT) =>
+                    {
+                        Self::show_popup(
+                            Popup::CloneRepositoryRetry {
+                                url,
+                                path,
+                                error: err.to_string(),
+                            },
+                            cx,
+                        )
+                    }
                     Err(err) => Self::show_error("Clone failed", err.to_string(), cx),
                 }
             });
