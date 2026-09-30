@@ -547,7 +547,7 @@ impl Dispatcher {
     /// and working-directory status; then reload the selected diff.
     pub fn refresh_repository(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (path, git, previous_status, line_counts, status_options) = {
+        let (path, git, previous_status, line_counts, status_options, recent_count) = {
             let s = state.read(cx);
             let Some(repo) = s.repository(id) else {
                 return;
@@ -567,6 +567,9 @@ impl Dispatcher {
                         _ => corvane_git::IgnoreSubmodules::AsConfigured,
                     },
                 },
+                // GHD `RecentBranchesLimit` is 5
+                usize::try_from(s.flags.number(crate::flags::ids::RECENT_BRANCHES_COUNT))
+                    .unwrap_or(5),
             )
         };
         // GHD `_refreshRepository`: a path that is gone may be a deleted
@@ -609,8 +612,9 @@ impl Dispatcher {
                     None => (None, None),
                 };
                 let extras = git.as_ref().map(|git| {
-                    let recent = corvane_git::recent_branches(git.clone(), &info.workdir, 5)
-                        .unwrap_or_default();
+                    let recent =
+                        corvane_git::recent_branches(git.clone(), &info.workdir, recent_count)
+                            .unwrap_or_default();
                     let remote = info
                         .remotes
                         .iter()

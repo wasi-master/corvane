@@ -755,6 +755,20 @@ registry! {
         upstream: &[Upstream::issue(5046)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// How many branches the branch list's Recent group shows.
+    RECENT_BRANCHES_COUNT = 413 "recent-branches-count" {
+        title: "Recent branches shown",
+        summary: "How many recently checked-out branches the branch list shows in its Recent \
+                  group (0 hides the group).",
+        ghd_behaviour: "Always 5.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 50, unit: None },
+        corvane: Value::Number(5), ghd: Value::Number(5),
+        familiar: Value::Number(5), everything: Value::Number(10),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(14311)],
+        code: &["crates/corvane-core/src/dispatcher.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 
