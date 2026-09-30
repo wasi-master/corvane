@@ -1,4 +1,7 @@
 //! Root view: title bar, toolbar, resizable sidebar + content, foldouts, dialogs.
+//!
+//! Deviation: `428-smaller-minimum-sizes` lowers the sidebar minimum from
+//! GHD's 220 px (`ui/app.tsx` `sidebarWidth`) to 120 px.
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -84,6 +87,19 @@ pub struct Workspace {
     last_foldout: Option<corvane_core::Foldout>,
 }
 
+/// GHD `sidebarWidth` minimum (220 px), or 120 px with
+/// `428-smaller-minimum-sizes`.
+fn sidebar_min_width(state: &AppState) -> Pixels {
+    if state
+        .flags
+        .bool(corvane_core::flags::ids::SMALLER_MINIMUM_SIZES)
+    {
+        zpx(120.)
+    } else {
+        SIDEBAR_MIN_WIDTH()
+    }
+}
+
 impl Workspace {
     pub fn new(
         state: Entity<AppState>,
@@ -163,12 +179,13 @@ impl Workspace {
             .then(|| cx.new(|cx| WelcomeView::new(state.clone(), window, cx)));
         let no_repositories = cx.new(|cx| NoRepositoriesView::new(state.clone(), window, cx));
         window.focus(&focus_handle, cx);
+        let sidebar_min = sidebar_min_width(state.read(cx));
 
         Self {
             focus_handle,
             state,
             section: Section::Changes,
-            sidebar_width: sidebar_width.max(SIDEBAR_MIN_WIDTH()),
+            sidebar_width: sidebar_width.max(sidebar_min),
             resizable,
             zoom_info: None,
             zoom_info_nonce: 0,
@@ -438,6 +455,7 @@ impl Workspace {
 
     fn repository_view(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
+        let sidebar_min = sidebar_min_width(self.state.read(cx));
         div()
             .flex_1()
             .min_h_0()
@@ -454,14 +472,14 @@ impl Workspace {
                     .child(
                         resizable_panel()
                             .size(self.sidebar_width)
-                            .size_range(SIDEBAR_MIN_WIDTH()..zpx(900.))
+                            .size_range(sidebar_min..zpx(900.))
                             .child(crate::active_resizable::active_resizable(
                                 "repository-sidebar-resizable",
                                 &self.resizable,
                                 None,
                                 crate::active_resizable::ResizableDescription::new(
                                     "Repository sidebar",
-                                    SIDEBAR_MIN_WIDTH()..zpx(900.),
+                                    sidebar_min..zpx(900.),
                                 ),
                                 self.sidebar(cx),
                             )),
@@ -515,7 +533,7 @@ impl Workspace {
         crate::theme::apply(cx.ghd().clone(), cx);
         Dispatcher::update_settings(cx, |s| s.window_zoom_factor = next);
         let settings_sidebar = self.state.read(cx).settings.sidebar_width;
-        self.sidebar_width = zpx(settings_sidebar).max(SIDEBAR_MIN_WIDTH());
+        self.sidebar_width = zpx(settings_sidebar).max(sidebar_min_width(self.state.read(cx)));
         // the panel group keeps screen-pixel sizes: drop them so the next
         // layout takes the sidebar's zoomed width again
         self.resizable.update(cx, |state, _| state.clear());

@@ -772,6 +772,20 @@ registry! {
         code: &["crates/corvane-ui/src/worktree_list.rs"],
     },
 
+    /// Smaller minimum window and sidebar sizes.
+    SMALLER_MINIMUM_SIZES = 428 "smaller-minimum-sizes" {
+        title: "Smaller minimum window and sidebar",
+        summary: "The window can shrink to 600 × 400 and the repository sidebar to 120 px, for tiled \
+                  and side-by-side layouts (the toolbar and lists clip below GitHub Desktop's sizes).",
+        ghd_behaviour: "At least 960 × 660 for the window and 220 px for the sidebar.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: true, visible: true, availability: available,
+        upstream: &[Upstream::issue(14286), Upstream::issue(22492), Upstream::issue(21368)],
+        code: &["crates/corvane/src/main.rs", "crates/corvane-ui/src/workspace.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

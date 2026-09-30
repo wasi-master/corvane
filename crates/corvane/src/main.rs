@@ -533,7 +533,18 @@ fn main() {
                 window_size,
                 cx,
             ))),
-            window_min_size: Some(size(px(960.), px(660.))),
+            // GHD's 960 × 660; `428-smaller-minimum-sizes`: 600 × 400
+            window_min_size: Some(
+                if state
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::SMALLER_MINIMUM_SIZES)
+                {
+                    size(px(600.), px(400.))
+                } else {
+                    size(px(960.), px(660.))
+                },
+            ),
             app_id: Some(corvane_platform::BUNDLE_ID.into()),
             ..Default::default()
         };
