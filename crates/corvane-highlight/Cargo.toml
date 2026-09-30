@@ -3,7 +3,7 @@ name = "corvane-highlight"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Corvane diff syntax highlighting (syntect)"
+description = "Corvane diff syntax highlighting (CodeMirror ports, syntect, tree-sitter)"
 
 [features]
 # The "full" build: two-face's whole grammar collection compiled in instead
