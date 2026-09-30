@@ -533,6 +533,8 @@ pub struct CloneState {
     pub description: String,
     /// 0..1, `None` = indeterminate.
     pub value: Option<f32>,
+    /// Stops the clone (`227-clone-cancel`, `Dispatcher::cancel_clone`).
+    pub cancel: corvane_git::CancelToken,
 }
 
 /// Per-repository cache (`IRepositoryState`, trimmed).

@@ -1,6 +1,10 @@
-//! `#cloning-repository-view`: shown in the content area while `git clone` runs.
+//! `#cloning-repository-view`: shown in the content area while `git clone` runs
+//! (GHD `app/src/ui/cloning-repository.tsx`).
+//!
+//! Deviation (flag `227-clone-cancel`): a Cancel button stops the clone; GHD
+//! has none.
 
-use corvane_core::CloneState;
+use corvane_core::{CloneState, Dispatcher};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -8,7 +12,7 @@ use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 
-pub fn cloning_view(clone: &CloneState, cx: &App) -> impl IntoElement {
+pub fn cloning_view(clone: &CloneState, cancellable: bool, cx: &App) -> impl IntoElement {
     let t = cx.ghd();
     let fraction = clone.value.unwrap_or(0.0).clamp(0.0, 1.0);
     div()
@@ -62,6 +66,18 @@ pub fn cloning_view(clone: &CloneState, cx: &App) -> impl IntoElement {
                         .text_color(t.text_secondary)
                         .truncate()
                         .child(clone.description.clone()),
-                ),
+                )
+                .when(cancellable, |d| {
+                    let cancelling = clone.cancel.is_cancelled();
+                    d.child(
+                        div().mt(SPACING_DOUBLE()).flex().justify_end().child(
+                            crate::widgets::button("cancel-clone", "Cancel", cx)
+                                .when(cancelling, |b| b.opacity(0.6))
+                                .when(!cancelling, |b| {
+                                    b.on_click(|_, _, cx| Dispatcher::cancel_clone(cx))
+                                }),
+                        ),
+                    )
+                }),
         )
 }
