@@ -14,6 +14,9 @@
 //! exist"); Corvane shows GHD's "We couldn't find that repository" error
 //! instead. When a lookup fails otherwise (offline, rate limit) the shorthand
 //! is cloned as `https://github.com/owner/name.git`.
+//!
+//! Deviation (`355-clone-prefers-ssh`): the SSH URL can be preferred for
+//! every lookup, not only for a typed SSH URL (GHD has no protocol setting).
 
 use corvane_github::{Client, Endpoint, RepositoryCloneInfo};
 use corvane_models::split_remote;
@@ -93,17 +96,20 @@ pub fn resolve(
     candidates: &[Candidate],
     lookup: &mut Lookup<'_>,
 ) -> Result<CloneInfo, &'static str> {
-    resolve_with(input, candidates, lookup, true)
+    resolve_with(input, candidates, lookup, true, false)
 }
 
 /// `resolve`; with `strict_shorthand` off (the GHD value of
 /// `204-clone-shorthand-not-found`) an `owner/name` every account answers
-/// 404 for is handed to git as typed instead of failing here.
+/// 404 for is handed to git as typed instead of failing here. `prefer_ssh`
+/// (`355-clone-prefers-ssh`) asks the API for the SSH URL even when the
+/// input is not an SSH URL.
 pub fn resolve_with(
     input: &str,
     candidates: &[Candidate],
     lookup: &mut Lookup<'_>,
     strict_shorthand: bool,
+    prefer_ssh: bool,
 ) -> Result<CloneInfo, &'static str> {
     let input = input.trim();
     let as_is = || CloneInfo {
@@ -115,7 +121,7 @@ pub fn resolve_with(
     }
     let identifier = parse_repository_identifier(input);
     // "Respect the user's preference if they provided an SSH URL"
-    let ssh = input.starts_with("git@") || input.starts_with("ssh://");
+    let ssh = prefer_ssh || input.starts_with("git@") || input.starts_with("ssh://");
 
     // 1. an account for the URL's host
     if let Some((host, _)) = split_remote(input)
@@ -179,9 +185,11 @@ pub fn resolve_with(
 
 impl Dispatcher {
     /// Resolve what the Clone dialog should clone (GHD `resolveCloneInfo`)
-    /// on a background thread.
+    /// on a background thread. `prefer_ssh` asks for the SSH clone URL
+    /// (`355-clone-prefers-ssh`, decided by the dialog).
     pub fn resolve_clone_info(
         input: String,
+        prefer_ssh: bool,
         then: impl FnOnce(Result<CloneInfo, &'static str>, &mut App) + 'static,
         cx: &mut App,
     ) {
@@ -228,7 +236,14 @@ impl Dispatcher {
                         .map_err(|err| err.to_string())
                 };
                 // `owner/name` passed through as typed becomes a GitHub.com URL
-                resolve_with(&input, &candidates, &mut lookup, strict_shorthand).map(|mut info| {
+                resolve_with(
+                    &input,
+                    &candidates,
+                    &mut lookup,
+                    strict_shorthand,
+                    prefer_ssh,
+                )
+                .map(|mut info| {
                     info.url = corvane_git::normalize_clone_url(&info.url).unwrap_or(info.url);
                     info
                 })
@@ -327,6 +342,18 @@ mod tests {
             resolve("https://github.com/o/private", &candidates, &mut not_found),
             Err(REPOSITORY_NOT_FOUND)
         );
+    }
+
+    #[test]
+    fn prefer_ssh_asks_for_the_ssh_url() {
+        let mut seen = None;
+        let mut lookup = |_: usize, _: &str, _: &str, ssh: bool| {
+            seen = Some(ssh);
+            Ok(info("git@github.com:o/n.git"))
+        };
+        let got = resolve_with("o/n", &[dotcom(true)], &mut lookup, true, true).unwrap();
+        assert_eq!(got.url, "git@github.com:o/n.git");
+        assert_eq!(seen, Some(true));
     }
 
     #[test]

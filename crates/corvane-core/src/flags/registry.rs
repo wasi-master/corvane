@@ -595,6 +595,21 @@ registry! {
         code: &["crates/corvane-core/src/commit_status.rs"],
     },
 
+    /// Clone over SSH by default.
+    CLONE_PREFERS_SSH = 355 "clone-prefers-ssh" {
+        title: "Clone over SSH",
+        summary: "Clone a Repository clones repositories picked from the list and owner/name \
+                  shorthands with their SSH URL (git@host:owner/name.git). An https:// URL typed \
+                  on the URL tab is still cloned over HTTPS.",
+        ghd_behaviour: "Clones over HTTPS unless an SSH URL is typed.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(19824)],
+        code: &["crates/corvane-ui/src/dialogs/clone_repository.rs", "crates/corvane-core/src/clone_info.rs"],
+    },
+
     // ---- 400 Window & menus ----
 
     /// Help › Show Release Notes.
