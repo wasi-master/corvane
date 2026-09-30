@@ -794,6 +794,21 @@ registry! {
         upstream: &[Upstream::issue(16444)],
         code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
     },
+    /// Cherry-pick keeps the picked message after a conflict.
+    CHERRY_PICK_KEEPS_MESSAGES = 449 "cherry-pick-keeps-messages" {
+        title: "Cherry-pick keeps the commit message after a conflict",
+        summary: "A cherry-picked commit that stopped on conflicts keeps its message as written \
+                  when continued: lines starting with # stay, and git's \"Conflicts:\" note is \
+                  not added.",
+        ghd_behaviour: "Continuing can fail with \"Aborting commit due to empty commit message\"; \
+                        lines starting with # are dropped.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(21685)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-git/src/rebase_ops.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

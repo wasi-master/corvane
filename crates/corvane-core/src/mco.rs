@@ -532,6 +532,14 @@ impl Dispatcher {
             .bool(crate::flags::ids::REBASE_KEEPS_HASH_MESSAGES)
     }
 
+    /// Flag `449`: cherry-picks keep `#` lines and drop git's conflict note.
+    fn cherry_pick_keeps_messages(cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CHERRY_PICK_KEEPS_MESSAGES)
+    }
+
     fn working_directory_files(id: u64, cx: &App) -> Vec<WorkingDirectoryFileChange> {
         Self::state(cx)
             .read(cx)
@@ -1228,6 +1236,7 @@ impl Dispatcher {
             mco.conflicts.their_branch.clone(),
         );
         let keep_messages = Self::rebase_keeps_messages(cx);
+        let keep_pick_messages = Self::cherry_pick_keeps_messages(cx);
         match mco.detail.clone() {
             McoDetail::Merge {
                 squash,
@@ -1342,6 +1351,7 @@ impl Dispatcher {
                             &workdir,
                             &files,
                             &resolutions,
+                            keep_pick_messages,
                             on_progress,
                         )
                         .unwrap_or_else(|e| CherryPickResult::Error(e.to_string()));
@@ -1578,6 +1588,7 @@ impl Dispatcher {
         });
         let local_name = target.name_without_remote().to_string();
         let count = commits.len();
+        let keep_messages = Self::cherry_pick_keeps_messages(cx);
         let commits_for_result = commits.clone();
         Self::run_with_progress(
             id,
@@ -1587,7 +1598,13 @@ impl Dispatcher {
                     return (CherryPickResult::Error(err.to_string()), None, None, false);
                 }
                 let undo_sha = corvane_git::head_sha(git.clone(), &workdir).ok();
-                let result = corvane_git::cherry_pick(git.clone(), &workdir, &commits, on_progress);
+                let result = corvane_git::cherry_pick(
+                    git.clone(),
+                    &workdir,
+                    &commits,
+                    keep_messages,
+                    on_progress,
+                );
                 let status = corvane_git::get_status(git, &workdir, None).ok();
                 (result, status, undo_sha, true)
             },
