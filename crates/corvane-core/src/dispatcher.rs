@@ -1920,16 +1920,49 @@ impl Dispatcher {
             branch: branch.name.clone(),
             sha,
         });
+        let explain_worktrees = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::EXPLAIN_BRANCH_IN_OTHER_WORKTREE);
+        let deleted = branch.name.clone();
         Self::run_history_op_then(
             id,
             "Could not delete branch",
             move |git, workdir| {
+                // Corvane (`415-explain-branch-in-other-worktree`): git's
+                // refusal to use a branch another worktree has checked out
+                // says what to do instead (GHD shows git's words)
+                let explain = |err: corvane_git::GitError, switching: bool| match err
+                    .branch_in_other_worktree()
+                {
+                    Some((other, path)) if explain_worktrees => {
+                        corvane_git::GitError::Gix(if switching {
+                            format!(
+                                "\"{deleted}\" is checked out here, and the default branch \
+                                     \"{other}\" cannot be switched to because it is checked out \
+                                     in the worktree at {}. Switch to another branch, then \
+                                     delete \"{deleted}\".",
+                                path.display()
+                            )
+                        } else {
+                            format!(
+                                "\"{other}\" is checked out in the worktree at {}. Switch \
+                                     that worktree to another branch (or remove it), then delete \
+                                     \"{other}\".",
+                                path.display()
+                            )
+                        })
+                    }
+                    _ => err,
+                };
                 if let Some(default) = default {
-                    corvane_git::checkout_branch(git.clone(), &workdir, &default)?;
+                    corvane_git::checkout_branch(git.clone(), &workdir, &default)
+                        .map_err(|err| explain(err, true))?;
                 }
                 match branch.kind {
                     corvane_models::BranchKind::Local => {
-                        corvane_git::delete_local_branch(git.clone(), &workdir, &branch.name)?;
+                        corvane_git::delete_local_branch(git.clone(), &workdir, &branch.name)
+                            .map_err(|err| explain(err, false))?;
                         if include_remote
                             && let (Some(remote), Some(upstream)) =
                                 (branch.upstream_remote_name(), branch.upstream_short())

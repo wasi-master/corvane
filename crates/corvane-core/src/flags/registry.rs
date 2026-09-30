@@ -769,6 +769,20 @@ registry! {
         upstream: &[Upstream::issue(14311)],
         code: &["crates/corvane-core/src/dispatcher.rs"],
     },
+    /// A clear error when a branch is checked out in another worktree.
+    EXPLAIN_BRANCH_IN_OTHER_WORKTREE = 415 "explain-branch-in-other-worktree" {
+        title: "Explain branches checked out in another worktree",
+        summary: "When deleting a branch fails because it, or the default branch Corvane would \
+                  switch to, is checked out in another worktree, the error names that worktree \
+                  and says what to switch first.",
+        ghd_behaviour: "Shows git's \"used by worktree at\" errors, one after another.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(22569)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/error.rs"],
+    },
 
     // ---- 500 Settings & updates ----
 

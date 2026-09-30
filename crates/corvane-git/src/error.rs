@@ -46,7 +46,40 @@ pub fn dubious_ownership_path(stderr: &str) -> Option<PathBuf> {
     Some(PathBuf::from(&line[..end]))
 }
 
+/// The branch and worktree of git's refusals to use a branch that another
+/// worktree has checked out: `'main' is already used by worktree at '<path>'`
+/// (checkout, git 2.42+; older: `is already checked out at`) and `cannot
+/// delete branch 'x' used by worktree at '<path>'` (older: `checked out at`).
+pub fn branch_in_other_worktree(stderr: &str) -> Option<(String, PathBuf)> {
+    const MARKERS: [&str; 4] = [
+        "' is already used by worktree at '",
+        "' is already checked out at '",
+        "' used by worktree at '",
+        "' checked out at '",
+    ];
+    stderr.lines().find_map(|line| {
+        let (at, marker) = MARKERS
+            .iter()
+            .find_map(|m| line.find(m).map(|at| (at, *m)))?;
+        let branch_start = line[..at].rfind('\'')? + 1;
+        let rest = &line[at + marker.len()..];
+        let path_end = rest.rfind('\'')?;
+        Some((
+            line[branch_start..at].to_string(),
+            PathBuf::from(&rest[..path_end]),
+        ))
+    })
+}
+
 impl GitError {
+    /// [`branch_in_other_worktree`] of a failed git command.
+    pub fn branch_in_other_worktree(&self) -> Option<(String, PathBuf)> {
+        match self {
+            GitError::Failed { stderr, .. } => branch_in_other_worktree(stderr),
+            _ => None,
+        }
+    }
+
     /// The unsafe directory when git refused to run because of its owner.
     pub fn unsafe_repository_path(&self) -> Option<PathBuf> {
         match self {
@@ -70,5 +103,26 @@ mod tests {
             Some(PathBuf::from("/Users/o'brien/repo"))
         );
         assert_eq!(dubious_ownership_path("fatal: not a git repository"), None);
+    }
+
+    #[test]
+    fn parses_branch_in_other_worktree() {
+        let cases = [
+            "fatal: 'main' is already used by worktree at '/tmp/w 2'\n",
+            "fatal: 'main' is already checked out at '/tmp/w 2'\n",
+            "error: cannot delete branch 'main' used by worktree at '/tmp/w 2'\n",
+            "error: Cannot delete branch 'main' checked out at '/tmp/w 2'\n",
+        ];
+        for stderr in cases {
+            assert_eq!(
+                branch_in_other_worktree(stderr),
+                Some(("main".to_string(), PathBuf::from("/tmp/w 2"))),
+                "{stderr}"
+            );
+        }
+        assert_eq!(
+            branch_in_other_worktree("error: branch 'x' not found."),
+            None
+        );
     }
 }
