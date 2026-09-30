@@ -373,11 +373,22 @@ impl GitCommand {
                 stderr,
             })
         } else {
-            warn!(git = %args, code, stderr = %stderr.trim(), "git failed");
+            // GHD's `GitError` shows the combined terminal output: what a
+            // pre-push hook prints to stdout (git passes it through) comes
+            // before git's own error lines
+            let mut message = stderr.trim().to_string();
+            if matches!(pipe, StreamedPipe::Stderr) {
+                let out = String::from_utf8_lossy(&stdout);
+                let out = out.trim();
+                if !out.is_empty() {
+                    message = format!("{out}\n{message}");
+                }
+            }
+            warn!(git = %args, code, stderr = %message, "git failed");
             Err(GitError::Failed {
                 args,
                 code,
-                stderr: stderr.trim().to_string(),
+                stderr: message,
             })
         }
     }
