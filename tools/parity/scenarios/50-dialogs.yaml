@@ -4,24 +4,34 @@ setup: repo
 steps:
   - menu: show-preferences
     wait: 600
+  - dump: {name: accounts, root: dialog}
   - snap: accounts
   - hover: {text: "Integrations", within: "dialog"}
+  - dump: {name: tab-hover, root: dialog}
   - snap: tab-hover
   - click: {text: "Integrations", within: "dialog"}
+  - dump: {name: integrations, root: dialog}
   - snap: integrations
   - click: {text: "Git", within: "dialog .tab-bar"}
+  - dump: {name: git, root: dialog}
   - snap: git
   - click: {text: "Appearance", within: "dialog"}
+  - dump: {name: appearance, root: dialog}
   - snap: appearance
   - click: {text: "Notifications", within: "dialog"}
+  - dump: {name: notifications, root: dialog}
   - snap: notifications
   - click: {text: "Prompts", within: "dialog"}
+  - dump: {name: prompts, root: dialog}
   - snap: prompts
   - click: {text: "Advanced", within: "dialog"}
+  - dump: {name: advanced, root: dialog}
   - snap: advanced
   - click: {text: "Accessibility", within: "dialog"}
+  - dump: {name: accessibility, root: dialog}
   - snap: accessibility
   - hover: {text: "Save", within: "dialog"}
+  - dump: {name: save-hover, root: dialog}
   - snap: save-hover
 ---
 name: about
@@ -30,6 +40,7 @@ setup: repo
 steps:
   - menu: show-about
     wait: 600
+  - dump: {name: open, root: dialog}
   - snap: open
 ---
 name: create-repository
@@ -38,8 +49,10 @@ setup: repo
 steps:
   - menu: create-repository
     wait: 600
+  - dump: {name: open, root: dialog}
   - snap: open
   - type: "demo"
+  - dump: {name: name-typed, root: dialog}
   - snap: name-typed
 ---
 name: clone-repository
@@ -48,12 +61,16 @@ setup: repo
 steps:
   - menu: clone-repository
     wait: 600
+  - dump: {name: github-tab, root: dialog}
   - snap: github-tab
   - click: {text: "GitHub Enterprise", within: "dialog"}
+  - dump: {name: enterprise-tab, root: dialog}
   - snap: enterprise-tab
   - click: {text: "URL", within: "dialog"}
+  - dump: {name: url-tab, root: dialog}
   - snap: url-tab
   - type: "desktop/desktop"
+  - dump: {name: url-typed, root: dialog}
   - snap: url-typed
 ---
 name: add-local-repository
@@ -62,9 +79,11 @@ setup: repo
 steps:
   - menu: add-local-repository
     wait: 600
+  - dump: {name: open, root: dialog}
   - snap: open
   - type: "/tmp"
     wait: 900
+  - dump: {name: not-a-repository, root: dialog}
   - snap: not-a-repository
 ---
 name: branch-dialogs
@@ -73,17 +92,21 @@ setup: repo
 steps:
   - menu: create-branch
     wait: 600
+  - dump: {name: new-branch, root: dialog}
   - snap: new-branch
   - type: "feature/login"
     wait: 500
+  - dump: {name: new-branch-exists, root: dialog}
   - snap: new-branch-exists
   - key: escape
   - menu: rename-branch
     wait: 600
+  - dump: {name: rename-branch, root: dialog}
   - snap: rename-branch
   - key: escape
   - menu: delete-branch
     wait: 600
+  - dump: {name: delete-branch, root: dialog}
   - snap: delete-branch
 ---
 name: repository-settings
@@ -92,10 +115,13 @@ setup: repo
 steps:
   - menu: show-repository-settings
     wait: 600
+  - dump: {name: remote, root: dialog}
   - snap: remote
   - click: {text: "Ignored Files", within: "dialog"}
+  - dump: {name: ignored-files, root: dialog}
   - snap: ignored-files
   - click: {text: "Git Config", within: "dialog"}
+  - dump: {name: git-config, root: dialog}
   - snap: git-config
 ---
 name: confirmations
@@ -104,10 +130,12 @@ setup: repo
 steps:
   - menu: discard-all-changes
     wait: 600
+  - dump: {name: discard-all, root: dialog}
   - snap: discard-all
   - key: escape
   - menu: remove-repository
     wait: 600
+  - dump: {name: remove-repository, root: dialog}
   - snap: remove-repository
 ---
 name: branch-operations
@@ -116,19 +144,24 @@ setup: repo
 steps:
   - menu: merge-branch
     wait: 700
+  - dump: {name: merge, root: dialog}
   - snap: merge
   - hover: {text: "feature/login", within: "dialog"}
+  - dump: {name: merge-row-hover, root: dialog}
   - snap: merge-row-hover
   - click: {text: "feature/login", within: "dialog"}
     wait: 600
+  - dump: {name: merge-selected, root: dialog}
   - snap: merge-selected
   - key: escape
   - menu: squash-and-merge-branch
     wait: 700
+  - dump: {name: squash, root: dialog}
   - snap: squash
   - key: escape
   - menu: rebase-branch
     wait: 700
+  - dump: {name: rebase, root: dialog}
   - snap: rebase
 ---
 name: create-worktree
@@ -137,4 +170,5 @@ setup: repo
 steps:
   - menu: create-worktree
     wait: 700
+  - dump: {name: open, root: dialog}
   - snap: open

@@ -238,15 +238,11 @@ impl Render for CreateRepositoryDialog {
                 .flex()
                 .flex_col()
                 .gap(SPACING())
-                .w(zpx(560.))
+                // `dialog#create-repository { width: 400px }` less border and padding
+                .w(zpx(358.))
                 .child(labeled(
                     "Name",
                     text_box("create-name", &self.name, None, window, cx),
-                    cx,
-                ))
-                .child(labeled(
-                    "Description",
-                    text_box("create-description", &self.description, None, window, cx),
                     cx,
                 ))
                 .child(
@@ -296,6 +292,11 @@ impl Render for CreateRepositoryDialog {
                             ),
                     )
                 })
+                .child(labeled(
+                    "Description",
+                    text_box("create-description", &self.description, None, window, cx),
+                    cx,
+                ))
                 .child(
                     div()
                         .id("create-readme")

@@ -33,6 +33,7 @@ steps:
   - snap: row-pressed
   - release: [432, 231]
   - wait: 600
+  - dump: {name: after-switch-click, root: dialog}
   - snap: after-switch-click
   - key: escape
   - click: [365, 56]
