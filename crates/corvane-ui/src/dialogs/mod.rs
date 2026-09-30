@@ -12,6 +12,7 @@ mod crash_report_found;
 mod create_repository;
 mod discard_changes;
 mod discard_selection;
+mod flags;
 mod fork_dialogs;
 mod history_dialogs;
 mod mco_dialogs;
@@ -47,6 +48,7 @@ pub use clone_repository::CloneRepositoryDialog;
 pub use create_repository::CreateRepositoryDialog;
 pub use discard_changes::DiscardChangesDialog;
 pub use discard_selection::DiscardSelectionDialog;
+pub use flags::FlagsDialog;
 pub use fork_dialogs::{ChooseForkSettingsDialog, CreateForkDialog, fork_settings_description};
 pub use history_dialogs::{
     CheckoutCommitDialog, ConfirmDiscardStashDialog, CreateTagDialog, ResetToCommitDialog,
@@ -427,6 +429,9 @@ impl DialogHost {
                 .into(),
             Popup::Preferences { tab } => cx
                 .new(|cx| PreferencesDialog::new(state, *tab, window, cx))
+                .into(),
+            Popup::Flags { query } => cx
+                .new(|cx| FlagsDialog::new(state, query.clone(), window, cx))
                 .into(),
             Popup::RepositorySettings { repo, tab } => cx
                 .new(|cx| RepositorySettingsDialog::new(state, *repo, *tab, window, cx))

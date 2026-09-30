@@ -10,14 +10,19 @@ use std::time::Duration;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use tracing::{debug, warn};
 
-const DEBOUNCE: Duration = Duration::from_millis(300);
+/// The default debounce (`203-fs-watcher-debounce-ms` sets the real one).
+pub const DEBOUNCE: Duration = Duration::from_millis(300);
 
 pub struct RepoWatcher {
     _watcher: RecommendedWatcher,
 }
 
-/// Start watching `workdir`. Dropping the returned watcher stops everything.
-pub fn watch(workdir: PathBuf) -> anyhow::Result<(RepoWatcher, async_channel::Receiver<()>)> {
+/// Start watching `workdir`, coalescing bursts closer than `debounce`.
+/// Dropping the returned watcher stops everything.
+pub fn watch(
+    workdir: PathBuf,
+    debounce: Duration,
+) -> anyhow::Result<(RepoWatcher, async_channel::Receiver<()>)> {
     let (raw_tx, raw_rx) = mpsc::channel::<Vec<PathBuf>>();
     let mut watcher = notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
         if let Ok(event) = res {
@@ -35,7 +40,7 @@ pub fn watch(workdir: PathBuf) -> anyhow::Result<(RepoWatcher, async_channel::Re
             while let Ok(paths) = raw_rx.recv() {
                 let mut relevant = paths.iter().any(|p| is_relevant(&root, p));
                 loop {
-                    match raw_rx.recv_timeout(DEBOUNCE) {
+                    match raw_rx.recv_timeout(debounce) {
                         Ok(more) => relevant |= more.iter().any(|p| is_relevant(&root, p)),
                         Err(mpsc::RecvTimeoutError::Timeout) => break,
                         Err(mpsc::RecvTimeoutError::Disconnected) => return,
@@ -108,7 +113,7 @@ mod tests {
     fn signals_on_worktree_change() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::create_dir(dir.path().join(".git")).unwrap();
-        let (_watcher, rx) = watch(dir.path().to_path_buf()).unwrap();
+        let (_watcher, rx) = watch(dir.path().to_path_buf(), DEBOUNCE).unwrap();
         std::thread::sleep(Duration::from_millis(200));
         std::fs::write(dir.path().join("a.txt"), "x").unwrap();
         let got = smol::block_on(async {

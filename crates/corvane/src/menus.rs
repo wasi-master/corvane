@@ -7,13 +7,17 @@ use corvane_ui::actions::*;
 use gpui_kit::*;
 
 /// Build (or rebuild) the menu bar. `editor` / `shell` are the labels for
-/// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`).
-pub fn install(cx: &mut App, editor: &str, shell: &str) {
+/// the dynamic "Open in …" items (GHD `editorLabel` / `shellLabel`);
+/// `show_release_notes` is the `401-release-notes-menu-item` flag.
+/// Corvane additions: "Flags…" (no GHD equivalent) and Help › Show Release
+/// Notes.
+pub fn install(cx: &mut App, editor: &str, shell: &str, show_release_notes: bool) {
     cx.set_menus(vec![
         Menu::new("Corvane").items([
             MenuItem::action("About Corvane", About),
             MenuItem::separator(),
             MenuItem::action("Settings…", OpenSettings),
+            MenuItem::action("Flags…", OpenFlags),
             MenuItem::action("Install Command Line Tool…", InstallCli),
             MenuItem::separator(),
             MenuItem::os_submenu("Services", SystemMenuType::Services),
@@ -108,13 +112,13 @@ pub fn install(cx: &mut App, editor: &str, shell: &str) {
             MenuItem::separator(),
             MenuItem::action("Bring All to Front", BringAllToFront),
         ]),
-        Menu::new("Help").items(help_items()),
+        Menu::new("Help").items(help_items(show_release_notes)),
     ]);
 }
 
 /// Help menu; debug builds append GHD's test items (`buildTestMenu`, only
 /// "Show notification" so far, as "Show Test Notifications").
-fn help_items() -> Vec<MenuItem> {
+fn help_items(show_release_notes: bool) -> Vec<MenuItem> {
     #[allow(unused_mut)]
     let mut items = vec![
         MenuItem::action("Report Issue…", ReportIssue),
@@ -122,9 +126,13 @@ fn help_items() -> Vec<MenuItem> {
         MenuItem::action("Show User Guides", ShowUserGuides),
         MenuItem::action("Show Keyboard Shortcuts", ShowKeyboardShortcuts),
         MenuItem::action("Show Logs in Finder", ShowLogs),
-        MenuItem::separator(),
-        MenuItem::action("Show Release Notes", ShowReleaseNotes),
     ];
+    if show_release_notes {
+        items.extend([
+            MenuItem::separator(),
+            MenuItem::action("Show Release Notes", ShowReleaseNotes),
+        ]);
+    }
     #[cfg(debug_assertions)]
     items.extend([
         MenuItem::separator(),

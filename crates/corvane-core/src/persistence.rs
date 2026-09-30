@@ -312,6 +312,10 @@ pub trait StoreExt {
     fn settings(&self) -> Result<Settings>;
     fn save_settings(&self, settings: &Settings) -> Result<()>;
 
+    /// The flags' preset + overrides (`corvane_core::flags`).
+    fn flags(&self) -> Result<crate::flags::FlagOverrides>;
+    fn save_flags(&self, flags: &crate::flags::FlagOverrides) -> Result<()>;
+
     fn repositories(&self) -> Result<Vec<Repository>>;
     fn save_repositories(&self, repos: &[Repository]) -> Result<()>;
     fn next_repository_id(&self) -> Result<u64>;
@@ -336,6 +340,14 @@ impl StoreExt for Store {
 
     fn save_settings(&self, settings: &Settings) -> Result<()> {
         self.set("settings", settings)
+    }
+
+    fn flags(&self) -> Result<crate::flags::FlagOverrides> {
+        Ok(self.get("flags")?.unwrap_or_default())
+    }
+
+    fn save_flags(&self, flags: &crate::flags::FlagOverrides) -> Result<()> {
+        self.set("flags", flags)
     }
 
     fn repositories(&self) -> Result<Vec<Repository>> {
@@ -393,6 +405,23 @@ impl StoreExt for Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn flags_round_trip() {
+        use crate::flags::{FlagOverrides, Preset, Value};
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open_in(dir.path()).unwrap();
+        assert_eq!(store.flags().unwrap(), FlagOverrides::default());
+        let mut flags = FlagOverrides {
+            preset: Preset::Familiar,
+            ..Default::default()
+        };
+        flags
+            .overrides
+            .insert("commit-templates".into(), Value::Bool(false));
+        store.save_flags(&flags).unwrap();
+        assert_eq!(store.flags().unwrap(), flags);
+    }
 
     #[test]
     fn settings_round_trip() {

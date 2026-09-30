@@ -322,6 +322,10 @@ pub enum Popup {
     Preferences {
         tab: PreferencesTab,
     },
+    /// Corvane › Flags… (no GHD equivalent), optionally pre-filtered.
+    Flags {
+        query: Option<String>,
+    },
     /// `RepositorySettings`
     RepositorySettings {
         repo: u64,
@@ -748,6 +752,13 @@ impl RepositoryState {
 pub struct AppState {
     pub store: Arc<Store>,
     pub settings: Settings,
+    /// Feature flags (`crate::flags`): the stored layer, this session's
+    /// `CORVANE_FLAGS`, the resolved snapshot views read, and the snapshot
+    /// at launch (restart-required flags compare against it).
+    pub flag_overrides: crate::flags::FlagOverrides,
+    pub flags_env: crate::flags::EnvFlags,
+    pub flags: crate::flags::Flags,
+    pub flags_at_launch: crate::flags::Flags,
     pub git: Option<Arc<GitBinary>>,
     pub git_error: Option<String>,
     pub repositories: Vec<Repository>,
@@ -814,6 +825,19 @@ pub struct AppState {
     pub packs: crate::packs::PacksState,
     /// Alive subscriptions (`AliveStore`) and notification dedup state.
     pub alive: crate::alive::AliveState,
+}
+
+impl AppState {
+    /// Restart-required flags changed since launch (the Flags dialog's
+    /// Relaunch bar).
+    pub fn flags_restart_pending(&self) -> Vec<crate::flags::FlagId> {
+        self.flags.restart_pending(&self.flags_at_launch)
+    }
+
+    /// `103-product-name`: what the Welcome flow and the tutorial call the app.
+    pub fn product_name(&self) -> &str {
+        self.flags.text(crate::flags::ids::PRODUCT_NAME)
+    }
 }
 
 struct AppStateHandle(Entity<AppState>);

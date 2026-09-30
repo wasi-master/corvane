@@ -600,6 +600,78 @@ pub fn kbd_group(keys: &[&'static str], cx: &App) -> Div {
         .children(keys.iter().map(|k| kbd(*k, cx)))
 }
 
+/// A 28 × 16 toggle switch on GHD tokens (no GHD equivalent; the Flags
+/// dialog): `accent` track when on, `control_border` track when off, a
+/// 12 px knob. Callers add `.aria_label(..)`.
+pub fn switch(
+    id: impl Into<ElementId>,
+    checked: bool,
+    disabled: bool,
+    on_toggle: impl Fn(bool, &mut Window, &mut App) + 'static,
+    cx: &App,
+) -> Stateful<Div> {
+    let t = cx.ghd();
+    let (track, knob) = match (checked, disabled) {
+        (true, false) => (t.accent, t.background),
+        (true, true) => (t.control_disabled_accent, t.control_disabled_glyph),
+        (false, false) => (t.control_border, t.background),
+        (false, true) => (t.control_disabled_border, t.control_disabled_background),
+    };
+    div()
+        .id(id)
+        .role(Role::Switch)
+        .aria_toggled(if checked {
+            Toggled::True
+        } else {
+            Toggled::False
+        })
+        .flex_none()
+        .w(zpx(28.))
+        .h(zpx(16.))
+        .rounded(zpx(8.))
+        .bg(track)
+        .p(zpx(2.))
+        .flex()
+        .flex_row()
+        .items_center()
+        .when(checked, |d| d.justify_end())
+        .when(disabled, |d| d.opacity(0.6))
+        .when(!disabled, |d| {
+            d.cursor_pointer()
+                .on_click(move |_, window, cx| on_toggle(!checked, window, cx))
+        })
+        .child(div().size(zpx(12.)).rounded_full().bg(knob))
+}
+
+/// An 18 px pill with an optional 12 px icon (the Flags dialog's id,
+/// restart, lock and unavailable markers).
+pub fn pill(
+    label: impl Into<SharedString>,
+    icon: Option<crate::icons::Octicon>,
+    background: Hsla,
+    text: Hsla,
+    cx: &App,
+) -> Div {
+    let _ = cx;
+    div()
+        .flex_none()
+        .h(zpx(18.))
+        .px(SPACING_HALF())
+        .rounded(zpx(9.))
+        .bg(background)
+        .text_color(text)
+        .text_size(FONT_SIZE_SM())
+        .line_height(zpx(18.))
+        .flex()
+        .flex_row()
+        .items_center()
+        .gap(SPACING_THIRD())
+        .when_some(icon, |d, icon| {
+            d.child(crate::icons::octicon(icon, text).size(zpx(12.)))
+        })
+        .child(label.into())
+}
+
 /// GHD `textboxish` chrome around a gpui-kit `Input`: 25 px, contrast border,
 /// radius 6, `box_background`, 0/5 px padding, blue border + 1 px halo on focus.
 pub fn text_box(
@@ -610,6 +682,18 @@ pub fn text_box(
     cx: &App,
 ) -> Stateful<Div> {
     text_box_with_menu(id, state, prefix, None, window, cx)
+}
+
+/// [`text_box`] that can be disabled (dimmed, no typing).
+pub fn text_box_opts(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    prefix: Option<Svg>,
+    disabled: bool,
+    window: &Window,
+    cx: &App,
+) -> Stateful<Div> {
+    text_box_impl(id, state, prefix, None, disabled, window, cx)
 }
 
 /// GHD `TextBox` with `displayClearButton` (filter lists, the changes
@@ -664,10 +748,24 @@ pub fn text_box_with_menu(
     window: &Window,
     cx: &App,
 ) -> Stateful<Div> {
+    text_box_impl(id, state, prefix, menu, false, window, cx)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn text_box_impl(
+    id: impl Into<ElementId>,
+    state: &Entity<InputState>,
+    prefix: Option<Svg>,
+    menu: Option<InputMenuBuilder>,
+    disabled: bool,
+    window: &Window,
+    cx: &App,
+) -> Stateful<Div> {
     let t = cx.ghd();
     let focused = state.read(cx).focus_handle(cx).is_focused(window);
     div()
         .id(id)
+        .when(disabled, |d| d.opacity(0.6))
         .h(TEXT_FIELD_HEIGHT())
         .w_full()
         .min_w_0()
@@ -712,6 +810,7 @@ pub fn text_box_with_menu(
                     let input = Input::new(state)
                         .appearance(false)
                         .xsmall()
+                        .disabled(disabled)
                         .text_size(FONT_SIZE());
                     match menu {
                         Some(build) => {

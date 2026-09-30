@@ -48,6 +48,8 @@ pub enum UrlAction {
     },
     /// Corvane: open a local path (the CLI's `open`).
     OpenLocalRepository { path: PathBuf },
+    /// Corvane: the Flags dialog (`x-corvane://flags?q=<search>`).
+    Flags { query: Option<String> },
     /// `IUnknownAction`
     Unknown { url: String },
 }
@@ -135,6 +137,11 @@ pub fn parse_app_url(url: &str) -> UrlAction {
         return match (query_value(query, "code"), query_value(query, "state")) {
             (Some(code), Some(state)) => UrlAction::OAuth { code, state },
             _ => unknown(),
+        };
+    }
+    if action == "flags" {
+        return UrlAction::Flags {
+            query: query_value(query, "q").filter(|q| !q.is_empty()),
         };
     }
     // something resembling a URL (or path) must follow the action
@@ -276,6 +283,7 @@ impl Dispatcher {
                 filepath,
             } => Self::open_repository_from_url(url, branch, pr, filepath, cx),
             UrlAction::OpenLocalRepository { path } => Self::open_local_repository(path, cx),
+            UrlAction::Flags { query } => Self::open_flags(query, cx),
             UrlAction::Unknown { url } => warn!(%url, "unknown URL action"),
         }
     }
@@ -597,6 +605,30 @@ mod tests {
             UrlAction::OAuth {
                 code: "18142422".into(),
                 state: "e4cd2dea-1567-46aa-8eb2-c7f56e943187".into()
+            }
+        );
+    }
+
+    #[test]
+    fn flags_dialog_url() {
+        assert_eq!(
+            parse_app_url("x-corvane://flags"),
+            UrlAction::Flags { query: None }
+        );
+        assert_eq!(
+            parse_app_url("x-corvane://flags?q="),
+            UrlAction::Flags { query: None }
+        );
+        assert_eq!(
+            parse_app_url("x-corvane://flags?q=commit%20tpl"),
+            UrlAction::Flags {
+                query: Some("commit tpl".into())
+            }
+        );
+        assert_eq!(
+            parse_app_url("x-corvane://Flags/?other=1&q=%23201"),
+            UrlAction::Flags {
+                query: Some("#201".into())
             }
         );
     }

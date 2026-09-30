@@ -27,6 +27,17 @@ pub struct PushPullProgress {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PushOutcome {
+    /// git pushed.
+    Pushed,
+    /// git ran and failed (the error dialog is up).
+    Failed,
+    /// Nothing was pushed: no remote (Publish opened), a fork was offered,
+    /// an unborn / detached tip, or another network operation is running.
+    NotAttempted,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PushPullKind {
     Push,
     Pull,
@@ -272,13 +283,15 @@ impl Dispatcher {
                     _ => Self::show_error(title, err.to_string(), cx),
                 }
             }
-            // `insufficientGitHubRepoPermissions`: offer a fork. Known
-            // read-only repositories never get here (see `push_then`); this
-            // covers repositories whose permissions were never fetched.
+            // `insufficientGitHubRepoPermissions`: offer a fork. With
+            // `303-fork-before-push` known read-only repositories never get
+            // here (see `push_then`); this covers repositories whose
+            // permissions were never fetched, and every read-only one when
+            // the flag is off (GHD's path).
             RemoteFailure::PermissionDenied
                 if matches!(retry, RetryAction::Push { .. })
                     && github.as_ref().is_some_and(|gh| {
-                        gh.permissions.is_none()
+                        (gh.permissions.is_none() || !gh.has_write_permission())
                             && Self::state(cx).read(cx).account_for(&gh.endpoint).is_some()
                     }) =>
             {
@@ -511,34 +524,36 @@ impl Dispatcher {
         Self::push_then(id, force_with_lease, branch, |_, _| {}, cx);
     }
 
-    /// `push`, then `then(pushed)` once it finished (or did not start).
+    /// `push`, then `then(outcome)` once it finished (or did not start).
     pub fn push_then(
         id: u64,
         force_with_lease: bool,
         branch: Option<String>,
-        then: impl FnOnce(bool, &mut App) + 'static,
+        then: impl FnOnce(PushOutcome, &mut App) + 'static,
         cx: &mut App,
     ) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         };
         let Some(remote) = Self::current_remote(id, cx) else {
             Self::show_popup(Popup::PublishRepository { repo: id }, cx);
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         };
         // no write access: suggest a fork before git runs (GHD pushes and
-        // offers it after the auth failure, `insufficientGitHubRepoPermissions`)
+        // offers it after the auth failure, `insufficientGitHubRepoPermissions`;
+        // `303-fork-before-push` off takes that path)
         let read_only = {
             let s = Self::state(cx).read(cx);
-            s.repository(id)
-                .and_then(|r| r.github.as_ref())
-                .is_some_and(|gh| {
-                    !gh.has_write_permission() && s.account_for(&gh.endpoint).is_some()
-                })
+            s.flags.bool(crate::flags::ids::FORK_BEFORE_PUSH)
+                && s.repository(id)
+                    .and_then(|r| r.github.as_ref())
+                    .is_some_and(|gh| {
+                        !gh.has_write_permission() && s.account_for(&gh.endpoint).is_some()
+                    })
         };
         if read_only {
             Self::show_create_fork_dialog(id, cx);
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         }
         let (branch, tip_error) = {
             let s = Self::state(cx).read(cx);
@@ -561,13 +576,13 @@ impl Dispatcher {
         };
         if let Some(message) = tip_error {
             Self::show_error("Could not push", message, cx);
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         }
         let Some(branch) = branch else {
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         };
         if !Self::begin_network(id, cx) {
-            return then(false, cx);
+            return then(PushOutcome::NotAttempted, cx);
         }
         if force_with_lease {
             Self::state(cx).update(cx, |s, _| {
@@ -680,7 +695,14 @@ impl Dispatcher {
                     );
                 }
                 Self::refresh_repository(id, cx);
-                then(pushed, cx);
+                then(
+                    if pushed {
+                        PushOutcome::Pushed
+                    } else {
+                        PushOutcome::Failed
+                    },
+                    cx,
+                );
             },
         );
     }

@@ -18,8 +18,11 @@ impl Dispatcher {
     /// record this launch.
     pub fn check_crash_reports(cx: &mut App) {
         let (enabled, since) = {
-            let s = &Self::state(cx).read(cx).settings;
-            (s.save_crash_reports, s.last_launched_at)
+            let s = Self::state(cx).read(cx);
+            (
+                s.settings.save_crash_reports && s.flags.bool(crate::flags::ids::CRASH_REPORTS),
+                s.settings.last_launched_at,
+            )
         };
         corvane_platform::crash_reports::set_enabled(enabled);
         let now = SystemTime::now()
@@ -54,10 +57,12 @@ impl Dispatcher {
         );
     }
 
-    /// Settings › Advanced › "Save crash reports locally" takes effect at once.
+    /// Settings › Advanced › "Save crash reports locally" (and the
+    /// `501-crash-reports` flag that offers it) take effect at once.
     pub fn sync_crash_reports_setting(cx: &App) {
+        let s = Self::state(cx).read(cx);
         corvane_platform::crash_reports::set_enabled(
-            Self::state(cx).read(cx).settings.save_crash_reports,
+            s.settings.save_crash_reports && s.flags.bool(crate::flags::ids::CRASH_REPORTS),
         );
     }
 }
