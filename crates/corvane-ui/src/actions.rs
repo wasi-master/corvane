@@ -106,6 +106,7 @@ gpui_kit::actions!(
         Zoom,
         CloseWindow,
         BringAllToFront,
+        ShowMainWindow,
         // Help
         ReportIssue,
         ContactSupport,
