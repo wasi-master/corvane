@@ -313,6 +313,21 @@ registry! {
         upstream: &[Upstream::issue(13763), Upstream::issue(16610)],
         code: &["crates/corvane-ui/src/diff_view.rs"],
     },
+    /// A symbolic link's contents are its target path.
+    SYMLINK_CONTENTS = 176 "symlink-contents" {
+        title: "Symbolic links are not followed",
+        summary: "Loading a changed symbolic link reads the path it points to, as git records \
+                  it, instead of the file behind it.",
+        ghd_behaviour: "Reads the file the link points to for hunk expansion, so a link to a \
+                        pipe or device keeps the diff loading forever and a link to a huge file \
+                        loads it whole.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(18620)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/diff.rs"],
+    },
 
     // ---- 200 Repository ----
 
