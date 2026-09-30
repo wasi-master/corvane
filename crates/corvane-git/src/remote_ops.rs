@@ -334,6 +334,29 @@ pub fn remote_head_resolves(git: Arc<GitBinary>, workdir: &Path, remote: &str) -
         .is_ok_and(|o| o.status.success())
 }
 
+/// git could not update a remote-tracking ref ("cannot lock ref …", "unable
+/// to update local ref"), usually because a stale ref such as
+/// `origin/feature` blocks a new `origin/feature/x`; `git remote prune`
+/// clears it (desktop#11391).
+pub fn is_stale_remote_ref_failure(err: &GitError) -> bool {
+    matches!(err, GitError::Failed { stderr, .. }
+        if stderr.contains("unable to update local ref") || stderr.contains("cannot lock ref"))
+}
+
+/// `git remote prune <remote>`: delete remote-tracking refs the remote no
+/// longer has.
+pub fn prune_remote(
+    git: Arc<GitBinary>,
+    workdir: &Path,
+    remote: &str,
+    askpass: Option<&AskpassEnv>,
+) -> Result<()> {
+    remote_command(git, workdir, askpass)
+        .args(["remote", "prune", remote])
+        .run()?;
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // fetch / pull / push
 // ---------------------------------------------------------------------------
@@ -945,6 +968,39 @@ mod tests {
         .unwrap_err()
         .to_string();
         assert!(err.contains("hook-stdout\nhook-stderr"), "{err}");
+    }
+
+    #[test]
+    fn prune_remote_clears_a_ref_blocking_a_fetch() {
+        let git = Arc::new(crate::find_git().unwrap());
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        run(
+            dir.path(),
+            &["init", "-q", "-b", "main", src.to_str().unwrap()],
+        );
+        run(&src, &["config", "commit.gpgsign", "false"]);
+        std::fs::write(src.join("a.txt"), "one\n").unwrap();
+        run(&src, &["add", "."]);
+        run(&src, &["commit", "-q", "-m", "first"]);
+        run(&src, &["branch", "feature"]);
+        let copy = dir.path().join("copy");
+        run(
+            dir.path(),
+            &["clone", "-q", src.to_str().unwrap(), copy.to_str().unwrap()],
+        );
+        // `feature` becomes `feature/x` upstream; origin/feature blocks it
+        run(&src, &["branch", "-D", "feature"]);
+        run(&src, &["branch", "feature/x"]);
+        let fetch_no_prune = || {
+            remote_command(git.clone(), &copy, None)
+                .args(["fetch", "origin"])
+                .run()
+        };
+        let err = fetch_no_prune().unwrap_err();
+        assert!(is_stale_remote_ref_failure(&err), "{err}");
+        prune_remote(git.clone(), &copy, "origin", None).unwrap();
+        fetch_no_prune().unwrap();
     }
 
     #[test]

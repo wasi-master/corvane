@@ -48,6 +48,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Fetch and pull can leave submodules alone (`--no-recurse-submodules`; GHD's `fetch` passes `--recurse-submodules=on-demand` and `pull` `--recurse-submodules`), off by default. Flag: `236-sync-skips-submodules`.
 - The background fetch can fast-forward the checked-out branch (`corvane_git::fast_forward_if_only_behind`, `merge --ff-only @{upstream}`) when it is behind but not ahead, the working directory is clean and no merge, rebase or cherry-pick is in progress; off by default. GHD's background fetch never touches the checked-out branch. Flag: `237-background-fetch-fast-forwards`.
 - Force push is recommended after a rewrite outside Corvane: when the current branch is ahead of and behind its upstream and the upstream's tip is in the branch's reflog (`corvane_git::upstream_tip_in_reflog`: the pushed commits were amended, rebased or reset away, not replaced by someone else's push), `getCurrentBranchForcePushState` answers Recommended, so the button offers Force push (with its confirmation) instead of Pull. GHD recommends it only after its own amend or rebase (`forcePushBranches`). Flag: `238-force-push-after-outside-rewrite`.
+- A fetch or pull that fails because a stale remote-tracking ref blocks a new one ("cannot lock ref", "unable to update local ref", `corvane_git::is_stale_remote_ref_failure`) runs `git remote prune <remote>` and retries once; GHD shows the error. Flag: `239-prune-stale-refs-and-retry`.
 
 ## Tutorial
 

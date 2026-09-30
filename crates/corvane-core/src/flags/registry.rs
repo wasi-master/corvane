@@ -507,6 +507,20 @@ registry! {
         upstream: &[Upstream::issue(9739)],
         code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/remote_ops.rs"],
     },
+    /// Prune stale remote refs and retry a failed fetch or pull.
+    PRUNE_STALE_REFS_AND_RETRY = 239 "prune-stale-refs-and-retry" {
+        title: "Prune stale remote refs and retry",
+        summary: "A fetch or pull that fails with \"cannot lock ref\" / \"unable to update local \
+                  ref\" runs `git remote prune` and tries once more before showing an error.",
+        ghd_behaviour: "Shows the error; the user has to run `git remote prune origin` in a \
+                        terminal.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(11391)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-git/src/remote_ops.rs"],
+    },
 
     // ---- 300 GitHub ----
 

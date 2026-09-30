@@ -28,6 +28,8 @@
 //! (`237-background-fetch-fast-forwards`).
 //! Force push is also recommended after a rewrite outside Corvane
 //! (`238-force-push-after-outside-rewrite`).
+//! A fetch or pull blocked by a stale remote-tracking ref prunes the remote
+//! and retries once (`239-prune-stale-refs-and-retry`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -407,6 +409,28 @@ impl Dispatcher {
 
     // ---- fetch ----
 
+    /// `239-prune-stale-refs-and-retry`: when a fetch or pull failed because
+    /// a stale remote-tracking ref blocks a new one, run `git remote prune`
+    /// and say to try once more (`retry` is cleared). GHD shows the error.
+    fn prune_before_retry<T>(
+        retry: &mut bool,
+        result: &Result<T, corvane_git::GitError>,
+        git: &std::sync::Arc<corvane_git::GitBinary>,
+        workdir: &std::path::Path,
+        remote: &str,
+        askpass: Option<&AskpassEnv>,
+    ) -> bool {
+        if !std::mem::take(retry)
+            || !result
+                .as_ref()
+                .is_err_and(corvane_git::is_stale_remote_ref_failure)
+        {
+            return false;
+        }
+        info!(remote, "stale remote-tracking ref; pruning and retrying");
+        corvane_git::prune_remote(git.clone(), workdir, remote, askpass).is_ok()
+    }
+
     /// The Corvane additions to a fetch of repository `id`.
     fn fetch_options(s: &crate::state::AppState, id: u64) -> corvane_git::FetchOptions {
         corvane_git::FetchOptions {
@@ -465,6 +489,10 @@ impl Dispatcher {
         let remote_name = remote.name.clone();
         let remote_url = remote.url.clone();
         let options = Self::fetch_options(Self::state(cx).read(cx), id);
+        let prune_retry = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PRUNE_STALE_REFS_AND_RETRY);
         let fast_forward_current = background
             && Self::state(cx)
                 .read(cx)
@@ -479,21 +507,34 @@ impl Dispatcher {
                         report(progress)
                     }
                 };
-                let result = corvane_git::fetch_with(
-                    git.clone(),
-                    &workdir,
-                    &remote_name,
-                    options,
-                    askpass.as_ref(),
-                    &mut |value, text| {
-                        report(PushPullProgress {
-                            kind: PushPullKind::Fetch,
-                            title: title.clone(),
-                            description: Some(text),
-                            value: value * 0.9,
-                        })
-                    },
-                );
+                let mut retry = prune_retry;
+                let result = loop {
+                    let result = corvane_git::fetch_with(
+                        git.clone(),
+                        &workdir,
+                        &remote_name,
+                        options,
+                        askpass.as_ref(),
+                        &mut |value, text| {
+                            report(PushPullProgress {
+                                kind: PushPullKind::Fetch,
+                                title: title.clone(),
+                                description: Some(text),
+                                value: value * 0.9,
+                            })
+                        },
+                    );
+                    if !Self::prune_before_retry(
+                        &mut retry,
+                        &result,
+                        &git,
+                        &workdir,
+                        &remote_name,
+                        askpass.as_ref(),
+                    ) {
+                        break result;
+                    }
+                };
                 if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
@@ -667,6 +708,10 @@ impl Dispatcher {
             .read(cx)
             .flags
             .bool(crate::flags::ids::SYNC_SKIPS_SUBMODULES);
+        let prune_retry = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::PRUNE_STALE_REFS_AND_RETRY);
         Self::set_progress(
             id,
             Some(PushPullProgress {
@@ -683,21 +728,34 @@ impl Dispatcher {
             id,
             cx,
             move |report| {
-                let result = corvane_git::pull(
-                    git.clone(),
-                    &workdir,
-                    &remote_name,
-                    skip_submodules,
-                    askpass.as_ref(),
-                    &mut |value, text| {
-                        report(PushPullProgress {
-                            kind: PushPullKind::Pull,
-                            title: title.clone(),
-                            description: Some(text),
-                            value: value * 0.6,
-                        })
-                    },
-                );
+                let mut retry = prune_retry;
+                let result = loop {
+                    let result = corvane_git::pull(
+                        git.clone(),
+                        &workdir,
+                        &remote_name,
+                        skip_submodules,
+                        askpass.as_ref(),
+                        &mut |value, text| {
+                            report(PushPullProgress {
+                                kind: PushPullKind::Pull,
+                                title: title.clone(),
+                                description: Some(text),
+                                value: value * 0.6,
+                            })
+                        },
+                    );
+                    if !Self::prune_before_retry(
+                        &mut retry,
+                        &result,
+                        &git,
+                        &workdir,
+                        &remote_name,
+                        askpass.as_ref(),
+                    ) {
+                        break result;
+                    }
+                };
                 // `234-remote-head-once`: `set-head -a` asks the server for
                 // every ref, which takes minutes on huge repositories; skip
                 // it while the remote's HEAD already resolves
