@@ -1112,16 +1112,23 @@ pub fn avatar_lookup_url(url: &str, cx: &App) -> Option<std::path::PathBuf> {
         .and_then(|s| corvane_core::avatar_for_url(&s.read(cx).avatars, url))
 }
 
-/// Round avatar placeholder (`.avatar`), 25 px unless overridden.
+/// GHD `Avatar` without an image (none known, or it failed to load):
+/// `DefaultAvatarSymbol`, the padded person octicon, as `svg.avatar` - the
+/// secondary text colour on the alt box background, round.
 pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .size(size)
         .flex_none()
         .rounded_full()
+        .overflow_hidden()
         .bg(t.box_alt_background)
-        .border_1()
-        .border_color(t.box_border)
+        .child(
+            svg()
+                .path("ui/default-avatar.svg")
+                .size(size)
+                .text_color(t.text_secondary),
+        )
 }
 
 /// `VerticalSegmentedControl` option (`.radio-button-component`): 10 px
