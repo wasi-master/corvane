@@ -1,0 +1,95 @@
+# Flags
+
+Generated from `crates/corvane-core/src/flags/registry.rs` by `UPDATE_FLAGS_DOC=1 cargo test -p corvane-core flags_doc`; do not edit by hand.
+
+Every deviation from GitHub Desktop 3.6.6 that can be switched off, and every Corvane-only extra, is a flag: a numeric id in a category block plus a slug, shown as `201-commit-templates`. "on" always means Corvane's deviation is active. Open the dialog with **Corvane › Flags…** (⌘⇧,), `x-corvane://flags?q=<search>` or `CORVANE_POPUP=flags[:<search>]`.
+
+## Presets
+
+A preset is the base layer; per-flag overrides sit on top ("Custom"). Picking a preset clears the overrides.
+
+- **GitHub Desktop** (`github-desktop`): Behaves exactly like GitHub Desktop 3.6.6.
+- **Familiar** (`familiar`): Looks like GitHub Desktop, keeps the improvements you can't see.
+- **Corvane** (`corvane`): Corvane as shipped: every built deviation on.
+- **Everything** (`everything`): Every extra on, including the experimental ones.
+
+## `CORVANE_FLAGS`
+
+Flag values for one session, never persisted; the flags it names are locked in the dialog. Comma-separated entries: `preset=<slug>`, `<id>-<slug>=<value>`, `<slug>=<value>`, `<id>=<value>`, or a bare toggle key for `on`. Toggle values: `on|off|true|false|1|0|yes|no`. Bad entries are logged and skipped. The parity harness runs Corvane with `CORVANE_FLAGS=preset=github-desktop`.
+
+## Flags
+
+### 100 · Appearance
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`101-high-contrast-theme`** High Contrast theme<br>Settings › Appearance offers a High Contrast theme (GitHub Desktop's dark tokens in Primer's high-contrast palette), and the System theme switches to it while macOS's "Increase contrast" is on.<br>*GitHub Desktop: Light, Dark and System only; "Increase contrast" is ignored.* | toggle | on | off | off | on |  | [#4544](https://github.com/desktop/desktop/issues/4544) | `crates/corvane/src/main.rs`<br>`crates/corvane-ui/src/dialogs/preferences.rs` |
+| **`102-smooth-wheel-scrolling`** Smooth wheel scrolling<br>Mouse-wheel ticks animate with Chromium's smooth-scroll curve.<br>*GitHub Desktop: Jumps 40 px per tick (Electron only animates when NSScrollAnimationEnabled is set).* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/scrollbar.rs` |
+| **`103-product-name`** Product name in Welcome and tutorial copy<br>The name the Welcome flow and the tutorial README use for the app.<br>*GitHub Desktop: "GitHub Desktop".* | text | `Corvane` | `GitHub Desktop` | `Corvane` | `Corvane` |  | — | `crates/corvane-ui/src/welcome.rs`<br>`crates/corvane-ui/src/tutorial_panel.rs`<br>`crates/corvane-core/src/tutorial.rs` |
+
+### 200 · Repository
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`201-commit-templates`** Commit message templates<br>The repository's commit.template (comment lines stripped) prefills the description while the summary is empty, and comes back after every commit.<br>*GitHub Desktop: Ignores commit.template.* | toggle | on | off | on | on |  | [#8698](https://github.com/desktop/desktop/issues/8698) | `crates/corvane-ui/src/changes.rs`<br>`crates/corvane-git/src/commit_template.rs` |
+| **`202-fs-watcher`** Filesystem watcher<br>Refreshes the repository when files under the worktree or .git change, not only on window focus and after Corvane's own actions.<br>*GitHub Desktop: Refreshes on window focus and after its own actions only.* | toggle | on | off | on | on |  | [#22600](https://github.com/desktop/desktop/issues/22600), [#2790](https://github.com/desktop/desktop/issues/2790) | `crates/corvane-core/src/dispatcher.rs`<br>`crates/corvane-core/src/watcher.rs` |
+| **`203-fs-watcher-debounce-ms`** Filesystem watcher debounce<br>How long the watcher waits after the last change before refreshing.<br>*GitHub Desktop: No watcher.* | number 50–5000 ms | 300 ms | 300 ms | 300 ms | 300 ms |  | — | `crates/corvane-core/src/watcher.rs` |
+| **`204-clone-shorthand-not-found`** Clone: unknown owner/name shows an error<br>When every account answers 404 for an owner/name shorthand in the clone dialog, "We couldn't find that repository" is shown instead of starting the clone.<br>*GitHub Desktop: Hands the bare alias to git, which fails after a moment.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/clone_info.rs` |
+
+### 300 · GitHub
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`301-pr-quick-view-opened-by`** Pull request quick view: "opened by" line<br>The pull request hover card shows the list item's "opened N ago by author" line next to the #N badge.<br>*GitHub Desktop: The card shows only the badge, the title and the body.* | toggle | on | off | off | on |  | — | `crates/corvane-ui/src/pull_request_list.rs` |
+| **`302-pr-quick-view-width`** Pull request quick view width<br>The hover card's width: fixed at 400 px, or at least 400 px and growing with its content.<br>*GitHub Desktop: min-width: 400px.* | select: `fixed-400` / `min-400` | `fixed-400` | `min-400` | `min-400` | `fixed-400` |  | — | `crates/corvane-ui/src/pull_request_list.rs` |
+| **`303-fork-before-push`** Fork before pushing to a read-only repository<br>A push to a repository the account can only read opens the Create Fork dialog before git runs.<br>*GitHub Desktop: Runs the push and offers the fork after the authentication failure.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/remote.rs` |
+| **`304-push-branch-commits-keeps-base`** Push Branch Commits keeps the chosen base<br>The base branch picked in Preview Pull Request survives the push that precedes the pull request.<br>*GitHub Desktop: Drops the chosen base and opens the compare page against the default branch.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/integrations.rs`<br>`crates/corvane-ui/src/dialogs/push_branch_commits.rs` |
+| **`305-push-branch-commits-error-stops`** Push Branch Commits stops on a failed push<br>A failed push leaves its error on screen.<br>*GitHub Desktop: Opens the compare page on GitHub anyway.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/integrations.rs`<br>`crates/corvane-core/src/remote.rs` |
+| **`306-cherry-pick-pr-branch-error`** Cherry-pick onto a pull request explains failures<br>When commits are dropped on a pull request whose branch cannot be determined, the reason is shown.<br>*GitHub Desktop: Logs the reason and ends the operation silently.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/pull_requests.rs` |
+| **`307-sign-in-flow`** Sign-in flow<br>How Sign in to GitHub.com starts: with a one-time code (device flow) or in the browser (web flow with PKCE, which GitHub may refuse without a bundled client secret). The other flow stays one link away.<br>*GitHub Desktop: Browser flow only.* | select: `device` / `browser` | `device` | `browser` | `device` | `device` |  | [#18749](https://github.com/desktop/desktop/issues/18749) | `crates/corvane-ui/src/dialogs/sign_in.rs`<br>`crates/corvane-ui/src/welcome.rs`<br>`crates/corvane-core/src/flags/dispatch.rs` |
+| **`308-ci-status-idle-minutes`** Check-run refresh idle timeout<br>A commit's check status stops refreshing this many minutes after nothing rendered it (0 keeps every status refreshing).<br>*GitHub Desktop: Subscribes on mount and unsubscribes on unmount, so nothing idles out.* | number 0–1440 min | 5 min | 0 min | 5 min | 5 min |  | — | `crates/corvane-core/src/commit_status.rs` |
+
+### 400 · Window & menus
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`401-release-notes-menu-item`** Help › Show Release Notes<br>The Help menu can open the release notes of the running version at any time.<br>*GitHub Desktop: Shows release notes only right after an update.* | toggle | on | off | off | on |  | — | `crates/corvane/src/menus.rs` |
+| **`402-about-extras`** About: architecture and source link<br>The About dialog shows the CPU architecture after the version and a Source code link.<br>*GitHub Desktop: The version only, and a Terms and Conditions link.* | toggle | on | off | off | on |  | — | `crates/corvane-ui/src/dialogs/app_dialogs.rs` |
+| **`403-move-to-applications-backdrop-dismiss`** Move to Applications prompt closes on backdrop click<br>Clicking outside the "Move to the Applications folder?" prompt dismisses it.<br>*GitHub Desktop: The prompt only closes through its buttons (backdropDismissable=false).* | toggle | on | off | off | on |  | — | `crates/corvane-ui/src/dialog.rs`<br>`crates/corvane-ui/src/dialogs/move_to_applications_folder.rs` |
+| **`404-toolbar-width-save`** Toolbar button width is saved<br>When a resized toolbar button's width is written to the store.<br>*GitHub Desktop: localStorage on every pointer move.* | select: `drag-end` / `every-move` | `drag-end` | `every-move` | `drag-end` | `drag-end` |  | — | `crates/corvane-ui/src/toolbar.rs` |
+
+### 500 · Settings & updates
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`501-crash-reports`** Save crash reports locally<br>Settings › Advanced offers "Save crash reports locally": a panic hook writes ~/Library/Logs/Corvane/crashes/ and the next launch lists new reports. Nothing is uploaded.<br>*GitHub Desktop: No local crash reports (GHD's crash reporter uploads to GitHub instead).* | toggle | on | off | off | on |  | — | `crates/corvane-ui/src/dialogs/preferences.rs`<br>`crates/corvane-core/src/crash_reports.rs` |
+| **`502-optional-components`** Optional components<br>Settings › Advanced offers downloadable packs (the syntax-extended grammar collection), and installed packs load at launch.<br>*GitHub Desktop: Ships every grammar; no packs section.* | toggle | on | off | off | on | yes | — | `crates/corvane-ui/src/dialogs/preferences.rs`<br>`crates/corvane-core/src/packs.rs` |
+| **`503-quiet-background-update-errors`** Quiet background update checks<br>Errors from the automatic update checks are only logged; Check for Updates in About still shows them.<br>*GitHub Desktop: Posts every update error.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/updater.rs` |
+| **`504-release-notes-heading-kinds`** Release notes: untagged items keep their heading's kind<br>Release-note items without a [Kind] tag are classified by their ## heading, and the notes' leading paragraph is shown.<br>*GitHub Desktop: Drops untagged items and the leading paragraph.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/release_notes.rs` |
+
+### 600 · Accessibility
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`601-resizable-announces-new-width`** Expand / Contract Active Resizable announces the new width<br>⌘9 / ⌘8 announce the percentage of the width after the step.<br>*GitHub Desktop: Reads the width before applying the step, so the announced number lags one step.* | toggle | on | off | on | on |  | — | `crates/corvane-ui/src/active_resizable.rs` |
+
+## Not toggleable
+
+Deviations that are engine or platform decisions and have no flag (`docs/reference/deviations.md` has the details):
+
+- Native Markdown layout instead of a sandboxed webview (`crates/corvane-ui/src/markdown.rs`)
+- Image diff "Difference" mode blended on the CPU
+- CodeMirror mode ports and syntect fallback for highlighting
+- Dark-theme illustrations pre-darkened under `assets/illustrations/dark/`
+- Alive events over one WebSocket per account
+- Pull request cache keyed by endpoint + `owner/name`
+- Tutorial panel fixed at 350 px; Welcome fixed at the 1.2 scale; the Welcome footer's "no usage metrics" sentence
+- Push / pull toolbar button fixed at 230 px
+- Unsafe repositories detected from the failing git call itself
+- Main worktree path recorded on every refresh (GHD only on a worktree switch)
+- Finder › Services › "Open in Corvane" (declared in Info.plist)
+- Self-updater banner wording and single-release "what's new"
+- Spellcheck through NSSpellChecker's automatic language
+- Diff text selection colour and behaviour
+- List rows as `AXRow` nodes; keyboard navigation gaps (see deviations.md › Keyboard)
+- Stash marker: Corvane already uses GHD's `!!GitHub_Desktop<branch>`
