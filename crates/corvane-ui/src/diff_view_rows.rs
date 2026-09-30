@@ -626,6 +626,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
         _ => "     ",
     };
     let view_for_text_menu = ctx.view.clone();
+    let line = row.new;
     let content = div()
         .id(("diff-text", abs as usize))
         .flex_1()
@@ -634,7 +635,7 @@ pub fn render_row(ctx: &RowContext, ix: usize, row: &Row, cx: &App) -> AnyElemen
         .flex_row()
         .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
             view_for_text_menu
-                .update(cx, |this, cx| this.text_menu(ev.position, window, cx))
+                .update(cx, |this, cx| this.text_menu(ev.position, line, window, cx))
                 .ok();
         })
         .child(div().flex_none().whitespace_nowrap().child(prefix))
@@ -1332,6 +1333,7 @@ fn split_content(
         };
     let body = selectable_text(ctx, list_ix, column, &row.text, highlights, inner_bg);
     let view_for_menu = ctx.view.clone();
+    let line = row.new;
     div()
         .id(("split-text", unified))
         .flex_1()
@@ -1340,7 +1342,7 @@ fn split_content(
         .flex_row()
         .on_mouse_down(MouseButton::Right, move |ev, window, cx| {
             view_for_menu
-                .update(cx, |this, cx| this.text_menu(ev.position, window, cx))
+                .update(cx, |this, cx| this.text_menu(ev.position, line, window, cx))
                 .ok();
         })
         .child(div().flex_none().whitespace_nowrap().child(prefix))

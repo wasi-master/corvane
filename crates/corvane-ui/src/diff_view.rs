@@ -11,6 +11,11 @@
 //!
 //! Deviation: "Split" (side-by-side) rendering is not implemented; the radio
 //! button is shown disabled.
+//!
+//! Deviation (flag `diff-open-in-editor-at-line`): a working-directory diff's
+//! text context menu offers "Open in <Editor> at Line N" for the clicked
+//! row's new-file line when the editor can jump to a line (GHD
+//! `onContextMenuText` has Copy, Select All and the expansion item only).
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
@@ -986,10 +991,13 @@ impl DiffView {
     }
 
     /// `onContextMenuText`: Copy (with a selection), Select All, then the
-    /// expansion item.
+    /// expansion item. `line` is the clicked row's new-file line number;
+    /// with `diff-open-in-editor-at-line` a working-directory diff adds
+    /// "Open in <Editor> at Line N" when the editor can jump to a line.
     pub fn text_menu(
         &mut self,
         position: Point<Pixels>,
+        line: Option<u32>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -1009,11 +1017,38 @@ impl DiffView {
             weak.update(cx, |this, cx| this.select_all_text(cx)).ok();
         });
         let mut items = vec![copy, select_all];
+        if let Some(item) = self.open_at_line_menu_item(line, cx) {
+            items.push(MenuItem::separator());
+            items.push(item);
+        }
         if let Some(item) = self.expand_menu_item(cx) {
             items.push(MenuItem::separator());
             items.push(item);
         }
         self.open_menu(items, position, window, cx);
+    }
+
+    /// "Open in <Editor> at Line N" (not in GHD, desktop/desktop#14476).
+    fn open_at_line_menu_item(&self, line: Option<u32>, cx: &Context<Self>) -> Option<MenuItem> {
+        let line = line?;
+        if self.source != DiffSource::WorkingDirectory {
+            return None;
+        }
+        let snap = self.snapshot(cx)?;
+        let s = self.state.read(cx);
+        if !s
+            .flags
+            .bool(corvane_core::flags::ids::DIFF_OPEN_IN_EDITOR_AT_LINE)
+            || !s.editor_supports_line()
+            || snap.kind == FileStatusKind::Deleted
+        {
+            return None;
+        }
+        let label = format!("Open in {} at Line {line}", s.editor_label());
+        let full = snap.repo_path.join(&snap.path);
+        Some(MenuItem::new(label, move |_, cx| {
+            Dispatcher::open_in_editor_at(full.clone(), Some(line), cx)
+        }))
     }
 
     /// `onContextMenuLine`: discard one changed line.
