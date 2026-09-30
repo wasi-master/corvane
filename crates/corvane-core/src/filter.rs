@@ -3,7 +3,8 @@
 //! ordered subsequence with bonuses for consecutive and boundary hits).
 //!
 //! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
-//! patterns from the list (view only; they are still committed).
+//! patterns from the list (view only; they are still committed), and the
+//! `280-renamed-files-filter` option keeps renamed files.
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -96,6 +97,9 @@ pub fn matches_options(filter: &FileListFilter, file: &WorkingDirectoryFileChang
         return false;
     }
     if filter.deleted && file.status.kind != FileStatusKind::Deleted {
+        return false;
+    }
+    if filter.renamed && file.status.kind != FileStatusKind::Renamed {
         return false;
     }
     true
@@ -205,6 +209,7 @@ pub fn no_results_message(text: &str, filter: &FileListFilter) -> Option<String>
         (filter.new_files, "New files"),
         (filter.modified, "Modified files"),
         (filter.deleted, "Deleted files"),
+        (filter.renamed, "Renamed files"),
     ] {
         if flag {
             active.push(label.to_string());
@@ -281,6 +286,42 @@ mod tests {
         assert!(hidden_by(&q, "a/file.txt"));
         assert!(!hidden_by(&q, "a/fi/e.txt"));
         assert!(hide_patterns("  ,  ").is_empty());
+    }
+
+    #[test]
+    fn renamed_option() {
+        use corvane_models::{DiffSelection, FileStatus, GitStatusEntry};
+        let file = |path: &str, kind| WorkingDirectoryFileChange {
+            path: path.to_string(),
+            old_path: None,
+            status: FileStatus {
+                kind,
+                index: GitStatusEntry::Unchanged,
+                working_tree: GitStatusEntry::Unchanged,
+                score: None,
+                code: String::new(),
+                submodule: false,
+                submodule_status: None,
+                conflict_markers: None,
+            },
+            selection: DiffSelection::all(),
+        };
+        let files = [
+            file("a", FileStatusKind::Renamed),
+            file("b", FileStatusKind::Modified),
+        ];
+        assert_eq!(option_count(FilterOption::RenamedFiles, &files), 1);
+        let mut f = FileListFilter::default();
+        f.set(FilterOption::RenamedFiles, true);
+        assert_eq!(f.count_active(), 1);
+        let hits = filtered_files(&files, "", &f, &[]);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].path, "a");
+        assert!(
+            no_results_message("", &f)
+                .unwrap()
+                .ends_with("Renamed files")
+        );
     }
 
     #[test]
