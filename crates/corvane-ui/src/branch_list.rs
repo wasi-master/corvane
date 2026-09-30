@@ -14,6 +14,7 @@
 //!
 //! Deviations: dates are the tip's committer date (GHD: author date); Other
 //! Branches can be sorted newest first (`257-branch-list-sort-by-date`).
+//! The filter ignores an `owner:` prefix (`260-branch-filter-strips-owner`).
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -87,6 +88,25 @@ const QUICK_VIEW_HIDE_DELAY: Duration = Duration::from_millis(500);
 pub struct BranchGroup {
     pub title: &'static str,
     pub branches: Vec<Branch>,
+}
+
+/// Flag `260-branch-filter-strips-owner`: `owner:branch` (GitHub's
+/// copy-branch-name format) filters by `branch`. `:` can't appear in a ref
+/// name, so nothing that could match is lost.
+fn strip_owner_prefix(query: &str, cx: &App) -> String {
+    match query.split_once(':') {
+        Some((owner, branch))
+            if !owner.is_empty()
+                && !branch.trim().is_empty()
+                && AppState::global(cx)
+                    .read(cx)
+                    .flags
+                    .bool(corvane_core::flags::ids::BRANCH_FILTER_STRIPS_OWNER) =>
+        {
+            branch.trim().to_string()
+        }
+        _ => query.to_string(),
+    }
 }
 
 /// Flag `257-branch-list-sort-by-date`: Other Branches newest first.
@@ -745,7 +765,7 @@ impl Render for BranchFoldout {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         self.list_focused = self.list_focus.is_focused(window);
-        let query = self.filter.read(cx).value().trim().to_string();
+        let query = strip_owner_prefix(self.filter.read(cx).value().trim(), cx);
         let (id, groups, current, tip_valid) = {
             let s = self.state.read(cx);
             let id = s.selected;

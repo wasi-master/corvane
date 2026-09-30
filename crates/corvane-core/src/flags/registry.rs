@@ -339,6 +339,20 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs"],
     },
 
+    /// The branch filter ignores an `owner:` prefix.
+    BRANCH_FILTER_STRIPS_OWNER = 260 "branch-filter-strips-owner" {
+        title: "Branch filter understands owner:branch",
+        summary: "Pasting GitHub's owner:branch form of a branch name into the branch list's filter \
+                  finds the branch (the owner: part is ignored).",
+        ghd_behaviour: "Filters for the whole text, so the branch is not found.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(7424)],
+        code: &["crates/corvane-ui/src/branch_list.rs"],
+    },
+
     // ---- 300 GitHub ----
 
     /// The quick view's "opened … by author" line.
