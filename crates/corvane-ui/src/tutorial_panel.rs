@@ -468,7 +468,9 @@ impl Render for TutorialPanel {
 /// `TutorialWelcome`: the Changes pane while the tutorial runs.
 pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
     let t = cx.ghd();
-    let definition = |image: &'static str, bold: &'static str, rest: &'static str| {
+    // `103-product-name`
+    let name = AppState::global(cx).read(cx).product_name().to_string();
+    let definition = |image: &'static str, bold: SharedString, rest: &'static str| {
         div()
             .w(zpx(160.))
             .flex_none()
@@ -517,13 +519,11 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
                         .line_height(zpx(35.))
                         .font_weight(FontWeight::LIGHT)
                         .my(zpx(21.))
-                        .child("Welcome to Corvane"),
+                        .child(format!("Welcome to {name}")),
                 )
-                .child(
-                    div().my(SPACING_THIRD()).child(
-                        "Use this tutorial to get comfortable with Git, GitHub, and Corvane.",
-                    ),
-                ),
+                .child(div().my(SPACING_THIRD()).child(format!(
+                    "Use this tutorial to get comfortable with Git, GitHub, and {name}."
+                ))),
         )
         .child(
             // `.definitions`
@@ -535,17 +535,17 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
                 .justify_around()
                 .child(definition(
                     "illustrations/code.svg",
-                    "Git",
+                    "Git".into(),
                     " is the version control system.",
                 ))
                 .child(definition(
                     "illustrations/github-for-teams.svg",
-                    "GitHub",
+                    "GitHub".into(),
                     " is where you store your code and collaborate with others.",
                 ))
                 .child(definition(
                     "illustrations/github-for-business.svg",
-                    "Corvane",
+                    name.clone().into(),
                     " helps you work with GitHub locally.",
                 )),
         )
@@ -555,10 +555,12 @@ pub fn tutorial_welcome(cx: &App) -> impl IntoElement {
 /// workspace marks the completion announced once it has been painted).
 pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
     let t = cx.ghd();
+    // `103-product-name`
+    let name = AppState::global(cx).read(cx).product_name().to_string();
     let action = |id: &'static str,
                   icon: Octicon,
                   title: &'static str,
-                  description: &'static str,
+                  description: SharedString,
                   label: &'static str,
                   on_click: fn(&mut App),
                   cx: &App| {
@@ -621,9 +623,9 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                         .child(
                             div()
                                 .id("tutorial-done-header")
-                                .a11y_live(
-                                    "You're done! You’ve learned the basics on how to use Corvane.",
-                                )
+                                .a11y_live(format!(
+                                    "You're done! You’ve learned the basics on how to use {name}."
+                                ))
                                 .flex_1()
                                 .mr(SPACING_DOUBLE())
                                 .child(
@@ -633,10 +635,10 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                                         .font_weight(FontWeight::LIGHT)
                                         .child("You're done!"),
                                 )
-                                .child(
-                                    "You’ve learned the basics on how to use Corvane. Here are \
-                                     some suggestions for what to do next.",
-                                ),
+                                .child(format!(
+                                    "You’ve learned the basics on how to use {name}. Here are \
+                                     some suggestions for what to do next."
+                                )),
                         )
                         .child(
                             img("illustrations/admin-mentoring.svg")
@@ -656,7 +658,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             "tutorial-explore",
                             Octicon::Telescope,
                             "Explore projects on GitHub",
-                            "Contribute to a project that interests you",
+                            "Contribute to a project that interests you".into(),
                             "Open in Browser",
                             |cx| Dispatcher::open_url("https://github.com/explore", cx),
                             cx,
@@ -665,7 +667,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             "tutorial-create",
                             Octicon::Plus,
                             "Create a new repository",
-                            "Get started on a brand new project",
+                            "Get started on a brand new project".into(),
                             "Create Repository",
                             |cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
                             cx,
@@ -674,7 +676,7 @@ pub fn tutorial_done(cx: &App) -> impl IntoElement + use<> {
                             "tutorial-add",
                             Octicon::FileDirectory,
                             "Add a local repository",
-                            "Work on an existing project in Corvane",
+                            format!("Work on an existing project in {name}").into(),
                             "Add Repository",
                             |cx| {
                                 Dispatcher::show_popup(

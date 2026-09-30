@@ -20,7 +20,7 @@ use gpui_kit::{App, AsyncApp};
 use tracing::{error, info, warn};
 
 use crate::dispatcher::Dispatcher;
-use crate::release_notes::{ReleaseSummary, parse_release_body, release_summary};
+use crate::release_notes::{ReleaseSummary, release_summary};
 use crate::remote::spawn_bg;
 use crate::state::Popup;
 
@@ -37,12 +37,16 @@ pub struct AvailableUpdate {
 }
 
 impl AvailableUpdate {
-    fn from_release(release: &ReleaseInfo) -> Self {
+    /// `heading_kinds` is `504-release-notes-heading-kinds`.
+    fn from_release(release: &ReleaseInfo, heading_kinds: bool) -> Self {
         let published = release
             .published_at
             .as_deref()
             .and_then(corvane_models::parse_iso8601);
-        let entries = parse_release_body(release.body.as_deref().unwrap_or_default());
+        let entries = crate::release_notes::parse_release_body_with(
+            release.body.as_deref().unwrap_or_default(),
+            heading_kinds,
+        );
         Self {
             version: release.version.clone(),
             html_url: release.html_url.clone(),
@@ -219,7 +223,7 @@ impl Dispatcher {
             Ok(Some(release)) => {
                 info!(version = %release.version, "update available");
                 Self::touch_last_update_check(cx);
-                let update = AvailableUpdate::from_release(&release);
+                let update = AvailableUpdate::from_release(&release, Self::heading_kinds(cx));
                 let homebrew = corvane_platform::app_location::running_bundle()
                     .is_some_and(|b| updater::is_homebrew_install(&b));
                 if homebrew {
@@ -320,8 +324,17 @@ impl Dispatcher {
         );
     }
 
+    /// `504-release-notes-heading-kinds`
+    fn heading_kinds(cx: &App) -> bool {
+        Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::RELEASE_NOTES_HEADING_KINDS)
+    }
+
     /// GHD `onAutoUpdaterError`: back to `UpdateNotAvailable`; user-initiated
-    /// checks show the error (`postError`), background ones only log it.
+    /// checks show the error (`postError`), background ones only log it
+    /// (`503-quiet-background-update-errors`).
     fn update_failed(nonce: u64, user_initiated: bool, what: &str, err: UpdateError, cx: &mut App) {
         error!(%err, "could not {what}");
         Self::state(cx).update(cx, |s, cx| {
@@ -330,7 +343,12 @@ impl Dispatcher {
                 cx.notify();
             }
         });
-        if user_initiated {
+        // `503-quiet-background-update-errors` off: post them as GHD does
+        let quiet = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::QUIET_BACKGROUND_UPDATE_ERRORS);
+        if user_initiated || !quiet {
             Self::show_error(
                 "Could not check for updates",
                 format!("Corvane could not {what}: {err}"),
@@ -453,7 +471,7 @@ impl Dispatcher {
             zip_size: 0,
             signature_url: String::new(),
         };
-        let mut update = AvailableUpdate::from_release(&release);
+        let mut update = AvailableUpdate::from_release(&release, Self::heading_kinds(cx));
         update.summary.date_published = Some(SystemTime::now());
         Self::state(cx).update(cx, |s, cx| {
             s.update.status = if homebrew {

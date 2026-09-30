@@ -290,6 +290,16 @@ pub fn quick_view(
     };
     let pr_for_view = pr.clone();
     let (border, background) = (t.box_border, t.background);
+    // `301` / `302`: the "opened … by" line and the width rule
+    let (show_opened_by, fixed_width) = {
+        use corvane_core::flags::ids;
+        let state = corvane_core::AppState::global(cx);
+        let flags = &state.read(cx).flags;
+        (
+            flags.bool(ids::PR_QUICK_VIEW_OPENED_BY),
+            flags.text(ids::PR_QUICK_VIEW_WIDTH) != "min-400",
+        )
+    };
     div()
         .id("pull-request-quick-view")
         .relative()
@@ -297,10 +307,14 @@ pub fn quick_view(
         .px(SPACING())
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .child(
-            // `.pull-request-quick-view-contents`
+            // `.pull-request-quick-view-contents` (`min-width: 400px`; Corvane
+            // fixes the width unless `302-pr-quick-view-width` says otherwise)
             div()
                 .relative()
-                .w(QUICK_VIEW_WIDTH())
+                .when(fixed_width, |d| d.w(QUICK_VIEW_WIDTH()))
+                .when(!fixed_width, |d| {
+                    d.min_w(QUICK_VIEW_WIDTH()).max_w(zpx(600.))
+                })
                 .flex()
                 .flex_col()
                 .bg(t.background)
@@ -426,14 +440,16 @@ pub fn quick_view(
                                                     )
                                                 }),
                                         )
-                                        .child(
-                                            div()
-                                                .min_w_0()
-                                                .truncate()
-                                                .text_size(FONT_SIZE_SM())
-                                                .text_color(t.text_secondary)
-                                                .child(opened_by(pr)),
-                                        ),
+                                        .when(show_opened_by, |d| {
+                                            d.child(
+                                                div()
+                                                    .min_w_0()
+                                                    .truncate()
+                                                    .text_size(FONT_SIZE_SM())
+                                                    .text_color(t.text_secondary)
+                                                    .child(opened_by(pr)),
+                                            )
+                                        }),
                                 ),
                         )
                         .child(crate::markdown::markdown(

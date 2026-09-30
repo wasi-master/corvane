@@ -10,7 +10,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
-use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
+use crate::dialog::{DialogButton, DialogKind, dialog_with_kind_opts};
 use crate::theme::sizes::*;
 use crate::widgets::checkbox_row_focus;
 
@@ -75,9 +75,17 @@ impl Render for MoveToApplicationsFolderDialog {
                 },
                 cx,
             ));
-        dialog_with_kind(
+        // `403-move-to-applications-backdrop-dismiss` (GHD:
+        // `backdropDismissable={false}`)
+        let backdrop_dismissable = corvane_core::AppState::try_global(cx).is_none_or(|s| {
+            s.read(cx)
+                .flags
+                .bool(corvane_core::flags::ids::MOVE_TO_APPLICATIONS_BACKDROP_DISMISS)
+        });
+        dialog_with_kind_opts(
             "move-to-applications-folder",
             DialogKind::Warning,
+            backdrop_dismissable,
             "Move Corvane to the Applications folder?",
             content,
             vec![

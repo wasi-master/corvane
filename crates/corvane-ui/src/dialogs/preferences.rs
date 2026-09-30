@@ -1026,14 +1026,24 @@ impl PreferencesDialog {
 
     fn appearance_tab(&self, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
-        let themes = [
+        // `101-high-contrast-theme` off: GHD's three swatches, and a saved
+        // High Contrast shows as Dark (the setting itself is kept)
+        let high_contrast = self
+            .state
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME);
+        let themes: Vec<(ThemeSetting, &str)> = [
             (ThemeSetting::Light, "Light"),
             (ThemeSetting::Dark, "Dark"),
             (ThemeSetting::System, "System"),
             // Corvane addition (GHD has no high contrast theme)
             (ThemeSetting::HighContrast, "High Contrast"),
-        ];
-        let selected = self.draft.theme;
+        ]
+        .into_iter()
+        .filter(|(theme, _)| high_contrast || *theme != ThemeSetting::HighContrast)
+        .collect();
+        let selected = corvane_core::flags::effective_theme(self.draft.theme, high_contrast);
         let swatches = div()
             .flex()
             .flex_row()
@@ -1425,6 +1435,14 @@ impl PreferencesDialog {
 
     fn advanced_tab(&self, cx: &Context<Self>) -> AnyElement {
         let t = cx.ghd();
+        let (crash_reports, optional_components) = {
+            use corvane_core::flags::ids;
+            let flags = &self.state.read(cx).flags;
+            (
+                flags.bool(ids::CRASH_REPORTS),
+                flags.bool(ids::OPTIONAL_COMPONENTS),
+            )
+        };
         div()
             .flex()
             .flex_col()
@@ -1470,29 +1488,36 @@ impl PreferencesDialog {
                 .text_size(FONT_SIZE_SM())
                 .text_color(t.text_secondary),
             )
-            // Corvane addition in place of GHD's Usage section (no telemetry)
-            .child(div().mt(SPACING()).child(section_heading("Crash reports", cx)))
-            .child(checkbox_row(
-                "prefs-save-crash-reports",
-                self.draft.save_crash_reports,
-                "Save crash reports locally",
-                self.edit(cx, |s, v| s.save_crash_reports = v),
-                cx,
-            ))
-            .child(
-                settings_description(cx).child(
-                    "When Corvane crashes, a report is saved in ~/Library/Logs/Corvane/crashes \
-                     and pointed out at the next launch, together with macOS's own crash \
-                     reports. Reports never leave this Mac.",
-                ),
-            )
-            // Corvane addition: on-demand packs
-            .child(div().mt(SPACING()).child(section_heading("Optional components", cx)))
-            .children(
-                corvane_core::OFFERED_PACKS
-                    .iter()
-                    .map(|kind| self.pack_row(*kind, cx)),
-            )
+            // Corvane addition in place of GHD's Usage section (no telemetry);
+            // `501-crash-reports`
+            .when(crash_reports, |d| {
+                d.child(div().mt(SPACING()).child(section_heading("Crash reports", cx)))
+                    .child(checkbox_row(
+                        "prefs-save-crash-reports",
+                        self.draft.save_crash_reports,
+                        "Save crash reports locally",
+                        self.edit(cx, |s, v| s.save_crash_reports = v),
+                        cx,
+                    ))
+                    .child(
+                        settings_description(cx).child(
+                            "When Corvane crashes, a report is saved in \
+                             ~/Library/Logs/Corvane/crashes and pointed out at the next launch, \
+                             together with macOS's own crash reports. Reports never leave this \
+                             Mac.",
+                        ),
+                    )
+            })
+            // Corvane addition: on-demand packs;
+            // `502-optional-components`
+            .when(optional_components, |d| {
+                d.child(div().mt(SPACING()).child(section_heading("Optional components", cx)))
+                    .children(
+                        corvane_core::OFFERED_PACKS
+                            .iter()
+                            .map(|kind| self.pack_row(*kind, cx)),
+                    )
+            })
             .into_any_element()
     }
 

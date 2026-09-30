@@ -12,6 +12,15 @@ use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
 use crate::widgets::{ListRowA11y, link_button};
 
+/// `402-about-extras`: the architecture after the version and the Source
+/// code link.
+fn about_extras(cx: &App) -> bool {
+    AppState::global(cx)
+        .read(cx)
+        .flags
+        .bool(corvane_core::flags::ids::ABOUT_EXTRAS)
+}
+
 pub struct AboutDialog {
     state: Entity<AppState>,
     version: String,
@@ -171,7 +180,11 @@ impl Render for AboutDialog {
                                     version_for_copy.clone(),
                                 ))
                             })
-                            .child(format!("Version {version} ({})", std::env::consts::ARCH)),
+                            .child(if about_extras(cx) {
+                                format!("Version {version} ({})", std::env::consts::ARCH)
+                            } else {
+                                format!("Version {version}")
+                            }),
                     )
                     .child("\u{a0}(")
                     .child(
@@ -202,13 +215,19 @@ impl Render for AboutDialog {
                                 Dispatcher::show_popup(Popup::Acknowledgements, cx)
                             }),
                     )
-                    .child(
-                        link_button("about-source", "Source code", cx)
-                            .p(zpx(3.))
-                            .on_click(|_, _, cx| {
-                                Dispatcher::open_url("https://github.com/wasi-master/corvane", cx)
-                            }),
-                    ),
+                    // `402-about-extras`
+                    .when(about_extras(cx), |d| {
+                        d.child(
+                            link_button("about-source", "Source code", cx)
+                                .p(zpx(3.))
+                                .on_click(|_, _, cx| {
+                                    Dispatcher::open_url(
+                                        "https://github.com/wasi-master/corvane",
+                                        cx,
+                                    )
+                                }),
+                        )
+                    }),
             );
         crate::dialog::dialog_with_frame(
             "dialog-about",

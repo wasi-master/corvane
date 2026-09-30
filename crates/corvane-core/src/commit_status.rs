@@ -25,8 +25,6 @@ use crate::state::AppState;
 const BACKGROUND_REFRESH_INTERVAL: Duration = Duration::from_secs(3 * 60);
 /// `entryIsEligibleForRefresh`: older than a minute.
 const ENTRY_MAX_AGE: Duration = Duration::from_secs(60);
-/// A key nobody rendered for this long is dropped from the refresh set.
-const SUBSCRIPTION_MAX_IDLE: Duration = Duration::from_secs(5 * 60);
 /// `MaxConcurrentFetches`
 const MAX_CONCURRENT_FETCHES: usize = 6;
 /// `QuickLRU({ maxSize: 250 })`
@@ -383,10 +381,16 @@ impl Dispatcher {
     /// `refreshEligibleSubscriptions`
     fn refresh_eligible_commit_statuses(cx: &mut App) {
         let keys: Vec<String> = Self::state(cx).update(cx, |s, _| {
+            // `308-ci-status-idle-minutes`: a key nobody rendered for this
+            // long stops refreshing (0: never, as GHD's mount / unmount)
+            let idle_minutes = s.flags.number(crate::flags::ids::CI_STATUS_IDLE_MINUTES);
             let store = &mut s.commit_statuses;
-            store
-                .subscriptions
-                .retain(|_, sub| sub.last_seen.elapsed() < SUBSCRIPTION_MAX_IDLE);
+            if idle_minutes > 0 {
+                let max_idle = Duration::from_secs(idle_minutes as u64 * 60);
+                store
+                    .subscriptions
+                    .retain(|_, sub| sub.last_seen.elapsed() < max_idle);
+            }
             store
                 .subscriptions
                 .keys()

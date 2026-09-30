@@ -479,11 +479,20 @@ impl Dispatcher {
             Ok(branch) => Self::cherry_pick_to_branch(id, branch.name, cx),
             Err(message) => {
                 Self::end_mco(id, cx);
-                Self::show_error(
-                    "Could not cherry-pick onto the pull request",
-                    format!("Could not determine the pull request's branch: {message}"),
-                    cx,
-                );
+                // `306-cherry-pick-pr-branch-error`: GHD only logs
+                if Self::state(cx)
+                    .read(cx)
+                    .flags
+                    .bool(crate::flags::ids::CHERRY_PICK_PR_BRANCH_ERROR)
+                {
+                    Self::show_error(
+                        "Could not cherry-pick onto the pull request",
+                        format!("Could not determine the pull request's branch: {message}"),
+                        cx,
+                    );
+                } else {
+                    warn!(%message, "could not determine the pull request's branch");
+                }
             }
         });
     }

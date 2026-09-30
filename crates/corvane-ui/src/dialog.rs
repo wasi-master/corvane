@@ -201,11 +201,31 @@ pub fn dialog_with_kind(
     window: &Window,
     cx: &App,
 ) -> impl IntoElement {
+    dialog_with_kind_opts(
+        id, kind, true, title, content, buttons, on_close, window, cx,
+    )
+}
+
+/// `dialog_with_kind` with GHD's `backdropDismissable` prop: with it off a
+/// click outside the dialog does nothing.
+#[allow(clippy::too_many_arguments)]
+pub fn dialog_with_kind_opts(
+    id: &'static str,
+    kind: DialogKind,
+    backdrop_dismissable: bool,
+    title: impl Into<SharedString>,
+    content: impl IntoElement,
+    buttons: Vec<DialogButton>,
+    on_close: impl Fn(&mut Window, &mut App) + Clone + 'static,
+    window: &Window,
+    cx: &App,
+) -> impl IntoElement {
     let title: SharedString = title.into();
     dialog_impl(
         id,
         kind,
         false,
+        backdrop_dismissable,
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
@@ -236,6 +256,7 @@ pub fn dialog_with_footer_message(
         id,
         DialogKind::Normal,
         false,
+        true,
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
@@ -283,6 +304,7 @@ pub fn dialog_loading_framed(
         id,
         DialogKind::Normal,
         loading,
+        true,
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
@@ -312,6 +334,7 @@ pub fn dialog_framed(
         id,
         DialogKind::Normal,
         false,
+        true,
         title.into_any_element(),
         Some(plain_title.into()),
         content,
@@ -341,6 +364,7 @@ pub fn dialog_loading(
         id,
         DialogKind::Normal,
         loading,
+        true,
         div().child(title.clone()).into_any_element(),
         Some(title),
         content,
@@ -370,6 +394,7 @@ pub fn dialog_with_title_element(
         id,
         DialogKind::Normal,
         false,
+        true,
         title.into_any_element(),
         Some(plain_title.into()),
         content,
@@ -387,6 +412,7 @@ fn dialog_impl(
     id: &'static str,
     kind: DialogKind,
     loading: bool,
+    backdrop_dismissable: bool,
     title: AnyElement,
     plain_title: Option<SharedString>,
     content: impl IntoElement,
@@ -418,7 +444,9 @@ fn dialog_impl(
                 .justify_center()
                 .bg(t.dialog_backdrop)
                 .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                    close_for_overlay(window, cx)
+                    if backdrop_dismissable {
+                        close_for_overlay(window, cx)
+                    }
                 })
                 .child(
                     div()

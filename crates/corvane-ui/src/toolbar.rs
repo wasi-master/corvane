@@ -754,12 +754,29 @@ pub fn toolbar(
                     move |_, _, window, _| {
                         window.set_window_cursor_style(CursorStyle::ResizeLeftRight);
                         let state = listeners.clone();
-                        window.on_mouse_event(move |ev: &MouseMoveEvent, _, window, _| {
+                        window.on_mouse_event(move |ev: &MouseMoveEvent, _, window, cx| {
                             if let Some(drag) = state.drag.get() {
                                 let width = drag
                                     .constraint
                                     .clamp(drag.start_width + unzoom(ev.position.x - drag.start_x));
                                 state.live.set(Some((drag.target, width)));
+                                // `404-toolbar-width-save`: GHD writes localStorage
+                                // on every move; Corvane waits for the drop
+                                let every_move = corvane_core::AppState::global(cx)
+                                    .read(cx)
+                                    .flags
+                                    .text(corvane_core::flags::ids::TOOLBAR_WIDTH_SAVE)
+                                    == "every-move";
+                                if every_move {
+                                    Dispatcher::update_settings(cx, |s| match drag.target {
+                                        ResizeTarget::Worktree => {
+                                            s.worktree_dropdown_width = Some(width)
+                                        }
+                                        ResizeTarget::Branch => {
+                                            s.branch_dropdown_width = Some(width)
+                                        }
+                                    });
+                                }
                                 window.refresh();
                             }
                         });
