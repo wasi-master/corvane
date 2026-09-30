@@ -3248,9 +3248,10 @@ fn file_row(
                     .text_color(t.box_selected_text)
             }
         })
-        .when(!(is_selected && list_focused), move |d| {
-            d.hover(move |s| s.bg(hover_bg))
-        })
+        .when(
+            !(is_selected && (list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
+            move |d| d.hover(move |s| s.bg(hover_bg)),
+        )
         .when_some(repo_id, move |d, id| {
             // ⌘-click toggles, ⇧-click extends (GHD `SelectionSource`)
             d.on_click(move |ev: &ClickEvent, window, cx| {

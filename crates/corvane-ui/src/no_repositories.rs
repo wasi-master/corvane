@@ -187,6 +187,15 @@ pub fn no_repositories(window: &Window, cx: &App) -> impl IntoElement {
     let signed_in =
         corvane_core::AppState::try_global(cx).is_some_and(|s| !s.read(cx).accounts.is_empty());
     let ring = !signed_in && CLONE_FOCUS_VISIBLE.load(Ordering::Relaxed);
+    // `103-product-name`; GHD's ProTip says "add it to Desktop" (the last word)
+    let name = corvane_core::AppState::try_global(cx)
+        .map(|s| s.read(cx).product_name().to_string())
+        .unwrap_or_else(|| "Corvane".into());
+    let short_name = name
+        .split_whitespace()
+        .last()
+        .unwrap_or("Corvane")
+        .to_string();
     // `height: 20%` / `40%` of the view, width from the SVGs' aspect,
     // capped at 20 % / 40 % of its width
     let top_h = (viewport.height * 0.2).min(viewport.width * 0.2 * (43.835956 / 42.2971));
@@ -240,10 +249,9 @@ pub fn no_repositories(window: &Window, cx: &App) -> impl IntoElement {
                                 .child("Let's get started!"),
                         )
                         .child(
-                            div()
-                                .text_size(s(12.))
-                                .line_height(s(18.))
-                                .child("Add a repository to Corvane to start collaborating"),
+                            div().text_size(s(12.)).line_height(s(18.)).child(format!(
+                                "Add a repository to {name} to start collaborating"
+                            )),
                         ),
                 )
                 .child(
@@ -337,19 +345,19 @@ pub fn no_repositories(window: &Window, cx: &App) -> impl IntoElement {
                                 .child(
                                     div().flex_1().min_w_0().child(
                                         // `<strong>ProTip!</strong>` inline in the sentence
-                                        StyledText::new(
+                                        StyledText::new(format!(
                                             "ProTip! You can drag & drop an existing repository \
-                                         folder here to add it to Corvane",
-                                        )
-                                        .with_highlights([
-                                            (
+                                             folder here to add it to {short_name}"
+                                        ))
+                                        .with_highlights(
+                                            [(
                                                 0..7,
                                                 HighlightStyle {
                                                     font_weight: Some(FontWeight::SEMIBOLD),
                                                     ..Default::default()
                                                 },
-                                            ),
-                                        ]),
+                                            )],
+                                        ),
                                     ),
                                 ),
                         ),

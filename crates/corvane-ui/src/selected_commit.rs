@@ -616,9 +616,10 @@ fn commit_file_row(
                     .text_color(t.box_selected_text)
             }
         })
-        .when(!(is_selected && list_focused), move |d| {
-            d.hover(move |s| s.bg(hover_bg))
-        })
+        .when(
+            !(is_selected && (list_focused || crate::widgets::selection_keeps_colour_on_hover(cx))),
+            move |d| d.hover(move |s| s.bg(hover_bg)),
+        )
         .on_click(move |_, _, cx| Dispatcher::select_commit_file(id, path.clone(), cx))
         .child(
             // GHD `PathText` keeps the file name visible and truncates the

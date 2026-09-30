@@ -1,6 +1,8 @@
 //! "Add Local Repository" (`ui/add-repository/add-existing-repository.tsx`).
 //! Like GHD 3.6.6 the path is only checked on submit (`addRepository` →
-//! `validatePath`); the warning then stays until the next check.
+//! `validatePath`), the warning then staying until the next check - unless
+//! flag `205-add-local-validates-while-typing` checks it on every change and
+//! keeps Add Repository disabled until the path is a repository.
 
 use std::path::PathBuf;
 
@@ -114,7 +116,17 @@ impl Render for AddExistingRepositoryDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let has_path = self.resolved_path(cx).is_some();
-        let status = self.warning.filter(|_| has_path);
+        let live = corvane_core::AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::ADD_LOCAL_VALIDATES_WHILE_TYPING);
+        let current = live.then(|| self.status(cx)).flatten();
+        let status = if live {
+            current.filter(|s| matches!(s, PathStatus::NotARepository | PathStatus::Bare))
+        } else {
+            self.warning.filter(|_| has_path)
+        };
+        let add_disabled = live && current != Some(PathStatus::Repository);
         let error: Option<AnyElement> = match status {
             // `buildNotAGitRepositoryError`: two paragraphs, the second
             // linking "create a repository"
@@ -191,7 +203,7 @@ impl Render for AddExistingRepositoryDialog {
                     id: "add-existing-ok",
                     label: "Add Repository".into(),
                     primary: true,
-                    disabled: false,
+                    disabled: add_disabled,
                     on_click: Box::new(move |_, cx| {
                         this.update(cx, |d, cx| d.submit(cx));
                     }),

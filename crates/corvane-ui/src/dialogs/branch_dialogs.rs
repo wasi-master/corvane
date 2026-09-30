@@ -1059,6 +1059,7 @@ pub fn branch_picker(
     let current = current.to_string();
     let shown_selected = selected.unwrap_or(current.as_str()).to_string();
     let focused = list_focus.is_focused(window);
+    let keep_selection = crate::widgets::selection_keeps_colour_on_hover(cx);
     let (sel_bg, sel_text) = if focused {
         (t.box_selected_active_background, t.box_selected_active_text)
     } else {
@@ -1115,7 +1116,7 @@ pub fn branch_picker(
                         .cursor_pointer()
                         .when(is_selected, |d| d.bg(sel_bg).text_color(sel_text))
                         // `.list-item:hover` outranks the inactive selection
-                        .when(!(is_selected && focused), move |d| {
+                        .when(!(is_selected && (focused || keep_selection)), move |d| {
                             d.hover(move |s| s.bg(hover_bg))
                         })
                         // `List.onRowMouseDown`: focus the list, select at once
