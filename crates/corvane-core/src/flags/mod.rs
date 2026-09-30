@@ -18,7 +18,8 @@
 //! has a `cx` passes them the value.
 //!
 //! Adding a flag: next id in its category block (ids are never reused, see
-//! [`registry::RETIRED`]), a value for every preset, then
+//! [`registry::RETIRED`]), its [`Nature`] (bug fix or feature), a value for
+//! every preset, then
 //! `UPDATE_FLAGS_DOC=1 cargo test -p corvane-core flags_doc` regenerates
 //! `.docs/flags.md`.
 
@@ -345,6 +346,28 @@ impl Upstream {
     }
 }
 
+/// Whether a flag fixes something GitHub Desktop plainly gets wrong or adds
+/// something people may reasonably want either way. An attribute, not a
+/// category: the flag stays in its numbered block.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Nature {
+    /// A new capability, option or look.
+    Feature,
+    /// GitHub Desktop's behaviour is simply wrong and nearly everyone wants
+    /// the fix. The Flags dialog hides these unless "Show bug fixes" is
+    /// ticked (display only: presets and `CORVANE_FLAGS` still apply).
+    BugFix,
+}
+
+impl Nature {
+    pub const fn label(self) -> &'static str {
+        match self {
+            Nature::Feature => "Feature",
+            Nature::BugFix => "Bug fix",
+        }
+    }
+}
+
 /// One entry of the registry.
 #[derive(Debug)]
 pub struct FlagDef {
@@ -355,6 +378,7 @@ pub struct FlagDef {
     pub summary: &'static str,
     /// What GitHub Desktop does instead (shown as "GitHub Desktop: …").
     pub ghd_behaviour: &'static str,
+    pub nature: Nature,
     pub kind: Kind,
     /// Today's behaviour: the Corvane preset and the "(default)" marker.
     pub corvane: Value,
@@ -391,6 +415,16 @@ impl FlagDef {
 
     pub fn is_available(&self) -> bool {
         self.availability() == Availability::Available
+    }
+
+    pub fn is_bug_fix(&self) -> bool {
+        self.nature == Nature::BugFix
+    }
+
+    /// Whether the Flags dialog lists this flag (and counts it) given its
+    /// "Show bug fixes" checkbox.
+    pub fn is_shown(&self, show_bug_fixes: bool) -> bool {
+        show_bug_fixes || !self.is_bug_fix()
     }
 
     pub fn value_for(&self, preset: Preset) -> &Value {
@@ -542,6 +576,14 @@ impl Flags {
         self.sources
             .values()
             .filter(|s| **s == Source::Override)
+            .count()
+    }
+
+    /// [`Flags::modified_count`] over the flags the dialog shows.
+    pub fn modified_count_shown(&self, show_bug_fixes: bool) -> usize {
+        REGISTRY
+            .iter()
+            .filter(|def| def.is_shown(show_bug_fixes) && self.is_overridden(def.id))
             .count()
     }
 
@@ -735,6 +777,39 @@ mod tests {
         assert_eq!(text.parse("Foo").unwrap(), Value::text("Foo"));
         assert!(text.parse("").is_err());
         assert!(text.parse("a\nb").is_err());
+    }
+
+    #[test]
+    fn bug_fixes_are_hidden_from_the_dialog_counts() {
+        let bug_fixes = REGISTRY.iter().filter(|d| d.is_bug_fix()).count();
+        assert!(bug_fixes > 0);
+        assert!(bug_fixes < REGISTRY.len());
+        assert_eq!(
+            REGISTRY.iter().filter(|d| d.is_shown(true)).count(),
+            REGISTRY.len()
+        );
+        assert_eq!(
+            REGISTRY.iter().filter(|d| d.is_shown(false)).count(),
+            REGISTRY.len() - bug_fixes
+        );
+        let fix = def(ids::PUSH_BRANCH_COMMITS_ERROR_STOPS);
+        assert_eq!(fix.nature, Nature::BugFix);
+        assert!(!fix.is_shown(false) && fix.is_shown(true));
+        assert!(def(ids::COMMIT_TEMPLATES).is_shown(false));
+
+        let mut stored = FlagOverrides::default();
+        stored
+            .overrides
+            .insert("push-branch-commits-error-stops".into(), Value::Bool(false));
+        stored
+            .overrides
+            .insert("commit-templates".into(), Value::Bool(false));
+        let flags = Flags::resolve(&stored, &EnvFlags::default());
+        // hiding is display-only: the override still resolves
+        assert!(!flags.bool(ids::PUSH_BRANCH_COMMITS_ERROR_STOPS));
+        assert_eq!(flags.modified_count(), 2);
+        assert_eq!(flags.modified_count_shown(true), 2);
+        assert_eq!(flags.modified_count_shown(false), 1);
     }
 
     #[test]

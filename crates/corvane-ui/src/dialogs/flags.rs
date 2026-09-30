@@ -6,11 +6,16 @@
 //! Opened from Corvane › Flags… (⌘⇧,), `CORVANE_POPUP=flags[:query]` and
 //! `x-corvane://flags?q=`. Snapshot-verified only: the parity harness has
 //! nothing to compare it with.
+//!
+//! Bug-fix flags (`Nature::BugFix`) are hidden from the list, the search and
+//! every count unless "Show bug fixes" is ticked; the checkbox lasts for the
+//! dialog session. Hiding is display-only: presets, Reset all and
+//! `CORVANE_FLAGS` still cover them.
 
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use corvane_core::flags::{self, Category, FlagDef, FlagId, Kind, Preset, REGISTRY, Value};
+use corvane_core::flags::{self, Category, FlagDef, FlagId, Kind, Nature, Preset, REGISTRY, Value};
 use corvane_core::{AppState, Dispatcher};
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::prelude::*;
@@ -25,7 +30,7 @@ use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
 use crate::theme::{ActiveGhdTheme, mono_font};
 use crate::widgets::{
-    IconButtonA11y, ListRowA11y, SelectHandler, button, counter, dialog_error_banner,
+    IconButtonA11y, ListRowA11y, SelectHandler, button, checkbox_row, counter, dialog_error_banner,
     filter_text_box, link_button, pill, primary_button, select_button, switch, text_box_opts,
 };
 
@@ -123,6 +128,8 @@ pub struct FlagsDialog {
     /// Inputs whose text is not committable, with the message under them.
     errors: HashMap<u16, String>,
     nav: Nav,
+    /// "Show bug fixes": list and count `Nature::BugFix` flags.
+    show_bug_fixes: bool,
     /// "Paste JSON" outcome, shown under the toolbar.
     import_error: Option<String>,
     import_note: Option<String>,
@@ -188,6 +195,7 @@ impl FlagsDialog {
             synced,
             errors,
             nav: Nav::All,
+            show_bug_fixes: false,
             import_error: None,
             import_note: None,
         }
@@ -253,14 +261,17 @@ impl FlagsDialog {
         }
     }
 
-    fn visible_rows(&self, cx: &App) -> Vec<(&'static FlagDef, Hit)> {
+    /// The rows to list, and how many bug-fix flags would match but are
+    /// hidden by "Show bug fixes".
+    fn visible_rows(&self, cx: &App) -> (Vec<(&'static FlagDef, Hit)>, usize) {
         let query = self.search.read(cx).value().to_string();
         let flags = &self.state.read(cx).flags;
-        REGISTRY
+        let (rows, hidden): (Vec<_>, Vec<_>) = REGISTRY
             .iter()
             .filter(|def| Self::in_nav(def, self.nav, flags))
             .filter_map(|def| matches(def, &query).map(|hit| (def, hit)))
-            .collect()
+            .partition(|(def, _)| def.is_shown(self.show_bug_fixes));
+        (rows, hidden.len())
     }
 
     fn paste_json(&mut self, cx: &mut Context<Self>) {
@@ -520,6 +531,15 @@ impl FlagsDialog {
                 .font_family(mono_font())
                 .child(highlighted(&ident, &hit.ident)),
             );
+        if def.is_bug_fix() {
+            chips = chips.child(pill(
+                Nature::BugFix.label(),
+                None,
+                t.box_alt_background,
+                t.text_secondary,
+                cx,
+            ));
+        }
         if def.restart {
             chips = chips.child(pill(
                 "Restart required",
@@ -659,9 +679,9 @@ impl FlagsDialog {
             .into_any_element()
     }
 
-    fn empty_state(&self, query: &str, cx: &App) -> AnyElement {
+    fn empty_state(&self, query: &str, hidden: usize, cx: &App) -> AnyElement {
         let t = cx.ghd();
-        let message = if !query.trim().is_empty() {
+        let mut message = if !query.trim().is_empty() {
             format!("No flags match “{}”.", query.trim())
         } else {
             match self.nav {
@@ -670,6 +690,13 @@ impl FlagsDialog {
                 _ => "No flags here yet.".to_string(),
             }
         };
+        if hidden > 0 {
+            message.push_str(&format!(
+                " {hidden} bug-fix flag{} hidden: tick Show bug fixes to see {}.",
+                if hidden == 1 { " is" } else { "s are" },
+                if hidden == 1 { "it" } else { "them" },
+            ));
+        }
         div()
             .size_full()
             .flex()
@@ -690,13 +717,14 @@ impl Render for FlagsDialog {
         let width = (viewport.width - zpx(80.)).max(zpx(720.)).min(zpx(960.));
         let height = (viewport.height - zpx(80.)).max(zpx(480.)).min(zpx(700.));
 
-        let (preset, preset_from_env, modified, restart_pending, nav_counts) = {
+        let show_bug_fixes = self.show_bug_fixes;
+        let (preset, preset_from_env, all_modified, modified, restart_pending, nav_counts) = {
             let s = self.state.read(cx);
             let flags = &s.flags;
             let count = |nav: Nav| {
                 REGISTRY
                     .iter()
-                    .filter(|def| Self::in_nav(def, nav, flags))
+                    .filter(|def| def.is_shown(show_bug_fixes) && Self::in_nav(def, nav, flags))
                     .count()
             };
             let mut counts: Vec<(Nav, usize)> = vec![(Nav::All, count(Nav::All))];
@@ -709,6 +737,7 @@ impl Render for FlagsDialog {
                 flags.preset(),
                 flags.preset_from_env(),
                 flags.modified_count(),
+                flags.modified_count_shown(show_bug_fixes),
                 s.flags_restart_pending(),
                 counts,
             )
@@ -721,8 +750,10 @@ impl Render for FlagsDialog {
                 .unwrap_or(0)
         };
         let query = self.search.read(cx).value().to_string();
-        let rows = self.visible_rows(cx);
-        let custom = modified > 0;
+        let (rows, hidden_matches) = self.visible_rows(cx);
+        // "Custom" and Reset all cover hidden bug fixes too; the counts do not
+        let custom = all_modified > 0;
+        let hidden_modified = all_modified - modified;
 
         // ---- header ----
         let header = div()
@@ -845,11 +876,27 @@ impl Render for FlagsDialog {
             )))
             .child(
                 button("flags-reset-all", "Reset all", cx)
-                    .when(modified == 0, |d| d.opacity(0.6).cursor_default())
-                    .when(modified > 0, |d| {
+                    .when(!custom, |d| d.opacity(0.6).cursor_default())
+                    .when(custom, |d| {
                         d.on_click(|_, _, cx| Dispatcher::reset_all_flags(cx))
                     }),
             )
+            .child({
+                let weak = cx.weak_entity();
+                div().flex_none().child(checkbox_row(
+                    "flags-show-bug-fixes",
+                    show_bug_fixes,
+                    "Show bug fixes",
+                    move |on, _, cx| {
+                        weak.update(cx, |this, cx| {
+                            this.show_bug_fixes = on;
+                            cx.notify();
+                        })
+                        .ok();
+                    },
+                    cx,
+                ))
+            })
             .child(div().flex_1())
             .when(modified > 0, |d| {
                 d.child(
@@ -924,7 +971,7 @@ impl Render for FlagsDialog {
             .role(Role::List)
             .aria_label("Flags");
         if rows.is_empty() {
-            list = list.child(self.empty_state(&query, cx));
+            list = list.child(self.empty_state(&query, hidden_matches, cx));
         } else {
             let mut last_category = None;
             for (def, hit) in &rows {
@@ -1000,8 +1047,16 @@ impl Render for FlagsDialog {
                     .text_color(t.text_secondary)
                     .child(if custom {
                         format!(
-                            "Preset: {} · {modified} modified{}",
+                            "Preset: {} · {modified} modified{}{}",
                             preset.title(),
+                            if hidden_modified > 0 {
+                                format!(
+                                    " (and {hidden_modified} hidden bug fix{})",
+                                    if hidden_modified == 1 { "" } else { "es" }
+                                )
+                            } else {
+                                String::new()
+                            },
                             if preset_from_env {
                                 " · preset set by CORVANE_FLAGS"
                             } else {
