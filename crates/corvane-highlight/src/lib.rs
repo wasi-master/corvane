@@ -17,7 +17,7 @@ pub mod treesitter;
 
 use std::ops::Range;
 use std::str::FromStr;
-use std::sync::{Arc, OnceLock};
+use std::sync::OnceLock;
 
 use syntect::easy::ScopeRangeIterator;
 use syntect::highlighting::ScopeSelectors;
@@ -63,10 +63,6 @@ pub enum Engine {
     TreeSitterFallback,
     /// tree-sitter, then the CodeMirror ports, then syntect
     TreeSitter,
-}
-
-fn syntax_set() -> Arc<SyntaxSet> {
-    syntaxes::current()
 }
 
 struct Classifier {
@@ -193,9 +189,10 @@ fn cm_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
 
 fn syntect_highlight(path: &str, lines: &[&str]) -> Option<Vec<Vec<Span>>> {
     let first = lines.first().copied().unwrap_or("");
-    let ss = syntax_set();
-    let syntax = syntax_for(&ss, path, first)?;
-    let ss = &*ss;
+    let sets = syntaxes::sets();
+    let (ss, syntax) = sets
+        .iter()
+        .find_map(|ss| syntax_for(ss, path, first).map(|s| (ss, s)))?;
     let classes = classifier();
     let mut state = ParseState::new(syntax);
     let mut stack = ScopeStack::new();
@@ -275,6 +272,21 @@ mod tests {
         );
         assert!(spans[1].iter().any(|s| s.class == TokenClass::String));
         assert!(spans[1].iter().any(|s| s.class == TokenClass::Comment));
+    }
+
+    #[test]
+    fn textmate_grammars_cover_languages_nothing_else_does() {
+        // ALGOL 60 comes from GitHub Linguist's collection (tools/tm-grammars)
+        let spans = highlight_lines("prog.alg", ["comment hello;", "begin real x; end"])
+            .expect("the core set has ALGOL");
+        assert!(
+            spans[0].iter().any(|s| s.class == TokenClass::Comment),
+            "{spans:?}"
+        );
+        assert!(
+            spans[1].iter().any(|s| s.class == TokenClass::Keyword),
+            "{spans:?}"
+        );
     }
 
     #[test]
