@@ -1,0 +1,206 @@
+//! In-memory caches behind the diff and history selections (Corvane; GHD
+//! runs git again for every selection and every refresh).
+//!
+//! - A commit's changed files and a committed file's diff never change, so
+//!   they are kept by SHA ([`changeset`], [`commit_diff`]): selecting a commit
+//!   again, or the reload after every refresh, needs no git process.
+//! - A working-directory diff is kept with the facts it was computed from
+//!   ([`WorkingStamp`]: the status code, `HEAD`, and the size, mtime and inode
+//!   of the working file, the checks git itself uses to skip unchanged files);
+//!   a refresh or re-selection with the same facts reuses it.
+//!
+//! Each cache holds the most recently used entries only.
+
+use std::collections::VecDeque;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock, Mutex};
+
+use corvane_models::{ChangesetData, FileStatusKind, WorkingDirectoryFileChange};
+
+use crate::dispatcher::LoadedDiff;
+
+/// A small most-recently-used list; linear search is cheaper than hashing
+/// for a few dozen keys.
+struct Lru<K, V> {
+    cap: usize,
+    entries: VecDeque<(K, V)>,
+}
+
+impl<K: PartialEq, V: Clone> Lru<K, V> {
+    const fn new(cap: usize) -> Self {
+        Self {
+            cap,
+            entries: VecDeque::new(),
+        }
+    }
+
+    fn get(&mut self, key: &K) -> Option<V> {
+        let ix = self.entries.iter().position(|(k, _)| k == key)?;
+        let entry = self.entries.remove(ix)?;
+        let value = entry.1.clone();
+        self.entries.push_front(entry);
+        Some(value)
+    }
+
+    fn insert(&mut self, key: K, value: V) {
+        if let Some(ix) = self.entries.iter().position(|(k, _)| *k == key) {
+            self.entries.remove(ix);
+        }
+        self.entries.push_front((key, value));
+        self.entries.truncate(self.cap);
+    }
+}
+
+type ChangesetKey = (PathBuf, Vec<String>);
+type CommitDiffKey = (PathBuf, Vec<String>, String, bool);
+
+static CHANGESETS: LazyLock<Mutex<Lru<ChangesetKey, Arc<ChangesetData>>>> =
+    LazyLock::new(|| Mutex::new(Lru::new(256)));
+static COMMIT_DIFFS: LazyLock<Mutex<Lru<CommitDiffKey, LoadedDiff>>> =
+    LazyLock::new(|| Mutex::new(Lru::new(64)));
+static WORKING_DIFFS: LazyLock<Mutex<Lru<WorkingKey, LoadedDiff>>> =
+    LazyLock::new(|| Mutex::new(Lru::new(64)));
+
+/// The changed files of `shas` (one commit or a range) in `workdir`.
+pub fn changeset(workdir: &Path, shas: &[String]) -> Option<Arc<ChangesetData>> {
+    let key = (workdir.to_path_buf(), shas.to_vec());
+    CHANGESETS.lock().ok()?.get(&key)
+}
+
+pub fn store_changeset(workdir: &Path, shas: &[String], data: Arc<ChangesetData>) {
+    if let Ok(mut cache) = CHANGESETS.lock() {
+        cache.insert((workdir.to_path_buf(), shas.to_vec()), data);
+    }
+}
+
+/// The diff of `path` in `shas` (one commit or a range).
+pub fn commit_diff(
+    workdir: &Path,
+    shas: &[String],
+    path: &str,
+    hide_whitespace: bool,
+) -> Option<LoadedDiff> {
+    let key = (
+        workdir.to_path_buf(),
+        shas.to_vec(),
+        path.to_string(),
+        hide_whitespace,
+    );
+    COMMIT_DIFFS.lock().ok()?.get(&key)
+}
+
+pub fn store_commit_diff(
+    workdir: &Path,
+    shas: &[String],
+    path: &str,
+    hide_whitespace: bool,
+    diff: LoadedDiff,
+) {
+    if let Ok(mut cache) = COMMIT_DIFFS.lock() {
+        cache.insert(
+            (
+                workdir.to_path_buf(),
+                shas.to_vec(),
+                path.to_string(),
+                hide_whitespace,
+            ),
+            diff,
+        );
+    }
+}
+
+/// What a working-directory diff was computed from; the same stamp means
+/// git would print the same diff.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WorkingStamp {
+    code: String,
+    old_path: Option<String>,
+    head: Option<String>,
+    /// size, mtime (ns), inode of the working file; `None` when missing
+    file: Option<(u64, i128, u64)>,
+    /// the diff options (whitespace, rename, symlink, as-text flags)
+    options: [bool; 4],
+}
+
+type WorkingKey = (PathBuf, String, WorkingStamp);
+
+fn file_stamp(path: &Path) -> Option<(u64, i128, u64)> {
+    use std::os::unix::fs::MetadataExt;
+    let meta = std::fs::symlink_metadata(path).ok()?;
+    let mtime = i128::from(meta.mtime()) * 1_000_000_000 + i128::from(meta.mtime_nsec());
+    Some((meta.len(), mtime, meta.ino()))
+}
+
+/// The stamp for `file`'s diff, or `None` when it must not be cached
+/// (conflicts and submodules depend on more than the file).
+pub fn working_stamp(
+    workdir: &Path,
+    file: &WorkingDirectoryFileChange,
+    head: Option<&str>,
+    options: [bool; 4],
+) -> Option<WorkingStamp> {
+    if file.status.submodule || file.status.kind == FileStatusKind::Conflicted {
+        return None;
+    }
+    Some(WorkingStamp {
+        code: file.status.code.clone(),
+        old_path: file.old_path.clone(),
+        head: head.map(str::to_string),
+        file: file_stamp(&workdir.join(&file.path)),
+        options,
+    })
+}
+
+pub fn working_diff(workdir: &Path, path: &str, stamp: &WorkingStamp) -> Option<LoadedDiff> {
+    let key = (workdir.to_path_buf(), path.to_string(), stamp.clone());
+    WORKING_DIFFS.lock().ok()?.get(&key)
+}
+
+pub fn store_working_diff(workdir: &Path, path: &str, stamp: WorkingStamp, diff: LoadedDiff) {
+    // a file written within the last second may change again within the same
+    // mtime tick (git's "racily clean" case): do not trust its stamp
+    let racy = stamp.file.is_some_and(|(_, mtime, _)| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|now| now.as_nanos() as i128 - mtime < 1_000_000_000)
+            .unwrap_or(true)
+    });
+    if racy {
+        return;
+    }
+    if let Ok(mut cache) = WORKING_DIFFS.lock() {
+        cache.insert((workdir.to_path_buf(), path.to_string(), stamp), diff);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lru_keeps_the_most_recent_entries() {
+        let mut lru = Lru::new(2);
+        lru.insert(1, "a");
+        lru.insert(2, "b");
+        assert_eq!(lru.get(&1), Some("a"));
+        lru.insert(3, "c");
+        // 2 was the least recently used
+        assert_eq!(lru.get(&2), None);
+        assert_eq!(lru.get(&1), Some("a"));
+        assert_eq!(lru.get(&3), Some("c"));
+        lru.insert(3, "d");
+        assert_eq!(lru.get(&3), Some("d"));
+        assert_eq!(lru.entries.len(), 2);
+    }
+
+    #[test]
+    fn a_changed_file_changes_the_stamp() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.txt");
+        std::fs::write(&path, "one\n").unwrap();
+        let before = file_stamp(&path);
+        std::fs::write(&path, "one\ntwo\n").unwrap();
+        assert_ne!(before, file_stamp(&path));
+        assert_eq!(file_stamp(&dir.path().join("missing")), None);
+    }
+}

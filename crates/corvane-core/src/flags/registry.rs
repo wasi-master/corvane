@@ -4088,6 +4088,23 @@ registry! {
         upstream: &[Upstream::issue(11491)],
         code: &["crates/corvane-ui/src/dialogs/branch_dialogs.rs", "crates/corvane-core/src/dispatcher.rs"],
     },
+
+    // ---- 900 Experimental ----
+
+    /// Diffs of neighbouring files and commits computed ahead of time.
+    PREFETCH_DIFFS = 901 "prefetch-diffs" {
+        title: "Prefetch diffs",
+        summary: "While a file or commit is shown, the diffs of the files and commits next to it \
+                  are computed in the background, so moving the selection with the arrow keys \
+                  shows the next diff at once. Costs a few extra git processes per selection.",
+        ghd_behaviour: "Runs git for a diff when its file or commit is selected.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-core/src/diff_cache.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.

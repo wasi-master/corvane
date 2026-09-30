@@ -227,7 +227,7 @@ struct Snapshot {
     path: String,
     kind: FileStatusKind,
     selection: DiffSelection,
-    diff: Diff,
+    diff: Arc<Diff>,
     contents: Option<Arc<Vec<String>>>,
     /// Old-side lines for highlighting (`fileContents.oldContents`).
     old_contents: Option<Arc<Vec<String>>>,
@@ -340,6 +340,16 @@ pub struct DiffView {
 }
 
 impl DiffView {
+    /// The view as a cached element filling the rest of a column (Corvane;
+    /// GHD's React tree has no equivalent cost): it re-renders only when it
+    /// notifies (the app state changed, it scrolled, its selection moved),
+    /// not for every frame of the window around it (a caret blink, hovering
+    /// the file list, typing a commit message). A diff is most of a frame.
+    pub fn embed(view: &Entity<Self>) -> impl IntoElement + use<> {
+        view.clone()
+            .cached(StyleRefinement::default().flex_1().min_h_0().w_full())
+    }
+
     pub fn new(state: Entity<AppState>, source: DiffSource, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
         Self {
@@ -744,7 +754,7 @@ impl DiffView {
         });
         // `750-diff-expand-whole-file`: start expanded, like "Expand Whole
         // File" (not for large diffs or files)
-        if matches!(snap.diff, Diff::Text { .. })
+        if matches!(*snap.diff, Diff::Text { .. })
             && self
                 .state
                 .read(cx)
@@ -759,7 +769,7 @@ impl DiffView {
             self.hunks = Rc::new(hunks);
             self.expanded = true;
         }
-        self.image = match &snap.diff {
+        self.image = match &*snap.diff {
             Diff::Image { previous, current } => {
                 let (previous, current, kind) = (previous.clone(), current.clone(), snap.kind);
                 Some(cx.new(|cx| ImageDiff::new(previous.as_ref(), current.as_ref(), kind, cx)))
@@ -2202,7 +2212,7 @@ impl Render for DiffView {
         let Some(snap) = self.snapshot(cx) else {
             return div()
                 .relative()
-                .flex_1()
+                .size_full()
                 .children(loading)
                 .into_any_element();
         };
@@ -2231,9 +2241,9 @@ impl Render for DiffView {
             .options_open
             .then(|| self.options_popover(&snap, window, cx));
 
-        let body: AnyElement = match &snap.diff {
+        let body: AnyElement = match &*snap.diff {
             Diff::Text { .. } | Diff::LargeText { .. } if snap.diff.line_count() > 0 => {
-                if matches!(snap.diff, Diff::LargeText { .. }) && !self.show_large {
+                if matches!(*snap.diff, Diff::LargeText { .. }) && !self.show_large {
                     self.large_diff_panel(cx)
                 } else {
                     self.text_diff(&snap, window, cx)
@@ -2286,9 +2296,8 @@ impl Render for DiffView {
                 }
             }))
             .relative()
-            .flex_1()
+            .size_full()
             .min_h_0()
-            .w_full()
             .flex()
             .flex_col()
             .bg(background)

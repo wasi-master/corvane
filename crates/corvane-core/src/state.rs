@@ -671,6 +671,10 @@ pub struct DeleteBranchPreview {
 }
 
 /// How many incoming commits [`RepositoryState::incoming_commits`] keeps.
+/// `708-changes-busy-indicator`: how long a refresh runs before the Changes
+/// list shows a spinner.
+pub const BUSY_INDICATOR_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
+
 pub const INCOMING_COMMITS_LIMIT: usize = 10;
 
 /// Per-repository cache (`IRepositoryState`, trimmed).
@@ -696,7 +700,7 @@ pub struct RepositoryState {
     pub selected_file: Option<String>,
     /// Every selected path (`selectedFileIDs`), click order; ⌘/⇧-click extend it.
     pub selected_files: Vec<String>,
-    pub diff: Option<Diff>,
+    pub diff: Option<Arc<Diff>>,
     pub diff_loading: bool,
     /// `749-binary-diff-as-text`: the path whose diff was asked for with
     /// `--text` ("Show diff anyway" on a binary file).
@@ -728,6 +732,8 @@ pub struct RepositoryState {
     pub discarding: bool,
     /// A refresh was requested while one was running; run again when done.
     pub refresh_pending: bool,
+    /// When the running refresh started.
+    pub refresh_started: Option<Instant>,
     /// Filter Options popover state (`IFileListFilterState` minus the text).
     pub file_list_filter: FileListFilter,
 
@@ -749,7 +755,7 @@ pub struct RepositoryState {
     pub changeset: Option<corvane_models::ChangesetData>,
     /// Path selected in the commit's file list.
     pub commit_selected_file: Option<String>,
-    pub commit_diff: Option<Diff>,
+    pub commit_diff: Option<Arc<Diff>>,
     pub commit_diff_generation: u64,
     pub commit_diff_contents: Option<Arc<Vec<String>>>,
     /// `<oldest selected>^:<old path>` (`parentCommitish`), for highlighting.
@@ -842,7 +848,7 @@ pub struct RepositoryState {
     pub showing_stash: bool,
     pub stash_files: Option<Vec<corvane_models::CommittedFileChange>>,
     pub stash_selected_file: Option<String>,
-    pub stash_diff: Option<Diff>,
+    pub stash_diff: Option<Arc<Diff>>,
     pub stash_diff_generation: u64,
     pub stash_diff_contents: Option<Arc<Vec<String>>>,
     /// `<stash>^:<old path>`, for highlighting.

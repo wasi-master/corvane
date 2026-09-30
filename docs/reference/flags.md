@@ -314,6 +314,12 @@ Flag values for one session, never persisted; the flags it names are locked in t
 | **`864-confirm-branch-switch`** Confirm before switching branches<br>Clicking a branch in the branch list asks "Switch to <branch>?" before checking it out.<br>*GitHub Desktop: Checks the branch out at once.* | toggle | off | off | off | on |  | [#20410](https://github.com/desktop/desktop/issues/20410) | `crates/corvane-ui/src/branch_list.rs`<br>`crates/corvane-ui/src/dialogs/branch_dialogs.rs` |
 | **`865-switch-branch-discard`** Switch Branch can discard changes<br>The Switch Branch dialog (shown for uncommitted changes) offers a third choice, "Discard my changes": its "Discard Changes and Switch" button discards every change (new files go to the Trash) and then switches.<br>*GitHub Desktop: Leave the changes in a stash or bring them along only.* | toggle | off | off | off | on |  | [#11491](https://github.com/desktop/desktop/issues/11491) | `crates/corvane-ui/src/dialogs/branch_dialogs.rs`<br>`crates/corvane-core/src/dispatcher.rs` |
 
+### 900 · Experimental
+
+| Flag | Kind | Corvane | GitHub Desktop | Familiar | Everything | Restart | Upstream | Code |
+|---|---|---|---|---|---|---|---|---|
+| **`901-prefetch-diffs`** Prefetch diffs<br>While a file or commit is shown, the diffs of the files and commits next to it are computed in the background, so moving the selection with the arrow keys shows the next diff at once. Costs a few extra git processes per selection.<br>*GitHub Desktop: Runs git for a diff when its file or commit is selected.* | toggle | on | off | on | on |  | — | `crates/corvane-core/src/dispatcher.rs`<br>`crates/corvane-core/src/diff_cache.rs` |
+
 ## Not toggleable
 
 Deviations that are engine or platform decisions and have no flag (`docs/reference/deviations.md` has the details):

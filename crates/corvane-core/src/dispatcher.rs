@@ -16,7 +16,9 @@ use crate::state::{
     AppState, CloneState, Foldout, LastCommit, Popup, RepositoryState, RetryAction, SignInState,
     SignInStep,
 };
-use corvane_models::{Account, DiffSelectionType, Repository, Section, github_from_remote};
+use corvane_models::{
+    Account, DiffSelectionType, Repository, Section, WorkingDirectoryFileChange, github_from_remote,
+};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 const RECENT_REPOSITORIES_LENGTH: usize = 3;
@@ -177,8 +179,19 @@ impl Dispatcher {
     }
 
     /// GHD refreshes the selected repository when the window regains focus.
+    /// Window focus (GHD `focus` IPC). A refresh that started a moment ago
+    /// already sees what focus would: at launch the window activates while
+    /// the first refresh runs, which queued a second full refresh.
     pub fn refresh_selected(cx: &mut App) {
-        if let Some(id) = Self::state(cx).read(cx).selected {
+        let s = Self::state(cx).read(cx);
+        let Some(id) = s.selected else { return };
+        let fresh = s.repo_states.get(&id).is_some_and(|rs| {
+            rs.loading
+                && rs
+                    .refresh_started
+                    .is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(250))
+        });
+        if !fresh {
             Self::refresh_repository(id, cx);
         }
     }
@@ -693,89 +706,122 @@ impl Dispatcher {
             Self::recover_missing_worktree(id, path, cx);
             return;
         }
-        let already_running = state.update(cx, |s, cx| {
+        let already_running = state.update(cx, |s, _| {
             let rs = s.repo_state_mut(id);
             if rs.loading {
                 rs.refresh_pending = true;
                 return true;
             }
             rs.loading = true;
-            cx.notify();
+            rs.refresh_started = Some(Instant::now());
+            // no notify: a refresh that changes nothing re-renders nothing
             false
         });
         if already_running {
             return;
         }
+        // `708-changes-busy-indicator`: the spinner shows once a refresh has
+        // taken this long
+        if state
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CHANGES_BUSY_INDICATOR)
+        {
+            cx.spawn(async move |cx: &mut AsyncApp| {
+                cx.background_executor()
+                    .timer(crate::state::BUSY_INDICATOR_DELAY)
+                    .await;
+                cx.update(|cx| {
+                    Self::state(cx).update(cx, |s, cx| {
+                        if s.repo_states.get(&id).is_some_and(|rs| rs.loading) {
+                            cx.notify();
+                        }
+                    })
+                });
+            })
+            .detach();
+        }
         let work = cx.background_executor().spawn(async move {
             let result = (|| {
-                let info = open_repository(&path)?;
-                let (ahead_behind, status) = match &git {
-                    Some(git) => {
-                        let ab = info.current_branch().and_then(|b| {
-                            corvane_git::ahead_behind(git.clone(), &info.workdir, b)
-                                .ok()
-                                .flatten()
-                        });
-                        let status = corvane_git::get_status_with(
-                            git.clone(),
-                            &info.workdir,
-                            previous_status.as_ref(),
-                            status_options,
-                        )?;
-                        (ab, Some(status))
-                    }
-                    None => (None, None),
+                let Some(git) = git else {
+                    return Ok::<_, GitError>((open_repository(&path)?, None, None, None));
                 };
-                let extras = git.as_ref().map(|git| {
-                    let recent =
-                        corvane_git::recent_branches(git.clone(), &info.workdir, recent_count)
-                            .unwrap_or_default();
+                // Everything runs at once, each git process on its own
+                // thread: a refresh takes as long as its slowest part (`git
+                // status` on a large tree) instead of the sum of about ten
+                // processes. GHD runs these one after another.
+                std::thread::scope(|scope| {
+                    let path = path.as_path();
+                    let previous = previous_status.as_ref();
+                    let status = spawn_git(scope, &git, move |git| {
+                        corvane_git::get_status_with(git, path, previous, status_options)
+                    });
+                    let recent = spawn_git(scope, &git, move |git| {
+                        corvane_git::recent_branches(git, path, recent_count).unwrap_or_default()
+                    });
+                    let stashes = spawn_git(scope, &git, move |git| {
+                        corvane_git::get_stashes(git, path).unwrap_or_default()
+                    });
+                    let tracking = track_branches.then(|| {
+                        spawn_git(scope, &git, move |git| {
+                            corvane_git::branch_tracking(git, path).unwrap_or_default()
+                        })
+                    });
+                    let pull_with_rebase = spawn_git(scope, &git, move |git| {
+                        corvane_git::pull_with_rebase(git, path)
+                    });
+                    let worktrees = spawn_git(scope, &git, move |git| {
+                        corvane_git::list_worktrees(git, path).unwrap_or_default()
+                    });
+                    let configured = spawn_git(scope, &git, corvane_git::configured_default_branch);
+                    let info = open_repository(path)?;
                     let remote = info
                         .remotes
                         .iter()
                         .find(|r| r.name == "origin")
                         .or_else(|| info.remotes.first())
                         .map(|r| r.name.clone());
-                    let head = remote
-                        .as_deref()
-                        .and_then(|r| corvane_git::remote_head(git.clone(), &info.workdir, r).ok())
-                        .flatten();
-                    let configured = corvane_git::configured_default_branch(git.clone());
-                    let default_branch = corvane_git::find_default_branch(
-                        &info.branches,
-                        remote.as_deref(),
-                        head.as_deref(),
-                        &configured,
-                    )
-                    .map(|b| b.name.clone());
-                    let (mut stashes, stash_count) =
-                        corvane_git::get_stashes(git.clone(), &info.workdir).unwrap_or_default();
-                    let current = info.current_branch().map(|b| b.name.clone());
-                    let stashed_branches =
-                        stashes.iter().filter_map(|s| s.branch.clone()).collect();
-                    let desktop_stash = stashes
-                        .iter()
-                        .position(|s| s.branch.is_some() && s.branch == current);
-                    // Corvane (`728-show-latest-other-stash`): without one of
-                    // its own, the branch shows the newest stash that no
-                    // Desktop made (`git stash` on the command line)
-                    let stash = desktop_stash
-                        .or_else(|| {
-                            other_stash
-                                .then(|| stashes.iter().position(|s| s.branch.is_none()))
+                    let head = remote.clone().map(|remote| {
+                        let workdir = info.workdir.clone();
+                        spawn_git(scope, &git, move |git| {
+                            corvane_git::remote_head(git, &workdir, &remote)
+                                .ok()
                                 .flatten()
                         })
-                        .map(|i| stashes.swap_remove(i));
+                    });
+                    let last_local_commit = info.current_branch().and_then(|b| {
+                        corvane_git::most_recent_local_commit(
+                            &info.workdir,
+                            &b.name,
+                            b.upstream.as_deref(),
+                        )
+                        .ok()
+                        .flatten()
+                    });
+                    let status = join(status)?;
+                    // `status --branch` reports the same counts `rev-list
+                    // --left-right --count branch...upstream` would
+                    let ahead_behind = info
+                        .current_branch()
+                        .filter(|b| b.upstream.is_some())
+                        .and(status.ahead_behind);
+                    let line_stats = (line_counts && !status.files.is_empty()).then(|| {
+                        corvane_git::working_directory_line_stats(
+                            git.clone(),
+                            &info.workdir,
+                            &status,
+                        )
+                        .unwrap_or_default()
+                    });
                     let rebase_snapshot = status
-                        .as_ref()
-                        .filter(|st| st.rebase_internal_state.is_some())
-                        .and_then(|_| corvane_git::rebase_snapshot(git.clone(), &info.workdir));
+                        .rebase_internal_state
+                        .is_some()
+                        .then(|| corvane_git::rebase_snapshot(git.clone(), &info.workdir))
+                        .flatten();
                     let cherry_pick_snapshot = status
-                        .as_ref()
-                        .filter(|st| st.cherry_pick_head_found)
-                        .and_then(|_| {
-                            corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir)
-                        });
+                        .cherry_pick_head_found
+                        .then(|| corvane_git::cherry_pick_snapshot(git.clone(), &info.workdir))
+                        .flatten();
                     // `257`: what a pull would bring in
                     let incoming_commits = info
                         .current_branch()
@@ -792,29 +838,51 @@ impl Dispatcher {
                         })
                         .map(|commits| commits.into_iter().map(|c| c.summary).collect())
                         .unwrap_or_default();
-                    let line_stats = status
-                        .as_ref()
-                        .filter(|st| line_counts && !st.files.is_empty())
-                        .map(|st| {
-                            corvane_git::working_directory_line_stats(
-                                git.clone(),
-                                &info.workdir,
-                                st,
-                            )
-                            .unwrap_or_default()
+                    // `260-force-push-after-outside-rewrite`
+                    let upstream_rewritten = detect_rewrite
+                        && ahead_behind.is_some_and(|ab| ab.ahead > 0 && ab.behind > 0)
+                        && info.current_branch().is_some_and(|b| {
+                            b.upstream.as_deref().is_some_and(|upstream| {
+                                corvane_git::upstream_tip_in_reflog(
+                                    git.clone(),
+                                    &info.workdir,
+                                    &b.name,
+                                    upstream,
+                                )
+                            })
+                        });
+                    let head = head.and_then(join);
+                    let configured = join(configured);
+                    let default_branch = corvane_git::find_default_branch(
+                        &info.branches,
+                        remote.as_deref(),
+                        head.as_deref(),
+                        &configured,
+                    )
+                    .map(|b| b.name.clone());
+                    let (mut stashes, stash_count) = join(stashes);
+                    let current = info.current_branch().map(|b| b.name.clone());
+                    let stashed_branches =
+                        stashes.iter().filter_map(|s| s.branch.clone()).collect();
+                    let desktop_stash = stashes
+                        .iter()
+                        .position(|s| s.branch.is_some() && s.branch == current);
+                    // Corvane (`728-show-latest-other-stash`): without one of
+                    // its own, the branch shows the newest stash that no
+                    // Desktop made (`git stash` on the command line)
+                    let stash = desktop_stash
+                        .or_else(|| {
+                            other_stash
+                                .then(|| stashes.iter().position(|s| s.branch.is_none()))
+                                .flatten()
                         })
-                        .unwrap_or_default();
-                    // `852-branch-upstream-gone`, `853-branch-list-ahead-behind`
-                    let branch_tracking = if track_branches {
-                        corvane_git::branch_tracking(git.clone(), &info.workdir).unwrap_or_default()
-                    } else {
-                        Default::default()
-                    };
-                    RefreshExtras {
-                        line_stats,
-                        branch_tracking,
+                        .map(|i| stashes.swap_remove(i));
+                    let extras = RefreshExtras {
+                        line_stats: line_stats.unwrap_or_default(),
+                        // `852-branch-upstream-gone`, `853-branch-list-ahead-behind`
+                        branch_tracking: tracking.map(join).unwrap_or_default(),
                         incoming_commits,
-                        recent_branches: recent,
+                        recent_branches: join(recent),
                         default_branch,
                         stash,
                         stash_count,
@@ -829,44 +897,18 @@ impl Dispatcher {
                                 .then(|| corvane_git::cloned_at(&info.workdir))
                                 .flatten()
                         }),
-                        pull_with_rebase: corvane_git::pull_with_rebase(git.clone(), &info.workdir),
-                        worktrees: corvane_git::list_worktrees(git.clone(), &info.workdir)
-                            .unwrap_or_default(),
-                        // `260-force-push-after-outside-rewrite`
-                        upstream_rewritten: detect_rewrite
-                            && ahead_behind.is_some_and(|ab| ab.ahead > 0 && ab.behind > 0)
-                            && info.current_branch().is_some_and(|b| {
-                                b.upstream.as_deref().is_some_and(|upstream| {
-                                    corvane_git::upstream_tip_in_reflog(
-                                        git.clone(),
-                                        &info.workdir,
-                                        &b.name,
-                                        upstream,
-                                    )
-                                })
-                            }),
-                        last_local_commit:
-                            info.current_branch()
-                                .and_then(|b| {
-                                    corvane_git::most_recent_local_commit(
-                                        &info.workdir,
-                                        &b.name,
-                                        b.upstream.as_deref(),
-                                    )
-                                    .ok()
-                                    .flatten()
-                                })
-                                .map(|c| crate::state::LastCommit {
-                                    at: std::time::UNIX_EPOCH
-                                        + std::time::Duration::from_secs(
-                                            c.author.seconds.max(0) as u64
-                                        ),
-                                    sha: c.sha,
-                                    summary: c.summary,
-                                }),
-                    }
-                });
-                Ok::<_, GitError>((info, ahead_behind, status, extras))
+                        pull_with_rebase: join(pull_with_rebase),
+                        worktrees: join(worktrees),
+                        upstream_rewritten,
+                        last_local_commit: last_local_commit.map(|c| crate::state::LastCommit {
+                            at: std::time::UNIX_EPOCH
+                                + std::time::Duration::from_secs(c.author.seconds.max(0) as u64),
+                            sha: c.sha,
+                            summary: c.summary,
+                        }),
+                    };
+                    Ok((info, ahead_behind, Some(status), Some(extras)))
+                })
             })();
             // git refuses to run in an unsafe repository; gitoxide can still
             // read where its main worktree is (GHD `mainWorktreePath`)
@@ -893,6 +935,10 @@ impl Dispatcher {
                     let repo_state: &mut RepositoryState = s.repo_state_mut(id);
                     repo_state.loading = false;
                     repo_state.last_refresh = Some(Instant::now());
+                    // the busy spinner may be showing (`708`)
+                    let mut changed = repo_state
+                        .refresh_started
+                        .is_some_and(|t| t.elapsed() >= crate::state::BUSY_INDICATOR_DELAY);
                     let mut selected = None;
                     let mut main_worktree = None;
                     match result {
@@ -900,25 +946,38 @@ impl Dispatcher {
                             if !slash_remotes {
                                 forget_remote_names(&mut info);
                             }
-                            repo_state.info = Some(info);
-                            repo_state.ahead_behind = ahead_behind;
-                            repo_state.error = None;
+                            changed |= set(&mut repo_state.info, Some(info));
+                            changed |= set(&mut repo_state.ahead_behind, ahead_behind);
+                            changed |= set(&mut repo_state.error, None);
                             if let Some(extras) = extras {
-                                repo_state.line_stats = Arc::new(extras.line_stats);
-                                repo_state.branch_tracking = Arc::new(extras.branch_tracking);
-                                repo_state.recent_branches = extras.recent_branches;
-                                repo_state.default_branch = extras.default_branch;
-                                repo_state.stash = extras.stash;
-                                repo_state.stash_count = extras.stash_count;
-                                repo_state.stashed_branches = extras.stashed_branches;
-                                repo_state.last_fetched = extras.last_fetched;
-                                repo_state.pull_with_rebase = extras.pull_with_rebase;
-                                repo_state.worktrees = extras.worktrees;
-                                repo_state.upstream_rewritten = extras.upstream_rewritten;
+                                changed |=
+                                    set(&mut repo_state.line_stats, Arc::new(extras.line_stats));
+                                changed |= set(
+                                    &mut repo_state.branch_tracking,
+                                    Arc::new(extras.branch_tracking),
+                                );
+                                changed |=
+                                    set(&mut repo_state.recent_branches, extras.recent_branches);
+                                changed |=
+                                    set(&mut repo_state.default_branch, extras.default_branch);
+                                changed |= set(&mut repo_state.stash, extras.stash);
+                                changed |= set(&mut repo_state.stash_count, extras.stash_count);
+                                changed |=
+                                    set(&mut repo_state.stashed_branches, extras.stashed_branches);
+                                changed |= set(&mut repo_state.last_fetched, extras.last_fetched);
+                                changed |=
+                                    set(&mut repo_state.pull_with_rebase, extras.pull_with_rebase);
+                                changed |= set(&mut repo_state.worktrees, extras.worktrees);
+                                changed |= set(
+                                    &mut repo_state.upstream_rewritten,
+                                    extras.upstream_rewritten,
+                                );
                                 // GHD `mostRecentLocalCommit`: the undo bar
                                 // follows the branch's unpushed commits
-                                repo_state.last_commit = extras.last_local_commit;
-                                repo_state.incoming_commits = extras.incoming_commits;
+                                changed |=
+                                    set(&mut repo_state.last_commit, extras.last_local_commit);
+                                changed |=
+                                    set(&mut repo_state.incoming_commits, extras.incoming_commits);
                                 // `mainWorktreePath` bookkeeping for the
                                 // missing-worktree fallback (applied below)
                                 main_worktree = repo_state
@@ -927,9 +986,9 @@ impl Dispatcher {
                                     .find(|w| w.kind == corvane_models::WorktreeType::Main)
                                     .map(|w| w.path.clone());
                                 if repo_state.stash.is_none() {
-                                    repo_state.showing_stash = false;
-                                    repo_state.stash_files = None;
-                                    repo_state.stash_diff = None;
+                                    changed |= set(&mut repo_state.showing_stash, false);
+                                    changed |= set(&mut repo_state.stash_files, None);
+                                    changed |= set(&mut repo_state.stash_diff, None);
                                 }
                             }
                             if let Some(mut status) = status {
@@ -942,34 +1001,40 @@ impl Dispatcher {
                                     .as_ref()
                                     .filter(|p| status.files.iter().any(|f| &f.path == *p))
                                     .cloned();
-                                repo_state.selected_file =
-                                    keep.or_else(|| status.files.first().map(|f| f.path.clone()));
+                                changed |= set(
+                                    &mut repo_state.selected_file,
+                                    keep.or_else(|| status.files.first().map(|f| f.path.clone())),
+                                );
+                                let before = repo_state.selected_files.len();
                                 repo_state
                                     .selected_files
                                     .retain(|p| status.files.iter().any(|f| &f.path == p));
+                                changed |= repo_state.selected_files.len() != before;
                                 if repo_state.selected_files.is_empty()
                                     && let Some(p) = repo_state.selected_file.clone()
                                 {
-                                    repo_state.selected_files = vec![p];
+                                    changed |= set(&mut repo_state.selected_files, vec![p]);
                                 }
                                 if repo_state.selected_file.is_none() {
-                                    repo_state.diff = None;
+                                    changed |= set(&mut repo_state.diff, None);
                                 }
                                 selected = repo_state.selected_file.clone();
-                                repo_state.conflict_state = crate::mco::derive_conflict_state(
+                                let conflict_state = crate::mco::derive_conflict_state(
                                     &status,
                                     repo_state.conflict_state.as_ref(),
                                 );
-                                repo_state.status = Some(status);
+                                changed |= set(&mut repo_state.conflict_state, conflict_state);
+                                changed |= set(&mut repo_state.status, Some(status));
                             }
-                            repo_state.unsafe_path = None;
+                            changed |= set(&mut repo_state.unsafe_path, None);
                             if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
-                                repo.missing = false;
+                                changed |= set(&mut repo.missing, false);
                             }
                         }
                         // GHD `getRepositoryType` → `unsafe`: the repository is
                         // shown as missing with the "Trust Repository" view
                         Err(err) if err.unsafe_repository_path().is_some() => {
+                            changed = true;
                             let unsafe_path = err.unsafe_repository_path();
                             info!(id, path = ?unsafe_path, "git considers the repository unsafe");
                             repo_state.unsafe_path = unsafe_path;
@@ -980,12 +1045,14 @@ impl Dispatcher {
                             main_worktree = unsafe_main;
                         }
                         Err(GitError::NotARepository(_)) => {
+                            changed = true;
                             repo_state.error = Some("repository is missing".into());
                             if let Some(repo) = s.repositories.iter_mut().find(|r| r.id == id) {
                                 repo.missing = true;
                             }
                         }
                         Err(err) => {
+                            changed = true;
                             warn!(id, %err, "refresh failed");
                             repo_state.error = Some(err.to_string());
                         }
@@ -996,8 +1063,14 @@ impl Dispatcher {
                     {
                         repo.main_worktree_path = Some(main);
                         persist_repositories(s);
+                        changed = true;
                     }
-                    cx.notify();
+                    // GHD re-renders after every refresh; an unchanged
+                    // repository (most focus and watcher refreshes) needs no
+                    // frame at all
+                    if changed {
+                        cx.notify();
+                    }
                     selected
                 });
                 if selected_file.is_some() {
@@ -1169,7 +1242,7 @@ impl Dispatcher {
 
     pub fn load_diff(id: u64, cx: &mut App) {
         let state = Self::state(cx);
-        let (git, workdir, file, hide_whitespace, renamed_against_head, symlinks_as_links, as_text) = {
+        let (git, workdir, file, options, head) = {
             let s = state.read(cx);
             let Some(git) = s.git.clone() else { return };
             let Some(rs) = s.repo_states.get(&id) else {
@@ -1179,113 +1252,159 @@ impl Dispatcher {
             let Some(path) = rs.selected_file.as_ref() else {
                 return;
             };
-            let Some(file) = rs
-                .status
-                .as_ref()
-                .and_then(|st| st.files.iter().find(|f| &f.path == path))
-                .cloned()
-            else {
+            let Some(status) = rs.status.as_ref() else {
+                return;
+            };
+            let Some(file) = status.files.iter().find(|f| &f.path == path).cloned() else {
                 return;
             };
             (
                 git,
                 info.workdir.clone(),
                 file,
-                s.settings.hide_whitespace_in_changes_diff,
-                s.flags.bool(crate::flags::ids::RENAMED_DIFF_AGAINST_HEAD),
-                s.flags.bool(crate::flags::ids::SYMLINK_CONTENTS),
-                rs.diff_as_text.as_deref() == Some(path.as_str())
-                    && s.flags.bool(crate::flags::ids::BINARY_DIFF_AS_TEXT),
+                WorkingDiffOptions::of(s, rs, path),
+                status.current_tip.clone(),
             )
         };
         let path = file.path.clone();
+        let stamp =
+            crate::diff_cache::working_stamp(&workdir, &file, head.as_deref(), options.key());
+        // a diff computed from the same file, status and HEAD: shown in this
+        // same frame, no git process
+        if let Some(loaded) = stamp
+            .as_ref()
+            .and_then(|stamp| crate::diff_cache::working_diff(&workdir, &path, stamp))
+        {
+            Self::apply_working_diff(id, &path, loaded, cx);
+            Self::prefetch_working_diffs(id, cx);
+            return;
+        }
         state.update(cx, |s, cx| {
             s.repo_state_mut(id).diff_loading = true;
             cx.notify();
         });
-        let git_for_old = git.clone();
         let work = cx.background_executor().spawn(async move {
-            let diff = corvane_git::working_directory_diff(
-                git,
-                &workdir,
-                &file,
-                hide_whitespace,
-                renamed_against_head,
-                as_text,
-            );
-            // GHD `fileContents.newContents`: the working copy, for hunk expansion.
-            let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
-                .then(|| corvane_git::working_file_lines(&workdir, &file.path, symlinks_as_links))
-                .flatten();
-            // GHD `getOldFileContent`: what is committed (`HEAD`), not the index
-            let old = (!matches!(
-                file.status.kind,
-                corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
-            ))
-            .then(|| {
-                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
-                corvane_git::blob_lines(git_for_old, &workdir, "HEAD", old_path)
-            })
-            .flatten();
-            (diff, (contents, old))
+            let loaded = compute_working_diff(git, &workdir, &file, options);
+            if let Some(stamp) = stamp {
+                crate::diff_cache::store_working_diff(&workdir, &file.path, stamp, loaded.clone());
+            }
+            loaded
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, (contents, old)) = work.await;
+            let loaded = work.await;
             cx.update(|cx| {
-                Self::state(cx).update(cx, |s, cx| {
-                    let rs = s.repo_state_mut(id);
-                    // ignore stale results
-                    if rs.selected_file.as_deref() != Some(path.as_str()) {
-                        return;
-                    }
-                    rs.diff_loading = false;
-                    let diff = result.unwrap_or_else(|err| {
-                        warn!(%err, "diff failed");
-                        corvane_models::Diff::Empty
-                    });
-                    if replace_diff(
-                        (
-                            &mut rs.diff,
-                            &mut rs.diff_contents,
-                            &mut rs.diff_old_contents,
-                        ),
-                        (diff, contents, old),
-                    ) {
-                        rs.diff_generation += 1;
-                    }
-                    // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
-                    // selection to the lines that exist in this diff.
-                    let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_ref() {
-                        Some(
-                            corvane_models::Diff::Text { hunks, .. }
-                            | corvane_models::Diff::LargeText { hunks, .. },
-                        ) => hunks
-                            .iter()
-                            .flat_map(|h| {
-                                h.lines.iter().enumerate().filter_map(move |(i, l)| {
-                                    matches!(
-                                        l.kind,
-                                        corvane_models::DiffLineKind::Add
-                                            | corvane_models::DiffLineKind::Delete
-                                    )
-                                    .then_some(h.unified_diff_start + i as u32)
-                                })
-                            })
-                            .collect(),
-                        _ => Default::default(),
-                    };
-                    if let Some(f) = rs
-                        .status
-                        .as_mut()
-                        .and_then(|st| st.files.iter_mut().find(|f| f.path == path))
-                    {
-                        f.selection = f.selection.with_selectable_lines(selectable);
-                    }
-                    cx.notify();
-                });
+                Self::apply_working_diff(id, &path, loaded, cx);
+                Self::prefetch_working_diffs(id, cx);
             });
         })
         .detach();
+    }
+
+    /// Show a loaded working-directory diff of `path` (dropped when another
+    /// file was selected meanwhile).
+    fn apply_working_diff(id: u64, path: &str, loaded: LoadedDiff, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            // ignore stale results
+            if rs.selected_file.as_deref() != Some(path) {
+                return;
+            }
+            let mut changed = set(&mut rs.diff_loading, false);
+            if replace_diff(
+                (
+                    &mut rs.diff,
+                    &mut rs.diff_contents,
+                    &mut rs.diff_old_contents,
+                ),
+                loaded,
+            ) {
+                rs.diff_generation += 1;
+                changed = true;
+            }
+            // GHD `updateChangesWorkingDirectoryDiff`: bound the file's
+            // selection to the lines that exist in this diff.
+            let selectable: std::collections::BTreeSet<u32> = match rs.diff.as_deref() {
+                Some(
+                    corvane_models::Diff::Text { hunks, .. }
+                    | corvane_models::Diff::LargeText { hunks, .. },
+                ) => hunks
+                    .iter()
+                    .flat_map(|h| {
+                        h.lines.iter().enumerate().filter_map(move |(i, l)| {
+                            matches!(
+                                l.kind,
+                                corvane_models::DiffLineKind::Add
+                                    | corvane_models::DiffLineKind::Delete
+                            )
+                            .then_some(h.unified_diff_start + i as u32)
+                        })
+                    })
+                    .collect(),
+                _ => Default::default(),
+            };
+            if let Some(f) = rs
+                .status
+                .as_mut()
+                .and_then(|st| st.files.iter_mut().find(|f| f.path == path))
+            {
+                let selection = f.selection.with_selectable_lines(selectable);
+                changed |= set(&mut f.selection, selection);
+            }
+            // the same diff again (a refresh): nothing to draw
+            if changed {
+                cx.notify();
+            }
+        });
+    }
+
+    /// `901-prefetch-diffs`: compute the diffs of the files next to the
+    /// selected one in the background, so moving the selection finds them
+    /// in [`crate::diff_cache`].
+    fn prefetch_working_diffs(id: u64, cx: &mut App) {
+        let s = Self::state(cx).read(cx);
+        if !s.flags.bool(crate::flags::ids::PREFETCH_DIFFS) {
+            return;
+        }
+        let (Some(git), Some(rs)) = (s.git.clone(), s.repo_states.get(&id)) else {
+            return;
+        };
+        let (Some(info), Some(status), Some(selected)) = (
+            rs.info.as_ref(),
+            rs.status.as_ref(),
+            rs.selected_file.as_ref(),
+        ) else {
+            return;
+        };
+        let Some(ix) = status.files.iter().position(|f| &f.path == selected) else {
+            return;
+        };
+        let workdir = info.workdir.clone();
+        let head = status.current_tip.clone();
+        // nearest first: next, previous, then two away
+        let neighbours: Vec<(WorkingDirectoryFileChange, WorkingDiffOptions)> = [1isize, -1, 2, -2]
+            .into_iter()
+            .filter_map(|d| status.files.get(ix.checked_add_signed(d)?))
+            .map(|f| (f.clone(), WorkingDiffOptions::of(s, rs, &f.path)))
+            .collect();
+        cx.background_executor()
+            .spawn(async move {
+                for (file, options) in neighbours {
+                    let Some(stamp) = crate::diff_cache::working_stamp(
+                        &workdir,
+                        &file,
+                        head.as_deref(),
+                        options.key(),
+                    ) else {
+                        continue;
+                    };
+                    if crate::diff_cache::working_diff(&workdir, &file.path, &stamp).is_some() {
+                        continue;
+                    }
+                    let loaded = compute_working_diff(git.clone(), &workdir, &file, options);
+                    crate::diff_cache::store_working_diff(&workdir, &file.path, stamp, loaded);
+                }
+            })
+            .detach();
     }
 
     // ---- history (GHD `_loadHistory`, `_loadNextCommitBatch`, `_changeCommitSelection`) ----
@@ -1339,12 +1458,22 @@ impl Dispatcher {
                 let reselect = Self::state(cx).update(cx, |s, cx| {
                     let rs = s.repo_state_mut(id);
                     rs.commits_loading = false;
+                    let mut changed = true;
                     match result {
                         Ok(batch) => {
-                            rs.commits_exhausted = batch.len() < corvane_git::COMMIT_BATCH_SIZE;
                             if more {
+                                rs.commits_exhausted = batch.len() < corvane_git::COMMIT_BATCH_SIZE;
                                 rs.commits.extend(batch);
+                            } else if rs.commits == batch
+                                || (batch.len() == corvane_git::COMMIT_BATCH_SIZE
+                                    && rs.commits.len() >= batch.len()
+                                    && rs.commits[..batch.len()] == batch[..])
+                            {
+                                // a refresh reloads the first page: unchanged,
+                                // the pages scrolled in after it stay
+                                changed = false;
                             } else {
+                                rs.commits_exhausted = batch.len() < corvane_git::COMMIT_BATCH_SIZE;
                                 rs.commits = batch;
                             }
                             let missing = !rs.compare.is_comparing()
@@ -1361,6 +1490,7 @@ impl Dispatcher {
                                 }
                             }
                             if missing {
+                                changed = true;
                                 rs.selected_commit = None;
                                 rs.selected_commits.clear();
                                 rs.shas_in_diff.clear();
@@ -1371,7 +1501,9 @@ impl Dispatcher {
                         }
                         Err(err) => warn!(id, %err, "history failed"),
                     }
-                    cx.notify();
+                    if changed {
+                        cx.notify();
+                    }
                     // GHD `updateOrSelectFirstCommit`: with nothing (left)
                     // selected, the newest commit becomes the selection
                     let comparing = rs.compare.is_comparing();
@@ -1530,45 +1662,63 @@ impl Dispatcher {
         if ordered.is_empty() || (ordered.len() > 1 && !contiguous) {
             return;
         }
+        // a commit's files never change: shown in this same frame
+        if let Some(data) = crate::diff_cache::changeset(&workdir, &ordered) {
+            Self::apply_changeset(id, &ordered, Ok(data), cx);
+            return;
+        }
         let key = ordered.clone();
         let task = cx.background_executor().spawn(async move {
-            if ordered.len() > 1 {
-                corvane_git::get_commit_range_changed_files(git, &workdir, &ordered)
-            } else {
-                corvane_git::get_changed_files(git, &workdir, &ordered[0])
-            }
+            let data = compute_changeset(git, &workdir, &ordered)?;
+            crate::diff_cache::store_changeset(&workdir, &ordered, data.clone());
+            Ok(data)
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
             let result = task.await;
-            cx.update(|cx| {
-                let load = Self::state(cx).update(cx, |s, cx| {
-                    let rs = s.repo_state_mut(id);
-                    if Self::ordered_selection(rs) != key {
-                        return false;
-                    }
-                    match result {
-                        Ok(data) => {
-                            // keep the file selection when the same path is still there
-                            let keep = rs
-                                .commit_selected_file
-                                .as_ref()
-                                .filter(|p| data.files.iter().any(|f| &f.path == *p))
-                                .cloned();
-                            rs.commit_selected_file =
-                                keep.or_else(|| data.files.first().map(|f| f.path.clone()));
-                            rs.changeset = Some(data);
-                        }
-                        Err(err) => warn!(id, %err, "changed files failed"),
-                    }
-                    cx.notify();
-                    true
-                });
-                if load {
-                    Self::load_commit_diff(id, cx);
-                }
-            });
+            cx.update(|cx| Self::apply_changeset(id, &key, result, cx));
         })
         .detach();
+    }
+
+    fn apply_changeset(
+        id: u64,
+        key: &[String],
+        result: corvane_git::error::Result<Arc<corvane_models::ChangesetData>>,
+        cx: &mut App,
+    ) {
+        let load = Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if Self::ordered_selection(rs) != key {
+                return false;
+            }
+            match result {
+                Ok(data) => {
+                    // keep the file selection when the same path is still there
+                    let keep = rs
+                        .commit_selected_file
+                        .as_ref()
+                        .filter(|p| data.files.iter().any(|f| &f.path == *p))
+                        .cloned();
+                    let file = keep.or_else(|| data.files.first().map(|f| f.path.clone()));
+                    let mut changed = set(&mut rs.commit_selected_file, file);
+                    if rs.changeset.as_ref() != Some(&*data) {
+                        rs.changeset = Some(Arc::unwrap_or_clone(data));
+                        changed = true;
+                    }
+                    if changed {
+                        cx.notify();
+                    }
+                }
+                Err(err) => {
+                    warn!(id, %err, "changed files failed");
+                    cx.notify();
+                }
+            }
+            true
+        });
+        if load {
+            Self::load_commit_diff(id, cx);
+        }
     }
 
     pub fn select_commit_file(id: u64, path: String, cx: &mut App) {
@@ -1605,78 +1755,130 @@ impl Dispatcher {
             .get(&id)
             .map(Self::ordered_selection)
             .unwrap_or_default();
-        let key = (ordered.clone(), file.path.clone());
         let hide_whitespace = Self::state(cx)
             .read(cx)
             .settings
             .hide_whitespace_in_history_diff;
-        let oldest_sha = ordered
-            .first()
-            .cloned()
-            .unwrap_or_else(|| file.commitish.clone());
+        if let Some(loaded) =
+            crate::diff_cache::commit_diff(&workdir, &ordered, &file.path, hide_whitespace)
+        {
+            Self::apply_commit_diff(id, &ordered, &file.path, loaded, cx);
+            Self::prefetch_commit_diffs(id, cx);
+            return;
+        }
+        let key = (ordered.clone(), file.path.clone());
         let task = cx.background_executor().spawn(async move {
-            let (newest, diff) = match (ordered.first(), ordered.last()) {
-                (Some(oldest), Some(newest)) if ordered.len() > 1 => (
-                    newest.clone(),
-                    corvane_git::commit_range_file_diff(
-                        git.clone(),
-                        &workdir,
-                        &file,
-                        oldest,
-                        newest,
-                        hide_whitespace,
-                    ),
-                ),
-                _ => (
-                    file.commitish.clone(),
-                    corvane_git::commit_file_diff(git.clone(), &workdir, &file, hide_whitespace),
-                ),
-            };
-            let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
-                .then(|| corvane_git::blob_lines(git.clone(), &workdir, &newest, &file.path))
-                .flatten();
-            // GHD `parentCommitish`: the parent of the oldest selected commit
-            let old = (!matches!(
-                file.status.kind,
-                corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
-            ))
-            .then(|| {
-                let parent = format!("{}^", oldest_sha);
-                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
-                corvane_git::blob_lines(git, &workdir, &parent, old_path)
-            })
-            .flatten();
-            (diff, (contents, old))
+            let loaded = compute_commit_diff(git, &workdir, &ordered, &file, hide_whitespace);
+            crate::diff_cache::store_commit_diff(
+                &workdir,
+                &ordered,
+                &file.path,
+                hide_whitespace,
+                loaded.clone(),
+            );
+            loaded
         });
         cx.spawn(async move |cx: &mut AsyncApp| {
-            let (result, (contents, old)) = task.await;
+            let loaded = task.await;
             cx.update(|cx| {
-                Self::state(cx).update(cx, |s, cx| {
-                    let rs = s.repo_state_mut(id);
-                    if Self::ordered_selection(rs) != key.0
-                        || rs.commit_selected_file.as_deref() != Some(key.1.as_str())
-                    {
-                        return;
-                    }
-                    let diff = result.unwrap_or_else(|err| {
-                        warn!(id, %err, "commit diff failed");
-                        corvane_models::Diff::Empty
-                    });
-                    if replace_diff(
-                        (
-                            &mut rs.commit_diff,
-                            &mut rs.commit_diff_contents,
-                            &mut rs.commit_diff_old_contents,
-                        ),
-                        (diff, contents, old),
-                    ) {
-                        rs.commit_diff_generation += 1;
-                    }
-                    cx.notify();
-                });
+                Self::apply_commit_diff(id, &key.0, &key.1, loaded, cx);
+                Self::prefetch_commit_diffs(id, cx);
             });
         })
         .detach();
+    }
+
+    fn apply_commit_diff(id: u64, shas: &[String], path: &str, loaded: LoadedDiff, cx: &mut App) {
+        Self::state(cx).update(cx, |s, cx| {
+            let rs = s.repo_state_mut(id);
+            if Self::ordered_selection(rs) != shas
+                || rs.commit_selected_file.as_deref() != Some(path)
+            {
+                return;
+            }
+            if replace_diff(
+                (
+                    &mut rs.commit_diff,
+                    &mut rs.commit_diff_contents,
+                    &mut rs.commit_diff_old_contents,
+                ),
+                loaded,
+            ) {
+                rs.commit_diff_generation += 1;
+                cx.notify();
+            }
+        });
+    }
+
+    /// `901-prefetch-diffs`: the changed files and first diff of the
+    /// commits next to the selected one, computed in the background.
+    fn prefetch_commit_diffs(id: u64, cx: &mut App) {
+        let s = Self::state(cx).read(cx);
+        if !s.flags.bool(crate::flags::ids::PREFETCH_DIFFS) {
+            return;
+        }
+        let hide_whitespace = s.settings.hide_whitespace_in_history_diff;
+        let (Some(git), Some(rs)) = (s.git.clone(), s.repo_states.get(&id)) else {
+            return;
+        };
+        let Some(workdir) = rs.info.as_ref().map(|i| i.workdir.clone()) else {
+            return;
+        };
+        if rs.selected_commits.len() != 1 {
+            return;
+        }
+        let commits = rs.visible_commits();
+        let Some(ix) = rs
+            .selected_commit
+            .as_ref()
+            .and_then(|sha| commits.iter().position(|c| &c.sha == sha))
+        else {
+            return;
+        };
+        let neighbours: Vec<String> = [1isize, -1, 2, 3]
+            .into_iter()
+            .filter_map(|d| commits.get(ix.checked_add_signed(d)?))
+            .map(|c| c.sha.clone())
+            .collect();
+        cx.background_executor()
+            .spawn(async move {
+                for sha in neighbours {
+                    let shas = [sha];
+                    let data = match crate::diff_cache::changeset(&workdir, &shas) {
+                        Some(data) => data,
+                        None => {
+                            let Ok(data) = compute_changeset(git.clone(), &workdir, &shas) else {
+                                continue;
+                            };
+                            crate::diff_cache::store_changeset(&workdir, &shas, data.clone());
+                            data
+                        }
+                    };
+                    // the file a selection there shows first
+                    let Some(file) = data.files.first() else {
+                        continue;
+                    };
+                    if crate::diff_cache::commit_diff(&workdir, &shas, &file.path, hide_whitespace)
+                        .is_none()
+                    {
+                        let loaded = compute_commit_diff(
+                            git.clone(),
+                            &workdir,
+                            &shas,
+                            file,
+                            hide_whitespace,
+                        );
+                        crate::diff_cache::store_commit_diff(
+                            &workdir,
+                            &shas,
+                            &file.path,
+                            hide_whitespace,
+                            loaded,
+                        );
+                    }
+                }
+            })
+            .detach();
     }
 
     // ---- history operations (`_revertCommit`, `_resetToCommit`, `_checkoutCommit`, tags, amend) ----
@@ -2942,7 +3144,7 @@ impl Dispatcher {
                             &mut rs.stash_diff_contents,
                             &mut rs.stash_diff_old_contents,
                         ),
-                        (diff, contents, old),
+                        (Arc::new(diff), contents.map(Arc::new), old.map(Arc::new)),
                     ) {
                         rs.stash_diff_generation += 1;
                     }
@@ -4505,6 +4707,179 @@ fn forget_remote_names(info: &mut corvane_models::RepositoryInfo) {
     }
 }
 
+/// The options a working-directory diff depends on.
+#[derive(Clone, Copy, Debug)]
+struct WorkingDiffOptions {
+    hide_whitespace: bool,
+    renamed_against_head: bool,
+    symlinks_as_links: bool,
+    as_text: bool,
+}
+
+impl WorkingDiffOptions {
+    fn of(s: &AppState, rs: &RepositoryState, path: &str) -> Self {
+        Self {
+            hide_whitespace: s.settings.hide_whitespace_in_changes_diff,
+            renamed_against_head: s.flags.bool(crate::flags::ids::RENAMED_DIFF_AGAINST_HEAD),
+            symlinks_as_links: s.flags.bool(crate::flags::ids::SYMLINK_CONTENTS),
+            as_text: rs.diff_as_text.as_deref() == Some(path)
+                && s.flags.bool(crate::flags::ids::BINARY_DIFF_AS_TEXT),
+        }
+    }
+
+    fn key(self) -> [bool; 4] {
+        [
+            self.hide_whitespace,
+            self.renamed_against_head,
+            self.symlinks_as_links,
+            self.as_text,
+        ]
+    }
+}
+
+/// `file`'s diff against `HEAD` with the working copy and the committed
+/// contents (hunk expansion, highlighting). Blocking.
+fn compute_working_diff(
+    git: Arc<corvane_git::GitBinary>,
+    workdir: &Path,
+    file: &WorkingDirectoryFileChange,
+    options: WorkingDiffOptions,
+) -> LoadedDiff {
+    // the old side is read in-process meanwhile
+    std::thread::scope(|scope| {
+        // GHD `getOldFileContent`: what is committed (`HEAD`), not the index
+        let old = (!matches!(
+            file.status.kind,
+            corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
+        ))
+        .then(|| {
+            let git = git.clone();
+            scope.spawn(move || {
+                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
+                corvane_git::blob_lines(git, workdir, "HEAD", old_path)
+            })
+        });
+        let diff = corvane_git::working_directory_diff(
+            git,
+            workdir,
+            file,
+            options.hide_whitespace,
+            options.renamed_against_head,
+            options.as_text,
+        )
+        .unwrap_or_else(|err| {
+            warn!(%err, "diff failed");
+            corvane_models::Diff::Empty
+        });
+        // GHD `fileContents.newContents`: the working copy, for hunk expansion.
+        let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted)
+            .then(|| {
+                corvane_git::working_file_lines(workdir, &file.path, options.symlinks_as_links)
+            })
+            .flatten();
+        let old = old.and_then(join);
+        (Arc::new(diff), contents.map(Arc::new), old.map(Arc::new))
+    })
+}
+
+/// The changed files of one commit or of a contiguous range (oldest first).
+fn compute_changeset(
+    git: Arc<corvane_git::GitBinary>,
+    workdir: &Path,
+    ordered: &[String],
+) -> corvane_git::error::Result<Arc<corvane_models::ChangesetData>> {
+    if ordered.len() > 1 {
+        corvane_git::get_commit_range_changed_files(git, workdir, ordered)
+    } else {
+        corvane_git::get_changed_files(git, workdir, &ordered[0])
+    }
+    .map(Arc::new)
+}
+
+/// `file`'s diff in `ordered` (one commit or a range, oldest first) with its
+/// new and old contents; the three parts are read in parallel. Blocking.
+fn compute_commit_diff(
+    git: Arc<corvane_git::GitBinary>,
+    workdir: &Path,
+    ordered: &[String],
+    file: &corvane_models::CommittedFileChange,
+    hide_whitespace: bool,
+) -> LoadedDiff {
+    let newest = match ordered {
+        [_, .., newest] => newest.clone(),
+        _ => file.commitish.clone(),
+    };
+    // GHD `parentCommitish`: the parent of the oldest selected commit
+    let oldest = ordered
+        .first()
+        .cloned()
+        .unwrap_or_else(|| file.commitish.clone());
+    std::thread::scope(|scope| {
+        let contents = (file.status.kind != corvane_models::FileStatusKind::Deleted).then(|| {
+            let (git, newest) = (git.clone(), newest.as_str());
+            scope.spawn(move || corvane_git::blob_lines(git, workdir, newest, &file.path))
+        });
+        let old = (!matches!(
+            file.status.kind,
+            corvane_models::FileStatusKind::New | corvane_models::FileStatusKind::Untracked
+        ))
+        .then(|| {
+            let git = git.clone();
+            let parent = format!("{oldest}^");
+            scope.spawn(move || {
+                let old_path = file.old_path.as_deref().unwrap_or(&file.path);
+                corvane_git::blob_lines(git, workdir, &parent, old_path)
+            })
+        });
+        let diff = match ordered {
+            [oldest, .., newest] => corvane_git::commit_range_file_diff(
+                git,
+                workdir,
+                file,
+                oldest,
+                newest,
+                hide_whitespace,
+            ),
+            _ => corvane_git::commit_file_diff(git, workdir, file, hide_whitespace),
+        }
+        .unwrap_or_else(|err| {
+            warn!(%err, "commit diff failed");
+            corvane_models::Diff::Empty
+        });
+        (
+            Arc::new(diff),
+            contents.and_then(join).map(Arc::new),
+            old.and_then(join).map(Arc::new),
+        )
+    })
+}
+
+/// Assign `value` to `slot`; whether that changed it.
+fn set<T: PartialEq>(slot: &mut T, value: T) -> bool {
+    if *slot == value {
+        return false;
+    }
+    *slot = value;
+    true
+}
+
+/// Run `f` with its own handle on `git` on a thread of `scope`.
+fn spawn_git<'scope, T: Send + 'scope>(
+    scope: &'scope std::thread::Scope<'scope, '_>,
+    git: &Arc<corvane_git::GitBinary>,
+    f: impl FnOnce(Arc<corvane_git::GitBinary>) -> T + Send + 'scope,
+) -> std::thread::ScopedJoinHandle<'scope, T> {
+    let git = git.clone();
+    scope.spawn(move || f(git))
+}
+
+/// A scoped thread's result; its panic continues on this thread.
+fn join<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> T {
+    handle
+        .join()
+        .unwrap_or_else(|panic| std::panic::resume_unwind(panic))
+}
+
 /// `709-new-untracked-files-excluded`: untracked files that were not listed
 /// before start left out of the next commit (GHD includes every new file).
 fn exclude_new_untracked(
@@ -4538,8 +4913,16 @@ fn resolve_path(path: &std::path::Path) -> PathBuf {
     out
 }
 
+/// A loaded diff with the new and old file contents (hunk expansion,
+/// highlighting), shared with the diff caches.
+pub(crate) type LoadedDiff = (
+    Arc<corvane_models::Diff>,
+    Option<Arc<Vec<String>>>,
+    Option<Arc<Vec<String>>>,
+);
+
 type DiffSlots<'a> = (
-    &'a mut Option<corvane_models::Diff>,
+    &'a mut Option<Arc<corvane_models::Diff>>,
     &'a mut Option<Arc<Vec<String>>>,
     &'a mut Option<Arc<Vec<String>>>,
 );
@@ -4552,24 +4935,26 @@ type DiffSlots<'a> = (
 /// bump the generation on `true`.
 pub(crate) fn replace_diff(
     (diff, contents, old_contents): DiffSlots<'_>,
-    (new_diff, new_contents, new_old): (
-        corvane_models::Diff,
-        Option<Vec<String>>,
-        Option<Vec<String>>,
-    ),
+    (new_diff, new_contents, new_old): LoadedDiff,
 ) -> bool {
-    let same_lines = |current: &Option<Arc<Vec<String>>>, new: &Option<Vec<String>>| {
-        current.as_deref() == new.as_ref()
-    };
-    if diff.as_ref() == Some(&new_diff)
-        && same_lines(contents, &new_contents)
-        && same_lines(old_contents, &new_old)
+    fn same<T: PartialEq>(current: &Option<Arc<T>>, new: &Option<Arc<T>>) -> bool {
+        match (current, new) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b) || a == b,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+    if diff
+        .as_ref()
+        .is_some_and(|d| Arc::ptr_eq(d, &new_diff) || **d == *new_diff)
+        && same(contents, &new_contents)
+        && same(old_contents, &new_old)
     {
         return false;
     }
     *diff = Some(new_diff);
-    *contents = new_contents.map(Arc::new);
-    *old_contents = new_old.map(Arc::new);
+    *contents = new_contents;
+    *old_contents = new_old;
     true
 }
 
@@ -4644,32 +5029,29 @@ mod replace_diff_tests {
 
     #[test]
     fn an_identical_reload_keeps_the_generation_and_the_contents() {
-        let lines = || Some(vec!["fn main() {}".to_string()]);
+        let lines = || Some(Arc::new(vec!["fn main() {}".to_string()]));
+        let empty = || Arc::new(corvane_models::Diff::Empty);
         let (mut diff, mut contents, mut old) = (None, None, None);
         assert!(replace_diff(
             (&mut diff, &mut contents, &mut old),
-            (corvane_models::Diff::Empty, lines(), None),
+            (empty(), lines(), None),
         ));
         let kept = contents.clone().unwrap();
         assert!(!replace_diff(
             (&mut diff, &mut contents, &mut old),
-            (corvane_models::Diff::Empty, lines(), None),
+            (empty(), lines(), None),
         ));
         // the same allocation, so the view's highlight cache still matches
         assert!(Arc::ptr_eq(&kept, contents.as_ref().unwrap()));
         assert!(replace_diff(
             (&mut diff, &mut contents, &mut old),
-            (
-                corvane_models::Diff::Empty,
-                Some(vec!["fn main() { }".into()]),
-                None
-            ),
+            (empty(), Some(Arc::new(vec!["fn main() { }".into()])), None),
         ));
         assert!(replace_diff(
             (&mut diff, &mut contents, &mut old),
             (
-                corvane_models::Diff::Empty,
-                Some(vec!["fn main() { }".into()]),
+                empty(),
+                Some(Arc::new(vec!["fn main() { }".into()])),
                 lines()
             ),
         ));

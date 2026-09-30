@@ -131,9 +131,6 @@ fn co_author_id(author: &Author) -> Option<String> {
     }
 }
 
-/// How long a status refresh runs before the header shows a spinner.
-const BUSY_INDICATOR_DELAY: std::time::Duration = std::time::Duration::from_millis(300);
-
 pub struct ChangesSidebar {
     filter: Entity<InputState>,
     summary: Entity<InputState>,
@@ -191,8 +188,6 @@ pub struct ChangesSidebar {
     /// `731-recall-commit-messages`: index into the recent messages the form
     /// shows; `None` once the user edits it.
     recalled: Option<usize>,
-    /// When the running status refresh started (`708-changes-busy-indicator`).
-    refresh_since: Cell<Option<std::time::Instant>>,
 }
 
 /// What the repository rules say about the commit being written
@@ -395,7 +390,6 @@ impl ChangesSidebar {
             rule_failure_popover_open: false,
             rule_hint_bounds: Rc::new(Cell::new(Bounds::default())),
             recalled: None,
-            refresh_since: Cell::new(None),
         }
     }
 
@@ -2458,38 +2452,26 @@ impl ChangesSidebar {
 
     /// `708-changes-busy-indicator`: a spinner at the end of the "N changed
     /// files" row while Discard Changes runs, or once a status refresh has
-    /// taken [`BUSY_INDICATOR_DELAY`] (GHD shows neither).
+    /// taken [`corvane_core::state::BUSY_INDICATOR_DELAY`] (GHD shows neither).
     fn busy_indicator(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let s = self.state.read(cx);
-        let (discarding, loading) = s
+        let (discarding, refreshing_since) = s
             .selected_state()
             .filter(|_| {
                 s.flags
                     .bool(corvane_core::flags::ids::CHANGES_BUSY_INDICATOR)
             })
-            .map_or((false, false), |rs| (rs.discarding, rs.loading));
-        if !loading {
-            self.refresh_since.set(None);
-        }
+            .map_or((false, None), |rs| {
+                (rs.discarding, rs.refresh_started.filter(|_| rs.loading))
+            });
         let color = cx.ghd().text_secondary;
         if discarding {
             return Some(crate::icons::loading("changes-busy-spinner", color));
         }
-        if !loading {
-            return None;
-        }
-        let since = self.refresh_since.get().unwrap_or_else(|| {
-            cx.spawn(async move |this, cx| {
-                cx.background_executor().timer(BUSY_INDICATOR_DELAY).await;
-                let _ = this.update(cx, |_, cx| cx.notify());
-            })
-            .detach();
-            let now = std::time::Instant::now();
-            self.refresh_since.set(Some(now));
-            now
-        });
-        (since.elapsed() >= BUSY_INDICATOR_DELAY)
-            .then(|| crate::icons::loading("changes-busy-spinner", color))
+        // the dispatcher notifies once a refresh has run this long
+        refreshing_since
+            .filter(|since| since.elapsed() >= corvane_core::state::BUSY_INDICATOR_DELAY)
+            .map(|_| crate::icons::loading("changes-busy-spinner", color))
     }
 
     /// Per-file line counts while flag `changes-line-counts` is on.
