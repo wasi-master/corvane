@@ -335,6 +335,7 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
     let (editor, shell) = (state.editor_label(), state.shell_label());
     let confirm = state.settings.confirm_repository_removal;
     let id = repo.id;
+    let remote_page = Dispatcher::non_github_remote_web_url(id, cx).is_some();
     let missing = repo.missing;
     let path = repo.path.clone();
     let (name, copy_path, shell_path, reveal, editor_path) = (
@@ -382,10 +383,16 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
         }),
         MenuItem::separator(),
-        MenuItem::new("View on GitHub", move |_, cx| {
-            Dispatcher::view_on_github(id, cx)
-        })
-        .enabled(repo.github.is_some()),
+        // `425-view-on-remote`: "View on Remote" for other hosts
+        MenuItem::new(
+            if repo.github.is_none() && remote_page {
+                "View on Remote"
+            } else {
+                "View on GitHub"
+            },
+            move |_, cx| Dispatcher::view_on_github(id, cx),
+        )
+        .enabled(repo.github.is_some() || remote_page),
         MenuItem::new(format!("Open in {shell}"), move |_, cx| {
             Dispatcher::open_in_shell(&shell_path, cx)
         })
