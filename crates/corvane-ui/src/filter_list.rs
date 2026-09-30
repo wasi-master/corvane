@@ -10,16 +10,27 @@ use gpui_kit::{Pixels, ScrollHandle};
 
 /// GHD `ui/lib/filter-list.tsx` `onFilterKeyDown` (ArrowDown / ArrowUp): the
 /// next highlighted row of `count` selectable rows. ↓ from the filter starts
-/// at the first row, ↑ at the last; moves clamp at the ends.
+/// at the first row, ↑ at the last; further moves wrap around like the
+/// list's own ([`wrap_step`]).
 pub fn step(current: Option<usize>, delta: isize, count: usize) -> Option<usize> {
     if count == 0 {
         return None;
     }
     Some(match current {
-        Some(ix) => (ix as isize + delta).clamp(0, count as isize - 1) as usize,
+        Some(ix) => wrap_step(ix, delta, count),
         None if delta < 0 => count - 1,
         None => 0,
     })
+}
+
+/// GHD `List.moveSelection` (`findNextSelectableRow`, `wrap` defaults to
+/// true): ↓ on the last row goes to the first, ↑ on the first to the last.
+/// Extending a range (`addSelection`, `wrap: false`) clamps instead.
+pub fn wrap_step(ix: usize, delta: isize, count: usize) -> usize {
+    if count == 0 {
+        return 0;
+    }
+    (ix as isize + delta).rem_euclid(count as isize) as usize
 }
 
 /// The top of selectable row `ix` in a list of groups of `group_sizes`
@@ -60,12 +71,12 @@ mod tests {
     use gpui_kit::px;
 
     #[test]
-    fn step_starts_at_the_ends_and_clamps() {
+    fn step_starts_at_the_ends_and_wraps() {
         assert_eq!(step(None, 1, 0), None);
         assert_eq!(step(None, 1, 3), Some(0));
         assert_eq!(step(None, -1, 3), Some(2));
-        assert_eq!(step(Some(2), 1, 3), Some(2));
-        assert_eq!(step(Some(0), -1, 3), Some(0));
+        assert_eq!(step(Some(2), 1, 3), Some(0));
+        assert_eq!(step(Some(0), -1, 3), Some(2));
         assert_eq!(step(Some(1), 1, 3), Some(2));
     }
 

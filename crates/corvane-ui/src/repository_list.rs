@@ -82,7 +82,7 @@ impl RepositoryFoldout {
     }
 
     /// GHD `FilterList`: ↓ / ↑ in the filter box move through the rows (↑
-    /// from the filter starts at the last), clamped at the ends.
+    /// from the filter starts at the last), wrapping at the ends.
     fn move_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
         let groups = self.groups(cx);
         let count: usize = groups.iter().map(|g| g.repos.len()).sum();
@@ -90,7 +90,7 @@ impl RepositoryFoldout {
             return;
         }
         let ix = match self.highlighted {
-            Some(ix) => (ix as isize + delta).clamp(0, count as isize - 1) as usize,
+            Some(ix) => crate::filter_list::wrap_step(ix, delta, count),
             None if delta < 0 => count - 1,
             None => 0,
         };

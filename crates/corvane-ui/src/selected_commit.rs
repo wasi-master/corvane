@@ -192,7 +192,7 @@ impl SelectedCommitView {
 
     /// GHD `List.moveSelection` on the commit's `FileList` (↑ / ↓, and ⌥↓ /
     /// ⌥↑ from the diff): the file `delta` rows from the moving end of the
-    /// selection, clamped at the ends, scrolled into view.
+    /// selection, wrapping around the ends (GHD `List.moveSelection`), scrolled into view.
     pub fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let Some(id) = self.state.read(cx).selected else {
             return;

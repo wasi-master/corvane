@@ -464,7 +464,7 @@ impl HistorySidebar {
             .as_ref()
             .and_then(|b| names.iter().position(|n| n == b));
         let next = match current {
-            Some(ix) => (ix as isize + delta).clamp(0, names.len() as isize - 1) as usize,
+            Some(ix) => crate::filter_list::wrap_step(ix, delta, names.len()),
             None => 0,
         };
         self.focused_branch = Some(names[next].clone());
@@ -1676,7 +1676,8 @@ impl HistorySidebar {
                 .as_ref()
                 .and_then(|sha| rs.commits.iter().position(|c| &c.sha == sha));
             let ix = match current {
-                Some(ix) => (ix as isize + delta).clamp(0, rs.commits.len() as isize - 1) as usize,
+                // GHD `List.moveSelection` wraps around the ends
+                Some(ix) => crate::filter_list::wrap_step(ix, delta, rs.commits.len()),
                 None => 0,
             };
             rs.commits.get(ix).map(|c| c.sha.clone())

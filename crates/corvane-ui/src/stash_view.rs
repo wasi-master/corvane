@@ -88,7 +88,7 @@ impl StashDiffViewer {
 
     /// GHD `List.moveSelection` on the stash's `FileList` (↑ / ↓, and ⌥↓ /
     /// ⌥↑ from the diff; single selection, so ⇧↑ / ⇧↓ too): the file
-    /// `delta` rows away, clamped at the ends, scrolled into view.
+    /// `delta` rows away, wrapping around the ends (GHD `List.moveSelection`), scrolled into view.
     pub fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let Some((id, order, current)) = self.file_order(cx) else {
             return;

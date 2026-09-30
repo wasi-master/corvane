@@ -1301,9 +1301,9 @@ impl ChangesSidebar {
         };
         let index = current
             .and_then(|p| files.iter().position(|f| f.path == p))
-            .map(|i| i as isize + delta)
-            .unwrap_or(0)
-            .clamp(0, files.len() as isize - 1) as usize;
+            // GHD `List.moveSelection` wraps around the ends
+            .map(|i| crate::filter_list::wrap_step(i, delta, files.len()))
+            .unwrap_or(0);
         Dispatcher::select_file(id, files[index].path.clone(), cx);
         self.list_scroll
             .scroll_to_item(index, ScrollStrategy::Nearest);
