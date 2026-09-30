@@ -95,7 +95,7 @@ pub struct BranchFoldout {
     /// from the filter box (an index into the rows as shown, groups
     /// flattened); while set it is the list's selection.
     highlighted: Option<usize>,
-    scroll: ScrollHandle,
+    scroll: UniformListScrollHandle,
     /// The same for the Pull Requests tab.
     pr_highlighted: Option<usize>,
     pr_scroll: ScrollHandle,
@@ -316,7 +316,7 @@ impl BranchFoldout {
             list_focused: false,
             remote_only: false,
             highlighted: None,
-            scroll: ScrollHandle::new(),
+            scroll: UniformListScrollHandle::new(),
             pr_highlighted: None,
             pr_scroll: ScrollHandle::new(),
         }
@@ -373,9 +373,19 @@ impl BranchFoldout {
             return;
         };
         self.highlighted = Some(ix);
-        // headers and `.branches-list-item` rows are both 30 px
-        let top = crate::filter_list::row_top(&sizes, ix, zpx(30.), zpx(30.));
-        crate::filter_list::scroll_into_view(&self.scroll, top, zpx(30.));
+        // the list is uniform (headers and `.branches-list-item` rows are
+        // both 30 px): its item index counts the headers above the row
+        let mut before = 0;
+        let headers = sizes
+            .iter()
+            .take_while(|size| {
+                before += **size;
+                before <= ix
+            })
+            .count()
+            + 1;
+        self.scroll
+            .scroll_to_item(ix + headers, ScrollStrategy::Top);
         cx.notify();
     }
 
@@ -1235,7 +1245,6 @@ impl Render for BranchFoldout {
         let row_count: usize = groups.iter().map(|g| g.branches.len()).sum();
         self.highlighted = self.highlighted.filter(|ix| *ix < row_count);
         let highlighted = self.highlighted;
-        let mut row_ix = 0;
         let Some(id) = id else {
             return div().into_any_element();
         };
@@ -1372,6 +1381,23 @@ impl Render for BranchFoldout {
                     .child(self.no_branches(id, query, cx))
                     .into_any_element()
             } else {
+                // one uniform list of group headers and rows (both 30 px), so
+                // only the rows on screen are built: the whole list was built
+                // every frame (and every keystroke in the filter) before
+                // (group, branch in group, branch row counting only branches:
+                // the keyboard highlight's index)
+                let mut row = 0;
+                let mut items: Vec<(usize, Option<usize>, usize)> = Vec::new();
+                for (g, group) in groups.iter().enumerate() {
+                    items.push((g, None, row));
+                    for b in 0..group.branches.len() {
+                        items.push((g, Some(b), row));
+                        row += 1;
+                    }
+                }
+                let count = items.len();
+                let groups = std::rc::Rc::new(groups);
+                let current = current.clone();
                 div()
                     .id("branches-list")
                     .track_focus(&self.list_focus)
@@ -1379,41 +1405,49 @@ impl Render for BranchFoldout {
                     .aria_label("Branches")
                     .flex_1()
                     .min_h_0()
-                    .overflow_y_scroll()
                     .flex()
                     .flex_col()
-                    .children(groups.into_iter().map(|group| {
-                        let first = row_ix;
-                        row_ix += group.branches.len();
-                        div()
-                            .flex()
-                            .flex_col()
-                            .child(
-                                // `.filter-list-group-header`
-                                div()
-                                    .h(zpx(30.))
-                                    .px(SPACING())
-                                    .flex()
-                                    .items_center()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .text_size(FONT_SIZE())
-                                    .child(group.title),
-                            )
-                            .children(group.branches.iter().enumerate().map(|(ix, b)| {
-                                self.row(
-                                    id,
-                                    b,
-                                    current.as_deref() == Some(b.name.as_str()),
-                                    highlighted == Some(first + ix),
-                                    b.kind == BranchKind::Local && stashed.contains(&b.name),
-                                    (b.kind == BranchKind::Local)
-                                        .then(|| tracking.get(&b.name).copied())
-                                        .flatten(),
-                                    cx,
-                                )
-                            }))
-                    }))
-                    .with_scrollbar_handle(&self.scroll)
+                    .child(
+                        uniform_list(
+                            "branches-list-rows",
+                            count,
+                            cx.processor(move |this, range: std::ops::Range<usize>, _, cx| {
+                                range
+                                    .map(|ix| match items[ix] {
+                                        // `.filter-list-group-header`
+                                        (g, None, _) => div()
+                                            .h(zpx(30.))
+                                            .px(SPACING())
+                                            .flex()
+                                            .items_center()
+                                            .font_weight(FontWeight::SEMIBOLD)
+                                            .text_size(FONT_SIZE())
+                                            .child(groups[g].title)
+                                            .into_any_element(),
+                                        (g, Some(b), row) => {
+                                            let b = &groups[g].branches[b];
+                                            this.row(
+                                                id,
+                                                b,
+                                                current.as_deref() == Some(b.name.as_str()),
+                                                highlighted == Some(row),
+                                                b.kind == BranchKind::Local
+                                                    && stashed.contains(&b.name),
+                                                (b.kind == BranchKind::Local)
+                                                    .then(|| tracking.get(&b.name).copied())
+                                                    .flatten(),
+                                                cx,
+                                            )
+                                            .into_any_element()
+                                        }
+                                    })
+                                    .collect()
+                            }),
+                        )
+                        .flex_1()
+                        .min_h_0()
+                        .with_scrollbar_handle(&self.scroll),
+                    )
                     .into_any_element()
             })
             .children(self.merge_button_row(id, current.filter(|_| tip_valid), cx))

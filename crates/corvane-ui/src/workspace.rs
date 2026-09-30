@@ -500,7 +500,7 @@ impl Workspace {
                         &self.diff_view,
                         cx,
                     ))
-                    .child(self.diff_view.clone())
+                    .child(DiffView::embed(&self.diff_view))
                     .into_any_element()
             }
             // `renderTutorialPane` in place of "No local changes"
