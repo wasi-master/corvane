@@ -698,6 +698,21 @@ registry! {
         code: &["crates/corvane/src/menus.rs", "crates/corvane-core/src/remote.rs"],
     },
 
+    /// No new merge or rebase while the repository is conflicted.
+    NO_MERGE_WHILE_CONFLICTED = 424 "no-merge-while-conflicted" {
+        title: "No merge while conflicted",
+        summary: "While a merge, rebase or cherry-pick still has conflicts, the History tab's merge \
+                  button is disabled and Branch › Merge, Squash and Merge, Rebase and Update from \
+                  Default Branch explain that it must be finished or aborted first.",
+        ghd_behaviour: "Starts the new operation, which git refuses with an error.",
+        nature: Nature::BugFix,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(6429), Upstream::issue(6584)],
+        code: &["crates/corvane-core/src/mco.rs", "crates/corvane-core/src/compare.rs", "crates/corvane/src/main.rs", "crates/corvane-ui/src/history.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.

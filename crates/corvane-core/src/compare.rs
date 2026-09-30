@@ -290,6 +290,9 @@ impl Dispatcher {
         kind: corvane_models::MultiCommitOperationKind,
         cx: &mut App,
     ) {
+        if Self::refuse_merge_while_conflicted(id, cx) {
+            return;
+        }
         let Some(branch) = Self::state(cx)
             .read(cx)
             .repo_states

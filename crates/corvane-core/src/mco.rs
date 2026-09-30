@@ -4,6 +4,10 @@
 //! `app-store.ts` + `dispatcher.ts`): rebase, cherry-pick, squash, reorder
 //! and merge, with the shared progress / conflicts / abort steps and the
 //! banners shown when they finish.
+//!
+//! Deviation: while the repository is still conflicted, a new merge, rebase
+//! or update from the default branch is refused with an explanation (GHD
+//! starts it and shows git's error; `424-no-merge-while-conflicted`).
 
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
@@ -333,6 +337,32 @@ fn operation_description(kind: MultiCommitOperationKind) -> &'static str {
 }
 
 impl Dispatcher {
+    /// Whether the repository is still in a conflicted merge, rebase or
+    /// cherry-pick and `424-no-merge-while-conflicted` is on: the merge,
+    /// rebase and update-from-default entry points then do not start another
+    /// operation (GHD starts it and shows git's error).
+    pub fn merge_blocked_by_conflicts(id: u64, cx: &App) -> bool {
+        let s = Self::state(cx).read(cx);
+        s.flags.bool(crate::flags::ids::NO_MERGE_WHILE_CONFLICTED)
+            && s.repo_states
+                .get(&id)
+                .is_some_and(|r| r.conflict_state.is_some())
+    }
+
+    /// [`Self::merge_blocked_by_conflicts`], explaining why when it is.
+    pub fn refuse_merge_while_conflicted(id: u64, cx: &mut App) -> bool {
+        if !Self::merge_blocked_by_conflicts(id, cx) {
+            return false;
+        }
+        Self::show_error(
+            "Conflicts to resolve",
+            "This repository is still in the middle of a merge, rebase or cherry-pick. Resolve \
+             its conflicts and continue, or abort it, before starting another one.",
+            cx,
+        );
+        true
+    }
+
     // ---- banners ----
 
     /// `_setBanner`, auto-dismissed after the banner's timeout.

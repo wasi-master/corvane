@@ -729,7 +729,9 @@ fn main() {
             }
         });
         cx.on_action(move |_: &MergeIntoCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::show_popup(
                     Popup::MergeBranch {
                         repo: id,
@@ -740,7 +742,9 @@ fn main() {
             }
         });
         cx.on_action(move |_: &SquashAndMergeIntoCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::show_popup(
                     Popup::MergeBranch {
                         repo: id,
@@ -781,12 +785,16 @@ fn main() {
         // on-demand packs installed earlier (extended grammars)
         Dispatcher::load_installed_packs(cx);
         cx.on_action(move |_: &RebaseCurrentBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::start_rebase_flow(id, cx);
             }
         });
         cx.on_action(move |_: &UpdateFromDefaultBranch, cx| {
-            if let Some((id, _)) = current_branch(cx) {
+            if let Some((id, _)) = current_branch(cx)
+                && !Dispatcher::refuse_merge_while_conflicted(id, cx)
+            {
                 Dispatcher::update_from_default_branch(id, cx);
             }
         });
