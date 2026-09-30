@@ -15,8 +15,16 @@
 //! instead. When a lookup fails otherwise (offline, rate limit) the shorthand
 //! is cloned as `https://github.com/owner/name.git`.
 //!
+//! Deviation (`360-clone-local-sources`): a local folder (`/path`, `~/path`)
+//! or `file://` URL is cloned as typed once [`resolve_local`] finds a
+//! repository there, and "no Git repository at that path" is reported
+//! before git runs (GHD turns `/a/b` into `https://github.com/a/b.git` and
+//! rejects longer paths).
+//!
 //! Deviation (`355-clone-prefers-ssh`): the SSH URL can be preferred for
 //! every lookup, not only for a typed SSH URL (GHD has no protocol setting).
+
+use std::path::PathBuf;
 
 use corvane_github::{Client, Endpoint, RepositoryCloneInfo};
 use corvane_models::split_remote;
@@ -27,6 +35,51 @@ use crate::remote::spawn_bg;
 
 /// The `DialogError` GHD shows when the repository can't be found.
 pub const REPOSITORY_NOT_FOUND: &str = "We couldn't find that repository. Check that you are logged in, the network is accessible, and the URL or repository alias are spelled correctly.";
+
+/// `360-clone-local-sources`: the source is not a repository on disk.
+pub const LOCAL_SOURCE_NOT_FOUND: &str =
+    "There's no Git repository at that path. Check the path and try again.";
+
+/// `360-clone-local-sources`: the folder a local clone source names: an
+/// absolute path, `~/…`, or a `file://` URL (`file:///abs`,
+/// `file://localhost/abs`, `%20` for spaces).
+pub fn local_source(input: &str) -> Option<PathBuf> {
+    let input = input.trim();
+    if let Some(rest) = input.strip_prefix("file://") {
+        let rest = rest.strip_prefix("localhost").unwrap_or(rest);
+        return rest
+            .starts_with('/')
+            .then(|| PathBuf::from(rest.replace("%20", " ")));
+    }
+    if let Some(rest) = input.strip_prefix("~/") {
+        return std::env::var_os("HOME").map(|home| PathBuf::from(home).join(rest));
+    }
+    input.starts_with('/').then(|| PathBuf::from(input))
+}
+
+/// `360-clone-local-sources`: `None` when `input` is not a local source,
+/// else what to clone (a `file://` URL as typed, a path expanded) or
+/// [`LOCAL_SOURCE_NOT_FOUND`].
+pub fn resolve_local(input: &str) -> Option<Result<CloneInfo, &'static str>> {
+    let path = local_source(input)?;
+    let found = matches!(
+        corvane_git::path_status(&path),
+        corvane_git::PathStatus::Repository | corvane_git::PathStatus::Bare
+    );
+    Some(if !found {
+        Err(LOCAL_SOURCE_NOT_FOUND)
+    } else {
+        let input = input.trim();
+        Ok(CloneInfo {
+            url: if input.starts_with("file://") {
+                input.to_string()
+            } else {
+                path.display().to_string()
+            },
+            default_branch: None,
+        })
+    })
+}
 
 /// GHD `IRepositoryIdentifier`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -225,9 +278,16 @@ impl Dispatcher {
             .read(cx)
             .flags
             .bool(crate::flags::ids::CLONE_SHORTHAND_NOT_FOUND);
+        let local_sources = Self::state(cx)
+            .read(cx)
+            .flags
+            .bool(crate::flags::ids::CLONE_LOCAL_SOURCES);
         spawn_bg(
             cx,
             move || {
+                if local_sources && let Some(local) = resolve_local(&input) {
+                    return local;
+                }
                 let candidates: Vec<Candidate> = clients.iter().map(|(c, _)| c.clone()).collect();
                 let mut lookup = |ix: usize, owner: &str, name: &str, ssh: bool| {
                     clients[ix]
@@ -342,6 +402,25 @@ mod tests {
             resolve("https://github.com/o/private", &candidates, &mut not_found),
             Err(REPOSITORY_NOT_FOUND)
         );
+    }
+
+    #[test]
+    fn local_sources_are_checked_and_cloned_as_typed() {
+        assert_eq!(local_source("hubot/cool"), None);
+        assert_eq!(local_source("https://github.com/a/b"), None);
+        assert_eq!(local_source(" /a/b/c "), Some(PathBuf::from("/a/b/c")));
+        assert_eq!(
+            local_source("file://localhost/a/my%20repo"),
+            Some(PathBuf::from("/a/my repo"))
+        );
+        assert!(resolve_local("owner/name").is_none());
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().display().to_string();
+        assert_eq!(resolve_local(&path), Some(Err(LOCAL_SOURCE_NOT_FOUND)));
+        std::fs::create_dir(dir.path().join(".git")).unwrap();
+        assert_eq!(resolve_local(&path).unwrap().unwrap().url, path);
+        let url = format!("file://{path}");
+        assert_eq!(resolve_local(&url).unwrap().unwrap().url, url);
     }
 
     #[test]
