@@ -175,7 +175,7 @@ pub fn resolve_link(href: &str, base_href: Option<&str>) -> Option<String> {
     let dir_end = base_no_fragment
         .rfind('/')
         .filter(|ix| *ix >= origin_end)
-        .map_or(base_no_fragment.len(), |ix| ix);
+        .unwrap_or(base_no_fragment.len());
     Some(format!("{}/{href}", &base_no_fragment[..dir_end]))
 }
 
