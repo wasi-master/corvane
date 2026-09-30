@@ -561,6 +561,11 @@ impl Dispatcher {
                     respect_show_untracked_files: s
                         .flags
                         .bool(crate::flags::ids::RESPECT_SHOW_UNTRACKED_FILES),
+                    ignore_submodules: match s.flags.text(crate::flags::ids::IGNORE_SUBMODULES) {
+                        "dirty" => corvane_git::IgnoreSubmodules::Dirty,
+                        "all" => corvane_git::IgnoreSubmodules::All,
+                        _ => corvane_git::IgnoreSubmodules::AsConfigured,
+                    },
                 },
             )
         };

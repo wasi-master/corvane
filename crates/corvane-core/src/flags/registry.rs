@@ -82,6 +82,21 @@ const SIGN_IN_FLOWS: &[SelectOption] = &[
     },
 ];
 
+const IGNORE_SUBMODULE_MODES: &[SelectOption] = &[
+    SelectOption {
+        value: "configured",
+        label: "As configured (submodule.<name>.ignore)",
+    },
+    SelectOption {
+        value: "dirty",
+        label: "Changes inside submodules",
+    },
+    SelectOption {
+        value: "all",
+        label: "All submodule changes",
+    },
+];
+
 const WIDTH_SAVES: &[SelectOption] = &[
     SelectOption {
         value: "drag-end",
@@ -390,6 +405,22 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(10445)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-ui/src/dialogs/discard_changes.rs"],
+    },
+    /// `git status --ignore-submodules`.
+    IGNORE_SUBMODULES = 215 "ignore-submodules" {
+        title: "Hide submodule changes",
+        summary: "What the Changes list leaves out about submodules: nothing beyond each \
+                  submodule's own submodule.<name>.ignore setting, changes inside submodules (a \
+                  new submodule commit is still listed), or submodules altogether (a new \
+                  submodule commit can then not be committed from Corvane).",
+        ghd_behaviour: "As configured: only submodule.<name>.ignore hides a submodule.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IGNORE_SUBMODULE_MODES },
+        corvane: Value::text("configured"), ghd: Value::text("configured"),
+        familiar: Value::text("configured"), everything: Value::text("dirty"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(20484)],
+        code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/status.rs"],
     },
 
     // ---- 300 GitHub ----

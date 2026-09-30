@@ -1,7 +1,8 @@
 //! `git status --porcelain=2 -z` (GHD `lib/status-parser.ts` + `lib/git/status.ts`).
 //!
-//! Deviations behind flags: [`StatusOptions`] (`respect-show-untracked-files`)
-//! and [`working_directory_line_stats`] (`changes-line-counts`).
+//! Deviations behind flags: [`StatusOptions`] (`respect-show-untracked-files`,
+//! `ignore-submodules`) and [`working_directory_line_stats`]
+//! (`changes-line-counts`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -26,6 +27,22 @@ pub struct StatusOptions {
     /// (`--untracked-files=no`); GHD always passes `--untracked-files=all`.
     /// Flag `respect-show-untracked-files`.
     pub respect_show_untracked_files: bool,
+    /// `--ignore-submodules=<when>`; GHD passes nothing, so only
+    /// `submodule.<name>.ignore` applies. Flag `ignore-submodules`.
+    pub ignore_submodules: IgnoreSubmodules,
+}
+
+/// What `git status` leaves out about submodules.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IgnoreSubmodules {
+    /// No option: `submodule.<name>.ignore` decides (GHD).
+    #[default]
+    AsConfigured,
+    /// `--ignore-submodules=dirty`: changes inside submodules are hidden,
+    /// a changed submodule commit is still listed.
+    Dirty,
+    /// `--ignore-submodules=all`: submodules are never listed.
+    All,
 }
 
 /// Run status and build the model. `previous` carries over per-file selections.
@@ -57,8 +74,15 @@ pub fn get_status_with(
     } else {
         "--untracked-files=all"
     };
+    let mut args = vec!["status", untracked];
+    match options.ignore_submodules {
+        IgnoreSubmodules::AsConfigured => {}
+        IgnoreSubmodules::Dirty => args.push("--ignore-submodules=dirty"),
+        IgnoreSubmodules::All => args.push("--ignore-submodules=all"),
+    }
+    args.extend(["--branch", "--porcelain=2", "-z"]);
     let out = GitCommand::new(git.clone())
-        .args(["status", untracked, "--branch", "--porcelain=2", "-z"])
+        .args(args)
         .current_dir(workdir)
         .run()?;
     let mut status = parse_porcelain_v2(&out.stdout);
@@ -474,6 +498,7 @@ mod tests {
             None,
             StatusOptions {
                 respect_show_untracked_files: true,
+                ..Default::default()
             },
         )
         .unwrap();
