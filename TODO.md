@@ -32,7 +32,6 @@ Legend: **[GH]** needs GitHub API · **[UI]** UI-only · **[PLAT]** platform wor
 
 New Corvane-only extras land behind a flag that is off in the Corvane preset and on in Everything (`everything: ON` in `crates/corvane-core/src/flags/registry.rs`). Candidates:
 
-- [ ] Opt out of update checks (desktop/desktop#3410; `corvane_core::updater::updates_enabled`), `5xx`
 - [ ] Flags dialog: ↑ / ↓ row navigation, a "Reset to preset" per category, a link that opens the flag's deviations.md entry
 
 ## Accessibility
