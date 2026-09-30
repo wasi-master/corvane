@@ -335,6 +335,20 @@ registry! {
         upstream: &[Upstream::issue(12995), Upstream::issue(22890)],
         code: &["crates/corvane-ui/src/dialogs/history_dialogs.rs", "crates/corvane-git/src/history_ops.rs"],
     },
+    /// Multi-select in a commit's file list.
+    COMMIT_FILES_MULTI_SELECT = 245 "commit-files-multi-select" {
+        title: "Multi-select a commit's files",
+        summary: "The History file list selects several files with ⌘-click and ⇧-click; right-clicking \
+                  the selection offers Copy File Paths and Copy Relative File Paths (one per line). \
+                  The diff shows the last clicked file.",
+        ghd_behaviour: "One file at a time.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(15525), Upstream::issue(20467)],
+        code: &["crates/corvane-ui/src/selected_commit.rs"],
+    },
 
     // ---- 300 GitHub ----
 
