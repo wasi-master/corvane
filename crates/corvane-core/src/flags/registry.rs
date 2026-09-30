@@ -6,8 +6,15 @@
 //! Rules: the id's hundreds digit is the category block, ids are never
 //! reused (move a deleted flag's id and slug to [`RETIRED`]), "on" means the
 //! Corvane deviation is active, and every preset gets an explicit value.
+//!
+//! Every entry also sets `nature`: [`Nature::BugFix`] when GitHub Desktop's
+//! behaviour is plainly wrong and nearly everyone wants the fix,
+//! [`Nature::Feature`] for a new capability, option or look (when in doubt,
+//! Feature). It is an attribute, not a category: the flag keeps its numbered
+//! block. The Flags dialog hides bug fixes unless "Show bug fixes" is ticked;
+//! presets and `CORVANE_FLAGS` apply to them all the same.
 
-use super::{Availability, FlagDef, FlagId, Kind, SelectOption, Upstream, Value};
+use super::{Availability, FlagDef, FlagId, Kind, Nature, SelectOption, Upstream, Value};
 
 /// Emits `ids::NAME` constants and `REGISTRY` from one table, so a const and
 /// its definition cannot drift apart.
@@ -96,6 +103,7 @@ registry! {
                   Primer's high-contrast palette), and the System theme switches to it while macOS's \
                   \"Increase contrast\" is on.",
         ghd_behaviour: "Light, Dark and System only; \"Increase contrast\" is ignored.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -107,6 +115,7 @@ registry! {
         title: "Smooth wheel scrolling",
         summary: "Mouse-wheel ticks animate with Chromium's smooth-scroll curve.",
         ghd_behaviour: "Jumps 40 px per tick (Electron only animates when NSScrollAnimationEnabled is set).",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -119,6 +128,7 @@ registry! {
         summary: "The name the Welcome flow, the no-repositories blank slate and the tutorial \
                   README use for the app.",
         ghd_behaviour: "\"GitHub Desktop\".",
+        nature: Nature::Feature,
         kind: Kind::Text { placeholder: "Corvane", validate: product_name },
         corvane: Value::text("Corvane"), ghd: Value::text("GitHub Desktop"),
         familiar: Value::text("Corvane"), everything: Value::text("Corvane"),
@@ -136,6 +146,7 @@ registry! {
         ghd_behaviour: "`.list-item:hover` outranks `.list-item.selected` in specificity, so a \
                         selected row in an unfocused list shows the hover colour and looks \
                         unselected while the pointer is on it.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -149,6 +160,7 @@ registry! {
                   tree-sitter for the languages it does not highlight, or tree-sitter wherever \
                   there is a grammar. The grammars download as an optional component.",
         ghd_behaviour: "CodeMirror 5 modes only; files in other languages get no colours.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -176,6 +188,7 @@ registry! {
         summary: "The repository's commit.template (comment lines stripped) prefills the description \
                   while the summary is empty, and comes back after every commit.",
         ghd_behaviour: "Ignores commit.template.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -188,6 +201,7 @@ registry! {
         summary: "Refreshes the repository when files under the worktree or .git change, not only on \
                   window focus and after Corvane's own actions.",
         ghd_behaviour: "Refreshes on window focus and after its own actions only.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -199,6 +213,7 @@ registry! {
         title: "Filesystem watcher debounce",
         summary: "How long the watcher waits after the last change before refreshing.",
         ghd_behaviour: "No watcher.",
+        nature: Nature::Feature,
         kind: Kind::Number { min: 50, max: 5000, unit: Some("ms") },
         corvane: Value::Number(300), ghd: Value::Number(300),
         familiar: Value::Number(300), everything: Value::Number(300),
@@ -212,6 +227,7 @@ registry! {
         summary: "When every account answers 404 for an owner/name shorthand in the clone dialog, \
                   \"We couldn't find that repository\" is shown instead of starting the clone.",
         ghd_behaviour: "Hands the bare alias to git, which fails after a moment.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -227,6 +243,7 @@ registry! {
                   path is a repository.",
         ghd_behaviour: "The path is only checked when Add Repository is pressed; the warning then \
                         stays, stale, while the path is edited.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: true, availability: available,
@@ -241,6 +258,7 @@ registry! {
                   GitHub Desktop's repository list and adds the repositories you pick, aliases \
                   included.",
         ghd_behaviour: "Not applicable: GitHub Desktop has nothing to import from.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -256,6 +274,7 @@ registry! {
         summary: "The pull request hover card shows the list item's \"opened N ago by author\" line \
                   next to the #N badge.",
         ghd_behaviour: "The card shows only the badge, the title and the body.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -268,6 +287,7 @@ registry! {
         summary: "The hover card's width: fixed at 400 px, or at least 400 px and growing with its \
                   content.",
         ghd_behaviour: "min-width: 400px.",
+        nature: Nature::Feature,
         kind: Kind::Select { options: QUICK_VIEW_WIDTHS },
         corvane: Value::text("fixed-400"), ghd: Value::text("min-400"),
         familiar: Value::text("min-400"), everything: Value::text("fixed-400"),
@@ -281,6 +301,7 @@ registry! {
         summary: "A push to a repository the account can only read opens the Create Fork dialog \
                   before git runs.",
         ghd_behaviour: "Runs the push and offers the fork after the authentication failure.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -293,6 +314,7 @@ registry! {
         summary: "The base branch picked in Preview Pull Request survives the push that precedes \
                   the pull request.",
         ghd_behaviour: "Drops the chosen base and opens the compare page against the default branch.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -304,6 +326,7 @@ registry! {
         title: "Push Branch Commits stops on a failed push",
         summary: "A failed push leaves its error on screen.",
         ghd_behaviour: "Opens the compare page on GitHub anyway.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -316,6 +339,7 @@ registry! {
         summary: "When commits are dropped on a pull request whose branch cannot be determined, \
                   the reason is shown.",
         ghd_behaviour: "Logs the reason and ends the operation silently.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -329,6 +353,7 @@ registry! {
                   browser (web flow with PKCE, which GitHub may refuse without a bundled client \
                   secret). The other flow stays one link away.",
         ghd_behaviour: "Browser flow only.",
+        nature: Nature::Feature,
         kind: Kind::Select { options: SIGN_IN_FLOWS },
         corvane: Value::text("device"), ghd: Value::text("browser"),
         familiar: Value::text("device"), everything: Value::text("device"),
@@ -342,6 +367,7 @@ registry! {
         summary: "A commit's check status stops refreshing this many minutes after nothing rendered \
                   it (0 keeps every status refreshing).",
         ghd_behaviour: "Subscribes on mount and unsubscribes on unmount, so nothing idles out.",
+        nature: Nature::Feature,
         kind: Kind::Number { min: 0, max: 1440, unit: Some("min") },
         corvane: Value::Number(5), ghd: Value::Number(0),
         familiar: Value::Number(5), everything: Value::Number(5),
@@ -357,6 +383,7 @@ registry! {
         title: "Help › Show Release Notes",
         summary: "The Help menu can open the release notes of the running version at any time.",
         ghd_behaviour: "Shows release notes only right after an update.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -368,6 +395,7 @@ registry! {
         title: "About: architecture and source link",
         summary: "The About dialog shows the CPU architecture after the version and a Source code link.",
         ghd_behaviour: "The version only, and a Terms and Conditions link.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -379,6 +407,7 @@ registry! {
         title: "Move to Applications prompt closes on backdrop click",
         summary: "Clicking outside the \"Move to the Applications folder?\" prompt dismisses it.",
         ghd_behaviour: "The prompt only closes through its buttons (backdropDismissable=false).",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -390,6 +419,7 @@ registry! {
         title: "Toolbar button width is saved",
         summary: "When a resized toolbar button's width is written to the store.",
         ghd_behaviour: "localStorage on every pointer move.",
+        nature: Nature::BugFix,
         kind: Kind::Select { options: WIDTH_SAVES },
         corvane: Value::text("drag-end"), ghd: Value::text("every-move"),
         familiar: Value::text("drag-end"), everything: Value::text("drag-end"),
@@ -407,6 +437,7 @@ registry! {
                   ~/Library/Logs/Corvane/crashes/ and the next launch lists new reports. Nothing \
                   is uploaded.",
         ghd_behaviour: "No local crash reports (GHD's crash reporter uploads to GitHub instead).",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: false, visible: true, availability: available,
@@ -419,6 +450,7 @@ registry! {
         summary: "Settings › Advanced offers downloadable packs (the syntax-extended grammar \
                   collection), and installed packs load at launch.",
         ghd_behaviour: "Ships every grammar; no packs section.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
         restart: true, visible: true, availability: packs_availability,
@@ -431,6 +463,7 @@ registry! {
         summary: "Errors from the automatic update checks are only logged; Check for Updates in \
                   About still shows them.",
         ghd_behaviour: "Posts every update error.",
+        nature: Nature::Feature,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -443,6 +476,7 @@ registry! {
         summary: "Release-note items without a [Kind] tag are classified by their ## heading, and \
                   the notes' leading paragraph is shown.",
         ghd_behaviour: "Drops untagged items and the leading paragraph.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -457,6 +491,7 @@ registry! {
         title: "Expand / Contract Active Resizable announces the new width",
         summary: "⌘9 / ⌘8 announce the percentage of the width after the step.",
         ghd_behaviour: "Reads the width before applying the step, so the announced number lags one step.",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: false, availability: available,
@@ -471,6 +506,7 @@ registry! {
         ghd_behaviour: "The label disappears whenever the email isn't one of the signed-in \
                         accounts' addresses (always, when signed out), although the code means to \
                         hide it only under the account-email dropdown's \"Other\".",
+        nature: Nature::BugFix,
         kind: Kind::Bool,
         corvane: ON, ghd: OFF, familiar: ON, everything: ON,
         restart: false, visible: true, availability: available,

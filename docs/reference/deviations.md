@@ -5,7 +5,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 ## Flags
 
 - Every deviation that can be switched off is a flag (`flags.md`, generated from `crates/corvane-core/src/flags/registry.rs`): a bullet below that ends with "Flag: `NNN-slug`" is controlled by that flag, and the **GitHub Desktop** preset turns all of them to their GHD-exact value. The rest of this file (engine, layout and platform decisions) stays fixed; `flags.md` lists them under "Not toggleable".
-- The Flags dialog itself (`crates/corvane-ui/src/dialogs/flags.rs`, Corvane › Flags…, ⌘⇧,, `x-corvane://flags?q=`, `CORVANE_POPUP=flags[:query]`) is a Corvane addition with no GHD counterpart: search, category navigation, presets, per-flag Reset, a Relaunch bar for restart-required flags, Copy / Paste as JSON and `CORVANE_FLAGS`. `CORVANE_FLAGS` locks the flags it names for one session; the parity harness runs with `preset=github-desktop`.
+- The Flags dialog itself (`crates/corvane-ui/src/dialogs/flags.rs`, Corvane › Flags…, ⌘⇧,, `x-corvane://flags?q=`, `CORVANE_POPUP=flags[:query]`) is a Corvane addition with no GHD counterpart: search, category navigation, presets, per-flag Reset, a Relaunch bar for restart-required flags, Copy / Paste as JSON and `CORVANE_FLAGS`. `CORVANE_FLAGS` locks the flags it names for one session; the parity harness runs with `preset=github-desktop`. Each flag is a feature or a bug fix (`Nature` in the registry, tagged in `flags.md`); bug fixes are hidden from the dialog's list, search and counts unless its "Show bug fixes" checkbox (per dialog session, off by default) is ticked, while presets, Reset all and `CORVANE_FLAGS` still apply to them.
 
 ## GitHub layer
 
