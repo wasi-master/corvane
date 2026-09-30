@@ -55,6 +55,11 @@ tracing-appender = "0.2"
 rust-embed = "8"
 dirs = "6"
 
+# tree-sitter's query analysis and parser are C: unoptimised they take
+# seconds on large highlight queries even in development builds
+[profile.dev.package.tree-sitter]
+opt-level = 3
+
 [profile.release]
 opt-level = 3
 lto = "fat"

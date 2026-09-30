@@ -89,10 +89,14 @@ const GRAMMAR_LIBRARY: &str = "corvane_grammars.dll";
 const GRAMMAR_LIBRARY: &str = "libcorvane_grammars.so";
 
 /// The `target` of manifest entries for native packs this build can load:
-/// `macos` (universal), else `<os>-<arch>` (`linux-x86_64`).
+/// `<os>-<arch>` (`macos-aarch64`, `linux-x86_64`). Native packs are per
+/// architecture rather than universal: the grammar tables alone are ~170 MB
+/// per architecture.
 pub fn pack_target() -> &'static str {
-    if cfg!(target_os = "macos") {
-        "macos"
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        "macos-aarch64"
+    } else if cfg!(target_os = "macos") {
+        "macos-x86_64"
     } else if cfg!(all(target_os = "windows", target_arch = "aarch64")) {
         "windows-aarch64"
     } else if cfg!(target_os = "windows") {
@@ -557,12 +561,12 @@ mod tests {
     fn unknown_kinds_are_skipped() {
         let json = r#"{"schema":1,"packs":[
             {"name":"future","version":"1.0.0","min_app":"0.1.0","url":"u","sha256":"ab","size":1,"kind":"future-kind"},
-            {"name":"tree-sitter-all","version":"1.0.0","min_app":"0.1.0","url":"u","sha256":"ab","size":1,"kind":"tree-sitter-all","target":"macos"}
+            {"name":"tree-sitter-all","version":"1.0.0","min_app":"0.1.0","url":"u","sha256":"ab","size":1,"kind":"tree-sitter-all","target":"macos-aarch64"}
         ]}"#;
         let manifest = parse_manifest(json.as_bytes()).unwrap();
         assert_eq!(manifest.packs.len(), 1);
         assert_eq!(manifest.packs[0].kind, PackKind::TreeSitterAll);
-        assert_eq!(manifest.packs[0].target.as_deref(), Some("macos"));
+        assert_eq!(manifest.packs[0].target.as_deref(), Some("macos-aarch64"));
     }
 
     #[test]

@@ -1,0 +1,45 @@
+package example:inventory@0.2.0;
+
+/// Types shared by the inventory interfaces.
+interface types {
+    /// A stock-keeping unit identifier.
+    type sku = string;
+
+    record item {
+        sku: sku,
+        name: string,
+        price-cents: u32,
+        quantity: u16,
+        tags: list<string>,
+    }
+
+    enum category { tool, part, other }
+    flags permissions { read, write, admin }
+    variant lookup-error {
+        not-found(sku),
+        invalid(string),
+        unavailable,
+    }
+}
+
+interface store {
+    use types.{item, sku, lookup-error, permissions};
+
+    // Resources model long-lived handles.
+    resource cart {
+        constructor(owner: string);
+        add: func(sku: sku, count: u16) -> result<_, lookup-error>;
+        total: func() -> u64;
+        from-json: static func(json: string) -> option<cart>;
+    }
+
+    get: func(sku: sku) -> result<item, lookup-error>;
+    search: func(query: string, limit: option<u32>) -> list<tuple<sku, f32>>;
+    check: func(perms: permissions) -> bool;
+}
+
+/* The component imports a logger and exports the store. */
+world inventory-service {
+    import wasi:logging/logging;
+    export store;
+}

@@ -39,6 +39,9 @@ elif command -v rsign >/dev/null 2>&1; then
 fi
 
 # --- build ------------------------------------------------------------------
+# C code (tree-sitter and, in the full build, every grammar) compiles for
+# Info.plist's LSMinimumSystemVersion, not for the build machine's macOS
+export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-15.0}"
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
   echo "building $VARIANT $VERSION (release)…"
   (cd "$ROOT" && cargo build --release -p corvane "${FEATURES[@]}")

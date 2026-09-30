@@ -1,7 +1,9 @@
 ; Synced by tools/ts-queries/sync.py; do not edit (additions: tools/ts-queries/patches/markdown_inline/).
-; Source: tree-sitter-md 0.5.3 (MIT): tree-sitter-markdown-inline/queries/injections.scm
+; Source: nvim-treesitter@728e031f6b11 queries/markdown_inline (Apache-2.0)
 ((html_tag) @injection.content
-  (#set! injection.language "html"))
+  (#set! injection.language "html")
+  (#set! injection.combined))
 
 ((latex_block) @injection.content
-  (#set! injection.language "latex"))
+  (#set! injection.language "latex")
+  (#set! injection.include-children))

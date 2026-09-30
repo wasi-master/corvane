@@ -1,0 +1,38 @@
+{# Page template for the documentation site. #}
+{% extends "layouts/base.html" %}
+{% import "macros/forms.html" as forms %}
+{% from "macros/nav.html" import breadcrumb with context %}
+
+{% set page_title = page.title | default("Untitled") | title %}
+{% set sections = ["intro", "usage", "api"] %}
+
+{% macro badge(text, kind="info") -%}
+  <span class="badge badge-{{ kind }}">{{ text | e }}</span>
+{%- endmacro %}
+
+{% block title %}{{ page_title }} - {{ site.name }}{% endblock %}
+
+{% block content %}
+  {{ breadcrumb(page.path) }}
+  <h1>{{ page_title }}{% if page.draft %} {{ badge("draft", kind="warn") }}{% endif %}</h1>
+
+  {% for section in sections if section in page.sections %}
+    <h2 id="{{ section }}">{{ loop.index }}. {{ section | capitalize }}</h2>
+    {{ page.sections[section] | safe }}
+  {% else %}
+    <p>This page has no sections yet.</p>
+  {% endfor %}
+
+  {% with count = page.comments | length %}
+    <p>{{ count }} comment{{ "s" if count != 1 else "" }}, {{ "%.1f" | format(page.rating * 5) }} stars</p>
+  {% endwith %}
+
+  {% if user is defined and user.is_admin %}
+    {{ forms.button("Edit", href=url_for("edit", slug=page.slug)) }}
+  {% elif not page.locked %}
+    <a href="/login?next={{ page.slug | urlencode }}">Sign in to edit</a>
+  {% endif %}
+
+  {% raw %}{{ this is not evaluated }}{% endraw %}
+  {{ super() }}
+{% endblock %}

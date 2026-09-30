@@ -1,0 +1,45 @@
+"""
+Schema and operations for a small issue tracker.
+"""
+schema { query: Query mutation: Mutation }
+
+scalar DateTime @specifiedBy(url: "https://tools.ietf.org/html/rfc3339")
+
+directive @auth(role: Role = MEMBER) on FIELD_DEFINITION | OBJECT
+
+enum Role { ADMIN MEMBER GUEST }
+interface Node { id: ID! }
+
+"An issue in a repository."
+type Issue implements Node @auth {
+  id: ID!
+  title: String!
+  labels(first: Int = 10): [String!]!
+  createdAt: DateTime
+  closed: Boolean
+}
+
+union SearchResult = Issue | User
+type User implements Node { id: ID! login: String! }
+
+input IssueFilter { closed: Boolean = false, labels: [String!] }
+
+type Query {
+  issues(filter: IssueFilter, after: String): [Issue!]!
+  search(term: String!): [SearchResult!]! @deprecated(reason: "Use \"issues\"")
+}
+
+type Mutation { closeIssue(id: ID!): Issue @auth(role: ADMIN) }
+
+# Operations
+query OpenIssues($first: Int = 5, $labels: [String!]) {
+  issues(filter: { closed: false, labels: $labels }) {
+    ...IssueFields
+    labels(first: $first)
+    ... on Node { id }
+  }
+}
+
+fragment IssueFields on Issue { id title createdAt }
+
+mutation Close($id: ID!) { closeIssue(id: $id) { id closed } }

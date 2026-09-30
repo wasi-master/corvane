@@ -84,6 +84,11 @@ How the tree-sitter highlighter (Settings › Appearance › Syntax highlighting
 | `text.strike` | line colour |
 | `diff` | line colour |
 | `error` | line colour |
+| `entity.name.type` | `--syntax-type-color` |
+| `entity.name.function` | `--syntax-variable-color` |
+| `entity.name` | `--syntax-variable-color` |
+| `meta.attribute` | `--syntax-attribute-color` |
+| `storage` | `--syntax-keyword-color` |
 | `spell` | enclosing |
 | `nospell` | enclosing |
 | `conceal` | enclosing |

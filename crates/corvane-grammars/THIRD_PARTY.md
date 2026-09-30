@@ -5,12 +5,108 @@ these grammars (compiled C parsers) and highlight queries.
 
 | Grammar | Parser | License | Queries |
 |---|---|---|---|
-| haskell | [tree-sitter-haskell 0.23.1](https://github.com/tree-sitter/tree-sitter-haskell) | MIT | tree-sitter-haskell 0.23.1 (MIT): queries/highlights.scm |
-| javascript | [tree-sitter-javascript 0.25.0](https://github.com/tree-sitter/tree-sitter-javascript) | MIT | tree-sitter-javascript 0.25.0 (MIT): queries/highlights.scm, queries/highlights-jsx.scm, queries/highlights-params.scm |
-| lua | [tree-sitter-lua 0.5.0](https://github.com/tree-sitter-grammars/tree-sitter-lua) | MIT | tree-sitter-lua 0.5.0 (MIT): queries/highlights.scm |
-| markdown | [tree-sitter-md 0.5.3](https://github.com/tree-sitter-grammars/tree-sitter-markdown) | MIT | tree-sitter-md 0.5.3 (MIT): tree-sitter-markdown/queries/highlights.scm |
-| markdown_inline | [tree-sitter-md 0.5.3](https://github.com/tree-sitter-grammars/tree-sitter-markdown) | MIT | tree-sitter-md 0.5.3 (MIT): tree-sitter-markdown-inline/queries/highlights.scm |
-| rust | [tree-sitter-rust 0.24.2](https://github.com/tree-sitter/tree-sitter-rust) | MIT | tree-sitter-rust 0.24.2 (MIT): queries/highlights.scm |
+| ada | [tree-sitter-ada 0.1.0](https://github.com/briot/tree-sitter-ada) | MIT | nvim-treesitter@728e031f6b11 queries/ada (Apache-2.0) |
+| agda | [tree-sitter-agda 1.3.3](https://github.com/tree-sitter/tree-sitter-agda) | MIT | nvim-treesitter@728e031f6b11 queries/agda (Apache-2.0) |
+| asciidoc | [tree-sitter-asciidoc 0.9.0](https://github.com/cathaysia/tree-sitter-asciidoc) | Apache-2.0 | tree-sitter-asciidoc 0.9.0 (Apache-2.0): queries/highlights.scm |
+| asm | [tree-sitter-asm 0.24.0](https://github.com/RubixDev/tree-sitter-asm) | MIT | nvim-treesitter@728e031f6b11 queries/asm (Apache-2.0) |
+| bash | [tree-sitter-bash 0.25.1](https://github.com/tree-sitter/tree-sitter-bash) | MIT | nvim-treesitter@728e031f6b11 queries/bash (Apache-2.0) |
+| bicep | [tree-sitter-bicep 1.1.0](https://github.com/tree-sitter-grammars/tree-sitter-bicep) | MIT | nvim-treesitter@728e031f6b11 queries/bicep (Apache-2.0) |
+| c | [tree-sitter-c 0.24.2](https://github.com/tree-sitter/tree-sitter-c) | MIT | nvim-treesitter@728e031f6b11 queries/c (Apache-2.0) |
+| c_sharp | [tree-sitter-c-sharp 0.23.5](https://github.com/tree-sitter/tree-sitter-c-sharp) | MIT | nvim-treesitter@728e031f6b11 queries/c_sharp (Apache-2.0) |
+| cmake | [tree-sitter-cmake 0.7.5](https://github.com/uyha/tree-sitter-cmake) | MIT | nvim-treesitter@728e031f6b11 queries/cmake (Apache-2.0) |
+| comment | [tree-sitter-comment 0.3.0](https://github.com/stsewd/tree-sitter-comment) | MIT | nvim-treesitter@728e031f6b11 queries/comment (Apache-2.0) |
+| commonlisp | [tree-sitter-commonlisp 0.4.1](https://github.com/theHamsta/tree-sitter-commonlisp) | MIT | nvim-treesitter@728e031f6b11 queries/commonlisp (Apache-2.0) |
+| cpp | [tree-sitter-cpp 0.23.4](https://github.com/tree-sitter/tree-sitter-cpp) | MIT | nvim-treesitter@728e031f6b11 queries/cpp (Apache-2.0) |
+| css | [tree-sitter-css 0.25.0](https://github.com/tree-sitter/tree-sitter-css) | MIT | nvim-treesitter@728e031f6b11 queries/css (Apache-2.0) |
+| cuda | [tree-sitter-cuda 0.21.2](https://github.com/tree-sitter-grammars/tree-sitter-cuda) | MIT | nvim-treesitter@728e031f6b11 queries/cuda (Apache-2.0) |
+| d | [tree-sitter-d 0.8.2](https://github.com/gdamore/tree-sitter-d) | MIT | nvim-treesitter@728e031f6b11 queries/d (Apache-2.0) |
+| dart | [tree-sitter-dart 0.2.0](https://github.com/nielsenko/tree-sitter-dart) | MIT | tree-sitter-dart 0.2.0 (MIT): queries/highlights.scm |
+| diff | [tree-sitter-diff 0.1.0](https://github.com/tree-sitter/tree-sitter-diff) | MIT | tree-sitter-diff 0.1.0 (MIT): queries/highlights.scm |
+| dtd | [tree-sitter-xml 0.7.0](https://github.com/tree-sitter-grammars/tree-sitter-xml) | MIT | nvim-treesitter@728e031f6b11 queries/dtd (Apache-2.0) |
+| elisp | [tree-sitter-elisp 1.7.2](https://github.com/Wilfred/tree-sitter-elisp) | MIT | tree-sitter-elisp 1.7.2 (MIT): queries/highlights.scm |
+| elixir | [tree-sitter-elixir 0.3.5](https://github.com/elixir-lang/tree-sitter-elixir) | Apache-2.0 | nvim-treesitter@728e031f6b11 queries/elixir (Apache-2.0) |
+| elm | [tree-sitter-elm 5.9.4](https://github.com/elm-tooling/tree-sitter-elm) | MIT | nvim-treesitter@728e031f6b11 queries/elm (Apache-2.0) |
+| embedded_template | [tree-sitter-embedded-template 0.25.0](https://github.com/tree-sitter/tree-sitter-embedded-template) | MIT | nvim-treesitter@728e031f6b11 queries/embedded_template (Apache-2.0) |
+| erlang | [tree-sitter-erlang 0.20.0](https://github.com/WhatsApp/tree-sitter-erlang) | MIT | nvim-treesitter@728e031f6b11 queries/erlang (Apache-2.0) |
+| fish | [tree-sitter-fish 3.6.0](https://github.com/ram02z/tree-sitter-fish) | MIT | nvim-treesitter@728e031f6b11 queries/fish (Apache-2.0) |
+| fortran | [tree-sitter-fortran 0.6.0](https://github.com/stadelmanma/tree-sitter-fortran) | MIT | nvim-treesitter@728e031f6b11 queries/fortran (Apache-2.0) |
+| fsharp | [tree-sitter-fsharp 0.3.12](https://github.com/ionide/tree-sitter-fsharp) | MIT | nvim-treesitter@728e031f6b11 queries/fsharp (Apache-2.0) |
+| gdscript | [tree-sitter-gdscript 6.1.0](https://github.com/prestonknopp/tree-sitter-gdscript) | MIT | helix@ba40e547426b queries/gdscript (MPL-2.0) |
+| gitcommit | [tree-sitter-gitcommit 0.5.0](https://github.com/gbprod/tree-sitter-gitcommit) | WTFPL | nvim-treesitter@728e031f6b11 queries/gitcommit (Apache-2.0) |
+| gleam | [tree-sitter-gleam 1.0.0](https://github.com/tree-sitter/tree-sitter-gleam) | Apache-2.0 | nvim-treesitter@728e031f6b11 queries/gleam (Apache-2.0) |
+| glsl | [tree-sitter-glsl 0.2.0](https://github.com/theHamsta/tree-sitter-glsl) | MIT | nvim-treesitter@728e031f6b11 queries/glsl (Apache-2.0) |
+| go | [tree-sitter-go 0.25.0](https://github.com/tree-sitter/tree-sitter-go) | MIT | nvim-treesitter@728e031f6b11 queries/go (Apache-2.0) |
+| godot_resource | [tree-sitter-godot-resource 0.7.0](https://github.com/prestonknopp/tree-sitter-godot-resource) | MIT | nvim-treesitter@728e031f6b11 queries/godot_resource (Apache-2.0) |
+| graphql | [tree-sitter-graphql 0.2.1](https://github.com/joowani/tree-sitter-graphql) | MIT | nvim-treesitter@728e031f6b11 queries/graphql (Apache-2.0) |
+| handlebars | [tree-sitter-handlebars 0.1.0](https://github.com/bennypowers/tree-sitter-handlebars) | MIT | tree-sitter-handlebars 0.1.0 (MIT): queries/highlights.scm |
+| haskell | [tree-sitter-haskell 0.23.1](https://github.com/tree-sitter/tree-sitter-haskell) | MIT | nvim-treesitter@728e031f6b11 queries/haskell (Apache-2.0) |
+| hcl | [tree-sitter-hcl 1.1.0](https://github.com/tree-sitter-grammars/tree-sitter-hcl) | Apache-2.0 | nvim-treesitter@728e031f6b11 queries/hcl (Apache-2.0) |
+| heex | [tree-sitter-heex 0.8.1](https://github.com/phoenixframework/tree-sitter-heex) | MIT | nvim-treesitter@728e031f6b11 queries/heex (Apache-2.0) |
+| hlsl | [tree-sitter-hlsl 0.2.0](https://github.com/theHamsta/tree-sitter-hlsl) | MIT | nvim-treesitter@728e031f6b11 queries/hlsl (Apache-2.0) |
+| html | [tree-sitter-html 0.23.2](https://github.com/tree-sitter/tree-sitter-html) | MIT | nvim-treesitter@728e031f6b11 queries/html (Apache-2.0) |
+| ini | [tree-sitter-ini 1.4.0](https://github.com/justinmk/tree-sitter-ini) | Apache-2.0 | nvim-treesitter@728e031f6b11 queries/ini (Apache-2.0) |
+| java | [tree-sitter-java 0.23.5](https://github.com/tree-sitter/tree-sitter-java) | MIT | nvim-treesitter@728e031f6b11 queries/java (Apache-2.0) |
+| javascript | [tree-sitter-javascript 0.25.0](https://github.com/tree-sitter/tree-sitter-javascript) | MIT | nvim-treesitter@728e031f6b11 queries/javascript (Apache-2.0) |
+| jinja | [tree-sitter-jinja2 0.0.16](https://github.com/uros-5/tree-sitter-jinja2) | MIT | tree-sitter-jinja2 0.0.16 (MIT): queries/highlights.scm |
+| jsdoc | [tree-sitter-jsdoc 0.25.0](https://github.com/tree-sitter/tree-sitter-jsdoc) | MIT | nvim-treesitter@728e031f6b11 queries/jsdoc (Apache-2.0) |
+| json | [tree-sitter-json 0.24.8](https://github.com/tree-sitter/tree-sitter-json) | MIT | nvim-treesitter@728e031f6b11 queries/json (Apache-2.0) |
+| jsonnet | [tree-sitter-jsonnet 0.0.1](https://github.com/deltarocks/tree-sitter-jrsonnet) | MIT | tree-sitter-jsonnet 0.0.1 (MIT): queries/highlights.scm |
+| julia | [tree-sitter-julia 0.23.1](https://github.com/tree-sitter/tree-sitter-julia) | MIT | nvim-treesitter@728e031f6b11 queries/julia (Apache-2.0) |
+| kdl | [tree-sitter-kdl 2.0.0](https://github.com/amaanq/tree-sitter-kdl) | MIT | nvim-treesitter@728e031f6b11 queries/kdl (Apache-2.0) |
+| kotlin | [tree-sitter-kotlin-ng 1.1.0](https://github.com/tree-sitter-grammars/tree-sitter-kotlin) | MIT | Corvane (MIT) |
+| less | [tree-sitter-less 1.0.0](https://github.com/jimliang/tree-sitter-less) | MIT | tree-sitter-less 1.0.0 (MIT): queries/highlights.scm |
+| llvm | [tree-sitter-llvm 1.1.0](https://github.com/tree-sitter/tree-sitter-LLVM) | MIT | nvim-treesitter@728e031f6b11 queries/llvm (Apache-2.0) |
+| lua | [tree-sitter-lua 0.5.0](https://github.com/tree-sitter-grammars/tree-sitter-lua) | MIT | nvim-treesitter@728e031f6b11 queries/lua (Apache-2.0) |
+| luau | [tree-sitter-luau 1.2.0](https://github.com/tree-sitter-grammars/tree-sitter-luau) | MIT | nvim-treesitter@728e031f6b11 queries/luau (Apache-2.0) |
+| make | [tree-sitter-make 1.1.1](https://github.com/tree-sitter-grammars/tree-sitter-make) | MIT | nvim-treesitter@728e031f6b11 queries/make (Apache-2.0) |
+| markdown | [tree-sitter-md 0.5.3](https://github.com/tree-sitter-grammars/tree-sitter-markdown) | MIT | nvim-treesitter@728e031f6b11 queries/markdown (Apache-2.0) |
+| markdown_inline | [tree-sitter-md 0.5.3](https://github.com/tree-sitter-grammars/tree-sitter-markdown) | MIT | nvim-treesitter@728e031f6b11 queries/markdown_inline (Apache-2.0) |
+| nginx | [tree-sitter-nginx 1.0.1](https://github.com/opa-oz/tree-sitter-nginx) | MIT | nvim-treesitter@728e031f6b11 queries/nginx (Apache-2.0) |
+| nickel | [tree-sitter-nickel 0.5.0](https://github.com/nickel-lang/tree-sitter-nickel) | MIT | nvim-treesitter@728e031f6b11 queries/nickel (Apache-2.0) |
+| nix | [tree-sitter-nix 0.3.0](https://github.com/nix-community/tree-sitter-nix) | MIT | nvim-treesitter@728e031f6b11 queries/nix (Apache-2.0) |
+| objc | [tree-sitter-objc 3.0.2](https://github.com/tree-sitter-grammars/tree-sitter-objc) | MIT | nvim-treesitter@728e031f6b11 queries/objc (Apache-2.0) |
+| ocaml | [tree-sitter-ocaml 0.26.0](https://github.com/tree-sitter/tree-sitter-ocaml) | MIT | nvim-treesitter@728e031f6b11 queries/ocaml (Apache-2.0) |
+| ocaml_interface | [tree-sitter-ocaml 0.26.0](https://github.com/tree-sitter/tree-sitter-ocaml) | MIT | nvim-treesitter@728e031f6b11 queries/ocaml_interface (Apache-2.0) |
+| ocaml_type | [tree-sitter-ocaml 0.26.0](https://github.com/tree-sitter/tree-sitter-ocaml) | MIT | tree-sitter-ocaml 0.26.0 (MIT): queries/highlights.scm |
+| odin | [tree-sitter-odin 1.3.0](https://github.com/tree-sitter-grammars/tree-sitter-odin) | MIT | nvim-treesitter@728e031f6b11 queries/odin (Apache-2.0) |
+| pascal | [tree-sitter-pascal 0.10.2](https://github.com/Isopod/tree-sitter-pascal) | MIT | nvim-treesitter@728e031f6b11 queries/pascal (Apache-2.0) |
+| php | [tree-sitter-php 0.24.2](https://github.com/tree-sitter/tree-sitter-php) | MIT | nvim-treesitter@728e031f6b11 queries/php (Apache-2.0) |
+| php_only | [tree-sitter-php 0.24.2](https://github.com/tree-sitter/tree-sitter-php) | MIT | nvim-treesitter@728e031f6b11 queries/php_only (Apache-2.0) |
+| powershell | [tree-sitter-powershell 0.26.4](https://github.com/airbus-cert/tree-sitter-powershell) | MIT | nvim-treesitter@728e031f6b11 queries/powershell (Apache-2.0) |
+| printf | [tree-sitter-printf 0.5.1](https://github.com/tree-sitter-grammars/tree-sitter-printf) | ISC | nvim-treesitter@728e031f6b11 queries/printf (Apache-2.0) |
+| properties | [tree-sitter-properties 0.3.0](https://github.com/tree-sitter-grammars/tree-sitter-properties) | MIT | nvim-treesitter@728e031f6b11 queries/properties (Apache-2.0) |
+| proto | [tree-sitter-proto 0.6.0](https://github.com/coder3101/tree-sitter-proto) | MIT | nvim-treesitter@728e031f6b11 queries/proto (Apache-2.0) |
+| python | [tree-sitter-python 0.25.0](https://github.com/tree-sitter/tree-sitter-python) | MIT | nvim-treesitter@728e031f6b11 queries/python (Apache-2.0) |
+| ql | [tree-sitter-ql 0.23.1](https://github.com/tree-sitter/tree-sitter-ql) | MIT | nvim-treesitter@728e031f6b11 queries/ql (Apache-2.0) |
+| r | [tree-sitter-r 1.3.0](https://github.com/r-lib/tree-sitter-r) | MIT | nvim-treesitter@728e031f6b11 queries/r (Apache-2.0) |
+| racket | [tree-sitter-racket 0.25.0](https://github.com/6cdh/tree-sitter-racket) | MIT | nvim-treesitter@728e031f6b11 queries/racket (Apache-2.0) |
+| regex | [tree-sitter-regex 0.25.0](https://github.com/tree-sitter/tree-sitter-regex) | MIT | nvim-treesitter@728e031f6b11 queries/regex (Apache-2.0) |
+| requirements | [tree-sitter-requirements 0.6.1](https://github.com/tree-sitter-grammars/tree-sitter-requirements) | MIT | nvim-treesitter@728e031f6b11 queries/requirements (Apache-2.0) |
+| rst | [tree-sitter-rst 0.2.0](https://github.com/stsewd/tree-sitter-rst) | MIT | nvim-treesitter@728e031f6b11 queries/rst (Apache-2.0) |
+| ruby | [tree-sitter-ruby 0.23.1](https://github.com/tree-sitter/tree-sitter-ruby) | MIT | nvim-treesitter@728e031f6b11 queries/ruby (Apache-2.0) |
+| rust | [tree-sitter-rust 0.24.2](https://github.com/tree-sitter/tree-sitter-rust) | MIT | nvim-treesitter@728e031f6b11 queries/rust (Apache-2.0) |
+| scala | [tree-sitter-scala 0.26.2](https://github.com/tree-sitter/tree-sitter-scala) | MIT | nvim-treesitter@728e031f6b11 queries/scala (Apache-2.0) |
+| scheme | [tree-sitter-scheme 0.24.7](https://github.com/6cdh/tree-sitter-scheme) | MIT | nvim-treesitter@728e031f6b11 queries/scheme (Apache-2.0) |
+| scss | [tree-sitter-scss 1.0.0](https://github.com/tree-sitter-grammars/tree-sitter-scss) | MIT | nvim-treesitter@728e031f6b11 queries/scss (Apache-2.0) |
+| solidity | [tree-sitter-solidity 1.2.13](https://github.com/JoranHonig/tree-sitter-solidity) | MIT | nvim-treesitter@728e031f6b11 queries/solidity (Apache-2.0) |
+| starlark | [tree-sitter-starlark 1.3.0](https://github.com/tree-sitter-grammars/tree-sitter-starlark) | MIT | nvim-treesitter@728e031f6b11 queries/starlark (Apache-2.0) |
+| svelte | [tree-sitter-svelte-ng 1.0.2](https://github.com/tree-sitter-grammars/tree-sitter-svelte) | MIT | nvim-treesitter@728e031f6b11 queries/svelte (Apache-2.0) |
+| swift | [tree-sitter-swift 0.7.3](https://github.com/alex-pinkus/tree-sitter-swift) | MIT | nvim-treesitter@728e031f6b11 queries/swift (Apache-2.0) |
+| systemverilog | [tree-sitter-systemverilog 0.4.1](https://github.com/gmlarumbe/tree-sitter-systemverilog) | MIT | nvim-treesitter@728e031f6b11 queries/systemverilog (Apache-2.0) |
+| templ | [tree-sitter-templ 2.2.0](https://github.com/vrischmann/tree-sitter-templ) | MIT | nvim-treesitter@728e031f6b11 queries/templ (Apache-2.0) |
+| tlaplus | [tree-sitter-tlaplus 1.5.0](https://github.com/tlaplus-community/tree-sitter-tlaplus) | MIT | nvim-treesitter@728e031f6b11 queries/tlaplus (Apache-2.0) |
+| toml | [tree-sitter-toml-ng 0.7.0](https://github.com/tree-sitter-grammars/tree-sitter-toml) | MIT | nvim-treesitter@728e031f6b11 queries/toml (Apache-2.0) |
+| tsx | [tree-sitter-typescript 0.23.2](https://github.com/tree-sitter/tree-sitter-typescript) | MIT | nvim-treesitter@728e031f6b11 queries/tsx (Apache-2.0) |
+| typescript | [tree-sitter-typescript 0.23.2](https://github.com/tree-sitter/tree-sitter-typescript) | MIT | nvim-treesitter@728e031f6b11 queries/typescript (Apache-2.0) |
+| verilog | [tree-sitter-verilog 1.0.3](https://github.com/tree-sitter/tree-sitter-verilog) | MIT | helix@ba40e547426b queries/verilog (MPL-2.0) |
+| vhdl | [tree-sitter-vhdl 1.4.0](https://github.com/jpt13653903/tree-sitter-vhdl) | MIT | nvim-treesitter@728e031f6b11 queries/vhdl (Apache-2.0) |
+| vim | [tree-sitter-vim 0.4.0](https://github.com/tree-sitter-grammars/tree-sitter-vim) | MIT | helix@ba40e547426b queries/vim (MPL-2.0) |
+| wit | [tree-sitter-wit 0.2.0](https://github.com/Michael-F-Bryan/wit-lsp.git) | MIT OR Apache-2.0 | tree-sitter-wit 0.2.0 (MIT OR Apache-2.0): queries/highlights.scm |
+| xcompose | [tree-sitter-xcompose 0.4.0](https://github.com/tree-sitter-grammars/tree-sitter-xcompose) | MIT | nvim-treesitter@728e031f6b11 queries/xcompose (Apache-2.0) |
+| xml | [tree-sitter-xml 0.7.0](https://github.com/tree-sitter-grammars/tree-sitter-xml) | MIT | nvim-treesitter@728e031f6b11 queries/xml (Apache-2.0) |
+| yaml | [tree-sitter-yaml 0.7.2](https://github.com/tree-sitter-grammars/tree-sitter-yaml) | MIT | nvim-treesitter@728e031f6b11 queries/yaml (Apache-2.0) |
+| zig | [tree-sitter-zig 1.1.2](https://github.com/tree-sitter-grammars/tree-sitter-zig) | MIT | nvim-treesitter@728e031f6b11 queries/zig (Apache-2.0) |
+| zsh | [tree-sitter-zsh 0.63.4](https://github.com/georgeharker/tree-sitter-zsh) | MIT | nvim-treesitter@728e031f6b11 queries/zsh (Apache-2.0) |
 
 nvim-treesitter queries: Apache-2.0, https://github.com/nvim-treesitter/nvim-treesitter.
 Helix queries: MPL-2.0, https://github.com/helix-editor/helix (source of the modified files:

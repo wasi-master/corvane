@@ -1,0 +1,43 @@
+1: 0+1=Tag 37+1=Tag
+2: 0+2=Tag 2+106=Atom 108+1=Tag
+3: 0+5=Tag 6+5=Attribute 12+30=String 42+1=Tag
+4: 0+6=Tag
+5: 0+7=Tag 7+6=Header 13+8=Tag
+6: 0+6=Tag 7+4=Attribute 12+17=String 29+1=Tag 51+8=Tag
+7: 0+6=Tag 7+4=Attribute 12+7=String 19+1=Tag 41+8=Tag
+8: 0+6=Tag 7+4=Attribute 12+11=String 23+1=Tag
+9: 12+8=Tag
+10: 0+6=Tag 7+5=Attribute 13+5=String 19+4=Attribute 24+5=String 29+1=Tag
+12: 21+11=Tag 43+4=Tag
+13: 0+7=Tag
+14: 3+12=Type
+16: 0+8=Tag
+17: 0+7=Tag 8+4=Attribute 13+17=String 30+1=Tag
+20: 8+9=Tag
+21: 0+7=Tag 8+4=Attribute 13+15=String 28+1=Tag 43+9=Tag
+22: 0+7=Tag 8+4=Attribute 13+2=String 15+1=Tag 32+9=Tag
+23: 0+7=Tag 8+4=Attribute 13+12=String 26+4=Attribute 31+12=String 43+1=Tag 57+9=Tag
+24: 0+7=Tag 8+4=Attribute 13+17=String 30+1=Tag 38+9=Tag
+25: 0+7=Tag 8+9=Attribute 18+12=String 30+1=Tag 31+12=Variable 45+9=Tag
+26: 0+7=Tag 8+4=Attribute 15+17=String 34+1=Tag 43+9=Tag
+27: 0+7=Tag 8+4=Attribute 13+8=String
+28: 0+1=Tag 1+13=Variable 16+9=Tag
+29: 0+7=Tag
+30: 0+6=Tag
+31: 0+4=Tag
+32: 2+5=Attribute 8+6=String
+33: 0+12=String
+34: 2+2=Attribute 6+1=Tag
+35: 12+4=Tag 24+5=Tag 31+8=Tag 45+9=Tag 68+1=Tag 70+4=Tag 74+1=Attribute
+36: 2+1=Attribute 4+4=Attribute 9+9=Attribute 19+1=Attribute 21+3=Attribute 25+6=Attribute 32+6=Attribute 39+6=Attribute 46+9=Attribute
+37: 0+6=Tag
+38: 0+11=Tag 24+6=Tag
+39: 0+8=Tag 11+4=Tag 18+5=Tag
+40: 0+16=Tag 17+7=Tag 25+8=Attribute 33+1=Tag 35+9=Tag 45+5=Attribute 52+9=Tag 62+9=Tag
+41: 0+8=Tag 12+4=Tag 26+4=Tag 35+4=Tag 43+5=Tag
+42: 0+3=Tag 19+4=Tag 23+16=Header 39+5=Tag
+43: 0+2=Tag 3+4=Attribute 8+20=String 29+7=Attribute 37+1=String 38+2=Variable 41+3=String 45+1=String 46+1=Tag 47+4=Link 51+4=Tag
+44: 0+6=Tag 9+4=Tag 14+9=Tag 26+9=Tag 36+5=Tag 44+7=Tag
+45: 0+6=Tag 7+5=Attribute 13+18=String
+46: 0+17=String 18+4=Attribute 24+1=Tag
+47: 0+8=Tag

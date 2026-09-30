@@ -18,9 +18,8 @@ grammar, see README.md):
 
 nvim and Helix queries are rewritten for tree-sitter-highlight: `; inherits:`
 is resolved, `#lua-match?` / `#vim-match?` become `#match?`, predicates and
-directives it cannot evaluate are dropped with their pattern's effect noted,
-`@spell` / `@nospell` / `@conceal` captures are removed, and Helix files are
-reversed pattern by pattern (Helix lets the first matching pattern win,
+directives it cannot evaluate are dropped (noted in the file header), and
+Helix files are reversed pattern by pattern (Helix lets the first matching pattern win,
 tree-sitter-highlight the last). Files in tools/ts-queries/patches/<name>/
 are appended (Corvane additions, MIT).
 """
@@ -181,6 +180,25 @@ LUA_CLASSES = {
 }
 
 
+def unquote(text: str) -> str:
+    """A query string literal's content (between the quotes) as its value."""
+    out, i = [], 0
+    while i < len(text):
+        if text[i] == "\\" and i + 1 < len(text):
+            nxt = text[i + 1]
+            out.append({"n": "\n", "t": "\t", "r": "\r", "0": "\0"}.get(nxt, nxt))
+            i += 2
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def quote(value: str) -> str:
+    """A value as query string literal content."""
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\t", "\\t")
+
+
 def lua_to_regex(pattern: str) -> str:
     """A Lua pattern as a Rust regex (the subset queries use)."""
     out = []
@@ -205,13 +223,29 @@ def lua_to_regex(pattern: str) -> str:
             out.append("*?")
             i += 1
             continue
-        elif c in "\\" and not in_class:
+        elif c in "{}|\\" and not in_class:
+            out.append("\\" + c)
+            i += 1
+            continue
+        elif c == "\\" and in_class:
             out.append("\\\\")
             i += 1
             continue
         out.append(c)
         i += 1
     return "".join(out)
+
+
+def vim_to_regex(pattern: str) -> str:
+    """A (magic) Vim regex as a Rust regex, for the forms queries use."""
+    flags = ""
+    if "\\c" in pattern:
+        flags = "(?i)"
+        pattern = pattern.replace("\\c", "")
+    pattern = pattern.replace("\\C", "").replace("\\v", "")
+    for vim, rust in (("\\(", "("), ("\\)", ")"), ("\\|", "|"), ("\\+", "+"), ("\\=", "?"), ("\\<", "\\b"), ("\\>", "\\b")):
+        pattern = pattern.replace(vim, rust)
+    return flags + pattern
 
 
 def split_patterns(text: str) -> list[str]:
@@ -274,13 +308,23 @@ UNSUPPORTED_PREDICATES = re.compile(
 def rewrite(text: str, source: str, dropped: list[str]) -> str:
     def lua_match(m: re.Match) -> str:
         neg = m.group(1) or ""
-        capture = m.group(2)
-        pattern = m.group(3)
-        return f'(#{neg}match? {capture} "{lua_to_regex(pattern)}")'
+        regex = lua_to_regex(unquote(m.group(3)))
+        return f'(#{neg}match? {m.group(2)} "{quote(regex)}")'
 
     text = re.sub(r'\(#(not-)?lua-match\?\s+(@[\w.]+)\s+"((?:[^"\\]|\\.)*)"\s*\)', lua_match, text)
-    text = re.sub(r"\(#(not-)?vim-match\?", lambda m: f"(#{m.group(1) or ''}match?", text)
-    text = re.sub(r"\s@(spell|nospell|conceal)\b", "", text)
+
+    def vim_match(m: re.Match) -> str:
+        neg = m.group(1) or ""
+        regex = vim_to_regex(unquote(m.group(3)))
+        return f'(#{neg}match? {m.group(2)} "{quote(regex)}")'
+
+    text = re.sub(r'\(#(not-)?vim-match\?\s+(@[\w.]+)\s+"((?:[^"\\]|\\.)*)"\s*\)', vim_match, text)
+    if source == "nvim":
+        # Neovim's `#match?` is a Vim regex too
+        text = re.sub(r'\(#(not-)?match\?\s+(@[\w.]+)\s+"((?:[^"\\]|\\.)*)"\s*\)', vim_match, text)
+    # nvim's `(#set! @node key @other)` stores a node as metadata; tree-sitter
+    # only takes a string value
+    text = re.sub(r"\(#set!\s+@[\w.]+\s+[\w.-]+\s+@[\w.]+\s*\)", "", text)
 
     def drop(m: re.Match) -> str:
         dropped.append(m.group(0).split()[0].lstrip("("))
@@ -290,6 +334,23 @@ def rewrite(text: str, source: str, dropped: list[str]) -> str:
     if source == "helix":
         text = "".join(reversed(split_patterns(text)))
     return text
+
+
+def drop_patterns(text: str, names: list[str]) -> tuple[str, int]:
+    """Remove the top-level patterns that use any of `names` as a node type,
+    an anonymous node or a field (not in the pinned grammar version)."""
+    if not names:
+        return text, 0
+    alternatives = "|".join(re.escape(n) for n in names)
+    uses = re.compile(rf'\((?:{alternatives})(?=[\s)])|"(?:{alternatives})"|(?<![\w.-])(?:{alternatives}):')
+    kept, dropped = [], 0
+    for pattern in split_patterns(text):
+        code = "\n".join(line.split(";", 1)[0] for line in pattern.splitlines())
+        if uses.search(code):
+            dropped += 1
+        else:
+            kept.append(pattern)
+    return "".join(kept), dropped
 
 
 def other_files(source: str, name: str, lang: dict) -> tuple[dict[str, str], str] | None:
@@ -305,7 +366,22 @@ def other_files(source: str, name: str, lang: dict) -> tuple[dict[str, str], str
 
 
 def render(name: str, lang: dict, source: str) -> dict[str, str] | None:
-    """kind -> file text for one grammar from one source."""
+    """kind -> file text for one grammar from one source, minus the patterns
+    `drop` names (only for the configured source)."""
+    files = render_source(name, lang, source)
+    drop = lang.get("drop", []) if source == lang.get("source") else []
+    if files is None or not drop:
+        return files
+    for kind, text in files.items():
+        head, _, body = text.partition("\n; Source: ")
+        source_line, _, body = body.partition("\n")
+        body, dropped = drop_patterns(body, drop)
+        note = f"; dropped {dropped} pattern(s) using {', '.join(drop)} (not in the pinned grammar)\n" if dropped else ""
+        files[kind] = f"{head}\n; Source: {source_line}\n{note}{body}"
+    return files
+
+
+def render_source(name: str, lang: dict, source: str) -> dict[str, str] | None:
     out = {}
     if source == "upstream":
         found = upstream_files(name, lang)
@@ -410,7 +486,13 @@ def main(argv: list[str]) -> int:
                 for kind, text in with_patches(name, files).items():
                     (dest / f"{kind}.scm").write_text(text)
             continue
-        files = render(name, lang, lang["source"])
+        source = lang["source"]
+        files = render(name, lang, source)
+        if files is None and "--fallback" in argv:
+            for source in ("nvim", "upstream", "helix", "corvane"):
+                files = render(name, lang, source)
+                if files is not None:
+                    break
         if files is None:
             print(f"{name}: no {lang['source']} queries", file=sys.stderr)
             return 1
@@ -425,7 +507,7 @@ def main(argv: list[str]) -> int:
             dest.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
         if not check:
-            print(f"{name}: {lang['source']}")
+            print(f"{name}: {source}")
     if not candidates:
         doc = third_party(languages)
         path = ROOT / "crates" / "corvane-grammars" / "THIRD_PARTY.md"

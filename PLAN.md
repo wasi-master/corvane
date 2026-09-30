@@ -24,7 +24,7 @@ Reference artefacts for the port live in `docs/reference/`:
 | Git engine | Hybrid: `gix 0.88` for reads; system `git` CLI (≥2.40) for writes + network. Detect git at launch, `InstallGit` dialog if missing. |
 | GitHub auth | OAuth device flow (no client secret) with PAT paste fallback. Tokens in macOS Keychain via `keyring 4`. GHES: PAT. |
 | HTTP | `ureq 3` (blocking, rustls) on background threads. No tokio in v1. Re-evaluate `octocrab` when PR layer lands. |
-| Highlighting | `syntect 5.3` + `two-face` grammars, line-stateful, diff-lines only, first 256 KB. Core grammar set bundled; extended set is an on-demand pack. |
+| Highlighting | `syntect 5.3` + `two-face` grammars, line-stateful, diff-lines only, first 256 KB. Core grammar set bundled; extended set is an on-demand pack. Since 2026-09-30 GHD's CodeMirror modes are ported (`corvane-highlight::cm`) and an opt-in tree-sitter engine (flag `105-tree-sitter-highlighting`) runs ~100 grammars from `corvane-grammars`, shipped as native `tree-sitter-all` / `tree-sitter-rest` packs. |
 | Storage | `redb 4` single file `~/Library/Application Support/Corvane/corvane.redb`. |
 | Updates | Custom in-app self-updater (M7): GitHub Releases as feed, minisign-verified `.zip`, swap `Corvane.app` in place, relaunch. "Update available" banner from M0. Velopack rejected: its macOS flow requires paid signing + notarization. |
 | Distribution | Homebrew tap cask (primary install path) + `.zip`/`.dmg` on GitHub Releases. Ad-hoc signed; no Apple Developer ID (hobby project, see R5). |
@@ -47,7 +47,8 @@ corvane/
 │  ├─ corvane-git/             # gix reads, git CLI writes, parsers, patch formatter, progress, watcher
 │  ├─ corvane-github/          # device-flow auth, REST client (ureq), API models, host detection
 │  ├─ corvane-store/           # redb tables, settings schema, migrations
-│  ├─ corvane-highlight/       # syntect wrapper, per-line state cache, grammar pack loading
+│  ├─ corvane-highlight/       # CodeMirror ports, syntect wrapper, tree-sitter engine, grammar pack loading
+│  ├─ corvane-grammars/        # tree-sitter grammars + queries (rlib for the full build, cdylib for the packs)
 │  ├─ corvane-packs/           # on-demand component manifest, download, verify, install
 │  └─ corvane-platform/        # keychain, trash, open-in-editor/shell, notifications, app paths, git detection
 ├─ assets/                     # octicons SVG subset, app icon (.icns + icon/Corvane.icon for macOS 26), default theme JSONs
@@ -151,11 +152,13 @@ Manifest `packs/manifest.json` on GitHub Releases: `{name, version, min_app, url
 |---|---|---|---|
 | `syntax-core` (≈30 langs, syntect dump) | bundled | bundled | — |
 | `syntax-extended` (two-face full set) | on demand | bundled | first diff with unknown extension → banner "Download extended highlighting (6 MB)?" or Settings › Advanced |
+| `tree-sitter-all` (every tree-sitter grammar, `corvane-grammars` dylib, one per OS + architecture, ~13 MB zipped / ~170 MB installed) | on demand | bundled | Settings › Appearance › Syntax highlighting "Tree-sitter" (Download under the choice) or Settings › Advanced, with `105-tree-sitter-highlighting` |
+| `tree-sitter-rest` (grammars of languages GHD does not highlight) | on demand | bundled | "Tree-sitter for other languages" |
 | `git-portable` (dugite-native git + lfs) | on demand | bundled | `InstallGit` dialog offers "Download portable git" alongside Xcode CLT/Homebrew |
 | `git-lfs` | on demand | bundled | `InitializeLFS` when repo has `.gitattributes` lfs filters and no lfs binary |
 | `emoji` | bundled (small) | bundled | — |
 
-Cargo features `bundled-syntax-extended`, `bundled-git` select the full build; CI publishes `Corvane` and `Corvane-Full`. Pack UI lives inside Settings › Advanced (no new tab, keeps GHD tab list intact).
+Cargo features `bundled-syntax-extended`, `bundled-tree-sitter`, `bundled-git` select the full build; CI publishes `Corvane` and `Corvane-Full`. Pack UI lives inside Settings › Advanced (no new tab, keeps GHD tab list intact).
 
 ### 3.8 Packaging / updates / release
 

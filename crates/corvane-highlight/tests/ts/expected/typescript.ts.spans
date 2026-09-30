@@ -1,0 +1,74 @@
+1: 0+20=Comment
+2: 0+6=Keyword 7+4=Keyword 14+3=Type 19+3=Type 25+4=Keyword 30+9=String
+3: 0+6=Keyword 9+9=Type 20+4=Keyword 25+5=Type 33+4=Keyword 38+5=String
+5: 0+6=Keyword 7+9=Keyword 17+4=Type
+6: 2+2=AltVariable 6+6=Type
+7: 2+4=AltVariable 8+6=Type
+8: 2+5=AltVariable 10+6=Type
+9: 2+8=Keyword 11+9=AltVariable 22+4=Type
+10: 2+4=AltVariable 8+6=Type
+11: 2+4=AltVariable 8+6=Type 15+6=Type 23+7=Type
+12: 3+3=Variable 8+6=Type 17+3=Type
+13: 2+5=Variable 8+7=AltVariable 17+6=Type 26+4=Type
+14: 2+8=Variable 13+3=AltVariable 18+5=Type 26+4=Atom 32+4=AltVariable 39+6=Type 50+4=Type
+17: 0+9=Keyword 10+5=Type 16+7=Keyword 24+4=Type 30+9=Type
+18: 2+11=AltVariable 15+5=Type 21+6=String 30+7=String
+21: 0+6=Keyword 7+4=Keyword 12+2=Type 17+6=Type 26+6=Type
+22: 0+4=Keyword 5+6=Type 12+1=Type 19+8=Keyword 29+1=Type 31+2=Keyword 34+5=Keyword 40+1=Type 45+1=Type 47+1=Type
+23: 0+4=Keyword 5+4=Type 10+1=Type 15+1=Type 17+7=Keyword 25+6=Type 32+1=Keyword 34+5=String 40+1=Keyword 42+1=Type 44+7=Keyword 52+6=Type 59+1=Keyword 61+5=String 67+1=Keyword 69+5=Type
+24: 0+4=Keyword 5+2=Type 11+1=AltVariable 14+6=Type 22+1=AltVariable 26+6=Type 37+4=AltVariable 43+7=Type 57+7=Type 65+4=Type
+25: 0+4=Keyword 5+3=Type 11+8=String 21+6=Type 28+8=String
+26: 0+4=Keyword 5+5=Type 14+6=Type 22+6=Type 33+7=Type
+27: 0+4=Keyword 5+8=Type 14+1=Type 19+1=Type 21+7=Keyword 29+7=Type 37+5=Keyword 43+1=Type 46+1=Keyword 48+1=Type 50+1=Keyword 52+1=Type
+28: 0+4=Keyword 5+4=Type 12+5=Keyword 18+6=Keyword 25+6=Variable
+30: 0+4=Keyword 5+5=Type 13+3=AltVariable 18+5=AltVariable 26+7=String 35+4=AltVariable
+31: 0+5=Keyword 6+4=Keyword 11+9=Type 23+2=AltVariable 31+4=AltVariable
+32: 0+7=Keyword 8+5=Keyword 14+7=Atom 23+6=Type
+33: 0+7=Keyword 8+6=Keyword 15+5=String
+34: 2+6=Keyword 9+8=Keyword 18+3=Variable 25+4=Type
+36: 0+9=Keyword 10+5=Type
+37: 2+6=Keyword 9+5=Keyword 15+2=Variable
+40: 0+8=Keyword 9+5=Keyword 15+5=Type 21+1=Type 23+7=Keyword 31+6=Type 44+10=Keyword 55+8=Type 65+12=Type
+41: 2+7=Keyword 10+8=Keyword 19+2=AltVariable 23+6=Type
+42: 2+9=Keyword 12+4=AltVariable 19+6=Type
+43: 2+6=Keyword 9+6=Keyword 16+5=AltVariable 23+6=Type
+44: 2+7=AltVariable 12+7=Type
+45: 2+8=Keyword 11+4=Variable 19+6=Type
+46: 2+11=Type 14+7=Keyword 22+1=AltVariable 25+6=Type 33+6=Keyword 40+1=AltVariable 43+6=Type 51+8=Keyword 60+1=AltVariable
+47: 4+5=Keyword
+49: 2+3=Keyword 6+4=Variable 14+6=Type 23+6=Keyword 30+4=Keyword 35+1=AltVariable 39+4=Keyword 44+1=AltVariable
+50: 2+6=Variable 9+1=Type 12+3=AltVariable 17+1=Type 20+3=AltVariable 26+1=Type 30+1=Type 34+9=Atom
+51: 4+6=Keyword 11+3=Variable 15+2=Keyword 18+1=Type
+55: 0+10=Attribute 13+8=AltVariable 23+10=String 35+8=AltVariable 45+13=String
+56: 0+5=Keyword 6+12=Type
+57: 2+6=Attribute 11+5=AltVariable 18+6=Type 27+2=String
+58: 2+7=Attribute 12+7=AltVariable 22+3=Keyword 26+12=Type 39+6=Type
+59: 2+11=Type 14+7=Attribute 22+5=Atom 29+7=Keyword 37+8=Keyword 46+3=AltVariable 51+7=Type
+62: 0+8=Keyword 9+7=Variable 17+1=Type 20+1=Type 22+7=Keyword 30+5=Keyword 36+1=Type 39+3=AltVariable 44+1=Type 47+3=AltVariable 52+1=Type 56+1=Type 58+1=Type
+63: 2+6=Keyword 9+3=Variable 13+3=Variable
+65: 0+8=Keyword 9+8=Variable 18+1=AltVariable 21+7=Type 31+1=Variable 33+2=Keyword 36+6=Type
+66: 2+6=Keyword 9+6=Keyword 16+1=Variable 22+8=String
+68: 0+8=Keyword 9+13=Variable 23+1=Type 26+1=AltVariable 29+1=Type 33+9=Atom 45+7=Keyword 53+1=Variable
+69: 2+2=Keyword 6+1=Variable 12+9=Atom 23+5=Keyword 29+3=Keyword 33+5=Type 39+12=String
+72: 0+5=Keyword 6+5=Variable 13+3=Type 17+6=Type 25+6=Type 37+3=Keyword 41+3=Type 45+6=Type 53+6=Type
+73: 0+5=Keyword 6+4=Variable 14+11=Type 26+8=Keyword 35+4=AltVariable
+74: 0+5=Keyword 6+6=Variable 15+5=Variable 21+2=Keyword 24+7=Type 32+2=Keyword 35+6=Type
+75: 0+5=Keyword 6+7=Variable 16+5=Variable 23+5=AltVariable
+76: 0+5=Keyword 6+10=Variable 20+1=AltVariable 23+6=Type 31+1=AltVariable 34+6=Type 43+6=Type 53+1=Variable 57+1=Variable
+77: 0+5=Keyword 6+12=Variable 22+1=Type 26+1=AltVariable 29+1=Type 33+1=Type 38+1=Variable
+78: 0+5=Keyword 6+8=Variable 20+1=AltVariable 23+1=AltVariable 30+1=AltVariable 33+6=Type 41+1=AltVariable 44+6=Type 55+4=Type
+79: 0+3=Keyword 4+12=Variable 19+2=Variable 24+6=Type 32+3=Variable
+80: 0+5=Keyword 6+3=Variable 14+1=AltVariable 21+9=Keyword 31+6=Type 38+6=Type 46+6=Type
+82: 0+6=Keyword 7+7=Keyword 15+5=Keyword 21+7=Keyword 29+4=Type 34+5=Type 41+5=Type
+83: 0+6=Keyword 7+8=Keyword 16+5=Keyword 22+4=Type 27+1=Type 29+7=Keyword 39+2=AltVariable 43+2=Type
+85: 0+3=Keyword 4+1=Variable 7+6=Type 19+1=Variable 22+6=Type 30+1=Variable 33+7=Type 43+4=Atom 50+4=Atom
+86: 0+3=Keyword 4+6=Variable 15+1=AltVariable 18+6=Type 27+6=Type 35+4=AltVariable 41+6=Type
+87: 0+3=Keyword 4+4=Variable 10+3=Keyword 18+4=AltVariable 24+3=Type 34+6=Type
+88: 0+3=Keyword 4+6=Variable 12+13=Type
+89: 0+3=Keyword 5+5=Keyword 12+1=Variable 15+1=Variable 18+2=Keyword 21+6=Type 28+7=Variable 36+3=Variable 41+2=Keyword 45+6=Type 53+6=Type
+91: 0+13=Comment
+92: 0+18=Comment
+93: 0+4=Keyword 5+9=Type
+94: 4+7=String
+95: 4+6=String
+96: 4+7=String

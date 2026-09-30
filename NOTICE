@@ -16,6 +16,15 @@ Colour scale values are from GitHub's Primer design system
 GPUI and gpui-kit are Copyright (c) Zed Industries and Longbridge,
 licensed under the Apache License 2.0.
 
+Tree-sitter highlight queries in crates/corvane-grammars/queries/ come
+from nvim-treesitter (https://github.com/nvim-treesitter/nvim-treesitter,
+Apache License 2.0), from the grammars' own repositories (mostly MIT) and
+from Helix (https://github.com/helix-editor/helix, Mozilla Public License
+2.0; those files stay under the MPL and are modified only as
+tools/ts-queries/sync.py describes). Each file names its source; the
+grammars and their licenses are listed in crates/corvane-grammars/THIRD_PARTY.md,
+which the tree-sitter packs carry.
+
 The licenses of the Rust crates compiled into Corvane are listed in
 About › License and Open Source Notices (assets/acknowledgements.json,
 generated with cargo-about by packaging/acknowledgements.sh).

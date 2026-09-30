@@ -1,41 +1,825 @@
-# Query source per grammar in crates/corvane-grammars (tools/ts-queries/README.md).
+# Grammars of crates/corvane-grammars and where their queries come from
+# (tools/ts-queries/README.md). `gen.py` writes the crate's Cargo features and
+# grammar table from this file; `sync.py` vendors the queries.
 #
-#   package = "<cargo package providing the grammar>"
-#   source  = "upstream" | "nvim" | "helix" | "corvane"
-#   grammar = "<entry in the package's tree-sitter.json>"   (default: the key)
-#   highlights / injections / locals = ["<path in the package>", …]   (upstream only;
-#             default: tree-sitter.json, else queries/<kind>.scm)
-#   nvim / helix = "<directory name there>"                  (default: the key)
-#
-# Rule for `source`: upstream when it compiles and classifies at least 80 % of
-# what the best source does on the samples (`ts-coverage`), else nvim, else
-# helix, else a hand-written corvane query.
+#   package    = cargo package providing the grammar (pinned to `version`)
+#   language   = its `LanguageFn` constant, or
+#   symbol     = the C function, for packages with pre-0.23 bindings
+#   extensions = lowercase suffixes after a dot; filenames = exact lowercase names
+#   first_line = regex over the first line (shebangs); aliases = injection names
+#   source     = nvim | upstream | helix | corvane  (queries; see README.md)
+#   nvim / helix = the language's directory there (default: the key)
+#   highlights / injections / locals = upstream query paths in the package
+
+[ada]
+package = "tree-sitter-ada"
+version = "0.1.0"
+language = "LANGUAGE"
+extensions = ["ads", "adb", "ada"]
+source = "nvim"
+
+[agda]
+package = "tree-sitter-agda"
+version = "1.3.3"
+language = "LANGUAGE"
+extensions = ["agda", "lagda"]
+source = "nvim"
+
+[asciidoc]
+package = "tree-sitter-asciidoc"
+version = "0.9.0"
+symbol = "tree_sitter_asciidoc"
+extensions = ["adoc", "asciidoc", "asc"]
+aliases = ["adoc"]
+source = "upstream"
+
+[asm]
+package = "tree-sitter-asm"
+version = "0.24.0"
+language = "LANGUAGE"
+extensions = ["asm", "s", "nasm", "inc"]
+aliases = ["assembly", "nasm"]
+source = "nvim"
+
+[bash]
+package = "tree-sitter-bash"
+version = "0.25.1"
+language = "LANGUAGE"
+extensions = ["sh", "bash", "ebuild", "eclass", "bats", "command", "ksh"]
+filenames = [".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".profile", "bashrc", ".envrc", "pkgbuild", "apkbuild"]
+first_line = "^#!.*\\b(bash|sh|dash|ksh|mksh)\\b"
+aliases = ["sh", "shell", "shellscript"]
+source = "nvim"
+
+[bicep]
+package = "tree-sitter-bicep"
+version = "1.1.0"
+language = "LANGUAGE"
+extensions = ["bicep", "bicepparam"]
+source = "nvim"
+
+[c]
+package = "tree-sitter-c"
+version = "0.24.2"
+language = "LANGUAGE"
+extensions = ["c", "h"]
+source = "nvim"
+
+[c_sharp]
+package = "tree-sitter-c-sharp"
+version = "0.23.5"
+language = "LANGUAGE"
+extensions = ["cs", "csx"]
+aliases = ["csharp", "cs", "c#"]
+source = "nvim"
+helix = "c-sharp"
+
+[cmake]
+package = "tree-sitter-cmake"
+version = "0.7.5"
+language = "LANGUAGE"
+extensions = ["cmake"]
+filenames = ["cmakelists.txt"]
+source = "nvim"
+
+[comment]
+package = "tree-sitter-comment"
+version = "0.3.0"
+language = "LANGUAGE"
+extensions = []
+source = "nvim"
+
+[commonlisp]
+package = "tree-sitter-commonlisp"
+version = "0.4.1"
+language = "LANGUAGE_COMMONLISP"
+extensions = ["lisp", "lsp", "cl", "asd"]
+aliases = ["lisp", "common-lisp"]
+source = "nvim"
+helix = "common-lisp"
+
+[cpp]
+package = "tree-sitter-cpp"
+version = "0.23.4"
+language = "LANGUAGE"
+extensions = ["cc", "cpp", "cxx", "c++", "hpp", "hxx", "hh", "h++", "ipp", "tpp", "inl", "ino"]
+aliases = ["c++"]
+source = "nvim"
+
+[css]
+package = "tree-sitter-css"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["css"]
+source = "nvim"
+
+[cuda]
+package = "tree-sitter-cuda"
+version = "0.21.2"
+language = "LANGUAGE"
+extensions = ["cu", "cuh"]
+source = "nvim"
+
+[d]
+package = "tree-sitter-d"
+version = "0.8.2"
+language = "LANGUAGE"
+extensions = ["d", "di"]
+aliases = ["dlang"]
+source = "nvim"
+
+[dart]
+package = "tree-sitter-dart"
+version = "0.2.0"
+language = "LANGUAGE"
+extensions = ["dart"]
+source = "upstream"
+
+[diff]
+package = "tree-sitter-diff"
+version = "0.1.0"
+language = "LANGUAGE"
+extensions = ["diff", "patch"]
+source = "upstream"
+
+[dtd]
+package = "tree-sitter-xml"
+version = "0.7.0"
+language = "LANGUAGE_DTD"
+extensions = ["dtd"]
+source = "nvim"
+
+[elisp]
+package = "tree-sitter-elisp"
+version = "1.7.2"
+language = "LANGUAGE"
+extensions = ["el"]
+filenames = [".emacs", "_emacs"]
+aliases = ["emacs-lisp", "elisp"]
+source = "upstream"
+
+[elixir]
+package = "tree-sitter-elixir"
+version = "0.3.5"
+language = "LANGUAGE"
+extensions = ["ex", "exs"]
+first_line = "^#!.*\\belixir\\b"
+aliases = ["ex", "exs"]
+source = "nvim"
+
+[elm]
+package = "tree-sitter-elm"
+version = "5.9.4"
+language = "LANGUAGE"
+extensions = ["elm"]
+source = "nvim"
+
+[embedded_template]
+package = "tree-sitter-embedded-template"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["erb", "ejs", "etlua", "rhtml"]
+aliases = ["erb", "ejs"]
+source = "nvim"
+helix = "embedded-template"
+
+[erlang]
+package = "tree-sitter-erlang"
+version = "0.20.0"
+language = "LANGUAGE"
+extensions = ["erl", "hrl", "escript", "app.src"]
+filenames = ["rebar.config"]
+first_line = "^#!.*\\bescript\\b"
+aliases = ["erl"]
+source = "nvim"
+
+[fish]
+package = "tree-sitter-fish"
+version = "3.6.0"
+symbol = "tree_sitter_fish"
+extensions = ["fish"]
+first_line = "^#!.*\\bfish\\b"
+source = "nvim"
+
+[fortran]
+package = "tree-sitter-fortran"
+version = "0.6.0"
+language = "LANGUAGE"
+extensions = ["f", "f90", "f95", "f03", "f08", "for", "ftn", "f77"]
+source = "nvim"
+
+[fsharp]
+package = "tree-sitter-fsharp"
+version = "0.3.12"
+language = "LANGUAGE_FSHARP"
+extensions = ["fs", "fsx", "fsscript"]
+aliases = ["f#", "fs"]
+source = "nvim"
+
+
+[gdscript]
+package = "tree-sitter-gdscript"
+version = "6.1.0"
+language = "LANGUAGE"
+extensions = ["gd"]
+source = "helix"
+drop = ["underscore"]
+
+[gitcommit]
+package = "tree-sitter-gitcommit"
+version = "0.5.0"
+language = "LANGUAGE"
+extensions = []
+filenames = ["commit_editmsg", "merge_msg", "tag_editmsg"]
+source = "nvim"
+
+[gleam]
+package = "tree-sitter-gleam"
+version = "1.0.0"
+language = "LANGUAGE"
+extensions = ["gleam"]
+source = "nvim"
+drop = ["bit_array_segment"]
+
+[glsl]
+package = "tree-sitter-glsl"
+version = "0.2.0"
+language = "LANGUAGE_GLSL"
+extensions = ["glsl", "vert", "frag", "geom", "tesc", "tese", "comp", "rgen", "rchit", "rmiss", "mesh", "task"]
+source = "nvim"
+
+[go]
+package = "tree-sitter-go"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["go"]
+aliases = ["golang"]
+source = "nvim"
+
+[godot_resource]
+package = "tree-sitter-godot-resource"
+version = "0.7.0"
+language = "LANGUAGE"
+extensions = ["tscn", "tres", "godot"]
+source = "nvim"
+helix = "godot-resource"
+
+[graphql]
+package = "tree-sitter-graphql"
+version = "0.2.1"
+language = "LANGUAGE"
+extensions = ["graphql", "graphqls", "gql"]
+aliases = ["gql"]
+source = "nvim"
+
+
+[handlebars]
+package = "tree-sitter-handlebars"
+version = "0.1.0"
+language = "LANGUAGE"
+extensions = ["hbs", "handlebars", "mustache"]
+aliases = ["hbs"]
+source = "upstream"
 
 [haskell]
 package = "tree-sitter-haskell"
-source = "upstream"
+version = "0.23.1"
+language = "LANGUAGE"
+extensions = ["hs", "hs-boot", "hsc"]
+first_line = "^#!.*\\b(runhaskell|stack|cabal)\\b"
+aliases = ["hs"]
+source = "nvim"
+
+[hcl]
+package = "tree-sitter-hcl"
+version = "1.1.0"
+language = "LANGUAGE"
+extensions = ["hcl", "tf", "tfvars", "nomad"]
+aliases = ["terraform", "tf"]
+source = "nvim"
+
+[heex]
+package = "tree-sitter-heex"
+version = "0.8.1"
+language = "LANGUAGE"
+extensions = ["heex"]
+source = "nvim"
+
+[hlsl]
+package = "tree-sitter-hlsl"
+version = "0.2.0"
+language = "LANGUAGE_HLSL"
+extensions = ["hlsl", "hlsli", "fx", "fxh", "usf", "ush"]
+source = "nvim"
+
+[html]
+package = "tree-sitter-html"
+version = "0.23.2"
+language = "LANGUAGE"
+extensions = ["html", "htm", "xhtml", "shtml"]
+source = "nvim"
+
+[ini]
+package = "tree-sitter-ini"
+version = "1.4.0"
+language = "LANGUAGE"
+extensions = ["ini", "cfg", "inf"]
+filenames = [".gitconfig", ".npmrc", ".editorconfig", "gitconfig"]
+aliases = ["dosini"]
+source = "nvim"
+
+[java]
+package = "tree-sitter-java"
+version = "0.23.5"
+language = "LANGUAGE"
+extensions = ["java"]
+source = "nvim"
 
 [javascript]
 package = "tree-sitter-javascript"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["js", "mjs", "cjs", "jsx"]
+first_line = "^#!.*\\b(node|deno|bun)\\b"
+aliases = ["js", "jsx", "node"]
+source = "nvim"
+
+[jinja]
+package = "tree-sitter-jinja2"
+version = "0.0.16"
+language = "LANGUAGE"
+extensions = ["jinja", "jinja2", "j2"]
+aliases = ["jinja2"]
 source = "upstream"
+
+[jsdoc]
+package = "tree-sitter-jsdoc"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = []
+source = "nvim"
+
+[json]
+package = "tree-sitter-json"
+version = "0.24.8"
+language = "LANGUAGE"
+extensions = ["json", "jsonc", "geojson", "webmanifest", "har", "code-workspace", "jsonl"]
+filenames = [".babelrc", ".eslintrc", ".prettierrc", "composer.lock", "flake.lock", ".swcrc"]
+aliases = ["jsonc"]
+source = "nvim"
+
+[jsonnet]
+package = "tree-sitter-jsonnet"
+version = "0.0.1"
+language = "LANGUAGE"
+extensions = ["jsonnet", "libsonnet"]
+source = "upstream"
+
+[julia]
+package = "tree-sitter-julia"
+version = "0.23.1"
+language = "LANGUAGE"
+extensions = ["jl"]
+first_line = "^#!.*\\bjulia\\b"
+aliases = ["jl"]
+source = "nvim"
+
+[kdl]
+package = "tree-sitter-kdl"
+version = "2.0.0"
+language = "LANGUAGE"
+extensions = ["kdl"]
+source = "nvim"
+
+[kotlin]
+package = "tree-sitter-kotlin-ng"
+version = "1.1.0"
+language = "LANGUAGE"
+extensions = ["kt", "kts"]
+aliases = ["kt"]
+source = "corvane"
+
+
+[less]
+package = "tree-sitter-less"
+version = "1.0.0"
+symbol = "tree_sitter_less"
+extensions = ["less"]
+source = "upstream"
+
+[llvm]
+package = "tree-sitter-llvm"
+version = "1.1.0"
+language = "LANGUAGE"
+extensions = ["ll"]
+aliases = ["llvm-ir"]
+source = "nvim"
 
 [lua]
 package = "tree-sitter-lua"
-source = "upstream"
+version = "0.5.0"
+language = "LANGUAGE"
+extensions = ["lua"]
+first_line = "^#!.*\\blua"
+source = "nvim"
+
+[luau]
+package = "tree-sitter-luau"
+version = "1.2.0"
+language = "LANGUAGE"
+extensions = ["luau"]
+source = "nvim"
+
+[make]
+package = "tree-sitter-make"
+version = "1.1.1"
+language = "LANGUAGE"
+extensions = ["mk", "mak", "make"]
+filenames = ["makefile", "gnumakefile", "bsdmakefile"]
+aliases = ["makefile"]
+source = "nvim"
+drop = ["let"]
 
 [markdown]
 package = "tree-sitter-md"
-source = "upstream"
+version = "0.5.3"
+language = "LANGUAGE"
+extensions = ["md", "markdown", "mdown", "mkd", "mkdn", "mdwn", "ronn"]
+aliases = ["md"]
+source = "nvim"
 highlights = ["tree-sitter-markdown/queries/highlights.scm"]
 injections = ["tree-sitter-markdown/queries/injections.scm"]
 
 [markdown_inline]
 package = "tree-sitter-md"
-source = "upstream"
+version = "0.5.3"
+language = "INLINE_LANGUAGE"
+extensions = []
+source = "nvim"
+helix = "markdown.inline"
 highlights = ["tree-sitter-markdown-inline/queries/highlights.scm"]
 injections = ["tree-sitter-markdown-inline/queries/injections.scm"]
-nvim = "markdown_inline"
+
+[nginx]
+package = "tree-sitter-nginx"
+version = "1.0.1"
+language = "LANGUAGE"
+extensions = ["nginx"]
+filenames = ["nginx.conf"]
+source = "nvim"
+
+[nickel]
+package = "tree-sitter-nickel"
+version = "0.5.0"
+language = "LANGUAGE"
+extensions = ["ncl"]
+source = "nvim"
+
+
+[nix]
+package = "tree-sitter-nix"
+version = "0.3.0"
+language = "LANGUAGE"
+extensions = ["nix"]
+source = "nvim"
+
+[objc]
+package = "tree-sitter-objc"
+version = "3.0.2"
+language = "LANGUAGE"
+extensions = ["m", "mm"]
+aliases = ["objective-c", "objectivec"]
+source = "nvim"
+
+[ocaml]
+package = "tree-sitter-ocaml"
+version = "0.26.0"
+language = "LANGUAGE_OCAML"
+extensions = ["ml"]
+source = "nvim"
+
+[ocaml_interface]
+package = "tree-sitter-ocaml"
+version = "0.26.0"
+language = "LANGUAGE_OCAML_INTERFACE"
+extensions = ["mli"]
+source = "nvim"
+helix = "ocaml-interface"
+
+[ocaml_type]
+package = "tree-sitter-ocaml"
+version = "0.26.0"
+language = "LANGUAGE_OCAML_TYPE"
+extensions = []
+source = "upstream"
+
+[odin]
+package = "tree-sitter-odin"
+version = "1.3.0"
+language = "LANGUAGE"
+extensions = ["odin"]
+source = "nvim"
+
+[pascal]
+package = "tree-sitter-pascal"
+version = "0.10.2"
+language = "LANGUAGE"
+extensions = ["pas", "dpr", "lpr", "dpk"]
+aliases = ["delphi"]
+source = "nvim"
+
+[php]
+package = "tree-sitter-php"
+version = "0.24.2"
+language = "LANGUAGE_PHP"
+extensions = ["php", "phtml", "php3", "php4", "php5", "php7", "phps"]
+first_line = "^#!.*\\bphp\\b"
+source = "nvim"
+
+[php_only]
+package = "tree-sitter-php"
+version = "0.24.2"
+language = "LANGUAGE_PHP_ONLY"
+extensions = []
+source = "nvim"
+helix = "php-only"
+
+[powershell]
+package = "tree-sitter-powershell"
+version = "0.26.4"
+language = "LANGUAGE"
+extensions = ["ps1", "psm1", "psd1"]
+first_line = "^#!.*\\bpwsh\\b"
+aliases = ["ps1", "pwsh"]
+source = "nvim"
+
+[printf]
+package = "tree-sitter-printf"
+version = "0.5.1"
+language = "LANGUAGE"
+extensions = []
+source = "nvim"
+
+[properties]
+package = "tree-sitter-properties"
+version = "0.3.0"
+language = "LANGUAGE"
+extensions = ["properties"]
+source = "nvim"
+
+[proto]
+package = "tree-sitter-proto"
+version = "0.6.0"
+language = "LANGUAGE"
+extensions = ["proto"]
+aliases = ["protobuf"]
+source = "nvim"
+
+[python]
+package = "tree-sitter-python"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["py", "pyi", "pyw", "gyp", "wsgi"]
+filenames = ["sconstruct", "sconscript"]
+first_line = "^#!.*\\bpython[0-9.]*\\b"
+aliases = ["py", "python3"]
+source = "nvim"
+
+[ql]
+package = "tree-sitter-ql"
+version = "0.23.1"
+language = "LANGUAGE"
+extensions = ["ql", "qll"]
+source = "nvim"
+
+[r]
+package = "tree-sitter-r"
+version = "1.3.0"
+language = "LANGUAGE"
+extensions = ["r", "rprofile"]
+filenames = [".rprofile"]
+first_line = "^#!.*\\bRscript\\b"
+source = "nvim"
+
+[racket]
+package = "tree-sitter-racket"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = ["rkt", "rktl", "rktd", "scrbl"]
+source = "nvim"
+
+[regex]
+package = "tree-sitter-regex"
+version = "0.25.0"
+language = "LANGUAGE"
+extensions = []
+source = "nvim"
+
+[requirements]
+package = "tree-sitter-requirements"
+version = "0.6.1"
+language = "LANGUAGE"
+extensions = []
+filenames = ["requirements.txt", "requirements-dev.txt", "constraints.txt"]
+source = "nvim"
+
+[rst]
+package = "tree-sitter-rst"
+version = "0.2.0"
+language = "LANGUAGE"
+extensions = ["rst", "rest"]
+aliases = ["restructuredtext"]
+source = "nvim"
+
+[ruby]
+package = "tree-sitter-ruby"
+version = "0.23.1"
+language = "LANGUAGE"
+extensions = ["rb", "rake", "gemspec", "ru", "rbw", "podspec", "thor", "jbuilder", "rabl"]
+filenames = ["gemfile", "rakefile", "podfile", "vagrantfile", "brewfile", "guardfile", "fastfile", "appfile", "capfile"]
+first_line = "^#!.*\\bruby\\b"
+aliases = ["rb"]
+source = "nvim"
 
 [rust]
 package = "tree-sitter-rust"
+version = "0.24.2"
+language = "LANGUAGE"
+extensions = ["rs"]
+aliases = ["rs"]
+source = "nvim"
+
+[scala]
+package = "tree-sitter-scala"
+version = "0.26.2"
+language = "LANGUAGE"
+extensions = ["scala", "sc", "sbt"]
+source = "nvim"
+
+[scheme]
+package = "tree-sitter-scheme"
+version = "0.24.7"
+language = "LANGUAGE"
+extensions = ["scm", "ss", "sld"]
+source = "nvim"
+
+[scss]
+package = "tree-sitter-scss"
+version = "1.0.0"
+symbol = "tree_sitter_scss"
+extensions = ["scss"]
+source = "nvim"
+drop = ["single_line_comment", "name", "variable_name", "key", "value", "variable_value"]
+
+[solidity]
+package = "tree-sitter-solidity"
+version = "1.2.13"
+language = "LANGUAGE"
+extensions = ["sol"]
+source = "nvim"
+
+
+[starlark]
+package = "tree-sitter-starlark"
+version = "1.3.0"
+language = "LANGUAGE"
+extensions = ["bzl", "star", "bazel"]
+filenames = ["build", "build.bazel", "workspace", "workspace.bazel", "module.bazel", "tiltfile"]
+aliases = ["bazel"]
+source = "nvim"
+
+[svelte]
+package = "tree-sitter-svelte-ng"
+version = "1.0.2"
+language = "LANGUAGE"
+extensions = ["svelte"]
+source = "nvim"
+
+[swift]
+package = "tree-sitter-swift"
+version = "0.7.3"
+language = "LANGUAGE"
+extensions = ["swift"]
+source = "nvim"
+drop = ["nil_literal"]
+
+[systemverilog]
+package = "tree-sitter-systemverilog"
+version = "0.4.1"
+language = "LANGUAGE"
+extensions = ["sv", "svh"]
+source = "nvim"
+helix = "verilog"
+
+[templ]
+package = "tree-sitter-templ"
+version = "2.2.0"
+language = "LANGUAGE"
+extensions = ["templ"]
+source = "nvim"
+drop = ["raw_string_literal_content", "interpreted_string_literal_content"]
+
+[tlaplus]
+package = "tree-sitter-tlaplus"
+version = "1.5.0"
+language = "LANGUAGE"
+extensions = ["tla"]
+aliases = ["tla"]
+source = "nvim"
+
+[toml]
+package = "tree-sitter-toml-ng"
+version = "0.7.0"
+language = "LANGUAGE"
+extensions = ["toml"]
+filenames = ["cargo.lock", "poetry.lock", "uv.lock", "pipfile"]
+source = "nvim"
+
+[tsx]
+package = "tree-sitter-typescript"
+version = "0.23.2"
+language = "LANGUAGE_TSX"
+extensions = ["tsx", "mtsx", "ctsx"]
+source = "nvim"
+
+[typescript]
+package = "tree-sitter-typescript"
+version = "0.23.2"
+language = "LANGUAGE_TYPESCRIPT"
+extensions = ["ts", "mts", "cts"]
+first_line = "^#!.*\\b(ts-node|tsx)\\b"
+aliases = ["ts"]
+source = "nvim"
+
+[verilog]
+package = "tree-sitter-verilog"
+version = "1.0.3"
+language = "LANGUAGE"
+extensions = ["v", "vh"]
+source = "helix"
+drop = ["config"]
+
+[vhdl]
+package = "tree-sitter-vhdl"
+version = "1.4.0"
+language = "LANGUAGE"
+extensions = ["vhd", "vhdl"]
+source = "nvim"
+
+[vim]
+package = "tree-sitter-vim"
+version = "0.4.0"
+symbol = "tree_sitter_vim"
+extensions = ["vim"]
+filenames = [".vimrc", "_vimrc", ".gvimrc", "vimrc"]
+aliases = ["viml", "vimscript"]
+source = "helix"
+
+[wit]
+package = "tree-sitter-wit"
+version = "0.2.0"
+symbol = "tree_sitter_wit"
+extensions = ["wit"]
 source = "upstream"
+
+[xcompose]
+package = "tree-sitter-xcompose"
+version = "0.4.0"
+language = "LANGUAGE"
+extensions = []
+filenames = [".xcompose", "xcompose"]
+source = "nvim"
+
+[xml]
+package = "tree-sitter-xml"
+version = "0.7.0"
+language = "LANGUAGE_XML"
+extensions = ["xml", "svg", "xsd", "xslt", "xsl", "rng", "plist", "xaml", "csproj", "fsproj", "vbproj", "vcxproj", "props", "targets", "resx", "nuspec", "wsdl", "kml", "gpx", "storyboard", "xib", "entitlements"]
+first_line = "^<\\?xml"
+source = "nvim"
+
+[yaml]
+package = "tree-sitter-yaml"
+version = "0.7.2"
+language = "LANGUAGE"
+extensions = ["yml", "yaml"]
+filenames = [".clang-format", ".clang-tidy", ".gemrc"]
+aliases = ["yml"]
+source = "nvim"
+
+[zig]
+package = "tree-sitter-zig"
+version = "1.1.2"
+language = "LANGUAGE"
+extensions = ["zig", "zon"]
+source = "nvim"
+
+[zsh]
+package = "tree-sitter-zsh"
+version = "0.63.4"
+language = "LANGUAGE"
+extensions = ["zsh"]
+filenames = [".zshrc", ".zprofile", ".zshenv", ".zlogin", ".zlogout", "zshrc"]
+first_line = "^#!.*\\bzsh\\b"
+source = "nvim"
+

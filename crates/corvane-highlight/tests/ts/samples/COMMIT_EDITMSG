@@ -1,0 +1,31 @@
+Fix off-by-one in hunk header parsing
+
+The unified diff parser treated a zero-length range ("@@ -0,0 +1,3 @@")
+as starting at line 1 of the old file, which shifted every line number
+in newly created files by one. Parse the count separately and only
+subtract one from the start when the count is non-zero.
+
+Also add regression tests for empty old/new ranges and for hunks that
+end exactly at end of file without a trailing newline.
+
+Fixes #412
+
+Co-authored-by: Sam Example <sam@example.com>
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch fix/hunk-header-offset
+# Your branch is up to date with 'origin/fix/hunk-header-offset'.
+#
+# Changes to be committed:
+#	modified:   crates/diff/src/hunk.rs
+#	new file:   crates/diff/tests/empty_ranges.rs
+#	renamed:    crates/diff/src/parse.rs -> crates/diff/src/header.rs
+#
+# Changes not staged for commit:
+#	modified:   CHANGELOG.md
+#
+# Untracked files:
+#	notes.txt
+#

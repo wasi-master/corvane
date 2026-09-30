@@ -1,0 +1,113 @@
+1: 0+9=Header
+6: 0+7=Link 7+69=String 76+3=Link 79+42=String 121+1=Link
+7: 0+17=Link 17+51=String 68+17=Link 85+7=String 92+1=Link
+9: 0+20=Header
+11: 0+3=AltVariable 3+10=Link 13+8=String 21+1=Link
+12: 0+3=AltVariable 3+8=Link 11+6=String 17+1=Link
+13: 3+3=AltVariable 6+10=Link 16+8=String 24+1=Link
+14: 3+3=AltVariable 6+13=Link 19+11=String 30+1=Link
+15: 0+3=AltVariable 3+6=Link 9+4=String 13+1=Link
+16: 0+4=AltVariable
+18: 0+24=Header
+19: 0+24=Header
+21: 0+24=Header
+22: 0+24=Header
+24: 0+23=Header
+25: 0+5=Header
+27: 0+16=Header
+29: 0+2=AltVariable
+30: 0+2=AltVariable
+31: 2+2=AltVariable 21+13=Comment
+32: 4+2=AltVariable
+33: 6+2=AltVariable
+34: 2+2=AltVariable
+35: 0+2=AltVariable
+36: 0+2=AltVariable
+37: 0+2=AltVariable
+39: 0+5=AltVariable
+40: 0+5=AltVariable
+47: 57+15=Comment
+51: 7+6=Comment 22+24=Comment 55+7=Comment 84+5=Comment
+52: 0+20=Comment 38+28=Comment
+54: 2+18=Quote 30+7=Quote 37+7=Link 44+19=String 63+1=Link 64+1=Quote
+55: 4+22=Quote
+56: 6+17=Quote 23+6=Comment
+57: 0+31=Quote
+59: 2+11=Quote
+61: 2+25=Quote
+65: 7+9=Link 16+32=String 49+8=Link 59+15=Link 76+13=Link
+66: 8+10=Link 54+8=Link 63+5=Link 74+10=Link
+67: 10+36=String 51+29=String
+68: 6+21=String 44+10=Tag
+69: 8+12=Link 20+15=String 36+7=Link 45+18=Link 65+4=Link 69+9=String 78+1=Link
+70: 25+7=Link
+73: 0+5=Link 7+29=String 37+17=Link
+74: 0+6=Link 8+17=String 26+15=Link
+75: 0+7=Link 9+27=String 37+21=Link
+76: 0+11=Link 13+29=String
+77: 2+24=Link
+78: 0+4=Link
+79: 1+10=Link
+81: 18+4=Link
+93: 0+32=Comment
+94: 4+28=Comment
+95: 1+17=Comment
+99: 0+3=Comment 3+4=AltVariable
+100: 0+2=Keyword 2+1=Comment 3+4=Variable 9+1=Comment
+101: 0+4=Comment 4+8=Keyword 13+17=String
+103: 0+3=Comment
+105: 0+3=Comment 3+6=AltVariable
+106: 0+3=Keyword 3+1=Comment 4+5=Variable 10+4=AltVariable
+107: 0+4=Comment 4+6=Keyword 10+1=Comment 11+5=String 17+4=Variable 22+1=String
+108: 0+3=Comment
+110: 0+4=Comment
+111: 0+35=Comment
+112: 0+4=Comment
+114: 0+3=Comment 3+4=AltVariable
+115: 0+4=Tag 4+1=Comment 5+5=Attribute 11+6=String 17+1=Tag
+116: 0+2=Comment 2+3=Tag 10+1=Comment 11+3=Tag 19+8=Tag
+117: 0+6=Tag
+118: 0+3=Comment
+120: 0+3=Comment 3+3=AltVariable
+121: 0+2=Tag 2+4=Comment 6+7=Attribute 19+2=Tag
+122: 0+5=Tag 5+1=Comment 6+4=Attribute 12+1=String 14+16=Tag
+123: 0+3=Comment
+125: 0+4=Comment 4+8=AltVariable
+126: 0+16=Header
+127: 0+2=AltVariable 2+7=Comment
+128: 0+3=Comment
+130: 0+3=Comment 3+5=AltVariable
+131: 0+5=Tag
+132: 0+3=Comment
+134: 0+3=Comment 3+9=AltVariable
+135: 0+23=Comment
+136: 0+3=Comment
+138: 0+3=Comment 3+13=AltVariable
+139: 0+46=Comment
+140: 0+3=Comment
+142: 0+3=Comment 3+2=AltVariable
+143: 0+5=Keyword 5+1=Comment 6+1=Variable 7+1=Comment 9+1=Comment 10+10=String 22+7=Variable 30+1=String
+144: 0+3=Comment
+146: 0+3=Comment
+147: 0+28=Comment
+148: 0+3=Comment
+150: 0+4=Tag 5+5=Attribute 11+8=String 19+1=Tag
+151: 2+4=Tag 7+3=Attribute 11+10=String 22+3=Attribute 26+6=String 33+5=Attribute 39+5=String 44+1=Tag
+152: 0+6=Tag
+154: 0+9=Tag
+155: 0+9=Tag 24+10=Tag
+159: 0+10=Tag
+161: 0+20=Comment
+162: 0+18=Comment
+164: 0+4=Tag
+165: 7+5=Tag 12+4=Comment 16+6=Tag 23+5=Tag 28+1=Comment 29+6=Tag 40+5=Tag 46+5=Attribute 52+1=String 53+5=Tag 59+1=String 60+3=Attribute 63+1=String 64+1=Tag 68+7=Tag
+166: 0+4=Tag 5+8=Attribute 14+3=String 17+1=Tag 29+6=Tag
+167: 18+2=Tag 24+1=Tag
+175: 0+1=Header
+177: 2+9=Header 13+9=Header
+179: 2+3=Comment
+181: 0+3=AltVariable
+182: 0+3=AltVariable
+186: 3+25=Comment
+187: 0+3=AltVariable
+188: 46+6=Link

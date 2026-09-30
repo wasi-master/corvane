@@ -1,0 +1,36 @@
+1: 0+17=Keyword
+2: 0+68=Comment
+4: 1+7=Keyword 9+15=Variable
+5: 9+12=Variable
+6: 10+7=Keyword 18+11=Variable 30+5=Variable 36+4=Variable 41+6=Variable
+8: 1+7=Keyword 10+12=Keyword
+9: 11+6=Variable 18+7=Variable 28+5=Variable 34+7=Variable 44+7=Variable 52+26=Variable
+10: 11+8=Variable 21+2=Keyword 24+8=Variable 33+3=Variable 37+8=Variable
+12: 0+50=Comment
+13: 0+27=Comment
+14: 1+6=Keyword 8+7=Variable 17+5=Variable 23+7=Variable 32+13=Atom
+15: 1+6=Keyword 8+2=Variable 12+4=Variable 17+6=Variable 25+8=Atom
+17: 1+6=Keyword 8+8=Variable
+18: 1+6=Keyword 8+14=Variable
+20: 1+6=Keyword 9+8=Variable 18+4=Variable 23+1=Variable
+21: 3+5=Keyword 9+1=Variable
+22: 6+2=Variable 9+8=Atom 18+1=Variable 22+11=Keyword 34+7=Variable 42+4=Variable 48+7=Variable 60+15=Variable 76+4=Variable 82+1=Variable
+23: 6+2=Variable 9+9=Atom 19+1=Variable
+24: 5+6=Atom 16+1=Variable 19+3=Variable 23+14=Variable 39+15=Variable 55+4=Variable
+25: 6+11=Keyword 18+7=Variable 26+4=Variable 32+7=Variable 44+15=Variable 60+4=Variable 66+1=Variable
+26: 6+2=Variable 9+4=Atom 14+1=Variable
+27: 6+6=Keyword 13+3=Variable 18+7=Variable 29+8=Variable 39+15=Variable 55+4=Variable
+28: 6+11=Keyword 18+7=Variable 26+4=Variable 32+7=Variable 44+15=Variable 60+4=Variable 66+3=Variable
+29: 5+1=Variable 8+20=Variable 29+9=Atom 39+19=String 59+1=Variable
+31: 1+6=Keyword 9+3=Variable 13+4=Variable 18+3=Variable
+32: 3+8=Keyword 14+1=Variable 16+4=Variable 25+1=Variable 28+7=Variable 36+3=Variable
+33: 5+8=Variable 14+1=Variable 16+1=Variable
+35: 1+7=Keyword 9+4=Variable
+36: 3+6=Keyword 10+5=Variable 17+7=Variable 25+5=String
+37: 3+6=Keyword 10+3=Variable 15+4=Variable 21+2=Variable 24+8=Atom 40+2=Variable 43+9=Atom 59+2=Variable 62+4=Atom
+38: 3+6=Keyword 10+5=Variable 17+3=Variable 21+5=Variable 27+3=Variable
+39: 3+6=Variable 10+19=String 31+13=Variable 45+5=Variable 53+15=Variable 69+5=Variable
+40: 3+3=Keyword 7+4=Variable 14+1=Variable 20+5=Variable 26+1=Atom 28+3=String 31+1=Atom 32+7=String 39+1=Atom 40+3=String
+41: 5+6=Keyword 13+6=Variable 20+5=Variable
+42: 7+9=Variable 18+4=Variable 23+1=Variable 26+5=Variable 32+5=Variable 39+2=Atom
+43: 7+4=Variable 13+4=Variable 18+1=Variable 22+4=Variable 27+5=Variable

@@ -1,0 +1,22 @@
+1: 0+38=Comment
+2: 0+14=Comment
+3: 0+3=AltVariable 4+4=AltVariable 9+7=String
+4: 0+3=AltVariable 4+7=AltVariable 14+5=String
+5: 0+6=AltVariable 7+4=AltVariable
+6: 2+8=AltVariable 11+3=AltVariable 17+17=String
+7: 0+2=AltVariable 3+3=AltVariable 7+49=String
+8: 0+7=AltVariable 8+7=AltVariable 16+28=String
+9: 0+4=AltVariable 5+24=String
+10: 0+9=AltVariable 10+5=AltVariable 18+11=String
+11: 0+16=String
+12: 0+14=String
+13: 0+5=AltVariable 6+9=AltVariable 16+4=String
+14: 0+12=AltVariable 13+5=String
+15: 0+10=AltVariable 12+5=String
+16: 1+6=AltVariable 8+3=AltVariable 14+12=String
+17: 0+5=AltVariable 6+5=AltVariable
+18: 0+3=AltVariable 4+3=String
+19: 0+3=AltVariable 4+17=String
+20: 0+23=Comment
+21: 0+7=AltVariable 8+6=AltVariable 15+13=String
+22: 0+4=AltVariable 5+9=AltVariable 15+20=String

@@ -6,17 +6,23 @@
 #
 # Produces in <out>:
 # - syntax-extended-<v>.zip: two-face's grammar collection as a syntect dump;
-# - tree-sitter-all-<v>.zip / tree-sitter-rest-<v>.zip: corvane-grammars as a
-#   universal, ad-hoc signed dylib (every grammar / the ones for languages no
-#   CodeMirror port covers) plus the grammars' and queries' licenses;
+# - tree-sitter-{all,rest}-<v>-macos-<arch>.zip: corvane-grammars as an ad-hoc
+#   signed dylib (every grammar / the ones for languages GitHub Desktop does
+#   not highlight) plus the grammars' and queries' licenses, one per
+#   architecture (the parse tables are ~170 MB per architecture, so a
+#   universal file would double every download);
 # - packs-manifest.json whose `url`s point at the GitHub release of the app
 #   version in Cargo.toml. `release.sh` signs the manifest with minisign next
 #   to the app assets.
 #
-# The dylibs are built for aarch64 and x86_64 when both Rust targets are
-# installed (`rustup target add x86_64-apple-darwin`), else for this Mac only
-# (with a warning: such a pack does not load on the other architecture).
+# The dylibs are built for every macOS Rust target installed
+# (`rustup target add x86_64-apple-darwin` for Intel packs; a warning names
+# the missing one).
 set -euo pipefail
+
+# C grammars compile for the oldest macOS Corvane supports (Info.plist
+# LSMinimumSystemVersion), not for the build machine's
+export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-15.0}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$ROOT/target/release-assets/packs}"
@@ -67,38 +73,31 @@ TARGETS=()
 for t in aarch64-apple-darwin x86_64-apple-darwin; do
   if rustup target list --installed 2>/dev/null | grep -qx "$t"; then
     TARGETS+=("$t")
+  else
+    echo "warning: $t is not installed; no tree-sitter packs for it" >&2
   fi
 done
-if [[ ${#TARGETS[@]} -lt 2 ]]; then
-  echo "warning: only ${TARGETS[*]:-the host target} installed; the tree-sitter packs will not be universal" >&2
-fi
 
 # variant (all | rest)
 grammar_pack() {
-  local variant="$1" dir="$WORK/tree-sitter-$1" slices=() t lib
-  mkdir -p "$dir"
-  echo "building the $variant tree-sitter grammars…"
-  if [[ ${#TARGETS[@]} -eq 0 ]]; then
-    (cd "$ROOT" && cargo build -q --release -p corvane-grammars --no-default-features --features "$variant")
-    slices+=("$ROOT/target/release/libcorvane_grammars.dylib")
-    cp "${slices[0]}" "$dir/libcorvane_grammars.dylib"
-  else
-    for t in "${TARGETS[@]}"; do
-      (cd "$ROOT" && cargo build -q --release -p corvane-grammars --no-default-features --features "$variant" --target "$t")
-      cp "$ROOT/target/$t/release/libcorvane_grammars.dylib" "$WORK/$t-$variant.dylib"
-      slices+=("$WORK/$t-$variant.dylib")
-    done
-    lipo -create -output "$dir/libcorvane_grammars.dylib" "${slices[@]}"
-  fi
-  lib="$dir/libcorvane_grammars.dylib"
-  # arm64 code must carry a signature; lipo keeps the linker's, re-sign to be sure
-  codesign --force --sign - --timestamp=none "$lib"
-  nm -gU "$lib" | grep -q '_corvane_grammars_v1$' || { echo "$lib does not export corvane_grammars_v1" >&2; exit 1; }
-  cp "$ROOT/crates/corvane-grammars/THIRD_PARTY.md" "$dir/THIRD_PARTY.md"
-  local zip="$OUT/tree-sitter-$variant-$GRAMMARS_VERSION.zip"
-  rm -f "$zip"
-  (cd "$dir" && ditto -c -k . "$zip")
-  add_entry "tree-sitter-$variant" "$GRAMMARS_VERSION" "tree-sitter-$variant" "$zip" macos
+  local variant="$1" t arch dir lib zip
+  for t in "${TARGETS[@]}"; do
+    arch="${t%%-*}"
+    dir="$WORK/tree-sitter-$variant-$arch"
+    mkdir -p "$dir"
+    echo "building the ${variant} tree-sitter grammars for ${arch}…"
+    (cd "$ROOT" && cargo build -q --release -p corvane-grammars --no-default-features --features "$variant" --target "$t")
+    lib="$dir/libcorvane_grammars.dylib"
+    cp "$ROOT/target/$t/release/libcorvane_grammars.dylib" "$lib"
+    # arm64 code must carry a signature; the linker's is kept, re-sign to be sure
+    codesign --force --sign - --timestamp=none "$lib"
+    nm -gU "$lib" | grep -q '_corvane_grammars_v1$' || { echo "$lib does not export corvane_grammars_v1" >&2; exit 1; }
+    cp "$ROOT/crates/corvane-grammars/THIRD_PARTY.md" "$dir/THIRD_PARTY.md"
+    zip="$OUT/tree-sitter-$variant-$GRAMMARS_VERSION-macos-$arch.zip"
+    rm -f "$zip"
+    (cd "$dir" && ditto -c -k . "$zip")
+    add_entry "tree-sitter-$variant" "$GRAMMARS_VERSION" "tree-sitter-$variant" "$zip" "macos-$arch"
+  done
 }
 
 wants tree-sitter-all && grammar_pack all
