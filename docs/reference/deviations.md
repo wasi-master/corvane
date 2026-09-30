@@ -91,6 +91,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Expanded diffs (Corvane addition, off in the Corvane preset): every text diff opens as if "Expand Whole File" had been picked (`DiffView::load`; files over 20 000 lines and large diffs stay collapsed). GHD 3.6.6 opens diffs collapsed and forgets the expansion per file. Flag: `182-diff-expand-whole-file`.
 - Image diff background (Corvane addition): the checkerboard behind images can be dark, or dark while the app theme is dark (`image_diff::checkerboard`). GHD 3.6.6 (the `checkboard-background` mixin) always draws the light one. Flag: `183-image-diff-background`.
 - TGA images (Corvane addition): `.tga` files get the image diff; the image crate decodes them to PNG for GPUI (`image_diff::Side::from_tga`) and the footer keeps the file's own size. GHD 3.6.6 (`lib/git/diff.ts` `imageFileExtensions`) shows them as binary. Flag: `184-tga-image-diff`.
+- Image diff alignment (Corvane addition): Swipe, Onion Skin and Difference can put two images of different sizes top left corner to top left corner instead of centred (`image_diff::overlay_image`, `difference_image`). GHD 3.6.6 always centres them. Flag: `671-image-diff-alignment` (an Appearance setting; numbered in the 600 block because this lane's 170–184 slice is full).
 
 ## Settings
 

@@ -149,6 +149,17 @@ const IMAGE_DIFF_BACKGROUNDS: &[SelectOption] = &[
     },
 ];
 
+const IMAGE_DIFF_ALIGNMENTS: &[SelectOption] = &[
+    SelectOption {
+        value: "centre",
+        label: "Centred",
+    },
+    SelectOption {
+        value: "top-left",
+        label: "Top left corners together",
+    },
+];
+
 const WIDTH_SAVES: &[SelectOption] = &[
     SelectOption {
         value: "drag-end",
@@ -1153,6 +1164,21 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(22929)],
         code: &["crates/corvane-ui/src/diff_view.rs"],
+    },
+    /// How Swipe / Onion Skin / Difference align images of different sizes.
+    IMAGE_DIFF_ALIGNMENT = 671 "image-diff-alignment" {
+        title: "Image diff alignment",
+        summary: "Where Swipe, Onion Skin and Difference put two images of different sizes: \
+                  centred on each other, or with their top left corners together (for layouts \
+                  that grow to the right and down, such as UI snapshots).",
+        ghd_behaviour: "Always centred.",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: IMAGE_DIFF_ALIGNMENTS },
+        corvane: Value::text("centre"), ghd: Value::text("centre"),
+        familiar: Value::text("centre"), everything: Value::text("top-left"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(19385)],
+        code: &["crates/corvane-ui/src/image_diff.rs"],
     },
 }
 
