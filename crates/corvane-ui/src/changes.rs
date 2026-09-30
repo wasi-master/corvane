@@ -12,6 +12,8 @@
 //! - committing on the default branch asks first
 //!   (`275-confirm-commit-to-default-branch`).
 //! - the summary can be capped at 72 characters (`277-summary-max-length`).
+//! - "Ignore All .x Files" items give the number of changed .x files
+//!   (`278-ignore-menu-counts`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1591,7 +1593,16 @@ impl ChangesSidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        let (id, confirm, repo_path, selected_files, rebase_conflict, status_files, open_many) = {
+        let (
+            id,
+            confirm,
+            repo_path,
+            selected_files,
+            rebase_conflict,
+            status_files,
+            open_many,
+            ignore_counts,
+        ) = {
             let s = self.state.read(cx);
             let Some(id) = s.selected else { return };
             let Some(rs) = s.selected_state() else { return };
@@ -1612,6 +1623,7 @@ impl ChangesSidebar {
                     .map(|st| st.files.clone())
                     .unwrap_or_default(),
                 s.flags.bool(corvane_core::flags::ids::OPEN_MULTIPLE_FILES),
+                s.flags.bool(corvane_core::flags::ids::IGNORE_MENU_COUNTS),
             )
         };
         let path = file.path.clone();
@@ -1692,11 +1704,23 @@ impl ChangesSidebar {
             return;
         }
 
+        // `278-ignore-menu-counts`: changed files per extension
+        let extension_count = |ext: &str| {
+            status_files
+                .iter()
+                .filter(|f| {
+                    Path::new(&f.path)
+                        .extension()
+                        .is_some_and(|e| format!(".{}", e.to_string_lossy()) == ext)
+                })
+                .count()
+        };
         // `getDefaultContextMenu`
         let targets: Vec<WorkingDirectoryFileChange> = if selected_files.contains(&path) {
             status_files
-                .into_iter()
+                .iter()
                 .filter(|f| selected_files.contains(&f.path))
+                .cloned()
                 .collect()
         } else {
             vec![file.clone()]
@@ -1760,10 +1784,15 @@ impl ChangesSidebar {
         }
         for ext in extensions.into_iter().take(5) {
             let pattern = format!("*{ext}");
-            items.push(MenuItem::new(
-                format!("Ignore All {ext} Files (Add to .gitignore)"),
-                move |_, cx| Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx),
-            ));
+            let label = if ignore_counts {
+                let n = extension_count(&ext);
+                format!("Ignore All {ext} Files ({n} Changed) (Add to .gitignore)")
+            } else {
+                format!("Ignore All {ext} Files (Add to .gitignore)")
+            };
+            items.push(MenuItem::new(label, move |_, cx| {
+                Dispatcher::ignore_patterns(id, vec![pattern.clone()], cx)
+            }));
         }
         if paths.len() > 1 {
             items.push(MenuItem::separator());

@@ -389,6 +389,19 @@ registry! {
         upstream: &[Upstream::issue(18290)],
         code: &["crates/corvane-ui/src/changes.rs"],
     },
+    /// Changed-file counts in the "Ignore All .x Files" items.
+    IGNORE_MENU_COUNTS = 278 "ignore-menu-counts" {
+        title: "Counts in \"Ignore All .x Files\"",
+        summary: "The changes list's \"Ignore All .x Files\" context-menu items say how many \
+                  changed files have that extension: \"Ignore All .png Files (170 Changed)\".",
+        ghd_behaviour: "\"Ignore All .png Files (Add to .gitignore)\", no count.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(13789)],
+        code: &["crates/corvane-ui/src/changes.rs"],
+    },
 
     // ---- 300 GitHub ----
 

@@ -52,6 +52,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - "No local changes" with an open pull request for the branch (Corvane addition): a primary "View Pull Request" card ("Pull request #N is open for the current branch", the PR title, ⌘R) leads the suggested actions and opens it on GitHub; GHD 3.6.6 shows no pull request action then. Flag: `274-no-changes-view-pull-request`.
 - Confirm commits to the default branch (Corvane addition, off in the Corvane preset): committing (not amending) while the repository's default branch is checked out opens "Commit to Default Branch" (Cancel / Commit); the unknown co-authors prompt still follows it. GHD 3.6.6 never asks. Flag: `275-confirm-commit-to-default-branch`.
 - Commit summary length limit (Corvane addition, off in the Corvane preset): the summary takes at most 72 characters; the part of an edit past the limit is dropped (an HTML `maxlength`, applied after the edit since the kit's input has none). A recalled or amended message is not cut. GHD 3.6.6 has no limit. Flag: `277-summary-max-length`.
+- The changes list's "Ignore All .x Files (Add to .gitignore)" items add the number of changed files with that extension ("Ignore All .png Files (170 Changed) (Add to .gitignore)"); GHD 3.6.6 gives no count. Flag: `278-ignore-menu-counts`.
 
 ## Diff viewer
 
