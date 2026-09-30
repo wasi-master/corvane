@@ -9,6 +9,7 @@
 //! (`256-create-branch-with-changes-from-current`).
 //! Delete Branch warns about unmerged commits and a stash on the branch
 //! (`258-delete-branch-warnings`).
+//! Create and Rename refuse `head` in any case (`259-reject-head-branch-name`).
 
 use corvane_core::{
     AppState, BranchKind, Dispatcher, Mergeability, Tip, UncommittedChangesStrategy,
@@ -49,6 +50,21 @@ pub fn sanitize_ref_name(input: &str) -> String {
         out.pop();
     }
     out.replace("..", "-").replace("@{", "-").replace("//", "/")
+}
+
+/// Flag `259-reject-head-branch-name`: `head` in any case names `HEAD`
+/// on a case-insensitive file system, so the new branch detaches HEAD.
+fn reserved_head_name(name: &str, cx: &App) -> bool {
+    name.eq_ignore_ascii_case("head")
+        && AppState::global(cx)
+            .read(cx)
+            .flags
+            .bool(corvane_core::flags::ids::REJECT_HEAD_BRANCH_NAME)
+}
+
+/// The message shown for a name `reserved_head_name` rejects.
+fn reserved_head_message(name: &str) -> String {
+    format!("{name} is reserved by Git (HEAD); choose another name.")
 }
 
 pub(crate) fn ref_chip(name: impl Into<SharedString>, cx: &App) -> Div {
@@ -182,6 +198,7 @@ impl Render for CreateBranchDialog {
             )
         };
         let exists = existing.contains(&name);
+        let reserved = reserved_head_name(&name, cx);
         let current = tip.branch_name().map(|s| s.to_string());
         let from_any = self
             .state
@@ -372,7 +389,7 @@ crate::branch_list::sort_by_date(cx),
             }
         }
         let _ = current;
-        let disabled = name.is_empty() || exists || needs_pick;
+        let disabled = name.is_empty() || exists || reserved || needs_pick;
 
         let repo = self.repo;
         let unborn = matches!(tip, Tip::Unborn { .. });
@@ -392,6 +409,12 @@ crate::branch_list::sort_by_date(cx),
             .when(exists, |d| {
                 d.child(crate::widgets::input_error(
                     format!("A branch named {name} already exists."),
+                    cx,
+                ))
+            })
+            .when(reserved, |d| {
+                d.child(crate::widgets::input_error(
+                    reserved_head_message(&name),
                     cx,
                 ))
             })
@@ -507,7 +530,8 @@ impl Render for RenameBranchDialog {
             )
         };
         let exists = new_name != self.branch && existing.contains(&new_name);
-        let disabled = new_name.is_empty() || new_name == self.branch || exists;
+        let reserved = reserved_head_name(&new_name, cx);
+        let disabled = new_name.is_empty() || new_name == self.branch || exists || reserved;
         let (repo, old) = (self.repo, self.branch.clone());
         let content = div()
             .flex()
@@ -554,6 +578,13 @@ impl Render for RenameBranchDialog {
                         .child("A branch named")
                         .child(ref_chip(new_name.clone(), cx))
                         .child("already exists"),
+                )
+            })
+            .when(reserved, |d| {
+                d.child(
+                    div()
+                        .text_color(t.form_error_text)
+                        .child(reserved_head_message(&new_name)),
                 )
             });
         let name_for_ok = new_name.clone();
