@@ -90,6 +90,21 @@ const SIGN_IN_FLOWS: &[SelectOption] = &[
     },
 ];
 
+const CHANGES_SORT_ORDERS: &[SelectOption] = &[
+    SelectOption {
+        value: "path",
+        label: "Path",
+    },
+    SelectOption {
+        value: "status",
+        label: "Status, then path",
+    },
+    SelectOption {
+        value: "name",
+        label: "File name",
+    },
+];
+
 const WIDTH_SAVES: &[SelectOption] = &[
     SelectOption {
         value: "drag-end",
@@ -453,6 +468,21 @@ registry! {
         restart: false, visible: true, availability: available,
         upstream: &[Upstream::issue(19198), Upstream::issue(22591), Upstream::issue(22913)],
         code: &["crates/corvane-ui/src/dialogs/simple.rs"],
+    },
+    /// Order of the changes list.
+    CHANGES_SORT_ORDER = 282 "changes-sort-order" {
+        title: "Changes list order",
+        summary: "How the changes list orders its files: by path, by status (conflicted, new, \
+                  modified, renamed, deleted; path order within each), or by file name. A filter \
+                  text still ranks its matches best first.",
+        ghd_behaviour: "Path order (git's).",
+        nature: Nature::Feature,
+        kind: Kind::Select { options: CHANGES_SORT_ORDERS },
+        corvane: Value::text("path"), ghd: Value::text("path"),
+        familiar: Value::text("path"), everything: Value::text("status"),
+        restart: false, visible: true, availability: available,
+        upstream: &[Upstream::issue(4739)],
+        code: &["crates/corvane-ui/src/changes.rs", "crates/corvane-core/src/filter.rs"],
     },
 
     // ---- 300 GitHub ----

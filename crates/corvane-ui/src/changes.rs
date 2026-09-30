@@ -19,6 +19,7 @@
 //! - the Filter Options popover has "Renamed files" (`280-renamed-files-filter`).
 //! - rows can show the file name without its directory
 //!   (`170-changes-file-names-only`).
+//! - the list can be ordered by status or file name (`282-changes-sort-order`).
 
 use std::cell::{Cell, RefCell};
 use std::ops::Range;
@@ -1299,7 +1300,16 @@ impl ChangesSidebar {
         let hide = corvane_core::filter::hide_patterns(
             s.flags.text(corvane_core::flags::ids::CHANGES_HIDE_GLOBS),
         );
-        let visible = filtered_files(&status.files, &text, &rs.file_list_filter, &hide)
+        // `282-changes-sort-order`
+        let order = s.flags.text(corvane_core::flags::ids::CHANGES_SORT_ORDER);
+        let mut sorted = None;
+        if order != "path" {
+            let mut files = status.files.clone();
+            corvane_core::filter::sort_files(&mut files, order);
+            sorted = Some(files);
+        }
+        let files = sorted.as_deref().unwrap_or(&status.files);
+        let visible = filtered_files(files, &text, &rs.file_list_filter, &hide)
             .into_iter()
             .cloned()
             .collect();

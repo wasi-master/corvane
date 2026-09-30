@@ -4,7 +4,8 @@
 //!
 //! Deviation: [`hidden_by`] hides files matching the `272-changes-hide-globs`
 //! patterns from the list (view only; they are still committed), and the
-//! `280-renamed-files-filter` option keeps renamed files.
+//! `280-renamed-files-filter` option keeps renamed files; [`sort_files`]
+//! orders the list by status or file name (`282-changes-sort-order`).
 
 use corvane_models::{FileStatusKind, WorkingDirectoryFileChange};
 
@@ -190,6 +191,25 @@ pub fn filtered_files<'a>(
     scored.into_iter().map(|(_, f)| f).collect()
 }
 
+/// `282-changes-sort-order`: how the changes list orders its files before
+/// the filter ranks them. Unknown flag values keep git's path order.
+pub fn sort_files(files: &mut [WorkingDirectoryFileChange], order: &str) {
+    fn rank(kind: FileStatusKind) -> u8 {
+        match kind {
+            FileStatusKind::Conflicted => 0,
+            FileStatusKind::New | FileStatusKind::Untracked => 1,
+            FileStatusKind::Modified => 2,
+            FileStatusKind::Renamed | FileStatusKind::Copied => 3,
+            FileStatusKind::Deleted => 4,
+        }
+    }
+    match order {
+        "status" => files.sort_by_key(|f| rank(f.status.kind)),
+        "name" => files.sort_by_cached_key(|f| f.file_name().to_lowercase()),
+        _ => {}
+    }
+}
+
 /// Count per option, as the popover labels show them (`getFilterCounts`).
 pub fn option_count(option: FilterOption, files: &[WorkingDirectoryFileChange]) -> usize {
     let mut only = FileListFilter::default();
@@ -322,6 +342,50 @@ mod tests {
                 .unwrap()
                 .ends_with("Renamed files")
         );
+    }
+
+    #[test]
+    fn sort_orders() {
+        use corvane_models::{DiffSelection, FileStatus, GitStatusEntry};
+        let file = |path: &str, kind| WorkingDirectoryFileChange {
+            path: path.to_string(),
+            old_path: None,
+            status: FileStatus {
+                kind,
+                index: GitStatusEntry::Unchanged,
+                working_tree: GitStatusEntry::Unchanged,
+                score: None,
+                code: String::new(),
+                submodule: false,
+                submodule_status: None,
+                conflict_markers: None,
+            },
+            selection: DiffSelection::all(),
+        };
+        let files = vec![
+            file("a/zeta.rs", FileStatusKind::Deleted),
+            file("b/Alpha.rs", FileStatusKind::Modified),
+            file("c/beta.rs", FileStatusKind::Untracked),
+            file("d/gamma.rs", FileStatusKind::Modified),
+        ];
+        fn paths(files: &[WorkingDirectoryFileChange]) -> Vec<&str> {
+            files.iter().map(|f| f.path.as_str()).collect()
+        }
+        let mut by_status = files.clone();
+        sort_files(&mut by_status, "status");
+        assert_eq!(
+            paths(&by_status),
+            ["c/beta.rs", "b/Alpha.rs", "d/gamma.rs", "a/zeta.rs"]
+        );
+        let mut by_name = files.clone();
+        sort_files(&mut by_name, "name");
+        assert_eq!(
+            paths(&by_name),
+            ["b/Alpha.rs", "c/beta.rs", "d/gamma.rs", "a/zeta.rs"]
+        );
+        let mut by_path = files.clone();
+        sort_files(&mut by_path, "path");
+        assert_eq!(paths(&by_path), paths(&files));
     }
 
     #[test]
