@@ -124,6 +124,9 @@ fn main() {
             service_urls.send(corvane_core::app_url::open_local_repo_url(&path));
         });
         Dispatcher::listen_for_app_urls(url_inbox, focus_main_window, cx);
+        // flag-dependent key bindings, before the menu bar reads its shortcuts
+        let keymap_flags = corvane_ui::keymap::KeymapFlags::from_flags(&state.read(cx).flags);
+        corvane_ui::keymap::sync(keymap_flags, cx);
         {
             let s = state.read(cx);
             menus::install(
@@ -163,7 +166,7 @@ fn main() {
             Dispatcher::sync_crash_reports_setting(cx);
             // accounts or Settings › Notifications changed: (un)subscribe
             Dispatcher::sync_alive_subscriptions(cx);
-            let (theme, welcome_done, menu_key, high_contrast) = {
+            let (theme, welcome_done, menu_key, high_contrast, keymap_flags) = {
                 let s = state.read(cx);
                 corvane_ui::format::sync(&s.settings);
                 (
@@ -178,9 +181,12 @@ fn main() {
                             .bool(corvane_core::flags::ids::IMPORT_FROM_GITHUB_DESKTOP),
                     ),
                     s.flags.bool(corvane_core::flags::ids::HIGH_CONTRAST_THEME),
+                    corvane_ui::keymap::KeymapFlags::from_flags(&s.flags),
                 )
             };
-            if menu_key != last_menu_key {
+            // a rebuilt keymap changes the menus' shortcuts
+            let keymap_changed = corvane_ui::keymap::sync(keymap_flags, cx);
+            if menu_key != last_menu_key || keymap_changed {
                 last_menu_key = menu_key;
                 menus::install(
                     cx,

@@ -34,10 +34,10 @@ use crate::widgets::IconButtonA11y;
 use crate::widgets::ListRowA11y;
 
 use crate::actions::{
-    Commit, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles, SelectFirstFile,
-    SelectLastFile, SelectNextFile, SelectPreviousFile, SpellAddToDictionary, SpellSuggestion0,
-    SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4, ToggleCoAuthors,
-    ToggleCommitSpellcheck, ToggleIncludeSelected,
+    Commit, DiscardSelectedFiles, ExtendSelectionDown, ExtendSelectionUp, SelectAllFiles,
+    SelectFirstFile, SelectLastFile, SelectNextFile, SelectPreviousFile, SpellAddToDictionary,
+    SpellSuggestion0, SpellSuggestion1, SpellSuggestion2, SpellSuggestion3, SpellSuggestion4,
+    ToggleCoAuthors, ToggleCommitSpellcheck, ToggleIncludeSelected,
 };
 use crate::autocompletion::{self, Autocompletion, Hit, PickHandler};
 use crate::context_menu::{ContextMenu, MenuItem};
@@ -1108,6 +1108,38 @@ impl ChangesSidebar {
         Dispatcher::select_file(id, files[index].path.clone(), cx);
         self.list_scroll
             .scroll_to_item(index, ScrollStrategy::Nearest);
+    }
+
+    /// The repository and the highlighted files (the selection, else the
+    /// selected file), for keyboard actions on the list.
+    fn highlighted_files(&self, cx: &App) -> Option<(u64, Vec<String>)> {
+        let s = self.state.read(cx);
+        let id = s.selected?;
+        let rs = s.selected_state()?;
+        let mut paths = rs.selected_files.clone();
+        if paths.is_empty()
+            && let Some(one) = rs.selected_file.clone()
+        {
+            paths.push(one);
+        }
+        (!paths.is_empty()).then_some((id, paths))
+    }
+
+    /// Corvane (`607-cmd-backspace-discards-files`): ⌘⌫ discards the
+    /// highlighted files, confirming as the context menu's Discard Changes
+    /// does (GHD binds ⌘⌫ to Repository › Remove everywhere).
+    fn discard_highlighted(&mut self, cx: &mut Context<Self>) {
+        let committing = self
+            .state
+            .read(cx)
+            .selected_state()
+            .is_some_and(|rs| rs.committing);
+        if committing {
+            return;
+        }
+        if let Some((id, paths)) = self.highlighted_files(cx) {
+            Dispatcher::request_discard_changes(id, paths, cx);
+        }
     }
 
     /// Space (GHD `onToggleInclude` for the row's `onKeyDown`): include the
@@ -3271,6 +3303,9 @@ impl Render for ChangesSidebar {
                     // Space: "Select or deselect all highlighted files"
                     .on_action(cx.listener(|this, _: &ToggleIncludeSelected, _, cx| {
                         this.toggle_include_selected(cx)
+                    }))
+                    .on_action(cx.listener(|this, _: &DiscardSelectedFiles, _, cx| {
+                        this.discard_highlighted(cx)
                     }))
                     .on_action(cx.listener(|this, _: &SelectAllFiles, _, cx| {
                         let (files, _) = this.visible_files(cx);

@@ -1025,6 +1025,20 @@ registry! {
         upstream: &[],
         code: &["crates/corvane-ui/src/dialogs/repository_settings.rs"],
     },
+    /// ⌘⌫ in the changes list discards the highlighted files.
+    CMD_BACKSPACE_DISCARDS_FILES = 607 "cmd-backspace-discards-files" {
+        title: "⌘⌫ in the changes list discards the selected files",
+        summary: "With the changes list focused, ⌘⌫ discards the highlighted files (confirming \
+                  as the context menu's Discard Changes does); elsewhere it still removes the \
+                  repository.",
+        ghd_behaviour: "⌘⌫ is Repository › Remove… everywhere, also in the changes list.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: OFF, ghd: OFF, familiar: OFF, everything: ON,
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(11924), Upstream::issue(17680)],
+        code: &["crates/corvane-ui/src/keymap.rs", "crates/corvane-ui/src/changes.rs"],
+    },
 }
 
 /// Ids and slugs that once existed; never reused.
