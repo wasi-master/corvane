@@ -2325,6 +2325,15 @@ impl Dispatcher {
             return;
         };
         Self::close_popup(cx);
+        corvane_git::set_network_stall_timeout(
+            u32::try_from(
+                state
+                    .read(cx)
+                    .flags
+                    .number(crate::flags::ids::NETWORK_STALL_TIMEOUT),
+            )
+            .unwrap_or(0),
+        );
         state.update(cx, |s, cx| {
             s.cloning = Some(CloneState {
                 url: url.clone(),

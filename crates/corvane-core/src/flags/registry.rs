@@ -316,6 +316,22 @@ registry! {
         upstream: &[Upstream::issue(2537)],
         code: &["crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/ignore.rs"],
     },
+    /// Fetch / pull / push give up on a stalled HTTP transfer.
+    NETWORK_STALL_TIMEOUT = 210 "network-stall-timeout" {
+        title: "Give up on stalled fetch, pull and push",
+        summary: "Seconds an HTTPS fetch, pull, push or clone may transfer nothing before git \
+                  aborts it with an error (GIT_HTTP_LOW_SPEED_LIMIT=1 and \
+                  GIT_HTTP_LOW_SPEED_TIME). 0 waits forever. Does not apply to SSH remotes.",
+        ghd_behaviour: "No limit: a stalled connection leaves the operation spinning until the app \
+                        is restarted.",
+        nature: Nature::Feature,
+        kind: Kind::Number { min: 0, max: 3600, unit: Some("s") },
+        corvane: Value::Number(0), ghd: Value::Number(0),
+        familiar: Value::Number(0), everything: Value::Number(60),
+        restart: false, visible: false, availability: available,
+        upstream: &[Upstream::issue(22863)],
+        code: &["crates/corvane-core/src/remote.rs", "crates/corvane-core/src/dispatcher.rs", "crates/corvane-git/src/process.rs"],
+    },
 
     // ---- 300 GitHub ----
 

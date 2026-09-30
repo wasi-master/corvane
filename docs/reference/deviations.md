@@ -34,6 +34,7 @@ Features Corvane has that behave or look slightly differently from GHD, with the
 - Create a New Repository warns "This directory contains a README.md file already…" when the README box is ticked and the target folder has a `README.md` (GHD keeps this warning behind `enableReadmeOverwriteWarning()`, beta builds only, so release builds overwrite the file silently). Flag: `207-readme-overwrite-warning`.
 - Line counts for uncommitted changes (Corvane addition, off in the Corvane preset): every refresh also runs `git diff --numstat --no-renames -z HEAD` (the empty tree on an unborn branch) and counts the lines of untracked files (up to 1 MiB, not binary); each Changes row shows "+N -M" before its status icon and the "N changed files" header the totals of the listed files. Flag: `208-changes-line-counts`.
 - The Changes list's "Ignore File / Folder / All .ext Files" items skip patterns the root `.gitignore` already has as a line (GHD `appendIgnoreRule` appends them again). Flag: `209-ignore-skips-existing-rules`.
+- Stalled network operations (Corvane addition, off in the Corvane preset): with a timeout set, fetch / pull / push / clone / ls-remote run with `GIT_HTTP_LOW_SPEED_LIMIT=1` and `GIT_HTTP_LOW_SPEED_TIME=<seconds>`, so an HTTPS transfer that stalls fails with git's error instead of spinning forever (GHD sets no limit; SSH remotes are unaffected). The value is armed before each fetch, pull, push and clone. Flag: `210-network-stall-timeout`.
 
 ## Tutorial
 
