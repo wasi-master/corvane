@@ -238,7 +238,7 @@ def grammars_rs(languages: dict, rest: list[str]) -> str:
     return "\n".join(out) + "\n"
 
 
-def index_json(languages: dict, rest: list[str], variant: str, built: set[str]) -> dict:
+def index_json(languages: dict, rest: list[str], variant: str, built: set[str], ext: str = "dylib") -> dict:
     """A pack's index.json (corvane_highlight::treesitter::load_pack)."""
     units: dict[str, list[dict]] = {}
     for name, lang in sorted(languages.items()):
@@ -258,7 +258,7 @@ def index_json(languages: dict, rest: list[str], variant: str, built: set[str]) 
         )
     return {
         "abi": 1,
-        "units": [{"file": f"grammars/{u}.dylib.gz", "grammars": g} for u, g in sorted(units.items())],
+        "units": [{"file": f"grammars/{u}.{ext}.gz", "grammars": g} for u, g in sorted(units.items())],
     }
 
 
@@ -290,10 +290,15 @@ def main(argv: list[str]) -> int:
             print(unit, *names)
         return 0
     if "--index" in argv:
-        # index.json of a pack: `--index <all|rest> <units that built…>`
+        # index.json of a pack: `--index <all|rest> [--ext so] <units that built…>`
+        ext = "dylib"
+        if "--ext" in argv:
+            j = argv.index("--ext")
+            ext = argv[j + 1]
+            argv = argv[:j] + argv[j + 2 :]
         i = argv.index("--index")
         variant, built = argv[i + 1], set(argv[i + 2 :])
-        print(json.dumps(index_json(languages, rest, variant, built), indent=1))
+        print(json.dumps(index_json(languages, rest, variant, built, ext), indent=1))
         return 0
     files = {
         CRATE / "Cargo.toml": cargo_toml(languages, rest),

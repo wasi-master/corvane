@@ -240,6 +240,14 @@ jobs:
           export CORVANE_UPDATE_PUBLIC_KEY="$(tail -n1 packaging/corvane-release.pub)"
           packaging/linux/package.sh
           ls -l target/linux
+      # this architecture's tree-sitter packs (.so units); the macOS job's
+      # manifest gets their entries in `packs-manifest` below
+      - name: tree-sitter packs
+        run: |
+          PACKS="tree-sitter-all tree-sitter-rest" packaging/packs.sh target/linux/packs
+          mv target/linux/packs/*.zip target/linux/
+          mv target/linux/packs/packs-manifest.json "target/linux/packs-manifest-linux-${{ matrix.arch }}.json"
+          ls -l target/linux
       - name: sign
         env:
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
@@ -251,7 +259,7 @@ jobs:
           printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key"
           trap 'rm -f "$key"' EXIT
           cd target/linux
-          for asset in *.deb *.AppImage; do
+          for asset in *.deb *.AppImage tree-sitter-*.zip; do
             printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s "$key" \
               -t "corvane v$version $asset" -x "$asset.minisig" -m "$asset"
             minisign -V -p ../../packaging/corvane-release.pub -m "$asset"
@@ -265,4 +273,51 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" target/linux/*.deb target/linux/*.AppImage target/linux/*.minisig
+        run: gh release upload "$GITHUB_REF_NAME" target/linux/*.deb target/linux/*.AppImage target/linux/tree-sitter-*.zip target/linux/*.minisig
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag'
+        with:
+          name: packs-manifest-linux-${{ matrix.arch }}
+          path: target/linux/packs-manifest-linux-${{ matrix.arch }}.json
+
+  packs-manifest:
+    name: add the Linux packs to the packs manifest
+    needs: linux
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packs-manifest-linux-*
+          merge-multiple: true
+          path: fragments
+      - name: merge, sign and replace
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign
+          version="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          gh release download "$GITHUB_REF_NAME" -p packs-manifest.json -D merged
+          python3 - merged/packs-manifest.json fragments/*.json <<'PY'
+          import json, sys
+          path, *fragments = sys.argv[1:]
+          manifest = json.load(open(path))
+          key = lambda p: (p["name"], p.get("target"))
+          packs = {key(p): p for p in manifest["packs"]}
+          for fragment in fragments:
+              for p in json.load(open(fragment))["packs"]:
+                  packs[key(p)] = p
+          manifest["packs"] = list(packs.values())
+          json.dump(manifest, open(path, "w"), indent=2)
+          PY
+          umask 077
+          key="$RUNNER_TEMP/corvane-release.key"
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s "$key" \
+            -t "corvane v$version packs-manifest.json" -x merged/packs-manifest.json.minisig -m merged/packs-manifest.json
+          minisign -V -p packaging/corvane-release.pub -m merged/packs-manifest.json
+          gh release upload "$GITHUB_REF_NAME" --clobber merged/packs-manifest.json merged/packs-manifest.json.minisig

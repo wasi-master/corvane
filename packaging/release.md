@@ -164,6 +164,15 @@ minisign -Sm target/linux/Corvane-<version>-x86_64.AppImage
 (`-s ~/.minisign/corvane-release.key` when the key is not in minisign's
 default place; this writes `<file>.minisig` next to each file.)
 
+The same job builds the machine's tree-sitter packs
+(`tree-sitter-{all,rest}-<v>-linux-<arch>.zip`, `.so` units; `packs.sh`
+builds shared objects on Linux) and uploads them signed; the
+`packs-manifest` job then adds their entries to the macOS job's
+`packs-manifest.json`, re-signs it and replaces it on the draft release. By
+hand: run `PACKS="tree-sitter-all tree-sitter-rest" packaging/packs.sh` on
+each Linux architecture, append the `packs` entries of its manifest to the
+release's `packs-manifest.json`, then sign and upload as above.
+
 Only the AppImage updates itself. The updater picks
 `Corvane-*-<arch>.AppImage` (the machine's `x86_64` / `aarch64`) and its
 `.minisig` from the latest release, downloads both to
