@@ -1352,6 +1352,7 @@ dependencies = [
  "gpui-kit",
  "gpui-pre",
  "gpui-pre-apple",
+ "gpui-pre-linux",
  "gpui-pre-macos",
  "image",
  "libc",
@@ -1567,14 +1568,19 @@ dependencies = [
  "block",
  "dirs 6.0.0",
  "keyring",
+ "libc",
  "minisign-verify",
+ "notify-rust",
  "objc",
  "serde",
  "serde_json",
+ "spellbook",
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
+ "trash",
  "ureq",
+ "zbus",
 ]
 
 [[package]]
@@ -3976,8 +3982,6 @@ dependencies = [
 [[package]]
 name = "gpui-pre-linux"
 version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aac7022e347409454777701082201742710052813964a1e25160f7e22c965ad"
 dependencies = [
  "accesskit",
  "accesskit_unix",
@@ -3995,6 +3999,7 @@ dependencies = [
  "gpui-pre-http-client",
  "gpui-pre-util",
  "gpui-pre-wgpu",
+ "image",
  "libc",
  "log",
  "notify-rust",
@@ -4258,8 +4263,6 @@ dependencies = [
 [[package]]
 name = "gpui-pre-wgpu"
 version = "0.3.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b02657b56b09140ce542f5e4434fb96d9fdaba0fd0035ba7dba13c171ddb9b"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -4268,6 +4271,7 @@ dependencies = [
  "gpui-pre",
  "gpui-pre-collections",
  "gpui-pre-util",
+ "image",
  "itertools 0.14.0",
  "log",
  "parking_lot",
@@ -8072,6 +8076,16 @@ checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "spellbook"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d204abcbdf8e88729306a8d0ca01a79d8a49969fe1f84696909d6dbc4321c1a"
+dependencies = [
+ "foldhash 0.2.0",
+ "hashbrown 0.17.1",
 ]
 
 [[package]]

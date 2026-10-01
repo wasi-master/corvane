@@ -1,7 +1,7 @@
 # Releasing Corvane
 
 How a tagged commit becomes the artefacts the self-updater and the Homebrew
-cask consume. Nothing here needs an Apple Developer ID: the
+cask consume (Linux: see [Linux](#linux)). Nothing here needs an Apple Developer ID: the
 bundle is signed with a self-signed certificate and integrity comes from
 minisign.
 
@@ -137,6 +137,55 @@ every four hours, release builds only):
 
 Files the app downloads itself carry no quarantine attribute, so the self-signed
 update launches without Gatekeeper's "Open Anyway" dance.
+
+## Linux
+
+`packaging/linux/package.sh` builds two assets from a release build (with
+`CORVANE_UPDATE_PUBLIC_KEY`, taken from `packaging/corvane-release.pub` like
+`release.sh` does) into `target/linux/`:
+
+- `corvane_<version>_amd64.deb` / `corvane_<version>_arm64.deb`
+- `Corvane-<version>-x86_64.AppImage` / `Corvane-<version>-aarch64.AppImage`
+
+for the architecture of the machine it runs on (release.yml builds both,
+the arm64 ones on an `ubuntu-24.04-arm` runner).
+
+A `v<version>` tag does this in release.yml's `linux` job (after the macOS
+job creates the draft release): it builds, signs both with the
+`MINISIGN_SECRET_KEY` secret and uploads them with their signatures. By
+hand, sign both with the same minisign key and upload each with its
+signature to the release:
+
+```bash
+minisign -Sm target/linux/corvane_<version>_amd64.deb
+minisign -Sm target/linux/Corvane-<version>-x86_64.AppImage
+```
+
+(`-s ~/.minisign/corvane-release.key` when the key is not in minisign's
+default place; this writes `<file>.minisig` next to each file.)
+
+The same job builds the machine's tree-sitter packs
+(`tree-sitter-{all,rest}-<v>-linux-<arch>.zip`, `.so` units; `packs.sh`
+builds shared objects on Linux) and uploads them signed; the
+`packs-manifest` job then adds their entries to the macOS job's
+`packs-manifest.json`, re-signs it and replaces it on the draft release. By
+hand: run `PACKS="tree-sitter-all tree-sitter-rest" packaging/packs.sh` on
+each Linux architecture, append the `packs` entries of its manifest to the
+release's `packs-manifest.json`, then sign and upload as above.
+
+Only the AppImage updates itself. The updater picks
+`Corvane-*-<arch>.AppImage` (the machine's `x86_64` / `aarch64`) and its
+`.minisig` from the latest release, downloads both to
+`$XDG_CACHE_HOME/corvane/updates/` (`~/.cache/corvane/updates/`) and
+verifies them. "Install and Restart" copies the image next to the running
+one (`$APPIMAGE`, which must be a file in a folder the user can write),
+verifies that copy again, makes it executable, fsyncs it, renames it over
+`$APPIMAGE` and starts it once the old process has exited.
+
+A `.deb` install (`/usr/lib/corvane`) is never updated in place: like a
+Homebrew cask on macOS, the banner and About only say that the release is
+available and to update with the package manager. The `.deb`'s `.minisig`
+is for people verifying a download by hand.
 
 ## Testing the flow locally
 

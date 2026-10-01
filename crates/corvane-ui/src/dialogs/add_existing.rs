@@ -26,6 +26,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::autocompletion::{self, Autocompletion, PickHandler};
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -155,7 +156,7 @@ impl AddExistingRepositoryDialog {
             files: false,
             directories: true,
             multiple,
-            prompt: Some("Add Repository".into()),
+            prompt: Some(mac_or("Add Repository", "Add repository").into()),
         });
         cx.spawn_in(window, async move |this, cx| {
             let Ok(Ok(Some(paths))) = receiver.await else {
@@ -297,7 +298,7 @@ impl Render for AddExistingRepositoryDialog {
         });
         dialog(
             "add-existing-repository",
-            "Add Local Repository",
+            mac_or("Add Local Repository", "Add local repository"),
             div()
                 .flex()
                 .flex_col()
@@ -339,7 +340,7 @@ impl Render for AddExistingRepositoryDialog {
                         .items_end()
                         .gap(SPACING())
                         .child(labeled(
-                            "Local Path",
+                            mac_or("Local Path", "Local path"),
                             text_box("add-existing-path", &self.path, None, window, cx),
                             cx,
                         ))
@@ -369,7 +370,7 @@ impl Render for AddExistingRepositoryDialog {
                 },
                 DialogButton {
                     id: "add-existing-ok",
-                    label: "Add Repository".into(),
+                    label: mac_or("Add Repository", "Add repository").into(),
                     primary: true,
                     disabled: add_disabled,
                     on_click: Box::new(move |_, cx| {

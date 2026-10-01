@@ -1,14 +1,16 @@
 //! Local crash reports (Corvane addition, opt-in, never uploaded). GHD sends
 //! uncaught errors to its crash reporter and shows `crash/crash-app.tsx`;
-//! Corvane only keeps files on this Mac:
+//! Corvane only keeps files on this machine:
 //!
-//! - a panic hook writes `~/Library/Logs/Corvane/crashes/<timestamp>.txt`
-//!   (message, location, backtrace, version, OS) while Settings › Advanced ›
-//!   "Save crash reports locally" is on;
+//! - a panic hook writes `<crashes>/<timestamp>.txt` (message, location,
+//!   backtrace, version, OS) while Settings › Advanced › "Save crash reports
+//!   locally" is on; `<crashes>` is `~/Library/Logs/Corvane/crashes` on
+//!   macOS and `$XDG_STATE_HOME/corvane/crashes` on Linux;
 //! - at the next launch the reports newer than the previous launch are
-//!   found, together with macOS's own `corvane*.ips` files in
-//!   `~/Library/Logs/DiagnosticReports` (only their names and dates are
-//!   looked at, never their contents).
+//!   found, together with the OS's own reports: macOS's `corvane*.ips` in
+//!   `~/Library/Logs/DiagnosticReports`, apport's `*corvane*.crash` in
+//!   `/var/crash` on Linux (only their names and dates are looked at, never
+//!   their contents).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -19,16 +21,41 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static ENABLED: AtomicBool = AtomicBool::new(false);
 static VERSION: OnceLock<String> = OnceLock::new();
 
-/// `~/Library/Logs/Corvane/crashes`
+/// `~/Library/Logs/Corvane/crashes` (Linux: `$XDG_STATE_HOME/corvane/crashes`)
 pub fn crashes_dir() -> PathBuf {
-    crate::paths::logs_dir().join("crashes")
+    #[cfg(target_os = "macos")]
+    {
+        crate::paths::logs_dir().join("crashes")
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        if std::env::var_os("CORVANE_DATA_DIR").is_some() {
+            return crate::paths::logs_dir().join("crashes");
+        }
+        crate::paths::state_dir().join("crashes")
+    }
 }
 
-/// `~/Library/Logs/DiagnosticReports` (macOS crash reports).
+/// Where the OS keeps its own crash reports: `~/Library/Logs/DiagnosticReports`
+/// on macOS, apport's `/var/crash` on Linux.
 pub fn diagnostic_reports_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("Library/Logs/DiagnosticReports")
+    #[cfg(target_os = "macos")]
+    {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("Library/Logs/DiagnosticReports")
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        PathBuf::from("/var/crash")
+    }
+}
+
+/// An OS crash report of Corvane's: macOS `corvane-<date>.ips`, apport
+/// `_usr_bin_corvane.<uid>.crash` / `…corvane….crash`.
+fn is_os_report(name: &str) -> bool {
+    (name.starts_with("corvane") && name.ends_with(".ips"))
+        || (name.contains("corvane") && name.ends_with(".crash"))
 }
 
 /// Turn the panic hook's report writing on or off (the setting).
@@ -127,6 +154,7 @@ pub fn timestamp(at: SystemTime) -> String {
 }
 
 /// `macOS 15.3 (arm64)` from `SystemVersion.plist`, without spawning.
+#[cfg(target_os = "macos")]
 pub fn os_version() -> String {
     let version = std::fs::read_to_string("/System/Library/CoreServices/SystemVersion.plist")
         .ok()
@@ -141,8 +169,23 @@ pub fn os_version() -> String {
     format!("macOS {version} ({})", std::env::consts::ARCH)
 }
 
-/// Reports modified after `since`: Corvane's `*.txt` in `crashes` and
-/// macOS's `corvane*.ips` in `diagnostic_reports`, newest first.
+/// `Ubuntu 24.04.1 LTS (x86_64)` from `/etc/os-release` (`PRETTY_NAME`).
+#[cfg(not(target_os = "macos"))]
+pub fn os_version() -> String {
+    let name = std::fs::read_to_string("/etc/os-release")
+        .ok()
+        .and_then(|text| {
+            text.lines().find_map(|line| {
+                let value = line.strip_prefix("PRETTY_NAME=")?;
+                Some(value.trim_matches('"').to_string())
+            })
+        })
+        .unwrap_or_else(|| "Linux".to_string());
+    format!("{name} ({})", std::env::consts::ARCH)
+}
+
+/// Reports modified after `since`: Corvane's `*.txt` in `crashes` and the
+/// OS's reports of Corvane crashes in `diagnostic_reports`, newest first.
 pub fn reports_since(crashes: &Path, diagnostic_reports: &Path, since: SystemTime) -> Vec<PathBuf> {
     let mut found: Vec<(SystemTime, PathBuf)> = Vec::new();
     let mut scan = |dir: &Path, wanted: &dyn Fn(&str) -> bool| {
@@ -162,9 +205,7 @@ pub fn reports_since(crashes: &Path, diagnostic_reports: &Path, since: SystemTim
         }
     };
     scan(crashes, &|name| name.ends_with(".txt"));
-    scan(diagnostic_reports, &|name| {
-        name.starts_with("corvane") && name.ends_with(".ips")
-    });
+    scan(diagnostic_reports, &is_os_report);
     found.sort_by_key(|(modified, _)| std::cmp::Reverse(*modified));
     found.into_iter().map(|(_, path)| path).collect()
 }
@@ -244,7 +285,20 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "macos")]
     fn os_version_names_macos() {
         assert!(os_version().starts_with("macOS "));
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn os_version_names_the_architecture() {
+        assert!(os_version().ends_with(&format!("({})", std::env::consts::ARCH)));
+    }
+
+    #[test]
+    fn apport_reports_count() {
+        assert!(is_os_report("_usr_bin_corvane.1000.crash"));
+        assert!(!is_os_report("_usr_bin_firefox.1000.crash"));
     }
 }

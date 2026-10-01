@@ -1420,16 +1420,14 @@ impl FlagsDialog {
                             .flex_row()
                             .justify_end()
                             .gap(SPACING_HALF())
-                            .child(
+                            .children(crate::dialog::ok_cancel_order(vec![
                                 primary_button("flags-confirm-cancel", "Cancel", false, cx)
                                     .min_w(zpx(120.))
                                     .on_click(cancel),
-                            )
-                            .child(
                                 button("flags-confirm-ok", action, cx)
                                     .min_w(zpx(120.))
                                     .on_click(run),
-                            ),
+                            ])),
                     ),
             )
             .into_any_element()
@@ -1463,7 +1461,7 @@ impl Render for FlagsDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // a copy: the nav rows below need `cx` mutably for their listeners
         let t = cx.ghd().clone();
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let width = (viewport.width - zpx(80.)).max(zpx(720.)).min(zpx(1000.));
         let height = (viewport.height - zpx(80.)).max(zpx(480.)).min(zpx(760.));
 
@@ -1580,12 +1578,7 @@ impl Render for FlagsDialog {
                     }),
                 ];
                 let position = ev.mouse_position().unwrap_or_default();
-                #[cfg(target_os = "macos")]
                 crate::native_menu::show_context_menu(items, position, window, cx);
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let _ = (items, position, window, cx);
-                }
             });
         let modified_label = (modified > 0 || hidden_modified > 0).then(|| {
             let mut label = format!("{modified} modified");
@@ -1914,7 +1907,7 @@ impl Render for FlagsDialog {
         let confirm = self.confirm.map(|c| self.confirm_sheet(c, cx));
 
         deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("flags-overlay")
                     // modal: the views underneath get no hover, clicks or wheel

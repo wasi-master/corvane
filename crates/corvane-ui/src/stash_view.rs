@@ -13,7 +13,7 @@ use crate::actions::{
     ExtendSelectionDown, ExtendSelectionUp, SelectFirstFile, SelectLastFile, SelectNextFile,
     SelectPreviousFile,
 };
-use crate::diff_view::{DiffSource, DiffView, diff_header, status_icon};
+use crate::diff_view::{DiffSource, DiffView, status_icon};
 use crate::icons::octicon;
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -88,7 +88,7 @@ impl StashDiffViewer {
 
     /// GHD `List.moveSelection` on the stash's `FileList` (↑ / ↓, and ⌥↓ /
     /// ⌥↑ from the diff; single selection, so ⇧↑ / ⇧↓ too): the file
-    /// `delta` rows away, clamped at the ends, scrolled into view.
+    /// `delta` rows away, wrapping around the ends (GHD `List.moveSelection`), scrolled into view.
     pub fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let Some((id, order, current)) = self.file_order(cx) else {
             return;
@@ -243,22 +243,7 @@ impl Render for StashDiffViewer {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.file_list_focused = self.file_list_focus.is_focused(window);
         let t = cx.ghd();
-        let (id, selected_file) = {
-            let s = self.state.read(cx);
-            let id = s.selected;
-            let rs = id.and_then(|id| s.repo_states.get(&id));
-            (
-                id,
-                rs.and_then(|r| {
-                    let path = r.stash_selected_file.as_ref()?;
-                    r.stash_files
-                        .as_ref()?
-                        .iter()
-                        .find(|f| &f.path == path)
-                        .map(|f| (f.path.clone(), f.status.kind))
-                }),
-            )
-        };
+        let id = self.state.read(cx).selected;
         let Some(id) = id else {
             return div().size_full().into_any_element();
         };
@@ -369,9 +354,9 @@ impl Render for StashDiffViewer {
                                 .flex()
                                 .flex_col()
                                 .min_h_0()
-                                .when_some(selected_file, |d, (path, kind)| {
-                                    d.child(diff_header(&path, kind, &self.diff, cx))
-                                })
+                                // GHD `StashDiffViewer` renders the
+                                // `SeamlessDiffSwitcher` alone: no file
+                                // header above the diff
                                 .child(DiffView::embed(&self.diff)),
                         ),
                     ),

@@ -7,6 +7,7 @@ use corvane_core::{AppState, Dispatcher, Popup, PreferencesTab, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -103,10 +104,17 @@ impl AboutDialog {
             ),
             UpdateStatus::AvailableViaHomebrew { update } => Some(
                 info(
-                    format!(
-                        "Corvane {} is available. Run brew upgrade corvane to install it.",
-                        update.version
-                    ),
+                    if cfg!(target_os = "macos") {
+                        format!(
+                            "Corvane {} is available. Run brew upgrade corvane to install it.",
+                            update.version
+                        )
+                    } else {
+                        format!(
+                            "Corvane {} is available. Update it with your package manager.",
+                            update.version
+                        )
+                    },
                     false,
                 )
                 .into_any_element(),
@@ -340,7 +348,7 @@ impl Render for ConfirmRemoveRepositoryDialog {
         dialog_with_kind(
             "dialog-confirm-remove-repository",
             DialogKind::Warning,
-            "Remove Repository",
+            mac_or("Remove Repository", "Remove repository"),
             content,
             vec![
                 DialogButton {
@@ -419,7 +427,7 @@ impl Render for IntegrationErrorDialog {
                 } else if *open_preferences {
                     Some(DialogButton {
                         id: "editor-error-settings",
-                        label: "Open Settings".into(),
+                        label: mac_or("Open Settings", "Open options").into(),
                         primary: false,
                         disabled: false,
                         on_click: Box::new(|_, cx| {
@@ -431,18 +439,21 @@ impl Render for IntegrationErrorDialog {
                 };
                 (
                     "dialog-external-editor-error",
-                    "Unable to Open External Editor",
+                    mac_or(
+                        "Unable to Open External Editor",
+                        "Unable to open external editor",
+                    ),
                     message.clone(),
                     secondary,
                 )
             }
             Popup::ShellError { message } => (
                 "dialog-shell-error",
-                "Unable to Open Shell",
+                mac_or("Unable to Open Shell", "Unable to open shell"),
                 message.clone(),
                 Some(DialogButton {
                     id: "shell-error-settings",
-                    label: "Open Settings".into(),
+                    label: mac_or("Open Settings", "Open options").into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(|_, cx| {

@@ -53,3 +53,16 @@ pub fn light_title_bar() -> impl IntoElement {
             }
         })
 }
+
+/// The window icon off macOS: the 256 px app icon.
+#[cfg(not(target_os = "macos"))]
+pub fn window_icon() -> Option<std::sync::Arc<image::RgbaImage>> {
+    let png = include_bytes!("../../../assets/icon/Corvane-256.png");
+    match image::load_from_memory_with_format(png, image::ImageFormat::Png) {
+        Ok(icon) => Some(std::sync::Arc::new(icon.into_rgba8())),
+        Err(err) => {
+            tracing::warn!(%err, "could not decode the window icon");
+            None
+        }
+    }
+}

@@ -9,6 +9,9 @@
 //! Chrome DevTools Protocol; the harness compares the two captures.
 //!
 //! Commands (`{"cmd": …}`; coordinates are window points, top-left origin):
+//! on Linux they are page points, below the menu bar, which GHD's captures
+//! (CDP, the web contents only) leave out too: sizes, input and snapshots
+//! all skip the bar's [`PAGE_TOP`] pixels.
 //! - `ping` → `{w, h, scale}`
 //! - `resize {w, h}`
 //! - `move {x, y, pressed}`, `down {x, y}`, `up {x, y}`, `click {x, y}`
@@ -51,6 +54,13 @@ use serde_json::{Value, json};
 use tracing::{error, info};
 
 type Reply = mpsc::Sender<Value>;
+
+/// Where GHD's page starts in the window: below Electron's menu bar on
+/// Linux (`corvane_ui::menu_bar`), at the top on macOS.
+#[cfg(not(target_os = "macos"))]
+const PAGE_TOP: f32 = corvane_ui::menu_bar::HEIGHT;
+#[cfg(target_os = "macos")]
+const PAGE_TOP: f32 = 0.;
 /// `open_dev_popup` from `main.rs` (the `CORVANE_POPUP` names).
 pub type PopupHook = fn(&str, &mut App);
 
@@ -67,7 +77,6 @@ pub fn start(port: u16, popup: PopupHook, cx: &mut App) {
     info!(port, "parity control listening");
     // menus pop for real (screen captures compare them with GHD's) but are
     // recorded and close themselves, so this loop is only held for a moment
-    #[cfg(target_os = "macos")]
     corvane_ui::native_menu::set_auto_dismiss(Some(Duration::from_millis(
         std::env::var("CORVANE_MENU_HOLD_MS")
             .ok()
@@ -157,7 +166,7 @@ fn window_command(
     window: &mut Window,
     cx: &mut App,
 ) -> Result<Value, String> {
-    let position = point(px(num(request, "x")), px(num(request, "y")));
+    let position = point(px(num(request, "x")), px(num(request, "y") + PAGE_TOP));
     let button = match request["button"].as_str() {
         Some("right") => MouseButton::Right,
         Some("middle") => MouseButton::Middle,
@@ -191,7 +200,10 @@ fn window_command(
     };
     match cmd {
         "ping" => {}
-        "resize" => window.resize(size(px(num(request, "w")), px(num(request, "h")))),
+        "resize" => window.resize(size(
+            px(num(request, "w")),
+            px(num(request, "h") + PAGE_TOP),
+        )),
         "move" => {
             // `pressed`: the button stays down (a drag, or moving off a
             // pressed button before releasing to cancel its click)
@@ -207,16 +219,19 @@ fn window_command(
         }
         "click" => {
             // a menu this click opens must not be confused with an older one
-            #[cfg(target_os = "macos")]
             if button == MouseButton::Right {
                 corvane_ui::native_menu::clear_recorded();
             }
+            // a recorded menu still inside its hold would swallow the click
+            // (the macOS `NSMenu` holds this loop until it closes instead)
+            #[cfg(not(target_os = "macos"))]
+            corvane_ui::views_menu::close_all(cx);
             window.dispatch_event(moved(position, None), cx);
             window.dispatch_event(down(position), cx);
             window.dispatch_event(up(position), cx);
         }
         "drag" => {
-            let to = point(px(num(request, "x2")), px(num(request, "y2")));
+            let to = point(px(num(request, "x2")), px(num(request, "y2") + PAGE_TOP));
             let steps = request["steps"].as_u64().unwrap_or(10).max(1);
             window.dispatch_event(moved(position, None), cx);
             window.dispatch_event(down(position), cx);
@@ -290,7 +305,12 @@ fn window_command(
                 window.refresh();
             }
             window.draw(cx).clear(cx);
-            let image = window.render_to_image().map_err(|err| err.to_string())?;
+            let mut image = window.render_to_image().map_err(|err| err.to_string())?;
+            let top = (PAGE_TOP * window.scale_factor()).round() as u32;
+            if top > 0 && top < image.height() {
+                let (w, h) = (image.width(), image.height() - top);
+                image = image::imageops::crop_imm(&image, 0, top, w, h).to_image();
+            }
             image.save(path).map_err(|err| err.to_string())?;
             return Ok(json!({"w": image.width(), "h": image.height()}));
         }
@@ -332,9 +352,7 @@ fn window_command(
             }));
         }
         // the last native menu the app tried to show (recorded headless)
-        #[cfg(target_os = "macos")]
         "menu" => return Ok(json!({"items": corvane_ui::native_menu::recorded_menu()})),
-        #[cfg(target_os = "macos")]
         "menu-pick" => {
             let label = request["label"].as_str().unwrap_or_default();
             if !corvane_ui::native_menu::pick_recorded(label, window, cx) {
@@ -346,7 +364,7 @@ fn window_command(
     let viewport = window.viewport_size();
     Ok(json!({
         "w": f32::from(viewport.width),
-        "h": f32::from(viewport.height),
+        "h": f32::from(viewport.height) - PAGE_TOP,
         "scale": window.scale_factor(),
     }))
 }

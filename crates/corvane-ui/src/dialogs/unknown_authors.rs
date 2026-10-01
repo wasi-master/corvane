@@ -5,6 +5,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::mono_font;
 use crate::theme::sizes::*;
@@ -61,7 +62,7 @@ impl Render for UnknownAuthorsDialog {
         dialog_with_kind(
             "unknown-authors",
             DialogKind::Warning,
-            "Unknown Co-Authors",
+            mac_or("Unknown Co-Authors", "Unknown co-authors"),
             content,
             vec![
                 DialogButton {
@@ -73,7 +74,7 @@ impl Render for UnknownAuthorsDialog {
                 },
                 DialogButton {
                     id: "unknown-authors-ok",
-                    label: "Commit Anyway".into(),
+                    label: mac_or("Commit Anyway", "Commit anyway").into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {

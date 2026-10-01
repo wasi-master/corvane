@@ -7,6 +7,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::ci_status::ci_status;
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
@@ -73,11 +74,12 @@ impl CiCheckRunRerunDialog {
     fn title(&self, with_descriptor: bool) -> String {
         let s = if self.checks.len() == 1 { "" } else { "s" };
         let descriptor = match (with_descriptor, self.failed_only, self.checks.len()) {
-            (true, true, _) => "Failed ",
-            (true, false, 1) => "Single ",
+            (true, true, _) => mac_or("Failed ", "failed "),
+            (true, false, 1) => mac_or("Single ", "single "),
             _ => "",
         };
-        format!("Re-run {descriptor}Check{s}")
+        let c = mac_or("C", "c");
+        format!("Re-run {descriptor}{c}heck{s}")
     }
 
     fn submit(&mut self, cx: &mut Context<Self>) {

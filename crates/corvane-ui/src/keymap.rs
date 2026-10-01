@@ -1,4 +1,6 @@
-//! GitHub Desktop's macOS keyboard shortcuts (`build-default-menu.ts`).
+//! GitHub Desktop's keyboard shortcuts (`build-default-menu.ts`). Its
+//! `CmdOrCtrl` is GPUI's `secondary` (⌘ on macOS, Ctrl elsewhere); the
+//! macOS-only app and Window menu shortcuts are bound on macOS only.
 //!
 //! Corvane: some bindings depend on flags ([`KeymapFlags`]); [`sync`]
 //! rebuilds the keymap when one changes, so the menu bar (which reads its
@@ -51,6 +53,26 @@ impl KeymapFlags {
     }
 }
 
+/// Electron's `togglefullscreen` role: ⌃⌘F on macOS, F11 elsewhere.
+const FULL_SCREEN: &str = if cfg!(target_os = "macos") {
+    "ctrl-cmd-f"
+} else {
+    "f11"
+};
+
+/// Corvane's ⌃⌘ chords (`612-navigation-shortcuts`, `801-history-review-mode`):
+/// off macOS Ctrl is already the command key, so they become Ctrl+Alt.
+const CTRL_CMD_P: &str = if cfg!(target_os = "macos") {
+    "ctrl-cmd-p"
+} else {
+    "ctrl-alt-p"
+};
+const CTRL_CMD_S: &str = if cfg!(target_os = "macos") {
+    "ctrl-cmd-s"
+} else {
+    "ctrl-alt-s"
+};
+
 /// Context of the shortcuts for menu items GitHub Desktop disables while a
 /// popup is open (`menu-update.ts` `getMenuState`). `Workspace` adds
 /// `Popup` to its key context while one is; the key then goes to the dialog
@@ -91,18 +113,31 @@ pub fn sync(flags: KeymapFlags, cx: &mut App) -> bool {
     true
 }
 
+/// GHD `List.onKeyDown` `isHomeKey` / `isEndKey`: ⌘↑ / ⌘↓ go to the first
+/// / last row on macOS; elsewhere only Home / End do, and Ctrl+↑ / Ctrl+↓
+/// are plain arrows (the `ArrowUp` / `ArrowDown` branch ignores Ctrl).
+fn list_end_binding(up: bool, context: &'static str) -> KeyBinding {
+    let key = if up { "secondary-up" } else { "secondary-down" };
+    match (cfg!(target_os = "macos"), up) {
+        (true, true) => KeyBinding::new(key, SelectFirstFile, Some(context)),
+        (true, false) => KeyBinding::new(key, SelectLastFile, Some(context)),
+        (false, true) => KeyBinding::new(key, SelectPreviousFile, Some(context)),
+        (false, false) => KeyBinding::new(key, SelectNextFile, Some(context)),
+    }
+}
+
 fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     let mut bindings = vec![
         KeyBinding::new("down", SelectNextFile, Some("ChangesList")),
         KeyBinding::new("up", SelectPreviousFile, Some("ChangesList")),
-        KeyBinding::new("cmd-a", SelectAllFiles, Some("ChangesList")),
+        KeyBinding::new("secondary-a", SelectAllFiles, Some("ChangesList")),
         // the diff's text selection (GHD `select-all` / the browser's copy)
-        KeyBinding::new("cmd-a", SelectAll, Some("Diff")),
-        KeyBinding::new("cmd-c", Copy, Some("Diff")),
+        KeyBinding::new("secondary-a", SelectAll, Some("Diff")),
+        KeyBinding::new("secondary-c", Copy, Some("Diff")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("ChangesList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("ChangesList")),
-        KeyBinding::new("cmd-up", SelectFirstFile, Some("ChangesList")),
-        KeyBinding::new("cmd-down", SelectLastFile, Some("ChangesList")),
+        list_end_binding(true, "ChangesList"),
+        list_end_binding(false, "ChangesList"),
         KeyBinding::new("home", SelectFirstFile, Some("ChangesList")),
         KeyBinding::new("end", SelectLastFile, Some("ChangesList")),
         KeyBinding::new("space", ToggleIncludeSelected, Some("ChangesList")),
@@ -110,8 +145,8 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("up", SelectPreviousFile, Some("HistoryList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("HistoryList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("HistoryList")),
-        KeyBinding::new("cmd-up", SelectFirstFile, Some("HistoryList")),
-        KeyBinding::new("cmd-down", SelectLastFile, Some("HistoryList")),
+        list_end_binding(true, "HistoryList"),
+        list_end_binding(false, "HistoryList"),
         KeyBinding::new("home", SelectFirstFile, Some("HistoryList")),
         KeyBinding::new("end", SelectLastFile, Some("HistoryList")),
         KeyBinding::new("enter", ReorderConfirm, Some("HistoryList")),
@@ -121,16 +156,16 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("up", SelectPreviousFile, Some("CommitFileList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("CommitFileList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("CommitFileList")),
-        KeyBinding::new("cmd-up", SelectFirstFile, Some("CommitFileList")),
-        KeyBinding::new("cmd-down", SelectLastFile, Some("CommitFileList")),
+        list_end_binding(true, "CommitFileList"),
+        list_end_binding(false, "CommitFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("CommitFileList")),
         KeyBinding::new("end", SelectLastFile, Some("CommitFileList")),
         KeyBinding::new("down", SelectNextFile, Some("StashFileList")),
         KeyBinding::new("up", SelectPreviousFile, Some("StashFileList")),
         KeyBinding::new("shift-down", ExtendSelectionDown, Some("StashFileList")),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("StashFileList")),
-        KeyBinding::new("cmd-up", SelectFirstFile, Some("StashFileList")),
-        KeyBinding::new("cmd-down", SelectLastFile, Some("StashFileList")),
+        list_end_binding(true, "StashFileList"),
+        list_end_binding(false, "StashFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("StashFileList")),
         KeyBinding::new("end", SelectLastFile, Some("StashFileList")),
         KeyBinding::new("down", SelectNextFile, Some("PullRequestFileList")),
@@ -141,8 +176,8 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
             Some("PullRequestFileList"),
         ),
         KeyBinding::new("shift-up", ExtendSelectionUp, Some("PullRequestFileList")),
-        KeyBinding::new("cmd-up", SelectFirstFile, Some("PullRequestFileList")),
-        KeyBinding::new("cmd-down", SelectLastFile, Some("PullRequestFileList")),
+        list_end_binding(true, "PullRequestFileList"),
+        list_end_binding(false, "PullRequestFileList"),
         KeyBinding::new("home", SelectFirstFile, Some("PullRequestFileList")),
         KeyBinding::new("end", SelectLastFile, Some("PullRequestFileList")),
         KeyBinding::new("enter", CompareSelect, Some("CompareFilter")),
@@ -163,81 +198,76 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         KeyBinding::new("down", SelectNextFile, Some("WorktreeFilter")),
         KeyBinding::new("up", SelectPreviousFile, Some("WorktreeFilter")),
         KeyBinding::new("enter", FilterListPick, Some("WorktreeFilter")),
-        KeyBinding::new("cmd-,", OpenSettings, MENU),
+        KeyBinding::new("secondary-,", OpenSettings, MENU),
         // ⌘⇧, - macOS delivers the shifted character, so the chord is `cmd-<`
-        KeyBinding::new("cmd-<", OpenFlags, MENU),
-        KeyBinding::new("cmd-h", Hide, None),
-        KeyBinding::new("alt-cmd-h", HideOthers, None),
-        KeyBinding::new("cmd-q", Quit, None),
+        KeyBinding::new("secondary-<", OpenFlags, MENU),
+        KeyBinding::new("secondary-q", Quit, None),
         // File
-        KeyBinding::new("cmd-n", NewRepository, MENU),
-        KeyBinding::new("cmd-o", AddLocalRepository, MENU),
-        KeyBinding::new("shift-cmd-o", CloneRepository, MENU),
+        KeyBinding::new("secondary-n", NewRepository, MENU),
+        KeyBinding::new("secondary-o", AddLocalRepository, MENU),
+        KeyBinding::new("shift-secondary-o", CloneRepository, MENU),
         // Edit
-        KeyBinding::new("cmd-f", Find, None),
+        KeyBinding::new("secondary-f", Find, None),
         // View
-        KeyBinding::new("cmd-1", ShowChanges, MENU),
-        KeyBinding::new("cmd-2", ShowHistory, MENU),
-        KeyBinding::new("cmd-t", ShowRepositoryList, MENU),
-        KeyBinding::new("cmd-b", ShowBranchesList, MENU),
-        KeyBinding::new("alt-cmd-w", ShowWorktreesList, MENU),
-        KeyBinding::new("cmd-g", GoToSummary, MENU),
+        KeyBinding::new("secondary-1", ShowChanges, MENU),
+        KeyBinding::new("secondary-2", ShowHistory, MENU),
+        KeyBinding::new("secondary-t", ShowRepositoryList, MENU),
+        KeyBinding::new("secondary-b", ShowBranchesList, MENU),
+        KeyBinding::new("alt-secondary-w", ShowWorktreesList, MENU),
+        KeyBinding::new("secondary-g", GoToSummary, MENU),
         KeyBinding::new("ctrl-h", ToggleStashedChanges, MENU),
-        KeyBinding::new("cmd-l", ToggleChangesFilter, MENU),
-        KeyBinding::new("ctrl-cmd-f", ToggleFullScreen, None),
-        KeyBinding::new("cmd-0", ResetZoom, None),
-        KeyBinding::new("cmd-=", ZoomIn, None),
-        KeyBinding::new("cmd--", ZoomOut, None),
-        KeyBinding::new("cmd-9", ExpandActiveResizable, None),
-        KeyBinding::new("cmd-8", ContractActiveResizable, None),
+        KeyBinding::new("secondary-l", ToggleChangesFilter, MENU),
+        KeyBinding::new(FULL_SCREEN, ToggleFullScreen, None),
+        KeyBinding::new("secondary-0", ResetZoom, None),
+        KeyBinding::new("secondary-=", ZoomIn, None),
+        KeyBinding::new("secondary--", ZoomOut, None),
+        KeyBinding::new("secondary-9", ExpandActiveResizable, None),
+        KeyBinding::new("secondary-8", ContractActiveResizable, None),
         KeyBinding::new("ctrl-tab", ToggleSection, MENU),
         // Repository
-        KeyBinding::new("shift-cmd-p", Pull, MENU),
-        KeyBinding::new("shift-cmd-t", Fetch, MENU),
-        KeyBinding::new("cmd-backspace", RemoveRepository, MENU),
-        KeyBinding::new("shift-cmd-g", ViewOnGitHub, MENU),
+        KeyBinding::new("shift-secondary-p", Pull, MENU),
+        KeyBinding::new("shift-secondary-t", Fetch, MENU),
+        KeyBinding::new("secondary-backspace", RemoveRepository, MENU),
+        KeyBinding::new("shift-secondary-g", ViewOnGitHub, MENU),
         KeyBinding::new("ctrl-`", OpenInShell, MENU),
-        KeyBinding::new("shift-cmd-f", ShowInFinder, MENU),
-        KeyBinding::new("shift-cmd-a", OpenInEditor, MENU),
-        KeyBinding::new("shift-alt-cmd-a", OpenWith, MENU),
-        KeyBinding::new("cmd-i", CreateIssue, MENU),
+        KeyBinding::new("shift-secondary-f", ShowInFinder, MENU),
+        KeyBinding::new("shift-secondary-a", OpenInEditor, MENU),
+        KeyBinding::new("shift-alt-secondary-a", OpenWith, MENU),
+        KeyBinding::new("secondary-i", CreateIssue, MENU),
         // Branch
-        KeyBinding::new("shift-cmd-n", NewBranch, MENU),
-        KeyBinding::new("shift-cmd-w", NewWorktree, MENU),
-        KeyBinding::new("shift-cmd-r", RenameBranch, MENU),
-        KeyBinding::new("shift-cmd-d", DeleteBranch, MENU),
-        KeyBinding::new("shift-cmd-backspace", DiscardAllChanges, MENU),
-        KeyBinding::new("shift-cmd-s", StashAllChanges, MENU),
-        KeyBinding::new("shift-cmd-u", UpdateFromDefaultBranch, MENU),
-        KeyBinding::new("shift-cmd-b", CompareToBranch, MENU),
-        KeyBinding::new("shift-cmd-m", MergeIntoCurrentBranch, MENU),
-        KeyBinding::new("shift-cmd-h", SquashAndMergeIntoCurrentBranch, MENU),
-        KeyBinding::new("shift-cmd-e", RebaseCurrentBranch, MENU),
-        KeyBinding::new("shift-cmd-c", CompareOnGitHub, MENU),
-        KeyBinding::new("alt-cmd-b", ViewBranchOnGitHub, MENU),
-        KeyBinding::new("alt-cmd-p", PreviewPullRequest, MENU),
-        KeyBinding::new("cmd-r", CreatePullRequest, MENU),
-        // Window
-        KeyBinding::new("cmd-m", Minimize, None),
-        KeyBinding::new("cmd-w", CloseWindow, None),
+        KeyBinding::new("shift-secondary-n", NewBranch, MENU),
+        KeyBinding::new("shift-secondary-w", NewWorktree, MENU),
+        KeyBinding::new("shift-secondary-r", RenameBranch, MENU),
+        KeyBinding::new("shift-secondary-d", DeleteBranch, MENU),
+        KeyBinding::new("shift-secondary-backspace", DiscardAllChanges, MENU),
+        KeyBinding::new("shift-secondary-s", StashAllChanges, MENU),
+        KeyBinding::new("shift-secondary-u", UpdateFromDefaultBranch, MENU),
+        KeyBinding::new("shift-secondary-b", CompareToBranch, MENU),
+        KeyBinding::new("shift-secondary-m", MergeIntoCurrentBranch, MENU),
+        KeyBinding::new("shift-secondary-h", SquashAndMergeIntoCurrentBranch, MENU),
+        KeyBinding::new("shift-secondary-e", RebaseCurrentBranch, MENU),
+        KeyBinding::new("shift-secondary-c", CompareOnGitHub, MENU),
+        KeyBinding::new("alt-secondary-b", ViewBranchOnGitHub, MENU),
+        KeyBinding::new("alt-secondary-p", PreviewPullRequest, MENU),
+        KeyBinding::new("secondary-r", CreatePullRequest, MENU),
         // In-app
-        KeyBinding::new("cmd-enter", Commit, Some("CommitMessage")),
+        KeyBinding::new("secondary-enter", Commit, Some("CommitMessage")),
         KeyBinding::new("escape", CloseFoldout, None),
     ];
     // Corvane flags. Added last: at equal depth a later binding wins, and a
     // context-free binding counts as the deepest context.
     if flags.discard_selected_files {
         bindings.push(KeyBinding::new(
-            "cmd-backspace",
+            "secondary-backspace",
             DiscardSelectedFiles,
             Some("ChangesList"),
         ));
     }
     if !flags.no_push_shortcut {
-        bindings.push(KeyBinding::new("cmd-p", Push, MENU));
+        bindings.push(KeyBinding::new("secondary-p", Push, MENU));
     }
     if flags.open_in_shell_alt_shortcut {
-        bindings.push(KeyBinding::new("alt-cmd-t", OpenInShell, MENU));
+        bindings.push(KeyBinding::new("alt-secondary-t", OpenInShell, MENU));
     }
     if flags.emacs_list_keys {
         for context in ["ChangesList", "HistoryList"] {
@@ -248,14 +278,18 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
         }
     }
     if flags.diff_mode_shortcut {
-        bindings.push(KeyBinding::new("alt-cmd-s", ToggleDiffDisplayMode, MENU));
+        bindings.push(KeyBinding::new(
+            "alt-secondary-s",
+            ToggleDiffDisplayMode,
+            MENU,
+        ));
     }
     if flags.copy_path_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {
             bindings.extend([
-                KeyBinding::new("alt-cmd-c", CopySelectedFilePaths, Some(context)),
+                KeyBinding::new("alt-secondary-c", CopySelectedFilePaths, Some(context)),
                 KeyBinding::new(
-                    "shift-alt-cmd-c",
+                    "shift-alt-secondary-c",
                     CopySelectedRelativeFilePaths,
                     Some(context),
                 ),
@@ -264,29 +298,41 @@ fn bindings(flags: KeymapFlags) -> Vec<KeyBinding> {
     }
     if flags.navigation_shortcuts {
         bindings.extend([
-            KeyBinding::new("ctrl-cmd-p", ShowPullRequestsList, MENU),
+            KeyBinding::new(CTRL_CMD_P, ShowPullRequestsList, MENU),
             // ⇧⌘] / ⇧⌘[: macOS delivers the shifted character
-            KeyBinding::new("cmd-}", NextRepository, MENU),
-            KeyBinding::new("cmd-{", PreviousRepository, MENU),
-            KeyBinding::new("cmd-3", FocusDiff, MENU),
+            KeyBinding::new("secondary-}", NextRepository, MENU),
+            KeyBinding::new("secondary-{", PreviousRepository, MENU),
+            KeyBinding::new("secondary-3", FocusDiff, MENU),
             KeyBinding::new("alt-down", SelectNextFileFromDiff, Some("Diff")),
             KeyBinding::new("alt-up", SelectPreviousFileFromDiff, Some("Diff")),
         ]);
     }
     if flags.history_review_mode {
-        bindings.push(KeyBinding::new("ctrl-cmd-s", ToggleHistoryReviewMode, MENU));
+        bindings.push(KeyBinding::new(CTRL_CMD_S, ToggleHistoryReviewMode, MENU));
     }
     if flags.open_file_shortcuts {
         for context in ["ChangesList", "CommitFileList"] {
             bindings.extend([
-                KeyBinding::new("shift-cmd-a", OpenSelectedFileInEditor, Some(context)),
+                KeyBinding::new("shift-secondary-a", OpenSelectedFileInEditor, Some(context)),
                 KeyBinding::new(
-                    "alt-cmd-o",
+                    "alt-secondary-o",
                     OpenSelectedFileWithDefaultProgram,
                     Some(context),
                 ),
             ]);
         }
     }
+    // GHD `Dialog.onKeyDown`: CmdOrCtrl+W dismisses the dialog (on macOS
+    // ⌘W is the Window menu's Close Window below)
+    #[cfg(not(target_os = "macos"))]
+    bindings.push(KeyBinding::new("secondary-w", CloseFoldout, Some("Popup")));
+    #[cfg(target_os = "macos")]
+    bindings.extend([
+        // the app menu and the Window menu (macOS only in GHD)
+        KeyBinding::new("secondary-h", Hide, None),
+        KeyBinding::new("alt-secondary-h", HideOthers, None),
+        KeyBinding::new("secondary-m", Minimize, None),
+        KeyBinding::new("secondary-w", CloseWindow, None),
+    ]);
     bindings
 }

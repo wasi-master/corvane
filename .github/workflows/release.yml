@@ -183,3 +183,141 @@ jobs:
             --notes "- [New] …" \
             target/release-assets/*.zip target/release-assets/*.dmg \
             target/release-assets/*.minisig target/release-assets/packs-manifest.json
+
+  linux:
+    name: build · sign · upload (Linux ${{ matrix.arch }})
+    # after the macOS job: it creates the draft release this job adds to
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang mold pkg-config minisign \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libfontconfig-dev libfreetype-dev libvulkan-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-linux-${{ matrix.arch }}
+      - name: tree-sitter CLI
+        run: |
+          cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
+          echo "CORVANE_TREE_SITTER=$RUNNER_TEMP/ts-cli/bin/tree-sitter" >> "$GITHUB_ENV"
+      - name: cache grammar sources
+        id: grammar-src
+        uses: actions/cache@v4
+        with:
+          path: target/grammar-src
+          key: grammar-src-${{ hashFiles('tools/ts-queries/languages.toml', 'tools/ts-queries/sources.lock.json') }}
+      - name: fetch grammar sources
+        if: steps.grammar-src.outputs.cache-hit != 'true'
+        run: python3 tools/ts-queries/fetch.py
+      - name: appimagetool
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${{ matrix.arch }}.AppImage"
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
+          # no FUSE on the runner
+          echo "APPIMAGE_EXTRACT_AND_RUN=1" >> "$GITHUB_ENV"
+      - name: build and package
+        env:
+          CORVANE_GITHUB_CLIENT_SECRET: ${{ secrets.CORVANE_GITHUB_CLIENT_SECRET }}
+        run: |
+          [[ -n "$CORVANE_GITHUB_CLIENT_SECRET" ]] || unset CORVANE_GITHUB_CLIENT_SECRET
+          export CORVANE_UPDATE_PUBLIC_KEY="$(tail -n1 packaging/corvane-release.pub)"
+          packaging/linux/package.sh
+          ls -l target/linux
+      # this architecture's tree-sitter packs (.so units); the macOS job's
+      # manifest gets their entries in `packs-manifest` below
+      - name: tree-sitter packs
+        run: |
+          PACKS="tree-sitter-all tree-sitter-rest" packaging/packs.sh target/linux/packs
+          mv target/linux/packs/*.zip target/linux/
+          mv target/linux/packs/packs-manifest.json "target/linux/packs-manifest-linux-${{ matrix.arch }}.json"
+          ls -l target/linux
+      - name: sign
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          version="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          umask 077
+          key="$RUNNER_TEMP/corvane-release.key"
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key"
+          trap 'rm -f "$key"' EXIT
+          cd target/linux
+          for asset in *.deb *.AppImage tree-sitter-*.zip; do
+            printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s "$key" \
+              -t "corvane v$version $asset" -x "$asset.minisig" -m "$asset"
+            minisign -V -p ../../packaging/corvane-release.pub -m "$asset"
+          done
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type != 'tag'
+        with:
+          name: release-assets-linux-${{ matrix.arch }}
+          path: target/linux/*
+      - name: upload to the draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" target/linux/*.deb target/linux/*.AppImage target/linux/tree-sitter-*.zip target/linux/*.minisig
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag'
+        with:
+          name: packs-manifest-linux-${{ matrix.arch }}
+          path: target/linux/packs-manifest-linux-${{ matrix.arch }}.json
+
+  packs-manifest:
+    name: add the Linux packs to the packs manifest
+    needs: linux
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packs-manifest-linux-*
+          merge-multiple: true
+          path: fragments
+      - name: merge, sign and replace
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          MINISIGN_PASSWORD: ${{ secrets.MINISIGN_PASSWORD }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends minisign
+          version="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')"
+          gh release download "$GITHUB_REF_NAME" -p packs-manifest.json -D merged
+          python3 - merged/packs-manifest.json fragments/*.json <<'PY'
+          import json, sys
+          path, *fragments = sys.argv[1:]
+          manifest = json.load(open(path))
+          key = lambda p: (p["name"], p.get("target"))
+          packs = {key(p): p for p in manifest["packs"]}
+          for fragment in fragments:
+              for p in json.load(open(fragment))["packs"]:
+                  packs[key(p)] = p
+          manifest["packs"] = list(packs.values())
+          json.dump(manifest, open(path, "w"), indent=2)
+          PY
+          umask 077
+          key="$RUNNER_TEMP/corvane-release.key"
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key"
+          trap 'rm -f "$key"' EXIT
+          printf '%s\n' "$MINISIGN_PASSWORD" | minisign -S -s "$key" \
+            -t "corvane v$version packs-manifest.json" -x merged/packs-manifest.json.minisig -m merged/packs-manifest.json
+          minisign -V -p packaging/corvane-release.pub -m merged/packs-manifest.json
+          gh release upload "$GITHUB_REF_NAME" --clobber merged/packs-manifest.json merged/packs-manifest.json.minisig

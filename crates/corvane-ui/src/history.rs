@@ -8,8 +8,9 @@
 //! between rows) or to cherry-pick onto a branch in the branch foldout, and
 //! "Reorder Commit" starts the keyboard insertion mode (↑/↓, ⏎, Esc).
 //! Compare-to-branch and the unpushed indicator come with the remote
-//! milestone. Drop tooltips ("Copy to …", "Squash N commits")
-//! are not shown; the drop targets highlight instead.
+//! milestone. Drop tooltips ("Copy to …", "Squash N commits") show under
+//! the drag element at once (GHD waits 1.5 s on macOS), in the darwin
+//! title-tooltip look on macOS and the bordered base look elsewhere.
 //!
 //! Deviations (`.docs/deviations.md` › History): the commit menus
 //! add Copy Commit Title / Message / URL and Copy SHAs (flag `809`); the
@@ -40,7 +41,7 @@ use crate::actions::{
     SelectNextFile, SelectPreviousFile,
 };
 use crate::branch_list::group_branches;
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, IS_MAC, MenuItem, mac_or};
 use crate::icons::{Octicon, octicon};
 use crate::relative_time::relative;
 use crate::scrollbar::ScrollbarExt;
@@ -89,23 +90,31 @@ pub struct CommitDrag {
 pub struct CommitDragElement {
     drag: CommitDrag,
     state: Entity<AppState>,
+    /// Where the pointer grabbed the row; GPUI draws the drag view that far
+    /// up and left of the pointer.
+    grab: Point<Pixels>,
 }
 
 impl CommitDragElement {
-    fn new(drag: CommitDrag, cx: &mut Context<Self>) -> Self {
+    fn new(drag: CommitDrag, grab: Point<Pixels>, cx: &mut Context<Self>) -> Self {
         let state = AppState::global(cx);
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        Self { drag, state }
+        Self { drag, state, grab }
     }
 
     /// `renderDragToolTip`: what a drop would do at the current target.
     fn tooltip(&self, cx: &Context<Self>) -> Option<AnyElement> {
         let t = cx.ghd();
         let target = self.state.read(cx).drag_target.clone()?;
+        let mac = cfg!(target_os = "macos");
         let content: AnyElement = match target {
             DropTarget::Branch(name) => div()
                 .flex()
                 .flex_row()
+                // `copyToPlus`: a plus octicon leads off macOS
+                .when(!mac, |d| {
+                    d.items_center().child(octicon(Octicon::Plus, t.text))
+                })
                 .child("Copy to")
                 .child(
                     div()
@@ -124,6 +133,27 @@ impl CommitDragElement {
                 ))
                 .into_any_element(),
         };
+        if !mac {
+            // `.tool-tip-contents` base rule: a bordered box 35 px under the
+            // element's bottom, in the page's text
+            return Some(
+                div()
+                    .absolute()
+                    .left_0()
+                    .bottom(zpx(-35.))
+                    .py(SPACING_THIRD())
+                    .px(SPACING_HALF())
+                    .border_1()
+                    .border_color(t.box_border)
+                    .bg(t.background)
+                    .text_color(t.text)
+                    .text_size(FONT_SIZE())
+                    .line_height(zpx(18.))
+                    .whitespace_nowrap()
+                    .child(content)
+                    .into_any_element(),
+            );
+        }
         Some(
             // `.tool-tip-contents` (darwin): title-tooltip look under the box
             div()
@@ -159,7 +189,15 @@ impl Render for CommitDragElement {
             .relative()
             .w(zpx(300.))
             .h(commit_row_height(cx))
-            .mt(zpx(22.))
+            .map(|d| {
+                if cfg!(target_os = "macos") {
+                    d.mt(zpx(22.))
+                } else {
+                    // GHD `Draggable.verticalOffset` (15 px off macOS): the
+                    // element's top left corner 15 px below the pointer
+                    d.ml(self.grab.x).mt(self.grab.y + zpx(15.))
+                }
+            })
             .children(tooltip)
             .child(
                 div()
@@ -239,8 +277,12 @@ pub struct HistorySidebar {
 impl HistorySidebar {
     pub fn new(state: Entity<AppState>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
-        let compare =
-            cx.new(|cx| InputState::new(window, cx).placeholder("Select Branch to Compare…"));
+        let compare = cx.new(|cx| {
+            InputState::new(window, cx).placeholder(mac_or(
+                "Select Branch to Compare…",
+                "Select branch to compare…",
+            ))
+        });
         Self {
             state,
             compare,
@@ -422,7 +464,7 @@ impl HistorySidebar {
             .as_ref()
             .and_then(|b| names.iter().position(|n| n == b));
         let next = match current {
-            Some(ix) => (ix as isize + delta).clamp(0, names.len() as isize - 1) as usize,
+            Some(ix) => crate::filter_list::wrap_step(ix, delta, names.len()),
             None => 0,
         };
         self.focused_branch = Some(names[next].clone());
@@ -819,10 +861,7 @@ impl HistorySidebar {
                                         })
                                     })
                                     .collect();
-                                #[cfg(target_os = "macos")]
                                 crate::native_menu::show_context_menu(items, position, window, cx);
-                                #[cfg(not(target_os = "macos"))]
-                                let _ = (items, position, window, cx);
                             }),
                     ),
             )
@@ -835,22 +874,8 @@ impl HistorySidebar {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        // macOS: a real NSMenu (GHD's Electron `Menu.popup`); the GPUI menu is the fallback.
-        #[cfg(target_os = "macos")]
-        {
-            crate::native_menu::show_context_menu(items, position, window, cx);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let menu = cx.new(|cx| ContextMenu::new(position, items, window, cx));
-            cx.subscribe(&menu, |this, _, _: &DismissEvent, cx| {
-                this.context_menu = None;
-                cx.notify();
-            })
-            .detach();
-            self.context_menu = Some(menu);
-            cx.notify();
-        }
+        // GHD's Electron `Menu.popup`: an NSMenu on macOS, a views menu on Linux
+        crate::native_menu::show_context_menu(items, position, window, cx);
     }
 
     fn selection(&self, id: u64, cx: &App) -> Vec<String> {
@@ -943,27 +968,48 @@ impl HistorySidebar {
         let (s5, s6) = (selection.clone(), selection);
         let onto = commit.sha.clone();
         let mut items = vec![
-            MenuItem::new(format!("Cherry-pick {count} Commits…"), move |_, cx| {
-                Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx)
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Cherry-pick {count} Commits…")
+                } else {
+                    format!("Cherry-pick {count} commits…")
+                },
+                move |_, cx| Dispatcher::start_cherry_pick_flow(id, s1.clone(), cx),
+            )
             .enabled(!busy),
-            MenuItem::new(format!("Squash {count} Commits…"), move |_, cx| {
-                Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx)
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Squash {count} Commits…")
+                } else {
+                    format!("Squash {count} commits…")
+                },
+                move |_, cx| Dispatcher::request_squash(id, s2.clone(), onto.clone(), cx),
+            )
             .enabled(!busy && !comparing),
-            MenuItem::new(format!("Reorder {count} Commits…"), move |_, cx| {
-                weak.update(cx, |this, cx| {
-                    this.start_keyboard_reorder(id, s3.clone(), cx)
-                })
-                .ok();
-            })
+            MenuItem::new(
+                if IS_MAC {
+                    format!("Reorder {count} Commits…")
+                } else {
+                    format!("Reorder {count} commits…")
+                },
+                move |_, cx| {
+                    weak.update(cx, |this, cx| {
+                        this.start_keyboard_reorder(id, s3.clone(), cx)
+                    })
+                    .ok();
+                },
+            )
             .enabled(!busy && !comparing),
         ];
         if revert_no_commit {
             // `815`: newest first, staged, not committed
             items.push(
                 MenuItem::new(
-                    format!("Revert Changes in {count} Commits Without Committing"),
+                    if IS_MAC {
+                        format!("Revert Changes in {count} Commits Without Committing")
+                    } else {
+                        format!("Revert changes in {count} commits without committing")
+                    },
                     move |_, cx| Dispatcher::revert_commits_without_committing(id, s4.clone(), cx),
                 )
                 .enabled(!busy && !comparing),
@@ -973,7 +1019,11 @@ impl HistorySidebar {
             // `820`: onto the current branch, staged, not committed
             items.push(
                 MenuItem::new(
-                    format!("Cherry-pick {count} Commits Without Committing"),
+                    if IS_MAC {
+                        format!("Cherry-pick {count} Commits Without Committing")
+                    } else {
+                        format!("Cherry-pick {count} commits without committing")
+                    },
                     move |_, cx| Dispatcher::cherry_pick_without_committing(id, s5.clone(), cx),
                 )
                 .enabled(!busy),
@@ -982,7 +1032,11 @@ impl HistorySidebar {
         if patches {
             // `821`
             items.push(MenuItem::new(
-                format!("Create {count} Patch Files…"),
+                if IS_MAC {
+                    format!("Create {count} Patch Files…")
+                } else {
+                    format!("Create {count} patch files…")
+                },
                 move |_, cx| create_patch_files(id, s6.clone(), cx),
             ));
         }
@@ -1054,26 +1108,30 @@ impl HistorySidebar {
         let weak = cx.weak_entity();
         let mut items = Vec::new();
         if is_head {
-            items.push(MenuItem::new("Amend Commit…", {
-                let sha = sha.clone();
-                move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
-            }));
-            items.push(MenuItem::new("Undo Commit…", move |_, cx| {
-                Dispatcher::request_undo_commit(id, cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Amend Commit…", "Amend commit…"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::start_amending(id, sha.clone(), cx)
+                },
+            ));
+            items.push(MenuItem::new(
+                mac_or("Undo Commit…", "Undo commit…"),
+                move |_, cx| Dispatcher::request_undo_commit(id, cx),
+            ));
         }
         items.extend([
-            MenuItem::new("Reset to Commit…", {
+            MenuItem::new(mac_or("Reset to Commit…", "Reset to commit…"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_reset_to_commit(id, sha.clone(), cx)
             })
             .enabled(!is_head),
-            MenuItem::new("Checkout Commit", {
+            MenuItem::new(mac_or("Checkout Commit", "Checkout commit"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::request_checkout_commit(id, sha.clone(), cx)
             })
             .enabled(!is_head || checkout_head),
-            MenuItem::new("Reorder Commit", {
+            MenuItem::new(mac_or("Reorder Commit", "Reorder commit"), {
                 let sha = sha.clone();
                 move |_, cx| {
                     weak.update(cx, |this, cx| {
@@ -1083,14 +1141,20 @@ impl HistorySidebar {
                 }
             })
             .enabled(!busy),
-            MenuItem::new("Revert Changes in Commit", {
-                let sha = sha.clone();
-                move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
-            }),
+            MenuItem::new(
+                mac_or("Revert Changes in Commit", "Revert changes in commit"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| Dispatcher::revert_commit(id, sha.clone(), cx)
+                },
+            ),
         ]);
         if revert_no_commit {
             items.push(MenuItem::new(
-                "Revert Changes in Commit Without Committing",
+                mac_or(
+                    "Revert Changes in Commit Without Committing",
+                    "Revert changes in commit without committing",
+                ),
                 {
                     let sha = sha.clone();
                     move |_, cx| {
@@ -1101,19 +1165,22 @@ impl HistorySidebar {
         }
         items.extend([
             MenuItem::separator(),
-            MenuItem::new("Create Branch from Commit", {
-                let sha = sha.clone();
-                move |_, cx| {
-                    Dispatcher::show_popup(
-                        Popup::CreateBranch {
-                            repo: id,
-                            target_sha: Some(sha.clone()),
-                            initial_name: String::new(),
-                        },
-                        cx,
-                    )
-                }
-            }),
+            MenuItem::new(
+                mac_or("Create Branch from Commit", "Create branch from commit"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| {
+                        Dispatcher::show_popup(
+                            Popup::CreateBranch {
+                                repo: id,
+                                target_sha: Some(sha.clone()),
+                                initial_name: String::new(),
+                            },
+                            cx,
+                        )
+                    }
+                },
+            ),
             MenuItem::new("Create Tag…", {
                 let sha = sha.clone();
                 move |_, cx| {
@@ -1178,7 +1245,7 @@ impl HistorySidebar {
             }
         }
         items.push(
-            MenuItem::new("Cherry-pick Commit…", {
+            MenuItem::new(mac_or("Cherry-pick Commit…", "Cherry-pick commit…"), {
                 let sha = sha.clone();
                 move |_, cx| Dispatcher::start_cherry_pick_flow(id, vec![sha.clone()], cx)
             })
@@ -1194,28 +1261,40 @@ impl HistorySidebar {
         if pick_no_commit {
             // `820`: onto the current branch (not the HEAD commit itself)
             items.push(
-                MenuItem::new("Cherry-pick Commit Without Committing", {
-                    let sha = sha.clone();
-                    move |_, cx| {
-                        Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
-                    }
-                })
+                MenuItem::new(
+                    mac_or(
+                        "Cherry-pick Commit Without Committing",
+                        "Cherry-pick commit without committing",
+                    ),
+                    {
+                        let sha = sha.clone();
+                        move |_, cx| {
+                            Dispatcher::cherry_pick_without_committing(id, vec![sha.clone()], cx)
+                        }
+                    },
+                )
                 .enabled(!busy && !is_head),
             );
         }
         if patches {
             // `821`
-            items.push(MenuItem::new("Create Patch File…", {
-                let sha = sha.clone();
-                move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
-            }));
+            items.push(MenuItem::new(
+                mac_or("Create Patch File…", "Create patch file…"),
+                {
+                    let sha = sha.clone();
+                    move |_, cx| create_patch_files(id, vec![sha.clone()], cx)
+                },
+            ));
         }
         if let Some(unpushed) = unpushed {
             items.push(
-                MenuItem::new("Push Up to This Commit", {
-                    let sha = sha.clone();
-                    move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
-                })
+                MenuItem::new(
+                    mac_or("Push Up to This Commit", "Push up to this commit"),
+                    {
+                        let sha = sha.clone();
+                        move |_, cx| Dispatcher::push_up_to(id, sha.clone(), cx)
+                    },
+                )
                 .enabled(unpushed && !busy),
             );
         }
@@ -1235,14 +1314,16 @@ impl HistorySidebar {
             } else {
                 format!("{}\n\n{}", commit.summary, commit.body)
             };
-            items.push(MenuItem::new("Copy Commit Title", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(title.clone()))
-            }));
-            items.push(MenuItem::new("Copy Commit Message", move |_, cx| {
-                cx.write_to_clipboard(ClipboardItem::new_string(message.clone()))
-            }));
+            items.push(MenuItem::new(
+                mac_or("Copy Commit Title", "Copy commit title"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(title.clone())),
+            ));
+            items.push(MenuItem::new(
+                mac_or("Copy Commit Message", "Copy commit message"),
+                move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(message.clone())),
+            ));
             items.push(
-                MenuItem::new("Copy Commit URL", {
+                MenuItem::new(mac_or("Copy Commit URL", "Copy commit URL"), {
                     let url = commit_url.clone();
                     move |_, cx| {
                         if let Some(url) = &url {
@@ -1257,9 +1338,9 @@ impl HistorySidebar {
         items.push(
             MenuItem::new(
                 if commit.tags.len() > 1 {
-                    "Copy Tags"
+                    mac_or("Copy Tags", "Copy tags")
                 } else {
-                    "Copy Tag"
+                    mac_or("Copy Tag", "Copy tag")
                 },
                 move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(tags.clone())),
             )
@@ -1388,7 +1469,7 @@ impl HistorySidebar {
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child("Reorder Commits"),
+                    .child(mac_or("Reorder Commits", "Reorder commits")),
             )
             .child(
                 div()
@@ -1595,7 +1676,8 @@ impl HistorySidebar {
                 .as_ref()
                 .and_then(|sha| rs.commits.iter().position(|c| &c.sha == sha));
             let ix = match current {
-                Some(ix) => (ix as isize + delta).clamp(0, rs.commits.len() as isize - 1) as usize,
+                // GHD `List.moveSelection` wraps around the ends
+                Some(ix) => crate::filter_list::wrap_step(ix, delta, rs.commits.len()),
                 None => 0,
             };
             rs.commits.get(ix).map(|c| c.sha.clone())
@@ -2026,9 +2108,9 @@ fn commit_row(
                     shas: drag_shas,
                     commit: commit_for_drag,
                 },
-                |drag, _, _, cx| {
+                |drag, grab, _, cx| {
                     let drag = drag.clone();
-                    cx.new(|cx| CommitDragElement::new(drag, cx))
+                    cx.new(|cx| CommitDragElement::new(drag, grab, cx))
                 },
             )
         })

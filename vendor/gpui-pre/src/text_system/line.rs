@@ -544,9 +544,12 @@ fn paint_line(
         align_width,
         wrap_boundaries,
     );
+    let scale_factor = window.scale_factor();
     window.paint_layer(line_bounds, |window| {
-        let padding_top = (line_height - layout.ascent - layout.descent) / 2.;
-        let baseline_offset = point(px(0.), padding_top + layout.ascent);
+        let baseline_offset = point(
+            px(0.),
+            baseline_in_line(line_height, layout.ascent, layout.descent, scale_factor),
+        );
         let underline_y_offset = underline_y_offset(line_height, layout.ascent, layout.descent);
         let mut decoration_runs = decoration_runs.iter();
         let mut wraps = wrap_boundaries.iter().peekable();
@@ -1004,6 +1007,29 @@ fn aligned_origin_x(
         TextAlign::Center => (origin.x * 2.0 + align_width - line_width) / 2.0,
         TextAlign::Right => origin.x + align_width - line_width,
     }
+}
+
+
+/// Corvane patch: the baseline's offset from the top of a `line_height`
+/// line. Off macOS this follows Chromium on Linux, which rounds the font's
+/// ascent and descent to device pixels (`FontMetrics::AscentDescentWithHacks`)
+/// and puts the half leading's floor above the text, so text lines up with
+/// Electron's; macOS keeps GPUI's centred, unrounded metrics.
+pub(crate) fn baseline_in_line(
+    line_height: Pixels,
+    ascent: Pixels,
+    descent: Pixels,
+    scale_factor: f32,
+) -> Pixels {
+    if cfg!(target_os = "macos") || scale_factor <= 0. {
+        let padding_top = (line_height - ascent - descent) / 2.;
+        return padding_top + ascent;
+    }
+    let ascent = (f32::from(ascent) * scale_factor).round();
+    let descent = (f32::from(descent).abs() * scale_factor).round();
+    let line_height = f32::from(line_height) * scale_factor;
+    let half_leading = ((line_height - ascent - descent) / 2.).floor();
+    px((half_leading + ascent) / scale_factor)
 }
 
 #[cfg(test)]

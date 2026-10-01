@@ -1,0 +1,18 @@
+#!/bin/sh
+# Corvane's AppImage entry point. Run through a link named `corvane` (Help ›
+# Install command line tool… links ~/.local/bin/corvane to the AppImage),
+# it is the command line tool (`corvane`, `corvane open <path>`,
+# `corvane clone <url>`); run as the AppImage itself, it starts the app
+# with its arguments (the x-corvane:// URLs a desktop entry passes).
+HERE="$(dirname "$(readlink -f "$0")")"
+APP="$HERE/usr/lib/corvane/corvane"
+case "$(basename "${ARGV0:-$0}")" in
+  corvane)
+    # the tool starts Corvane in the background and exits, which unmounts
+    # this image: it runs the AppImage again, which stays mounted
+    CORVANE_BIN="${APPIMAGE:-$APP}" exec "$HERE/usr/lib/corvane/bin/corvane" "$@"
+    ;;
+  *)
+    exec "$APP" "$@"
+    ;;
+esac

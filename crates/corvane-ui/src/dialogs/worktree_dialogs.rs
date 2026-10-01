@@ -14,6 +14,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::autocompletion::{self, Autocompletion, PickHandler};
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::dialogs::branch_dialogs::{ref_chip, sanitize_ref_name};
 use crate::scrollbar::ScrollbarExt;
@@ -188,7 +189,7 @@ impl AddWorktreeDialog {
             files: false,
             directories: true,
             multiple: false,
-            prompt: Some("Create Worktree".into()),
+            prompt: Some(mac_or("Create Worktree", "Create worktree").into()),
         });
         cx.spawn_in(window, async move |this, cx| {
             if let Ok(Ok(Some(paths))) = receiver.await
@@ -271,14 +272,14 @@ impl Render for AddWorktreeDialog {
         });
         dialog(
             "add-worktree",
-            "Add Worktree",
+            mac_or("Add Worktree", "Add worktree"),
             div()
                 .flex()
                 .flex_col()
                 .gap(SPACING())
                 .w(zpx(460.))
                 .child(labeled(
-                    "Worktree Name",
+                    mac_or("Worktree Name", "Worktree name"),
                     text_box("worktree-name", &self.name, None, window, cx),
                     cx,
                 ))
@@ -289,7 +290,7 @@ impl Render for AddWorktreeDialog {
                         .items_end()
                         .gap(SPACING())
                         .child(labeled(
-                            "Local Path",
+                            mac_or("Local Path", "Local path"),
                             text_box("worktree-path", &self.path, None, window, cx),
                             cx,
                         ))
@@ -332,7 +333,7 @@ impl Render for AddWorktreeDialog {
                             }
                         }))
                         .child(labeled(
-                            "Branch Name",
+                            mac_or("Branch Name", "Branch name"),
                             text_box("worktree-branch", &self.branch, None, window, cx),
                             cx,
                         ))
@@ -365,7 +366,7 @@ impl Render for AddWorktreeDialog {
                     label: if self.creating {
                         "Creating Worktree…".into()
                     } else {
-                        "Create Worktree".into()
+                        mac_or("Create Worktree", "Create worktree").into()
                     },
                     primary: true,
                     disabled,
@@ -424,7 +425,7 @@ impl Render for RenameWorktreeDialog {
             .unwrap_or_else(|| PathBuf::from(&new_name));
         dialog(
             "rename-worktree",
-            "Rename Worktree",
+            mac_or("Rename Worktree", "Rename worktree"),
             div().w(zpx(400.)).child(labeled(
                 "Name",
                 text_box("rename-worktree-name", &self.name, None, window, cx),
@@ -518,7 +519,7 @@ impl Render for DeleteWorktreeDialog {
         dialog_with_kind(
             "delete-worktree",
             DialogKind::Warning,
-            "Delete Worktree",
+            mac_or("Delete Worktree", "Delete worktree"),
             content,
             vec![
                 DialogButton {
@@ -621,7 +622,7 @@ impl Render for DeleteWorktreeFailedDialog {
         dialog_with_kind(
             "delete-worktree-failed",
             DialogKind::Error,
-            "Delete Worktree Failed",
+            mac_or("Delete Worktree Failed", "Delete worktree failed"),
             content,
             vec![
                 DialogButton {

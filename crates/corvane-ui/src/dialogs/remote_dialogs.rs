@@ -9,6 +9,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::context_menu::MenuItem;
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogKind, dialog, dialog_with_kind};
 use crate::icons::{Octicon, octicon};
 use crate::tab_bar::{TabModel, tab_bar};
@@ -194,7 +195,7 @@ impl Render for PublishRepositoryDialog {
                         "Sign in to your GitHub.com account to access your repositories."
                     }))
                     .child(
-                        primary_button("publish-sign-in", "Sign In", false, cx).on_click(
+                        primary_button("publish-sign-in", mac_or("Sign In", "Sign in"), false, cx).on_click(
                             move |_, _, cx| {
                                 Dispatcher::show_popup(
                                     corvane_core::Popup::SignIn { enterprise },
@@ -311,12 +312,9 @@ impl Render for PublishRepositoryDialog {
                                                 ));
                                             }
                                             let position = ev.mouse_position().unwrap_or_default();
-                                            #[cfg(target_os = "macos")]
                                             crate::native_menu::show_context_menu(
                                                 items, position, window, cx,
                                             );
-                                            #[cfg(not(target_os = "macos"))]
-                                            let _ = (items, position, window, cx);
                                         }),
                                 ),
                         )
@@ -348,7 +346,7 @@ impl Render for PublishRepositoryDialog {
                 label: if publishing {
                     "Publishing…".into()
                 } else {
-                    "Publish Repository".into()
+                    mac_or("Publish Repository", "Publish repository").into()
                 },
                 primary: true,
                 disabled,
@@ -370,7 +368,7 @@ impl Render for PublishRepositoryDialog {
         }
         dialog(
             "dialog-publish-repository",
-            "Publish Repository",
+            mac_or("Publish Repository", "Publish repository"),
             content,
             buttons,
             close,
@@ -400,7 +398,7 @@ impl Render for PushNeedsPullDialog {
         dialog_with_kind(
             "dialog-push-needs-pull",
             DialogKind::Warning,
-            "Newer Commits on Remote",
+            mac_or("Newer Commits on Remote", "Newer commits on remote"),
             div().w(zpx(450.)).child(
                 "Corvane is unable to push commits to this branch because there are commits on the remote that are not present on your local branch. Fetch these new commits before pushing in order to reconcile them with your local commits.",
             ),
@@ -632,7 +630,7 @@ impl Render for GenericGitAuthDialog {
             );
         dialog(
             "dialog-generic-git-auth",
-            "Authentication Failed",
+            mac_or("Authentication Failed", "Authentication failed"),
             content,
             vec![
                 DialogButton {
@@ -736,7 +734,7 @@ impl Render for InitializeLfsDialog {
             vec![
                 DialogButton {
                     id: "lfs-not-now",
-                    label: "Not Now".into(),
+                    label: mac_or("Not Now", "Not now").into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(close),

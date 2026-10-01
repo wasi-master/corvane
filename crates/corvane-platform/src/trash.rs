@@ -1,4 +1,7 @@
-//! Move files to the Trash (GHD `shell.moveItemToTrash` via Electron).
+//! Move files to the Trash (GHD `shell.moveItemToTrash` via Electron, which
+//! on Linux follows the freedesktop.org Trash spec like the `trash` crate:
+//! `~/.local/share/Trash`, or `$topdir/.Trash-$uid` on other volumes, with a
+//! `.trashinfo` so file managers can restore the item).
 #![allow(unexpected_cfgs)] // `objc` macros probe a `cargo-clippy` feature
 
 use std::path::Path;
@@ -46,19 +49,40 @@ pub fn move_to_trash(path: &Path) -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn move_to_trash(_path: &Path) -> Result<(), String> {
-    Err("moving to Trash is not supported on this platform yet".into())
+pub fn move_to_trash(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Err(format!("{} does not exist", path.display()));
+    }
+    trash::delete(path).map_err(|err| err.to_string())
 }
 
 #[cfg(test)]
 mod tests {
     #[test]
-    #[cfg(target_os = "macos")]
     fn trashing_a_missing_path_fails_cleanly() {
         let err = super::move_to_trash(std::path::Path::new(
             "/tmp/corvane-definitely-missing-4f2a9c",
         ))
         .unwrap_err();
         assert!(!err.is_empty());
+    }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn trashes_into_the_xdg_trash() {
+        let data = tempfile::tempdir().unwrap();
+        let name = format!("corvane-trash-test-{}.txt", std::process::id());
+        let file = data.path().join(&name);
+        std::fs::write(&file, "bye").unwrap();
+        super::move_to_trash(&file).unwrap();
+        assert!(!file.exists());
+        // tidy the user's trash (the home trash when /tmp shares its volume)
+        if let Ok(items) = trash::os_limited::list() {
+            let ours: Vec<_> = items
+                .into_iter()
+                .filter(|i| i.name == name.as_str())
+                .collect();
+            let _ = trash::os_limited::purge_all(ours);
+        }
     }
 }

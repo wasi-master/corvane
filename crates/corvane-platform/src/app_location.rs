@@ -94,11 +94,30 @@ pub fn move_to_applications_folder(bundle: &Path) -> Result<PathBuf, String> {
     move_bundle(bundle, &dest)
 }
 
+/// What [`relaunch_after_exit`] starts to relaunch this Corvane: the
+/// running bundle on macOS; on Linux the AppImage it runs from (its runtime
+/// sets `$APPIMAGE`; the mounted binary disappears with this process), else
+/// this executable (a .deb install, a source build).
+pub fn relaunch_target() -> Option<PathBuf> {
+    #[cfg(target_os = "macos")]
+    {
+        running_bundle()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        std::env::var_os("APPIMAGE")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute() && path.is_file())
+            .or_else(|| std::env::current_exe().ok())
+    }
+}
+
 /// Open `bundle` once process `pid` has exited (the store lock is released
 /// by then), from a detached shell so it outlives this process. `open`
 /// hands its environment to the new app, so Corvane's own `CORVANE_*`
 /// variables (dev hooks, a `CORVANE_UPDATE_INSTALL=1` test run) are dropped:
 /// the relaunch starts as clean as a Dock launch.
+#[cfg(target_os = "macos")]
 pub fn relaunch_after_exit(bundle: &Path, pid: u32) -> Result<(), String> {
     let script =
         "while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open -n \"$2\"";
@@ -120,6 +139,47 @@ pub fn relaunch_after_exit(bundle: &Path, pid: u32) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|err| err.to_string())
+}
+
+/// Linux: run `executable` (the updated AppImage) once process `pid` has
+/// exited, from a shell in a session of its own (`setsid`) with stdio on
+/// `/dev/null`, so it outlives this process and the AppImage runtime that
+/// unmounts the old image. As on macOS, `CORVANE_*` variables are dropped,
+/// and so are the runtime's `APPIMAGE` / `APPDIR` / `ARGV0` / `OWD` (the new
+/// image's runtime sets its own). The shell starts in `/` so it keeps no
+/// folder busy.
+#[cfg(not(target_os = "macos"))]
+pub fn relaunch_after_exit(executable: &Path, pid: u32) -> Result<(), String> {
+    use std::os::unix::process::CommandExt;
+
+    let script = "while kill -0 \"$1\" 2>/dev/null; do sleep 0.1; done; exec \"$2\"";
+    let mut command = std::process::Command::new("/bin/sh");
+    for (key, _) in std::env::vars_os() {
+        let name = key.to_string_lossy();
+        if name.starts_with("CORVANE_") || ["APPIMAGE", "APPDIR", "ARGV0", "OWD"].contains(&&*name)
+        {
+            command.env_remove(&key);
+        }
+    }
+    command
+        .arg("-c")
+        .arg(script)
+        .arg("sh")
+        .arg(pid.to_string())
+        .arg(executable)
+        .current_dir("/")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    // SAFETY: `setsid` is async-signal-safe and touches no memory of the
+    // parent; it cannot fail in a freshly forked child (not a group leader).
+    unsafe {
+        command.pre_exec(|| {
+            libc::setsid();
+            Ok(())
+        });
+    }
+    command.spawn().map(|_| ()).map_err(|err| err.to_string())
 }
 
 /// The pre-translocation path of a translocated bundle, `None` when it is

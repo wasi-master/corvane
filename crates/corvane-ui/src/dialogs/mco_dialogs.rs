@@ -24,7 +24,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::branch_list::{group_branches, remote_counterparts};
-use crate::context_menu::MenuItem;
+use crate::context_menu::{IS_MAC, MenuItem, labels, mac_or};
 use crate::dialog::{
     DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
 };
@@ -364,7 +364,7 @@ impl McoDialog {
             "commit"
         };
         let ok_label: String = if no_results {
-            "Cherry-pick to New Branch".to_string()
+            mac_or("Cherry-pick to New Branch", "Cherry-pick to new branch").to_string()
         } else {
             match &selected {
                 Some(branch) => format!("Cherry-pick {commit_count} {plural} to {branch}…"),
@@ -454,7 +454,11 @@ impl McoDialog {
         dialog_with_kind(
             "dialog-warn-force-push",
             DialogKind::Warning,
-            format!("{label} Will Require Force Push"),
+            if IS_MAC {
+                format!("{label} Will Require Force Push")
+            } else {
+                format!("{label} will require force push")
+            },
             content,
             vec![
                 DialogButton {
@@ -665,8 +669,10 @@ impl McoDialog {
                 let items = vec![
                     MenuItem::new(
                         match &our {
-                            Some(b) => format!("Resolve All Using {b}"),
-                            None => "Resolve All Using Ours".to_string(),
+                            Some(b) if IS_MAC => format!("Resolve All Using {b}"),
+                            Some(b) => format!("Resolve all using {b}"),
+                            None => mac_or("Resolve All Using Ours", "Resolve all using ours")
+                                .to_string(),
                         },
                         move |_, cx| {
                             Dispatcher::set_all_manual_resolutions(
@@ -678,8 +684,10 @@ impl McoDialog {
                     ),
                     MenuItem::new(
                         match &their {
-                            Some(b) => format!("Resolve All Using {b}"),
-                            None => "Resolve All Using Theirs".to_string(),
+                            Some(b) if IS_MAC => format!("Resolve All Using {b}"),
+                            Some(b) => format!("Resolve all using {b}"),
+                            None => mac_or("Resolve All Using Theirs", "Resolve all using theirs")
+                                .to_string(),
                         },
                         move |_, cx| {
                             Dispatcher::set_all_manual_resolutions(
@@ -812,7 +820,11 @@ impl McoDialog {
         dialog_with_kind(
             "dialog-confirm-abort",
             DialogKind::Warning,
-            format!("Confirm Abort {}", kind.label()),
+            if IS_MAC {
+                format!("Confirm Abort {}", kind.label())
+            } else {
+                format!("Confirm abort {}", kind.label().to_lowercase())
+            },
             content,
             vec![
                 DialogButton {
@@ -824,7 +836,12 @@ impl McoDialog {
                 },
                 DialogButton {
                     id: "abort-ok",
-                    label: format!("Abort {}", kind.label()).into(),
+                    label: if IS_MAC {
+                        format!("Abort {}", kind.label())
+                    } else {
+                        format!("Abort {}", kind.label().to_lowercase())
+                    }
+                    .into(),
                     primary: false,
                     disabled: false,
                     on_click: Box::new(move |_, cx| Dispatcher::abort_mco(repo, cx)),
@@ -1073,7 +1090,7 @@ fn unmerged_file_row(
                                 if merge_tool {
                                     let path = rel_path.clone();
                                     menu_items.push(MenuItem::new(
-                                        "Open in Merge Tool",
+                                        mac_or("Open in Merge Tool", "Open in merge tool"),
                                         move |_, cx| {
                                             Dispatcher::open_in_merge_tool(repo, path.clone(), cx)
                                         },
@@ -1083,13 +1100,13 @@ fn unmerged_file_row(
                                     let p2 = p.clone();
                                     let absolute = p.to_string_lossy().into_owned();
                                     menu_items.push(MenuItem::new(
-                                        "Open with Default Program",
+                                        labels::OPEN_WITH_DEFAULT_PROGRAM,
                                         move |_, cx| {
                                             cx.open_with_system(&p);
                                         },
                                     ));
                                     menu_items.push(MenuItem::new(
-                                        "Reveal in Finder",
+                                        labels::REVEAL_IN_FILE_MANAGER,
                                         move |_, cx| {
                                             Dispatcher::show_in_finder(&p2, cx);
                                         },
@@ -1099,7 +1116,7 @@ fn unmerged_file_row(
                                         let relative = rel_path.clone();
                                         menu_items.push(MenuItem::separator());
                                         menu_items.push(MenuItem::new(
-                                            "Copy File Path",
+                                            labels::COPY_FILE_PATH,
                                             move |_, cx| {
                                                 cx.write_to_clipboard(ClipboardItem::new_string(
                                                     absolute.clone(),
@@ -1107,7 +1124,7 @@ fn unmerged_file_row(
                                             },
                                         ));
                                         menu_items.push(MenuItem::new(
-                                            "Copy Relative File Path",
+                                            labels::COPY_RELATIVE_FILE_PATH,
                                             move |_, cx| {
                                                 cx.write_to_clipboard(ClipboardItem::new_string(
                                                     relative.clone(),
@@ -1167,14 +1184,7 @@ fn unmerged_file_row(
 }
 
 fn show_menu(items: Vec<MenuItem>, position: Point<Pixels>, window: &mut Window, cx: &mut App) {
-    #[cfg(target_os = "macos")]
-    {
-        crate::native_menu::show_context_menu(items, position, window, cx);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (items, position, window, cx);
-    }
+    crate::native_menu::show_context_menu(items, position, window, cx);
 }
 
 impl Render for McoDialog {
@@ -1300,7 +1310,7 @@ impl Render for LocalChangesOverwrittenDialog {
         if !has_stash {
             buttons.push(DialogButton {
                 id: "overwritten-stash",
-                label: "Stash Changes and Continue".into(),
+                label: mac_or("Stash Changes and Continue", "Stash changes and continue").into(),
                 primary: true,
                 disabled: false,
                 on_click: Box::new(move |_, cx| {

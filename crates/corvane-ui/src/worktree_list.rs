@@ -19,7 +19,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, MenuItem, mac_or};
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -62,13 +62,15 @@ pub fn worktree_menu_items(
             .enabled(editable),
         );
     }
-    items.push(MenuItem::new("Copy Worktree Name", move |_, cx| {
-        cx.write_to_clipboard(ClipboardItem::new_string(name.clone()))
-    }));
+    items.push(MenuItem::new(
+        mac_or("Copy Worktree Name", "Copy worktree name"),
+        move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(name.clone())),
+    ));
     let path_text = path.display().to_string();
-    items.push(MenuItem::new("Copy Worktree Path", move |_, cx| {
-        cx.write_to_clipboard(ClipboardItem::new_string(path_text.clone()))
-    }));
+    items.push(MenuItem::new(
+        mac_or("Copy Worktree Path", "Copy worktree path"),
+        move |_, cx| cx.write_to_clipboard(ClipboardItem::new_string(path_text.clone())),
+    ));
     items.push(MenuItem::separator());
     if with_delete {
         items.push(
@@ -118,17 +120,20 @@ pub fn toolbar_button_menu(position: Point<Pixels>, window: &mut Window, cx: &mu
     let Some(current) = current else { return };
     let is_main = current.kind == WorktreeType::Main;
     let mut items = vec![
-        MenuItem::new("New Worktree…", move |_, cx| {
-            Dispatcher::close_foldout(cx);
-            Dispatcher::show_popup(
-                Popup::AddWorktree {
-                    repo,
-                    initial_branch_name: None,
-                    initial_worktree_name: None,
-                },
-                cx,
-            );
-        }),
+        MenuItem::new(
+            mac_or("New Worktree…", "New worktree…"),
+            move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::show_popup(
+                    Popup::AddWorktree {
+                        repo,
+                        initial_branch_name: None,
+                        initial_worktree_name: None,
+                    },
+                    cx,
+                );
+            },
+        ),
         MenuItem::separator(),
     ];
     items.extend(worktree_menu_items(repo, &current, false, !is_main));
@@ -136,14 +141,7 @@ pub fn toolbar_button_menu(position: Point<Pixels>, window: &mut Window, cx: &mu
 }
 
 fn show_menu(items: Vec<MenuItem>, position: Point<Pixels>, window: &mut Window, cx: &mut App) {
-    #[cfg(target_os = "macos")]
-    {
-        crate::native_menu::show_context_menu(items, position, window, cx);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (items, position, window, cx);
-    }
+    crate::native_menu::show_context_menu(items, position, window, cx);
 }
 
 pub struct WorktreeFoldout {
@@ -263,16 +261,7 @@ impl WorktreeFoldout {
         cx: &mut Context<Self>,
     ) {
         let items = worktree_menu_items(repo, worktree, true, true);
-        #[cfg(target_os = "macos")]
-        {
-            crate::native_menu::show_context_menu(items, position, window, cx);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let menu = cx.new(|cx| ContextMenu::new(items, position, window, cx));
-            self.context_menu = Some(menu);
-            cx.notify();
-        }
+        crate::native_menu::show_context_menu(items, position, window, cx);
     }
 
     /// `.worktrees-list-item`: icon, name (match in bold), branch / sha.
@@ -473,7 +462,7 @@ impl Render for WorktreeFoldout {
                         cx,
                     ))
                     .child(
-                        button("new-worktree", "New Worktree", cx)
+                        button("new-worktree", mac_or("New Worktree", "New worktree"), cx)
                             .flex_none()
                             .on_click(move |_, _, cx| {
                                 Dispatcher::close_foldout(cx);

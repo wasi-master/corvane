@@ -25,6 +25,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::branch_list::group_branches;
+use crate::context_menu::mac_or;
 use crate::dialog::{
     DialogButton, DialogFrame, DialogKind, dialog, dialog_framed, dialog_with_kind,
 };
@@ -439,9 +440,9 @@ crate::branch_list::sort_by_date(cx),
         dialog(
             "dialog-create-branch",
             if cherry_pick {
-                "Cherry-pick to New Branch"
+                mac_or("Cherry-pick to New Branch", "Cherry-pick to new branch")
             } else {
-                "Create a Branch"
+                mac_or("Create a Branch", "Create a branch")
             },
             content,
             vec![
@@ -455,9 +456,13 @@ crate::branch_list::sort_by_date(cx),
                 DialogButton {
                     id: "create-branch-ok",
                     label: if cherry_pick {
-                        "Create Branch and Cherry-pick".into()
+                        mac_or(
+                            "Create Branch and Cherry-pick",
+                            "Create branch and cherry-pick",
+                        )
+                        .into()
                     } else {
-                        "Create Branch".into()
+                        mac_or("Create Branch", "Create branch").into()
                     },
                     primary: true,
                     disabled,
@@ -618,7 +623,7 @@ impl Render for RenameBranchDialog {
         // `focusCloseButtonOnOpen`: the close button, not the name, has focus
         crate::dialog::dialog_with_frame(
             "dialog-rename-branch",
-            "Rename Branch",
+            mac_or("Rename Branch", "Rename branch"),
             content,
             vec![
                 DialogButton {
@@ -798,7 +803,7 @@ impl Render for DeleteBranchDialog {
         crate::dialog::dialog_with_kind_framed(
             "dialog-delete-branch",
             DialogKind::Warning,
-            "Delete Branch",
+            mac_or("Delete Branch", "Delete branch"),
             content,
             vec![
                 DialogButton {
@@ -971,7 +976,7 @@ impl Render for StashAndSwitchBranchDialog {
             );
         dialog(
             "dialog-stash-and-switch",
-            "Switch Branch",
+            mac_or("Switch Branch", "Switch branch"),
             content,
             vec![
                 DialogButton {
@@ -984,9 +989,9 @@ impl Render for StashAndSwitchBranchDialog {
                 DialogButton {
                     id: "switch-ok",
                     label: if discard {
-                        "Discard Changes and Switch".into()
+                        mac_or("Discard Changes and Switch", "Discard changes and switch").into()
                     } else {
-                        "Switch Branch".into()
+                        mac_or("Switch Branch", "Switch branch").into()
                     },
                     primary: true,
                     disabled: false,
@@ -1027,7 +1032,7 @@ impl Render for ConfirmOverwriteStashDialog {
         dialog_with_kind(
             "dialog-overwrite-stash",
             DialogKind::Warning,
-            "Overwrite Stash?",
+            mac_or("Overwrite Stash?", "Overwrite stash?"),
             div().child(
                 "Are you sure you want to proceed? This will overwrite your existing stash with your current changes.",
             ),
@@ -1083,7 +1088,7 @@ impl Render for ConfirmSwitchBranchDialog {
         let (repo, branch) = (self.repo, self.branch.clone());
         dialog(
             "dialog-confirm-switch-branch",
-            "Switch Branch?",
+            mac_or("Switch Branch?", "Switch branch?"),
             paragraph(vec![
                 "Switch to ".into(),
                 ref_chip(self.branch.clone(), cx).into_any_element().into(),
@@ -1099,7 +1104,7 @@ impl Render for ConfirmSwitchBranchDialog {
                 },
                 DialogButton {
                     id: "confirm-switch-ok",
-                    label: "Switch Branch".into(),
+                    label: mac_or("Switch Branch", "Switch branch").into(),
                     primary: true,
                     disabled: false,
                     on_click: Box::new(move |_, cx| {

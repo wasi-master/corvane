@@ -214,9 +214,9 @@ pub fn paragraph(parts: Vec<Inline>) -> Div {
     row
 }
 
-/// The layout engine rounds every measured leaf up to a whole device pixel
-/// (and text up to a whole point), so a row of word boxes drifts right by up
-/// to a pixel per word. The flow carries that drift along a line: each
+/// The layout engine snaps every measured leaf to a whole device pixel
+/// (words: to the nearest one), so a row of word boxes drifts by up to half
+/// a pixel per word. The flow carries that drift along a line: each
 /// element is moved left by the drift of the words before it on its line.
 #[derive(Clone, Copy, Default)]
 struct InlineFlow {
@@ -292,7 +292,20 @@ impl Element for InlineShift {
                 let line = window
                     .text_system()
                     .shape_line(text.clone(), font_size, &[run], None);
-                let box_size = size(line.width, line_height);
+                // Chromium breaks lines on exact widths; layout rounds every
+                // measured leaf up to a device pixel, which over a line of
+                // words wraps early (at scale 1 up to a pixel a word). The
+                // box is the width rounded to the nearest device pixel
+                // instead, so the rounding evens out; paint corrects the
+                // drift either way.
+                // (macOS keeps the round-up its parity runs were tuned with)
+                let scale = window.scale_factor();
+                let box_width = if cfg!(target_os = "macos") {
+                    line.width
+                } else {
+                    px((f32::from(line.width) * scale).round() / scale)
+                };
+                let box_size = size(box_width, line_height);
                 let layout_id =
                     window.request_measured_layout(Style::default(), move |_, _, _, _| box_size);
                 (layout_id, Some((line, line_height, layout_id)))
@@ -615,10 +628,7 @@ pub fn select_button_items(
                         })
                         .collect();
                     let position = ev.mouse_position().unwrap_or_default();
-                    #[cfg(target_os = "macos")]
                     crate::native_menu::show_context_menu(menu_items, position, window, cx);
-                    #[cfg(not(target_os = "macos"))]
-                    let _ = (menu_items, position, window, cx);
                 })
         })
         .child(div().flex_1().min_w_0().truncate().child(value.into()))
@@ -763,7 +773,7 @@ pub fn counter(count: usize, cx: &App) -> Div {
 }
 
 /// `kbd` - one key cap: radius 6, base border, 1/2 px padding, min 16 px tall,
-/// min-width 1.5em, 2 px gap between caps (darwin).
+/// min-width 1.5em; [`kbd_group`] spaces a shortcut's caps.
 pub fn kbd(key: impl Into<SharedString>, cx: &App) -> Div {
     let t = cx.ghd();
     div()
@@ -785,14 +795,42 @@ pub fn kbd(key: impl Into<SharedString>, cx: &App) -> Div {
         .child(key.into())
 }
 
-/// A row of key caps, e.g. `["⌘", "⇧", "A"]`.
+/// GHD `getPlatformSpecificNameOrSymbolForModifier` for a key written the
+/// macOS way: ⌘ (`CmdOrCtrl`) and ⌃ are Ctrl, ⇧ Shift and ⌥ Alt off macOS.
+pub fn platform_key(key: &'static str) -> &'static str {
+    if cfg!(target_os = "macos") {
+        return key;
+    }
+    match key {
+        "⌘" | "⌃" => "Ctrl",
+        "⇧" => "Shift",
+        "⌥" => "Alt",
+        other => other,
+    }
+}
+
+/// A row of key caps (GHD `KeyboardShortcut`), given the macOS way, e.g.
+/// `["⌘", "⇧", "A"]`: 2 px apart on macOS (`_globals.scss` `kbd`, darwin);
+/// elsewhere "Ctrl+Shift+A", the caps named ([`platform_key`]) and joined
+/// by a `+`.
 pub fn kbd_group(keys: &[&'static str], cx: &App) -> Div {
-    div()
-        .flex()
-        .flex_row()
-        .items_center()
-        .gap(zpx(2.))
-        .children(keys.iter().map(|k| kbd(*k, cx)))
+    kbd_group_sized(keys, FONT_SIZE(), cx)
+}
+
+/// [`kbd_group`] in `size` text (the caps inherit it, as in a `.protip`).
+pub fn kbd_group_sized(keys: &[&'static str], size: Pixels, cx: &App) -> Div {
+    let row = div().flex().flex_row().items_center();
+    if cfg!(target_os = "macos") {
+        return row
+            .gap(zpx(2.))
+            .children(keys.iter().map(|k| kbd(*k, cx).text_size(size)));
+    }
+    row.text_size(size)
+        .children(keys.iter().enumerate().flat_map(|(i, k)| {
+            let plus = (i > 0).then(|| div().child("+").into_any_element());
+            plus.into_iter()
+                .chain([kbd(platform_key(k), cx).text_size(size).into_any_element()])
+        }))
 }
 
 /// A 32 × 18 toggle switch on GHD tokens (no GHD equivalent; the Flags
@@ -1074,16 +1112,23 @@ pub fn avatar_lookup_url(url: &str, cx: &App) -> Option<std::path::PathBuf> {
         .and_then(|s| corvane_core::avatar_for_url(&s.read(cx).avatars, url))
 }
 
-/// Round avatar placeholder (`.avatar`), 25 px unless overridden.
+/// GHD `Avatar` without an image (none known, or it failed to load):
+/// `DefaultAvatarSymbol`, the padded person octicon, as `svg.avatar` - the
+/// secondary text colour on the alt box background, round.
 pub fn avatar_placeholder(size: Pixels, cx: &App) -> Div {
     let t = cx.ghd();
     div()
         .size(size)
         .flex_none()
         .rounded_full()
+        .overflow_hidden()
         .bg(t.box_alt_background)
-        .border_1()
-        .border_color(t.box_border)
+        .child(
+            svg()
+                .path("ui/default-avatar.svg")
+                .size(size)
+                .text_color(t.text_secondary),
+        )
 }
 
 /// `VerticalSegmentedControl` option (`.radio-button-component`): 10 px
@@ -1249,7 +1294,7 @@ impl Render for TextTooltip {
                 None,
             ),
         };
-        let viewport = Bounds::new(Point::default(), window.viewport_size());
+        let viewport = crate::theme::page_bounds(window);
         let font_size = FONT_SIZE_SM();
         let line_height = font_size * 1.5;
         let (pad_x, pad_y) = (SPACING(), SPACING_HALF());

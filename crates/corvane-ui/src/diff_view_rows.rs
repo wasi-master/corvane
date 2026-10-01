@@ -62,14 +62,19 @@ pub enum RangeType {
 impl RangeType {
     /// GHD `getDiscardLabel`: "Discard Added Line…", "Discard Modified Lines".
     pub fn discard_label(self, lines: u32, confirm: bool) -> String {
+        use crate::context_menu::{IS_MAC, mac_or};
         let kind = match self {
-            RangeType::Additions => "Added",
-            RangeType::Deletions => "Removed",
-            RangeType::Mixed => "Modified",
+            RangeType::Additions => mac_or("Added", "added"),
+            RangeType::Deletions => mac_or("Removed", "removed"),
+            RangeType::Mixed => mac_or("Modified", "modified"),
         };
         let plural = if lines > 1 { "s" } else { "" };
         let suffix = if confirm { "…" } else { "" };
-        format!("Discard {kind} Line{plural}{suffix}")
+        if IS_MAC {
+            format!("Discard {kind} Line{plural}{suffix}")
+        } else {
+            format!("Discard {kind} line{plural}{suffix}")
+        }
     }
 }
 
@@ -1864,17 +1869,30 @@ mod tests {
 
     #[test]
     fn discard_labels_match_ghd() {
+        let mac = crate::context_menu::IS_MAC;
         assert_eq!(
             RangeType::Additions.discard_label(1, true),
-            "Discard Added Line…"
+            if mac {
+                "Discard Added Line…"
+            } else {
+                "Discard added line…"
+            }
         );
         assert_eq!(
             RangeType::Mixed.discard_label(3, false),
-            "Discard Modified Lines"
+            if mac {
+                "Discard Modified Lines"
+            } else {
+                "Discard modified lines"
+            }
         );
         assert_eq!(
             RangeType::Deletions.discard_label(2, true),
-            "Discard Removed Lines…"
+            if mac {
+                "Discard Removed Lines…"
+            } else {
+                "Discard removed lines…"
+            }
         );
     }
 

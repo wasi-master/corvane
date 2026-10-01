@@ -22,6 +22,16 @@ fn main() {
     if std::env::var_os("CORVANE_ASKPASS").is_some() {
         askpass::run();
     }
+    // GHD `requestSingleInstanceLock`: a second launch (the `.desktop` file's
+    // URL handler, the command line tool) hands its URLs to the running
+    // Corvane and exits before touching the store it holds
+    #[cfg(not(target_os = "macos"))]
+    let launch_urls = corvane_platform::single_instance::url_arguments(std::env::args().skip(1));
+    #[cfg(not(target_os = "macos"))]
+    let instance = match corvane_platform::single_instance::claim(&launch_urls) {
+        corvane_platform::single_instance::Claim::Forwarded => return,
+        corvane_platform::single_instance::Claim::First(listener) => listener,
+    };
     let started = Instant::now();
     // the `git --version` probes run while the store, GPUI and the window
     // come up (`Dispatcher::init` collects the result)
@@ -74,6 +84,19 @@ fn main() {
     // in Corvane", links) may arrive before launch has finished: queue them
     let url_inbox = corvane_core::app_url::AppUrlInbox::default();
     let url_sender = url_inbox.sender();
+    #[cfg(not(target_os = "macos"))]
+    {
+        for url in launch_urls {
+            url_sender.send(url);
+        }
+        let from_later_launches = url_sender.clone();
+        instance.serve(move |message| match message {
+            corvane_platform::single_instance::Message::Url(url) => from_later_launches.send(url),
+            corvane_platform::single_instance::Message::Focus => from_later_launches.focus(),
+        });
+        // GHD `setAsDefaultProtocolClient` on every launch
+        std::thread::spawn(corvane_platform::url_schemes::register);
+    }
     app.on_open_urls(move |urls| {
         for url in urls {
             url_sender.send(url);
@@ -82,6 +105,8 @@ fn main() {
 
     app.run(move |cx| {
         phase(started, "platform ready");
+        // the kit theme below takes the monospace family off macOS
+        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family().leak());
         corvane_ui::theme::preseed_kit_theme(cx);
         gpui_kit::init(cx);
         phase(started, "gpui-kit initialised");
@@ -111,7 +136,6 @@ fn main() {
             .and_then(|z| z.parse::<f32>().ok())
             .unwrap_or(settings.window_zoom_factor);
         corvane_ui::theme::sizes::set_zoom_factor(zoom);
-        corvane_ui::theme::set_mono_font(corvane_platform::fonts::ghd_monospace_family());
         info!(zoom, "window zoom factor");
         let theme_variants = corvane_ui::theme::ThemeVariants::of(&launch_flags);
         corvane_ui::init(
@@ -529,7 +553,9 @@ fn main() {
         let options = WindowOptions {
             titlebar: Some(TitlebarOptions {
                 title: Some("Corvane".into()),
-                appears_transparent: true,
+                // macOS: hiddenInset; Linux keeps the window manager's frame
+                // (Electron's default there)
+                appears_transparent: cfg!(target_os = "macos"),
                 traffic_light_position: Some(point(px(9.), px(9.))),
             }),
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
@@ -550,18 +576,50 @@ fn main() {
                 },
             ),
             app_id: Some(corvane_platform::BUNDLE_ID.into()),
+            // X11 `_NET_WM_ICON` (Electron sets the app icon on its window)
+            #[cfg(not(target_os = "macos"))]
+            icon: corvane_ui::title_bar::window_icon(),
             ..Default::default()
         };
 
-        let workspace = match gpui_kit::open_window(options, cx, move |window, cx| {
+        // Chromium's text antialiasing follows the desktop's (grayscale
+        // unless it asks for subpixel order); GPUI would use subpixel
+        // wherever the GPU can
+        #[cfg(not(target_os = "macos"))]
+        if !corvane_platform::fonts::subpixel_antialiasing() {
+            cx.set_text_rendering_mode(TextRenderingMode::Grayscale);
+        }
+        // Linux: Electron's classic menu bar over the app (`corvane_ui::menu_bar`)
+        #[cfg(not(target_os = "macos"))]
+        corvane_ui::views_menu::install(cx);
+        #[cfg(not(target_os = "macos"))]
+        let opened = {
+            let workspace_slot = std::rc::Rc::new(std::cell::RefCell::new(None));
+            let slot = workspace_slot.clone();
+            gpui_kit::open_window(options, cx, move |window, cx| {
+                let workspace = cx.new(|cx| Workspace::new(state, sidebar_width, window, cx));
+                *slot.borrow_mut() = Some(workspace.clone());
+                cx.new(|cx| corvane_ui::menu_bar::MenuBarShell::new(workspace.into(), cx))
+            })
+            .map(|_| workspace_slot.borrow_mut().take())
+        };
+        #[cfg(target_os = "macos")]
+        let opened = gpui_kit::open_window(options, cx, move |window, cx| {
             cx.new(|cx| Workspace::new(state, sidebar_width, window, cx))
-        }) {
-            Ok((_, workspace)) => {
+        })
+        .map(|(_, workspace)| Some(workspace));
+        let workspace = match opened {
+            Ok(Some(workspace)) => {
                 info!(
                     elapsed_ms = started.elapsed().as_millis(),
                     "main window opened"
                 );
                 workspace
+            }
+            Ok(None) => {
+                error!("the main window opened without a workspace");
+                cx.quit();
+                return;
             }
             Err(err) => {
                 error!(?err, "failed to open main window");

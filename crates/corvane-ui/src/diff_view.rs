@@ -60,7 +60,7 @@ use gpui_kit::*;
 use crate::widgets::IconButtonA11y;
 
 use crate::actions::{Copy, Find, SelectAll};
-use crate::context_menu::{ContextMenu, MenuItem};
+use crate::context_menu::{ContextMenu, IS_MAC, MenuItem, mac_or};
 use crate::diff_expansion::{
     DEFAULT_DIFF_EXPANSION_STEP, ExpansionKind, HunkExpansionType, XHunk, expand_hunk,
     expand_whole, from_hunks,
@@ -167,7 +167,7 @@ pub fn diff_options_button(view: &Entity<DiffView>, cx: &App) -> impl IntoElemen
     div()
         .id("diff-options-button")
         .group("diff-options-button")
-        .icon_button_label("Diff Settings")
+        .icon_button_label(mac_or("Diff Settings", "Diff Options"))
         .relative()
         .h(zpx(19.))
         .flex()
@@ -1123,16 +1123,7 @@ impl DiffView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        #[cfg(target_os = "macos")]
-        {
-            crate::native_menu::show_context_menu(items, position, window, cx);
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            let menu = cx.new(|cx| ContextMenu::new(items, position, window, cx));
-            self.context_menu = Some(menu);
-            cx.notify();
-        }
+        crate::native_menu::show_context_menu(items, position, window, cx);
     }
 
     /// GHD `buildExpandMenuItem`.
@@ -1142,15 +1133,21 @@ impl DiffView {
         }
         let weak = cx.weak_entity();
         Some(if self.expanded {
-            MenuItem::new("Collapse Expanded Lines", move |_, cx| {
-                weak.update(cx, |this, cx| this.collapse(cx)).ok();
-            })
+            MenuItem::new(
+                mac_or("Collapse Expanded Lines", "Collapse expanded lines"),
+                move |_, cx| {
+                    weak.update(cx, |this, cx| this.collapse(cx)).ok();
+                },
+            )
         } else {
             let enabled =
                 self.hunks.len() != 1 || self.hunks[0].expansion != HunkExpansionType::None;
-            MenuItem::new("Expand Whole File", move |_, cx| {
-                weak.update(cx, |this, cx| this.expand_whole_file(cx)).ok();
-            })
+            MenuItem::new(
+                mac_or("Expand Whole File", "Expand whole file"),
+                move |_, cx| {
+                    weak.update(cx, |this, cx| this.expand_whole_file(cx)).ok();
+                },
+            )
             .enabled(enabled)
         })
     }
@@ -1190,7 +1187,7 @@ impl DiffView {
             })
             .enabled(has_selection)
         };
-        let select_all = MenuItem::new("Select All", move |_, cx| {
+        let select_all = MenuItem::new(mac_or("Select All", "Select all"), move |_, cx| {
             weak.update(cx, |this, cx| this.select_all_text(cx)).ok();
         });
         let mut items = vec![copy, select_all];
@@ -1221,7 +1218,11 @@ impl DiffView {
         {
             return None;
         }
-        let label = format!("Open in {} at Line {line}", s.editor_label());
+        let label = if IS_MAC {
+            format!("Open in {} at Line {line}", s.editor_label())
+        } else {
+            format!("Open in {} at line {line}", s.editor_label())
+        };
         let full = snap.repo_path.join(&snap.path);
         Some(MenuItem::new(label, move |_, cx| {
             Dispatcher::open_in_editor_at(full.clone(), Some(line), cx)
@@ -1452,7 +1453,7 @@ impl DiffView {
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_size(FONT_SIZE_MD())
                                 .mb(zpx(8.))
-                                .child("Diff Settings"),
+                                .child(mac_or("Diff Settings", "Diff Options")),
                         )
                         .child(
                             div()
@@ -1463,7 +1464,7 @@ impl DiffView {
                                 .child(checkbox_row(
                                     "diff-hide-whitespace",
                                     hide,
-                                    "Hide Whitespace Changes",
+                                    mac_or("Hide Whitespace Changes", "Hide whitespace changes"),
                                     move |checked, _, cx| set_hide_whitespace(source, checked, cx),
                                     cx,
                                 ))
@@ -1678,12 +1679,12 @@ impl DiffView {
                 "You can try to show it anyway, but performance may be negatively impacted.",
             ))
             .child(
-                button("show-large-diff", "Show Diff", cx).on_click(cx.listener(
-                    |this, _, _, cx| {
+                button("show-large-diff", mac_or("Show Diff", "Show diff"), cx).on_click(
+                    cx.listener(|this, _, _, cx| {
                         this.show_large = true;
                         cx.notify();
-                    },
-                )),
+                    }),
+                ),
             )
             .into_any_element()
     }
@@ -1843,7 +1844,7 @@ impl DiffView {
                     ),
                     hint: "".into(),
                     keys: &[],
-                    button_label: "Open Repository".into(),
+                    button_label: mac_or("Open Repository", "Open repository").into(),
                     primary: true,
                 },
                 cx,
@@ -2387,7 +2388,7 @@ impl DiffView {
                 .bg(t.file_warning_background)
                 .border_b_1()
                 .border_color(t.file_warning_border)
-                .font_family(crate::theme::UI_FONT)
+                .font_family(crate::theme::ui_font())
                 .text_size(FONT_SIZE())
                 .text_color(t.text)
                 .children(items.into_iter().enumerate().map(|(ix, body)| {

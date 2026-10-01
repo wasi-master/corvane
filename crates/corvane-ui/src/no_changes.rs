@@ -8,8 +8,11 @@
 //! remote action then.
 //! Deviation (`726-restore-stash-suggestion`): with a stash on the branch the
 //! first card is "Restore your stashed changes" with a primary Restore button
-//! (built in `workspace.rs`; GHD `no-changes.tsx` offers only "View stash").
+//! in place of GHD's "View your stashed changes" ([`primary_action`]).
+//! Not built yet: GHD's Create / Preview Pull Request dropdown card for a
+//! published branch, and the `Ref` styling of branch names in descriptions.
 
+use corvane_core::{AppState, Branch, Dispatcher, Tip};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
@@ -28,6 +31,187 @@ pub struct SuggestedAction {
     pub keys: &'static [&'static str],
     pub button_label: SharedString,
     pub primary: bool,
+}
+
+/// GHD `NoChanges` primary group, `renderViewStashAction() ||
+/// renderRemoteAction()`: the branch's stash once its files are loaded,
+/// else publishing the repository or branch, pulling or pushing.
+pub fn primary_action(state: &AppState, id: u64) -> Option<SuggestedAction> {
+    let rs = state.repo_states.get(&id)?;
+    let info = rs.info.as_ref()?;
+    let Tip::Valid { branch } = &info.tip else {
+        return None;
+    };
+    stash_action(state, id).or_else(|| remote_action(state, id, branch))
+}
+
+/// `renderViewStashAction`
+fn stash_action(state: &AppState, id: u64) -> Option<SuggestedAction> {
+    let rs = state.repo_states.get(&id)?;
+    rs.stash.as_ref()?;
+    // Corvane (`726-restore-stash-suggestion`): restore it from here instead
+    if state
+        .flags
+        .bool(corvane_core::flags::ids::RESTORE_STASH_SUGGESTION)
+    {
+        return Some(SuggestedAction {
+            id: "suggested-restore-stash",
+            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::pop_stash(id, cx)),
+            title: "Restore your stashed changes".into(),
+            description: Some(
+                "This branch has stashed changes that you have not yet committed.".into(),
+            ),
+            hint: "When a stash exists, access it at the bottom of the Changes tab to the left."
+                .into(),
+            keys: &[],
+            button_label: "Restore".into(),
+            primary: true,
+        });
+    }
+    let count = rs.stash_files.as_ref()?.len();
+    Some(SuggestedAction {
+        id: "suggested-view-stash",
+        on_click: std::rc::Rc::new(move |_, cx| Dispatcher::toggle_stash_view(id, cx)),
+        title: "View your stashed changes".into(),
+        description: Some(
+            format!(
+                "You have {count} {} in progress that you have not yet committed.",
+                if count == 1 { "change" } else { "changes" }
+            )
+            .into(),
+        ),
+        hint: "When a stash exists, access it at the bottom of the Changes tab to the left.".into(),
+        keys: &[],
+        button_label: "View stash".into(),
+        primary: true,
+    })
+}
+
+/// `renderRemoteAction`, less `renderCreatePullRequestAction`
+fn remote_action(state: &AppState, id: u64, branch: &Branch) -> Option<SuggestedAction> {
+    let rs = state.repo_states.get(&id)?;
+    let info = rs.info.as_ref()?;
+    let is_github = state.repository(id).is_some_and(|r| r.github.is_some());
+    // `renderPublishRepositoryAction`
+    if info.remotes.is_empty() {
+        return Some(SuggestedAction {
+            id: "suggested-publish-repository",
+            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::push_pull_action(id, cx)),
+            title: "Publish your repository to GitHub".into(),
+            description: Some(
+                "This repository is currently only available on your local machine. By \
+                 publishing it on GitHub you can share it, and collaborate with others."
+                    .into(),
+            ),
+            hint: "Always available in the toolbar for local repositories or".into(),
+            keys: &["⌘", "P"],
+            button_label: "Publish repository".into(),
+            primary: true,
+        });
+    }
+    let remote = Dispatcher::current_remote_in(state, id)?.name;
+    // `renderPublishBranchAction` (GHD's `aheadBehind` is null without an
+    // upstream)
+    if branch.upstream.is_none() {
+        return Some(SuggestedAction {
+            id: "suggested-publish-branch",
+            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::push(id, false, None, cx)),
+            title: "Publish your branch".into(),
+            description: Some(
+                format!(
+                    "The current branch ({}) hasn't been published to the remote yet. By \
+                     publishing it {}you can share it, {}and collaborate with others.",
+                    branch.name,
+                    if is_github { "to GitHub " } else { "" },
+                    if is_github {
+                        "open a pull request, "
+                    } else {
+                        ""
+                    },
+                )
+                .into(),
+            ),
+            hint: "Always available in the toolbar or".into(),
+            keys: &["⌘", "P"],
+            button_label: "Publish branch".into(),
+            primary: true,
+        });
+    }
+    let ab = rs.ahead_behind?;
+    // no action after a rebase: pulling would tangle the history
+    if Dispatcher::force_push_state_in(state, id) == corvane_core::ForcePushState::Recommended {
+        return None;
+    }
+    let host = if is_github { "GitHub" } else { "the remote" };
+    if ab.behind > 0 {
+        let one = ab.behind == 1;
+        return Some(SuggestedAction {
+            id: "suggested-pull",
+            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::pull(id, cx)),
+            title: format!(
+                "Pull {} {} from the {remote} remote",
+                crate::format::format_count(ab.behind.into()),
+                if one { "commit" } else { "commits" }
+            )
+            .into(),
+            description: Some(
+                format!(
+                    "The current branch ({}) has {} on {host} that {} exist on your machine.",
+                    branch.name,
+                    if one { "a commit" } else { "commits" },
+                    if one { "does not" } else { "do not" },
+                )
+                .into(),
+            ),
+            hint: "Always available in the toolbar when there are remote changes or".into(),
+            keys: &["⌘", "⇧", "P"],
+            button_label: format!("Pull {remote}").into(),
+            primary: true,
+        });
+    }
+    let tags = state.repository(id).map_or(0, |r| r.tags_to_push.len());
+    if ab.ahead > 0 || tags > 0 {
+        let mut kinds = Vec::new();
+        let mut counts = Vec::new();
+        if ab.ahead > 0 {
+            kinds.push("commits");
+            counts.push(if ab.ahead == 1 {
+                "1 local commit".to_string()
+            } else {
+                format!(
+                    "{} local commits",
+                    crate::format::format_count(ab.ahead.into())
+                )
+            });
+        }
+        if tags > 0 {
+            kinds.push("tags");
+            counts.push(if tags == 1 {
+                "1 tag".to_string()
+            } else {
+                format!("{} tags", crate::format::format_count(tags as u64))
+            });
+        }
+        return Some(SuggestedAction {
+            id: "suggested-push",
+            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::push(id, false, None, cx)),
+            title: format!("Push {} to the {remote} remote", kinds.join(" and ")).into(),
+            description: Some(
+                format!(
+                    "You have {} waiting to be pushed to {host}.",
+                    counts.join(" and ")
+                )
+                .into(),
+            ),
+            hint: "Always available in the toolbar when there are local commits waiting to be \
+                   pushed or"
+                .into(),
+            keys: &["⌘", "P"],
+            button_label: format!("Push {remote}").into(),
+            primary: true,
+        });
+    }
+    None
 }
 
 /// `.suggested-action`: base border, 20 px padding, row; primary variant tinted.
@@ -144,7 +328,13 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
                                 .child(
                                     div()
                                         .text_size(zpx(32.))
-                                        .line_height(zpx(38.))
+                                        // `h1` inherits `body`'s `line-height: 1.5`
+                                        // (`styles/_globals.scss`)
+                                        .line_height(if cfg!(target_os = "macos") {
+                                            zpx(38.)
+                                        } else {
+                                            zpx(32. * 1.5)
+                                        })
                                         .font_weight(FontWeight::LIGHT)
                                         .child("No local changes"),
                                 )
@@ -159,9 +349,12 @@ pub fn no_changes(actions: Vec<SuggestedAction>, cx: &App) -> impl IntoElement {
                                 ),
                         )
                         .child(
+                            // `.blankslate-image`: `flex: 0` leaves the
+                            // 70 px `min-width`, `min-height` (73 px) wins
+                            // over `height`
                             crate::widgets::blankslate_image("paper-stack.svg", cx)
-                                .w(zpx(73.))
-                                .h(zpx(70.))
+                                .w(zpx(70.))
+                                .h(zpx(73.))
                                 .flex_none(),
                         ),
                 )

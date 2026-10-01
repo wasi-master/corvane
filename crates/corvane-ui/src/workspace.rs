@@ -7,6 +7,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use corvane_core::{AppState, Dispatcher, Section};
+use corvane_platform::editors::SETTINGS_LABEL;
 use gpui_kit::component::resizable::{
     ResizablePanelEvent, ResizableState, h_resizable, resizable_panel,
 };
@@ -493,16 +494,6 @@ impl Workspace {
                 .cloned()
         });
         let showing_stash = rs.is_some_and(|r| r.showing_stash);
-        // `726-restore-stash-suggestion`
-        let restore_stash = state
-            .flags
-            .bool(corvane_core::flags::ids::RESTORE_STASH_SUGGESTION)
-            && rs.is_some_and(|r| {
-                r.stash.is_some()
-                    && r.info
-                        .as_ref()
-                        .is_some_and(|i| matches!(i.tip, corvane_core::Tip::Valid { .. }))
-            });
         let multi_selected = rs.map(|r| r.selected_files.len()).unwrap_or(0);
         match self.section {
             Section::Changes if showing_stash => self.stash_view.clone().into_any_element(),
@@ -553,13 +544,18 @@ impl Workspace {
                 }
             }
             Section::Changes => {
-                let (repo_id, repo_path, editor_label, shell_label) = {
+                let (repo_id, repo_path, editor_label, editor_available, shell_label) = {
                     let s = self.state.read(cx);
                     let repo = s.selected_repository();
                     (
                         repo.map(|r| r.id),
                         repo.map(|r| r.path.clone()),
                         s.editor_label(),
+                        // `isExternalEditorAvailable`: `useCustomEditor ||
+                        // selectedExternalEditor !== null`
+                        (s.settings.use_custom_editor && s.settings.custom_editor.is_some())
+                            || s.settings.external_editor.is_some()
+                            || !s.editors.is_empty(),
                         // flag `724-no-changes-open-in-shell` (Corvane
                         // addition; GHD `NoChanges` has no shell action)
                         s.flags
@@ -568,34 +564,47 @@ impl Workspace {
                     )
                 };
                 let path = repo_path.clone().unwrap_or_default();
-                let mut actions = vec![
-                    SuggestedAction {
+                let mut actions: Vec<SuggestedAction> = repo_id
+                    .and_then(|id| crate::no_changes::primary_action(state, id))
+                    .into_iter()
+                    .collect();
+                if editor_available {
+                    actions.push(SuggestedAction {
                         id: "suggested-editor",
                         on_click: std::rc::Rc::new({
                             let path = path.clone();
                             move |_, cx| Dispatcher::open_in_editor(path.clone(), cx)
                         }),
-                        title: format!("Open the repository in {editor_label}").into(),
-                        description: Some("Select your editor in Settings".into()),
+                        title: "Open the repository in your external editor".into(),
+                        description: Some(format!("Select your editor in {SETTINGS_LABEL}").into()),
                         hint: "Repository menu or".into(),
                         keys: &["⌘", "⇧", "A"],
                         button_label: format!("Open in {editor_label}").into(),
                         primary: false,
-                    },
-                    SuggestedAction {
-                        id: "suggested-finder",
-                        on_click: std::rc::Rc::new({
-                            let path = path.clone();
-                            move |_, cx| Dispatcher::show_in_finder(&path, cx)
-                        }),
-                        title: "View the files of your repository in Finder".into(),
-                        description: None,
-                        hint: "Repository menu or".into(),
-                        keys: &["⌘", "⇧", "F"],
-                        button_label: "Show in Finder".into(),
-                        primary: false,
-                    },
-                ];
+                    });
+                }
+                actions.extend([SuggestedAction {
+                    id: "suggested-finder",
+                    on_click: std::rc::Rc::new({
+                        let path = path.clone();
+                        move |_, cx| Dispatcher::show_in_finder(&path, cx)
+                    }),
+                    // `getPlatformFileManagerName` and the menu item's label
+                    title: crate::context_menu::mac_or(
+                        "View the files of your repository in Finder",
+                        "View the files of your repository in your File Manager",
+                    )
+                    .into(),
+                    description: None,
+                    hint: "Repository menu or".into(),
+                    keys: &["⌘", "⇧", "F"],
+                    button_label: crate::context_menu::mac_or(
+                        "Show in Finder",
+                        "Show in your File Manager",
+                    )
+                    .into(),
+                    primary: false,
+                }]);
                 if let Some(shell) = shell_label {
                     actions.push(SuggestedAction {
                         id: "suggested-shell",
@@ -604,7 +613,7 @@ impl Workspace {
                             move |_, cx| Dispatcher::open_in_shell(&path, cx)
                         }),
                         title: format!("Open the repository in {shell}").into(),
-                        description: Some("Select your shell in Settings".into()),
+                        description: Some(format!("Select your shell in {SETTINGS_LABEL}").into()),
                         hint: "Repository menu or".into(),
                         keys: &["⌃", "`"],
                         button_label: format!("Open in {shell}").into(),
@@ -636,7 +645,11 @@ impl Workspace {
                             description: Some(pr.title.into()),
                             hint: "Branch menu or".into(),
                             keys: &["⌘", "R"],
-                            button_label: "View Pull Request".into(),
+                            button_label: crate::context_menu::mac_or(
+                                "View Pull Request",
+                                "View pull request",
+                            )
+                            .into(),
                             primary: true,
                         },
                     );
@@ -652,28 +665,6 @@ impl Workspace {
                         button_label: "View on GitHub".into(),
                         primary: false,
                     });
-                }
-                // Corvane (`726-restore-stash-suggestion`): the branch's
-                // stash can be restored from here, first and highlighted
-                if restore_stash && let Some(id) = repo_id {
-                    actions.insert(
-                        0,
-                        SuggestedAction {
-                            id: "suggested-restore-stash",
-                            on_click: std::rc::Rc::new(move |_, cx| Dispatcher::pop_stash(id, cx)),
-                            title: "Restore your stashed changes".into(),
-                            description: Some(
-                                "This branch has stashed changes that you have not yet committed."
-                                    .into(),
-                            ),
-                            hint: "When a stash exists, access it at the bottom of the Changes \
-                                   tab to the left."
-                                .into(),
-                            keys: &[],
-                            button_label: "Restore".into(),
-                            primary: true,
-                        },
-                    );
                 }
                 no_changes(actions, cx).into_any_element()
             }
@@ -931,7 +922,7 @@ impl Render for Workspace {
             let state = self.state.read(cx);
             let widths = toolbar_widths(
                 state,
-                window.viewport_size().width,
+                crate::theme::page_size(window).width,
                 self.sidebar_width,
                 &self.toolbar_resize,
             );
@@ -979,8 +970,10 @@ impl Render for Workspace {
             .bg(t.background)
             .text_color(t.text)
             .text_size(FONT_SIZE())
-            .font_family(crate::theme::UI_FONT)
-            .when(!bare, |d| d.child(title_bar(cx)))
+            .font_family(crate::theme::ui_font())
+            .when(!bare && cfg!(target_os = "macos"), |d| {
+                d.child(title_bar(cx))
+            })
             .when_some(self.welcome.clone(), |d, welcome| {
                 d.child(div().flex_1().min_h_0().w_full().child(welcome))
             })
@@ -1051,7 +1044,9 @@ impl Render for Workspace {
                         .into_any_element()
                 })
             })
-            .when(bare, |d| d.child(light_title_bar()))
+            .when(bare && cfg!(target_os = "macos"), |d| {
+                d.child(light_title_bar())
+            })
             .when_some(foldout, |d, foldout| {
                 // the worktree button sits between the repository and branch buttons
                 let shift = if worktree_button {

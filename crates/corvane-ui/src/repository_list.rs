@@ -9,6 +9,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::ActiveGhdTheme;
@@ -81,7 +82,7 @@ impl RepositoryFoldout {
     }
 
     /// GHD `FilterList`: ↓ / ↑ in the filter box move through the rows (↑
-    /// from the filter starts at the last), clamped at the ends.
+    /// from the filter starts at the last), wrapping at the ends.
     fn move_highlight(&mut self, delta: isize, cx: &mut Context<Self>) {
         let groups = self.groups(cx);
         let count: usize = groups.iter().map(|g| g.repos.len()).sum();
@@ -89,7 +90,7 @@ impl RepositoryFoldout {
             return;
         }
         let ix = match self.highlighted {
-            Some(ix) => (ix as isize + delta).clamp(0, count as isize - 1) as usize,
+            Some(ix) => crate::filter_list::wrap_step(ix, delta, count),
             None if delta < 0 => count - 1,
             None => 0,
         };
@@ -371,15 +372,12 @@ impl RepositoryFoldout {
                 let repo = repo.clone();
                 move |ev: &MouseDownEvent, window, cx| {
                     cx.stop_propagation();
-                    #[cfg(target_os = "macos")]
                     crate::native_menu::show_context_menu(
                         repository_menu_items(&repo, cx),
                         ev.position,
                         window,
                         cx,
                     );
-                    #[cfg(not(target_os = "macos"))]
-                    let _ = (ev, window, &repo);
                 }
             })
             .child(octicon(icon, t.text).mr(SPACING_HALF()))
@@ -439,6 +437,7 @@ impl RepositoryFoldout {
                         .items_center()
                         .when_some(ahead_behind, |d, ab| {
                             // `renderAheadBehindIndicator`: arrows only, 12 px tall
+                            // (darwin; the base rule's 16 px elsewhere)
                             let tooltip = format!(
                                 "The currently checked out branch is{}{}{}its tracked branch.",
                                 if ab.behind > 0 {
@@ -464,7 +463,7 @@ impl RepositoryFoldout {
                                     .flex()
                                     .flex_row()
                                     .items_center()
-                                    .h(zpx(12.))
+                                    .h(zpx(if cfg!(target_os = "macos") { 12. } else { 16. }))
                                     .px(zpx(6.))
                                     .rounded(zpx(8.))
                                     .bg(badge_bg)
@@ -553,10 +552,7 @@ impl RepositoryFoldout {
                 ),
             ]);
         }
-        #[cfg(target_os = "macos")]
         crate::native_menu::show_context_menu(items, position, window, cx);
-        #[cfg(not(target_os = "macos"))]
-        let _ = (items, position, window);
     }
 
     /// Corvane (`225-clone-prefills-filter`): the filter text that Add ›
@@ -601,15 +597,19 @@ impl RepositoryFoldout {
             .rounded(BORDER_RADIUS())
             .shadow_md()
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-            .child(item("add-clone", "Clone Repository…", |_, cx| {
-                Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
-            }))
-            .child(item("add-create", "Create New Repository…", |_, cx| {
-                Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
-            }))
+            .child(item(
+                "add-clone",
+                mac_or("Clone Repository…", "Clone repository…"),
+                |_, cx| Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx),
+            ))
+            .child(item(
+                "add-create",
+                mac_or("Create New Repository…", "Create new repository…"),
+                |_, cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
+            ))
             .child(item(
                 "add-existing",
-                "Add Existing Repository…",
+                mac_or("Add Existing Repository…", "Add existing repository…"),
                 |_, cx| {
                     Dispatcher::close_foldout(cx);
                     Dispatcher::prompt_add_repository(cx);
@@ -619,9 +619,8 @@ impl RepositoryFoldout {
 }
 
 /// GHD `generateRepositoryListContextMenu`.
-#[cfg(target_os = "macos")]
 fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu::MenuItem> {
-    use crate::context_menu::MenuItem;
+    use crate::context_menu::{IS_MAC, MenuItem, labels, mac_or};
     let state = AppState::global(cx).read(cx);
     let (editor, shell) = (state.editor_label(), state.shell_label());
     let confirm = state.settings.confirm_repository_removal;
@@ -641,58 +640,67 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
     } else {
         "Create"
     };
-    let mut items = vec![MenuItem::new(format!("{verb} Alias"), move |_, cx| {
+    let alias_label = if IS_MAC {
+        format!("{verb} Alias")
+    } else {
+        format!("{verb} alias")
+    };
+    let mut items = vec![MenuItem::new(alias_label, move |_, cx| {
         Dispatcher::close_foldout(cx);
         Dispatcher::show_popup(Popup::ChangeRepositoryAlias { repo: id }, cx)
     })];
     if repo.alias.is_some() {
-        items.push(MenuItem::new("Remove Alias", move |_, cx| {
-            Dispatcher::change_repository_alias(id, None, cx)
-        }));
+        items.push(MenuItem::new(
+            mac_or("Remove Alias", "Remove alias"),
+            move |_, cx| Dispatcher::change_repository_alias(id, None, cx),
+        ));
     }
     items.extend([
         // `buildWorktreeMenuItems` (worktree support is on)
-        MenuItem::new("Show Worktrees", move |_, cx| {
+        MenuItem::new(mac_or("Show Worktrees", "Show worktrees"), move |_, cx| {
             Dispatcher::select_repository(id, cx);
             Dispatcher::toggle_foldout(corvane_core::Foldout::Worktree, cx);
         }),
-        MenuItem::new("New Worktree…", move |_, cx| {
-            Dispatcher::close_foldout(cx);
-            Dispatcher::show_popup(
-                Popup::AddWorktree {
-                    repo: id,
-                    initial_branch_name: None,
-                    initial_worktree_name: None,
-                },
-                cx,
-            )
-        }),
-        MenuItem::new("Copy Repo Name", move |_, cx| {
+        MenuItem::new(
+            mac_or("New Worktree…", "New worktree…"),
+            move |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::show_popup(
+                    Popup::AddWorktree {
+                        repo: id,
+                        initial_branch_name: None,
+                        initial_worktree_name: None,
+                    },
+                    cx,
+                )
+            },
+        ),
+        MenuItem::new(mac_or("Copy Repo Name", "Copy repo name"), move |_, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(name.clone()))
         }),
-        MenuItem::new("Copy Repo Path", move |_, cx| {
+        MenuItem::new(mac_or("Copy Repo Path", "Copy repo path"), move |_, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
         }),
         MenuItem::separator(),
         // `262-view-on-remote`: "View on Remote" for other hosts
         MenuItem::new(
             if repo.github.is_none() && remote_page {
-                "View on Remote"
+                mac_or("View on Remote", "View on remote")
             } else {
                 "View on GitHub"
             },
             move |_, cx| Dispatcher::view_on_github(id, cx),
         )
         .enabled(repo.github.is_some() || remote_page),
-        MenuItem::new(format!("Open in {shell}"), move |_, cx| {
+        MenuItem::new(labels::open_in(&shell), move |_, cx| {
             Dispatcher::open_in_shell(&shell_path, cx)
         })
         .enabled(!missing),
-        MenuItem::new("Reveal in Finder", move |_, cx| {
+        MenuItem::new(labels::REVEAL_IN_FILE_MANAGER, move |_, cx| {
             Dispatcher::show_in_finder(&reveal, cx)
         })
         .enabled(!missing),
-        MenuItem::new(format!("Open in {editor}"), move |_, cx| {
+        MenuItem::new(labels::open_in(&editor), move |_, cx| {
             Dispatcher::open_in_editor(editor_path.clone(), cx)
         })
         .enabled(!missing),
@@ -721,7 +729,11 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
             .bool(corvane_core::flags::ids::REMOVE_ALL_MISSING_REPOSITORIES)
     {
         items.push(MenuItem::new(
-            format!("Remove All {} Missing Repositories", missing_ids.len()),
+            if IS_MAC {
+                format!("Remove All {} Missing Repositories", missing_ids.len())
+            } else {
+                format!("Remove all {} missing repositories", missing_ids.len())
+            },
             move |_, cx| {
                 Dispatcher::close_foldout(cx);
                 for id in &missing_ids {
@@ -734,24 +746,30 @@ fn repository_menu_items(repo: &Repository, cx: &App) -> Vec<crate::context_menu
 }
 
 /// The Add button's items (`onNewRepositoryButtonClick`).
-#[cfg(target_os = "macos")]
 fn add_menu_items(clone_filter: Option<String>) -> Vec<crate::context_menu::MenuItem> {
-    use crate::context_menu::MenuItem;
+    use crate::context_menu::{MenuItem, mac_or};
     vec![
-        MenuItem::new("Clone Repository…", move |_, cx| {
-            // Corvane (`225-clone-prefills-filter`)
-            if let Some(text) = &clone_filter {
-                crate::dialogs::clone_repository::prefill_filter(text.clone());
-            }
-            Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
-        }),
-        MenuItem::new("Create New Repository…", |_, cx| {
-            Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx)
-        }),
-        MenuItem::new("Add Existing Repository…", |_, cx| {
-            Dispatcher::close_foldout(cx);
-            Dispatcher::prompt_add_repository(cx);
-        }),
+        MenuItem::new(
+            mac_or("Clone Repository…", "Clone repository…"),
+            move |_, cx| {
+                // Corvane (`225-clone-prefills-filter`)
+                if let Some(text) = &clone_filter {
+                    crate::dialogs::clone_repository::prefill_filter(text.clone());
+                }
+                Dispatcher::show_popup(Popup::CloneRepository { url: None }, cx)
+            },
+        ),
+        MenuItem::new(
+            mac_or("Create New Repository…", "Create new repository…"),
+            |_, cx| Dispatcher::show_popup(Popup::CreateRepository { path: None }, cx),
+        ),
+        MenuItem::new(
+            mac_or("Add Existing Repository…", "Add existing repository…"),
+            |_, cx| {
+                Dispatcher::close_foldout(cx);
+                Dispatcher::prompt_add_repository(cx);
+            },
+        ),
     ]
 }
 
@@ -857,22 +875,13 @@ impl Render for RepositoryFoldout {
                                 cx.stop_propagation();
                                 // GHD `onNewRepositoryButtonClick`: a native
                                 // contextual menu at the pointer
-                                #[cfg(target_os = "macos")]
-                                {
-                                    let clone_filter = this.clone_filter(cx);
-                                    crate::native_menu::show_context_menu(
-                                        add_menu_items(clone_filter),
-                                        ev.position(),
-                                        window,
-                                        cx,
-                                    );
-                                }
-                                #[cfg(not(target_os = "macos"))]
-                                {
-                                    let _ = (ev, window);
-                                    this.add_menu_open = !this.add_menu_open;
-                                    cx.notify();
-                                }
+                                let clone_filter = this.clone_filter(cx);
+                                crate::native_menu::show_context_menu(
+                                    add_menu_items(clone_filter),
+                                    ev.position(),
+                                    window,
+                                    cx,
+                                );
                             })),
                     ),
             )

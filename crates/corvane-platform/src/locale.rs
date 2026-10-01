@@ -38,15 +38,35 @@ pub fn country_code() -> Option<String> {
     }
 }
 
+/// Linux: the territory of the locale Chromium's UI locale comes from, the
+/// first set of `LC_ALL`, `LC_MESSAGES`, `LANG` (`en_GB.UTF-8` → `GB`);
+/// `C` / `POSIX` have none.
 #[cfg(not(target_os = "macos"))]
 pub fn country_code() -> Option<String> {
-    std::env::var("LANG")
-        .ok()
-        .and_then(|lang| {
-            lang.split('.')
-                .next()
-                .and_then(|l| l.split('_').nth(1))
-                .map(String::from)
-        })
-        .filter(|c| c.len() == 2)
+    let var = |name: &str| std::env::var(name).ok().filter(|v| !v.is_empty());
+    let locale = var("LC_ALL")
+        .or_else(|| var("LC_MESSAGES"))
+        .or_else(|| var("LANG"))?;
+    territory(&locale)
+}
+
+/// `ll_CC[.codeset][@modifier]` → `CC`.
+#[cfg(not(target_os = "macos"))]
+fn territory(locale: &str) -> Option<String> {
+    let base = locale.split(['.', '@']).next()?;
+    let (_, country) = base.split_once('_')?;
+    (country.len() == 2 && country.chars().all(|c| c.is_ascii_alphabetic()))
+        .then(|| country.to_ascii_uppercase())
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod tests {
+    #[test]
+    fn territories() {
+        assert_eq!(super::territory("en_GB.UTF-8").as_deref(), Some("GB"));
+        assert_eq!(super::territory("de_DE@euro").as_deref(), Some("DE"));
+        assert_eq!(super::territory("sr_RS.UTF-8@latin").as_deref(), Some("RS"));
+        assert_eq!(super::territory("C.UTF-8"), None);
+        assert_eq!(super::territory("POSIX"), None);
+    }
 }

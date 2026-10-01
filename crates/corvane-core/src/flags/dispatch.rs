@@ -124,10 +124,11 @@ impl Dispatcher {
         Self::show_popup(Popup::Flags { query }, cx);
     }
 
-    /// The Flags dialog's Relaunch button: `open -n` the bundle once this
-    /// process has exited (the updater's path), then quit.
+    /// The Flags dialog's Relaunch button: start Corvane again once this
+    /// process has exited (the updater's path: `open -n` the bundle on
+    /// macOS, the AppImage or executable on Linux), then quit.
     pub fn relaunch(cx: &mut App) {
-        let Some(bundle) = corvane_platform::app_location::running_bundle() else {
+        let Some(bundle) = corvane_platform::app_location::relaunch_target() else {
             Self::show_error(
                 "Could not relaunch Corvane",
                 "Corvane is not running from an app bundle; quit and start it again.",

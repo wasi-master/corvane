@@ -23,6 +23,7 @@ use gpui_kit::*;
 
 use crate::widgets::IconButtonA11y;
 
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon, spin};
 use crate::relative_time::relative;
 use crate::theme::ActiveGhdTheme;
@@ -167,7 +168,7 @@ pub fn toolbar_models(
             id: "toolbar-worktree",
             title_italic: false,
             icon: Octicon::FileDirectory,
-            description: "Current Worktree".into(),
+            description: mac_or("Current Worktree", "Current worktree").into(),
             title,
             width: Some(worktree_width),
             foldout: Some(Foldout::Worktree),
@@ -210,7 +211,7 @@ pub fn toolbar_models(
             {
                 gh.owner.clone().into()
             }
-            _ => "Current Repository".into(),
+            _ => mac_or("Current Repository", "Current repository").into(),
         },
         title: repo
             .map(|r| r.name().into())
@@ -240,26 +241,33 @@ pub fn toolbar_models(
         status: state.commit_status_summary(pr),
         bounds: pr_badge_bounds.clone(),
     });
-    let (branch_icon, branch_desc, branch_title): (Octicon, &str, SharedString) = match info
-        .map(|i| &i.tip)
-    {
-        Some(Tip::Valid { branch }) => (
-            if current_pr.is_some() {
-                Octicon::GitPullRequest
-            } else {
-                Octicon::GitBranch
-            },
-            "Current Branch",
-            branch.name.clone().into(),
-        ),
-        Some(Tip::Unborn { name }) => (Octicon::GitBranch, "Current Branch", name.clone().into()),
-        Some(Tip::Detached { sha }) => (
-            Octicon::GitCommit,
-            "Detached HEAD",
-            format!("On {}", sha.chars().take(7).collect::<String>()).into(),
-        ),
-        _ => (Octicon::GitBranch, "Current Branch", "".into()),
-    };
+    let (branch_icon, branch_desc, branch_title): (Octicon, &str, SharedString) =
+        match info.map(|i| &i.tip) {
+            Some(Tip::Valid { branch }) => (
+                if current_pr.is_some() {
+                    Octicon::GitPullRequest
+                } else {
+                    Octicon::GitBranch
+                },
+                mac_or("Current Branch", "Current branch"),
+                branch.name.clone().into(),
+            ),
+            Some(Tip::Unborn { name }) => (
+                Octicon::GitBranch,
+                mac_or("Current Branch", "Current branch"),
+                name.clone().into(),
+            ),
+            Some(Tip::Detached { sha }) => (
+                Octicon::GitCommit,
+                "Detached HEAD",
+                format!("On {}", sha.chars().take(7).collect::<String>()).into(),
+            ),
+            _ => (
+                Octicon::GitBranch,
+                mac_or("Current Branch", "Current branch"),
+                "".into(),
+            ),
+        };
     // `checkoutProgress`: title = target branch, description = "Switching to Branch"
     let switching_to = repo_state.and_then(|s| s.checkout_target.clone());
     let switching_to_tooltip = switching_to.clone();
@@ -285,7 +293,7 @@ pub fn toolbar_models(
         match (switching_to, &merging_from) {
             (Some(target), _) => (
                 Octicon::SyncClockwise,
-                "Switching to Branch".into(),
+                mac_or("Switching to Branch", "Switching to branch").into(),
                 SharedString::from(target),
             ),
             (None, Some(source)) => (
@@ -715,7 +723,8 @@ pub fn toolbar_button(
             )
         })
         .when_some(model.badge, |d, ab| {
-            // `.ahead-behind` pill: 13 px tall, radius 8, 9 px text
+            // `.ahead-behind` pill: 13 px tall (darwin; elsewhere no height
+            // is set and the 16 px octicons make it 16), radius 8, 9 px text
             d.child(
                 div()
                     .flex_none()
@@ -724,7 +733,7 @@ pub fn toolbar_button(
                     .items_center()
                     .gap(zpx(2.))
                     .px(zpx(5.))
-                    .h(zpx(13.))
+                    .h(zpx(if cfg!(target_os = "macos") { 13. } else { 16. }))
                     .mr(SPACING_HALF())
                     .rounded(zpx(8.))
                     .bg(t.toolbar_badge_background)

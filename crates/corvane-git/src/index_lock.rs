@@ -3,6 +3,7 @@
 //! killed git leaves behind. GitHub Desktop shows git's error only.
 
 use std::path::{Path, PathBuf};
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
 use crate::error::{GitError, Result};
@@ -22,6 +23,7 @@ pub fn index_lock_path(stderr: &str) -> Option<PathBuf> {
 
 /// Whether a git process (other than a long-lived `fsmonitor--daemon`) has
 /// its working directory in `dir`. `None` when that cannot be told.
+#[cfg(target_os = "macos")]
 fn git_running_in(dir: &Path) -> Option<bool> {
     // lsof reports resolved paths (/private/var/…)
     let dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
@@ -54,6 +56,43 @@ fn git_running_in(dir: &Path) -> Option<bool> {
             .ok()?;
         let args = String::from_utf8_lossy(&args.stdout);
         if !args.trim().is_empty() && !args.contains("fsmonitor--daemon") {
+            return Some(true);
+        }
+    }
+    Some(false)
+}
+
+/// Linux: the same question answered from `/proc` (`comm` starting with
+/// `git`, like `lsof -c git`; `cwd` link under `dir`; `cmdline` for the
+/// fsmonitor daemon), so nothing needs `lsof` installed.
+#[cfg(not(target_os = "macos"))]
+fn git_running_in(dir: &Path) -> Option<bool> {
+    let dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    let entries = std::fs::read_dir("/proc").ok()?;
+    for entry in entries.flatten() {
+        let proc_dir = entry.path();
+        let is_pid = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|n| n.bytes().all(|b| b.is_ascii_digit()));
+        if !is_pid {
+            continue;
+        }
+        let Ok(comm) = std::fs::read_to_string(proc_dir.join("comm")) else {
+            continue;
+        };
+        if !comm.starts_with("git") {
+            continue;
+        }
+        // other users' processes cannot be read: they are not ours to wait for
+        let Ok(cwd) = std::fs::read_link(proc_dir.join("cwd")) else {
+            continue;
+        };
+        if !cwd.starts_with(&dir) {
+            continue;
+        }
+        let args = std::fs::read(proc_dir.join("cmdline")).unwrap_or_default();
+        if !String::from_utf8_lossy(&args).contains("fsmonitor--daemon") {
             return Some(true);
         }
     }

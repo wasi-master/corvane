@@ -28,6 +28,7 @@ use crate::cloneable_repositories::{
     AccountPickerState, ListStyle, account_picker, account_popover, group_rows, no_items,
     refresh_button, repository_list,
 };
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -171,7 +172,10 @@ fn tutorial_button(z: f32, cx: &App) -> Option<Stateful<Div>> {
             primary_big_button(
                 "nr-tutorial",
                 Octicon::MortarBoard,
-                "Return to In Progress Tutorial",
+                mac_or(
+                    "Return to In Progress Tutorial",
+                    "Return to in progress tutorial",
+                ),
                 |_, cx| Dispatcher::resume_tutorial(cx),
                 z,
                 cx,
@@ -180,7 +184,10 @@ fn tutorial_button(z: f32, cx: &App) -> Option<Stateful<Div>> {
             primary_big_button(
                 "nr-tutorial",
                 Octicon::MortarBoard,
-                "Create a Tutorial Repository…",
+                mac_or(
+                    "Create a Tutorial Repository…",
+                    "Create a tutorial repository…",
+                ),
                 |_, cx| Dispatcher::show_create_tutorial_repository(cx),
                 z,
                 cx,
@@ -517,7 +524,7 @@ fn no_repositories(
     cx: &Context<NoRepositoriesView>,
 ) -> impl IntoElement + use<> {
     let t = cx.ghd();
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let z = zoom(viewport.width);
     let s = |v: f32| zpx(v * z);
     let signed_in =
@@ -639,7 +646,7 @@ fn no_repositories(
                                     big_button(
                                         "nr-clone",
                                         Octicon::RepoClone,
-                                        "Clone a Repository from the Internet…",
+                                        mac_or("Clone a Repository from the Internet…", "Clone a repository from the Internet…"),
                                         |_, cx| {
                                             Dispatcher::show_popup(
                                                 Popup::CloneRepository { url: None },
@@ -657,7 +664,7 @@ fn no_repositories(
                                     big_button(
                                         "nr-create",
                                         Octicon::Plus,
-                                        "Create a New Repository on your Local Drive…",
+                                        mac_or("Create a New Repository on your Local Drive…", "Create a New Repository on your local drive…"),
                                         |_, cx| {
                                             Dispatcher::show_popup(
                                                 Popup::CreateRepository { path: None },
@@ -675,7 +682,7 @@ fn no_repositories(
                                     big_button(
                                         "nr-add",
                                         Octicon::FileDirectory,
-                                        "Add an Existing Repository from your Local Drive…",
+                                        mac_or("Add an Existing Repository from your Local Drive…", "Add an Existing Repository from your local drive…"),
                                         |_, cx| {
                                             Dispatcher::show_popup(
                                                 Popup::AddExistingRepository { path: None },

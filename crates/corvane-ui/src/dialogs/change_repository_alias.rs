@@ -8,6 +8,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -70,7 +71,7 @@ impl Render for ChangeRepositoryAliasDialog {
             });
         dialog(
             "dialog-change-repository-alias",
-            format!("{verb} Repository Alias"),
+            format!("{verb} {}", mac_or("Repository Alias", "repository alias")),
             content,
             vec![
                 DialogButton {
@@ -82,7 +83,7 @@ impl Render for ChangeRepositoryAliasDialog {
                 },
                 DialogButton {
                     id: "alias-ok",
-                    label: format!("{verb} Alias").into(),
+                    label: format!("{verb} {}", mac_or("Alias", "alias")).into(),
                     primary: true,
                     disabled,
                     on_click: Box::new(move |_, cx| {

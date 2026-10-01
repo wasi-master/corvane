@@ -33,7 +33,7 @@ pub fn foldout_layer(
     // `#foldout-container` starts over the toolbar's 1 px bottom border: the
     // overlay dims it and the panel covers it
     let top = TITLE_BAR_HEIGHT() + TOOLBAR_HEIGHT() - zpx(1.);
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let panel: AnyElement = match foldout {
         Foldout::Repository => panels.repository.clone().into_any_element(),
         Foldout::Branch => panels.branch.clone().into_any_element(),
@@ -42,43 +42,47 @@ pub fn foldout_layer(
     };
     let full_height = foldout != Foldout::PushPull;
     deferred(
-        anchored().position(point(zpx(0.), top)).child(
-            div()
-                .id("foldout-container")
-                .relative()
-                .w(viewport.width)
-                .h(viewport.height - top)
-                .child(
-                    // `.overlay`: click anywhere outside the panel closes it
-                    div()
-                        .id("foldout-overlay")
-                        // the content underneath neither hovers nor scrolls
-                        // (GHD's `.overlay` div covers it)
-                        .occlude()
-                        .absolute()
-                        .inset_0()
-                        .bg(t.overlay)
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| Dispatcher::close_foldout(cx)),
-                )
-                .child(
-                    // `.foldout`
-                    div()
-                        .id("foldout")
-                        .absolute()
-                        .top_0()
-                        .when(full_height, |d| d.bottom_0())
-                        .left(panel_x)
-                        .w(panel_width)
-                        .flex()
-                        .flex_col()
-                        .bg(t.background)
-                        .text_color(t.text)
-                        .border_r_1()
-                        .border_color(t.box_border)
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                        .child(panel),
-                ),
-        ),
+        anchored()
+            .position(point(zpx(0.), top + crate::theme::page_top()))
+            .child(
+                div()
+                    .id("foldout-container")
+                    .relative()
+                    .w(viewport.width)
+                    .h(viewport.height - top)
+                    .child(
+                        // `.overlay`: click anywhere outside the panel closes it
+                        div()
+                            .id("foldout-overlay")
+                            // the content underneath neither hovers nor scrolls
+                            // (GHD's `.overlay` div covers it)
+                            .occlude()
+                            .absolute()
+                            .inset_0()
+                            .bg(t.overlay)
+                            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                                Dispatcher::close_foldout(cx)
+                            }),
+                    )
+                    .child(
+                        // `.foldout`
+                        div()
+                            .id("foldout")
+                            .absolute()
+                            .top_0()
+                            .when(full_height, |d| d.bottom_0())
+                            .left(panel_x)
+                            .w(panel_width)
+                            .flex()
+                            .flex_col()
+                            .bg(t.background)
+                            .text_color(t.text)
+                            .border_r_1()
+                            .border_color(t.box_border)
+                            .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                            .child(panel),
+                    ),
+            ),
     )
     .with_priority(10)
 }

@@ -14,6 +14,52 @@ use crate::theme::sizes::zpx;
 
 pub type MenuAction = Rc<dyn Fn(&mut Window, &mut App)>;
 
+/// GHD's `__DARWIN__`: menu labels are Title Case on macOS and Sentence
+/// case elsewhere.
+pub const IS_MAC: bool = cfg!(target_os = "macos");
+
+/// GHD `__DARWIN__ ? mac : other`.
+pub const fn mac_or(mac: &'static str, other: &'static str) -> &'static str {
+    if IS_MAC { mac } else { other }
+}
+
+/// Shared labels, as exported by GHD `app/src/ui/lib/context-menu.ts`.
+pub mod labels {
+    use super::mac_or;
+
+    /// `CopyFilePathLabel`
+    pub const COPY_FILE_PATH: &str = mac_or("Copy File Path", "Copy file path");
+    /// `CopyRelativeFilePathLabel`
+    pub const COPY_RELATIVE_FILE_PATH: &str =
+        mac_or("Copy Relative File Path", "Copy relative file path");
+    /// `CopySelectedPathsLabel`
+    pub const COPY_SELECTED_PATHS: &str = mac_or("Copy Paths", "Copy paths");
+    /// `CopySelectedRelativePathsLabel`
+    pub const COPY_SELECTED_RELATIVE_PATHS: &str =
+        mac_or("Copy Relative Paths", "Copy relative paths");
+    /// `DefaultEditorLabel`
+    pub const DEFAULT_EDITOR: &str = mac_or("Open in External Editor", "Open in external editor");
+    /// `DefaultShellLabel`
+    pub const DEFAULT_SHELL: &str = mac_or("Open in Shell", "Open in shell");
+    /// `RevealInFileManagerLabel`
+    pub const REVEAL_IN_FILE_MANAGER: &str = if cfg!(target_os = "macos") {
+        "Reveal in Finder"
+    } else if cfg!(target_os = "windows") {
+        "Show in Explorer"
+    } else {
+        "Show in your File Manager"
+    };
+    /// `OpenWithDefaultProgramLabel`
+    pub const OPEN_WITH_DEFAULT_PROGRAM: &str =
+        mac_or("Open with Default Program", "Open with default program");
+
+    /// `Open in ${externalEditorLabel}` (the same pattern on every platform;
+    /// the editor name is lower case only for the generic fallback).
+    pub fn open_in(app: &str) -> String {
+        format!("Open in {app}")
+    }
+}
+
 #[derive(Clone)]
 pub enum MenuItemKind {
     Action(MenuAction),

@@ -29,6 +29,28 @@ use gpui_kit::component::input::Input;
 
 const SCALE: f32 = 1.2;
 
+/// `#welcome`'s `--text-field-height` / `--button-height`:
+/// `--welcome-item-height` (29 px on macOS) × scale. GHD defines
+/// `--welcome-item-height` for darwin and win32 only, so on Linux both
+/// variables are invalid at computed-value time, `height` falls back to
+/// `auto`, and inputs and buttons size to their content: Noto Sans's
+/// `line-height: normal` at 16.8 px (23 px) + 5 px padding + 1 px border
+/// each side = 35 px (measured in GHD's Electron).
+const ITEM_HEIGHT: f32 = if cfg!(target_os = "macos") {
+    29. * SCALE
+} else {
+    35.
+};
+
+/// `#welcome select` at `--text-field-height`; on Linux (see
+/// [`ITEM_HEIGHT`]) its auto height is 23 px of text + Chromium's 1 px
+/// menulist padding + 1 px border each side = 27 px.
+const SELECT_HEIGHT: f32 = if cfg!(target_os = "macos") {
+    29. * SCALE
+} else {
+    27.
+};
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Step {
     Start,
@@ -272,7 +294,7 @@ impl WelcomeView {
                 on_select,
                 cx,
             )
-            .h(px(29. * SCALE))
+            .h(px(SELECT_HEIGHT))
             .rounded(BORDER_RADIUS())
             .bg(t.box_background)
             .text_size(px(WELCOME_FONT_MD)),
@@ -293,7 +315,7 @@ impl WelcomeView {
         // `#start`: at least the pane's height less its padding, content
         // centred above the footer (`.start-content { margin-top: 100px }`)
         div()
-            .min_h(window.viewport_size().height - px(80.))
+            .min_h(crate::theme::page_size(window).height - px(80.))
             .flex()
             .flex_col()
             .child(
@@ -303,7 +325,7 @@ impl WelcomeView {
                     .flex()
                     .flex_col()
                     .justify_center()
-                    .child(welcome_title(format!("Welcome to {name}")))
+                    .child(welcome_title_with_name("Welcome to", name.clone()))
                     .child(
                         welcome_text(format!(
                             "{name} is a seamless way to contribute to projects on GitHub and \
@@ -635,12 +657,30 @@ const WELCOME_FONT_MD: f32 = 14. * SCALE;
 /// `.welcome-title`: 42 px × scale, light, line-height 1.25, 10 px below.
 fn welcome_title(text: impl Into<SharedString>) -> Div {
     let text: SharedString = text.into();
+    welcome_title_box().child(text)
+}
+
+/// `.welcome-title` without its text.
+fn welcome_title_box() -> Div {
     div()
         .text_size(px(42. * SCALE))
         .line_height(px(42. * SCALE * 1.25))
         .font_weight(FontWeight::LIGHT)
         .mb(px(10.))
-        .child(text)
+}
+
+/// `Welcome to <span>{name}</span>`: `.welcome-title span` is an
+/// inline-block, so the product name moves to the next line as a whole
+/// (with a wider UI font than macOS's, e.g. Noto Sans on Linux, the title no
+/// longer fits on one line).
+fn welcome_title_with_name(prefix: &'static str, name: impl Into<SharedString>) -> Div {
+    let name: SharedString = name.into();
+    welcome_title_box()
+        .flex()
+        .flex_row()
+        .flex_wrap()
+        .child(div().whitespace_nowrap().child(format!("{prefix}\u{a0}")))
+        .child(div().whitespace_nowrap().child(name))
 }
 
 /// `.welcome-text`: 10 px vertical margins. In `.start-content` (a flex
@@ -679,7 +719,8 @@ fn welcome_field(label: &'static str, field: impl IntoElement, cx: &App) -> Div 
         .child(field)
 }
 
-/// `#welcome input`: `--text-field-height`, 5 px padding, 16.8 px text.
+/// `#welcome input`: `--text-field-height` ([`ITEM_HEIGHT`]), 5 px padding,
+/// 16.8 px text.
 fn welcome_text_box(
     id: &'static str,
     state: &Entity<InputState>,
@@ -690,7 +731,7 @@ fn welcome_text_box(
     let focused = state.read(cx).focus_handle(cx).is_focused(window);
     div()
         .id(id)
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .w_full()
         .flex()
         .items_center()
@@ -728,7 +769,7 @@ fn welcome_read_only_box(id: &'static str, state: &Entity<InputState>, cx: &App)
     let t = cx.ghd();
     div()
         .id(id)
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .w_full()
         .flex()
         .items_center()
@@ -871,7 +912,7 @@ fn welcome_button(id: &'static str, primary: bool, focused: bool, cx: &App) -> S
     div()
         .id(id)
         .flex_none()
-        .h(px(29. * SCALE))
+        .h(px(ITEM_HEIGHT))
         .flex()
         .flex_row()
         .items_center()
@@ -903,7 +944,7 @@ impl Render for WelcomeView {
             Step::Start => self.start(window, cx).into_any_element(),
             Step::ConfigureGit => self.configure_git(window, cx).into_any_element(),
         };
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let left_w = viewport.width * 0.6;
         let right_w = viewport.width - left_w;
         // `.welcome-right .welcome-graphic { height: 100%; object-fit: cover;

@@ -40,6 +40,15 @@ fn available() -> Availability {
     Availability::Available
 }
 
+/// A Linux-only deviation: on macOS GHD already behaves this way.
+fn linux_only() -> Availability {
+    if cfg!(target_os = "macos") {
+        Availability::BuiltIn("GitHub Desktop has this on macOS too.")
+    } else {
+        Availability::Available
+    }
+}
+
 fn packs_availability() -> Availability {
     if corvane_highlight::syntaxes::extended_bundled() {
         Availability::BuiltIn("This build compiles every grammar in.")
@@ -1887,14 +1896,29 @@ registry! {
         code: &["crates/corvane-ui/src/dialogs/simple.rs"],
     },
 
+    /// File › Install command line tool… on Linux.
+    LINUX_INSTALL_CLI = 414 "linux-install-cli" {
+        title: "Install command line tool on Linux",
+        summary: "File › Install command line tool… links the `corvane` command (`corvane open`, \
+                  `corvane clone`) into ~/.local/bin, as the macOS app menu item does.",
+        ghd_behaviour: "The command line tool can only be installed on macOS; Linux packages \
+                        ship it on their own or not at all.",
+        nature: Nature::Feature,
+        kind: Kind::Bool,
+        corvane: ON, ghd: OFF, familiar: ON, max: ON,
+        restart: false, visible: true, availability: linux_only,
+        upstream: &[],
+        code: &["crates/corvane/src/menus.rs", "crates/corvane-platform/src/cli.rs"],
+    },
+
     // ---- 500 Settings & updates ----
 
     /// Settings › Advanced › Save crash reports locally.
     CRASH_REPORTS = 501 "crash-reports" {
         title: "Save crash reports locally",
         summary: "Settings › Advanced offers \"Save crash reports locally\": a panic hook writes \
-                  ~/Library/Logs/Corvane/crashes/ and the next launch lists new reports. Nothing \
-                  is uploaded.",
+                  ~/Library/Logs/Corvane/crashes/ (Linux: ~/.local/state/corvane/crashes/) and \
+                  the next launch lists new reports. Nothing is uploaded.",
         ghd_behaviour: "No local crash reports (GHD's crash reporter uploads to GitHub instead).",
         nature: Nature::Feature,
         kind: Kind::Bool,

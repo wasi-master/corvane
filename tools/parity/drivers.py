@@ -19,16 +19,71 @@ from __future__ import annotations
 import base64
 import json
 import os
+import shlex
 import signal
 import socket
 import subprocess
+import sys
 import time
 import urllib.request
 from pathlib import Path
 
 import websocket
 
-GHD_APP = Path("/Applications/GitHub Desktop.app/Contents/MacOS/GitHub Desktop")
+IS_MAC = sys.platform == "darwin"
+
+# PARITY_GHD_APP overrides; on Linux, a GitHub Desktop 3.6.6 build (`yarn
+# build:prod` → dist/desktop-linux-x64/desktop) or a packaged github-desktop
+GHD_APP = Path(
+    os.environ.get("PARITY_GHD_APP")
+    or ("/Applications/GitHub Desktop.app/Contents/MacOS/GitHub Desktop" if IS_MAC else "/usr/bin/github-desktop")
+)
+# PARITY_OFFLINE=1: both apps without network (an unreachable proxy), so
+# avatars, emoji and API calls fail the same way in both
+OFFLINE = os.environ.get("PARITY_OFFLINE") == "1"
+DEAD_PROXY = "http://127.0.0.1:9"
+
+# Retina on the Macs the harness grew up on; X11 under Xvfb is 1x
+DEFAULT_SCALE = 2.0 if IS_MAC else 1.0
+
+
+# Scenarios place fixed points and rectangles on GHD's macOS page, which
+# starts with its 32 pt title bar (#desktop-app-title-bar); off macOS the
+# page has none (Electron's menu bar sits outside it). The page off macOS is
+# the macOS page's content below the title bar (scenario height minus 32),
+# so elements anchored to the top and to the bottom alike sit 32 higher.
+TITLE_BAR = 32.0 if not IS_MAC else 0.0
+
+
+def page_height(height: int) -> int:
+    """The page height that holds a scenario's macOS content area."""
+    return int(height - TITLE_BAR)
+
+
+def page_point(x: float, y: float) -> tuple[float, float]:
+    """A scenario's macOS page point on this platform's page."""
+    return float(x), max(0.0, float(y) - TITLE_BAR)
+
+
+def page_rect(rect):
+    """A scenario's macOS `[x, y, w, h]` on this platform's page (the part
+    over the title bar is dropped)."""
+    if not rect or not TITLE_BAR:
+        return rect
+    x, y, w, h = rect
+    top = y - TITLE_BAR
+    return [x, max(0.0, top), w, h + min(0.0, top)]
+
+
+def platform_keys(spec: str) -> str:
+    """Scenario chords say `cmd` for GHD's CmdOrCtrl: Ctrl off macOS."""
+    if IS_MAC or not spec:
+        return spec
+    return " ".join(
+        "-".join("ctrl" if part in ("cmd", "meta") else part for part in chord.split("-"))
+        if chord not in ("-",) else chord
+        for chord in spec.split(" ")
+    )
 
 # GHD menu-event names (app/src/main-process/menu/menu-event.ts) → Corvane
 # actions (crates/corvane-ui/src/actions.rs). GHD menu accelerators live in the
@@ -101,6 +156,7 @@ def free_port() -> int:
 
 
 def parse_mods(spec: str) -> dict:
+    spec = platform_keys(spec)
     parts = set(spec.replace("+", "-").split("-")) if spec else set()
     return {
         "cmd": bool(parts & {"cmd", "meta"}),
@@ -129,7 +185,7 @@ class Ghd:
         self.proc: subprocess.Popen | None = None
         self.ws = None
         self._id = 0
-        self.scale = 2.0
+        self.scale = DEFAULT_SCALE
 
     # -- process -----------------------------------------------------------
     def start(self, timeout: float = 30):
@@ -143,6 +199,14 @@ class Ghd:
                     # captures in sRGB, like Corvane's render_to_image; without it
                     # Chromium converts to the display profile (#1d2125 → #16191c)
                     "--force-color-profile=srgb",
+                    # Chromium refuses to run as root with its sandbox
+                    *(["--no-sandbox"] if not IS_MAC and os.geteuid() == 0 else []),
+                    # extra switches, e.g. `--proxy-server=127.0.0.1:9` to keep
+                    # GHD offline where its network would fail differently
+                    # from Corvane's (an intercepting proxy Chromium does not
+                    # trust opens an "Untrusted server" dialog)
+                    *shlex.split(os.environ.get("PARITY_GHD_ARGS", "")),
+                    *([f"--proxy-server={DEAD_PROXY}"] if OFFLINE else []),
                 ],
                 stdout=log,
                 stderr=log,
@@ -240,7 +304,10 @@ class Ghd:
         Electron has no `Browser.setWindowBounds`, but `window.resizeTo` on the
         main frame resizes the BrowserWindow. When the screen is too small for
         it, the viewport is emulated at the requested size instead."""
-        self.eval(f"window.resizeTo({width}, {height})")
+        # the frame around the page (Electron's menu bar on Linux, nothing
+        # with macOS's hidden title bar)
+        chrome = self.eval("[outerWidth - innerWidth, outerHeight - innerHeight]") or [0, 0]
+        self.eval(f"window.resizeTo({width + chrome[0]}, {height + chrome[1]})")
         deadline = time.time() + 3
         while time.time() < deadline:
             if self.eval(f"innerWidth === {width} && innerHeight === {height}"):
@@ -291,7 +358,8 @@ class Ghd:
     def pick_menu(self, label: str):
         found = self.eval(
             "(()=>{const find=(items,path)=>{for(let i=0;i<items.length;i++){const it=items[i];"
-            "if(it.label===%s&&it.enabled!==false)return path.concat(i);"
+            # scenarios name macOS labels; GHD's Linux ones are sentence case
+            "const L=%s;if((it.label===L||(it.label||'').toLowerCase()===L.toLowerCase())&&it.enabled!==false)return path.concat(i);"
             "if(it.submenu){const r=find(it.submenu,path.concat(i));if(r)return r;}}return null;};"
             "const p=find(window.__parityMenu||[],[]);if(p&&window.__parityMenuResolve){window.__parityMenuResolve(p);"
             "window.__parityMenu=null;}return p;})()" % json.dumps(label)
@@ -315,7 +383,7 @@ class Ghd:
     def resolve(self, target) -> tuple[float, float]:
         """`[x, y]`, `{css: sel}` or `{text: label}` (+ `offset`) → window point."""
         if isinstance(target, (list, tuple)):
-            return float(target[0]), float(target[1])
+            return page_point(target[0], target[1])
         if "css" in target:
             js = f"document.querySelector({json.dumps(target['css'])})"
         elif "contains" in target:
@@ -335,12 +403,24 @@ class Ghd:
             ) % (json.dumps(target["text"]), json.dumps(target.get("within", "body")))
         else:
             raise ValueError(f"bad target {target}")
-        rect = self.eval(f"(()=>{{const e={js};if(!e)return null;const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}})()")
+        rect = self._rect(js)
+        if not rect and ("text" in target or "contains" in target):
+            # scenarios name macOS labels; GHD's Linux ones are sentence case
+            key = "text" if "text" in target else "contains"
+            lowered = js.replace(json.dumps(target[key]), json.dumps(target[key].lower()), 1)
+            lowered = lowered.replace("e.textContent.trim()===t", "e.textContent.trim().toLowerCase()===t")
+            lowered = lowered.replace("c.textContent.trim()===t", "c.textContent.trim().toLowerCase()===t")
+            lowered = lowered.replace("e.textContent.includes(t)", "e.textContent.toLowerCase().includes(t)")
+            lowered = lowered.replace("c.textContent.includes(t)", "c.textContent.toLowerCase().includes(t)")
+            rect = self._rect(lowered)
         if not rect:
             raise LookupError(f"GHD element not found: {target}")
         ox, oy = target.get("offset", [0, 0])
         ax, ay = target.get("anchor", [0.5, 0.5])
         return rect[0] + rect[2] * ax + ox, rect[1] + rect[3] * ay + oy
+
+    def _rect(self, js: str):
+        return self.eval(f"(()=>{{const e={js};if(!e)return null;const r=e.getBoundingClientRect();return [r.x,r.y,r.width,r.height]}})()")
 
     def describe(self, x: float, y: float) -> str:
         """CSS path of the element at a point (for diff regions)."""
@@ -425,7 +505,7 @@ class Ghd:
         self.call("Input.dispatchMouseEvent", type="mouseWheel", x=x, y=y, deltaX=dx, deltaY=dy)
 
     def key(self, keys: str):
-        for chord in keys.split():
+        for chord in platform_keys(keys).split():
             parts = chord.split("-")
             base = parts[-1] if parts[-1] != "" else "-"
             m = parse_mods("-".join(parts[:-1]))
@@ -433,7 +513,8 @@ class Ghd:
             if base in _KEYS:
                 k, code, vk, command = _KEYS[base]
                 params.update(key=k, code=code, windowsVirtualKeyCode=vk)
-                if command and not m["cmd"]:
+                # editing commands are AppKit's; Chromium elsewhere acts on the key
+                if command and not m["cmd"] and IS_MAC:
                     params["commands"] = [command]
                 if base == "enter":
                     params["text"] = "\r"
@@ -444,7 +525,7 @@ class Ghd:
                 vk = ord(base.upper()) if len(base) == 1 else 0
                 code = f"Key{base.upper()}" if base.isalpha() and len(base) == 1 else (f"Digit{base}" if base.isdigit() else "")
                 params.update(key=ch, code=code, windowsVirtualKeyCode=vk)
-                if m["cmd"] and base in _CMD_COMMANDS:
+                if m["cmd"] and base in _CMD_COMMANDS and IS_MAC:
                     params["commands"] = [_CMD_COMMANDS[base] if not (base == "z" and m["shift"]) else "redo"]
                 elif not (m["cmd"] or m["ctrl"]):
                     params["text"] = ch
@@ -481,7 +562,7 @@ class Corvane:
         self.proc: subprocess.Popen | None = None
         self.sock = None
         self.file = None
-        self.scale = 2.0
+        self.scale = DEFAULT_SCALE
 
     def start(self, timeout: float = 20, extra_env: dict | None = None):
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -495,6 +576,14 @@ class Corvane:
             # (.docs/flags.md); PARITY_CORVANE_FLAGS overrides
             CORVANE_FLAGS=env.get("PARITY_CORVANE_FLAGS", "preset=github-desktop"),
         )
+        if not IS_MAC:
+            # the avatar and emoji caches live under XDG_CACHE_HOME, not the
+            # data dir: a private one keeps earlier runs' downloads out
+            env["XDG_CACHE_HOME"] = str(self.data_dir / "cache")
+        if OFFLINE:
+            for key in ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"):
+                env[key] = DEAD_PROXY
+            env["NO_PROXY"] = env["no_proxy"] = "localhost,127.0.0.1"
         env.update(extra_env or {})
         with open(self.log, "ab") as log:
             self.proc = subprocess.Popen([str(self.binary)], env=env, stdout=log, stderr=log, start_new_session=True)
@@ -504,7 +593,7 @@ class Corvane:
                 self.sock = socket.create_connection(("127.0.0.1", self.port), timeout=60)
                 self.file = self.sock.makefile("rw")
                 info = self.cmd("ping")
-                self.scale = info.get("scale", 2.0)
+                self.scale = info.get("scale", DEFAULT_SCALE)
                 # CORVANE_THEME only overrides the look; store the setting too,
                 # as GHD's fixture does (Settings › Appearance shows it)
                 self.hook("theme", self.theme)
@@ -556,17 +645,17 @@ class Corvane:
         return self.cmd("ping")
 
     def move(self, x, y, mods="", pressed=False):
-        self.cmd("move", x=x, y=y, mods=mods, pressed=pressed)
+        self.cmd("move", x=x, y=y, mods=platform_keys(mods), pressed=pressed)
 
     def down(self, x, y, button="left", clicks=1, mods=""):
-        self.cmd("down", x=x, y=y, button=button, clicks=clicks, mods=mods)
+        self.cmd("down", x=x, y=y, button=button, clicks=clicks, mods=platform_keys(mods))
 
     def up(self, x, y, button="left", clicks=1, mods=""):
-        self.cmd("up", x=x, y=y, button=button, clicks=clicks, mods=mods)
+        self.cmd("up", x=x, y=y, button=button, clicks=clicks, mods=platform_keys(mods))
 
     def click(self, x, y, button="left", clicks=1, mods=""):
         for n in range(1, clicks + 1):
-            self.cmd("click", x=x, y=y, button=button, clicks=n, mods=mods)
+            self.cmd("click", x=x, y=y, button=button, clicks=n, mods=platform_keys(mods))
 
     def drag(self, x, y, x2, y2, steps=10):
         self.cmd("drag", x=x, y=y, x2=x2, y2=y2, steps=steps)
@@ -575,7 +664,7 @@ class Corvane:
         self.cmd("scroll", x=x, y=y, dx=dx, dy=dy)
 
     def key(self, keys: str):
-        self.cmd("key", keys=keys)
+        self.cmd("key", keys=platform_keys(keys))
 
     def type(self, text: str):
         self.cmd("type", text=text)

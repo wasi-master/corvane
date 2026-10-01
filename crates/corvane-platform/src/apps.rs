@@ -71,15 +71,21 @@ pub fn spawn_detached(program: impl AsRef<Path>, args: &[&str]) -> std::io::Resu
         .map(drop)
 }
 
-/// `open -a <app bundle> <target>`
+/// `open -a <app bundle> <target>` (Linux: `app` is the executable, run
+/// with `target`).
 pub fn open_with_app(app: &Path, target: &Path) -> std::io::Result<()> {
-    spawn_detached(
-        "/usr/bin/open",
-        &["-a", &app.to_string_lossy(), &target.to_string_lossy()],
-    )
+    if cfg!(target_os = "macos") {
+        spawn_detached(
+            "/usr/bin/open",
+            &["-a", &app.to_string_lossy(), &target.to_string_lossy()],
+        )
+    } else {
+        spawn_detached(app, &[&target.to_string_lossy()])
+    }
 }
 
 /// `open -b <bundle id> <target>`
+#[cfg(target_os = "macos")]
 pub fn open_with_bundle(bundle_id: &str, target: &Path) -> std::io::Result<()> {
     spawn_detached(
         "/usr/bin/open",
@@ -87,12 +93,68 @@ pub fn open_with_bundle(bundle_id: &str, target: &Path) -> std::io::Result<()> {
     )
 }
 
-#[cfg(test)]
+/// Electron's `shell.showItemInFolder` on Linux (GHD `revealInFileManager`,
+/// `platform_util_linux.cc`): `org.freedesktop.FileManager1.ShowItems` with
+/// the item's URI so the file manager opens its folder with it selected;
+/// without a file manager service, `xdg-open` on the folder.
+#[cfg(not(target_os = "macos"))]
+pub fn show_item_in_folder(path: &Path) -> std::io::Result<()> {
+    let shown = zbus::blocking::Connection::session().and_then(|bus| {
+        bus.call_method(
+            Some("org.freedesktop.FileManager1"),
+            "/org/freedesktop/FileManager1",
+            Some("org.freedesktop.FileManager1"),
+            "ShowItems",
+            &(vec![file_uri(path)], ""),
+        )
+        .map(drop)
+    });
+    match shown {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            tracing::debug!(%err, "no FileManager1 service; opening the folder");
+            let dir = if path.is_dir() {
+                path
+            } else {
+                path.parent().unwrap_or(path)
+            };
+            spawn_detached("xdg-open", &[&dir.to_string_lossy()])
+        }
+    }
+}
+
+/// `file://` URI with every byte outside RFC 3986's unreserved set and `/`
+/// percent-encoded (what GLib's `g_filename_to_uri` produces).
+#[cfg(not(target_os = "macos"))]
+pub fn file_uri(path: &Path) -> String {
+    use std::os::unix::ffi::OsStrExt;
+    let mut uri = String::from("file://");
+    for &b in path.as_os_str().as_bytes() {
+        if b.is_ascii_alphanumeric() || b"-._~/".contains(&b) {
+            uri.push(b as char);
+        } else {
+            uri.push_str(&format!("%{b:02X}"));
+        }
+    }
+    uri
+}
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod linux_tests {
+    #[test]
+    fn file_uris_are_escaped() {
+        assert_eq!(
+            super::file_uri(std::path::Path::new("/home/a b/ü#.txt")),
+            "file:///home/a%20b/%C3%BC%23.txt"
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(target_os = "macos")]
     fn finds_finder_and_misses_nonsense() {
         let finder = app_path_for_bundle_id("com.apple.finder");
         assert!(finder.is_some_and(|p| p.ends_with("Finder.app")));

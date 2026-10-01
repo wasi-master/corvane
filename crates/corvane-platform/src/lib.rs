@@ -1,5 +1,6 @@
-//! OS integration. macOS first; every function here is the seam for
-//! Windows/Linux later.
+//! OS integration: macOS and Linux (freedesktop: XDG base directories,
+//! D-Bus services, `xdg-open`). Every function here is the seam for Windows
+//! later.
 
 /// `CFBundleIdentifier` of the app bundle (keychain service, notification
 /// settings deep link, GPUI `app_id`).
@@ -18,46 +19,74 @@ pub mod locale;
 pub mod notifications;
 pub mod services;
 pub mod shells;
+#[cfg(not(target_os = "macos"))]
+pub mod single_instance;
 pub mod spell;
 pub mod trash;
 pub mod updater;
+pub mod url_schemes;
 
 pub mod paths {
     use std::path::PathBuf;
 
     pub const APP_NAME: &str = "Corvane";
 
-    /// `~/Library/Application Support/Corvane`, or `CORVANE_DATA_DIR` (an
-    /// isolated store for test harnesses such as `tools/parity`).
+    /// The per-app folder name inside the OS's data, cache and log
+    /// directories: `Corvane` on macOS, `corvane` under the XDG base
+    /// directories on Linux (freedesktop convention).
+    #[cfg(target_os = "macos")]
+    const DIR_NAME: &str = APP_NAME;
+    #[cfg(not(target_os = "macos"))]
+    const DIR_NAME: &str = "corvane";
+
+    fn home() -> PathBuf {
+        dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))
+    }
+
+    /// `~/Library/Application Support/Corvane` (Linux: `$XDG_DATA_HOME/corvane`,
+    /// `~/.local/share/corvane`), or `CORVANE_DATA_DIR` (an isolated store for
+    /// test harnesses such as `tools/parity`).
     pub fn app_support_dir() -> PathBuf {
         if let Some(dir) = std::env::var_os("CORVANE_DATA_DIR") {
             return PathBuf::from(dir);
         }
         dirs::data_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(APP_NAME)
+            .unwrap_or_else(|| home().join(".local/share"))
+            .join(DIR_NAME)
     }
 
-    /// `~/Library/Logs/Corvane`
+    /// `~/Library/Logs/Corvane` (Linux: `$XDG_STATE_HOME/corvane/logs`,
+    /// `~/.local/state/corvane/logs`; under `CORVANE_DATA_DIR` when set so a
+    /// harness instance keeps its logs to itself).
     pub fn logs_dir() -> PathBuf {
         #[cfg(target_os = "macos")]
         {
-            dirs::home_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("Library/Logs")
-                .join(APP_NAME)
+            home().join("Library/Logs").join(DIR_NAME)
         }
         #[cfg(not(target_os = "macos"))]
         {
-            app_support_dir().join("logs")
+            if let Some(dir) = std::env::var_os("CORVANE_DATA_DIR") {
+                return PathBuf::from(dir).join("logs");
+            }
+            state_dir().join("logs")
         }
     }
 
-    /// `~/Library/Caches/Corvane`
+    /// `$XDG_STATE_HOME/corvane` (`~/.local/state/corvane`): logs and crash
+    /// reports, which the XDG spec files under state rather than data.
+    #[cfg(not(target_os = "macos"))]
+    pub fn state_dir() -> PathBuf {
+        dirs::state_dir()
+            .unwrap_or_else(|| home().join(".local/state"))
+            .join(DIR_NAME)
+    }
+
+    /// `~/Library/Caches/Corvane` (Linux: `$XDG_CACHE_HOME/corvane`,
+    /// `~/.cache/corvane`)
     pub fn cache_dir() -> PathBuf {
         dirs::cache_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(APP_NAME)
+            .unwrap_or_else(|| home().join(".cache"))
+            .join(DIR_NAME)
     }
 
     /// GitHub Desktop's default clone location: `~/Documents/GitHub`.
@@ -88,7 +117,8 @@ pub mod fonts {
     /// resolves to: SF Mono only when it is installed as a regular font
     /// (Apple's download puts `SF-Mono-*.otf` in a Fonts folder; the copy
     /// inside Terminal.app is not visible to Chromium), otherwise Menlo.
-    pub fn ghd_monospace_family() -> &'static str {
+    #[cfg(target_os = "macos")]
+    pub fn ghd_monospace_family() -> String {
         let dirs = [
             Some(std::path::PathBuf::from("/Library/Fonts")),
             dirs::home_dir().map(|h| h.join("Library/Fonts")),
@@ -102,6 +132,89 @@ pub mod fonts {
                 })
             })
         });
-        if installed { "SF Mono" } else { "Menlo" }
+        if installed { "SF Mono" } else { "Menlo" }.to_string()
+    }
+
+    /// Linux Chromium resolves the same stack through fontconfig: the first
+    /// named family that is installed as itself (fontconfig substitutes only
+    /// for the generic `monospace`), else what `monospace` matches
+    /// (DejaVu Sans Mono on a stock Ubuntu).
+    #[cfg(not(target_os = "macos"))]
+    pub fn ghd_monospace_family() -> String {
+        [
+            "SFMono-Regular",
+            "SF Mono",
+            "Consolas",
+            "Liberation Mono",
+            "Menlo",
+        ]
+        .into_iter()
+        .find(|family| fc_match(family).is_some_and(|m| m.eq_ignore_ascii_case(family)))
+        .map(str::to_string)
+        .or_else(|| fc_match("monospace"))
+        .unwrap_or_else(|| "DejaVu Sans Mono".to_string())
+    }
+
+    /// The family GHD's `--font-family-sans-serif` stack (`system-ui,
+    /// -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica,
+    /// Arial, sans-serif, …`) resolves to in Chromium on Linux: `system-ui`
+    /// is the desktop's UI font (GTK's `gtk-font-name`, fontconfig's
+    /// `sans-serif` without a desktop), and the named families after it only
+    /// count when installed as themselves.
+    #[cfg(not(target_os = "macos"))]
+    pub fn ghd_ui_family() -> String {
+        fc_match("sans-serif")
+            .or_else(|| {
+                ["Noto Sans", "Helvetica", "Arial"]
+                    .into_iter()
+                    .find(|family| fc_match(family).is_some_and(|m| m.eq_ignore_ascii_case(family)))
+                    .map(str::to_string)
+            })
+            .unwrap_or_else(|| "DejaVu Sans".to_string())
+    }
+
+    /// Whether Chromium would draw text with subpixel antialiasing: its
+    /// Linux font render params come from GTK, whose `gtk-xft-rgba` is the
+    /// desktop's XSETTINGS (GNOME: `font-antialiasing` 'rgba') or the
+    /// `Xft.rgba` X resource, and "none" (grayscale) otherwise. fontconfig's
+    /// own `rgba` is not consulted.
+    #[cfg(not(target_os = "macos"))]
+    pub fn subpixel_antialiasing() -> bool {
+        let gnome = std::process::Command::new("gsettings")
+            .args(["get", "org.gnome.desktop.interface", "font-antialiasing"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| {
+                String::from_utf8_lossy(&o.stdout)
+                    .trim()
+                    .trim_matches('\'')
+                    .to_string()
+            });
+        if let Some(mode) = gnome {
+            return mode == "rgba";
+        }
+        std::process::Command::new("xrdb")
+            .arg("-query")
+            .output()
+            .ok()
+            .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+            .is_some_and(|resources| {
+                resources.lines().any(|line| {
+                    line.strip_prefix("Xft.rgba:")
+                        .is_some_and(|v| matches!(v.trim(), "rgb" | "bgr" | "vrgb" | "vbgr"))
+                })
+            })
+    }
+
+    /// `fc-match -f '%{family[0]}' <pattern>`: the family fontconfig picks.
+    #[cfg(not(target_os = "macos"))]
+    fn fc_match(pattern: &str) -> Option<String> {
+        let out = std::process::Command::new("fc-match")
+            .args(["-f", "%{family[0]}", pattern])
+            .output()
+            .ok()?;
+        let family = String::from_utf8(out.stdout).ok()?.trim().to_string();
+        (out.status.success() && !family.is_empty()).then_some(family)
     }
 }

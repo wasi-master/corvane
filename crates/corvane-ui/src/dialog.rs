@@ -4,7 +4,8 @@
 //! Accessibility: the box is a `Dialog` node labelled with its title, and the
 //! open dialog's title becomes the window title (VoiceOver reads it as the
 //! `AXWindow` title; the title bar itself is hidden) until the dialog closes
-//! (`DialogHost` restores "Corvane").
+//! (`DialogHost` restores "Corvane"). Linux keeps the app name in its
+//! visible title bar, as Electron does; AT-SPI reads the `Dialog` node.
 
 use gpui_kit::prelude::*;
 use gpui_kit::*;
@@ -26,8 +27,11 @@ thread_local! {
         const { std::cell::RefCell::new(SharedString::new_static(APP_WINDOW_TITLE)) };
 }
 
-/// Set the window title unless it already is `title`.
+/// Set the window title unless it already is `title` (macOS only).
 pub fn sync_window_title(title: &SharedString, window: &mut Window) {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
     let changed = WINDOW_TITLE.with(|current| {
         let mut current = current.borrow_mut();
         if *current == *title {
@@ -92,6 +96,16 @@ impl Default for DialogFrame {
             focus_close: false,
         }
     }
+}
+
+/// GHD `OkCancelButtonGroup.renderButtons`: Cancel then OK on macOS, OK
+/// then Cancel elsewhere. Dialogs list their footer buttons in the macOS
+/// order; this puts them in the platform's.
+pub fn ok_cancel_order<T>(mut buttons: Vec<T>) -> Vec<T> {
+    if !cfg!(target_os = "macos") {
+        buttons.reverse();
+    }
+    buttons
 }
 
 pub struct DialogButton {
@@ -467,9 +481,9 @@ fn dialog_impl(
         focus_primary,
         focus_close,
     } = frame;
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     deferred(
-        anchored().position(point(zpx(0.), zpx(0.))).child(
+        anchored().position(crate::theme::page_origin()).child(
             div()
                 .id(id)
                 // modal: the views underneath get no hover, clicks or wheel
@@ -605,46 +619,53 @@ fn dialog_impl(
                                             .flex_row()
                                             .justify_end()
                                             .gap(SPACING_HALF())
-                                            .children(buttons.into_iter().map(|b| {
-                                                let on_click = b.on_click;
-                                                let disabled = b.disabled;
-                                                if b.primary {
-                                                    let button = crate::widgets::primary_button(
-                                                        b.id, b.label, disabled, cx,
-                                                    )
-                                                    .min_w(zpx(120.))
-                                                    .when(focus_primary, |d| {
-                                                        d.bg(t.button_hover_background)
-                                                    })
-                                                    .when(!disabled, |d| {
-                                                        d.on_click(move |_, window, cx| {
-                                                            on_click(window, cx)
-                                                        })
-                                                    });
-                                                    div()
-                                                        .relative()
-                                                        .when(focus_primary, |d| {
-                                                            d.child(crate::widgets::focus_ring(cx))
-                                                        })
-                                                        .child(button)
-                                                        .into_any_element()
-                                                } else {
-                                                    if disabled {
-                                                        crate::widgets::button_disabled(
-                                                            b.id, b.label, cx,
-                                                        )
+                                            .children(ok_cancel_order(buttons).into_iter().map(
+                                                |b| {
+                                                    let on_click = b.on_click;
+                                                    let disabled = b.disabled;
+                                                    if b.primary {
+                                                        let button =
+                                                            crate::widgets::primary_button(
+                                                                b.id, b.label, disabled, cx,
+                                                            )
+                                                            .min_w(zpx(120.))
+                                                            .when(focus_primary, |d| {
+                                                                d.bg(t.button_hover_background)
+                                                            })
+                                                            .when(!disabled, |d| {
+                                                                d.on_click(move |_, window, cx| {
+                                                                    on_click(window, cx)
+                                                                })
+                                                            });
+                                                        div()
+                                                            .relative()
+                                                            .when(focus_primary, |d| {
+                                                                d.child(crate::widgets::focus_ring(
+                                                                    cx,
+                                                                ))
+                                                            })
+                                                            .child(button)
+                                                            .into_any_element()
                                                     } else {
-                                                        crate::widgets::button(b.id, b.label, cx)
-                                                    }
-                                                    .min_w(zpx(120.))
-                                                    .when(!disabled, |d| {
-                                                        d.on_click(move |_, window, cx| {
-                                                            on_click(window, cx)
+                                                        if disabled {
+                                                            crate::widgets::button_disabled(
+                                                                b.id, b.label, cx,
+                                                            )
+                                                        } else {
+                                                            crate::widgets::button(
+                                                                b.id, b.label, cx,
+                                                            )
+                                                        }
+                                                        .min_w(zpx(120.))
+                                                        .when(!disabled, |d| {
+                                                            d.on_click(move |_, window, cx| {
+                                                                on_click(window, cx)
+                                                            })
                                                         })
-                                                    })
-                                                    .into_any_element()
-                                                }
-                                            })),
+                                                        .into_any_element()
+                                                    }
+                                                },
+                                            )),
                                     ),
                             )
                         }),

@@ -219,7 +219,15 @@ fn golden_spans() {
         let spans = treesitter::highlight(&name, &lines, corvane_highlight::MAX_HIGHLIGHT_BYTES)
             .unwrap_or_else(|| panic!("{name}: no tree-sitter spans"));
         let got = render(&lines, &spans);
-        let path = expected_dir.join(format!("{name}.spans"));
+        // a sample whose output depends on the C library (the cmake
+        // scanner's `iswspace` recovery after non-ASCII text differs
+        // between macOS and glibc) has a golden per OS
+        let per_os = expected_dir.join(format!("{name}.{}.spans", std::env::consts::OS));
+        let path = if per_os.exists() {
+            per_os
+        } else {
+            expected_dir.join(format!("{name}.spans"))
+        };
         if update {
             std::fs::write(&path, &got).expect("write golden");
         } else if std::fs::read_to_string(&path).ok().as_deref() != Some(got.as_str()) {

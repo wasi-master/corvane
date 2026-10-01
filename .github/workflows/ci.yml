@@ -2,7 +2,7 @@ name: CI
 
 # macOS runners are scarce, so a push only runs what it has to: docs-only
 # changes skip CI, a newer push to the same branch cancels the older run,
-# rustfmt fails fast on Linux before a macOS runner is taken, and the release
+# rustfmt fails fast on Linux before a macOS or Linux runner is taken, and the release
 # build + bundle run only on demand (Actions → CI → Run workflow). Tags build
 # and bundle in release.yml.
 
@@ -104,3 +104,58 @@ jobs:
         with:
           name: Corvane.app
           path: target/bundle/Corvane.app.zip
+
+  linux:
+    name: clippy · test (Linux)
+    needs: fmt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      # GPUI's X11 / Wayland backends; mold is the linker .cargo/config.toml
+      # sets for x86_64 Linux
+      - name: system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang mold pkg-config \
+            libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev \
+            libfontconfig-dev libfreetype-dev libvulkan-dev \
+            gnome-keyring dbus-x11 zip unzip hunspell-en-us
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cache grammar sources
+        id: grammar-src
+        uses: actions/cache@v4
+        with:
+          path: target/grammar-src
+          key: grammar-src-${{ hashFiles('tools/ts-queries/languages.toml', 'tools/ts-queries/sources.lock.json') }}
+      - name: fetch grammar sources (tree-sitter CLI generates the ones without parser.c)
+        if: steps.grammar-src.outputs.cache-hit != 'true'
+        run: |
+          cargo install tree-sitter-cli --version 0.27.0 --locked --root "$RUNNER_TEMP/ts-cli"
+          CORVANE_TREE_SITTER="$RUNNER_TEMP/ts-cli/bin/tree-sitter" python3 tools/ts-queries/fetch.py
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      # the keyring and notification tests talk to a session bus
+      - name: test
+        run: dbus-run-session -- cargo test --workspace
+      # account tokens go through the secret service, never to disk in plain text
+      - name: keyring round trip (gnome-keyring)
+        run: dbus-run-session -- packaging/linux/keyring-test.sh
+      # the .deb layout from a debug binary (release.yml packages the
+      # release build); `cargo test` builds no binary for a crate without
+      # integration tests
+      - name: package smoke test (.deb)
+        run: |
+          cargo build -p corvane
+          PACKAGE_BIN=target/debug/corvane packaging/linux/package.sh
+          deb="$(ls target/linux/corvane_*_amd64.deb)"
+          dpkg-deb --info "$deb"
+          dpkg-deb --contents "$deb" | grep -E 'usr/lib/corvane/corvane$|usr/lib/corvane/bin/corvane$|usr/bin/corvane -> |applications/com.wasimaster.corvane.desktop$'
+          CORVANE_CLI_DRY_RUN=1 packaging/linux/corvane.sh open . | grep -q '^x-corvane://openLocalRepo/'
+

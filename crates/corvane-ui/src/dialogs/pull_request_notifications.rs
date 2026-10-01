@@ -38,6 +38,7 @@ use gpui_kit::*;
 use crate::ci_check_popover::{
     RerunChecks, RerunJob, check_run_group_header, check_run_row, check_run_steps, rerun_button,
 };
+use crate::context_menu::mac_or;
 use crate::icons::{Octicon, octicon};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
@@ -96,9 +97,12 @@ fn switch_title(
     should_checkout_branch: bool,
 ) -> Option<&'static str> {
     if should_change_repository {
-        Some("Switch to Repository and Pull Request")
+        Some(mac_or(
+            "Switch to Repository and Pull Request",
+            "Switch to repository and pull request",
+        ))
     } else if should_checkout_branch {
-        Some("Switch to Pull Request")
+        Some(mac_or("Switch to Pull Request", "Switch to pull request"))
     } else {
         None
     }
@@ -120,10 +124,10 @@ fn frame(
     cx: &App,
 ) -> impl IntoElement + use<> {
     let t = cx.ghd();
-    let viewport = window.viewport_size();
+    let viewport = crate::theme::page_size(window);
     let close = |_: &mut Window, cx: &mut App| Dispatcher::close_popup(cx);
     deferred(
-        anchored().position(point(zpx(0.), zpx(0.))).child(
+        anchored().position(crate::theme::page_origin()).child(
             div()
                 .id(id)
                 // modal: nothing underneath takes hover, clicks or wheel
@@ -204,28 +208,32 @@ fn frame(
     .with_priority(20)
 }
 
-/// `OkCancelButtonGroup` (macOS order: Cancel, then OK on the right).
+/// `OkCancelButtonGroup` (Cancel, then OK on the right on macOS; OK first
+/// elsewhere, `crate::dialog::ok_cancel_order`).
 fn ok_cancel(
     ok: SharedString,
     cancel: Option<SharedString>,
     on_ok: impl Fn(&mut Window, &mut App) + 'static,
     cx: &App,
 ) -> Div {
+    let cancel = cancel.map(|label| {
+        button("notification-cancel", label, cx)
+            .min_w(zpx(120.))
+            .on_click(|_, _, cx| Dispatcher::close_popup(cx))
+            .into_any_element()
+    });
+    let ok = primary_button("notification-ok", ok, false, cx)
+        .min_w(zpx(120.))
+        .on_click(move |_, window, cx| on_ok(window, cx))
+        .into_any_element();
     div()
         .flex_none()
         .flex()
         .flex_row()
         .gap(SPACING_HALF())
-        .children(cancel.map(|label| {
-            button("notification-cancel", label, cx)
-                .min_w(zpx(120.))
-                .on_click(|_, _, cx| Dispatcher::close_popup(cx))
-        }))
-        .child(
-            primary_button("notification-ok", ok, false, cx)
-                .min_w(zpx(120.))
-                .on_click(move |_, window, cx| on_ok(window, cx)),
-        )
+        .children(crate::dialog::ok_cancel_order(
+            cancel.into_iter().chain([ok]).collect(),
+        ))
 }
 
 /// A dashed `.timeline-line` (1 × 24 px): `top` fades in
@@ -465,7 +473,7 @@ impl CommentLike {
                 div().flex_1().flex().items_center().child(
                     link_button(
                         SharedString::from(format!("{}-open-in-browser", self.id)),
-                        "Open in Browser",
+                        mac_or("Open in Browser", "Open in browser"),
                         cx,
                     )
                     .on_click(move |_, _, cx| Dispatcher::open_url(&external, cx)),
@@ -824,9 +832,12 @@ impl Render for PullRequestChecksFailedDialog {
             )))
             .child(ok_cancel(
                 if self.should_change_repository {
-                    "Switch to Repository and Pull Request"
+                    mac_or(
+                        "Switch to Repository and Pull Request",
+                        "Switch to repository and pull request",
+                    )
                 } else {
-                    "Switch to Pull Request"
+                    mac_or("Switch to Pull Request", "Switch to pull request")
                 }
                 .into(),
                 Some("Dismiss".into()),

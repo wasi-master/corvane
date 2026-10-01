@@ -44,6 +44,14 @@ use crate::dispatcher::Dispatcher;
 use crate::persistence::StoreExt;
 use crate::state::{Popup, RetryAction};
 
+/// GHD `app-store.ts` progress title after a fetch/pull/push
+/// (`Refreshing ${__DARWIN__ ? 'Repository' : 'repository'}`).
+const REFRESHING_REPOSITORY: &str = if cfg!(target_os = "macos") {
+    "Refreshing Repository"
+} else {
+    "Refreshing repository"
+};
+
 /// GHD `Progress` for the push/pull button.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PushPullProgress {
@@ -616,7 +624,7 @@ impl Dispatcher {
                 if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
-                        title: "Refreshing Repository".into(),
+                        title: REFRESHING_REPOSITORY.into(),
                         description: Some("Fast-forwarding branches".into()),
                         value: 0.9,
                     });
@@ -853,7 +861,7 @@ impl Dispatcher {
                 if result.is_ok() {
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
-                        title: "Refreshing Repository".into(),
+                        title: REFRESHING_REPOSITORY.into(),
                         description: Some("Fast-forwarding branches".into()),
                         value: 0.9,
                     });
@@ -1203,7 +1211,7 @@ impl Dispatcher {
                     );
                     report(PushPullProgress {
                         kind: PushPullKind::Generic,
-                        title: "Refreshing Repository".into(),
+                        title: REFRESHING_REPOSITORY.into(),
                         description: Some("Fast-forwarding branches".into()),
                         value: 0.9,
                     });

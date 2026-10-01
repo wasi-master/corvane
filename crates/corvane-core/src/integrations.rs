@@ -224,7 +224,8 @@ impl Dispatcher {
                         Self::show_editor_error(
                             editors::EditorError {
                                 message: format!(
-                                    "{message} Please open Settings and check your custom editor."
+                                    "{message} Please open {} and check your custom editor.",
+                                    corvane_platform::editors::SETTINGS_LABEL
                                 ),
                                 suggest_default_editor: false,
                                 open_preferences: true,
@@ -311,7 +312,8 @@ impl Dispatcher {
                         Self::show_popup(
                             Popup::ShellError {
                                 message: format!(
-                                    "{message} Please open Settings and check your custom shell."
+                                    "{message} Please open {} and check your custom shell.",
+                                    corvane_platform::editors::SETTINGS_LABEL
                                 ),
                             },
                             cx,
@@ -331,7 +333,8 @@ impl Dispatcher {
             Self::show_popup(
                 Popup::ShellError {
                     message: format!(
-                        "Could not find shell '{selected}'. Please open Settings and choose an installed shell."
+                        "Could not find shell '{selected}'. Please open {} and choose an installed shell.",
+                        corvane_platform::editors::SETTINGS_LABEL
                     ),
                 },
                 cx,
@@ -368,6 +371,20 @@ impl Dispatcher {
             .trim()
             .to_string();
         if app.is_empty() {
+            // Linux: Electron's route (FileManager1, then xdg-open), which
+            // works without a desktop portal too
+            #[cfg(not(target_os = "macos"))]
+            {
+                let path = path.to_path_buf();
+                cx.background_executor()
+                    .spawn(async move {
+                        if let Err(err) = corvane_platform::apps::show_item_in_folder(&path) {
+                            warn!(%err, path = %path.display(), "could not show the item");
+                        }
+                    })
+                    .detach();
+            }
+            #[cfg(target_os = "macos")]
             cx.reveal_path(path);
             return;
         }
@@ -875,7 +892,12 @@ impl Dispatcher {
             },
             move |errors, cx| {
                 if !errors.is_empty() {
-                    Self::show_error("Repository Settings", errors.join("\n"), cx);
+                    let title = if cfg!(target_os = "macos") {
+                        "Repository Settings"
+                    } else {
+                        "Repository settings"
+                    };
+                    Self::show_error(title, errors.join("\n"), cx);
                 }
                 Self::refresh_repository(id, cx);
             },

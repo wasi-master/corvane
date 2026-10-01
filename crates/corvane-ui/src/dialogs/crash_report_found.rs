@@ -1,7 +1,8 @@
 //! "Corvane quit unexpectedly last time" (Corvane addition, no GHD
 //! counterpart: GHD reports crashes itself and shows `crash/crash-app.tsx`).
 //! Lists the file names of the reports the previous session left
-//! (`corvane_core::crash_reports`); "Reveal in Finder" shows the newest one.
+//! (`corvane_core::crash_reports`); "Reveal in Finder" (GHD
+//! `RevealInFileManagerLabel`, per platform) shows the newest one.
 //! Nothing is read from the reports and nothing is uploaded.
 
 use std::path::PathBuf;
@@ -10,6 +11,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::labels;
 use crate::dialog::{DialogButton, DialogKind, dialog_with_kind};
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -73,7 +75,7 @@ impl Render for CrashReportFoundDialog {
                 },
                 DialogButton {
                     id: "crash-report-reveal",
-                    label: "Reveal in Finder".into(),
+                    label: labels::REVEAL_IN_FILE_MANAGER.into(),
                     primary: true,
                     disabled: newest.is_none(),
                     on_click: Box::new(move |_, cx| {

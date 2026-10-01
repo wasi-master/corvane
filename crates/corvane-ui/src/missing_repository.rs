@@ -15,6 +15,7 @@ use corvane_core::Dispatcher;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::icons::loading;
 use crate::theme::ActiveGhdTheme;
 use crate::theme::sizes::*;
@@ -144,7 +145,7 @@ pub fn unsafe_repository_view(
                     .child(loading("trusting-spinner", t.button_text)),
             )
         })
-        .child("Trust Repository");
+        .child(mac_or("Trust Repository", "Trust repository"));
     let details = div()
         // `.details`: centred paragraphs
         .my(SPACING())
@@ -174,7 +175,7 @@ pub fn unsafe_repository_view(
         primary_button("trust-repository", trust_label, trusting, cx)
             .min_w(BUTTON_MIN_WIDTH())
             .role(Role::Button)
-            .aria_label("Trust Repository")
+            .aria_label(mac_or("Trust Repository", "Trust repository"))
             .when(!trusting, |b| {
                 b.on_click(move |_, _, cx| Dispatcher::trust_repository(id, cx))
             })

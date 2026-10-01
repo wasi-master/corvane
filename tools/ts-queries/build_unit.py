@@ -2,6 +2,7 @@
 """Build one grammar-pack unit as a dynamic library with clang, without Rust:
 
     python3 tools/ts-queries/build_unit.py <unit> <out.dylib> [--target aarch64-apple-darwin]
+    python3 tools/ts-queries/build_unit.py <unit> <out.so> [--target x86_64-unknown-linux-gnu]
 
 A unit is a grammar package (`typescript`: typescript + tsx) or a grammar
 built from source. The library holds the grammars' parser.c / scanner and a
@@ -110,12 +111,20 @@ def main(argv: list[str]) -> int:
         + f'static const Table TABLE = {{1, "{PACK_VERSION}", {len(entries)}, GRAMMARS}};\n'
         + '__attribute__((visibility("default"))) const Table *corvane_grammars_v1(void) { return &TABLE; }\n'
     )
-    arch = ["-target", target.replace("-apple-darwin", "-apple-macos15.0")] if target else []
+    macos = target.endswith("-apple-darwin") if target else sys.platform == "darwin"
+    if target and macos:
+        arch = ["-target", target.replace("-apple-darwin", "-apple-macos15.0")]
+    elif target:
+        arch = ["-target", target]
+    else:
+        arch = []
     with tempfile.TemporaryDirectory() as tmp:
         tmpd = Path(tmp)
         (tmpd / "table.c").write_text(table)
         objs, cpp = [tmpd / "table.o"], False
         cflags = ["-O2", "-fPIC", "-fvisibility=hidden", "-w", *arch]
+        if not macos:
+            cflags += ["-ffunction-sections", "-fdata-sections"]
         subprocess.run(["clang", "-c", "-std=c11", *cflags, str(tmpd / "table.c"), "-o", str(objs[0])], check=True)
         for i, src in enumerate(sources):
             for f in ["parser.c", "scanner.c", "scanner.cc"]:
@@ -130,8 +139,16 @@ def main(argv: list[str]) -> int:
                     subprocess.run(["clang", "-c", "-std=c11", *cflags, "-I", str(src), str(path), "-o", str(obj)], check=True)
                 objs.append(obj)
         out.parent.mkdir(parents=True, exist_ok=True)
-        link = ["clang++" if cpp else "clang", "-dynamiclib", *arch, "-Wl,-dead_strip", "-Wl,-x",
-                "-install_name", f"@rpath/{out.name}", *map(str, objs), "-o", str(out)]
+        if macos:
+            link = ["clang++" if cpp else "clang", "-dynamiclib", *arch, "-Wl,-dead_strip", "-Wl,-x",
+                    "-install_name", f"@rpath/{out.name}", *map(str, objs), "-o", str(out)]
+        else:
+            # ELF: a shared object with the C++ runtime linked in statically,
+            # so a unit needs nothing beyond libc
+            link = ["clang++" if cpp else "clang", "-shared", *arch, "-Wl,--gc-sections", "-Wl,-s",
+                    "-Wl,-soname," + out.name, *map(str, objs), "-o", str(out)]
+            if cpp:
+                link[1:1] = ["-static-libstdc++"]
         subprocess.run(link, check=True)
     return 0
 

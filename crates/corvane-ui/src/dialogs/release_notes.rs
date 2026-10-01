@@ -14,6 +14,7 @@ use corvane_core::{AppState, Dispatcher, UpdateStatus};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::widgets::IconButtonA11y;
 
 use crate::icons::{Octicon, octicon};
@@ -91,7 +92,7 @@ impl Render for ReleaseNotesDialog {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.ghd();
         let r = &self.summary;
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let date = r
             .date_published
             .map(|d| crate::format::format_pattern("MMMM d, yyyy", &crate::format::local_time(d)));
@@ -127,7 +128,7 @@ impl Render for ReleaseNotesDialog {
             UpdateStatus::Ready { update, .. } if update.version == r.latest_version
         );
         deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("release-notes-overlay")
                     // modal: nothing underneath takes hover, clicks or wheel
@@ -272,28 +273,36 @@ impl Render for ReleaseNotesDialog {
                                             .flex_row()
                                             .items_center()
                                             .gap(SPACING())
-                                            .child(
-                                                primary_button(
-                                                    "release-notes-ok",
-                                                    "Close",
-                                                    false,
-                                                    cx,
+                                            // `OkCancelButtonGroup`: Close is its
+                                            // Cancel, Install its OK
+                                            .children(crate::dialog::ok_cancel_order(
+                                                std::iter::once(
+                                                    primary_button(
+                                                        "release-notes-ok",
+                                                        "Close",
+                                                        false,
+                                                        cx,
+                                                    )
+                                                    .min_w(zpx(120.))
+                                                    .on_click(move |_, window, cx| {
+                                                        close(window, cx)
+                                                    }),
                                                 )
-                                                .min_w(zpx(120.))
-                                                .on_click(move |_, window, cx| close(window, cx)),
-                                            )
-                                            .when(can_install, |d| {
-                                                d.child(
+                                                .chain(can_install.then(|| {
                                                     button(
                                                         "release-notes-install",
-                                                        "Install and Restart",
+                                                        mac_or(
+                                                            "Install and Restart",
+                                                            "Install and restart",
+                                                        ),
                                                         cx,
                                                     )
                                                     .on_click(|_, _, cx| {
                                                         Dispatcher::install_update(cx)
-                                                    }),
-                                                )
-                                            }),
+                                                    })
+                                                }))
+                                                .collect(),
+                                            )),
                                     ),
                             ),
                     ),

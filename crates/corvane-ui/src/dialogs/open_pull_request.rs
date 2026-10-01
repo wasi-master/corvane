@@ -19,6 +19,7 @@ use gpui_kit::component::resizable::{
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::widgets::GhdTooltip;
 use crate::widgets::{IconButtonA11y, ListRowA11y};
 
@@ -384,7 +385,7 @@ impl OpenPullRequestDialog {
 
     /// GHD `List.moveSelection` on `PullRequestFilesChanged`'s `FileList`
     /// (↑ / ↓; single selection, so ⇧↑ / ⇧↓ too): the file `delta` rows
-    /// away, clamped at the ends, scrolled into view.
+    /// away, wrapping around the ends (GHD `List.moveSelection`), scrolled into view.
     fn select_relative(&mut self, delta: isize, cx: &mut Context<Self>) {
         let Some((order, current)) = self.file_order(cx) else {
             return;
@@ -611,7 +612,7 @@ impl Render for OpenPullRequestDialog {
         let Some(preview) = self.preview(cx) else {
             return div().into_any_element();
         };
-        let viewport = window.viewport_size();
+        let viewport = crate::theme::page_size(window);
         let has_pr = self
             .state
             .read(cx)
@@ -772,9 +773,9 @@ impl Render for OpenPullRequestDialog {
         let close = cx.listener(|this, _, _, cx| this.close(cx));
         let preview_for_submit = preview.clone();
         let ok_label = if has_pr {
-            "View Pull Request"
+            mac_or("View Pull Request", "View pull request")
         } else {
-            "Create Pull Request"
+            mac_or("Create Pull Request", "Create pull request")
         };
         let ok_title = format!(
             "{} pull request on GitHub{}.",
@@ -782,7 +783,7 @@ impl Render for OpenPullRequestDialog {
             if enterprise { " Enterprise" } else { "" }
         );
         let dialog = deferred(
-            anchored().position(point(zpx(0.), zpx(0.))).child(
+            anchored().position(crate::theme::page_origin()).child(
                 div()
                     .id("open-pull-request")
                     // modal: nothing underneath takes hover, clicks or wheel
@@ -801,8 +802,11 @@ impl Render for OpenPullRequestDialog {
                         div()
                             .id("open-pull-request-box")
                             .role(Role::Dialog)
-                            .aria_label("Open a Pull Request")
-                            .child(crate::dialog::window_title("Open a Pull Request"))
+                            .aria_label(mac_or("Open a Pull Request", "Open a pull request"))
+                            .child(crate::dialog::window_title(mac_or(
+                                "Open a Pull Request",
+                                "Open a pull request",
+                            )))
                             .w(viewport.width - DIALOG_MARGIN())
                             .h(viewport.height - DIALOG_MARGIN())
                             .flex()
@@ -841,7 +845,10 @@ impl Render for OpenPullRequestDialog {
                                                     .flex_1()
                                                     .text_size(FONT_SIZE_MD())
                                                     .font_weight(FontWeight::SEMIBOLD)
-                                                    .child("Open a Pull Request"),
+                                                    .child(mac_or(
+                                                        "Open a Pull Request",
+                                                        "Open a pull request",
+                                                    )),
                                             )
                                             .child(
                                                 div()
@@ -932,12 +939,11 @@ impl Render for OpenPullRequestDialog {
                                             .min_w_0()
                                             .child(self.merge_status(preview.merge_status, cx)),
                                     )
-                                    .child(
+                                    .children(crate::dialog::ok_cancel_order(vec![
                                         button("open-pull-request-cancel", "Cancel", cx)
                                             .min_w(zpx(120.))
-                                            .on_click(cx.listener(|this, _, _, cx| this.close(cx))),
-                                    )
-                                    .child(
+                                            .on_click(cx.listener(|this, _, _, cx| this.close(cx)))
+                                            .into_any_element(),
                                         primary_button("open-pull-request-ok", "", ok_disabled, cx)
                                             .min_w(zpx(120.))
                                             .gap(SPACING_HALF())
@@ -953,8 +959,9 @@ impl Render for OpenPullRequestDialog {
                                                 d.on_click(cx.listener(move |this, _, _, cx| {
                                                     this.submit(&preview_for_submit, cx)
                                                 }))
-                                            }),
-                                    ),
+                                            })
+                                            .into_any_element(),
+                                    ])),
                             ),
                     ),
             ),

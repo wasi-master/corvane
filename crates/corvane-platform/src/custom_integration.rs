@@ -161,4 +161,13 @@ mod tests {
         assert!(!path_looks_valid("/etc/hosts"));
         assert!(!path_looks_valid(""));
     }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))]
+    fn validates_executables() {
+        assert!(path_looks_valid("/bin/ls"));
+        assert!(!path_looks_valid("/etc/hosts"));
+        assert!(!path_looks_valid("/usr"));
+        assert!(!path_looks_valid(""));
+    }
 }

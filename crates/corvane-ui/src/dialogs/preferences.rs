@@ -24,6 +24,7 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog};
 use crate::icons::Octicon;
 use crate::tab_bar::{TabModel, VerticalTab, tab_bar, vertical_tab_bar};
@@ -33,6 +34,17 @@ use crate::widgets::{
     Inline, ListRowA11y, SelectHandler, button, checkbox_row, code_ref, labeled, link_button,
     paragraph, radio, radio_row, section_heading, select_button, settings_description, text_box,
 };
+
+/// Settings › Advanced › "Save crash reports locally" (where
+/// `corvane_platform::crash_reports` writes and looks).
+#[cfg(target_os = "macos")]
+const CRASH_REPORTS_DESCRIPTION: &str = "When Corvane crashes, a report is saved in \
+     ~/Library/Logs/Corvane/crashes and pointed out at the next launch, together with macOS's \
+     own crash reports. Reports never leave this Mac.";
+#[cfg(not(target_os = "macos"))]
+const CRASH_REPORTS_DESCRIPTION: &str = "When Corvane crashes, a report is saved in \
+     ~/.local/state/corvane/crashes and pointed out at the next launch, together with the \
+     system's own crash reports. Reports never leave this computer.";
 
 /// Error messages start lowercase (they follow "could not …"); a sentence
 /// of their own starts with a capital.
@@ -379,7 +391,7 @@ impl PreferencesDialog {
                         ),
                 )
                 .child(
-                    button(id, "Sign Out", cx)
+                    button(id, mac_or("Sign Out", "Sign out"), cx)
                         .on_click(move |_, _, cx| Dispatcher::sign_out(endpoint.clone(), cx)),
                 )
         };
@@ -392,7 +404,7 @@ impl PreferencesDialog {
                 None => accounts_call_to_action(
                     "prefs-signin-dotcom",
                     "Sign in to your GitHub.com account to access your repositories.",
-                    "Sign Into GitHub.com",
+                    mac_or("Sign Into GitHub.com", "Sign into GitHub.com"),
                     self.preferred_focus_visible,
                     |_, cx| Dispatcher::show_popup(Popup::SignIn { enterprise: false }, cx),
                     cx,
@@ -410,7 +422,7 @@ impl PreferencesDialog {
                 accounts_call_to_action(
                     "prefs-signin-enterprise",
                     "If you are using GitHub Enterprise at work, sign in to it to get access to your repositories.",
-                    "Sign Into GitHub Enterprise",
+                    mac_or("Sign Into GitHub Enterprise", "Sign into GitHub Enterprise"),
                     false,
                     |_, cx| Dispatcher::show_popup(Popup::SignIn { enterprise: true }, cx),
                     cx,
@@ -561,9 +573,9 @@ impl PreferencesDialog {
         let use_custom_shell = self.draft.use_custom_shell;
         // `CustomIntegrationValue`: the last option configures a custom integration.
         let mut editor_options = editors.clone();
-        editor_options.push("Configure Custom Editor…".into());
+        editor_options.push(mac_or("Configure Custom Editor…", "Configure custom editor…").into());
         let editor_value = if use_custom_editor {
-            "Configure Custom Editor…".to_string()
+            mac_or("Configure Custom Editor…", "Configure custom editor…").to_string()
         } else {
             self.draft
                 .external_editor
@@ -577,9 +589,9 @@ impl PreferencesDialog {
             editors.iter().position(|e| e.as_ref() == editor_value)
         };
         let mut shell_options = shells.clone();
-        shell_options.push("Configure Custom Shell…".into());
+        shell_options.push(mac_or("Configure Custom Shell…", "Configure custom shell…").into());
         let shell_value = if use_custom_shell {
-            "Configure Custom Shell…".to_string()
+            mac_or("Configure Custom Shell…", "Configure custom shell…").to_string()
         } else {
             self.draft
                 .shell
@@ -628,7 +640,7 @@ impl PreferencesDialog {
             .flex_col()
             .gap(SPACING())
             .child(labeled(
-                "External Editor",
+                mac_or("External Editor", "External editor"),
                 select_button(
                     "prefs-editor",
                     editor_value,
@@ -1017,7 +1029,7 @@ impl PreferencesDialog {
                     .mb(SPACING())
                     .child(
                         labeled(
-                            "Date Format",
+                            mac_or("Date Format", "Date format"),
                             select_button(
                                 "prefs-date-format",
                                 pick(&date_options, date_ix),
@@ -1035,7 +1047,7 @@ impl PreferencesDialog {
                         .w(zpx(207.)),
                     )
                     .child(labeled(
-                        "Time Format",
+                        mac_or("Time Format", "Time format"),
                         select_button(
                             "prefs-time-format",
                             pick(&time_options, time_ix),
@@ -1049,7 +1061,7 @@ impl PreferencesDialog {
                     )),
             )
             .child(labeled(
-                "Number Format",
+                mac_or("Number Format", "Number format"),
                 select_button(
                     "prefs-number-format",
                     pick(&number_options, number_ix),
@@ -1251,7 +1263,7 @@ impl PreferencesDialog {
             // the absolute-dates checkbox's 10 px margin spaces the section
             .child(section_heading("Diff", cx))
             .child(labeled(
-                "Tab Size",
+                mac_or("Tab Size", "Tab size"),
                 select_button(
                     "prefs-tab-size",
                     options
@@ -1668,12 +1680,7 @@ impl PreferencesDialog {
                         cx,
                     ))
                     .child(
-                        settings_description(cx).child(
-                            "When Corvane crashes, a report is saved in \
-                             ~/Library/Logs/Corvane/crashes and pointed out at the next launch, \
-                             together with macOS's own crash reports. Reports never leave this \
-                             Mac.",
-                        ),
+                        settings_description(cx).child(CRASH_REPORTS_DESCRIPTION),
                     )
             })
             // Corvane addition: on-demand packs;
@@ -2019,7 +2026,7 @@ impl Render for PreferencesDialog {
         let weak = cx.weak_entity();
         dialog(
             "dialog-preferences",
-            "Settings",
+            corvane_platform::editors::SETTINGS_LABEL,
             content,
             vec![
                 DialogButton {

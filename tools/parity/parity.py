@@ -41,7 +41,7 @@ import accounts  # noqa: E402
 import fixture  # noqa: E402
 import imgdiff  # noqa: E402
 import report  # noqa: E402
-from drivers import Corvane, Ghd  # noqa: E402
+from drivers import Corvane, Ghd, page_height, page_rect  # noqa: E402
 
 
 class Absent:
@@ -135,14 +135,16 @@ class Run:
             ls.update(sc.get("ghd_local_storage", {}))
 
             def setup_ghd():
-                ghd.configure(cfg["width"], cfg["height"], cv.scale, ls, freeze=not self.args.no_freeze)
+                ghd.configure(cfg["width"], page_height(cfg["height"]), cv.scale, ls, freeze=not self.args.no_freeze)
                 if repo_g and not ghd.add_repository(repo_g):
                     raise RuntimeError("GHD: could not add the fixture repository")
                 time.sleep(1.2)
 
             def setup_cv():
-                info = cv.resize(cfg["width"], cfg["height"])
-                if not self.args.ghd_only and (int(info["w"]) != cfg["width"] or int(info["h"]) != cfg["height"]):
+                info = cv.resize(cfg["width"], page_height(cfg["height"]))
+                if not self.args.ghd_only and (
+                    int(info["w"]) != cfg["width"] or int(info["h"]) != page_height(cfg["height"])
+                ):
                     result["notes"].append(f"Corvane viewport is {info['w']}x{info['h']}")
                 if setup != "welcome":
                     cv.hook("complete-welcome")
@@ -339,8 +341,8 @@ class Run:
             tolerance=spec.get("tolerance", cfg["tolerance"]),
             edge_tolerance=spec.get("edge_tolerance", cfg["edge_tolerance"]),
             radius_pt=spec.get("radius", cfg["radius"]),
-            masks=spec.get("mask"),
-            region=spec.get("region"),
+            masks=[page_rect(m) for m in spec.get("mask") or []] or None,
+            region=page_rect(spec.get("region")),
         )
         for reg in res.regions:
             try:

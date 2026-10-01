@@ -40,6 +40,7 @@ use gpui_kit::prelude::*;
 use gpui_kit::*;
 
 use crate::actions::{FilterListPick, SelectNextFile, SelectPreviousFile};
+use crate::context_menu::mac_or;
 use crate::widgets::GhdTooltip;
 use crate::widgets::IconButtonA11y;
 
@@ -222,7 +223,7 @@ pub fn group_branches(
         && matches(default)
     {
         groups.push(BranchGroup {
-            title: "Default Branch",
+            title: mac_or("Default Branch", "Default branch"),
             branches: vec![default.clone()],
         });
     }
@@ -238,7 +239,7 @@ pub fn group_branches(
         .collect();
     if !recent_branches.is_empty() {
         groups.push(BranchGroup {
-            title: "Recent Branches",
+            title: mac_or("Recent Branches", "Recent branches"),
             branches: recent_branches,
         });
     }
@@ -255,7 +256,7 @@ pub fn group_branches(
     }
     if !other.is_empty() {
         groups.push(BranchGroup {
-            title: "Other Branches",
+            title: mac_or("Other Branches", "Other branches"),
             branches: other,
         });
     }
@@ -543,7 +544,7 @@ impl BranchFoldout {
         let top = quick_view_top(
             view.row_top,
             container.origin.y,
-            window.viewport_size().height,
+            crate::theme::page_size(window).height,
             height,
         );
         let pointer_top = view.row_top - container.origin.y - top
@@ -906,64 +907,67 @@ impl BranchFoldout {
                         this.select_row(branch.name.clone(), window, cx)
                     })
                     .ok();
-                    #[cfg(target_os = "macos")]
-                    {
-                        use crate::context_menu::MenuItem;
-                        let local = branch.kind == BranchKind::Local;
-                        // `856-branch-menu-rebase-onto`
-                        let rebase_onto = AppState::global(cx)
-                            .read(cx)
-                            .flags
-                            .bool(corvane_core::flags::ids::BRANCH_MENU_REBASE_ONTO)
-                            .then(|| branch.name.clone());
-                        let can_rebase = !current && {
-                            let s = AppState::global(cx).read(cx);
-                            s.repo_states.get(&id).is_some_and(|r| {
-                                r.mco.is_none()
-                                    && r.info
-                                        .as_ref()
-                                        .is_some_and(|i| matches!(i.tip, Tip::Valid { .. }))
-                            })
-                        };
-                        let (rename, copy, worktree, delete) = (
-                            branch.name.clone(),
-                            branch.name.clone(),
-                            branch.name.clone(),
-                            branch.name.clone(),
-                        );
-                        // Corvane addition (`857-update-branch-from-upstream`)
-                        let update = (local && !current)
-                            .then(|| branch.upstream_short())
-                            .flatten()
-                            .filter(|_| {
-                                corvane_core::AppState::global(cx)
-                                    .read(cx)
-                                    .flags
-                                    .bool(corvane_core::flags::ids::UPDATE_BRANCH_FROM_UPSTREAM)
-                            })
-                            .map(|upstream| {
-                                let name = branch.name.clone();
-                                MenuItem::new(format!("Update from {upstream}"), move |_, cx| {
-                                    Dispatcher::close_foldout(cx);
-                                    Dispatcher::update_branch_from_upstream(id, name.clone(), cx)
-                                })
-                            });
-                        let mut items = vec![
-                            MenuItem::new("Rename…", move |_, cx| {
+                    use crate::context_menu::{IS_MAC, MenuItem, mac_or};
+                    let local = branch.kind == BranchKind::Local;
+                    // `856-branch-menu-rebase-onto`
+                    let rebase_onto = AppState::global(cx)
+                        .read(cx)
+                        .flags
+                        .bool(corvane_core::flags::ids::BRANCH_MENU_REBASE_ONTO)
+                        .then(|| branch.name.clone());
+                    let can_rebase = !current && {
+                        let s = AppState::global(cx).read(cx);
+                        s.repo_states.get(&id).is_some_and(|r| {
+                            r.mco.is_none()
+                                && r.info
+                                    .as_ref()
+                                    .is_some_and(|i| matches!(i.tip, Tip::Valid { .. }))
+                        })
+                    };
+                    let (rename, copy, worktree, delete) = (
+                        branch.name.clone(),
+                        branch.name.clone(),
+                        branch.name.clone(),
+                        branch.name.clone(),
+                    );
+                    // Corvane addition (`857-update-branch-from-upstream`)
+                    let update = (local && !current)
+                        .then(|| branch.upstream_short())
+                        .flatten()
+                        .filter(|_| {
+                            corvane_core::AppState::global(cx)
+                                .read(cx)
+                                .flags
+                                .bool(corvane_core::flags::ids::UPDATE_BRANCH_FROM_UPSTREAM)
+                        })
+                        .map(|upstream| {
+                            let name = branch.name.clone();
+                            MenuItem::new(format!("Update from {upstream}"), move |_, cx| {
                                 Dispatcher::close_foldout(cx);
-                                Dispatcher::show_popup(
-                                    Popup::RenameBranch {
-                                        repo: id,
-                                        name: rename.clone(),
-                                    },
-                                    cx,
-                                )
+                                Dispatcher::update_branch_from_upstream(id, name.clone(), cx)
                             })
-                            .enabled(local),
-                            MenuItem::new("Copy Branch Name", move |_, cx| {
+                        });
+                    let mut items = vec![
+                        MenuItem::new("Rename…", move |_, cx| {
+                            Dispatcher::close_foldout(cx);
+                            Dispatcher::show_popup(
+                                Popup::RenameBranch {
+                                    repo: id,
+                                    name: rename.clone(),
+                                },
+                                cx,
+                            )
+                        })
+                        .enabled(local),
+                        MenuItem::new(
+                            mac_or("Copy Branch Name", "Copy branch name"),
+                            move |_, cx| {
                                 cx.write_to_clipboard(ClipboardItem::new_string(copy.clone()))
-                            }),
-                            MenuItem::new("Checkout in New Worktree…", move |_, cx| {
+                            },
+                        ),
+                        MenuItem::new(
+                            mac_or("Checkout in New Worktree…", "Checkout in new worktree…"),
+                            move |_, cx| {
                                 Dispatcher::close_foldout(cx);
                                 Dispatcher::show_popup(
                                     Popup::AddWorktree {
@@ -973,43 +977,41 @@ impl BranchFoldout {
                                     },
                                     cx,
                                 )
-                            }),
-                            MenuItem::separator(),
-                        ];
-                        if let Some(base) = rebase_onto {
-                            items.push(
-                                MenuItem::new(
-                                    format!("Rebase Current Branch onto {base}…"),
-                                    move |_, cx| {
-                                        Dispatcher::close_foldout(cx);
-                                        Dispatcher::start_rebase_flow_onto(
-                                            id,
-                                            Some(base.clone()),
-                                            cx,
-                                        );
-                                    },
-                                )
-                                .enabled(can_rebase),
-                            );
-                            items.push(MenuItem::separator());
-                        }
-                        items.extend([MenuItem::new("Delete…", move |_, cx| {
-                            Dispatcher::close_foldout(cx);
-                            Dispatcher::show_popup(
-                                Popup::DeleteBranch {
-                                    repo: id,
-                                    name: delete.clone(),
+                            },
+                        ),
+                        MenuItem::separator(),
+                    ];
+                    if let Some(base) = rebase_onto {
+                        items.push(
+                            MenuItem::new(
+                                if IS_MAC {
+                                    format!("Rebase Current Branch onto {base}…")
+                                } else {
+                                    format!("Rebase current branch onto {base}…")
                                 },
-                                cx,
+                                move |_, cx| {
+                                    Dispatcher::close_foldout(cx);
+                                    Dispatcher::start_rebase_flow_onto(id, Some(base.clone()), cx);
+                                },
                             )
-                        })]);
-                        if let Some(update) = update {
-                            items.insert(2, update);
-                        }
-                        crate::native_menu::show_context_menu(items, ev.position, window, cx);
+                            .enabled(can_rebase),
+                        );
+                        items.push(MenuItem::separator());
                     }
-                    #[cfg(not(target_os = "macos"))]
-                    let _ = (ev, window, &branch);
+                    items.extend([MenuItem::new("Delete…", move |_, cx| {
+                        Dispatcher::close_foldout(cx);
+                        Dispatcher::show_popup(
+                            Popup::DeleteBranch {
+                                repo: id,
+                                name: delete.clone(),
+                            },
+                            cx,
+                        )
+                    })]);
+                    if let Some(update) = update {
+                        items.insert(2, update);
+                    }
+                    crate::native_menu::show_context_menu(items, ev.position, window, cx);
                 }
             })
             .on_drop({
@@ -1168,7 +1170,7 @@ impl BranchFoldout {
             .child(
                 crate::widgets::primary_button(
                     "no-branches-create",
-                    "Create New Branch",
+                    mac_or("Create New Branch", "Create new branch"),
                     false,
                     cx,
                 )
@@ -1191,14 +1193,7 @@ impl BranchFoldout {
                 crate::widgets::paragraph(vec![
                     "ProTip! Press ".into(),
                     // `kbd` inherits the 11 px `.protip` text
-                    div()
-                        .flex()
-                        .flex_row()
-                        .gap(zpx(2.))
-                        .children(
-                            ["⌘", "⇧", "N"]
-                                .map(|k| crate::widgets::kbd(k, cx).text_size(FONT_SIZE_SM())),
-                        )
+                    crate::widgets::kbd_group_sized(&["⌘", "⇧", "N"], FONT_SIZE_SM(), cx)
                         .into_any_element()
                         .into(),
                     " to quickly create a new branch from anywhere within the app".into(),
@@ -1357,19 +1352,21 @@ impl Render for BranchFoldout {
                                 .child(octicon(Octicon::Server, t.secondary_button_text)),
                         )
                     })
-                    .child(button("new-branch", "New Branch", cx).flex_none().on_click(
-                        move |_, _, cx| {
-                            Dispatcher::close_foldout(cx);
-                            Dispatcher::show_popup(
-                                Popup::CreateBranch {
-                                    repo: id,
-                                    target_sha: None,
-                                    initial_name: query_for_new.clone(),
-                                },
-                                cx,
-                            )
-                        },
-                    )),
+                    .child(
+                        button("new-branch", mac_or("New Branch", "New branch"), cx)
+                            .flex_none()
+                            .on_click(move |_, _, cx| {
+                                Dispatcher::close_foldout(cx);
+                                Dispatcher::show_popup(
+                                    Popup::CreateBranch {
+                                        repo: id,
+                                        target_sha: None,
+                                        initial_name: query_for_new.clone(),
+                                    },
+                                    cx,
+                                )
+                            }),
+                    ),
             )
             .child(if groups.is_empty() {
                 // the filter list keeps growing; `.no-branches` sits at its top
@@ -1474,7 +1471,7 @@ impl BranchFoldout {
                     TabModel {
                         dot: false,
                         id: "pull-requests-tab",
-                        label: "Pull Requests".into(),
+                        label: mac_or("Pull Requests", "Pull requests").into(),
                         count: (open_prs > 0).then_some(open_prs),
                     },
                 ],

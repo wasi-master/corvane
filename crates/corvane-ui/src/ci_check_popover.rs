@@ -27,7 +27,7 @@ use gpui_kit::*;
 use crate::widgets::IconButtonA11y;
 
 use crate::ci_status::{ci_status, color_for, effective_conclusion, symbol_for_log_step};
-use crate::context_menu::MenuItem;
+use crate::context_menu::{MenuItem, mac_or};
 use crate::icons::{Octicon, octicon, spin};
 use crate::scrollbar::ScrollbarExt;
 use crate::theme::sizes::*;
@@ -409,12 +409,14 @@ pub(crate) fn rerun_button(
             let (failed_checks, all_checks) = (checks.clone(), checks.clone());
             crate::native_menu::show_context_menu(
                 vec![
-                    MenuItem::new("Re-run Failed Checks", move |_, cx| {
-                        failed(failed_checks.clone(), true, cx)
-                    }),
-                    MenuItem::new("Re-run All Checks", move |_, cx| {
-                        all(all_checks.clone(), false, cx)
-                    }),
+                    MenuItem::new(
+                        mac_or("Re-run Failed Checks", "Re-run failed checks"),
+                        move |_, cx| failed(failed_checks.clone(), true, cx),
+                    ),
+                    MenuItem::new(
+                        mac_or("Re-run All Checks", "Re-run all checks"),
+                        move |_, cx| all(all_checks.clone(), false, cx),
+                    ),
                 ],
                 ev.position(),
                 window,

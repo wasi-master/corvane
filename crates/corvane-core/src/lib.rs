@@ -22,6 +22,7 @@ pub mod integrations;
 pub mod list_selection;
 pub mod markdown;
 pub mod mco;
+pub mod menu_state;
 pub mod notifications;
 pub mod packs;
 pub mod persistence;

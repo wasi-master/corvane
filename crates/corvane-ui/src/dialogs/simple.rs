@@ -10,6 +10,7 @@ use corvane_core::{AppState, Dispatcher, Popup};
 use gpui_kit::prelude::*;
 use gpui_kit::*;
 
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, dialog};
 use crate::theme::sizes::*;
 
@@ -37,10 +38,11 @@ impl Render for SimpleDialog {
                     .child(format!(
                         "Corvane was unable to find a usable Git on your system ({reason})."
                     ))
-                    .child(
+                    .child(mac_or(
                         "Install the Xcode Command Line Tools (xcode-select --install) or run \
                          `brew install git`, then click Retry.",
-                    ),
+                        "Install Git with your distribution's package manager, then click Retry.",
+                    )),
                 vec![
                     DialogButton {
                         id: "install-git-cancel",
@@ -148,7 +150,7 @@ impl Render for SimpleDialog {
             }
             Popup::CLIInstalled { path } => dialog(
                 "cli-installed",
-                "Command Line Tool Installed",
+                mac_or("Command Line Tool Installed", "Command line tool installed"),
                 crate::widgets::paragraph(vec![
                     "The command line tool has been installed at ".into(),
                     div()

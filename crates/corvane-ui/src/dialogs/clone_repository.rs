@@ -48,6 +48,7 @@ use crate::cloneable_repositories::{
     AccountPickerState, ListStyle, account_picker, account_popover, group_rows, no_items,
     refresh_button, repository_list,
 };
+use crate::context_menu::mac_or;
 use crate::dialog::{DialogButton, DialogFrame, dialog_loading_framed};
 use crate::icons::{Octicon, octicon};
 use crate::tab_bar::TabModel;
@@ -631,7 +632,7 @@ impl CloneRepositoryDialog {
             .items_end()
             .gap(SPACING())
             .child(labeled(
-                "Local Path",
+                mac_or("Local Path", "Local path"),
                 text_box("clone-path", &self.path, None, window, cx),
                 cx,
             ))
@@ -655,7 +656,7 @@ impl CloneRepositoryDialog {
             return crate::widgets::call_to_action(
                 "clone-sign-in",
                 format!("Sign in to your {host} account to access your repositories."),
-                "Sign In",
+                mac_or("Sign In", "Sign in"),
                 move |_, cx| {
                     Dispatcher::show_popup(
                         Popup::SignIn {
@@ -886,7 +887,7 @@ impl Render for CloneRepositoryDialog {
 
         dialog_loading_framed(
             "clone-repository",
-            "Clone a Repository",
+            mac_or("Clone a Repository", "Clone a repository"),
             self.resolving,
             div()
                 .flex()
