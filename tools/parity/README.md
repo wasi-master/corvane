@@ -140,6 +140,11 @@ dbus-run-session -- python3 tools/parity/parity.py main-window
 - Captures are the page: CDP leaves Electron's menu bar out, and Corvane's
   control socket works in page coordinates below its own menu bar
   (`PAGE_TOP` in `parity_control.rs`). Scale is 1.
+- Scenarios are written for GHD's macOS page, which starts with a 32 pt
+  title bar. Off macOS the page is the content below it (the scenario
+  height minus 32) and fixed points, masks and regions move up by 32, so
+  top- and bottom-anchored elements both line up (`TITLE_BAR` in
+  `drivers.py`).
 - `PARITY_OFFLINE=1` takes both apps offline (an unreachable proxy), so
   avatars, emoji and API calls fail alike. Use it behind an intercepting
   HTTPS proxy Chromium does not trust: there GHD's first request opens an

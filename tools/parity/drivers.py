@@ -49,9 +49,15 @@ DEFAULT_SCALE = 2.0 if IS_MAC else 1.0
 
 # Scenarios place fixed points and rectangles on GHD's macOS page, which
 # starts with its 32 pt title bar (#desktop-app-title-bar); off macOS the
-# page has none (Electron's menu bar sits outside it), so everything below
-# is that much higher.
+# page has none (Electron's menu bar sits outside it). The page off macOS is
+# the macOS page's content below the title bar (scenario height minus 32),
+# so elements anchored to the top and to the bottom alike sit 32 higher.
 TITLE_BAR = 32.0 if not IS_MAC else 0.0
+
+
+def page_height(height: int) -> int:
+    """The page height that holds a scenario's macOS content area."""
+    return int(height - TITLE_BAR)
 
 
 def page_point(x: float, y: float) -> tuple[float, float]:
