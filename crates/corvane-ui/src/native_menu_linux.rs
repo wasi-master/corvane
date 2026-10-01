@@ -17,10 +17,32 @@ pub fn show_context_menu(
     window: &mut Window,
     cx: &mut App,
 ) {
-    if crate::native_menu_common::auto_dismiss().is_some() {
+    let hold = crate::native_menu_common::auto_dismiss();
+    if hold.is_some() {
         crate::native_menu_common::record(&items);
     }
     crate::views_menu::show_context_menu(&items, position, window, cx);
+    if let Some(hold) = hold {
+        // close this menu after the hold, unless another one replaced it
+        let shown = SHOWN.with(|n| {
+            n.set(n.get() + 1);
+            n.get()
+        });
+        cx.spawn(async move |cx| {
+            cx.background_executor().timer(hold).await;
+            cx.update(|cx| {
+                if SHOWN.with(|n| n.get()) == shown {
+                    crate::views_menu::close_all(cx);
+                }
+            });
+        })
+        .detach();
+    }
+}
+
+thread_local! {
+    /// Menus shown so far in harness mode, so a hold only closes its own.
+    static SHOWN: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// Choose the recorded menu's item with this label: in the open menu when
