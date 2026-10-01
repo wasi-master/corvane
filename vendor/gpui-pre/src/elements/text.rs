@@ -648,11 +648,17 @@ impl TextLayout {
     ) -> LayoutId {
         let text_style = window.text_style();
         let font_size = text_style.font_size.to_pixels(window.rem_size());
-        let line_height = window.pixel_snap(
-            text_style
-                .line_height
-                .to_pixels(font_size.into(), window.rem_size()),
-        );
+        let line_height = text_style
+            .line_height
+            .to_pixels(font_size.into(), window.rem_size());
+        // Corvane patch: off macOS lines keep a fractional height, as
+        // Chromium's line boxes do (`line-height: 1.5` at 11 px is 16.5 px
+        // a line, not 16); the glyphs are snapped where they are painted.
+        let line_height = if cfg!(target_os = "macos") {
+            window.pixel_snap(line_height)
+        } else {
+            line_height
+        };
 
         let runs = if let Some(runs) = runs {
             runs
