@@ -847,6 +847,9 @@ pub struct RepositoryState {
     // ---- stash viewer (`isShowingStashEntry`, `selectedStashedFile`) ----
     pub showing_stash: bool,
     pub stash_files: Option<Vec<corvane_models::CommittedFileChange>>,
+    /// The stash whose files `stash_files` holds or is loading
+    /// (`stashEntry.files` Loading / Loaded).
+    pub stash_files_sha: Option<String>,
     pub stash_selected_file: Option<String>,
     pub stash_diff: Option<Arc<Diff>>,
     pub stash_diff_generation: u64,

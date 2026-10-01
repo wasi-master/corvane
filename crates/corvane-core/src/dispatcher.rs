@@ -1025,9 +1025,13 @@ impl Dispatcher {
                                     .iter()
                                     .find(|w| w.kind == corvane_models::WorktreeType::Main)
                                     .map(|w| w.path.clone());
+                                let stash_sha = repo_state.stash.as_ref().map(|s| s.sha.clone());
+                                if repo_state.stash_files_sha != stash_sha {
+                                    changed |= set(&mut repo_state.stash_files, None);
+                                    changed |= set(&mut repo_state.stash_files_sha, None);
+                                }
                                 if repo_state.stash.is_none() {
                                     changed |= set(&mut repo_state.showing_stash, false);
-                                    changed |= set(&mut repo_state.stash_files, None);
                                     changed |= set(&mut repo_state.stash_diff, None);
                                 }
                             }
@@ -1116,6 +1120,9 @@ impl Dispatcher {
                 if selected_file.is_some() {
                     Self::load_diff(id, cx);
                 }
+                // GHD `GitStore.loadFilesForCurrentStashEntry`, run with every
+                // stash entry load (the no-changes "View stash" card counts them)
+                Self::load_stash_files(id, cx);
                 if let Some((rebase_snapshot, cherry_pick_snapshot)) = snapshots {
                     Self::sync_conflicts(id, rebase_snapshot, cherry_pick_snapshot, cx);
                 }
@@ -3071,10 +3078,30 @@ impl Dispatcher {
             rs.showing_stash
         });
         if show {
-            Self::load_stash_files(id, cx);
+            // GHD `_selectStashedFile` without a file: the first one
+            let loaded = Self::state(cx).update(cx, |s, _| {
+                let rs = s.repo_state_mut(id);
+                let first = rs
+                    .stash_files
+                    .as_ref()
+                    .map(|f| f.first().map(|f| f.path.clone()));
+                let loaded = first.is_some();
+                if let Some(first) = first {
+                    rs.stash_selected_file = first;
+                }
+                loaded
+            });
+            if loaded {
+                Self::load_stash_diff(id, cx);
+            } else {
+                Self::load_stash_files(id, cx);
+            }
         }
     }
 
+    /// GHD `GitStore.loadFilesForCurrentStashEntry`: the current stash's
+    /// files, once per stash; the first is selected and, while the stash
+    /// is showing, its diff loaded.
     fn load_stash_files(id: u64, cx: &mut App) {
         let Some((git, workdir)) = Self::repo_context(id, cx) else {
             return;
@@ -3088,6 +3115,17 @@ impl Dispatcher {
         else {
             return;
         };
+        let started = Self::state(cx).update(cx, |s, _| {
+            let rs = s.repo_state_mut(id);
+            if rs.stash_files_sha.as_ref() == Some(&sha) {
+                return false;
+            }
+            rs.stash_files_sha = Some(sha.clone());
+            true
+        });
+        if !started {
+            return;
+        }
         let sha_for_task = sha.clone();
         let task = cx
             .background_executor()
@@ -3105,10 +3143,13 @@ impl Dispatcher {
                             rs.stash_selected_file = data.files.first().map(|f| f.path.clone());
                             rs.stash_files = Some(data.files);
                         }
-                        Err(err) => warn!(id, %err, "stashed files failed"),
+                        Err(err) => {
+                            warn!(id, %err, "stashed files failed");
+                            rs.stash_files_sha = None;
+                        }
                     }
                     cx.notify();
-                    true
+                    rs.showing_stash
                 });
                 if load {
                     Self::load_stash_diff(id, cx);
