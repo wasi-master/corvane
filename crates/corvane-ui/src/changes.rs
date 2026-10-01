@@ -3475,7 +3475,7 @@ impl ChangesSidebar {
                 Dispatcher::request_undo_commit(id, cx)
             }),
             MenuItem::separator(),
-            MenuItem::new(mac_or("Create Tag…", "Create tag…"), {
+            MenuItem::new("Create Tag…", {
                 let sha = sha.clone();
                 move |_, cx| {
                     Dispatcher::show_popup(
