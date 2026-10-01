@@ -222,6 +222,10 @@ fn window_command(
             if button == MouseButton::Right {
                 corvane_ui::native_menu::clear_recorded();
             }
+            // a recorded menu still inside its hold would swallow the click
+            // (the macOS `NSMenu` holds this loop until it closes instead)
+            #[cfg(not(target_os = "macos"))]
+            corvane_ui::views_menu::close_all(cx);
             window.dispatch_event(moved(position, None), cx);
             window.dispatch_event(down(position), cx);
             window.dispatch_event(up(position), cx);
