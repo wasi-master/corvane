@@ -1,0 +1,11 @@
+0 0 6 m-go comment
+1 0 1 m-go variable
+1 3 1 m-go operator
+1 5 5 m-go string
+1 11 1 m-go operator
+1 13 6 m-go string
+2 0 1 m-go variable
+2 3 1 m-go operator
+2 5 3 m-go string
+3 0 5 m-go comment
+4 0 2 m-go comment

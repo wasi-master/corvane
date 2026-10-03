@@ -1,0 +1,102 @@
+// Corvane sync service — ünïcödé comment
+syntax = "proto3";
+
+package corvane.sync.v1;
+
+import "google/protobuf/timestamp.proto";
+import public "google/protobuf/any.proto";
+import weak 'legacy/options.proto';
+
+option go_package = "github.com/corvane/sync/v1;syncv1";
+option java_multiple_files = true;
+option optimize_for = SPEED;
+option (custom.file_opt) = { name: "x" value: 42 };
+
+/* block comments are not special in this mode
+   so each word here is a token */
+
+enum Status {
+  option allow_alias = true;
+  STATUS_UNSPECIFIED = 0;
+  STATUS_OK = 1;
+  STATUS_RUNNING = 1;
+  STATUS_FAILED = -2;
+  reserved 5, 7 to 10, 100 to max;
+  reserved "OLD_STATUS", "LEGACY";
+}
+
+message Commit {
+  string sha = 1;
+  string message = 2 [deprecated = true];
+  repeated string parents = 3 [packed = false];
+  google.protobuf.Timestamp authored_at = 4;
+  optional int32 additions = 5;
+  optional int64 deletions = 6;
+  uint32 files = 7;
+  uint64 size = 8;
+  sint32 delta = 9;
+  sint64 big_delta = 10;
+  fixed32 crc = 11;
+  fixed64 hash = 12;
+  sfixed32 s32 = 13;
+  sfixed64 s64 = 14;
+  double score = 15;
+  float ratio = 16;
+  bool signed = 17;
+  bytes blob = 18;
+  map<string, Commit> children = 19;
+
+  message Author {
+    string name = 1;
+    string email = 2 [json_name = "e_mail"];
+  }
+
+  oneof target {
+    string branch = 20;
+    string tag = 21;
+  }
+
+  extensions 100 to 199;
+}
+
+message Legacy {
+  required string id = 1;
+  optional double weight = 2 [default = 1.5e3];
+  optional float tiny = 3 [default = .25];
+  optional int32 hex = 4 [default = 0x1F];
+  optional int32 neg = 5 [default = -0x10];
+  optional sint32 exp = 6 [default = -12E+4];
+  optional double d = 7 [default = 3.0D2];
+  optional string greeting = 8 [default = "say ""hi"" twice"];
+  optional string single = 9 [default = 'it''s'];
+  optional string escaped = 10 [default = "tab\tnewline\n"];
+  optional string uni = 11 [default = "日本語 🎉"];
+}
+
+service SyncService {
+  option (google.api.default_host) = "sync.corvane.dev";
+
+  rpc GetCommit(GetCommitRequest) returns (Commit);
+  rpc StreamCommits(stream StreamRequest) returns (stream Commit) {
+    option (google.api.http) = {
+      get: "/v1/{name=repos/*}/commits"
+    };
+  }
+  RPC Upper(Req) RETURNS (Resp);
+}
+
+extend google.protobuf.FieldOptions {
+	optional string sensitive = 50000;
+}
+
+message Edge {
+  string packageName = 1;
+  string string_value = 2;
+  int32 int32x = 3;
+  string ünïcode_field = 4;
+  string stringé = 5;
+  +1 -1 +.5 ... 1..2 1e 0xZZ
+  "unterminated string
+  'also unterminated
+  @ # $ % ^ & * ~ ` ?
+}

@@ -1,0 +1,43 @@
+= Release Notes for Sample App
+Jane Doe <jane@example.com>
+:revnumber: 1.4.0
+:toc: left
+:icons: font
+
+// A line comment that does not render.
+
+This release covers the *major* changes, _minor_ fixes and `inline code`
+shipped in version {revnumber}.
+
+== Highlights
+
+. Faster startup on large repositories
+. New *diff* renderer with word-level changes
+* Keyboard shortcuts for every toolbar button
+** Including the ones in menus
+
+NOTE: Settings from 1.3 are migrated automatically.
+
+=== Configuration
+
+[source,toml]
+----
+[editor]
+tab_width = 4
+wrap = true
+----
+
+.Supported platforms
+[cols="1,1,2"]
+|===
+| Platform | Status | Notes
+
+| macOS | Stable | 13 and newer
+| Linux | Beta | Wayland only
+|===
+
+////
+A block comment with notes for the editors.
+////
+
+See https://example.com/docs[the documentation] or <<Highlights>> for more.

@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.png binary
+*.rs diff=rust
+# generated files
+Cargo.lock linguist-generated=true -diff
+docs/** linguist-documentation

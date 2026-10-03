@@ -1,0 +1,33 @@
+1: 0+40=Comment
+2: 0+7=Keyword 8+6=Qualifier
+3: 0+10=Keyword 11+10=Keyword
+5: 0+7=Keyword 9+10=Variable 19+1=Keyword 22+1=Keyword 23+5=Variable 28+1=Keyword 31+1=Keyword 32+5=Variable 37+1=Keyword
+6: 0+7=Keyword 9+4=Variable 13+1=Keyword 16+1=Keyword 17+11=Variable 28+1=Keyword 31+1=Keyword 32+11=Variable 43+1=Keyword
+8: 0+7=Comment 8+6=Atom 15+1=Comment 16+7=Atom
+9: 0+7=Comment 8+7=Atom 16+1=Comment
+11: 0+7=Type 8+5=Type 14+1=Type 16+5=AltVariable 21+1=Type 23+1=Type 27+4=Type 31+3=Variable 37+1=Type 38+4=AltVariable 42+1=Type 44+1=Type 46+4=Type 50+15=Variable
+13: 0+9=Type 11+4=Type 15+4=Variable 21+1=Type 23+1=Type 24+6=Variable
+15: 0+13=Comment
+16: 0+16=Type 18+1=Type 21+1=Type 23+2=Type 26+1=Type 27+3=Variable 33+1=Type 35+1=Type 37+5=Type 43+1=Type 44+4=Variable
+17: 0+10=Variable
+18: 4+10=Atom 15+10=Variable 27+5=Atom 34+7=Atom 44+7=Atom
+20: 0+11=Type 12+3=Variable 18+1=Type 19+4=Variable 26+1=Type 29+3=Type
+21: 0+5=Variable 6+3=Variable 11+5=Variable
+22: 4+10=Atom 15+4=Variable 20+7=Atom 30+3=Atom 35+3=Variable 40+5=Variable
+24: 0+5=Variable 6+3=Variable
+25: 4+10=Atom 15+4=Variable 20+7=Atom 30+3=Atom 35+3=Variable 41+8=Atom
+27: 0+12=Comment
+28: 0+4=Variable
+29: 5+2=Atom 9+6=Type
+31: 0+11=Variable 13+3=Atom 18+3=Variable 24+5=Variable 31+6=Type 38+5=AltVariable 43+1=Type 45+1=Type 46+1=Variable 48+1=Type 49+4=AltVariable 53+1=Type 55+1=Type 56+1=Variable 61+1=Variable
+32: 4+5=Variable 12+4=Keyword 17+4=Atom 22+4=Variable 27+3=Variable 32+1=Variable 35+2=Keyword
+33: 17+2=Atom 21+1=Variable 28+2=Atom 32+1=Variable
+34: 16+5=Atom 22+4=Keyword 27+7=Variable 35+3=Variable 44+5=Atom 51+9=Atom
+35: 16+5=Atom 26+5=Atom 33+13=String
+36: 12+3=Keyword
+37: 5+5=Atom 12+5=Variable 19+1=Variable 20+6=Type 27+4=AltVariable 34+1=Variable
+38: 0+11=Variable 12+6=Variable 20+5=Variable 27+1=Variable
+39: 5+5=Atom 13+5=Atom 20+7=Atom 30+1=Variable
+41: 0+11=Variable 13+3=Atom 18+3=Variable 23+5=Variable 31+1=Variable 35+6=Type 42+5=AltVariable 47+1=Type 49+1=Type 50+1=Variable
+42: 4+2=Atom 7+6=Variable 14+16=String 33+3=Variable 38+5=Variable
+43: 5+7=Atom 14+1=Variable 15+6=Type 22+5=AltVariable 30+1=Variable 33+3=Variable 40+5=Variable

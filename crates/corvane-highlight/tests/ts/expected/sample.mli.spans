@@ -1,0 +1,35 @@
+1: 0+50=Comment
+3: 0+44=Comment
+5: 0+59=Comment
+7: 0+4=Keyword 5+8=Type 16+3=Type
+8: 0+38=Comment
+10: 0+4=Keyword 5+2=Variable 8+1=Type
+11: 0+4=Keyword 5+5=Type
+12: 4+5=Type
+13: 4+16=Type 21+2=Keyword 24+8=Type
+14: 4+6=Type 11+2=Keyword 16+4=AltVariable 23+3=Type 28+7=AltVariable 38+6=Type
+16: 0+9=Keyword 10+11=Type 22+2=Keyword 25+5=Type
+18: 0+3=Keyword 4+5=Variable 12+2=Variable 15+1=Type
+19: 0+3=Keyword 4+8=Variable 15+2=Variable 18+1=Type 23+4=Type
+20: 0+3=Keyword 4+4=Variable 11+8=Type 23+2=Variable 29+2=Variable 32+1=Type 37+2=Variable 40+1=Type
+21: 0+3=Keyword 4+3=Variable 10+2=Variable 13+1=Type 19+2=Variable 24+2=Variable 27+1=Type 30+6=Type
+22: 0+3=Keyword 4+7=Variable 14+2=Variable 17+1=Type 22+2=Variable 27+2=Variable 30+1=Type
+23: 0+65=Comment
+25: 0+3=Keyword 4+7=Variable 15+7=AltVariable 24+8=Type 36+8=Type 48+3=Type 57+8=Type 68+2=Variable 72+4=Type 80+2=Variable 83+1=Type
+26: 0+3=Keyword 4+4=Variable 11+1=AltVariable 14+4=Variable 22+8=Type 34+2=Variable 40+4=Variable 49+4=AltVariable 54+4=Variable 62+2=Variable 65+1=Type 70+4=Variable
+27: 0+3=Keyword 4+6=Variable 13+2=Variable 16+1=Type 22+8=Type 33+2=Variable 37+3=Qualifier 41+1=Type
+28: 0+8=Keyword 9+11=Variable 23+2=Variable 26+1=Type 31+3=Type 37+14=String
+30: 0+6=Keyword 7+4=Keyword 12+7=Qualifier 22+3=Keyword
+31: 2+4=Keyword 7+1=Type
+32: 2+3=Keyword 6+7=Variable 16+1=Type 21+1=Type 26+3=Type
+33: 0+3=Keyword
+35: 0+6=Keyword 7+4=Qualifier 13+3=Qualifier 19+7=Qualifier 30+3=Keyword
+36: 2+4=Keyword 7+3=Type 13+3=Qualifier 17+1=Type
+37: 2+4=Keyword 8+2=Variable 11+1=Type
+38: 2+3=Keyword 6+3=Variable 12+3=Type 19+2=Variable 25+2=Variable 28+1=Type 33+2=Variable 36+1=Type
+39: 0+3=Keyword
+41: 0+5=Keyword 7+2=Variable 11+13=Type 27+6=Keyword
+42: 2+6=Keyword 9+4=Variable 16+8=Type 28+2=Variable 34+4=Type
+43: 2+6=Keyword 9+3=Variable 15+2=Variable 18+6=Type
+44: 0+3=Keyword
+45: 0+3=Keyword 4+2=Variable 10+6=Qualifier 17+9=Type 30+2=Variable 36+4=Type 45+6=Qualifier 52+9=Type 65+2=Variable 68+1=Type 73+4=Type 81+16=Attribute 98+9=String

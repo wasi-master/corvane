@@ -1,0 +1,49 @@
+{
+  "name": "corvane-fixture",
+  "version": "3.6.6",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "name": "corvane-fixture",
+      "version": "3.6.6",
+      "license": "MIT",
+      "dependencies": {
+        "codemirror": "^5.65.16",
+        "react": "~18.2.0"
+      },
+      "devDependencies": {
+        "typescript": "5.4.5"
+      },
+      "engines": { "node": ">=18" }
+    },
+    "node_modules/codemirror": {
+      "version": "5.65.16",
+      "resolved": "https://registry.npmjs.org/codemirror/-/codemirror-5.65.16.tgz",
+      "integrity": "sha512-br21LjYmSlVL0vFCPWPfhzUCT34FM/pAdK7rRIZwa0rrtrIdotvP4Oh4GUHsu2E3IrQMCfRkL/fN3ytMNxVQvg==",
+      "dev": false,
+      "optional": false,
+      "peer": null,
+      "funding": [
+        { "type": "github", "url": "https://github.com/sponsors/marijnh" },
+        { "type": "patreon", "url": "https://www.patreon.com/marijn" }
+      ]
+    }
+  },
+  "matrix": [[1, 2, 3], [-4.5, 6e2, 7E-1], [], [[]]],
+  "escapes": "tab\tnewline\nquote\"backslash\\unicode☃slash\/",
+  "unicode": "Grüße — ✓ ümlaut 中文",
+  "emptyString": "",
+  "zero": 0,
+  "negativeZero": -0,
+  "bigExponent": 1.7976931348623157e308,
+  "bool": [true, false],
+  "keyword-like": { "true": "false", "null": null, "function": 1 },
+  'single': 'quotes are not JSON',
+  unquoted: 1,
+  "trailing": [1, 2, 3,],
+  // comments are not JSON either
+  /* nor block
+     comments */
+  "last": { "deep": { "deeper": { "deepest": [ { "x": 1 } ] } } }
+}

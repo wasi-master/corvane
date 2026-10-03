@@ -1,0 +1,15 @@
+0 0 5 m-ruby comment
+1 0 4 m-ruby variable
+1 5 5 m-ruby string
+1 10 1 m-ruby variable
+1 11 4 m-ruby string
+2 0 1 m-ruby variable
+2 2 1 m-ruby operator
+2 4 8 m-ruby string-2
+3 0 7 m-ruby string
+4 0 6 m-ruby string
+5 0 14 m-ruby string
+6 0 3 m-ruby string
+7 0 6 m-ruby comment
+8 0 6 m-ruby comment
+9 0 4 m-ruby comment

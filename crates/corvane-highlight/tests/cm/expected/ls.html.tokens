@@ -1,0 +1,29 @@
+0 0 12 m-xml comment
+1 0 1 m-xml tag bracket
+1 1 1 m-xml tag
+1 3 5 m-xml attribute
+1 9 5 m-xml string
+1 14 1 m-xml tag bracket
+1 17 2 m-xml tag bracket
+1 19 1 m-xml tag
+1 20 1 m-xml tag bracket
+2 0 1 m-xml tag bracket
+2 1 6 m-xml tag
+2 7 1 m-xml tag bracket
+2 8 3 m-javascript keyword
+2 12 1 m-javascript def
+2 14 1 m-javascript operator
+2 16 4 m-javascript string
+2 22 5 m-javascript comment
+3 0 2 m-xml tag bracket
+3 2 6 m-xml tag
+3 8 1 m-xml tag bracket
+4 0 1 m-xml tag bracket
+4 1 5 m-xml tag
+4 6 1 m-xml tag bracket
+4 7 1 m-css tag
+4 11 1 m-css property error
+4 14 3 m-css string
+4 19 2 m-xml tag bracket
+4 21 5 m-xml tag
+4 26 1 m-xml tag bracket

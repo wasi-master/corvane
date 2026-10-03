@@ -1,0 +1,38 @@
+<%!-- Order list for a LiveView page. --%>
+<.header>
+  Orders for <%= @customer.name %>
+  <:subtitle>Showing <%= length(@orders) %> of <%= @total %> orders</:subtitle>
+  <:actions>
+    <.link patch={~p"/orders/new"} class="btn btn-primary">New order</.link>
+  </:actions>
+</.header>
+
+<!-- Plain HTML comment -->
+<div :if={@orders == []} class="empty">
+  No orders yet.
+</div>
+
+<table :if={@orders != []} id="orders" phx-update="stream">
+  <thead>
+    <tr><th>Number</th><th>Status</th><th>Total</th></tr>
+  </thead>
+  <tbody>
+    <tr :for={order <- @orders} id={"order-#{order.id}"} class={[order.late && "late", "row"]}>
+      <td><%= order.number %></td>
+      <td>
+        <%= if order.status == :shipped do %>
+          <span class="badge">Shipped</span>
+        <% else %>
+          <.status_pill status={order.status} />
+        <% end %>
+      </td>
+      <td><%= Number.Currency.number_to_currency(order.total, precision: 2) %></td>
+    </tr>
+  </tbody>
+</table>
+
+<Pagination.bar page={@page} total_pages={@total_pages} on_change="paginate" />
+<.form :let={f} for={@filter} phx-change="filter">
+  <.input field={f[:query]} type="search" placeholder="Search..." />
+  <.input field={f[:late_only]} type="checkbox" checked={false} />
+</.form>

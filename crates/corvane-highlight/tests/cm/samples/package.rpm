@@ -1,0 +1,82 @@
+# RPM spec file — paquet de démonstration
+%global debug_package %{nil}
+%define _hardened_build 1
+
+Name:           corvane
+Version:        0.4.2
+Release:        1%{?dist}
+Summary:        Native Git client ✓ ünïcödé
+License:        MIT
+URL:            https://example.org/corvane
+Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
+BuildArch:      x86_64
+ExclusiveArch:  x86_64 aarch64 ppc64le s390x
+BuildRequires:  cargo >= 1.80, rust-packaging
+Requires(post): systemd
+Provides:       bundled(crate(gpui)) = 0.1
+
+%description
+Corvane is a native Rust clone of a Git desktop client.
+It uses $HOME and ${XDG_CONFIG_HOME} for configuration.
+
+%package        devel
+Summary:        Development files for %{name}
+
+%description devel
+Headers and libraries.
+
+%prep
+%autosetup -n %{name}-%{version} -p1
+
+%build
+%if 0%{?fedora} >= 38 && 0%{?rhel} < 10
+export RUSTFLAGS="%{build_rustflags}"
+%else
+export RUSTFLAGS="-O"
+%endif
+%ifarch x86_64 aarch64
+%cargo_build -f simd
+%endif
+%ifnarch ppc64le
+echo "not on ppc"
+%endif
+%if !%{with tests} || %{defined rhel}
+%endif
+%cargo_build
+
+%install
+rm -rf $RPM_BUILD_ROOT
+install -D -m 0755 target/release/corvane %{buildroot}%{_bindir}/corvane
+mkdir -p ${RPM_BUILD_ROOT}%{_datadir}/%{name}
+	%make_install DESTDIR=%{buildroot}
+
+%check
+%cargo_test -- --skip network
+
+%files
+%license LICENSE
+%doc README.md
+%attr(0755,root,root) %{_bindir}/corvane
+%attr(644, root, root) %config(noreplace) %{_sysconfdir}/corvane.toml
+%dir %{_datadir}/%{name}
+
+%files devel
+%{_includedir}/*.h
+
+%post
+%systemd_post corvane.service
+
+%preun
+%systemd_preun corvane.service
+
+%postun
+%systemd_postun_with_restart corvane.service
+
+%changelog
+* Mon Sep 29 2026 Wasi Master <wasi@example.org> - 0.4.2-1
+- Update to 0.4.2 (fixes #123)
+- noarch i686 sparc64 alphaev6 mipsel hppa
+* Tue Jan  2 2024 Jane Doe <jane@example.com> - 0.1.0-1
+- Initial package # not a comment
+%{?!_without_foo:%global with_foo 1}
+%{unterminated macro

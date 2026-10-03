@@ -1,0 +1,82 @@
+1: 0+9=Keyword 10+16=Qualifier 27+2=Keyword
+2: 2+3=Keyword 6+11=Qualifier
+4: 3+7=Variable 10+1=Atom 11+7=String
+5: 3+10=Variable 13+1=Atom 14+35=String
+7: 2+3=Keyword 6+7=Variable 14+2=Keyword
+9: 6+12=Atom
+10: 6+9=Atom 16+7=Atom
+11: 6+8=Atom 14+9=String
+12: 6+17=Atom 23+3=Qualifier 27+3=Variable 36+5=Atom
+13: 6+6=Atom 12+4=Variable
+14: 6+9=Atom 15+7=Variable
+15: 6+15=Atom 21+13=Variable 35+3=Qualifier 39+3=Variable
+16: 6+15=Atom 22+6=Atom 28+11=Qualifier 41+11=Atom
+17: 6+19=Atom 26+16=Atom 44+23=Atom
+18: 6+6=Atom
+19: 8+6=Atom 14+8=String
+20: 8+12=Atom 20+4=String 25+7=Atom 32+2=String
+21: 8+8=Atom 16+3=String 41+1=String
+23: 6+10=Atom 17+14=Atom 32+4=Atom 38+8=Atom 49+7=Atom 57+18=Atom
+25: 2+3=Keyword
+27: 2+40=Comment
+28: 2+3=Keyword 6+11=Variable 18+2=Keyword
+30: 6+5=Atom 12+17=Qualifier
+31: 6+20=Atom 27+7=Atom 36+14=Atom 52+7=Atom
+33: 2+3=Keyword
+35: 2+4=Keyword 7+13=Variable 21+5=Atom 29+4=Atom 34+5=String 41+14=String
+36: 2+4=Keyword 7+13=Variable 21+1=Comment 25+4=Atom 30+5=String
+38: 2+4=Keyword 7+4=Variable 12+2=Keyword
+40: 7+8=Atom 17+11=String
+41: 7+9=Atom 18+9=String
+42: 7+9=Atom 18+10=String
+43: 7+6=Atom 15+8=String
+44: 7+18=Atom 27+8=String 37+14=Atom
+45: 7+6=Atom 15+8=String 25+6=Atom 32+4=Atom 38+5=Atom 46+14=Atom
+46: 7+9=Atom 18+8=String 28+10=Atom 40+14=Atom
+47: 7+7=Atom 16+10=String 28+10=Atom 40+14=Atom
+48: 7+12=Atom 21+9=String 32+11=Atom
+49: 7+10=Atom 19+6=Atom 25+14=String
+50: 7+8=Atom 17+5=Atom 22+36=String 60+5=Atom 65+6=String
+52: 2+3=Keyword
+54: 2+4=Keyword 7+7=Variable 15+2=Keyword
+56: 6+7=Atom 14+10=String 26+12=String
+57: 6+14=Atom 21+13=String 36+14=String 52+25=String
+58: 6+14=Atom 21+11=String 34+12=String
+59: 6+6=Atom 13+21=String 36+22=String 60+6=String
+60: 6+6=Atom 13+4=Variable
+62: 2+3=Keyword
+64: 2+4=Keyword 7+4=Variable 12+4=Variable 18+2=Keyword
+65: 4+3=Qualifier 8+5=Variable 16+4=Variable 21+16=String 37+6=Variable 44+4=Variable 49+10=String
+66: 5+1=Comment 13+6=Qualifier 20+3=Variable 24+5=String 32+7=String 41+10=String 54+4=Variable 61+6=Atom 67+2=Qualifier 70+6=Variable
+67: 4+3=Atom
+68: 2+3=Keyword
+69: 0+3=Keyword
+71: 0+9=Keyword 10+22=Qualifier 33+2=Keyword
+72: 3+8=Comment 11+1=Atom 12+28=Comment
+73: 3+9=Comment 12+1=Atom 13+3=Comment
+74: 0+51=Comment
+75: 0+5=Comment
+76: 2+3=Keyword 6+8=Qualifier
+78: 3+8=Variable 11+1=Atom 13+13=Atom 27+15=Atom
+80: 3+4=Variable 7+1=Atom 8+8=Qualifier
+81: 2+3=Keyword 6+3=Variable 10+4=Variable 16+2=Keyword
+82: 5+4=Variable 11+5=Comment 18+7=Variable 29+12=Qualifier 42+5=Variable 48+4=Variable 54+8=Atom 63+8=Atom
+83: 4+6=Keyword 11+7=Variable 26+4=Atom 30+3=Qualifier 34+5=Variable 40+20=String 60+7=Variable 68+7=Variable 76+2=String
+85: 4+11=Qualifier 16+6=Variable 25+5=Atom
+86: 7+4=Qualifier 12+3=Variable 16+2=Keyword
+87: 7+4=Variable 13+3=Variable 18+4=Keyword 23+9=Variable 33+3=Variable 42+4=Variable 48+3=Variable
+88: 7+4=Variable 13+3=Variable 18+5=Variable 25+4=Keyword 30+7=Variable 38+5=Variable 49+4=Variable 55+3=Variable 60+5=Variable
+89: 7+4=Variable 13+5=Variable 24+4=Variable 30+3=Atom 35+5=Variable
+90: 4+3=Keyword
+91: 7+4=Qualifier 12+6=Variable 21+4=Variable 26+5=Atom 33+2=Keyword 37+3=Atom 42+9=Variable 52+4=Variable
+92: 7+6=Variable 14+7=Qualifier 22+3=Variable 26+4=Variable 32+5=Atom 39+5=Atom
+93: 2+3=Keyword
+95: 2+4=Keyword 7+6=Variable 14+4=Variable 20+4=Atom 27+4=Atom 31+4=Variable 39+3=Qualifier 43+3=Variable 47+2=Keyword 51+1=Variable 54+1=Variable 57+1=Comment 64+1=Variable 67+1=Variable 70+3=Keyword 78+5=Qualifier 84+7=Variable 97+2=Qualifier 100+4=Variable
+97: 2+4=Keyword 7+6=Variable 14+4=Variable 20+5=Atom 27+2=Keyword
+98: 4+3=Keyword 9+4=Variable 15+3=Variable 20+5=Variable 30+4=Variable 35+2=Keyword
+99: 6+4=Variable 13+7=Qualifier 21+3=Variable 25+5=Variable 32+5=Atom 39+4=Atom
+100: 6+2=Qualifier 9+4=Variable 14+6=Qualifier 21+12=Variable 34+3=String 37+4=Variable 41+2=String 52+3=String 55+3=Variable 58+1=String 61+9=String 70+7=Variable 78+4=Variable 83+2=String
+101: 4+3=Keyword
+102: 4+3=Atom
+103: 2+3=Keyword
+104: 0+3=Keyword

@@ -1,0 +1,26 @@
+1: 0+23=Comment
+2: 0+18=Comment
+3: 2+4=Variable 7+7=Keyword
+4: 9+7=Keyword
+5: 0+21=Comment 31+5=Keyword
+6: 0+6=Keyword 7+5=AltVariable 12+5=Variable 19+13=AltVariable
+7: 0+43=AltVariable
+8: 0+73=AltVariable 73+2=Variable 82+1=AltVariable 84+7=AltVariable 93+2=AltVariable 97+1=AltVariable 101+1=AltVariable 105+1=AltVariable
+9: 0+6=Keyword 8+1=AltVariable 12+1=AltVariable 16+1=AltVariable 24+1=AltVariable
+10: 0+6=Keyword 7+11=String 20+1=AltVariable 21+4=Variable 27+14=String 43+7=AltVariable 50+3=Variable 55+5=AltVariable 61+7=Variable 70+15=String 87+1=AltVariable 88+4=Variable 94+1=AltVariable 96+1=Variable
+11: 0+6=Keyword 7+5=String 14+3=String 19+7=String 28+3=String 33+5=String 40+6=String 48+6=String 79+4=String 86+1=AltVariable 91+1=AltVariable 95+4=AltVariable 103+1=AltVariable 106+4=String 113+1=Variable
+12: 0+6=Keyword 8+14=String 27+2=AltVariable 30+21=Variable 56+4=String 64+5=AltVariable 73+7=AltVariable 84+5=AltVariable
+13: 0+6=Keyword 7+17=String 26+4=AltVariable 31+7=Variable 40+17=String 59+15=String 76+18=String 96+10=String 108+4=AltVariable
+14: 0+6=Keyword 7+1=AltVariable 12+1=AltVariable 15+1=AltVariable 18+3=Type 23+1=AltVariable 28+1=AltVariable 31+1=AltVariable 37+3=String 42+1=AltVariable 47+1=AltVariable 50+1=AltVariable 55+1=AltVariable 58+1=AltVariable 63+1=AltVariable 66+1=AltVariable 71+1=AltVariable 74+1=AltVariable 78+1=AltVariable 81+1=AltVariable 86+1=AltVariable 89+1=AltVariable 95+1=AltVariable 98+1=AltVariable 106+1=AltVariable 110+1=AltVariable 113+1=AltVariable 117+1=AltVariable
+15: 0+6=Keyword 7+7=String 16+7=String 23+5=Variable
+18: 59+20=String
+19: 0+69=String
+20: 0+59=String
+21: 0+70=String
+22: 0+76=String
+23: 0+79=String
+24: 0+79=String
+25: 0+69=String
+26: 0+45=String
+27: 0+8=String 8+12=Variable
+29: 22+6=Keyword

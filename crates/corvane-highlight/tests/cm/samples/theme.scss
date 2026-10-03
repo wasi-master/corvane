@@ -1,0 +1,139 @@
+// SCSS theme — variables, maps, mixins, functions and nesting
+@use 'sass:math';
+@use "sass:map" as m;
+@import 'variables', 'mixins';
+
+$primary: #0366d6 !default;
+$secondary:   darken($primary, 10%);
+$font-size-base: 1rem;
+$breakpoints: (
+  'small': 576px,
+  'medium': 768px,
+  "large": 992px,
+  xlarge: 1200px
+);
+$z-layers: ("modal": 100, "dropdown": 50,);
+
+/* A block comment
+   over several lines with ünïcödé */
+
+@function rem($px, $base: 16px) {
+  @return math.div($px, $base) * 1rem;
+}
+
+@mixin respond-to($breakpoint) {
+  $value: map-get($breakpoints, $breakpoint);
+  @if $value != null {
+    @media (min-width: $value) { @content; }
+  } @else if $breakpoint == print {
+    @media print { @content; }
+  } @else {
+    @warn "Unknown breakpoint `#{$breakpoint}`.";
+  }
+}
+
+@mixin button-variant($background, $border: darken($background, 5%), $hover: lighten($background, 10%)) {
+  background-color: $background;
+  border-color: $border;
+  &:hover, &:focus { background-color: $hover; }
+  &.disabled { opacity: .65; }
+}
+
+%message-shared {
+  border: 1px solid #ccc;
+  padding: 10px;
+  color: #333;
+}
+
+.message { @extend %message-shared; }
+
+.nav {
+  display: flex;
+  font: {
+    family: $font-stack;
+    size: rem(18px);
+    weight: bold;
+  }
+
+  ul {
+    margin: 0;
+    list-style: none;
+
+    li { display: inline-block; }
+  }
+
+  a {
+    color: $primary;
+    padding: $spacer * .5 $spacer;
+    width: calc(100% - #{$sidebar-width});
+    margin-left: -$gutter;
+    height: $a - $b;
+    top: 10px / 2;
+
+    &:hover { color: darken($primary, 15%); }
+    &--active { font-weight: 700; }
+    .icon + & { margin-left: 4px; }
+  }
+
+  &__item:not(:last-child) { margin-right: 1em; }
+
+  @include respond-to('medium') {
+    flex-direction: column;
+  }
+}
+
+.btn-#{$name} {
+  @include button-variant($color);
+}
+
+.alert-#{$state}-text { color: map.get($theme-colors, $state); }
+
+@each $name, $glyph in $icons {
+  .icon-#{$name}:before {
+    content: $glyph;
+  }
+}
+
+@each $key, $val in (primary: blue, danger: red) {
+  .text-#{$key} { color: $val !important; }
+}
+
+@for $i from 1 through 3 {
+  .mt-#{$i} { margin-top: #{$i * 4}px; }
+}
+
+$i: 6;
+@while $i > 0 {
+  .item-#{$i} { width: 2em * $i; }
+  $i: $i - 2;
+}
+
+.sidebar {
+  float: left;
+  margin-left: 5px;
+  @debug "sidebar width: #{$width}";
+  > .inner { padding: 0 }
+  + .main { clear: both }
+  ~ p { color: gray }
+  #{&}__title { font-size: 2em; }
+  #main { color: red }
+  a:hover{ color: blue }
+  input:focus { outline: 0 }
+  custom-element { display: block }
+}
+
+@media screen and (max-width: $medium) {
+  .container { width: 100% }
+}
+
+@supports not (display: grid) { .g { float: left } }
+
+.url { background: url("img/#{$file}.png"); src: url(fonts/a.woff); }
+.str { content: 'it\'s'; quotes: "\201C" "\201D"; }
+.nested-parens { width: calc((100% - (2 * #{$gap})) / 3); }
+@font-face { font-family: X; src: local("X"); }
+@keyframes bounce { 0%, 100% { top: 0 } 50% { top: -10px } }
+.placeholder { @extend .message !optional; }
+.unfinished { content: "open
+.after { top: 0 }
+// trailing comment

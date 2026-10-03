@@ -1,0 +1,45 @@
+// Package views renders the dashboard page.
+package views
+
+import (
+    "fmt"
+    "strings"
+    "time"
+)
+
+type Stat struct { Label string; Value int; Trend float64 }
+templ Layout(title string) {
+    <!DOCTYPE html>
+    <html lang="en">
+        <head><title>{ title }</title></head>
+        <body>{ children... }</body>
+    </html>
+}
+
+templ StatCard(s Stat) {
+    <div class={ "card", templ.KV("up", s.Trend >= 0) }>
+        <h3>{ strings.ToUpper(s.Label) }</h3>
+        <p class="value">{ fmt.Sprintf("%d", s.Value) }</p>
+        if s.Trend != 0 {
+            <span title="change since last week">{ fmt.Sprintf("%+.1f%%", s.Trend) }</span>
+        }
+    </div>
+}
+
+templ Dashboard(title string, stats []Stat, updated time.Time) {
+    @Layout(title) {
+        <h1>{ title }</h1>
+        for i, s := range stats {
+            <section id={ fmt.Sprintf("stat-%d", i) }>
+                @StatCard(s)
+            </section>
+        }
+        switch len(stats) {
+            case 0:
+                <p>No data yet.</p>
+            default:
+                <footer>Updated { updated.Format("15:04") }</footer>
+        }
+        <button hx-post="/refresh" disabled?={ len(stats) == 0 }>Refresh</button>
+    }
+}

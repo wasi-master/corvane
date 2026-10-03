@@ -1,0 +1,86 @@
+1: 0+9=Comment
+3: 0+51=Comment
+4: 0+3=AltVariable
+5: 2+4=AltVariable 8+9=String
+6: 2+7=AltVariable 11+5=String
+7: 2+11=AltVariable 15+21=String
+8: 2+7=AltVariable 11+4=Atom
+9: 2+5=AltVariable 9+5=Atom
+10: 2+7=AltVariable 11+3=String
+11: 2+6=AltVariable 10+3=String
+12: 2+5=AltVariable
+13: 2+5=AltVariable 9+5=String
+14: 2+5=AltVariable
+15: 2+7=AltVariable 11+1=Atom
+16: 2+7=AltVariable 11+4=Atom
+17: 2+4=AltVariable 8+10=String
+18: 2+9=AltVariable 13+20=String
+19: 2+4=AltVariable 8+14=String 23+18=Comment
+20: 2+3=AltVariable 7+26=String
+21: 2+15=AltVariable 19+10=String
+22: 2+12=AltVariable 16+5=String
+23: 2+12=AltVariable
+24: 2+15=AltVariable 19+15=String
+25: 2+8=AltVariable 12+16=String
+26: 2+5=AltVariable 9+12=String
+28: 0+8=AltVariable 11+8=AltVariable
+29: 2+7=AltVariable 11+8=String
+30: 2+4=AltVariable 8+9=String
+31: 2+4=AltVariable
+33: 0+11=AltVariable
+34: 2+2=AltVariable 7+8=AltVariable
+35: 2+8=AltVariable 12+6=String
+37: 0+4=AltVariable
+38: 2+2=AltVariable 7+8=AltVariable
+39: 2+8=AltVariable 12+7=String
+41: 0+4=AltVariable
+42: 4+5=String
+43: 4+6=String
+44: 4+12=String
+46: 4+4=Atom
+47: 6+6=AltVariable
+48: 10+4=String
+49: 4+3=AltVariable 9+5=String
+50: 4+5=AltVariable 11+5=String
+52: 6+3=String
+54: 0+11=AltVariable 14+3=String 19+3=String 24+13=String 43+6=String 51+4=String
+55: 0+10=AltVariable 13+4=AltVariable 19+4=String 25+3=AltVariable 34+4=AltVariable 41+1=String 44+1=String 48+2=AltVariable 52+4=Atom
+56: 0+11=AltVariable 14+1=AltVariable 20+1=AltVariable 29+1=AltVariable
+57: 0+5=AltVariable 10+1=AltVariable 18+1=AltVariable
+59: 0+13=AltVariable
+60: 0+26=String
+61: 0+29=String
+62: 0+46=String
+64: 0+21=String
+65: 0+12=AltVariable
+66: 0+23=String
+67: 0+22=String
+68: 0+15=String
+69: 0+4=AltVariable
+70: 0+6=String
+72: 0+11=AltVariable 13+4=String
+74: 0+6=AltVariable 8+5=Type
+75: 0+6=AltVariable 8+8=Type
+76: 0+64=String
+77: 0+6=AltVariable 8+6=Type 17+1=AltVariable
+78: 0+3=AltVariable 5+5=Type
+79: 4+5=AltVariable
+80: 4+5=AltVariable
+81: 2+11=AltVariable
+82: 2+13=String
+84: 0+16=AltVariable 18+15=String
+85: 0+23=String
+86: 0+20=String
+87: 0+7=AltVariable 9+32=String
+88: 0+13=AltVariable 15+12=String
+89: 0+12=AltVariable
+90: 0+4=AltVariable 6+5=String
+91: 0+9=AltVariable 11+4=String
+92: 0+11=AltVariable 14+4=AltVariable
+93: 0+3=AltVariable 6+4=AltVariable
+94: 0+13=AltVariable 15+1=String
+95: 0+15=AltVariable 17+1=String
+96: 0+19=AltVariable 21+1=String
+97: 5+11=String
+98: 0+4=AltVariable 6+14=String
+99: 0+7=String

@@ -1,0 +1,445 @@
+0 0 30 m-rst-base header
+2 0 30 m-rst-base header
+4 0 3 m-rst-base meta
+4 3 8 m-rst-base keyword
+4 11 3 m-rst-base meta
+5 3 1 m-rst-base meta
+5 4 5 m-rst-base keyword
+5 9 1 m-rst-base meta
+5 11 1 m-rst-base null number
+8 0 12 m-rst-base header
+10 8 1 m-rst-base null strong
+10 9 1 m-rst-base null strong
+10 10 1 m-rst-base null strong
+10 11 1 m-rst-base null strong
+10 12 1 m-rst-base null strong
+10 13 1 m-rst-base null strong
+10 14 1 m-rst-base null strong
+10 15 1 m-rst-base null strong
+10 16 1 m-rst-base null strong
+10 17 1 m-rst-base null strong
+10 18 1 m-rst-base null strong
+10 19 1 m-rst-base null strong
+10 20 1 m-rst-base null strong
+10 23 1 m-rst-base null em
+10 24 1 m-rst-base null em
+10 25 1 m-rst-base null em
+10 26 1 m-rst-base null em
+10 27 1 m-rst-base null em
+10 28 1 m-rst-base null em
+10 29 1 m-rst-base null em
+10 30 1 m-rst-base null em
+10 31 1 m-rst-base null em
+10 32 1 m-rst-base null em
+10 39 1 m-rst-base null string-2
+10 40 1 m-rst-base null string-2
+10 41 1 m-rst-base null string-2
+10 42 1 m-rst-base null string-2
+10 43 1 m-rst-base null string-2
+10 44 1 m-rst-base null string-2
+10 45 1 m-rst-base null string-2
+10 46 1 m-rst-base null string-2
+10 47 1 m-rst-base null string-2
+10 48 1 m-rst-base null string-2
+10 49 1 m-rst-base null string-2
+10 50 1 m-rst-base null string-2
+10 51 1 m-rst-base null string-2
+10 52 1 m-rst-base null string-2
+10 53 1 m-rst-base null string-2
+10 54 1 m-rst-base null string-2
+10 55 1 m-rst-base null string-2
+10 56 1 m-rst-base null string-2
+11 13 1 m-rst-base null number
+11 14 1 m-rst-base null number
+11 17 1 m-rst-base null number
+11 18 1 m-rst-base null number
+11 19 1 m-rst-base null number
+11 20 1 m-rst-base null number
+11 26 1 m-rst-base null number
+11 27 1 m-rst-base null number
+11 28 1 m-rst-base null number
+11 29 1 m-rst-base null number
+11 30 1 m-rst-base null number
+11 49 1 m-rst-base null positive
+11 50 1 m-rst-base null positive
+11 51 1 m-rst-base null positive
+11 56 1 m-rst-base null negative
+11 57 1 m-rst-base null negative
+11 58 1 m-rst-base null negative
+12 6 1 m-rst-base null link
+12 7 1 m-rst-base null link
+12 8 1 m-rst-base null link
+12 9 1 m-rst-base null link
+12 10 1 m-rst-base null link
+12 11 1 m-rst-base null link
+12 12 1 m-rst-base null link
+12 13 1 m-rst-base null link
+12 14 1 m-rst-base null link
+12 15 1 m-rst-base null link
+12 16 1 m-rst-base null link
+12 17 1 m-rst-base null link
+12 18 1 m-rst-base null link
+12 19 1 m-rst-base null link
+12 20 1 m-rst-base null link
+12 21 1 m-rst-base null link
+12 22 1 m-rst-base null link
+12 23 1 m-rst-base null link
+12 24 1 m-rst-base null link
+12 25 1 m-rst-base null link
+12 26 1 m-rst-base null link
+12 27 1 m-rst-base null link
+12 28 1 m-rst-base null link
+12 29 1 m-rst-base null link
+12 30 1 m-rst-base null link
+12 31 1 m-rst-base null link
+12 32 1 m-rst-base null link
+12 33 1 m-rst-base null link
+12 34 1 m-rst-base null link
+12 35 1 m-rst-base null link
+12 36 1 m-rst-base null link
+12 37 1 m-rst-base null link
+12 38 1 m-rst-base null link
+12 39 1 m-rst-base null link
+12 40 1 m-rst-base null link
+12 41 1 m-rst-base null link
+12 42 1 m-rst-base null link
+12 43 1 m-rst-base null link
+12 44 1 m-rst-base null link
+12 45 1 m-rst-base null link
+12 46 1 m-rst-base null link
+12 47 1 m-rst-base null link
+12 48 1 m-rst-base null link
+12 53 1 m-rst-base null link
+12 54 1 m-rst-base null link
+12 55 1 m-rst-base null link
+12 56 1 m-rst-base null link
+12 57 1 m-rst-base null link
+12 58 1 m-rst-base null link
+12 59 1 m-rst-base null link
+12 60 1 m-rst-base null link
+12 61 1 m-rst-base null link
+12 62 1 m-rst-base null link
+12 63 1 m-rst-base null link
+12 64 1 m-rst-base null link
+12 65 1 m-rst-base null link
+12 66 1 m-rst-base null link
+12 67 1 m-rst-base null link
+12 68 1 m-rst-base null link
+12 69 1 m-rst-base null link
+12 70 1 m-rst-base null link
+17 0 20 m-rst-base header
+19 4 1 m-rst-base meta
+19 5 8 m-rst-base keyword
+19 13 2 m-rst-base meta
+19 15 9 m-rst-base string
+19 24 1 m-rst-base meta
+19 30 1 m-rst-base meta
+19 31 11 m-rst-base string
+19 42 2 m-rst-base meta
+19 44 6 m-rst-base keyword
+19 50 1 m-rst-base meta
+19 62 1 m-rst-base meta
+19 63 4 m-rst-base keyword
+19 67 1 m-rst-base meta
+20 12 1 m-rst-base meta
+20 13 4 m-rst-base keyword
+20 17 2 m-rst-base meta
+20 19 6 m-rst-base tag
+20 28 5 m-stex tag
+20 34 1 m-stex bracket
+20 35 1 m-stex atom number
+20 36 1 m-stex bracket
+20 37 1 m-rst-base meta
+20 43 1 m-rst-base meta
+20 44 5 m-rst-base keyword
+20 49 2 m-rst-base meta
+20 51 5 m-rst-base tag
+20 56 1 m-stex bracket
+20 58 1 m-stex bracket
+20 59 1 m-stex bracket
+20 61 1 m-stex bracket
+20 62 1 m-rst-base meta
+21 8 14 m-rst-base variable-2
+21 27 9 m-rst-base variable-2
+21 36 1 m-rst-base link
+21 42 6 m-rst-base variable-2
+21 48 2 m-rst-base link
+22 10 1 m-rst-base quote
+22 11 1 m-rst-base quote number
+22 12 2 m-rst-base quote
+22 16 4 m-rst-base quote
+22 22 8 m-rst-base quote
+22 32 4 m-rst-base quote
+22 51 4 m-rst-base quote
+22 55 4 m-rst-base quote number
+22 59 2 m-rst-base quote
+23 11 7 m-rst-base link
+23 23 15 m-rst-base link
+23 43 11 m-rst-base link
+24 2 18 m-rst-base link
+25 33 1 m-rst-base meta
+25 34 3 m-rst-base keyword
+25 37 1 m-rst-base meta
+27 0 3 m-rst-base meta
+27 3 7 m-rst-base link
+27 10 2 m-rst-base meta
+27 12 1 m-rst-base null link
+27 13 1 m-rst-base null link
+27 14 1 m-rst-base null link
+27 15 1 m-rst-base null link
+27 16 1 m-rst-base null link
+27 17 1 m-rst-base null link
+27 18 1 m-rst-base null link
+27 19 1 m-rst-base null link
+27 20 1 m-rst-base null link
+27 21 1 m-rst-base null link
+27 22 1 m-rst-base null link
+27 23 1 m-rst-base null link
+27 24 1 m-rst-base null link
+27 25 1 m-rst-base null link
+27 26 1 m-rst-base null link
+27 27 1 m-rst-base null link
+27 28 1 m-rst-base null link
+27 29 1 m-rst-base null link
+27 30 1 m-rst-base null link
+27 31 1 m-rst-base null link
+27 32 1 m-rst-base null link
+27 33 1 m-rst-base null link
+28 0 3 m-rst-base meta
+28 3 2 m-rst-base link
+28 5 2 m-rst-base meta
+28 7 1 m-rst-base null link
+28 8 1 m-rst-base null link
+28 9 1 m-rst-base null link
+28 10 1 m-rst-base null link
+28 11 1 m-rst-base null link
+28 12 1 m-rst-base null link
+28 13 1 m-rst-base null link
+28 14 1 m-rst-base null link
+28 15 1 m-rst-base null link
+28 16 1 m-rst-base null link
+28 17 1 m-rst-base null link
+28 18 1 m-rst-base null link
+28 19 1 m-rst-base null link
+28 20 1 m-rst-base null link
+28 21 1 m-rst-base null link
+28 22 1 m-rst-base null link
+28 23 1 m-rst-base null link
+28 24 1 m-rst-base null link
+28 25 1 m-rst-base null link
+28 26 1 m-rst-base null link
+28 27 1 m-rst-base null link
+28 28 1 m-rst-base null link
+28 29 1 m-rst-base null link
+28 30 1 m-rst-base null link
+28 31 1 m-rst-base null link
+28 32 1 m-rst-base null link
+28 33 1 m-rst-base null link
+28 34 1 m-rst-base null link
+28 35 1 m-rst-base null link
+29 0 3 m-rst-base meta
+29 3 15 m-rst-base link
+29 18 2 m-rst-base meta
+29 20 1 m-rst-base null link
+29 21 1 m-rst-base null link
+29 22 1 m-rst-base null link
+29 23 1 m-rst-base null link
+29 24 1 m-rst-base null link
+29 25 1 m-rst-base null link
+29 26 1 m-rst-base null link
+29 27 1 m-rst-base null link
+29 28 1 m-rst-base null link
+29 29 1 m-rst-base null link
+29 30 1 m-rst-base null link
+29 31 1 m-rst-base null link
+29 32 1 m-rst-base null link
+29 33 1 m-rst-base null link
+29 34 1 m-rst-base null link
+29 35 1 m-rst-base null link
+29 36 1 m-rst-base null link
+29 37 1 m-rst-base null link
+29 38 1 m-rst-base null link
+29 39 1 m-rst-base null link
+29 40 1 m-rst-base null link
+29 41 1 m-rst-base null link
+29 42 1 m-rst-base null link
+29 43 1 m-rst-base null link
+29 44 1 m-rst-base null link
+29 45 1 m-rst-base null link
+29 46 1 m-rst-base null link
+31 0 3 m-rst-base meta
+31 3 14 m-rst-base variable-2
+31 18 7 m-rst-base keyword
+31 25 3 m-rst-base meta
+32 0 3 m-rst-base meta
+32 3 6 m-rst-base variable-2
+32 10 5 m-rst-base keyword
+32 15 3 m-rst-base meta
+33 3 1 m-rst-base meta
+33 4 3 m-rst-base keyword
+33 7 1 m-rst-base meta
+35 0 3 m-rst-base meta
+35 3 1 m-rst-base quote
+35 4 1 m-rst-base quote number
+35 5 2 m-rst-base quote
+36 0 3 m-rst-base meta
+36 3 8 m-rst-base quote
+37 0 3 m-rst-base meta
+37 3 4 m-rst-base quote
+37 7 4 m-rst-base quote number
+37 11 2 m-rst-base quote
+39 0 3 m-rst-base meta
+39 3 4 m-rst-base keyword
+39 7 2 m-rst-base meta
+42 0 3 m-rst-base meta
+42 3 10 m-rst-base keyword
+42 13 3 m-rst-base meta
+44 4 3 m-python keyword
+44 8 5 m-python def
+44 14 4 m-python variable
+45 8 6 m-python keyword
+45 15 9 m-python string
+45 25 4 m-python variable
+45 30 2 m-python string
+47 0 3 m-rst-base meta
+47 3 6 m-rst-base keyword
+47 9 2 m-rst-base meta
+48 3 6 m-python keyword
+48 10 2 m-python variable
+49 3 5 m-python builtin
+49 9 2 m-python variable
+49 12 6 m-python property
+51 0 3 m-rst-base meta
+51 3 4 m-rst-base keyword
+51 7 2 m-rst-base meta
+53 10 1 m-stex bracket
+53 11 1 m-stex atom number
+53 12 1 m-stex bracket
+53 14 5 m-stex tag
+53 20 5 m-stex tag
+53 25 1 m-stex bracket
+53 32 1 m-stex bracket
+55 0 3 m-rst-base meta
+55 3 5 m-rst-base keyword
+55 8 2 m-rst-base meta
+56 3 6 m-stex tag
+56 9 1 m-stex bracket
+56 10 8 m-stex atom
+56 18 1 m-stex bracket
+56 22 1 m-stex null number
+56 24 4 m-stex tag
+56 28 1 m-stex bracket
+56 29 8 m-stex atom
+56 37 1 m-stex bracket
+58 0 3 m-rst-base meta
+58 3 17 m-rst-base comment
+59 0 38 m-rst-base comment
+65 0 23 m-rst-base meta
+66 0 12 m-rst-base meta
+66 12 5 m-rst-base meta number
+70 4 3 m-python operator
+70 8 5 m-python builtin
+70 14 9 m-python string
+71 4 7 m-python variable
+72 4 3 m-python operator
+72 8 1 m-python number number
+72 10 1 m-python operator
+72 12 1 m-python number number
+73 4 1 m-python number number
+75 4 2 m-python variable
+75 8 1 m-python number number
+75 12 1 m-python variable
+75 14 1 m-python operator
+75 16 1 m-python number number
+77 4 3 m-python operator
+77 8 1 m-python variable
+77 10 1 m-python operator
+77 12 13 m-python string
+78 4 16 m-python string
+79 4 3 m-python operator
+79 8 1 m-python variable
+79 10 1 m-python operator
+79 13 1 m-python variable
+79 15 1 m-python operator
+79 16 1 m-python operator
+79 18 1 m-python number number
+79 20 3 m-python keyword
+79 24 1 m-python variable
+79 26 2 m-python keyword
+79 29 5 m-python builtin
+79 35 2 m-python number number
+79 41 9 m-python comment
+81 25 1 m-rst-base meta
+81 26 4 m-rst-base keyword
+81 30 1 m-rst-base meta
+81 33 4 m-rst-base link
+81 40 1 m-rst-base null number
+82 15 1 m-rst-base null strong
+82 16 1 m-rst-base null strong
+82 17 1 m-rst-base null strong
+82 18 1 m-rst-base null strong
+82 19 1 m-rst-base null strong
+82 20 1 m-rst-base null strong
+82 21 1 m-rst-base null strong
+82 22 1 m-rst-base null strong
+83 12 1 m-rst-base meta
+83 13 4 m-rst-base keyword
+83 17 1 m-rst-base meta
+84 7 1 m-rst-base meta
+84 8 4 m-rst-base string
+84 12 2 m-rst-base meta
+84 14 4 m-rst-base keyword
+84 18 1 m-rst-base meta
+86 0 3 m-rst-base meta
+86 3 4 m-rst-base variable-2
+86 8 4 m-rst-base keyword
+86 12 3 m-rst-base meta
+87 0 3 m-rst-base meta
+87 3 4 m-rst-base variable-2
+87 8 6 m-rst-base keyword
+87 14 3 m-rst-base meta
+87 23 1 m-rst-base null number
+88 0 3 m-rst-base meta
+88 3 6 m-rst-base keyword
+88 9 3 m-rst-base meta
+88 12 5 m-python builtin
+88 18 11 m-python string
+89 0 3 m-rst-base meta
+89 3 5 m-rst-base keyword
+89 8 3 m-rst-base meta
+90 0 3 m-rst-base meta
+90 3 3 m-rst-base quote
+91 0 3 m-rst-base meta
+91 3 1 m-rst-base quote
+91 4 1 m-rst-base quote number
+91 5 2 m-rst-base quote
+92 0 4 m-rst-base meta
+92 4 9 m-rst-base variable-2
+92 15 7 m-rst-base keyword
+92 22 3 m-rst-base meta
+93 0 3 m-rst-base meta
+93 3 14 m-rst-base link
+93 17 1 m-rst-base meta
+94 0 3 m-rst-base meta
+94 3 13 m-rst-base comment
+96 0 4 m-rst-base header
+99 18 1 m-rst-base null string-2
+99 19 1 m-rst-base null string-2
+99 20 1 m-rst-base null string-2
+99 21 1 m-rst-base null string-2
+99 22 1 m-rst-base null string-2
+99 23 1 m-rst-base null string-2
+99 24 1 m-rst-base null string-2
+99 30 4 m-rst-base link
+99 39 5 m-rst-base link
+99 49 3 m-rst-base variable-2
+101 21 1 m-rst-base null strong
+101 22 1 m-rst-base null strong
+101 23 1 m-rst-base null strong
+101 24 1 m-rst-base null strong
+101 25 1 m-rst-base null strong
+101 26 1 m-rst-base null strong
+101 27 1 m-rst-base null strong
+101 28 1 m-rst-base null strong
+101 29 1 m-rst-base null strong
+101 30 1 m-rst-base null strong

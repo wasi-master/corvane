@@ -1,0 +1,15 @@
+5 31 2 m-diff error
+6 0 3 m-diff negative
+9 0 1 m-diff error
+12 0 18 m-diff negative
+13 0 18 m-diff positive
+14 0 30 m-diff meta
+16 0 34 m-diff negative
+17 0 33 m-diff positive
+21 0 30 m-diff meta
+22 0 18 m-diff negative
+22 18 1 m-diff error negative
+23 0 19 m-diff positive
+24 0 2 m-diff error
+27 0 2 m-diff negative
+27 2 1 m-diff error negative

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, 'release/**' ]
+    tags: ["v*"]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: 'Enable debug logging'
+        required: false
+        default: 'false'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: "-D warnings"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-latest]
+        rust: [stable, 1.85.0]
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --workspace --locked
+      - name: Test
+        run: |
+          cargo test --workspace -- --nocapture
+          echo "done: $?" # still inside the block
+      - name: Lint
+        if: github.event_name == 'pull_request' && matrix.os != 'windows-latest'
+        run: >
+          cargo clippy --all-targets
+          -- -D warnings
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with: { name: logs, path: target/*.log, retention-days: 5 }
+  # deploy only on tags
+  deploy:
+    needs: [test]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: echo "Deploying ${GITHUB_REF#refs/tags/}"
+      - run: 'echo single: quoted'

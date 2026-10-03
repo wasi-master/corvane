@@ -1,0 +1,42 @@
+// Build configuration for a small workspace (KDL v1 syntax).
+package {
+    name "sample-app"
+    version "0.3.1"
+    authors "Ada Example" "Grace Example"
+    license "MIT" osi-approved=true
+    edition 2024
+}
+
+/*
+ * Dependencies with optional features.
+ */
+dependencies {
+    serde "1.0" features="derive"
+    tokio "1.38" {
+        features "rt" "macros" "net"
+        optional true
+    }
+    /-legacy-crate "0.1"
+}
+
+profile "release" {
+    opt-level 3
+    lto "fat"
+    debug false
+    codegen-units 1
+    strip null
+}
+
+scripts {
+    build r"cargo build --release"
+    test r#"cargo test -- --nocapture "quoted""#
+    greet "Hello,\n\tworld! \u{1F600}"
+}
+
+(env)matrix {
+    target (triple)"aarch64-apple-darwin" tier=1
+    target (triple)"x86_64-unknown-linux-gnu" tier=1
+    timeout 1.5e2 retries=0x03 mask=0b1010 perms=0o755
+}
+
+node-with-children; another-node 1 2 3 -4.5

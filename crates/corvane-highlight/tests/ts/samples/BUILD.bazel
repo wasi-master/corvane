@@ -1,0 +1,42 @@
+# Build rules for the sample server and its tests.
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("//tools:defs.bzl", "COPTS")
+
+package(default_visibility = ["//visibility:private"])
+
+licenses(["notice"])
+
+SRCS = glob(
+    ["src/**/*.cc"],
+    exclude = ["src/**/*_test.cc", "src/main.cc"],
+)
+
+PLATFORM_DEPS = {
+    "@platforms//os:linux": ["//third_party:epoll"],
+    "@platforms//os:macos": ["//third_party:kqueue"],
+    "//conditions:default": [],
+}
+
+cc_library(
+    name = "core",
+    srcs = SRCS,
+    hdrs = glob(["include/**/*.h"], allow_empty = False),
+    copts = COPTS + ["-DVERSION=\"1.4\"", "-O%d" % 2],
+    includes = ["include"],
+    deps = ["@com_google_absl//absl/strings"] + select(PLATFORM_DEPS),
+)
+
+cc_binary(
+    name = "server",
+    srcs = ["src/main.cc"],
+    linkstatic = True,
+    visibility = ["//visibility:public"],
+    deps = [":core"],
+)
+
+[cc_test(
+    name = "%s_test" % name,
+    size = "small",
+    srcs = ["src/%s_test.cc" % name],
+    deps = [":core", "@com_google_googletest//:gtest_main"],
+) for name in ["parser", "router", "cache"] if name != None]

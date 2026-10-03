@@ -1,0 +1,32 @@
+# ~/.XCompose - personal compose sequences.
+# Kept ASCII only: non-ASCII output is written as octal or hex UTF-8 escapes.
+include "%L"
+
+# Typography
+<Multi_key> <period> <period> <period>  : "\342\200\246"   ellipsis
+<Multi_key> <minus> <minus> <minus>     : "\342\200\224"   emdash
+<Multi_key> <minus> <minus> <period>    : "\342\200\223"   endash
+<Multi_key> <less> <quotedbl>           : "\342\200\234"   leftdoublequotemark
+<Multi_key> <greater> <quotedbl>        : "\342\200\235"   rightdoublequotemark
+
+# Arrows
+<Multi_key> <minus> <greater>           : "\342\206\222"   rightarrow
+<Multi_key> <less> <minus>              : "\342\206\220"   leftarrow
+<Multi_key> <equal> <greater>           : "\xe2\x87\x92"   U21D2
+
+# Math
+<Multi_key> <exclam> <equal>            : "\342\211\240"   notequal
+<Multi_key> <less> <equal>              : "\342\211\244"   lessthanequal
+<Multi_key> <plus> <minus>              : plusminus
+<Multi_key> <x> <x>                     : "\303\227"       multiply
+
+# Greek via a dead key
+<dead_greek> <l>                        : "\316\273"       Greek_lambda
+<dead_greek> <p>                        : "\317\200"       Greek_pi
+
+# Snippets and escapes
+<Multi_key> <o> <slash>                 : "\\o/"
+<Multi_key> <q> <q>                     : "\"quoted\""
+<Multi_key> <at> <e>                    : "user@example.com"
+<Multi_key> <c> <o>                     : "\302\251"       copyright
+<Multi_key> <o> <o>                     : "\302\260"       degree

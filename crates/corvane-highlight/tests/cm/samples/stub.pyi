@@ -1,0 +1,29 @@
+from typing import overload, Protocol, Generic, TypeVar, Literal, Final
+import os
+
+_T = TypeVar("_T", bound="Base")
+MAX: Final[int] = ...
+
+class SupportsRead(Protocol[_T]):
+    def read(self, n: int = ..., /) -> _T: ...
+
+class Base(Generic[_T]):
+    value: _T
+    mode: Literal["r", "w", 'a']
+    @overload
+    def get(self, key: str) -> _T: ...
+    @overload
+    def get(self, key: str, default: _T | None = None) -> _T | None: ...
+    async def aget(self, *args: Any, **kwargs: Any) -> Awaitable[_T]: ...
+    def __getitem__(self, i: int | slice) -> _T: ...
+    def __eq__(self, other: object) -> bool: ...
+
+    class Inner:
+        x: int
+        def method(self) -> None:
+            pass
+        y: str
+
+def open(file: str | bytes | os.PathLike[str], mode: str = "r", buffering: int = -1) -> IO[Any]: ...
+type Alias = dict[str, list[tuple[int, ...]]]
+def generic[T: (int, str), *Ts, **P](x: T) -> T: ...

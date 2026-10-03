@@ -1,0 +1,30 @@
+# Runtime dependencies for the reporting service.
+# Install with: pip install -r requirements.txt
+
+--index-url https://pypi.org/simple
+--extra-index-url https://packages.example.com/simple
+--trusted-host packages.example.com
+
+-r requirements-base.txt
+-c constraints.txt
+
+requests>=2.31,<3
+urllib3==2.2.1
+pydantic[email]~=2.7
+SQLAlchemy[asyncio,postgresql] >= 2.0.29
+uvicorn[standard]
+fastapi!=0.100.0,>=0.110
+numpy===1.26.4
+python-dateutil  # timezone parsing
+
+# Environment markers
+tomli>=2.0; python_version < "3.11"
+pywin32==306 ; sys_platform == "win32"
+uvloop>=0.19; sys_platform != "win32" and platform_python_implementation == "CPython"
+
+# Hashes and direct references
+certifi==2024.2.2 \
+    --hash=sha256:a1b2c3d4e5f60718293a4b5c6d7e8f9012345678abcdef0123456789abcdef01
+internal-lib @ git+https://github.com/example/internal-lib.git@v1.2.0
+local-plugin @ file:///opt/plugins/local_plugin-0.1.0-py3-none-any.whl
+-e ./packages/shared
